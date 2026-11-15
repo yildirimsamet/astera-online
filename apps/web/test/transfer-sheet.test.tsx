@@ -79,7 +79,7 @@ describe('remembering only transfer return choices', () => {
     mutate.mockReset();
     open();
     await userEvent.setup().click(screen.getByRole('button', { name: 'More Courier' }));
-    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    const commit = screen.getByRole('button', { name: /^transfer\b/i });
     fireEvent.keyDown(commit, { key: 'Enter' });
     fireEvent.keyDown(commit, { key: 'Enter' });
     expect(mutate.mock.calls[0]?.[0]).toMatchObject({ returnPlan: { cargoShips: 'STAY', otherShips: 'RETURN' } });
@@ -136,7 +136,7 @@ describe('world transfer sheet', () => {
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
     expect(document.querySelector('[data-radiation-warning]')).toHaveTextContent(/HP per ship/);
     expect(document.querySelector('[data-radiation-warning]')).toHaveTextContent(/destroys 1 ship/);
-    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    const commit = screen.getByRole('button', { name: /^transfer\b/i });
     fireEvent.keyDown(commit, { key: 'Enter' });
     fireEvent.keyDown(commit, { key: 'Enter' });
     expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ acknowledgeRadiation: true }), expect.anything());
@@ -168,7 +168,7 @@ describe('world transfer sheet', () => {
     );
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
     expect(document.querySelector('[data-radiation-warning]')).toHaveTextContent(/destroys 1 ship/);
-    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    const commit = screen.getByRole('button', { name: /^transfer\b/i });
     fireEvent.keyDown(commit, { key: 'Enter' });
     fireEvent.keyDown(commit, { key: 'Enter' });
     expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ acknowledgeRadiation: true }), expect.anything());
@@ -188,7 +188,7 @@ describe('world transfer sheet', () => {
     );
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
     const commit = () => {
-      const button = screen.getByRole('button', { name: /^transfer$/i });
+      const button = screen.getByRole('button', { name: /^transfer\b/i });
       fireEvent.keyDown(button, { key: 'Enter' });
       fireEvent.keyDown(button, { key: 'Enter' });
     };
@@ -210,7 +210,7 @@ describe('world transfer sheet', () => {
     );
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
     expect(document.querySelector('[data-radiation-warning]')).toBeNull();
-    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    const commit = screen.getByRole('button', { name: /^transfer\b/i });
     fireEvent.keyDown(commit, { key: 'Enter' });
     fireEvent.keyDown(commit, { key: 'Enter' });
     expect(mutate.mock.calls[0]?.[0]).not.toHaveProperty('acknowledgeRadiation');
@@ -257,7 +257,7 @@ describe('world transfer sheet', () => {
     expect(document.querySelector('[data-transfer-return-eta]')).toBeNull();
     await user.click(screen.getByRole('radio', { name: /haulers.*return/i }));
     await user.click(screen.getByRole('radio', { name: /other ships.*return/i }));
-    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    const commit = screen.getByRole('button', { name: /^transfer\b/i });
     fireEvent.keyDown(commit, { key: 'Enter' });
     fireEvent.keyDown(commit, { key: 'Enter' });
     expect(mutate).toHaveBeenCalledWith(expect.objectContaining({
@@ -306,7 +306,7 @@ describe('world transfer sheet', () => {
     expect(alloyRow).toHaveTextContent('Sending');
     expect(alloyRow?.querySelector('[data-spend-amount]')).toHaveTextContent(compact(Number(hold)));
     expect(alloyRow).not.toHaveTextContent('stays here');
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
   });
 
   it('accepts a directly typed hull count and clamps it to the ships at home', async () => {
@@ -397,7 +397,7 @@ describe('world transfer sheet', () => {
 
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
     expect(document.querySelector('[data-full]')).toBeNull();
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
   });
 
   /**
@@ -534,7 +534,7 @@ describe('what a transfer burns', () => {
     fireEvent.change(deuterium, { target: { value: '30' } });
 
     expect(Number((deuterium as HTMLInputElement).value)).toBeLessThan(30);
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
     expect(view.container.querySelector('[data-transfer-fuel]')).toHaveTextContent(/\d/);
     expect(mutate).not.toHaveBeenCalled();
   });
@@ -544,7 +544,7 @@ describe('what a transfer burns', () => {
     open(50_000);
     await load(user);
 
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
   });
 });
 
@@ -633,7 +633,7 @@ describe('the deuterium a transfer spends twice', () => {
       .toBe(400 - missionFuel({ COURIER: 1 }, 100, 1, 'HOMEWARD') * 2);
     expect(document.querySelector('[data-transfer-fuel] [data-spend-bar]'))
       .toHaveAttribute('data-short', 'false');
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
   });
 });
 
@@ -700,7 +700,7 @@ describe('the deuterium a transfer may actually load', () => {
 
     await user.click(screen.getByRole('button', { name: 'More Atlas' }));
     expect(Number(slider(/Deuterium/i).value)).toBe(5_000 - flight({ ATLAS: 2 }) * 2);
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
   });
 
   /**
@@ -867,7 +867,7 @@ describe('choosing how fast a transfer flies', () => {
     open();
     expect(screen.getByRole('button', { name: /choose a fleet/i })).toBeDisabled();
     await userEvent.setup().click(screen.getByRole('button', { name: 'More Dart' }));
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
     expect(document.querySelector('[data-transfer-commit]')).not.toBeNull();
   });
 
@@ -879,7 +879,7 @@ describe('choosing how fast a transfer flies', () => {
       .getAllByRole('radio');
     await user.click(rungs[1]!);
     // The commit is held (K4); Enter twice is the keyboard's hold.
-    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    const commit = screen.getByRole('button', { name: /^transfer\b/i });
     fireEvent.keyDown(commit, { key: 'Enter' });
     fireEvent.keyDown(commit, { key: 'Enter' });
 
@@ -927,13 +927,13 @@ describe('the pause after a squadron lands', () => {
 
     act(() => { vi.advanceTimersByTime(3_000); });
     expect(screen.queryByRole('button', { name: /unloading/i })).toBeNull();
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
   });
 
   it('treats a pause already in the past as no pause at all', () => {
     open(-1_000);
     fireEvent.click(screen.getByRole('button', { name: 'More Dart' }));
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
   });
 });
 

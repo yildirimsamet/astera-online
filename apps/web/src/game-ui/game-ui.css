@@ -13818,3 +13818,30 @@ button.gk-fact__head:active .gk-fact__line {
 .gk-profit__range td { color: var(--gk-ink-3); }
 .gk-profit__row { border-top: 1px solid color-mix(in srgb, var(--gk-ink) 8%, transparent); }
 .gk-profit__risk { display: grid; gap: 3px; }
+
+/* G4-f1: A TRANSFER — what the origin keeps, the return plan on plates, two figures */
+.gk-keeps { display: grid; gap: 4px; }
+.gk-keeps__bar {
+  display: flex;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--gk-ink) 10%, transparent);
+}
+.gk-keeps__holds { height: 100%; background: var(--gk-self); transition: width var(--gk-quick) var(--gk-ease); }
+.gk-keeps__leaves { height: 100%; background: var(--gk-alloy); transition: width var(--gk-quick) var(--gk-ease); }
+.gk-plan { display: grid; gap: 4px; }
+.gk-plan .gk-choices > .gk-tab {
+  flex: 1;
+  padding-inline: 6px;
+  font-size: var(--gk-t-small);
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+/* a row whose line under the name is short (a count): it stays beside the counter, one storey */
+.gk-lrow--tight { grid-template-areas: 'art name qty' 'art info qty'; row-gap: 0; }
+.gk-lrow__art[data-none] img { opacity: 0.35; filter: grayscale(1); }
+.gk-lrow__info[data-tone='warn'] { color: var(--gk-warn); }
+.gk-lrow__of { color: var(--gk-ink-3); }
+.gk-figures--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gk-figure__sub[data-tone='self'] { color: var(--gk-self); }

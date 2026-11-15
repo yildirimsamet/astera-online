@@ -241,7 +241,8 @@ export function Slider({ label, value, max, onChange, readout }: {
  */
 export function Choices<T extends string>({ label, options, value, onChange, columns }: {
   label: string;
-  options: readonly { id: T; label: string }[];
+  /** `spoken`: the plate's full name for a reader, where its face is a short word under a heading ("Haulers stay"). */
+  options: readonly { id: T; label: string; spoken?: string }[];
   value: T;
   onChange: (next: T) => void;
   /** Many answers (a report's seven reasons, C3) sit two to a row instead of one long row. */
@@ -266,15 +267,16 @@ export function Choices<T extends string>({ label, options, value, onChange, col
   return (
     <div role="radiogroup" aria-label={label} className={`gk-tabs gk-choices${columns === 2 ? ' gk-choices--grid' : ''}`} {...OWN_SOUND}>
       {options.map((option, index) => (
-        <ChoicePlate key={option.id} label={option.label} chosen={option.id === value} tabbable={option.id === value || (unanswered && index === 0)}
+        <ChoicePlate key={option.id} label={option.label} spoken={option.spoken} chosen={option.id === value} tabbable={option.id === value || (unanswered && index === 0)}
           onChoose={() => { choose(option.id); }} onKeyDown={walk} />
       ))}
     </div>
   );
 }
 
-function ChoicePlate({ label, chosen, tabbable, onChoose, onKeyDown }: {
+function ChoicePlate({ label, spoken, chosen, tabbable, onChoose, onKeyDown }: {
   label: string;
+  spoken: string | undefined;
   chosen: boolean;
   tabbable: boolean;
   onChoose: () => void;
@@ -283,6 +285,7 @@ function ChoicePlate({ label, chosen, tabbable, onChoose, onKeyDown }: {
   const own = useOwnPress(onChoose);
   return (
     <button type="button" role="radio" aria-checked={chosen} tabIndex={tabbable ? 0 : -1} className="gk-tab"
+      {...(spoken === undefined ? {} : { 'aria-label': spoken })}
       onPointerDown={own.onPointerDown} onClick={own.onClick} onKeyDown={onKeyDown}>
       {label}
     </button>

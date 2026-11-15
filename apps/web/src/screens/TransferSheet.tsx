@@ -38,12 +38,11 @@ import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { RadiationPreview } from '../ui/RadiationPreview.js';
 import { CapacityBar } from '../ui/CapacityBar.js';
 import { SpendBar } from '../ui/SpendBar.js';
-import { Tally } from '../ui/Tally.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { flightModifiers } from '../lib/navigation.js';
 import { launchFault } from '../lib/faults.js';
 import { serverNow } from '../lib/clock.js';
-import { HoldButton } from '../v2/kit/HoldButton.js';
+import { Choices, GameHold, SectionTag } from '../game-ui/index.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { sumFleets } from '../lib/fleetPage.js';
@@ -341,15 +340,19 @@ export function TransferSheet({
   return (
     <Sheet
       detents={['full']}
+      kit={{ tone: 'self' }}
       eyebrow={t('transfer.eyebrow')}
       title={target.name}
       onClose={onClose}
       footer={(
-        <div data-transfer-commit className="grid gap-2">
+        <div data-transfer-commit className="gk gk-launch__commit">
           {/* THE RULE, BEFORE THE BUTTON: it turns once; what the origin keeps heads the sheet. */}
-          <p className="text-micro leading-snug text-v2-ink-3">{t('transfer.rules')}</p>
+          <p className="gk-sub">{t('transfer.rules')}</p>
           <RadiationPreview radiation={radiation} />
-          <HoldButton
+          {/* A transfer spends fuel: the kit's spend weight, one second. */}
+          <GameHold
+            weight="spends"
+            glyph="crate"
             label={t('transfer.commit')}
             disabledReason={transfer.isPending ? t('transfer.sending') : refusal}
             onCommit={() => {
@@ -372,95 +375,51 @@ export function TransferSheet({
         </div>
       )}
     >
-      <div className="flex flex-col gap-3 pt-1">
+      <div className="gk gk-launch">
         {/*
           WHAT THIS WORLD IS LEFT HOLDING, the garrison as a bar with the part that flies away carved
           off it — alloy, not threat red: a transfer is logistics, not exposure, but the consequence
           has the same shape.
         */}
-        <div className="grid gap-1">
-          <div
-            data-origin-defence
-            className="flex h-2 w-full overflow-hidden rounded-full bg-v2-line"
-            role="img"
-            aria-label={holdsLine}
-          >
-            <span
-              data-part="holds"
-              className="h-full bg-v2-self transition-[width] duration-200"
-              style={{ width: `${String(share(homeDefence, defencePowerNow))}%` }}
-            />
-            <span
-              data-part="leaves"
-              className="h-full bg-v2-alloy transition-[width] duration-200"
-              style={{ width: `${String(share(defencePowerNow - homeDefence, defencePowerNow))}%` }}
-            />
+        <div className="gk-keeps">
+          <div data-origin-defence className="gk-keeps__bar" role="img" aria-label={holdsLine}>
+            <span data-part="holds" className="gk-keeps__holds" style={{ width: `${String(share(homeDefence, defencePowerNow))}%` }} />
+            <span data-part="leaves" className="gk-keeps__leaves" style={{ width: `${String(share(defencePowerNow - homeDefence, defencePowerNow))}%` }} />
           </div>
-          <p className="text-micro text-v2-ink-3">{holdsLine}</p>
+          <p className="gk-sub gk-num">{holdsLine}</p>
         </div>
 
-        <section className="grid gap-1.5">
-          <h3 className="px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('transfer.fleet')}</h3>
+        <section className="gk-launch__fleet">
+          <SectionTag as="h3">{t('transfer.fleet')}</SectionTag>
           {/*
             THE HAULERS ARE ALWAYS LISTED, whether or not this world owns one: a row at zero with
             its reason beside it is the sentence the server's refusal never had on screen.
           */}
-          <div>
+          <div className="gk-ledger gk-launch__rows">
             {MOVABLE.filter((id) => (planet.fleet[id] ?? 0) > 0 || IS_HAULER(id)).map((id) => {
               const held = planet.fleet[id] ?? 0;
+              const packed = fleet[id] ?? 0;
               const art = HULL_ART[id];
               return (
-                <div
-                  key={id}
-                  data-hull-row={id}
-                  data-owned={held > 0 ? 'true' : 'false'}
-                  className={`border-b border-v2-line/70 px-1 py-2 last:border-b-0 ${(fleet[id] ?? 0) > 0 ? 'bg-v2-self/5' : ''}`}
-                >
-                  <div className="flex items-center gap-2">
-                    {/* A hull this world does not own is drawn and greyed rather than left out (I1, D132). */}
-                    <span data-art className="grid size-8 shrink-0 place-items-center">
-                      {art ? (
-                        <img
-                          src={art}
-                          alt=""
-                          aria-hidden
-                          className={`size-8 object-contain ${held > 0 ? '' : 'opacity-35 grayscale'}`}
-                          loading="lazy"
-                        />
-                      ) : (
-                        <HullMark hull={id} className="size-6 text-v2-ink-3" />
-                      )}
+                <div key={id} data-hull-row={id} data-owned={held > 0 ? 'true' : 'false'} className="gk-lrow gk-lrow--tight"
+                  {...(packed > 0 ? { 'data-chosen': '' } : {})}>
+                  {/* A hull this world does not own is drawn and greyed rather than left out (I1, D132). */}
+                  <span data-art className="gk-lrow__art" {...(held > 0 ? {} : { 'data-none': '' })}>
+                    {art ? (
+                      <img src={art} alt="" aria-hidden width={36} height={36} loading="lazy" />
+                    ) : (
+                      <HullMark hull={id} className="gk-lrow__mark" />
+                    )}
+                  </span>
+                  <span className="gk-lrow__name">{hullName(id) ?? id}</span>
+                  {held > 0
+                    ? <span className="gk-sub gk-num gk-lrow__info" aria-label={t('transfer.hullPacked', { packed, held, name: hullName(id) ?? id })}>
+                      {packed}<span className="gk-lrow__of">/{held}</span>
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-caption font-semibold text-v2-ink">{hullName(id) ?? id}</span>
-                      {/* How many are here, as pips the eye can count; past eight the numeral takes over. */}
-                      {held > 0 ? (
-                        held <= 8 ? (
-                          <span className="mt-1 flex items-center gap-2">
-                            <Tally
-                              used={fleet[id] ?? 0}
-                              total={held}
-                              size="sm"
-                              label={t('transfer.hullPacked', {
-                                packed: fleet[id] ?? 0,
-                                held,
-                                name: hullName(id) ?? id,
-                              })}
-                            />
-                          </span>
-                        ) : (
-                          <span className="mt-1 block font-v2-mono text-micro text-v2-ink-2">
-                            {fleet[id] ?? 0}
-                            <span className="text-v2-ink-3">/{held}</span>
-                          </span>
-                        )
-                      ) : (
-                        <span className="mt-1 block text-micro text-v2-warn">{t('transfer.hullNone')}</span>
-                      )}
-                    </span>
+                    : <span className="gk-sub gk-lrow__info" data-tone="warn">{t('transfer.hullNone')}</span>}
                   <QuantityStepper
-                    look="v2"
-                    value={fleet[id] ?? 0}
+                    look="kit"
+                    value={packed}
                     min={0}
                     max={held}
                     onChange={(value) => { setShip(id, value); }}
@@ -470,37 +429,30 @@ export function TransferSheet({
                     maxLabel={t('launch.max', { name: hullName(id) ?? id })}
                     maxText={t('launch.maxShort')}
                   />
-                  </div>
                 </div>
               );
             })}
           </div>
         </section>
 
-        <section className="grid gap-2" data-transfer-return-plan>
-          <h3 className="px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('transfer.afterDelivery')}</h3>
+        <section className="gk-launch__fleet" data-transfer-return-plan>
+          <SectionTag as="h3">{t('transfer.afterDelivery')}</SectionTag>
           {(['cargoShips', 'otherShips'] as const).map((group) => (
-            <fieldset key={group} className="grid gap-1 rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
-              <legend className="px-1 text-caption font-semibold text-v2-ink">{t(`transfer.${group}`)}</legend>
-              <div className="grid grid-cols-2 gap-1">
-                {(['STAY', 'RETURN'] as const).map((choice) => (
-                  <label key={choice} className={`flex cursor-pointer items-center justify-center gap-1.5 rounded-control border px-2 py-1.5 text-caption ${returnPlan[group] === choice ? 'border-v2-self bg-v2-self/10 text-v2-ink' : 'border-v2-line text-v2-ink-2'}`}>
-                    <input
-                      type="radio"
-                      name={`transfer-${group}`}
-                      value={choice}
-                      checked={returnPlan[group] === choice}
-                      onChange={() => { setReturnChoice(group, choice); }}
-                      aria-label={`${t(`transfer.${group}`)} ${t(choice === 'STAY' ? 'transfer.stay' : 'transfer.return')}`}
-                      className="accent-v2-self"
-                    />
-                    {t(choice === 'STAY' ? 'transfer.stay' : 'transfer.return')}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
+            <div key={group} className="gk-plan">
+              <span className="gk-label">{t(`transfer.${group}`)}</span>
+              <Choices
+                label={t(`transfer.${group}`)}
+                value={returnPlan[group]}
+                onChange={(choice) => { setReturnChoice(group, choice); }}
+                options={(['STAY', 'RETURN'] as const).map((choice) => ({
+                  id: choice,
+                  label: t(choice === 'STAY' ? 'transfer.stay' : 'transfer.return'),
+                  spoken: `${t(`transfer.${group}`)} ${t(choice === 'STAY' ? 'transfer.stay' : 'transfer.return')}`,
+                }))}
+              />
+            </div>
           ))}
-          <p className="px-1 text-micro text-v2-ink-3">{t('transfer.returnHint')}</p>
+          <p className="gk-sub">{t('transfer.returnHint')}</p>
         </section>
 
         {/* Choose fuel and travel time before packing deuterium into the hold. */}
@@ -510,21 +462,21 @@ export function TransferSheet({
           comparison={{ fuel, fullFuel, minutes: eta,
             fullMinutes: fleetCount(fleet) > 0 ? fleetTravelExact(span, fleet, mods) : 0 }} />
 
-        <dl className="grid grid-cols-2 gap-1.5">
-          <div data-transfer-eta className="rounded-control border border-v2-line bg-v2-panel px-2 py-1.5">
-            <dt className="text-micro uppercase tracking-wide text-v2-ink-3">{t('transfer.eta')}</dt>
-            <dd className="mt-0.5 font-v2-mono text-caption text-v2-ink">{eta > 0 ? duration(eta) : '—'}</dd>
-            {landsAt && <dd className="font-v2-mono text-micro text-v2-ink-3">{t('now.at', { time: landsAt })}</dd>}
+        <dl className="gk-well gk-figures gk-figures--well gk-figures--two">
+          <div data-transfer-eta className="gk-figure">
+            <dt className="gk-label">{t('transfer.eta')}</dt>
+            <dd className="gk-num gk-figure__value">{eta > 0 ? duration(eta) : '—'}</dd>
+            {landsAt && <dd className="gk-num gk-figure__sub">{t('now.at', { time: landsAt })}</dd>}
             {homeAt && (
-              <dd data-transfer-return-eta className="mt-1 text-micro text-v2-self">
+              <dd data-transfer-return-eta className="gk-figure__sub" data-tone="self">
                 {t('transfer.returnEta', { duration: duration(eta + returnMinutes), time: homeAt })}
               </dd>
             )}
           </div>
-          <div className="rounded-control border border-v2-line bg-v2-panel px-2 py-1.5">
-            <dt className="text-micro uppercase tracking-wide text-v2-ink-3">{t('transfer.capacity')}</dt>
+          <div className="gk-figure">
+            <dt className="gk-label">{t('transfer.capacity')}</dt>
             {/* An em dash rather than `0 / 0`: this mission has no hold at all, which is not a limit. */}
-            <dd className={`mt-0.5 font-v2-mono text-caption ${loaded > capacity ? 'text-v2-hostile' : 'text-v2-ink'}`}>
+            <dd className="gk-num gk-figure__value" {...(loaded > capacity ? { 'data-tone': 'hostile' } : {})}>
               {capacity > 0 ? `${compact(loaded)} / ${compact(capacity)}` : '—'}
             </dd>
           </div>

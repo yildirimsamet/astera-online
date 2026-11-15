@@ -1226,6 +1226,13 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - Tempo notu (başlangıç galaksisi) kit alt satırı; savaş raporunda da aynı.
 - **Ölçüm** `g4e3-after-2026-11-15.md`: `launch` 4 → 3, `launch-pirate` 8 → 3. Kalan: sayfanın adsız arka plan perdesi (bütün sayfalarda ortak, Sheet birimi) ve kapalı düğmeler.
 
+**G4-f1 aktarma: çerçeve, gemiler, dönüş planı, gönder ✅ (2026-11-15).** Oyuncunun anı: "dünyalarım arasında gemi ve kaynak taşı."
+- Kit sayfası, benim rengimde. Çıkışta kalan garnizon kit çubuğu: kalan mavi, giden alaşım rengi.
+- Gemiler kit satırları ve kitin sayacı. Aktarmada satır tek katlı (~59 px): "0/40" adın altında, sayacın solunda. Olmayan gemi soluk ve "Bu dünyada yok".
+- Teslimattan sonra: iki grup (yük gemileri / diğerleri) kitin seçim plakalarında, cümle düzeninde. Kit plakalarına okuyucu adı eklendi ("Yük gemileri geri dönsün").
+- Varış ve yük kit rakamlarında. Gönder: kitin basılı tutma düğmesi, 1 sn (yakıt harcar).
+- **Ölçüm** `g4f1-before/after-2026-11-15.md`: `transfer` 201 → 38. Kalanlar kargo kaydırıcıları, yakıt ve hedefteki yer (G4-f2).
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.
