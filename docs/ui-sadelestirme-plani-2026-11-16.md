@@ -42,7 +42,7 @@ Her yüzeyin ölçütü: **350×812 ve 375×667'de kaydırmadan ne görünüyor?
 | O12 | Filo sekmesi toplanır (E1) | ek-12 | bitti (E1) |
 | O13 | Gezegen / Araştırma / Gemi geçişinde sekme çubuğunun genişliği ve yan boşluklar sabit (Gezegen'deki gibi) | ek-13 | bitti (Araştırma ve Gemi de kenardan kenara; sekme çubuğu üçünde 13 px / 324 px, içerik 12 px kenarda) |
 | O14 | Birden fazla gezegende sol üstteki gezegen düğmesi kompakt ve kit'e uygun | ek-14 | bitti (gezegen düğmesi diğer rozetler gibi 28 px hap, turkuaz, açılır işaretli) |
-| O15 | Mağaza kategori kutuları kompakt | ek-15 | bekliyor |
+| O15 | Mağaza kategori kutuları kompakt | ek-15 | bitti (iki satır kutu yerine tek satır kaydırılabilir çip şeridi, ~150→36 px; açık olan görünür alana kayar) |
 | O16 | Komutan menüsü: "Oyuna dön" kalkar; yanındaki iki düğme düzgün | ek-16 | bitti (\"Oyuna dön\" ve metni kalktı; ana ekran ve tam ekran iki eşit çerçeveli düğme, uzun dilde iki satıra sarar) |
 | O17 | Komutan gemisi: "Yarık'a gir" düğmesinin altındaki boşluk kapanır | ek-17 | bitti (dock sheet'in tabanına iniyor; düğme kenardan 8 px yukarıda, altında içerik görünmüyor) |
 | K | Kapanış: altı dil, 350/375×667/masaüstü, tam test, görsel denetim | — | bekliyor |

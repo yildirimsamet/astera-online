@@ -32,7 +32,13 @@ export function CosmeticCategories({ active, onChange, owned, inventory }: {
 function CategoryPlate({ category, count, on, onPress }: { category: CosmeticCategory; count: number; on: boolean; onPress: () => void }) {
   const { t } = useTranslation();
   const own = useOwnPress(() => { playSound('tab'); haptic('tap'); onPress(); });
-  return <button type="button" {...OWN_SOUND} aria-pressed={on} className="gk-cosmo__cat" onPointerDown={own.onPointerDown} onClick={own.onClick}>
+  const plate = useRef<HTMLButtonElement>(null);
+  // The shelves are one swipeable strip (ek-15): the open one is brought into its view.
+  useEffect(() => {
+    const el = plate.current;
+    if (on && el && 'scrollIntoView' in el) el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [on]);
+  return <button ref={plate} type="button" {...OWN_SOUND} aria-pressed={on} className="gk-cosmo__cat" onPointerDown={own.onPointerDown} onClick={own.onClick}>
     <img className="gk-cosmo__catart" src={artIconSrc(CATEGORY_ART[category])} alt="" draggable={false} />
     <span className="gk-cosmo__catname">{t(`skins.category${category}`)}</span>
     <span className="gk-num gk-cosmo__catcount">{String(count).padStart(2, '0')}</span>

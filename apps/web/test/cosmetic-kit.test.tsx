@@ -61,6 +61,16 @@ describe('the cosmetic shelves on the kit', () => {
     expect(within(nav).getByRole('button', { name: /^planets/i })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  /** Owner 2026-11-17 (ek-15): the shelves are one swipeable strip; the one open stands in view. */
+  it('brings the open shelf into the view of the strip', () => {
+    const into = vi.fn();
+    Element.prototype.scrollIntoView = into;
+    render(<CosmeticCategories active="FLAG" onChange={vi.fn()} owned={[]} inventory={false} />);
+    expect(into).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
+    expect(into.mock.contexts[0]).toHaveAttribute('aria-pressed', 'true');
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+  });
+
   it('shows a product on a lit stage with kit cards and no old paint', () => {
     const { view } = wardrobe({ inventory: false, owned: [], prices: { 'ring-aurora': { formatted: '€1.49' } } });
     const shelf = view.container.querySelector('.gk-cosmo');

@@ -17588,3 +17588,30 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 .gk-menufoot > .gk-btn { width: 100%; min-width: 0; }
 .gk-menufoot > .gk-btn { white-space: normal; line-height: 1.1; text-align: center; letter-spacing: 0.02em; padding-inline: var(--gk-s2); }
 .gk-menufoot > .gk-btn .gk-btn__glyph .gk-glyph { width: 16px; height: 16px; }
+
+/* ── O15 (owner 2026-11-17): the shelves, one swipeable strip of compact chips instead of two rows of plates ── */
+.gk-cosmo__cats {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--gk-gutter);
+  scrollbar-width: none;
+  padding: var(--gk-s2) var(--gk-gutter);
+}
+.gk-cosmo__cats::-webkit-scrollbar { display: none; }
+.gk-cosmo__cat {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 3px 10px 3px 4px;
+  border-radius: 18px;
+  scroll-snap-align: start;
+}
+.gk-cosmo__cat[aria-pressed='true'] { box-shadow: inset 0 0 0 1px var(--gk-self); }
+.gk-cosmo__catart { width: 28px; height: 28px; }
+.gk-cosmo__catname { white-space: nowrap; overflow-wrap: normal; letter-spacing: 0.02em; }
+.gk-cosmo__catcount { align-self: center; font-size: var(--gk-t-floor); }
