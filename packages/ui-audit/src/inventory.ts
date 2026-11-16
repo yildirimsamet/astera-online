@@ -192,7 +192,7 @@ export const SURFACES: GameSurface[] = [
     id: 'landing',
     what: 'Ön kapı, giriş/kayıt, şifre sıfırlama, çerez izni',
     files: ['screens/LandingScreen.tsx', 'landing/LandingScene.tsx', 'landing/public/PublicLandingScreen.tsx', 'landing/public/PublicLanding.tsx', 'landing/public/WebLandingGate.tsx', 'landing/public/ConsentPlacement.tsx', 'shell/ConsentNotice.tsx', 'screens/LandingAuthDialog.tsx', 'screens/PasswordResetSheet.tsx'],
-    reach: ['landing:front', 'landing:sign-in', 'landing:password-reset', 'gallery:password-reset', 'landing:consent', 'landing:guide', 'landing:legal'],
+    reach: ['landing:front', 'landing:sign-in', 'landing:password-reset', 'gallery:password-reset', 'gallery:front-door', 'landing:consent', 'landing:guide', 'landing:legal'],
     group: 'G13',
   },
   { id: 'loading', what: 'Yükleme ekranı', files: ['shell/LoadingScreen.tsx'], reach: ['landing:loading'], group: 'G13', unreached: ['galaksi yükleme örtüsü (tarama / harita / yükseltme)'] },

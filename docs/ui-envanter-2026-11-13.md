@@ -2179,6 +2179,20 @@ Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak ala
 - Şifre sıfırlama zaten kit'teydi (puan 0).
 - Denetim (tr, 3 profil): giriş 23 → 2. Kalan 2 "tepkisiz" bulgusu arkadaki açılış sayfasının dil seçicisi ve Wiki bağlantısı.
 
+
+### G13-c — uygulama giriş ekranı kit'te (2026-11-16)
+
+- Android'in giriş ekranı (`CompactLandingScreen`) v2'den kit'e geçti:
+  - nüfus satırı kit sayılarıyla;
+  - tek parlak düğme: ilk kez gelende eğitim, daha önce komutan tutmuş cihazda geri giriş;
+  - öbür kapı çelik ya da sessiz kit düğmesi;
+  - ret bir kit afişi; yayıncı sayfaları sessiz kit bağlantıları, 44 px yüksekliğinde;
+  - dil seçici kit camında: `LanguageSwitch`'e `kit` seçeneği eklendi, web açılışı ve simülatör eskisi gibi.
+- Sahne üstündeki yazılara koyu kontur verildi; arkadan geçen parlak gezegen artık okunuşu bozmuyor.
+- Web açılış sayfasına (`PublicLandingScreen`) dokunulmadı; sahibin 2026-10-18 premium tasarımı kendi CSS'iyle duruyor.
+- Galeriye `front-door` görünümü eklendi (`gallery:front-door`); ekran web'de görünmediği için denetim ancak böyle ulaşabiliyor. Galeri görünümün üstüne kaynak çubuğunu da çizdiği için puan (31) şişik. Ekranın kendi bulguları: 12 px altı yazı yok, kesilme yok; kontrast bulguları konturu saymayan ölçümden.
+- G13-b'de kaçan bir test (`onboarding`: giriş başlığının sınıfı) kit'e göre güncellendi.
+
 ## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
 
 | # | Yüzey | Dosya (satır) | Dil | Not |

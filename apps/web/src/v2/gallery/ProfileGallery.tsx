@@ -9,6 +9,7 @@
  *   ?view=account-deletion       the deletion request: password, the understanding, the final hold
  *   ?view=account-deletion-sent  the request received, its reference
  *   ?view=password-reset         the forgotten password, from the front door
+ *   ?view=front-door             the app's own front door (Android), whatever the browser
  *   ?view=silent-space           30 hours without an order: the waiting room, the way home
  *   ?view=silent-space-queued    the same, the application in the queue
  *   ?view=servers                choosing a galaxy: one open and filling, one locked behind it
@@ -23,6 +24,7 @@ import { VacationSheet } from '../../screens/VacationSheet.js';
 import { AccountSecuritySheet } from '../../screens/AccountSecuritySheet.js';
 import { AccountDeletionSheet } from '../../screens/AccountDeletionSheet.js';
 import { PasswordResetSheet } from '../../screens/PasswordResetSheet.js';
+import { CompactLandingScreen } from '../../screens/LandingScreen.js';
 import type { AccountSecurityStatus } from '../../api/schemas.js';
 import { SilentSpaceNotice } from '../../shell/SilentSpaceNotice.js';
 import { ServersScreen } from '../../screens/ServersScreen.js';
@@ -35,7 +37,7 @@ const HOUR = 3_600_000;
 
 const PROFILE_VIEWS = [
   'profile', 'vacation', 'vacation-blocked', 'vacation-active',
-  'account-security', 'account-security-code', 'account-deletion', 'account-deletion-sent', 'password-reset',
+  'account-security', 'account-security-code', 'account-deletion', 'account-deletion-sent', 'password-reset', 'front-door',
   'silent-space', 'silent-space-queued', 'servers',
 ] as const;
 export type ProfileView = (typeof PROFILE_VIEWS)[number];
@@ -113,6 +115,7 @@ export function ProfileGallery({ view }: { view: ProfileView }) {
               ? <AccountSecuritySheet status={securityStatus(view)} onClose={() => undefined} refresh={() => Promise.resolve()} />
             : view === 'account-deletion' || view === 'account-deletion-sent' ? <AccountDeletionSheet onClose={() => undefined} />
             : view === 'password-reset' ? <PasswordResetSheet onClose={() => undefined} />
+            : view === 'front-door' ? <CompactLandingScreen onAuthenticate={() => Promise.resolve()} onBegin={() => Promise.resolve()} knownCommander={() => false} />
             : view === 'silent-space' || view === 'silent-space-queued' ? <SilentSpaceNotice open allowAutomatic={false} onClose={() => undefined} onApply={() => Promise.resolve()}
               data={{ placement: { playerId: 'trial-commander', version: 1, role: 'WAITING' }, homeShard: 'EU-1', canApply: true,
                 application: view === 'silent-space-queued' ? { id: 'application-1', position: 4 } : null }} />

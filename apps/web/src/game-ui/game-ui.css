@@ -16504,3 +16504,26 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-authsheet__hint { margin: 0; font-size: var(--gk-t-small); color: var(--gk-ink-2); }
 .gk-authsheet__forgot { justify-self: start; margin-top: calc(-1 * var(--gk-s2)); padding-inline: 0; }
 .gk-authsheet .gk-field__input[data-invalid] { border-color: var(--gk-hostile-hi); }
+
+/* ── G13-c (2026-11-16): the app's front door ─────────────────────────────── */
+.gk-frontdoor { background: var(--gk-void); color: var(--gk-ink); font-family: var(--gk-font-text); }
+/* Words over a moving scene: dark round their letters, so a planet passing behind never takes them. */
+.gk-frontdoor__people, .gk-frontdoor__greet, .gk-frontdoor__hint { text-shadow: 0 0 2px #000, 0 1px 3px #000, 0 0 10px rgba(0, 0, 0, 0.75); }
+.gk-frontdoor__foot { display: grid; gap: var(--gk-s2); width: 100%; max-width: 28rem; margin-inline: auto; }
+.gk-frontdoor__people { margin: 0; text-align: center; color: var(--gk-ink); }
+.gk-frontdoor__people .gk-num { font-weight: 700; color: var(--gk-ink); }
+.gk-frontdoor__people .gk-num[data-tone='self'] { color: var(--gk-self); }
+.gk-frontdoor__greet { margin: var(--gk-s1) 0 0; text-align: center; color: var(--gk-ink); }
+.gk-frontdoor__hint { margin: 0 0 var(--gk-s1); text-align: center; color: var(--gk-ink); }
+.gk-frontdoor__signin { justify-self: center; }
+.gk-frontdoor__links { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0 var(--gk-s1);
+  margin-top: var(--gk-s1); padding-top: var(--gk-s1); border-top: 1px solid var(--gk-glass-edge); }
+.gk-frontdoor__link { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 6px; font-size: var(--gk-t-floor);
+  color: var(--gk-ink-2); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 4px; transition: color var(--gk-quick) var(--gk-ease); }
+.gk-frontdoor__link:hover, .gk-frontdoor__link:focus-visible { color: var(--gk-ink); text-decoration-color: currentColor; }
+/* The language, top right on the front door: furniture, in the kit's glass. */
+.gk-langselect { min-height: 44px; padding: 0 var(--gk-s3); border-radius: var(--gk-r-sm); border: 1px solid var(--gk-glass-edge);
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass)); color: var(--gk-ink); font: 600 var(--gk-t-small) var(--gk-font-text); }
+.gk-langselect:focus-visible { outline: none; border-color: var(--gk-self); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gk-self) 30%, transparent); }
+.gk-frontdoor__link:active { color: var(--gk-self); }
+.gk-langselect:active { border-color: var(--gk-self); }
