@@ -17517,3 +17517,17 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 .gk-bcard__stat[data-tone='hostile'] .gk-glyph { color: var(--gk-hostile); }
 .gk-bcard__stat[data-tone='self'] .gk-glyph { color: var(--gk-self); }
 .gk-bcard__stat[data-tone='info'] .gk-glyph { color: var(--gk-info, var(--gk-self-hi)); }
+
+/* ── ek-3 (2026-11-17): a sheet whose body threw — one quiet line and a retry, in place ── */
+.gk-panelfail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+  margin: var(--gk-s3) var(--gk-gutter, 12px);
+  padding: var(--gk-s2) var(--gk-s3);
+  border-radius: var(--gk-r-sm);
+  border: 1px solid color-mix(in srgb, var(--gk-warn) 40%, var(--gk-metal-edge));
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+}
+.gk-panelfail__title { margin: 0; font-size: var(--gk-t-small); color: var(--gk-ink); }

@@ -607,6 +607,9 @@ export const chat = {
   },
 } as const;
 export const crash = {
+  /** A sheet whose body threw (ek-3): the game keeps running behind it. */
+  panelTitle: 'Ce panneau n’a pas pu s’ouvrir.',
+  retry: 'Réessayer',
   title: "L’interface du jeu ne fonctionne plus",
   body: "Recharge la page pour continuer. Le résultat de ta dernière action peut être inconnu ; vérifie-le après le rechargement.",
   reload: "Recharger",

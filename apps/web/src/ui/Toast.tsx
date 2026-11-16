@@ -1,12 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Banner, RoundButton, type GlyphId } from '../game-ui/index.js';
 import { haptic } from '../lib/haptics.js';
 import { playSound } from '../lib/sound.js';
 import { describeError } from '../i18n/errors.js';
+import { ToastContext, ToastSilenceContext, type ToastTone } from './toastContext.js';
 
 /** News; a "done, but" to read (the store kept some back); a refusal, or a threat. */
-type Tone = 'info' | 'warn' | 'error';
+type Tone = ToastTone;
 
 /** Each tone's kit face: the colour of what it says, and its mark. */
 const FACE: Record<Tone, { tone: 'info' | 'warn' | 'hostile'; glyph: GlyphId }> = {
@@ -20,8 +21,6 @@ interface Message {
   tone: Tone;
 }
 
-const ToastContext = createContext<((text: string, tone?: Tone) => void) | null>(null);
-const ToastSilenceContext = createContext<((keepErrors?: boolean) => () => void) | null>(null);
 
 /** The Academy speaks in its coach, never over it. Drop messages, don't defer
  * them until exit; a returning commander must not receive practice toasts. */

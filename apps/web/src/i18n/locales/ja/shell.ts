@@ -670,6 +670,9 @@ export const chat = {
  * pasted into a message to the person who will fix it. See `shell/crashReport.ts`.
  */
 export const crash = {
+  /** A sheet whose body threw (ek-3): the game keeps running behind it. */
+  panelTitle: 'このパネルを開けませんでした。',
+  retry: '再試行',
   title: "ゲーム画面が停止しました",
   body: "続けるにはページを再読み込みしてください。最後の操作が確認できていない可能性があります。再読み込み後に状況を確認してください。",
   reload: "リロード",

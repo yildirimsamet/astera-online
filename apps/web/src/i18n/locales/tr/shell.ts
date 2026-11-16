@@ -596,6 +596,9 @@ export const chat = {
 } as const;
 
 export const crash = {
+  /** A sheet whose body threw (ek-3): the game keeps running behind it. */
+  panelTitle: 'Bu panel açılamadı.',
+  retry: 'Tekrar dene',
   title: "Oyun arayüzü çalışmayı durdurdu",
   body: "Devam etmek için sayfayı yeniden yükle. Son işleminin sonucu doğrulanmamış olabilir; yükledikten sonra güncel durumu kontrol et.",
   reload: 'Yeniden yükle',

@@ -8,6 +8,7 @@ import { useOwnPress } from '../../ui/kit/useOwnPress.js';
 import { Glyph } from '../../game-ui/icons.js';
 import { AtmosphereImage } from '../../ui/AtmosphereArt.js';
 import type { AtmosphereArt } from '../../ui/atmosphere.js';
+import { PanelBoundary } from '../../shell/ErrorBoundary.js';
 
 /**
  * Peek and half are ceilings: a sheet with little in it is only as tall as its
@@ -311,7 +312,8 @@ export function Sheet({
             ? `gk-sheet__body relative ${contained ? 'flex flex-col overflow-hidden!' : ''} ${bleed ? 'px-0!' : ''}`
             : `relative ${floatingHead ? 'z-0' : ''} min-h-0 flex-auto ${contained ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overscroll-contain'} ${bleed ? '' : 'px-3 pb-3'}`}
         >
-          {typeof children === 'function' ? children(detent) : children}
+          {/* A throw in the body stays in the sheet (owner, 2026-11-17, ek-3); the head and its close keep working. */}
+          <PanelBoundary>{typeof children === 'function' ? children(detent) : children}</PanelBoundary>
         </div>
 
         {footer && <div className={kit ? 'gk-sheet__foot shrink-0' : 'shrink-0 border-t border-v2-line px-3 py-2.5'}>{footer}</div>}

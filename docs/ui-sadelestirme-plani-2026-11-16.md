@@ -30,7 +30,7 @@ Her yüzeyin ölçütü: **350×812 ve 375×667'de kaydırmadan ne görünüyor?
 | E6 | Kalan oyun ekranlarında metin taraması (altı dil) | 17 | bekliyor |
 | O1 | Anıt: galaksideki etiket ve alt kartta radyasyon ikonu | ek-1 | bekliyor |
 | O2 | Anıt focus sheet'i: alta uzayan tek sütun yerine sekme / ⓘ / akordiyon | ek-2 | bekliyor |
-| O3 | Çökme: "useToast called outside ToastProvider" (arka plandan dönüşte) — kök neden + düzelt; bir yüzeyin hatası bütün oyunu düşürmesin (yüzey başına hata sınırı) | ek-3 | bekliyor |
+| O3 | Çökme: "useToast called outside ToastProvider" (arka plandan dönüşte) — kök neden + düzelt; bir yüzeyin hatası bütün oyunu düşürmesin (yüzey başına hata sınırı) | ek-3 | bitti (kök neden: geliştirme sunucusunda kit düzenlemesi `Toast.tsx`'i yeniden çalıştırıp yeni context üretiyordu; context'ler artık yalnız React'e bağlı `toastContext.ts`'te. Her sheet gövdesinde `PanelBoundary`: hata o panelde kalır, \"Tekrar dene\") |
 | O4 | Liderlik tablosu: sıralama ilk ekranda; ödül ve kural metni ⓘ / sekmeye (CoC, Survivor.io, Whiteout Survival incelenir) | ek-4 | bekliyor |
 | O5 | Klan sheet'i sekmelere: ara / listele / kur / klanım (E4 ile birleşik) | ek-5 | bekliyor |
 | O6 | Savaş raporu baştan: sonuç önce, kısa, soru bırakmayan | ek-6 | bekliyor |

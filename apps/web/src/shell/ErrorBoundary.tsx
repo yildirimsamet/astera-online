@@ -87,6 +87,37 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
+/**
+ * ONE PANEL'S FAULT STAYS IN THE PANEL (owner, 2026-11-17, ek-3: a failure that does not take the
+ * game down must not show the player the crash floor). Around a sheet's body: a throw there is
+ * recorded as the floor records it, and the sheet shows one line and a retry while the galaxy,
+ * the HUD and the sheet's own close keep working.
+ */
+interface PanelState { readonly failed: boolean }
+
+export class PanelBoundary extends Component<{ children: ReactNode }, PanelState> {
+  override state: PanelState = { failed: false };
+
+  static getDerivedStateFromError(): PanelState {
+    return { failed: true };
+  }
+
+  override componentDidCatch(error: unknown, info: ErrorInfo): void {
+    observe('client_error', { code: 'react_panel' });
+    rememberCrash(describeCrash(error, info.componentStack ?? null));
+  }
+
+  override render(): ReactNode {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div role="alert" className="gk gk-panelfail">
+        <p className="gk-panelfail__title">{i18n.t('crash.panelTitle')}</p>
+        <GameButton tone="steel" size="sm" onPress={() => { this.setState({ failed: false }); }}>{i18n.t('crash.retry')}</GameButton>
+      </div>
+    );
+  }
+}
+
 const reloadPage = (): void => {
   window.location.reload();
 };

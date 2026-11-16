@@ -669,6 +669,9 @@ export const chat = {
  * pasted into a message to the person who will fix it. See `shell/crashReport.ts`.
  */
 export const crash = {
+  /** A sheet whose body threw (ek-3): the game keeps running behind it. */
+  panelTitle: 'Dieses Fenster ließ sich nicht öffnen.',
+  retry: 'Erneut versuchen',
   title: "Die Spieloberfläche funktioniert nicht mehr",
   body: "Lade die Seite neu. Die letzte Aktion ist möglicherweise unbestätigt; prüfe danach den aktuellen Stand.",
   reload: 'Neu laden',

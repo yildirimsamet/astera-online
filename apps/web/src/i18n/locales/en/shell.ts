@@ -670,6 +670,9 @@ export const chat = {
  * pasted into a message to the person who will fix it. See `shell/crashReport.ts`.
  */
 export const crash = {
+  /** A sheet whose body threw (ek-3): the game keeps running behind it. */
+  panelTitle: 'This panel could not open.',
+  retry: 'Try again',
   title: "The game interface stopped working",
   body: "Reload the page to continue. Your last action may not be confirmed; check its current status after reloading.",
   reload: 'Reload',
