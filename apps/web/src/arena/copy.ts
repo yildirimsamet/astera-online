@@ -6,7 +6,7 @@ type Goal = readonly [title: string, detail: string];
 const goals = (...items: Goal[]): readonly Goal[] => items;
 const roles = (hunter: string, miner: string, patrol: string): Readonly<Record<'hunter' | 'miner' | 'patrol', string>> => ({ hunter, miner, patrol });
 const tr = {
-  brand: 'Komutan Gemisi', sector: 'Yarık', launch: 'Uçuşa başla', shared: 'Gerçek uçuş', solo: 'Antrenman',
+  brand: 'Komutan Gemisi', sector: 'Yarık', launch: 'Uçuşa başla', shared: 'Gerçek uçuş', solo: 'Antrenman', modeTitle: 'Uçuş türü',
   sharedNote: 'Ganimet ve XP · canlı oda', soloNote: 'Ödülsüz · yalnız sen',
   coreShort: (core: number, need: number): string => `Çekirdek ${String(need)} gerekir · şu an ${String(core)}`,
   leave: 'Ana gezegene dön', resume: 'Uçuşa dön', settings: 'Ayarlar', sound: 'Ses', sensitivity: 'Dönüş hassasiyeti',
@@ -193,7 +193,7 @@ const tr = {
     'Yerin görüldü · yer değiştir ya da gizlen'],
 };
 const en: typeof tr = {
-  brand: 'Commander ship', sector: 'The Yarık', launch: 'Start flight', shared: 'Real flight', solo: 'Practice',
+  brand: 'Commander ship', sector: 'The Yarık', launch: 'Start flight', shared: 'Real flight', solo: 'Practice', modeTitle: 'Flight type',
   sharedNote: 'Loot and XP · live room', soloNote: 'No rewards · just you',
   coreShort: (core: number, need: number): string => `Needs Core ${String(need)} · now ${String(core)}`,
   leave: 'Return to home world', resume: 'Back to flight', settings: 'Settings', sound: 'Sound', sensitivity: 'Turn sensitivity',

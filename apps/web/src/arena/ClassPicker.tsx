@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { SHIP_CLASSES, TACTICS, abilityRank, abilityStats, hitShare, shipStats, type AbilityPoints, type ShipClass, type Tactic } from '@astera/rules/arena';
 import { ACTION_ICONS, SIGNATURE_ICONS } from './Controls.js';
+import { Choices } from '../game-ui/index.js';
 import i18n from '../i18n/index.js';
 import type { ArenaCopy } from './copy.js';
 
@@ -33,23 +34,21 @@ export function classStatRows(c: ArenaCopy, level = 1): readonly ClassStatRow[] 
  */
 export function ClassPicker({ c, value, onPick }: { c: ArenaCopy; value: ShipClass; onPick: (ship: ShipClass) => void }) {
   const signature = abilityStats(value, 'signature', 1);
-  return <section className="ap-class" aria-label={c.shipTitle}>
-    <div className="ap-mode is-three" role="radiogroup" aria-label={c.shipTitle}>
-      {SHIP_CLASSES.map(ship => <button key={ship} type="button" role="radio" aria-checked={ship === value} data-ship={ship}
-        className={ship === value ? 'is-selected' : ''} onClick={() => { onPick(ship); }}>{c.classes[ship].name}</button>)}
-    </div>
-    <p className="ap-class-line"><b>{c.classes[value].role}</b> · {c.classes[value].line}</p>
-    <p className="ap-class-signature"><i aria-hidden>{SIGNATURE_ICONS[value]}</i><b>{c.signatures[value].name}</b><span>{c.signatures[value].line(one(signature.power), one(signature.cooldown))}</span></p>
-    <ul className="ap-class-stats">
+  return <section className="gk-arenapanel gk-shipclass" data-ship={value} aria-label={c.shipTitle}>
+    <Choices label={c.shipTitle} value={value} onChange={onPick} options={SHIP_CLASSES.map(ship => ({ id: ship, label: c.classes[ship].name }))} />
+    <p className="gk-shipclass__line"><b>{c.classes[value].role}</b> · {c.classes[value].line}</p>
+    <p className="gk-shipclass__sig"><i aria-hidden>{SIGNATURE_ICONS[value]}</i><b>{c.signatures[value].name}</b><span>{c.signatures[value].line(one(signature.power), one(signature.cooldown))}</span></p>
+    <ul className="gk-shipclass__stats">
       {classStatRows(c).map(row => {
         const best = Math.max(...SHIP_CLASSES.map(row.value));
         return <li key={row.key} style={{ '--fill': String(row.value(value) / best) } as React.CSSProperties}>
-          <span>{c.classStats[row.key]}{row.value(value) >= best - 1e-9 && <em data-best="" aria-hidden> ★</em>}</span><strong>{row.text(row.value(value))}</strong>
+          <span className="gk-shipclass__name">{c.classStats[row.key]}{row.value(value) >= best - 1e-9 && <em data-best="" aria-hidden> ★</em>}</span>
+          <strong className="gk-num">{row.text(row.value(value))}</strong>
           <i aria-hidden><b /></i>
         </li>;
       })}
     </ul>
-    <p className="ap-class-key">{c.classKey}</p>
+    <p className="gk-note gk-shipclass__key">{c.classKey}</p>
   </section>;
 }
 

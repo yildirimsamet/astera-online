@@ -35,14 +35,14 @@ describe('the class picker', () => {
   it('says in one line what the picked class is for', () => {
     for (const ship of SHIP_CLASSES) {
       const view = render(<ClassPicker c={arenaCopy()} value={ship} onPick={() => undefined} />);
-      expect(view.container.querySelector('.ap-class-line')?.textContent).toBe(`${arenaCopy().classes[ship].role} · ${arenaCopy().classes[ship].line}`);
+      expect(view.container.querySelector('.gk-shipclass__line')?.textContent).toBe(`${arenaCopy().classes[ship].role} · ${arenaCopy().classes[ship].line}`);
       view.unmount();
     }
   });
 
   it('shows each number with its unit, filled against the best class, a star where this one is best', () => {
     const view = render(<ClassPicker c={arenaCopy()} value="akinci" onPick={() => undefined} />);
-    const rows = [...view.container.querySelectorAll<HTMLElement>('.ap-class-stats li')];
+    const rows = [...view.container.querySelectorAll<HTMLElement>('.gk-shipclass__stats li')];
     // Owner 2026-10-24: shot damage and accuracy are on the card too, accuracy as the share of shots on a ship.
     expect(rows.map(row => row.querySelector('strong')?.textContent)).toEqual(['80 m/s', '82°/sn', '510', '13', '117/sn', '%56', '300', '220']);
     // The Akıncı is the fastest: a full speed bar; its hull is 510 of the Muhafız's 900.
@@ -53,7 +53,7 @@ describe('the class picker', () => {
     // Owner 2026-10-27: the marks for the other two classes meant nothing to players; a star says "best here".
     for (const row of rows) expect(row.querySelector('[data-other]')).toBeNull();
     expect(rows.map(row => row.querySelector('[data-best]') !== null)).toEqual(rows.map(row => row.style.getPropertyValue('--fill') === '1'));
-    expect(view.container.querySelector('.ap-class-key')?.textContent).toBe(arenaCopy().classKey);
+    expect(view.container.querySelector('.gk-shipclass__key')?.textContent).toBe(arenaCopy().classKey);
     expect(arenaCopy().classKey).toContain('★');
   });
 
@@ -71,7 +71,7 @@ describe('the class picker', () => {
   it('reads in English too', async () => {
     await i18n.changeLanguage('en');
     const view = render(<ClassPicker c={arenaCopy()} value="kilavuz" onPick={() => undefined} />);
-    expect(view.container.querySelector('.ap-class-stats li strong')?.textContent).toBe('72 m/s');
+    expect(view.container.querySelector('.gk-shipclass__stats li strong')?.textContent).toBe('72 m/s');
     expect(view.container.textContent).toContain('45%');
     expect(view.container.textContent).toContain(arenaCopy().classes.kilavuz.line);
   });

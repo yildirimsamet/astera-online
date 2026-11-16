@@ -16282,9 +16282,9 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 }
 .gk-tactics__slot[aria-pressed='true'] i { color: var(--gk-self); }
 /* An option: its mark, name and the key of the slot holding it; what it does and how long it waits. */
-.gk-tactics__opt { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 2px var(--gk-s2); min-height: 56px; padding: 6px 8px; }
+.gk-tactics__opt { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; align-content: start; gap: 2px var(--gk-s2); min-height: 56px; padding: 6px 8px; }
 .gk-tactics__opt > b { min-width: 0; overflow-wrap: anywhere; font-size: var(--gk-t-small); font-weight: 700; color: var(--gk-ink); }
-.gk-tactics__opt > small { grid-column: 1 / -1; font-size: var(--gk-t-floor); line-height: 1.3; color: var(--gk-ink-2); }
+.gk-tactics__opt > small { grid-column: 1 / -1; font-size: var(--gk-t-floor); line-height: 1.3; color: var(--gk-ink-2); text-wrap: pretty; }
 .gk-tactics__opt > .gk-tactics__key { width: 20px; height: 20px; color: var(--gk-ink-2); }
 .gk-tactics__opt[data-key] { border-color: color-mix(in srgb, var(--gk-self) 35%, var(--gk-metal-edge)); }
 .gk-tactics__opt[data-key] > .gk-tactics__key { color: var(--gk-self); }
@@ -16295,3 +16295,80 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 }
 .gk-tactics__opt[aria-checked='true'] i { color: var(--gk-self); }
 .gk-squad__fuel { white-space: nowrap; }
+
+/* ---------- G12-b: the flight desk (Komutan Gemisi › Yarık) ---------- */
+/* The ship and the field stay the picture: a title at the top, the desk docked at the thumbs. */
+.gk-arenahead { display: grid; justify-items: center; gap: 0; text-align: center; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.7); }
+.gk-arenahead__brand { font: 600 var(--gk-t-floor) / 1 var(--gk-font-display); letter-spacing: 0.5em; padding-left: 0.5em; color: var(--gk-ink-2); }
+.gk-arenahead__title { margin: 0; font-size: var(--gk-t-title); color: var(--gk-ink); }
+.gk-arenahead__sector { color: var(--gk-self); }
+.gk-arenadock { width: 100%; max-width: 420px; margin: 0 auto; display: grid; gap: var(--gk-s2); font-family: var(--gk-font-text); }
+.gk-arenadock__leave { justify-self: center; }
+.gk-arenadock__keys { margin: 0; text-align: center; }
+@media (pointer: coarse) { .gk-arenadock__keys { display: none; } }
+/* A dark glass panel over a live scene: dense enough that the ship behind never shows through the words. */
+.gk-arenapanel {
+  padding: var(--gk-s2) var(--gk-s3); border: 1px solid var(--gk-metal-edge); border-radius: 2px;
+  background: color-mix(in srgb, var(--gk-deep) 90%, transparent); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+/* The loop: three steps on one line; a press opens how each is done. */
+.gk-loop { display: grid; gap: var(--gk-s1); }
+.gk-loop__line {
+  position: relative; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px 10px; min-height: var(--gk-hit); padding: 4px 34px 4px 12px;
+  border: 1px solid var(--gk-metal-edge); border-radius: 2px; background: color-mix(in srgb, var(--gk-deep) 78%, transparent);
+  color: var(--gk-ink); font-size: var(--gk-t-small); cursor: pointer; touch-action: manipulation;
+}
+.gk-loop__line:active { transform: translateY(1px); }
+.gk-loop__step { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+.gk-loop__step + .gk-loop__step::before { content: '›'; margin-right: 6px; color: var(--gk-ink-3); }
+.gk-loop b { color: var(--gk-self); font-weight: 700; }
+.gk-loop__help { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: inline-grid; place-items: center; width: 22px; height: 22px; color: var(--gk-self); }
+.gk-loop__help .gk-glyph { width: 16px; height: 16px; }
+.gk-loop__steps { margin: 0; padding: var(--gk-s2) var(--gk-s3); list-style: none; display: grid; gap: 6px; font-size: var(--gk-t-small); line-height: 1.4; color: var(--gk-ink-2); }
+.gk-loop__steps li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; }
+
+/* The class: three kit choices, what it is for, its signature in its own colour, the numbers on bars. */
+.gk-shipclass { --sig: #ffc66b; display: grid; gap: var(--gk-s2); }
+.gk-shipclass[data-ship='muhafiz'] { --sig: #7fd7ff; }
+.gk-shipclass[data-ship='kilavuz'] { --sig: #7cf0a8; }
+.gk-shipclass .gk-tab { text-transform: none; letter-spacing: 0.02em; }
+.gk-shipclass__line { margin: 0; min-height: 2.7em; font-size: var(--gk-t-small); line-height: 1.35; color: var(--gk-ink-2); }
+.gk-shipclass__line b { color: var(--gk-self); font-weight: 700; }
+.gk-shipclass__sig {
+  display: grid; grid-template-columns: 20px auto minmax(0, 1fr); align-items: start; gap: 2px 8px; margin: 0; padding: 6px 8px; border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--sig) 30%, transparent); background: color-mix(in srgb, var(--sig) 8%, transparent);
+}
+.gk-shipclass__sig i { width: 20px; height: 20px; color: var(--sig); }
+.gk-shipclass__sig i svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.gk-shipclass__sig b {
+  font-family: var(--gk-font-display); font-weight: var(--gk-display-weight); font-stretch: var(--gk-display-stretch); font-size: var(--gk-t-small);
+  letter-spacing: 0.08em; text-transform: uppercase; line-height: 20px; color: var(--sig);
+}
+.gk-shipclass__sig span { font-size: var(--gk-t-floor); line-height: 1.35; color: var(--gk-ink-2); padding-top: 2px; text-wrap: pretty; }
+.gk-shipclass__stats { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; }
+.gk-shipclass__stats li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; row-gap: 3px; }
+.gk-shipclass__name { font-size: var(--gk-t-floor); color: var(--gk-ink-2); }
+.gk-shipclass__name em { font-style: normal; color: var(--gk-self); }
+.gk-shipclass__stats strong { font-size: var(--gk-t-small); font-weight: 700; color: var(--gk-ink); }
+.gk-shipclass__stats i { grid-column: 1 / -1; position: relative; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--gk-self) 14%, transparent); }
+.gk-shipclass__stats i b {
+  position: absolute; inset: 0 auto 0 0; width: calc(var(--fill) * 100%); border-radius: inherit;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gk-self) 40%, transparent), var(--gk-self)); transition: width 0.28s var(--gk-ease);
+}
+.gk-shipclass__key { margin: 0; }
+
+/* The flight's kind: two plates, each saying what it is worth. */
+.gk-flightmode { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gk-s2); }
+.gk-flightmode__opt { display: grid; align-content: center; gap: 1px; min-height: 52px; padding: 4px 6px; text-transform: none; letter-spacing: 0.02em; line-height: 1.15; }
+.gk-flightmode__opt b { font-size: var(--gk-t-body); }
+.gk-flightmode__opt small { font-family: var(--gk-font-text); font-weight: 500; font-stretch: normal; font-size: var(--gk-t-floor); letter-spacing: 0; line-height: 1.2; color: var(--gk-ink-2); text-wrap: balance; }
+.gk-flightmode__opt:disabled { cursor: default; opacity: 0.6; }
+.gk-flightmode__opt:disabled small { color: var(--gk-warn); }
+
+/* The ship a real flight takes: everything about it is set in the hangar. */
+.gk-shipline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--gk-s2); margin: 0; }
+.gk-shipline .gk-display { font-size: var(--gk-t-body); color: var(--gk-ink); }
+.gk-shipline .gk-chip { color: var(--gk-self); }
+/* The launch stays under the thumb while the desk scrolls past it on a short phone. */
+.gk-arenadock > .ap-launch { position: sticky; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); z-index: 2; box-shadow: 0 -10px 24px rgba(2, 5, 10, 0.75); }

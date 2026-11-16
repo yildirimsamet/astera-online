@@ -77,7 +77,3 @@ export function launchText(h: Hangar, now: number, c: ArenaCopy): { line: string
   return { line: c.enter(h.refill.total), note: h.refill.total > 0 ? c.refillNote(h.refill.fuel, h.refill.ammo, amount(h.deuterium)) : null };
 }
 
-/** The button's two lines: the action with its price, and what pays it. */
-export function LaunchLabel({ line, note }: { line: string; note: string | null }) {
-  return <span className="ap-launch-text">{line}{note && <small>{note}</small>}</span>;
-}

@@ -2093,6 +2093,17 @@ Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak ala
 - Ganimet kuralları kitin kural satırında bir dokunuş uzakta; bağlantı hatası uyarı notunda, "Yeniden bağlan" kit basışı; pay alımı ve sınır uyarısı kit kuyusunda.
 - Audit (tr): takım 220 → 0; klan sayfasındaki takım 3 (kalan sayfanın üstündeki 2 px'lik öğe, klan sayfasına ait). Uçuş öncesi ekran 126 → 96 (geri kalanı G12-b).
 
+
+**G12-b Uçuş öncesi ekran ✅ (2026-11-16).** `Sandbox` (uçuş öncesi bölüm), `ClassPicker`, `ModePicker`, `LoopLine`, gemi satırı.
+- **An:** "Hangi gemi, hangi uçuş, başla." Gemi ve alan resim olarak kalıyor; başlık üstte, masa başparmakların altında.
+- Başlık kitin display yazısında (h1). Döngü satırı 44 px. Kitin yardım işareti sağ uca sabitlendi, 320 px'te de taşmıyor; adımlar kit kuyusunda açılıyor.
+- Uçuş türü (Gerçek uçuş / Antrenman) artık masanın ilk kararı ve döngü satırının hemen altında: gerçek uçuşta sınıf paneli yerine tek satırlık gemi bilgisi geldiği için gerisi bu karardan doğuyor. Plakalar ne kazandırdığını söylüyor; çekirdeği yetmeyen için kilitli plaka hangi çekirdeği beklediğini yazıyor; grup adı "Uçuş türü".
+- Sınıf kitin seçeneklerinde. Görev satırı, sınıfın kendi rengindeki imza yeteneği ve sekiz değer kitin rakamlarında, çubuklarla. Paneller sahne üstünde koyu cam (`gk-arenapanel`); gemi yazının arkasından görünmüyor.
+- Başlat kitin büyük eylem tuşu. Fiyatı ve onu ödeyen kaynak ikinci satırda. Uçamıyorsa nedenini yazıyor ("Tamirde · 59:54"). Kısa telefonda masa kaydırılırken başparmak altında sabit kalıyor.
+- Takım lobisinde masanın başlat tuşu yok: devre dışı bilgi tuşu takımın kendi "Hazırım / Birlikte kalk" tuşlarını örtüyordu ve lidere de yanlış şey söylüyordu. Yerine "Kalkışı klan liderin başlatır." notu geliyor.
+- Kök neden notu: arena.css'in eski başlat ve dön kuralları yalnız kite geçmemiş tuşlara uygulanıyor (`:where(:not(.gk-btn))`, G12-c'ye kadar). Araçların `.ap-launch` seçicisi korundu. Uçuş öncesine ait 63 satır eski kural ve kullanılmayan `LaunchLabel` silindi.
+- Audit (tr): uçuş öncesi 126 → 19. Kalanın tamamı yalnız geliştirme modunda görünen fps göstergesi. Gerçek uçuş, tamir, takım lobisi ve 320 px durumları ayrıca sahte hangar yanıtlarıyla çekildi.
+
 ## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
 
 | # | Yüzey | Dosya (satır) | Dil | Not |

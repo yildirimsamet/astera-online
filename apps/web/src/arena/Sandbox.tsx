@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefCallback } from 'react';
 import { ARENA_TUNING as T, FARM_POINTS, SHIP_CLASSES, TACTICS, alive, createInput, createSandboxWorld, holdPoints, sameSide, type ArenaWorld, type Pilot, type ShipClass,
   type SteeringSettings, type Tactic, type TeamView } from '@astera/rules/arena';
+import { GameButton, Glyph } from '../game-ui/index.js';
 import { ClassPicker, TacticPicker } from './ClassPicker.js';
-import { LaunchLabel, SortieSummary, launchText } from './Hangar.js';
+import { SortieSummary, launchText } from './Hangar.js';
 import { debriefText, pilotName, readDebrief, type Debrief } from './debrief.js';
 import { capLeft, fetchHangar, launchBlock, refusedAtHangar, stillFlying, type HangarAnswer, type LaunchBlock } from './hangarDesk.js';
 import { FARM_TONE } from './farmColors.js';
@@ -327,6 +328,9 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   /** A real flight launches only from a hangar that answered and holds nothing against it. */
   const inLobby = teamView?.team?.joined && teamView.team.state === 'forming';
   const grounded = real && (!desk?.ok || (block !== null && !stillFlying(desk.hangar)) || inLobby === true);
+  // The launch's face: the action with its price and what pays it; or, grounded, why it cannot go.
+  const launchFace: { line: string; note: string | null } = real && desk?.ok
+    ? stillFlying(desk.hangar) ? { line: c.resumeFlight, note: null } : launchText(desk.hangar, now, c) : { line: c.launch, note: null };
   const pickTactic = (next: Tactic, second: Tactic): void => {
     audio.ui(); setTactic(next); setTactic2(second); world.pilot.tactic = next; world.pilot.tactic2 = second;
     try { localStorage.setItem(TACTIC_KEY, next); localStorage.setItem(`${TACTIC_KEY}-2`, second); } catch { /* As the class. */ }
@@ -471,20 +475,24 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
         <button className="ap-leave" onClick={leave}>{c.leave}</button>
       </div> : <p className="al-tip">{c.tips[tip % c.tips.length]}</p>}
     </section>}
-    {screen === 'preflight' && <section className="arena-preflight">
-      <header><span>ASTERA</span><p>{c.brand}</p><small>{c.sector}</small></header>
-      <div className="ap-dock">
+    {screen === 'preflight' && <section className="arena-preflight gk">
+      <header className="gk-arenahead"><span className="gk-arenahead__brand">ASTERA</span><h1 className="gk-display gk-arenahead__title">{c.brand}</h1>
+        <small className="gk-label gk-arenahead__sector">{c.sector}</small></header>
+      <div className="gk-arenadock">
         <LoopLine c={c} />
-        {real ? <ShipLine c={c} desk={desk} note={deskNote} /> : <ClassPicker c={c} value={ship} onPick={pickShip} />}
-        {!(real && inLobby) && <TacticPicker c={c} value={tactic} value2={tactic2} ship={owned?.class ?? ship} points={owned?.abilities ?? {}} onPick={pickTactic} />}
+        {/* The first decision: what the flight is worth; the rest of the desk follows from it. */}
         <ModePicker c={c} mode={mode} lock={coreLock} onPick={value => { audio.ui(); setMode(value); }} />
+        {real ? <ShipLine c={c} desk={desk} note={deskNote} /> : <ClassPicker c={c} value={ship} onPick={pickShip} />}
+        {!(real && inLobby) && <div className="gk-arenapanel"><TacticPicker c={c} value={tactic} value2={tactic2} ship={owned?.class ?? ship} points={owned?.abilities ?? {}} onPick={pickTactic} /></div>}
         {/* Whatever keeps a real flight on the ground names itself here; the hangar is where it is put right. */}
-        {real && <div className="ap-team"><TeamPanel credential={hangarToken} onEnter={launch} onView={setTeamView} {...room} /></div>}
-        {(!real || desk?.ok) && <button className="ap-launch" onClick={() => { launch(); }} disabled={grounded}>
-          {inLobby && real ? teamCopy().teamLaunch : real && desk?.ok ? stillFlying(desk.hangar) ? c.resumeFlight : <LaunchLabel {...launchText(desk.hangar, now, c)} /> : c.launch}
-          {!grounded && <svg viewBox="0 0 20 20" aria-hidden><path d="M5 10h10M11 6l4 4-4 4" /></svg>}</button>}
-        <button className="ap-leave" onClick={leave}>{c.leave}</button>
-        <p className="ap-keys">{c.keyboard}</p>
+        {real && <div className="gk-arenapanel"><TeamPanel credential={hangarToken} onEnter={launch} onView={setTeamView} {...room} /></div>}
+        {/* In a team lobby the team's own presses launch; the desk only says who starts it. */}
+        {real && inLobby && <p className="gk-inote gk-inote--plate"><Glyph id="support" /><span>{teamCopy().teamLaunch}</span></p>}
+        {(!real || desk?.ok) && !(real && inLobby) && <GameButton tone="action" size="lg" wide glyph="rocket" className="ap-launch" heavy={real}
+          disabledReason={grounded ? launchFace.line : null} {...(launchFace.note ? { detail: launchFace.note } : {})}
+          onPress={() => { launch(); }}>{launchFace.line}</GameButton>}
+        <GameButton size="sm" tone="ghost" glyph="back" className="ap-leave gk-arenadock__leave" onPress={leave}>{c.leave}</GameButton>
+        <p className="gk-note gk-arenadock__keys">{c.keyboard}</p>
       </div>
     </section>}
     {screen === 'result' && <section className="arena-result">
@@ -538,12 +546,13 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
 
 /** The ship a real flight takes, as the hangar left it: chosen, levelled and refilled there. */
 function ShipLine({ c, desk, note }: { c: ArenaCopy; desk: HangarAnswer | null; note: string }) {
-  if (!desk) return <p className="hg-wait" aria-busy>{c.hangarTitle} …</p>;
-  if (!desk.ok) return <p className="hg-note" role="alert">{c.kicks[desk.error] ?? c.hangarError}</p>;
+  if (!desk) return <p className="gk-sub gk-shipline" aria-busy>{c.hangarTitle} …</p>;
+  if (!desk.ok) return <p className="gk-inote gk-shipline" data-tone="warn" role="alert"><Glyph id="warn" /><span>{c.kicks[desk.error] ?? c.hangarError}</span></p>;
   const ship = desk.hangar.ship;
   return <>
-    {ship && <p className="ap-ship"><span>{c.hangarTitle}</span><b>{c.classes[ship.class].name}</b><em>{c.level(ship.level)}</em></p>}
-    {note && <p className="hg-note" role="alert">{note}</p>}
+    {ship && <p className="gk-arenapanel gk-shipline"><span className="gk-label">{c.hangarTitle}</span><b className="gk-display">{c.classes[ship.class].name}</b>
+      <span className="gk-chip gk-num">{c.level(ship.level)}</span></p>}
+    {note && <p className="gk-inote" data-tone="warn" role="alert"><Glyph id="warn" /><span>{note}</span></p>}
   </>;
 }
 
