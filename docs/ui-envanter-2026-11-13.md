@@ -2056,6 +2056,14 @@ Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası geli
 - Kalan bilinçli: araştırma seviyesi (0–20) ve korsan seviyesi kit görünümlü seçici olarak kaldı (uzun liste).
 - Audit (tr; telefon): 151 (G11-b1 öncesi) → 15. Kalan: kaydırıcı ile tur işaretleri birlikte 58 px'lik tek kontrol; masaüstündeki kontrast kayıtları sahne üstü plakalarda, ölçüm arkadaki gemi resmini örnekliyor.
 
+
+**G11 kapanışı ✅ (2026-11-16).** Altı dilde telefon audit'i (oyun içi Wiki galeriden, simülatör herkese açık sayfasından ayrı koşu).
+- Taşma, kesilme, yana taşma: altı dilde 0. 12 px altı metin: 0.
+- Wiki: puan tr 8 / en 6. Kalan: arama alanının kenar kaydı (2 px ölçüm, alanın kendisi 46 px) ve iki kapak bağlantısı.
+- Simülatör: puan tr 15 / en 10. Kalan: kaydırıcı ile tur işaretleri (tek kontrol), gezegen üstündeki hasar rozeti 4.41:1 (koyu plakada okunuyor).
+- Almanca ("KAMPF SIMULIEREN") ve Japonca eylem tuşu tek satıra sığıyor; Wiki içeriği bilinçli olarak yalnız en/tr sürümünde.
+- Raporlar: `reports/ui-audit/g11close-wiki-2026-11-16.md`, `reports/ui-audit/g11close-sim-2026-11-16.md`.
+
 ## G12. Savaş Alanı (arena)
 
 Okundu: dosya haritası. `src/arena` 50 dosya, 17 bileşen; kendi `arena.css`'i (altıncı dil), kendi HUD'u.
