@@ -171,7 +171,7 @@ export const planet = {
     reachProblem: "Flotte",
     reachQuestion:
       "Développe ici tes vaisseaux et ta portée.",
-    growProblem: "Production",
+    growProblem: "Usines",
     growQuestion:
       "Augmente ici tes ressources et la limite de niveau de tes bâtiments.",
     tacticalProblem: "Tactique",

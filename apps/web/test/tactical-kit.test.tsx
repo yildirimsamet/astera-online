@@ -125,7 +125,7 @@ describe('the Death Star forge on the kit', () => {
     expect(within(needs[2]!).queryByRole('button')).toBeNull();
     Element.prototype.scrollIntoView = vi.fn();
     await userEvent.click(within(needs[0]!).getByRole('button'));
-    expect(screen.getByRole('tab', { name: 'Production' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Economy' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('states the price on the kit cost line, with the build time beside it', () => {

@@ -23,7 +23,7 @@ export const academy = {
   "replayComplete": "Entraînement terminé ! Aucune récompense ni modification n'a été appliquée à ton compte réel. Tu peux retourner dans ta galaxie.",
   "steps": {
     "welcome": "Voici ta galaxie d'entraînement. Appuie sur ta planète pour ouvrir le menu de gestion.",
-    "production": "Le menu Production te permet de développer ta planète. Appuie sur l'onglet Production pour commencer par le Noyau de Commandement.",
+    "production": "Le menu Usines te permet de développer ta planète. Appuie sur l'onglet Usines pour commencer par le Noyau de Commandement.",
     "core": "Le Noyau de Commandement détermine le niveau maximal de tes bâtiments. Améliore-le au niveau 2.",
     "coreReward": "Ta première amélioration t'a rapporté une récompense. Récupère-la.",
     "refinery": "La Raffinerie d'Alliage produit l'alliage nécessaire aux bâtiments et aux vaisseaux. Améliore-la d'un niveau.",

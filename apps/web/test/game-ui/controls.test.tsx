@@ -294,7 +294,7 @@ describe('tabs and the bottom bar', () => {
   it('stacks a tab\'s mark over its name when asked, lit with the tab rather than in a tone of its own', () => {
     render(<GameTabs label="Base" stacked tabs={[{ id: 'grow', label: 'Production', glyph: { id: 'mine' } }, { id: 'orbit', label: 'Intel', glyph: { id: 'eye' } }]} value="grow" onChange={vi.fn()} />);
     expect(screen.getByRole('tablist')).toHaveClass('gk-tabs--stacked');
-    const tab = screen.getByRole('tab', { name: 'Production' });
+    const tab = screen.getByRole('tab', { name: 'Economy' });
     const glyph = tab.querySelector<HTMLElement>('.gk-tab__glyph');
     expect(tab.firstElementChild).toBe(glyph);
     expect(glyph?.style.color).toBe('');

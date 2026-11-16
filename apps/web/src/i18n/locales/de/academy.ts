@@ -23,7 +23,7 @@ export const academy = {
   replayComplete: 'Übung abgeschlossen! Dein echtes Konto wurde nicht verändert und du hast keine Belohnungen erhalten. Kehre jetzt in deine Galaxie zurück.',
   steps: {
     welcome: 'Dies ist deine eigene Übungsgalaxie. Tippe auf deinen Planeten, um seine Verwaltung zu öffnen.',
-    production: 'Im Menü „Produktion“ entwickelst du deine Welt. Öffne es und beginne mit dem Kommandokern.',
+    production: 'Im Menü „Ausbau“ entwickelst du deine Welt. Öffne es und beginne mit dem Kommandokern.',
     core: 'Der Kommandokern bestimmt, wie weit du deine Gebäude ausbauen kannst. Verbessere ihn auf Stufe 2.',
     coreReward: 'Für dein erstes Upgrade gibt es eine Belohnung. Hol sie dir.',
     refinery: 'Die Legierungsraffinerie liefert Material für Gebäude und Schiffe. Baue sie aus.',

@@ -168,7 +168,7 @@ export const planet = {
     orbitQuestion: "Baue die Werkzeuge, mit denen du Rivalen sehen kannst.",
     reachProblem: "Flotte",
     reachQuestion: "Entwickle hier deine Schiffe und deine Reichweite.",
-    growProblem: "Produktion",
+    growProblem: "Ausbau",
     growQuestion: "Baue hier deine Ressourcen und dein Gebäudelevel-Limit aus.",
     tacticalProblem: "Taktisch",
     tacticalQuestion: "Taktische Werkzeuge hier bauen und verwalten.",

@@ -16,7 +16,7 @@ Her yüzeyin ölçütü: **350×812 ve 375×667'de kaydırmadan ne görünüyor?
 | S1 | Tek başlık standardı: sheet başlığı en fazla 48 px; ikon 32, tek satır başlık, bir satır üst yazı, kapat/geri 40 px; resimli başlık aynı 48 px'in zemini | 5, 10, 15 | bitti |
 | S2 | Sekme çubuğu: eşit genişlik, tek satır, 40 px; menü sekmeleri Gezegen / Araştırma / Gemi | 11 | bitti |
 | S3 | Kompakt bağlam kartı (alt kart): saldırı, etkinlik, öneri; yazı ve düğme küçülür, dikeyde ~%40 kısalır | 1 | bitti (saldırı/öneri 175→108 px, olay 118→96) |
-| S4 | Görsel kart oranı: kart resminin %70–80'i görünür, kart gereksiz uzamaz | 7 | bekliyor |
+| S4 | Görsel kart oranı: kart resminin %70–80'i görünür, kart gereksiz uzamaz | 7 | bitti (menü karosu tam genişlik, bina kartı 16:9 pencere; mağaza/envanter zaten tam) |
 | S5 | Kit'e standart `Fold` (akordiyon) ve `InfoPeek` kullanımı; uzun kural metni bunların arkasına | 2. amaç | bekliyor |
 | S6 | Yazım kuralı: bilineni yazma, tek cümle, kural ⓘ'de (`docs/ux-writing.md`'ye ek) | 17 | bekliyor |
 | H1 | Galaksi HUD bölgeleri: status bar altı tam genişlikte uçuş şeridi + toast; sol sütun durum rozetleri (sıkı); sağ üst bulunabilecekler; altında 2×2 araç (teleskop, dünyalar, market, zil); çevrimiçi sayısı gizli; etkinlik bitiş şeridi olduğu gibi | 2, 3, 4 | bitti |
@@ -58,7 +58,7 @@ Son sırada: G11 simulator / wiki-sheet / wiki-public · G13 faults / landing / 
 | S1 başlık 48 px | `Sheet` bileşeninden gelir; 48 galeri görünümünde ölçüm (yükseklik + kesilme) tr/de/fr/ja; bütün oyun için sabit başlık uzunluğu testi (`sheet-head-copy.test.ts`) | bitti (rapor başlığı ve dinamik uzun başlıklar E3/rapor biriminde) |
 | S2 sekme | `GameTabs` kullanan her yüzey; eşit genişlik ölçümü | bitti (5 dilde ölçüldü) |
 | S3 alt kart | `ContextCard` / `ContextStrip` her hâli (saldırı, etkinlik, öneri, seçili) | bitti (tr/de/ja ölçüldü) |
-| S4 görsel kart | resimli her kart (bina, gemi, menü, mağaza, araştırma) — görünen resim oranı ölçülür | bekliyor |
+| S4 görsel kart | resimli her kart (bina, gemi, menü, mağaza, araştırma) — görünen resim oranı ölçülür | bitti (ölçüldü; mağaza karosunun kare resmi %47, bilinçli) |
 | S5/S6 yazı | her yüzeyin her paragrafı: sil / kısalt / ⓘ ya da akordiyona; altı dil | bekliyor |
 
 ## Not defteri
@@ -85,3 +85,4 @@ Son sırada: G11 simulator / wiki-sheet / wiki-public · G13 faults / landing / 
 - 2026-11-16: S1, S2, H1 bitti (başlık 48 px, yumuşak geçiş, eşit boşluk; sekmeler eşit; HUD bölgeleri, araçlar 2×2, tek araç sağda). E7 bitti. Sıradaki: S3, E3.
 - 2026-11-16: E3 bitti (saldırı sheet'i: basılı tutmalı gemi kartları, solucan→roket hız çubuğu, tek satır fiyat + ⓘ); S3 bitti (alt kartlar ~%40 kısa). Sıradaki: H2, S4.
 - 2026-11-16: H2 bitti; ayrıca harita etiketleri HUD araçlarını örtüyordu (z-index), düzeltildi. Sıradaki: S4.
+- 2026-11-16: S4 bitti. Üs'ün beşli sekmesinde kelime ortadan kırılıyordu: sekme 1 px yan boşluk + 0 harf aralığı, uzun kelimeler kısaldı (Taktik, Economy, Ausbau, Fábricas, Usines; akademi metni de). Sıradaki: S5/S6, E1.

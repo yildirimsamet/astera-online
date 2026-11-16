@@ -172,7 +172,7 @@ export const planet = {
       "Gemilerini ve menzilini burada geliştirirsin.",
     growProblem: "Üretim",
     growQuestion: "Kaynaklarını ve bina seviye sınırını burada büyütürsün.",
-    tacticalProblem: "Taktiksel",
+    tacticalProblem: "Taktik",
     tacticalQuestion: "Taktiksel araçlarını burada üretir ve yönetirsin.",
   },
 

@@ -54,11 +54,17 @@
 }
 .commander-menu [data-menu-foot] button:active { transform: translateY(1px) scale(0.97); }
 
-/* One complete image spans the whole card, including behind its translucent readings. */
+/*
+  S4 (owner 2026-11-16: "kart resminin %70–80'i görünsün"): the painting has its own 16:9 window
+  at the top of the card instead of spanning the card behind the readings, so ~85 % of a 3:2
+  painting shows and the card grows by only a few pixels.
+*/
 [data-layout='card'] [data-art]:has(.building-scene-art) {
-  position: static;
+  position: relative;
   z-index: auto;
-  overflow: visible;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
   background: none;
 }
 .building-scene-art {
@@ -89,8 +95,8 @@
 [data-layout='card']:has(.building-scene-art) [data-open-item] { z-index: 2; }
 [data-layout='card'] [data-art] > span { z-index: 1; }
 [data-layout='card'] [data-art]:has(.building-scene-art) [data-art-lock] {
-  bottom: auto;
-  height: 84px;
+  inset: 0;
+  height: 100%;
 }
 [data-layout='card'] [data-art] img[data-art-state='locked'] { filter: grayscale(1) brightness(.85); }
 

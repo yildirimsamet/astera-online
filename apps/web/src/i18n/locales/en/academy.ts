@@ -23,7 +23,7 @@ export const academy = {
   "replayComplete": "Practice complete! No rewards or changes were applied to your real account. Return to your galaxy.",
   "steps": {
     "welcome": "This is your private training galaxy. Tap your planet to open its management menu.",
-    "production": "The Production menu develops your world. Tap Production to start with the Command Core.",
+    "production": "The Economy menu develops your world. Tap Economy to start with the Command Core.",
     "core": "The Command Core sets your building limits. Upgrade it to level 2.",
     "coreReward": "Your first upgrade earned a reward. Claim it.",
     "refinery": "The Alloy Refinery produces alloy for buildings and ships. Upgrade it.",

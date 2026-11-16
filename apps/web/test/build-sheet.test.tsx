@@ -177,7 +177,7 @@ describe('strategic hardware hierarchy', () => {
     Element.prototype.scrollIntoView = vi.fn();
     const doors = within(forgeOf(view)).getByRole('list');
     await userEvent.click(within(doors).getByRole('button', { name: new RegExp(`core l${String(DEATH_STAR.requiredCore)}`, 'i') }));
-    expect(screen.getByRole('tab', { name: 'Production' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Economy' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('refuses the build with the first thing it needs, rather than a dead button', async () => {

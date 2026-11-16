@@ -78,3 +78,17 @@ describe('every fixed sheet title in the game', () => {
     expect(long).toEqual([]);
   });
 });
+
+/**
+ * S2 FOLLOW-UP (2026-11-16): the base's five stacked tabs. At 350 px each plate holds about 58 px
+ * of 12 px capitals — eight letters — and a longer word broke mid-word ("SAVUNM/A", "TAKTİKSE/L").
+ */
+describe('the base’s five tab words', () => {
+  it.each(Object.entries(PLANET))('fits each on its plate, whole (%s)', (_, locale) => {
+    const tabs = locale.planet.tabs;
+    for (const word of [tabs.growProblem, tabs.orbitProblem, tabs.defendProblem, tabs.tacticalProblem, tabs.reachProblem]) {
+      expect(word.length, word).toBeLessThanOrEqual(8);
+    }
+  });
+});
+

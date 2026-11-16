@@ -152,7 +152,7 @@ describe('the orbit surface', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Defend' }));
     expect(screen.getByRole('heading', { name: 'Aegis' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Harpoon' })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('tab', { name: 'Production' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Economy' }));
     expect(screen.getByRole('heading', { name: 'Foundry' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('tab', { name: 'Fleet' }));
     expect(screen.getByRole('heading', { name: 'Derrick' })).toBeInTheDocument();
