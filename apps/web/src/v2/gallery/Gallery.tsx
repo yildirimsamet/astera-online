@@ -1388,7 +1388,7 @@ function Views({ view }: { view: string }) {
   if (view === 'feedback' || view.startsWith('announcements')) return <GalleryCommunity view={view} />;
   if (view.startsWith('rewards')) return <GalleryRewards state={view.replace('rewards-', '')} />;
   // The Komutan gemisi hangar; the camera mocks `/arena/hangar` with each state it photographs.
-  if (view === 'arena-hangar') return <Sheet detents={['full']} headerArt={ATMOSPHERE.commanderShip} eyebrow="Samet" title="Komutan gemisi" onClose={noop}>
+  if (view === 'arena-hangar') return <Sheet detents={['full']} headerArt={ATMOSPHERE.commanderShip} kit={{ art: artIconSrc('cos-ship'), tone: 'self' }} eyebrow="Samet" title="Komutan gemisi" onClose={noop}>
     <BaseSwitch value="ship" onChange={noop} arenaAvailable /><HangarPanel credential={() => Promise.resolve('dev')} onEnter={noop} />
   </Sheet>;
   if (view === 'arena-team') return <Sheet detents={['full']} title="Yarık" onClose={noop}>

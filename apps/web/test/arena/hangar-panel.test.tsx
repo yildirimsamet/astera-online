@@ -229,7 +229,7 @@ describe('the hangar panel', () => {
     open(enter);
     await waitFor(() => { expect(screen.getByTestId('stage').dataset.ship).toBe('muhafiz'); });
     expect(calls[0]?.url).toBe('/arena/hangar');
-    const plate = el('.hp-plate');
+    const plate = el('[data-part="ship-plate"]');
     expect(plate.textContent).toContain(c.classes.muhafiz.name);
     expect(plate.textContent).toContain(c.classes.muhafiz.role);
     expect(plate.textContent).toContain(c.level(3));
@@ -292,8 +292,8 @@ describe('the hangar panel', () => {
     fireEvent.click(screen.getByRole('tab', { name: c.classes.akinci.name }));
     // F7: a class tried on is a preview, never the ship that flies: no level, no state, no way in, no desk for it.
     expect(screen.getByTestId('stage').dataset.ship).toBe('akinci');
-    expect(el('.hp-plate').textContent).toContain(c.preview);
-    expect(el('.hp-plate').textContent).not.toContain(c.level(3));
+    expect(el('[data-part="ship-plate"]').textContent).toContain(c.preview);
+    expect(el('[data-part="ship-plate"]').textContent).not.toContain(c.level(3));
     expect(document.querySelector('[data-status]')).toBeNull();
     expect(screen.queryByTestId('hangar-enter')).toBeNull();
     expect(document.querySelector('[data-part="level"]')).toBeNull();
@@ -320,7 +320,7 @@ describe('the hangar panel', () => {
     fireEvent.click(up);
     expect(calls.some(call => call.url === '/arena/upgrade')).toBe(false);
     hold(up);
-    await waitFor(() => { expect(el('.hp-plate').textContent).toContain(c.level(4)); });
+    await waitFor(() => { expect(el('[data-part="ship-plate"]').textContent).toContain(c.level(4)); });
     expect(calls.filter(call => call.url === '/arena/upgrade')).toHaveLength(1);
     expect(screen.getByTestId('stage').dataset.pulse).toBe('1');
   });

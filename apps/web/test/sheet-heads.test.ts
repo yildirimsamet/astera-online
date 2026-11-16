@@ -9,7 +9,6 @@ import { describe, expect, it } from 'vitest';
  */
 const NOT_YET = new Map([
   ['planet.data.vessel.name', 'G15 starter journey'],
-  ["t('arena.nav')", 'G12 arena'],
   ["t('community.admin.title')", 'G14 admin'],
 ]);
 

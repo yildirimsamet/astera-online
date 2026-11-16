@@ -2114,6 +2114,17 @@ Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak ala
 - 110 eski kural silindi (ar-*, ss-*, al-*, as-*, ap-mode, ap-eyebrow, ap-keys, eski başlat/dön). `.arena-spectator` yalnız konum.
 - Audit'e iki giriş yolu: `arena:menu` (antrenman + menü) ve `arena:result` (geliştirme kancasıyla gemiyi düşürür). Audit (tr): menü 68 → 19, sonuç 54 → 19; kalanın tamamı geliştirme fps göstergesi. Yükleme ekranı çok kısa sürdüğü için fotoğraflanamadı; yalnız testlerle doğrulandı.
 
+
+**G12-d1 Hangarın kabuğu ✅ (2026-11-16).** `HangarPanel` (sahne plakası, masa sekmeleri, sınıf kapısı, alt dok), `ShipStatus`, `DeskNote`; Komutan gemisi sayfası kitin başlığında.
+- **An:** "Gemim ne durumda, sırada ne var?"
+- Sayfa başı kitte, gemi sanatıyla (`cos-ship`); `sheet-heads` testindeki istisna listesinden arena çıktı.
+- Bölmede geminin rolü kendi renginde, adı kitin display yazısında, seviyesi (denemede "Önizleme") kit çipinde; durum (Hazır / Tamirde · saat / Yarık'ta) renkli lambalı kit çipi.
+- Masanın üç bölümü kit sekmeleri; Yetenekler sekmesi bekleyen puan sayısını rozetle gösteriyor, okuyucu "Yetenekler — 3 puan hazır" duyuyor.
+- Sınıfları karşılaştır / değiştir kitin kapı satırı (değişim süresi sarı alt satırda).
+- Alt dok: "Yarık'a gir" kitin büyük tuşu; uçabiliyorsa ışıklı, yalnız antrenman açıksa çelik ve nedeni ikinci satırda. Sezonun sınıfını seçmek ve değiştirmek kitin kesin tutması (1,5 sn): geri alınmıyor. Vazgeç ve gemime dön kit tuşları.
+- Masa notları kit uyarısı; "Gemini seç" ve çekirdek eksikliği kit kuyusunda.
+- Audit (tr, galeri sabit yanıtlarıyla): hangar 116 → 93. Kalan masanın blokları (tamir, seviye, yetenekler, değerler, yükleme): G12-d2.
+
 ## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
 
 | # | Yüzey | Dosya (satır) | Dil | Not |

@@ -2084,7 +2084,7 @@ export function GalaxyView({
       )}
 
       {panel === 'ship' && onEnterArena && (
-        <V2Sheet detents={['full']} headerArt={ATMOSPHERE.commanderShip} eyebrow={commander} title={t('arena.nav')} onClose={() => { onPanel(null); }}>
+        <V2Sheet detents={['full']} headerArt={ATMOSPHERE.commanderShip} kit={{ art: artIconSrc('cos-ship'), tone: 'self' }} eyebrow={commander} title={t('arena.nav')} onClose={() => { onPanel(null); }}>
           <BaseSwitch value="ship" onChange={openBase} arenaAvailable />
           <Suspense fallback={null}><HangarPanel credential={() => arenaCredential(api)} onEnter={onEnterArena}
             onSpent={() => { for (const queryKey of [keys.planet, keys.commanderShip]) void queryClient.invalidateQueries({ queryKey }); }} /></Suspense>

@@ -2,7 +2,7 @@
    Gözlemevi language: ink on panel, hairlines, no glow; teal is the ship's own progress and the one primary button. */
 /* One column that never outgrows the sheet: the bay's canvas carries a pixel width, and an `auto` track
    took it as its minimum, so a canvas sized once at 352 kept the whole desk 18 px past a 334 sheet (S22). */
-.hangar-root { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 0 12px; color: var(--color-v2-ink); font-family: var(--font-v2-ui);
+.hangar-root { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 0 12px; color: var(--gk-ink); font-family: var(--gk-font-text);
   -webkit-tap-highlight-color: transparent; }
 
 .hp-stage { position: relative; height: clamp(220px, 64vw, 380px); overflow: hidden; border-radius: 14px; isolation: isolate;
@@ -31,51 +31,43 @@
 .hp-stage canvas { animation: hp-reveal .9s ease-out both; }
 @keyframes hp-reveal { from { opacity: 0; filter: brightness(.4); } }
 
-.hp-plate { position: absolute; z-index: 2; top: 12px; left: 14px; right: 110px; pointer-events: none; text-shadow: 0 1px 10px rgba(0,0,0,.7); }
-.hp-plate small { display: block; font: 600 9px var(--font-v2-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--ship, var(--color-v2-ink-2)); }
-.hp-plate p { margin: 2px 0 0; display: flex; align-items: center; gap: 8px; }
-.hp-plate b { font-size: 20px; font-weight: 600; letter-spacing: .005em; color: var(--color-v2-ink); }
-.hp-plate em { padding: 1px 6px; border-radius: 5px; font: 600 10px var(--font-v2-mono); font-style: normal; color: var(--color-v2-ink-2);
-  background: color-mix(in srgb, var(--color-v2-deep) 70%, transparent); box-shadow: inset 0 0 0 1px var(--color-v2-line-hi); }
-/* A level bought: the badge comes up with it. */
-.hp-plate em { animation: hp-pop .5s cubic-bezier(.2, 1.6, .4, 1) both; }
+/* The ship's name on the bay: its role in its colour, the name in the kit's type, the level or "preview" as a chip. */
+.gk-hangarplate { position: absolute; z-index: 2; top: 12px; left: 14px; right: 120px; pointer-events: none; text-shadow: 0 1px 10px rgba(0,0,0,.75); }
+.gk-hangarplate .gk-label { display: block; color: var(--ship, var(--gk-ink-2)); }
+.gk-hangarplate p { margin: 2px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.gk-hangarplate .gk-display { font-size: var(--gk-t-title); line-height: 1.05; color: var(--gk-ink); }
+.gk-hangarplate .gk-chip { text-shadow: none; animation: hp-pop .5s cubic-bezier(.2, 1.6, .4, 1) both; }
 @keyframes hp-pop { from { transform: scale(.6); opacity: 0; } }
 /* A level bought (F17): a band across the bay with what it gave, in the ship's own colour, then gone. */
 .hp-levelup { position: absolute; z-index: 3; left: 0; right: 0; bottom: 18%; display: grid; justify-items: center; gap: 4px; padding: 10px 12px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-v2-deep) 82%, transparent) 18%, color-mix(in srgb, var(--color-v2-deep) 82%, transparent) 82%, transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--gk-deep) 86%, transparent) 18%, color-mix(in srgb, var(--gk-deep) 86%, transparent) 82%, transparent);
   border-block: 1px solid color-mix(in srgb, var(--ship) 45%, transparent); pointer-events: none;
   animation: hp-levelup 3.2s cubic-bezier(.2, .8, .2, 1) both; }
-.hp-levelup b { font: 600 15px var(--font-v2-ui); letter-spacing: .14em; text-transform: uppercase; color: var(--ship);
+.hp-levelup b { font: var(--gk-display-weight) var(--gk-t-body) var(--gk-font-display); font-stretch: var(--gk-display-stretch); letter-spacing: .1em; text-transform: uppercase; color: var(--ship);
   text-shadow: 0 0 14px color-mix(in srgb, var(--ship) 60%, transparent); }
-.hp-levelup span { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 10px; font: 10px var(--font-v2-mono); color: var(--color-v2-ink-2); }
+.hp-levelup span { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 10px; font-size: var(--gk-t-floor); color: var(--gk-ink-2); }
 .hp-levelup i { font-style: normal; }
-.hp-levelup em { font-style: normal; color: var(--color-v2-self); }
+.hp-levelup em { font-style: normal; color: var(--gk-self); }
 @keyframes hp-levelup { 0% { opacity: 0; transform: scaleY(.4); } 10% { opacity: 1; transform: none; } 82% { opacity: 1; } to { opacity: 0; } }
-/* A class tried on during the free change: named a preview, in its own colour, never a level it does not have. */
-.hp-plate em.is-preview { color: var(--ship); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ship) 55%, transparent); letter-spacing: .08em; text-transform: uppercase; }
 .hp-state { position: absolute; z-index: 2; top: 12px; right: 12px; border-radius: 999px; }
 
 .hp-drag { position: absolute; z-index: 2; left: 0; right: 0; bottom: 8px; margin: 0; text-align: center; pointer-events: none;
-  font: 9px var(--font-v2-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--color-v2-ink-3);
-  animation: hp-hint 6s ease-in 2s both; }
-.hp-drag::before { content: '⟲'; margin-right: 6px; font-size: 11px; }
+  color: var(--gk-ink-2); text-shadow: 0 1px 6px #000; animation: hp-hint 6s ease-in 2s both; }
+.hp-drag::before { content: '⟲'; margin-right: 6px; }
 @keyframes hp-hint { 0%, 70% { opacity: 1; } to { opacity: 0; } }
 
-.hp-wait { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; font: 10px var(--font-v2-mono);
-  letter-spacing: .18em; text-transform: uppercase; color: var(--color-v2-ink-3); animation: hp-breathe 1.6s ease-in-out infinite; }
+.hp-wait { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; animation: hp-breathe 1.6s ease-in-out infinite; }
 @keyframes hp-breathe { 50% { opacity: .45; } }
 
 .hp-desk { display: grid; gap: 18px; }
-.hp-loading { margin: 0; font-size: 11px; color: var(--color-v2-ink-3); animation: hp-breathe 1.6s ease-in-out infinite; }
 /* What this moment is about, before the desk: the first choice, or the Çekirdek a ship waits on. */
-.hp-lead { display: grid; gap: 3px; }
-.hp-lead b { font-size: 13px; font-weight: 600; color: var(--color-v2-ink); }
-.hp-lead b.is-gap { color: var(--color-v2-warn); }
-.hp-lead span { font-size: 11px; line-height: 1.45; color: var(--color-v2-ink-2); }
+.gk-hangarlead { display: grid; gap: 3px; padding: var(--gk-s2) var(--gk-s3); }
+.gk-hangarlead .gk-display { font-size: var(--gk-t-body); color: var(--gk-ink); }
+.gk-hangarlead[data-tone='warn'] .gk-display { color: var(--gk-warn); }
 
 /* The way in stays at the foot of the sheet while the desk scrolls under it. */
 .hp-dock { position: sticky; bottom: 0; z-index: 3; margin: -4px -12px 0; padding: 12px 12px calc(10px + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(180deg, transparent, var(--color-v2-deep) 12px); pointer-events: none; }
+  background: linear-gradient(180deg, transparent, var(--gk-deep) 14px); pointer-events: none; }
 /* Only its buttons take a finger: the faded top edge passes a tap to what shows through it (F5). */
 .hp-dock > * { pointer-events: auto; }
 
@@ -90,8 +82,6 @@
 .hp-card { padding: 10px 12px; border-radius: var(--radius-control, 10px); border: 1px solid var(--color-v2-line);
   background: color-mix(in srgb, var(--color-v2-panel) 88%, transparent); }
 .hp-card.is-warn { border-color: color-mix(in srgb, var(--color-v2-warn) 35%, var(--color-v2-line)); }
-button.hp-card { width: 100%; }
-button.hp-card:active { background: var(--color-v2-raised, #131c2f); }
 /* The level: a hexagon in the ship's colour, its number inside. */
 .hp-badge { flex: none; display: grid; place-items: center; width: 36px; height: 40px; font: 700 15px var(--font-v2-mono); color: var(--color-v2-ink);
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
@@ -117,19 +107,20 @@ button.hp-card:active { background: var(--color-v2-raised, #131c2f); }
 .hp-compare td[data-best] { color: var(--color-v2-ink); font-weight: 700; }
 .hp-compare .is-own { background: color-mix(in srgb, var(--ship) 10%, transparent); }
 .hp-compare thead .is-own { border-radius: 6px 6px 0 0; }
-/* The way in: one line of facts, then one button. Teal when it flies, plain when only practice is open. */
-.hp-facts { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 0 6px; font: 10px var(--font-v2-mono);
-  color: var(--color-v2-ink-3); font-variant-numeric: tabular-nums; text-align: center; }
-.hp-facts i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--color-v2-ink-3); }
-.hp-facts i.is-live { background: var(--color-v2-self); }
-.hp-go { display: flex; width: 100%; min-height: 50px; align-items: center; gap: 10px; padding: 8px 14px; border-radius: var(--radius-control, 10px);
-  border: 1px solid var(--color-v2-line-hi); background: var(--color-v2-panel); color: var(--color-v2-ink); text-align: left; }
-.hp-go.is-ready { border-color: transparent; color: #04120f;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-v2-self) 92%, #fff), var(--color-v2-self)); }
-.hp-go.is-ready small { color: color-mix(in srgb, #04120f 72%, transparent); }
-.hp-go.is-blocked small { color: var(--color-v2-warn); }
-.hp-go.is-back { justify-content: center; }
-.hp-go:active { transform: translateY(1px); }
+/* The way in: one line of facts, then the one press: lit when it flies, steel when only practice is open. */
+.gk-hangardock__facts { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 0 6px; text-align: center; }
+.gk-hangardock__facts i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--gk-ink-3); }
+.gk-hangardock__facts i[data-live] { background: var(--gk-self); box-shadow: 0 0 6px var(--gk-self); }
+.gk-hangardock__pair { display: grid; gap: 6px; justify-items: center; }
+.gk-hangardock__pair > .gk-hold { width: 100%; }
+/* The ship's state on the bay. */
+.gk-shipstate { gap: 6px; }
+.gk-shipstate i { width: 7px; height: 7px; border-radius: 50%; background: var(--gk-ink-3); }
+.gk-shipstate[data-tone='self'] i { background: var(--gk-self); }
+.gk-shipstate[data-tone='warn'] i { background: var(--gk-warn); }
+/* The class's door carries its signature mark in the class's colour. */
+[data-part='class-row'] .hp-sig-icon { display: grid; place-items: center; width: 34px; height: 34px; padding: 6px; border-radius: 2px; }
+
 /* What the next level adds, on the same bar: never thinner than a sliver, and it breathes so it reads as "to come". */
 .hp-next { min-width: 4px; background: color-mix(in srgb, var(--color-v2-self) 70%, #fff); box-shadow: 0 0 6px var(--color-v2-self);
   animation: hp-next 1.6s ease-in-out infinite; }

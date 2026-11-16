@@ -7,6 +7,7 @@ import { Segmented } from '../../v2/kit/Segmented.js';
 import { HoldButton } from '../../v2/kit/HoldButton.js';
 import { SectionHead } from '../../v2/kit/Surface.js';
 import { Icon } from '../../v2/icons.js';
+import { Glyph } from '../../game-ui/index.js';
 import { classStatRows, type ClassStatRow } from '../ClassPicker.js';
 import { ACTION_ICONS, SIGNATURE_ICONS } from '../Controls.js';
 import { SHIP_TONE } from '../shipTone.js';
@@ -47,11 +48,11 @@ const head = (id: 'i-spark' | 'i-base' | 'i-fleet' | 'i-info'): React.ReactNode 
 export function ShipStatus({ c, hangar, now }: { c: ArenaCopy; hangar: Hangar; now: number }) {
   const block = launchBlock(hangar, now);
   const state = block?.kind === 'ready' ? block.reason : block?.kind === 'flying' || block?.kind === 'escort' || block?.kind === 'homeward' ? block.kind : 'ready';
-  const dot = state === 'ready' ? 'bg-v2-self' : state === 'repair' || state === 'service' ? 'bg-v2-warn' : 'bg-v2-ink-3';
+  const tone = state === 'ready' ? 'self' : state === 'repair' || state === 'service' ? 'warn' : undefined;
   const text = block?.kind === 'ready' ? `${block.reason === 'repair' ? c.repairing : c.servicing} · ${clockText(block.until - now)}`
     : block?.kind === 'homeward' ? `${c.homing} · ${clockText(block.until - now)}` : state === 'escort' ? c.escorting : state === 'flying' ? c.inFlight : c.ready;
-  return <span className="hp-status flex items-center gap-1.5 rounded-full border border-v2-line bg-v2-deep/70 px-2 py-0.5 font-v2-mono text-micro tabular-nums text-v2-ink-2">
-    <i aria-hidden className={`size-1.5 shrink-0 rounded-full ${dot}`} />
+  return <span className="gk-chip gk-shipstate gk-num" {...(tone ? { 'data-tone': tone } : {})}>
+    <i aria-hidden />
     <span data-status={state}>{text}</span>
   </span>;
 }
@@ -331,6 +332,5 @@ export function RulesBlock({ c }: { c: ArenaCopy }) {
 
 /** A desk that answered no, or an order it refused: said plainly, not as an alarm (red is for harm). */
 export function DeskNote({ children }: { children: ReactNode }) {
-  return <p role="alert" className="flex items-center gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2 text-caption text-v2-ink-2">
-    <Icon id="i-warn" className="size-3.5 shrink-0 text-v2-warn" />{children}</p>;
+  return <p role="alert" className="gk-inote" data-tone="warn"><Glyph id="warn" /><span>{children}</span></p>;
 }
