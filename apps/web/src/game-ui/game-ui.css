@@ -16487,3 +16487,20 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-brandstatus__clock [role='timer'] { flex: none; font-size: var(--gk-t-lead); font-weight: 700; color: var(--gk-warn); }
 .gk-brandstatus .gk-sub[data-tone='warn'] { color: var(--gk-warn); font-size: var(--gk-t-body); }
 .gk-brandstatus .gk-btn { margin-top: var(--gk-s2); text-decoration: none; }
+
+/* ── G13-b (2026-11-16): the sign-in sheet ─────────────────────────────────── */
+.gk-authsheet__scrim { position: absolute; inset: 0; background: color-mix(in srgb, var(--gk-void) 72%, transparent); }
+.gk-authsheet { position: relative; display: grid; gap: var(--gk-s3); width: 100%; max-width: 28rem; max-height: 92dvh; overflow-y: auto;
+  padding: var(--gk-s2) var(--gk-s4) calc(var(--gk-s5) + env(safe-area-inset-bottom, 0px));
+  border: 1px solid var(--gk-metal-edge); border-bottom: 0; border-radius: var(--gk-r-lg) var(--gk-r-lg) 0 0;
+  background: linear-gradient(180deg, var(--gk-metal-2), var(--gk-deep) 220px); color: var(--gk-ink); font-family: var(--gk-font-text);
+  box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.55), inset 0 1px 0 var(--gk-metal-hi); }
+@media (min-width: 640px) { .gk-authsheet { border-bottom: 1px solid var(--gk-metal-edge); border-radius: var(--gk-r-lg); padding-bottom: var(--gk-s5); } }
+.gk-authsheet__grab { justify-self: center; width: 36px; height: 4px; border-radius: 2px; background: var(--gk-metal-edge); }
+@media (min-width: 640px) { .gk-authsheet__grab { display: none; } }
+.gk-authsheet__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--gk-s3); }
+.gk-authsheet__head .gk-label { margin: 0; }
+.gk-authsheet__title { margin: 2px 0 0; font-size: var(--gk-t-title); line-height: 1.1; }
+.gk-authsheet__hint { margin: 0; font-size: var(--gk-t-small); color: var(--gk-ink-2); }
+.gk-authsheet__forgot { justify-self: start; margin-top: calc(-1 * var(--gk-s2)); padding-inline: 0; }
+.gk-authsheet .gk-field__input[data-invalid] { border-color: var(--gk-hostile-hi); }

@@ -2167,6 +2167,18 @@ Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak ala
 - Denetim (tr, 3 profil): bakım 1 → 0, güncelleme 0 → 0, çökme 9 → 0.
 - `landing-api-failure` testindeki ses modülü sahtesi gerçek modülü yayacak şekilde genişletildi; kit düğmesi `OWN_SOUND`'u istiyor.
 
+
+### G13-b — giriş paneli kit'te (2026-11-16)
+
+- Giriş paneli v2'den kit'e geçti:
+  - kit metal panel ve kit yazı tipiyle başlık; kapat düğmesi kit yuvarlak düğmesi;
+  - iki alan kit cam yuvası, kit etiketleriyle;
+  - ret, zarar renginde bir kit afişi; ilgili alanın kenarı yanıyor;
+  - tek parlak "Giriş yap" düğmesi; "Parolamı unuttum" ve "Yeni komutan oluştur" sessiz kit düğmeleri.
+- Davranış aynı: arka plana yanlışlıkla gelen tıklamaya karşı koruma (`useOwnPress`), geri tuşu, Esc, odak tuzağı, form tek giriş noktası.
+- Şifre sıfırlama zaten kit'teydi (puan 0).
+- Denetim (tr, 3 profil): giriş 23 → 2. Kalan 2 "tepkisiz" bulgusu arkadaki açılış sayfasının dil seçicisi ve Wiki bağlantısı.
+
 ## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
 
 | # | Yüzey | Dosya (satır) | Dil | Not |
