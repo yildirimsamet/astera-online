@@ -68,7 +68,7 @@ describe('direct messages in chat', () => {
     });
     await userEvent.setup().click(screen.getByRole('tab', { name: /DM.*1 unread/i }));
     const bubble = document.querySelector('[data-chat-message="message-1"]')!;
-    expect(bubble).toHaveClass('border-rank-silver/35');
+    expect(bubble).toHaveAttribute('data-tone', 'silver');
     expect(bubble.querySelector('[data-chat-supporter-icon]')).toHaveAttribute('aria-label', 'Astera supporter');
     expect(bubble.querySelector('[data-chat-podium-icon]')).toHaveAttribute('aria-label', 'Previous season · place 2');
   });

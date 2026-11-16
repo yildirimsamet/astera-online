@@ -62,15 +62,18 @@ import { EmptyState } from '../v2/kit/Surface.js';
 import { Trophy, type Place } from '../ui/Medal.js';
 import { useAdminChatScopes, useAdminClanChat, useAdminPostClanChat } from '../api/adminQueries.js';
 
-const PODIUM_BORDER: Record<Place, string> = { 1: 'border-rank-gold/35', 2: 'border-rank-silver/35', 3: 'border-rank-copper/35' };
-const PODIUM_INK: Record<Place, string> = { 1: 'text-rank-gold', 2: 'text-rank-silver', 3: 'text-rank-copper' };
-/** A thumb's 44 px around a 14 px mark; the line keeps its height, and the gaps beside it lend 6 px each (C3). */
-const RECOGNITION_BUTTON = 'relative -mx-1.5 -my-3 inline-flex min-h-11 min-w-11 shrink-0 touch-manipulation items-center justify-center self-center rounded-cell transition-transform active:scale-90 hover:bg-v2-line/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-current';
+/** A podium place's metal: the kit paints a bubble's edge, its cup and its explanation in it. */
+const METAL: Record<Place, 'gold' | 'silver' | 'bronze'> = { 1: 'gold', 2: 'silver', 3: 'bronze' };
+/**
+ * Who a bubble speaks as (2026-11-16): an admin's authority wins, a podium keeps its earned metal,
+ * then a supporter's mark, then your own words (the clan's blue in the clan room) or anyone else's.
+ */
+type BubbleTone = 'admin' | 'gold' | 'silver' | 'bronze' | 'supporter' | 'self' | 'clan' | 'plain';
 
 interface RecognitionHint {
   key: string;
   explanation: string;
-  ink: string;
+  tone: 'supporter' | 'gold' | 'silver' | 'bronze';
   position: { bottom: number; left: number; width: number };
 }
 
@@ -112,11 +115,9 @@ function ClanEventLine({ event, at }: { event: ClanChatEvent; at: Date }) {
   const alarm = event.kind === 'ALARM';
   const perk = EVENT_PERK[event.kind];
   return (
-    <p data-chat-event={event.kind}
-      className={`flex max-w-[92%] items-center gap-2 rounded-control border px-2 py-1 text-micro leading-snug ${alarm
-        ? 'border-v2-hostile/45 bg-v2-hostile/10 text-v2-ink' : 'border-v2-ally/35 bg-v2-ally/10 text-v2-ink'}`}>
-      {perk && <PerkArt perk={perk} className={`size-6 ${alarm ? 'animate-pulse' : ''}`} />}
-      <span className="min-w-0">{text}<span className="ml-1.5 font-v2-mono text-v2-ink-2">{clockTime(at)}</span></span>
+    <p data-chat-event={event.kind} className="gk-chatevent" data-tone={alarm ? 'hostile' : 'info'}>
+      {perk && <PerkArt perk={perk} className={`size-6 shrink-0 ${alarm ? 'animate-pulse' : ''}`} />}
+      <span className="min-w-0">{text}<span className="gk-num gk-chatevent__time">{clockTime(at)}</span></span>
     </p>
   );
 }
@@ -739,7 +740,7 @@ function ChannelPanel({
       explanation: recognition === 'supporter' ? t('chat.supporterExplanation')
         : ranking === 'HONOR' ? t('chat.previousSeasonHonorExplanation', { rank: recognition })
         : t('chat.previousSeasonExplanation', { rank: recognition }),
-      ink: recognition === 'supporter' ? 'text-chat-supporter-ink' : PODIUM_INK[recognition],
+      tone: recognition === 'supporter' ? 'supporter' : METAL[recognition],
       position: {
         bottom: window.innerHeight - rect.top + 8,
         left: Math.min(Math.max(8, rect.left + rect.width / 2 - width / 2), Math.max(8, window.innerWidth - width - 8)),
@@ -885,10 +886,12 @@ function ChannelPanel({
   };
 
   // Your own words in your colour; in the clan's room, in the allies' colour.
-  const selfSurface = tone !== 'clan'
-    ? 'border-v2-self/35 bg-v2-self/10'
-    : 'border-v2-ally/40 bg-v2-ally/10';
-  const selfInk = tone !== 'clan' ? 'text-v2-self' : 'text-v2-ally';
+  const bubbleTone = (message: MessageRow): BubbleTone =>
+    message.admin === true ? 'admin'
+      : message.previousSeasonRank !== undefined ? METAL[message.previousSeasonRank]
+      : message.supporter === true ? 'supporter'
+      : message.self ? tone === 'clan' ? 'clan' : 'self'
+      : 'plain';
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -904,7 +907,7 @@ function ChannelPanel({
         onScroll={handleHistoryScroll}
       >
         {fetchingOlder ? (
-          <div className="pointer-events-none absolute inset-x-0 top-2 z-10 text-center text-micro text-v2-ink-2" role="status">
+          <div className="gk gk-note pointer-events-none absolute inset-x-0 top-2 z-10 text-center" role="status">
             {loadingOlder}
           </div>
         ) : null}
@@ -932,6 +935,8 @@ function ChannelPanel({
                 <div className="relative min-w-0 max-w-[84%]">
                   <div
                     data-chat-message={message.id}
+                    data-side={message.self ? 'self' : 'other'}
+                    data-tone={bubbleTone(message)}
                     {...(actionMessageId === message.id ? { 'data-held': '' } : {})}
                     tabIndex={0}
                     aria-label={t('chat.messageActions', { name: message.username })}
@@ -960,18 +965,11 @@ function ChannelPanel({
                         event.preventDefault(); openActions(message.id);
                       }
                     }}
-                    /* Admin authority wins; podium supporters keep the earned metal. */
-                    className={`min-w-0 touch-manipulation rounded-control border px-2.5 py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self ${message.self ? 'rounded-tr-cell' : 'rounded-tl-cell'} ${
-                      message.admin === true
-                        ? 'border-chat-admin/35 bg-v2-deep'
-                        : message.previousSeasonRank !== undefined ? `${PODIUM_BORDER[message.previousSeasonRank]} bg-v2-deep`
-                        : message.supporter === true ? 'border-chat-supporter/35 bg-v2-deep'
-                        : message.self ? selfSurface : 'border-v2-line bg-v2-deep'
-                    }`}
+                    className="gk gk-bubble"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="gk-bubble__head">
                       {message.self ? (
-                        <strong data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-chat-admin-ink' : selfInk}`}><TaggedName name={message.username} clanTag={message.clanTag} clanTier={message.clanTier} /></strong>
+                        <strong data-chat-author className="gk-bubble__who"><TaggedName name={message.username} clanTag={message.clanTag} clanTier={message.clanTier} /></strong>
                       ) : message.planetId ? (
                         <Press
                           onPress={() => {
@@ -979,21 +977,19 @@ function ChannelPanel({
                             if (planetId) onFocusPlanet(planetId);
                           }}
                           data-chat-author
-                          className={`-my-3 flex min-h-11 min-w-0 items-center transition-transform active:scale-95 text-caption font-semibold underline decoration-v2-ink-3/50 underline-offset-2 ${
-                            message.admin === true ? 'text-chat-admin-ink' : 'text-v2-ink'
-                          }`}
+                          className="gk-bubble__who gk-bubble__who--link"
                         >
                           <span className="truncate"><TaggedName name={message.username} clanTag={message.clanTag} clanTier={message.clanTier} /></span>
                         </Press>
                       ) : (
-                        <span data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-chat-admin-ink' : 'text-v2-ink'}`}><TaggedName name={message.username} clanTag={message.clanTag} clanTier={message.clanTier} /></span>
+                        <span data-chat-author className="gk-bubble__who"><TaggedName name={message.username} clanTag={message.clanTag} clanTier={message.clanTier} /></span>
                       )}
                       {message.supporter === true && (
                         <button type="button" data-chat-supporter-icon aria-label={t('chat.supporterBadge')}
                           aria-describedby={recognitionHint?.key === `${message.id}:supporter` ? recognitionHintId : undefined}
                           onClick={(event) => { explainRecognition(event.currentTarget, message.id, 'supporter'); }}
                           onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); }}
-                          className={`${RECOGNITION_BUTTON} text-chat-supporter-ink`}>
+                          className="gk-bubble__badge" data-tone="supporter">
                           <HeartIcon className="size-3.5" />
                         </button>
                       )}
@@ -1003,23 +999,23 @@ function ChannelPanel({
                           aria-describedby={recognitionHint?.key === `${message.id}:${message.previousSeasonRank}` ? recognitionHintId : undefined}
                           onClick={(event) => { if (message.previousSeasonRank !== undefined) explainRecognition(event.currentTarget, message.id, message.previousSeasonRank, message.previousSeasonRanking); }}
                           onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); }}
-                          className={`${RECOGNITION_BUTTON} [&_svg]:text-current ${PODIUM_INK[message.previousSeasonRank]}`}>
+                          className="gk-bubble__badge" data-tone={METAL[message.previousSeasonRank]}>
                           <Trophy won size={14} />
                           {message.previousSeasonRanking === 'HONOR' ? <HonorIcon className="ml-0.5 size-3" /> : null}
                         </button>
                       )}
-                      <time className="ml-auto shrink-0 font-v2-mono text-micro text-v2-ink-2" dateTime={message.createdAt.toISOString()}>
+                      <time className="gk-num gk-bubble__time" dateTime={message.createdAt.toISOString()}>
                         {chatRelativeTime(message.createdAt, now, t)}
                       </time>
                     </div>
                     {message.replyTo ? (
-                      <div className="mt-1 max-w-full rounded-control border-l-2 border-v2-self bg-v2-raise px-2 py-1 text-micro" data-chat-reply={message.replyTo.id}>
-                        <span className="block font-semibold text-v2-self">{message.replyTo.username}</span>
-                        <span className="block truncate text-v2-ink-2">{message.replyTo.content || (message.replyTo.media ? t(`chat.media.${message.replyTo.media.kind === 'image' ? 'photo' : message.replyTo.media.kind === 'video' ? 'video' : 'youtube'}`) : '')}</span>
+                      <div className="gk-bubble__quote" data-chat-reply={message.replyTo.id}>
+                        <span className="gk-bubble__quotewho">{message.replyTo.username}</span>
+                        <span className="gk-bubble__quotetext">{message.replyTo.content || (message.replyTo.media ? t(`chat.media.${message.replyTo.media.kind === 'image' ? 'photo' : message.replyTo.media.kind === 'video' ? 'video' : 'youtube'}`) : '')}</span>
                       </div>
                     ) : null}
                     {message.media ? <ChatMediaAttachment key={message.media.kind === 'youtube' ? message.media.videoId : message.media.assetId} media={message.media} channel={tone} messageId={message.id} onLoad={() => { const log = history.current; if (log && followingLatest.current) log.scrollTop = log.scrollHeight; }} /> : null}
-                    <p className="mt-0.5 whitespace-pre-wrap break-words text-body leading-snug text-v2-ink-2">
+                    <p className="gk-bubble__text">
                       {message.content}
                     </p>
                   </div>
@@ -1081,10 +1077,9 @@ function ChannelPanel({
       {roster ? <ChatReactionRoster channel={tone} messageId={roster.messageId} anchor={roster.anchor} onClose={closeRoster} /> : null}
 
       {recognitionHint !== null && createPortal(
-        <span id={recognitionHintId} role="tooltip" aria-live="polite"
-          className={`pointer-events-none fixed z-[100] rounded-control border border-current/35 bg-v2-raise px-3 py-2 text-left font-v2-ui text-label leading-snug shadow-xl ${recognitionHint.ink}`}
-          style={recognitionHint.position}>
-          <span className="text-v2-ink">{recognitionHint.explanation}</span>
+        <span id={recognitionHintId} role="tooltip" aria-live="polite" className="gk gk-tip gk-chathint pointer-events-none fixed"
+          data-tone={recognitionHint.tone} style={recognitionHint.position}>
+          {recognitionHint.explanation}
         </span>, document.body,
       )}
 

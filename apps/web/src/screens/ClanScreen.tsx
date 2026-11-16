@@ -1484,7 +1484,6 @@ function ClanAidPanel({
                     <span className="gk-lrow__name">{name}</span>
                     <span className="gk-sub gk-num gk-lrow__info">{t('clan.aid.available', { count: available })}</span>
                     <QuantityStepper
-                      look="kit"
                       value={packed}
                       min={0}
                       max={available}

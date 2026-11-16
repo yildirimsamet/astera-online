@@ -164,7 +164,6 @@ export function ClanSupportSheet({ host, worlds, onClose, onSent }: {
                       {chosen}<span className="gk-lrow__of">/{held}</span>
                     </span>
                     <QuantityStepper
-                      look="kit"
                       value={chosen}
                       min={0}
                       max={held}

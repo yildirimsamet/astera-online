@@ -2819,7 +2819,6 @@ export function BuildSheet({
           */}
           {!blocked && <div data-build-count className="gk-build__count">
             <QuantityStepper
-              look="kit"
               value={clamped}
               min={lessonCount ?? 1}
               max={lessonCount ?? ceiling}

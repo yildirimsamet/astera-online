@@ -158,10 +158,10 @@ describe('galaxy chat surface', () => {
         ...message, previousSeasonRank: index + 1,
       })), nextBefore: null }], pageParams: [null],
     });
-    const metals = ['gold', 'silver', 'copper'];
+    const metals = ['gold', 'silver', 'bronze'];
     initial.pages[0]!.messages.forEach((message, index) => {
       const bubble = document.querySelector(`[data-chat-message="${message.id}"]`)!;
-      expect(bubble).toHaveClass(`border-rank-${metals[index]}/35`);
+      expect(bubble).toHaveAttribute('data-tone', metals[index]);
       const icon = bubble.querySelector('[data-chat-podium-icon]');
       expect(icon).toHaveAttribute('aria-label', `Previous season · place ${index + 1}`);
       expect(icon?.previousElementSibling).toHaveAttribute('data-chat-author');
@@ -593,8 +593,8 @@ describe('galaxy chat surface', () => {
   it('underlines and routes only commanders whose location is known', async () => {
     const { onFocusPlanet } = show();
     const username = screen.getByRole('button', { name: 'İzci' });
-    expect(username).toHaveClass('underline');
-    expect(screen.getByText('Gizli')).not.toHaveClass('underline');
+    expect(username).toHaveClass('gk-bubble__who--link');
+    expect(screen.getByText('Gizli').closest('[data-chat-author]')).not.toHaveClass('gk-bubble__who--link');
     expect(screen.queryByRole('button', { name: 'Gizli' })).not.toBeInTheDocument();
     await userEvent.setup().click(username);
     expect(onFocusPlanet).toHaveBeenCalledWith('other-planet');
@@ -971,16 +971,14 @@ describe('the admin speaking in chat', () => {
   it('separates the admin from the gold podium with a quiet rose border and name', () => {
     const view = adminMessages();
     const row = view.container.querySelector('[data-chat-message="m-admin"]')!;
-    expect(row).toHaveClass('border-chat-admin/35');
-    expect(row.querySelector('[data-chat-author]')).toHaveClass('text-chat-admin-ink');
-    expect(row).not.toHaveClass('border-v2-premium/35');
+    expect(row).toHaveAttribute('data-tone', 'admin');
+    expect(row.querySelector('[data-chat-author]')).toHaveClass('gk-bubble__who');
   });
 
   it('leaves an ordinary commander untouched', () => {
     const view = adminMessages();
     const row = view.container.querySelector('[data-chat-message="m-player"]');
-    expect(row!.className).not.toContain('border-chat-admin');
-    expect(row!.querySelector('[data-chat-author]')!.className).not.toContain('text-chat-admin-ink');
+    expect(row).toHaveAttribute('data-tone', 'plain');
   });
 });
 
@@ -993,7 +991,7 @@ describe('permanent supporter recognition', () => {
     });
     for (const message of initial.pages[0]!.messages) {
       const bubble = document.querySelector(`[data-chat-message="${message.id}"]`)!;
-      expect(bubble).toHaveClass('border-chat-supporter/35');
+      expect(bubble).toHaveAttribute('data-tone', 'supporter');
       const heart = bubble.querySelector('[data-chat-supporter-icon]');
       expect(heart).toHaveAttribute('aria-label', 'Astera supporter');
       expect(heart?.querySelector('svg')).not.toBeNull();
@@ -1007,9 +1005,8 @@ describe('permanent supporter recognition', () => {
     ] }] };
     show(vi.fn(), 'general', data);
     const bubble = document.querySelector('[data-chat-message="one"]')!;
-    const metal = { 1: 'gold', 2: 'silver', 3: 'copper' }[rank];
-    expect(bubble).toHaveClass(`border-rank-${metal}/35`);
-    expect(bubble).not.toHaveClass('border-chat-supporter/35');
+    const metal = { 1: 'gold', 2: 'silver', 3: 'bronze' }[rank];
+    expect(bubble).toHaveAttribute('data-tone', metal);
     const heart = bubble.querySelector('[data-chat-supporter-icon]');
     expect(heart).toHaveAttribute('aria-label', 'Astera supporter');
     expect(heart?.nextElementSibling).toHaveAttribute('data-chat-podium-icon');
@@ -1020,8 +1017,7 @@ describe('permanent supporter recognition', () => {
       { ...initial.pages[0]!.messages[2], admin: true, supporter: true, previousSeasonRank: 1 },
     ] }] });
     const bubble = document.querySelector('[data-chat-message="two"]')!;
-    expect(bubble).toHaveClass('border-chat-admin/35');
-    expect(bubble.querySelector('[data-chat-author]')).toHaveClass('text-chat-admin-ink');
+    expect(bubble).toHaveAttribute('data-tone', 'admin');
     expect(bubble.querySelector('[data-chat-supporter-icon]')).not.toBeNull();
     expect(bubble.querySelector('[data-chat-podium-icon]')).not.toBeNull();
   });
@@ -1052,7 +1048,7 @@ describe('chat recognition explanations', () => {
     ] }] });
     const cup = screen.getByRole('button', { name: `Honor · ${i18n.t('chat.previousSeasonPlace', { rank: 2 })}` });
     expect(cup.querySelectorAll('svg')).toHaveLength(2);
-    expect(document.querySelector('[data-chat-message="one"]')).toHaveClass('border-rank-silver/35');
+    expect(document.querySelector('[data-chat-message="one"]')).toHaveAttribute('data-tone', 'silver');
     fireEvent.click(cup);
     const explanation = screen.getByRole('tooltip');
     expect(explanation).toHaveTextContent('Honor');
@@ -1165,5 +1161,44 @@ describe('chat recognition explanations', () => {
     expect(podium).not.toContain('chat.');
     expect(screen.getByRole('tooltip')).toHaveTextContent(podium);
     expect(podium).toContain('2');
+  });
+});
+
+/**
+ * THE MESSAGES ON THE KIT (2026-11-16). The words are the brightest line in a bubble; the bubble is the
+ * kit's glass with the speaker's corner cut, its tone a data mark the kit paints (yours, the clan's,
+ * an admin's rose, a podium's metal, a supporter's teal); the time in the kit's figures; a quote in a
+ * thin well; the clan's own lines a ship's-log strip between the bubbles.
+ */
+describe('the messages on the kit', () => {
+  const OLD = /(^|\s)(text|bg|border|font|decoration)-v2-|rounded-(control|cell)|(^|\s)text-(micro|caption|body|label)(\s|$)|chat-admin|chat-supporter|rank-(gold|silver|copper)/;
+  const oldPaint = (root: Element): string[] =>
+    [root, ...root.querySelectorAll('[class]')].map((el) => el.getAttribute('class') ?? '').filter((name) => OLD.test(name));
+
+  it('draws each message as a kit bubble on its side, in its tone, with no old paint', () => {
+    show();
+    const theirs = document.querySelector('[data-chat-message="one"]')!;
+    const mine = document.querySelector('[data-chat-message="two"]')!;
+    expect(theirs).toHaveClass('gk-bubble');
+    expect(theirs).toHaveAttribute('data-side', 'other');
+    expect(mine).toHaveAttribute('data-side', 'self');
+    expect(mine).toHaveAttribute('data-tone', 'self');
+    expect(theirs.querySelector('.gk-bubble__text')).toHaveTextContent('Merhaba galaksi');
+    expect(theirs.querySelector('time')).toHaveClass('gk-num');
+    expect(oldPaint(screen.getByRole('log'))).toEqual([]);
+  });
+
+  it('speaks your words in the clan’s blue in the clan room', () => {
+    show(vi.fn(), 'clan', initial, undefined, false, [{ id: 'clan-mine', authorPlayerId: 'mine', username: 'Vantage', content: 'Geliyorum', createdAt: at, self: true }]);
+    expect(document.querySelector('[data-chat-message="clan-mine"]')).toHaveAttribute('data-tone', 'clan');
+  });
+
+  it('logs the clan’s own lines on a kit strip, an alarm in the colour of harm', () => {
+    show(vi.fn(), 'clan', initial, undefined, false, [{ id: 'clan-alarm', authorPlayerId: 'system', username: '', content: '', createdAt: at, self: false,
+      event: { kind: 'ALARM', params: { hostName: 'Ayşe', hostPlanetName: 'Kuzgun', arriveAt: new Date(at.getTime() + 9 * 60_000).toISOString() } } }]);
+    const line = document.querySelector('[data-chat-event="ALARM"]')!;
+    expect(line).toHaveClass('gk-chatevent');
+    expect(line).toHaveAttribute('data-tone', 'hostile');
+    expect(oldPaint(screen.getByRole('log'))).toEqual([]);
   });
 });

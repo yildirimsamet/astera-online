@@ -162,7 +162,7 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
             <span className="gk-mon__hullwords"><span className="gk-mon__hullname">{hullName(hull)}</span>
               <span className="gk-report__label">{t('launch.atHome', { count: available[hull] ?? 0 })}</span></span>
             <fieldset disabled={tierBlocked} className="gk-mon__count">
-              <QuantityStepper key={hull} look="kit"
+              <QuantityStepper key={hull}
                 min={0} max={available[hull] ?? 0} value={fleet[hull] ?? 0} onChange={(count) => { change(hull, count); }}
                 valueLabel={`${hullName(hull)} · ${t('launch.quantity', { name: hullName(hull) })}`}
                 decreaseLabel={t('launch.fewer', { name: hullName(hull) })} increaseLabel={t('launch.more', { name: hullName(hull) })}
@@ -268,7 +268,7 @@ export function MonumentWaveCard({ wave, arrival = null }: { wave: MonumentWave;
     {wave.lots.map((lot) => <div key={lot.id} className="gk-mon__lot">
       <span className="gk-mon__hullwords"><span className="gk-mon__hullname">{hullName(lot.hull)} × {full(lot.count)}</span>
         <span className="gk-report__label">{t('monument.hp', { percent: decimal(lot.remainingHp / lot.maxHp * 100), remaining: decimal(lot.remainingHp), max: decimal(lot.maxHp) })}</span></span>
-      {canRecall && <QuantityStepper look="kit" min={0} max={lot.count} value={counts[lot.id] ?? 0} onChange={(count) => { setCounts((previous) => ({ ...previous, [lot.id]: count })); }}
+      {canRecall && <QuantityStepper min={0} max={lot.count} value={counts[lot.id] ?? 0} onChange={(count) => { setCounts((previous) => ({ ...previous, [lot.id]: count })); }}
         valueLabel={t('monument.recallQuantity', { name: hullName(lot.hull) })} decreaseLabel={t('monument.recallLess', { name: hullName(lot.hull) })}
         increaseLabel={t('monument.recallMore', { name: hullName(lot.hull) })} maxLabel={t('monument.recallMax', { name: hullName(lot.hull) })} maxText={t('launch.maxShort')} />}
     </div>)}
