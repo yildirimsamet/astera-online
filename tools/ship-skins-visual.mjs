@@ -73,7 +73,7 @@ export async function verifyShipSkins(output) {
       assert.equal(await categories.getByRole('button', { name: /^Kazıcı/ }).count(), 0);
       await categories.getByRole('button', { name: /^Gemi/ }).click();
       for (const [id, name, hull] of ships) {
-        await page.locator('.cosmetic-collection').getByRole('button', { name: new RegExp(`^${name} `) }).click();
+        await page.locator('.gk-cosmo').getByRole('button', { name: new RegExp(`^${name} `) }).click();
         await page.locator(`[data-cosmetic-stage="${id}"][data-cosmetic-ready="true"]`).waitFor({ timeout: 60000 });
         assert.equal(await page.getByText(`${hull} için`, { exact: true }).count(), 2);
         const broken = await page.evaluate(async () => {

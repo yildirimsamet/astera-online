@@ -58,8 +58,8 @@ export function SkinPreview({
         <directionalLight position={[3, 4, 5]} intensity={3.2} color="#ffffff" />
         <directionalLight position={[-4, -2, -4]} intensity={1.2} color="#7caaff" />
         <SkinAssetBoundary key={`${skinId}:${status}`}
-          fallback={<Html center><span className="whitespace-nowrap font-v2-ui text-micro uppercase tracking-wide text-v2-ink-2">{t('skins.modelUnavailable')}</span></Html>}>
-          <Suspense fallback={<Html center><span className="font-v2-mono text-micro text-v2-ink-3">…</span></Html>}>
+          fallback={<Html center><span className="gk gk-label whitespace-nowrap">{t('skins.modelUnavailable')}</span></Html>}>
+          <Suspense fallback={<Html center><span className="gk gk-note">…</span></Html>}>
             <PlanetSkinModel skinId={skinId} status={status} nodes={NODE}
               previewPhaseOffset={phaseOffset ?? START_ANGLES[skinId] ?? 0}
               freezeRotation={still} onRendered={still ? markRendered : undefined} />

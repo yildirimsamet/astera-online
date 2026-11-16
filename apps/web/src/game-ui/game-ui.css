@@ -15396,6 +15396,35 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
   color: var(--gk-ink);
 }
 
+/* ── C38 (2026-11-15): the Shopier step. Once the commander's own page is made, a gold plate
+   holds the one way on (the kit's main press as a link out) and the two facts under it. */
+.gk-shopier {
+  --edge: linear-gradient(90deg, var(--gk-gold), color-mix(in srgb, var(--gk-gold) 30%, var(--gk-metal-edge)));
+  display: grid;
+  gap: var(--gk-s2);
+  margin-top: var(--gk-s2);
+  padding: var(--gk-s3);
+}
+.gk-shopier__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gk-gold);
+}
+.gk-shopier__title .gk-glyph { width: 14px; height: 14px; }
+.gk-shopier .gk-btn { text-decoration: none; }
+.gk-shopier__line {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 6px;
+  font-size: var(--gk-t-floor);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-shopier__line .gk-glyph { width: 14px; height: 14px; margin-top: 2px; }
+.gk-shopier__line--wait { color: var(--gk-ink); }
+.gk-shopier__line--wait .gk-glyph { color: var(--gk-gold); }
+
 /* ── G7-a: the picker — a field's name and its pick on a metal face; a press drops the kit list ── */
 .gk-picker { display: grid; gap: 3px; min-width: 0; }
 .gk-picker__face {
@@ -16602,6 +16631,472 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-installsheet__key span { color: var(--gk-ink-3); }
 .gk-installsheet__address { text-align: center; font: 700 var(--gk-t-lead) var(--gk-font-display); font-stretch: var(--gk-display-stretch); letter-spacing: .02em; }
 .gk-installsheet__address span { color: var(--gk-self); }
+
+/* ── C35 (2026-11-16): the store. The look turns in its own living light (store.css draws the
+   nebula, aura, orbit, embers and stars); around it the kit: the price on a gold plate over one
+   lit press, the shelf of kit cards that glow in their own colour, the set on its own gold plate. */
+.gk-shopfront {
+  min-height: 100%;
+  background: var(--gk-void);
+  color: var(--gk-ink);
+}
+.gk-shopfront__status {
+  max-width: 42rem;
+  margin: 0 auto var(--gk-s3);
+  padding: 0 var(--gk-gutter);
+}
+.gk-shop {
+  position: relative;
+  min-height: 100%;
+  overflow: hidden;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+.gk-shop__sky {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 34rem;
+  pointer-events: none;
+}
+.gk-shop__fade {
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--gk-void) 30%, transparent) 50%, var(--gk-void));
+}
+.gk-shop__stars {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 26rem;
+  pointer-events: none;
+}
+.gk-shop__body {
+  position: relative;
+  display: grid;
+  gap: var(--gk-s3);
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: var(--gk-s2) var(--gk-gutter) 0;
+}
+.gk-shop__panel { display: grid; gap: var(--gk-s3); }
+.gk-shop__stage { position: relative; }
+.gk-shop__aura {
+  position: absolute;
+  inset: 8% 12% auto;
+  height: 80%;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+.gk-shop__orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 88%;
+  height: 34%;
+  translate: -50% -50%;
+  pointer-events: none;
+}
+.gk-shop__embers {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.gk-shop__drag {
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+.gk-shop__drag .gk-glyph { width: 12px; height: 12px; }
+.gk-shop__name { display: grid; gap: var(--gk-s2); margin-top: -4px; }
+.gk-shop__edition {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--gk-gold);
+}
+.gk-shop__edition .gk-glyph { width: 12px; height: 12px; }
+.gk-shop__title { font-size: var(--gk-t-head); letter-spacing: 0.04em; }
+.gk-shop__price,
+.gk-shop__bundle {
+  --edge: linear-gradient(90deg, var(--gk-gold), color-mix(in srgb, var(--gk-gold) 30%, var(--gk-metal-edge)));
+  --face:
+    linear-gradient(90deg, color-mix(in srgb, var(--gk-gold) 12%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+}
+.gk-shop__pricehead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--gk-s2);
+}
+.gk-shop__amount { font-size: var(--gk-t-head); color: var(--gk-gold); }
+.gk-shop__collection { display: grid; gap: var(--gk-s2); margin-top: var(--gk-s2); }
+.gk-shop__cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gk-s2);
+}
+@media (min-width: 768px) {
+  .gk-shop__cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .gk-shop__cards[data-many] { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+.gk-shop__card {
+  position: relative;
+  display: block;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-md);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  color: var(--gk-ink);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--gk-press) ease-out, filter var(--gk-press) ease-out, box-shadow var(--gk-quick) ease-out;
+}
+.gk-shop__card[aria-pressed='true'] {
+  border-color: var(--card);
+  box-shadow: 0 0 0 1px var(--card), 0 0 22px -4px var(--card);
+}
+.gk-shop__card:active { transform: scale(0.97); filter: brightness(1.12); }
+.gk-shop__card:focus-visible { outline: 2px solid var(--card); outline-offset: 2px; }
+.gk-shop__art {
+  position: relative;
+  display: block;
+  aspect-ratio: 1.25;
+  overflow: hidden;
+  background: var(--gk-deep);
+}
+.gk-shop__art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.gk-shop__art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, color-mix(in srgb, var(--gk-void) 70%, transparent), transparent 55%);
+}
+.gk-shop__ed {
+  position: absolute;
+  left: 6px;
+  top: 5px;
+  z-index: 1;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink);
+  text-shadow: 0 1px 2px var(--gk-outline);
+}
+.gk-shop__owned {
+  position: absolute;
+  right: 6px;
+  top: 5px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px 1px 5px;
+  border-radius: 9999px;
+  background: var(--gk-self);
+  color: var(--gk-void);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+}
+.gk-shop__owned .gk-glyph { width: 11px; height: 11px; stroke: none; }
+.gk-shop__cardfoot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 6px 8px 8px;
+}
+.gk-shop__cardname {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 var(--gk-t-small) var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.gk-shop__cardprice { flex-shrink: 0; font-size: var(--gk-t-floor); font-weight: 700; color: var(--gk-gold); }
+.gk-shop__bundle { gap: var(--gk-s3); margin-top: var(--gk-s1); }
+.gk-shop__bundlehead { display: flex; align-items: center; gap: var(--gk-s3); }
+.gk-shop__fan { position: relative; flex-shrink: 0; width: 96px; height: 56px; }
+.gk-shop__fan img {
+  position: absolute;
+  top: 0;
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-md);
+  object-fit: cover;
+  box-shadow: 0 6px 12px var(--gk-outline);
+}
+.gk-shop__kicker { color: var(--gk-gold); }
+.gk-shop__bundletitle { font-size: var(--gk-t-body); font-weight: 700; color: var(--gk-ink); line-height: 1.3; }
+.gk-shop__bundleprice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--gk-s2);
+  margin-top: 2px;
+}
+.gk-shop__bundleprice s { font-size: var(--gk-t-floor); color: var(--gk-ink-3); }
+.gk-shop__bundleprice .gk-display { font-size: var(--gk-t-number); color: var(--gk-gold); }
+.gk-shop__save {
+  padding: 1px 7px;
+  border-radius: 9999px;
+  background: var(--gk-gold);
+  color: var(--gk-action-ink);
+  font-size: var(--gk-t-floor);
+  font-weight: 800;
+}
+.gk-shop__values { display: grid; gap: var(--gk-s2); margin: var(--gk-s1) 0 0; padding: 0; list-style: none; }
+.gk-shop__values li {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: var(--gk-s2);
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-shop__values .gk-glyph { width: 15px; height: 15px; margin-top: 2px; color: var(--gk-gold); }
+.gk-shop__trust {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: var(--gk-s2);
+  padding: var(--gk-s2) var(--gk-s3);
+  font-size: var(--gk-t-floor);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-shop__trust .gk-glyph { width: 13px; height: 13px; margin-top: 2px; color: var(--gk-ink-3); }
+
+/* ── C36 (2026-11-16): the inventory. Each world a cut plate with its wardrobe as chips: the worn
+   one lit in your colour with a tick, the one on its way breathing, the world's picture swelling
+   in when a new look lands. */
+.gk-closet {
+  display: grid;
+  gap: var(--gk-s4);
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: var(--gk-s2) var(--gk-gutter) calc(24px + env(safe-area-inset-bottom));
+}
+.gk-closet__owned {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s3);
+  padding: var(--gk-s2) var(--gk-s3);
+}
+.gk-closet__stack { display: flex; flex-shrink: 0; }
+.gk-closet__stack img {
+  width: 28px;
+  height: 28px;
+  margin-left: -8px;
+  border: 2px solid var(--gk-glass);
+  border-radius: 9999px;
+  object-fit: cover;
+}
+.gk-closet__stack img:first-child { margin-left: 0; }
+.gk-closet__ownedname { min-width: 0; font-size: var(--gk-t-small); color: var(--gk-ink-2); }
+.gk-closet__count { margin-left: auto; font-size: var(--gk-t-small); font-weight: 700; color: var(--gk-ink); }
+.gk-closet__worlds { display: grid; gap: var(--gk-s2); }
+.gk-closet__none {
+  padding: var(--gk-s4) var(--gk-s3);
+  border-style: dashed;
+  text-align: center;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.gk-closet__world { display: grid; gap: var(--gk-s3); padding: var(--gk-s3); }
+.gk-closet__head { display: flex; align-items: center; gap: var(--gk-s3); }
+.gk-closet__globe {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  object-fit: cover;
+  background: var(--gk-deep);
+  box-shadow: 0 0 0 1px var(--gk-metal-edge), 0 4px 10px var(--gk-outline);
+  animation: gk-closet-swell var(--gk-settle) var(--gk-pop);
+}
+@keyframes gk-closet-swell {
+  from { transform: scale(0.8); opacity: 0.4; }
+  to { transform: scale(1); opacity: 1; }
+}
+.gk-closet__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 var(--gk-t-lead) var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  letter-spacing: 0.03em;
+  color: var(--gk-ink);
+}
+.gk-closet__looks { display: flex; flex-wrap: wrap; gap: var(--gk-s1); }
+.gk-closet__look {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--gk-hit);
+  padding: 0 10px 0 4px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: 9999px;
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--gk-press) ease-out, border-color var(--gk-quick) ease-out;
+}
+.gk-closet__look img { width: 28px; height: 28px; border-radius: 9999px; object-fit: cover; }
+.gk-closet__look .gk-glyph { width: 13px; height: 13px; color: var(--gk-self); }
+.gk-closet__look:active { transform: scale(0.95); }
+.gk-closet__look:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 2px; }
+.gk-closet__look[aria-pressed='true'] {
+  border-color: var(--gk-self);
+  background:
+    linear-gradient(0deg, color-mix(in srgb, var(--gk-self) 18%, transparent), transparent 85%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  color: var(--gk-ink);
+  cursor: default;
+}
+.gk-closet__look:disabled:not([aria-pressed='true']):not([aria-busy='true']) { opacity: 0.5; cursor: default; }
+.gk-closet__look[aria-busy='true'] {
+  border-color: color-mix(in srgb, var(--gk-self) 70%, var(--gk-metal-edge));
+  color: var(--gk-ink);
+  animation: gk-closet-breathe 900ms ease-in-out infinite alternate;
+}
+@keyframes gk-closet-breathe {
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gk-self) 0%, transparent); }
+  to { box-shadow: 0 0 10px 1px color-mix(in srgb, var(--gk-self) 55%, transparent); }
+}
+
+/* ── C37 (2026-11-16): the cosmetic shelves. The store/inventory switch is the kit's tabs; each
+   shelf a plate with its painting and count; the product on a lit cut plate, its glow in its own
+   colour over a horizon; the products are the store's kit cards. */
+.gk-cosmo__nav { max-width: 42rem; margin: 0 auto; padding: var(--gk-s3) var(--gk-gutter) 0; }
+.gk-cosmo__cats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  gap: 6px;
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: var(--gk-s3) var(--gk-gutter);
+}
+.gk-cosmo__cat {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  align-items: center;
+  gap: 2px 4px;
+  min-width: 0;
+  min-height: var(--gk-hit);
+  padding: 6px 8px 7px 6px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  color: var(--gk-ink-2);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--gk-press) ease-out;
+}
+.gk-cosmo__cat[aria-pressed='true'] {
+  color: var(--gk-ink);
+  border-color: color-mix(in srgb, var(--gk-self) 55%, var(--gk-metal-edge));
+  background:
+    linear-gradient(0deg, color-mix(in srgb, var(--gk-self) 22%, transparent), transparent 80%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  box-shadow: inset 0 -2px 0 var(--gk-self);
+}
+.gk-cosmo__cat:active { transform: translateY(1px); box-shadow: inset 0 2px 5px var(--gk-outline); }
+.gk-cosmo__cat:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 2px; }
+.gk-cosmo__catart { width: 30px; height: 30px; object-fit: contain; }
+.gk-cosmo__catcount { grid-row: 1; grid-column: 2; justify-self: end; align-self: start; font-size: var(--gk-t-floor); font-weight: 700; color: var(--gk-ink-3); }
+.gk-cosmo__cat[aria-pressed='true'] .gk-cosmo__catcount { color: var(--gk-self); }
+.gk-cosmo__catname {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  font: 700 var(--gk-t-floor) var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
+.gk-cosmo {
+  display: grid;
+  gap: var(--gk-s3);
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 0 var(--gk-gutter) var(--gk-s6);
+}
+.gk-cosmo__stage {
+  --face:
+    radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--cosmetic-accent) 14%, transparent), transparent 64%),
+    radial-gradient(ellipse at 50% 115%, color-mix(in srgb, var(--gk-tint) 16%, transparent), transparent 68%),
+    linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+  display: grid;
+}
+.gk-cosmo__stagehead {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3) var(--gk-s3) 0;
+}
+.gk-cosmo__info { display: grid; gap: var(--gk-s1); padding: 0 var(--gk-s3) var(--gk-s3); }
+.gk-cosmo__drag { display: flex; align-items: center; gap: 4px; }
+.gk-cosmo__drag .gk-glyph { width: 12px; height: 12px; }
+.gk-cosmo__namerow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--gk-s3);
+}
+.gk-cosmo__name { font-size: var(--gk-t-head); letter-spacing: 0.04em; }
+.gk-cosmo__price { font-size: var(--gk-t-title); color: var(--gk-gold); }
+.gk-cosmo__fits {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  margin-top: var(--gk-s2);
+  padding: 6px 10px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-cosmo__fits .gk-glyph { width: 14px; height: 14px; color: var(--gk-self); }
+.gk-cosmo__actions { display: flex; flex-wrap: wrap; gap: var(--gk-s2); }
+.gk-cosmo__actions .gk-btn { flex: 1 1 auto; }
+.gk-cosmo__lock { display: flex; align-items: flex-start; gap: 6px; }
+.gk-cosmo__lock .gk-glyph { width: 13px; height: 13px; margin-top: 2px; color: var(--gk-warn); }
+.gk-cosmo__art { aspect-ratio: 1.5; }
+.gk-cosmo__cardsub {
+  display: grid;
+  gap: 2px;
+  padding: 0 8px 8px;
+  margin-top: -4px;
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+  color: var(--gk-ink-2);
+}
+.gk-cosmo__worn { color: var(--gk-self); font-weight: 700; }
+@media (min-width: 640px) {
+  .gk-cosmo__cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 
 /* ── 2026-11-16: the chat's messages ──────────────────────────────────────────
    A bubble is the kit's glass with the speaker's top corner cut, its edge in who it speaks as;

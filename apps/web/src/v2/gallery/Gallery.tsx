@@ -81,6 +81,7 @@ import { Sheet } from '../kit/Sheet.js';
 import { ATMOSPHERE } from '../../ui/atmosphere.js';
 import { artIconSrc } from '../../game-ui/index.js';
 import { CosmeticTrialBar } from '../../screens/CosmeticTrialBar.js';
+import { ShopierPayButton, ShopierProgress } from '../../screens/ShopierCheckout.js';
 import { Api } from '../../api/client.js';
 import { ApiProvider } from '../../api/context.js';
 import { MenuPanel } from '../../shell/MenuPanel.js';
@@ -1514,9 +1515,11 @@ function Views({ view }: { view: string }) {
     return <CosmeticFleetGallery engineId={engineId} flagId={flagId} />;
   }
   if (view === 'ship-skin-fleet') return <CosmeticFleetGallery shipSkins={{ CORSAIR: 'ship-red-dragon', CITADEL: 'ship-shark', VIPER: 'ship-scorpion', LEVIATHAN: 'ship-stingray' }} />;
-  if (view === 'ship-skin-inventory') return <SkinInventoryContent onEquip={noop} onEquipCosmetic={noop} onOpenShop={noop} pending={null} failure={null}
-    collection={{ ownedSkinIds: [], ownedCosmeticIds: ['ship-red-dragon', 'ship-shark', 'ship-scorpion', 'ship-stingray'], planets: [],
-      equipment: { SHIP: { CORSAIR: 'ship-red-dragon', CITADEL: 'ship-shark', VIPER: 'ship-scorpion', LEVIATHAN: 'ship-stingray' } } }} />;
+  if (view === 'ship-skin-inventory') return <Sheet detents={['full']} bleed kit={{ art: artIconSrc('cos-planet'), tone: 'self' }} eyebrow={t('skins.collection')} title={t('menu.skinsInventoryLabel')} onClose={noop}>
+    <SkinInventoryContent onEquip={noop} onEquipCosmetic={noop} onOpenShop={noop} pending={null} failure={null}
+      collection={{ ownedSkinIds: [], ownedCosmeticIds: ['ship-red-dragon', 'ship-shark', 'ship-scorpion', 'ship-stingray'], planets: [],
+        equipment: { SHIP: { CORSAIR: 'ship-red-dragon', CITADEL: 'ship-shark', VIPER: 'ship-scorpion', LEVIATHAN: 'ship-stingray' } } }} />
+  </Sheet>;
   if (view.startsWith('cosmetic-card:')) {
     const [id = '', angle] = view.slice('cosmetic-card:'.length).split(':');
     const inspectionView = angle === 'top' || angle === 'side' || angle === 'right' || angle === 'rear' ? angle : undefined;
@@ -1524,17 +1527,23 @@ function Views({ view }: { view: string }) {
     return item ? <div className="bg-v2-void" style={{ width: 600 }}><CosmeticPreview id={id} still inspectionView={inspectionView} productCard={!inspectionView} /></div> : null;
   }
   if (view === 'skin-shop') {
-    return <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} />;
+    return (
+      <Sheet detents={['full']} bleed kit={{ art: artIconSrc('menu-shop'), tone: 'self' }} eyebrow={t('skins.collection')} title={t('menu.skinsShopLabel')} onClose={noop}>
+        <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} />
+      </Sheet>
+    );
   }
   if (view === 'skin-shop-live') {
     const liraQuote = { formatted: '₺99', currencyCode: 'TRY' as const };
     const euroQuote = { formatted: '€2.99', currencyCode: 'EUR' as const };
     const euroCountries = new Set<PlanetSkinId>(SKIN_COLLECTIONS.country.ids.filter((id) => id !== 'planet-turkey'));
     return (
-      <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} enabled
-        onPurchase={noop} countryCode="TR"
-        prices={{ ...Object.fromEntries(PLANET_SKIN_IDS.map((id) => [id, euroCountries.has(id) ? euroQuote : liraQuote])),
-          bundle: { formatted: '₺279', currencyCode: 'TRY' } }} />
+      <Sheet detents={['full']} bleed kit={{ art: artIconSrc('menu-shop'), tone: 'self' }} eyebrow={t('skins.collection')} title={t('menu.skinsShopLabel')} onClose={noop}>
+        <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} enabled
+          onPurchase={noop} countryCode="TR"
+          prices={{ ...Object.fromEntries(PLANET_SKIN_IDS.map((id) => [id, euroCountries.has(id) ? euroQuote : liraQuote])),
+            bundle: { formatted: '₺279', currencyCode: 'TRY' } }} />
+      </Sheet>
     );
   }
   if (view === 'skin-inventory' || view === 'skin-inventory-empty') {
@@ -1905,6 +1914,25 @@ function Views({ view }: { view: string }) {
   return null;
 }
 
+/** C38: the Shopier step in each of its states: the press, the wait, the page made, the refusal. */
+function ShopierCheckoutGallery() {
+  const { t } = useTranslation();
+  const url = 'https://www.shopier.com/61000001';
+  return (
+    <Sheet detents={['full']} eyebrow={t('menu.asteraHeading')} title={t('menu.skinsShopLabel')} kit={{ art: artIconSrc('menu-shop') }} onClose={noop}>
+      <div className="gk grid gap-4 pb-4">
+        <ShopierPayButton amount={9900} state={null} onPress={noop} wide />
+        <ShopierPayButton amount={9900} state={{ itemId: 'planet-toxic', status: 'loading' }} onPress={noop} wide />
+        <div>
+          <ShopierPayButton amount={9900} state={{ itemId: 'planet-toxic', status: 'ready', url }} onPress={noop} wide />
+          <ShopierProgress state={{ itemId: 'planet-toxic', status: 'ready', url }} />
+        </div>
+        <ShopierProgress state={{ itemId: 'planet-toxic', status: 'error', message: t('skins.shopierCheckoutError') }} />
+      </div>
+    </Sheet>
+  );
+}
+
 export function Gallery({ view }: { view: string | null }) {
   useSoundEffects();
   if (view !== null && isKitView(view)) return <GameKitGallery view={view} />;
@@ -1921,6 +1949,7 @@ export function Gallery({ view }: { view: string | null }) {
         worlds={[{ id: 'home', name: 'Kestrel' }, { id: 'colony', name: 'Vega' }]} onSelect={noop} onCompare={noop} onEnd={noop} onShop={noop} />
     </div>;
   }
+  if (view === 'shopier-checkout') return <ShopierCheckoutGallery />;
   if (view === 'planet-selection') return <PlanetSelectionGallery />;
   if (view === 'monument-models') return <MonumentModelsGallery />;
   if (view?.startsWith('skin-card:')) {

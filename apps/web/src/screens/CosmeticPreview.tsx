@@ -37,8 +37,8 @@ export function CosmeticPreview({ id, still = false, inspectionView, productCard
       <ambientLight intensity={1.1} />
       <directionalLight position={[3, 4, 5]} intensity={3.5} color="#e2eaff" />
       <directionalLight position={[-3, 1, -2]} intensity={2} color={item.accent} />
-      <SkinAssetBoundary key={id} fallback={<Html center>{t('skins.modelUnavailable')}</Html>}>
-        <Suspense fallback={<Html center>…</Html>}>
+      <SkinAssetBoundary key={id} fallback={<Html center><span className="gk gk-label whitespace-nowrap">{t('skins.modelUnavailable')}</span></Html>}>
+        <Suspense fallback={<Html center><span className="gk gk-note">…</span></Html>}>
           <PreviewReady key={id} onReady={markReady} />
           <Bounds fit={Boolean(item.model) || item.category === 'ENGINE'} observe clip margin={inspectionView || ufo ? 1.3 : productCard ? .8 : 1} maxDuration={0}>
           {item.category === 'RING' ? <group>

@@ -87,6 +87,7 @@ export const skins = {
   buy: 'Comprar con Polar · {{price}}',
   onSaleSoon: 'A la venta muy pronto',
   wearIt: 'Ponérselo a un mundo',
+  priceTitle: 'Precio',
   oneTime: 'Pago único · mientras Astera Online siga activo',
   ownedNote: 'En tu colección',
   bundleKicker: 'Colección completa',
