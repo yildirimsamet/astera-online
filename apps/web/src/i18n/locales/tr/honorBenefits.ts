@@ -2,6 +2,7 @@ export const honorBenefits = {
   grossReturn: 'Brüt dönüş',
   grossCargoRule: 'Komisyon öncesi brüt takas için kargo alanı ayrılır.',
   title: 'Honor avantajları', current: 'Mevcut kademen', allTiers: 'Tüm kademeler',
+  next: 'Sonraki kademeye {{amount}} Honor: {{tier}}', climb: 'Honor {{amount}} üstüne çık: {{tier}}',
   positiveTier: 'Avantaj kademesi {{tier}}', negativeTier: 'Kesinti kademesi {{tier}}', neutral: 'Nötr',
   repair: 'Tamir bedeli', convoy: 'Konvoy kaynakları', trade: 'Ticaret komisyonu',
   percent: '%{{amount}}', atLeast: 'Honor ≥ {{amount}}', atMost: 'Honor ≤ {{amount}}',

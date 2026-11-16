@@ -2,6 +2,7 @@ export const honorBenefits = {
   grossReturn: 'Gross return',
   grossCargoRule: 'Cargo space is reserved for the gross exchange before commission.',
   title: 'Honor benefits', current: 'Your current tier', allTiers: 'All tiers',
+  next: '{{amount}} more Honor to {{tier}}', climb: 'Climb above Honor {{amount}} for {{tier}}',
   positiveTier: 'Benefit tier {{tier}}', negativeTier: 'Penalty tier {{tier}}', neutral: 'Neutral',
   repair: 'Repair cost', convoy: 'Convoy resources', trade: 'Trade commission',
   percent: '{{amount}}%', atLeast: 'Honor ≥ {{amount}}', atMost: 'Honor ≤ {{amount}}',

@@ -203,11 +203,13 @@ describe('planTradeRoute', () => {
 /* ── the owner's worked example ──────────────────────────────── */
 
 describe('the counter opens on a trade that already works', () => {
-  it('shows the Honor commission and net return beside the trade decision', () => {
+  // G9-a: the receipt's table appears once a carrier gives it a haul to price; the commission leads before that.
+  it('shows the Honor commission and net return beside the trade decision', async () => {
     sheet({ planet: trader({ honorBenefits: { version: 1, score: -25_000_000, thresholds: HONOR_BENEFIT_THRESHOLDS_V1,
       ...honorBenefits(-25_000_000, HONOR_BENEFIT_THRESHOLDS_V1) } }) });
     expect(screen.getByText('Honor commission: 7%')).toBeVisible();
-    expect(screen.getByText('Net haul')).toBeVisible();
+    await userEvent.setup().click(screen.getByRole('button', { name: /max atlas/i }));
+    expect(screen.getByRole('columnheader', { name: 'Net haul' })).toBeVisible();
     expect(screen.getByText('Gross return')).toBeVisible();
     expect(screen.getByText('Cargo space is reserved for the gross exchange before commission.')).toBeVisible();
   });

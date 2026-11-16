@@ -1909,6 +1909,16 @@ Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde
 - **Ölçüm** (tr; telefon, dar, masaüstü; galeriye `monument-sheet` ve `monument-sheet-quote`, ui-audit'e sayaç dolduran adım; envanterdeki "dalga beklemede" artık ulaşılıyor): puan 114→3, 142→3; 12 px altı 49/74→0 ve 64/95→0, kontrast 14→0, 44 px altı 36→2, tepkisiz 29→2. Kalan 3: sayfa arkalığının 2×2 kapatma alanı (G1). Sayfa uzadı (1561→2161 px): 10 px metinler 12–13 px'e çıktı.
 - **Kalan:** kitin sayacında devre dışı "−" ikonu 2,4:1 (G2-f'nin parçası); çocuk parçalar (`TargetRadiationInstrument`, `EscortRow`, `MonumentRoutePreview`) kendi birimlerinde.
 
+
+**G9-a Onur ayrıcalıkları ✅ (2026-11-16).** G9 #2'nin son v2 parçası (`ui/HonorBenefits.tsx`) ve onarım, ticaret, konvoy sayfalarındaki Onur fiyat kutusu.
+- **An:** "Onurum bana ne kazandırıyor, bir sonraki kademeye ne kadar var?" Kurallar ve oranlar değişmedi.
+- Bölüm kit kuyusu: kademenin kendi rozeti (hazır `HonorBadge` sanatı), adı kendi renginde; üç etki kit rakamı, her biri bana ne yaptığının renginde (ucuz onarım ve büyük konvoy yeşil, komisyon kırmızı; eskiden üçü de kademenin rengindeydi).
+- Yeni satır: "Sonraki kademeye 45,9 Honor: Avantaj kademesi 2"; kesinti kademesinde "Honor -25 üstüne çık: Nötr". En üst kademede yok. 6 dilde yeni iki anahtar.
+- Tüm kademeler kitin kural satırında, bir dokunuş uzakta: her basamak rozet + ad + aralık, altında üç değer; sütun başlıkları en üstte (önce hangi yüzdenin ne olduğu yazmıyordu). Şu anki basamak işaretli.
+- Fiyat kutusu kit makbuzu: başlık etkinin renginde, sütunları adlı gerçek tablo; bir şey seçilmeden boş tablo çizilmiyor (kural metni duruyor).
+- Kitin gemi satırı: uzun ad (Wayfarer) 320 px'te sayacın altına kayıyordu; artık ikinci satıra iniyor.
+- Galeri: Onur sıralaması ve ticaret sayfası örnek Onur verisi taşıyor. Audit (tr; telefon, dar, masaüstü): sıralama 0, ticaret 3 (galeri kabuğu).
+
 ## G10. Hesap
 
 Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.

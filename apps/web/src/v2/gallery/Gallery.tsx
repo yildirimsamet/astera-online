@@ -50,7 +50,7 @@ import { GalleryReplay } from './GalleryReplay.js';
 import { ProfileGallery, isProfileView } from './ProfileGallery.js';
 import { WorldProvider } from '../../api/world.js';
 import { clanWarSchema } from '../../api/schemas.js';
-import { COMMUNITY_POLICY_VERSION, PIRATE, TRADE } from '@astera/rules';
+import { COMMUNITY_POLICY_VERSION, HONOR_BENEFIT_THRESHOLDS_V1, PIRATE, TRADE, honorBenefits } from '@astera/rules';
 // Development only: the same world the tests draw, so the gallery needs no server.
 import { planetView } from '../../../test/fixtures.js';
 import type { AirborneItem } from '../../lib/airborne.js';
@@ -719,6 +719,9 @@ type GalleryMenu = 'menu' | 'menu-settings' | 'menu-academy' | 'menu-community' 
 
 type GalleryArchive = 'leaderboard-archive' | 'leaderboard-archive-profile' | 'leaderboard-archive-career';
 
+/** G9-a: Honor's terms for a score, as the server quotes them. */
+const galleryHonor = (score: number) => ({ version: 1 as const, score, thresholds: HONOR_BENEFIT_THRESHOLDS_V1, ...honorBenefits(score, HONOR_BENEFIT_THRESHOLDS_V1) });
+
 function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leaderboard-honor' | GalleryArchive }) {
   const [client] = useState(() => {
     const next = new QueryClient();
@@ -744,6 +747,7 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
       const ladder = Array.from({ length: 16 }, (_, index) => honorRow(index));
       next.setQueryData(keys.leaderboard, {
         ranking: 'HONOR', honorEnabled: true, honorSoloCredit: false, honorStartsAt: null, ladder, you: { ...ladder[11], isBot: false },
+        honorBenefits: galleryHonor(29_100_000),
         honorReward: { rank: 12, honor: 29_100_000, nominal: { alloy: 1_750, crystal: 1_250, deuterium: 250 },
           reward: { alloy: 820, crystal: 590, deuterium: 118 }, fullThreshold: 61_250_000 },
       });
@@ -1857,7 +1861,8 @@ function Views({ view }: { view: string }) {
       <TradeSheet
         merchant={GALLERY_MERCHANT}
         seasonStart={new Date(NOW - 600 * MIN)}
-        planet={planetView({ fleet: { ATLAS: 12, COURIER: 3, DART: 4 } }, { alloy: 5_000, crystal: 5_000, deuterium: 5_000 })}
+        // G9-a: a commander in the first penalty tier, so the commission's receipt is on the page.
+        planet={{ ...planetView({ fleet: { ATLAS: 12, COURIER: 3, DART: 4 } }, { alloy: 5_000, crystal: 5_000, deuterium: 5_000 }), honorBenefits: galleryHonor(-30_000_000) }}
         onClose={noop}
         onLaunched={noop}
       />

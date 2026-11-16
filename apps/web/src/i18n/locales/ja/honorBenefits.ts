@@ -2,6 +2,7 @@ export const honorBenefits = {
   grossReturn: '控除前の帰還量',
   grossCargoRule: '手数料控除前の交換量に必要な積載量を確保します。',
   title: 'Honorの特典', current: '現在の段階', allTiers: '全段階',
+  next: '{{tier}}まであと{{amount}} Honor', climb: 'Honor {{amount}}を超えると{{tier}}',
   positiveTier: '特典段階 {{tier}}', negativeTier: '減額段階 {{tier}}', neutral: '標準',
   repair: '修理費用', convoy: '船団の資源報酬', trade: '交易手数料',
   percent: '{{amount}}％', atLeast: 'Honor ≥ {{amount}}', atMost: 'Honor ≤ {{amount}}',
