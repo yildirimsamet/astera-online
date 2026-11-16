@@ -3,7 +3,7 @@ import type { TFunction } from 'i18next';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ReturnEntry, ReturnPayload } from '../../api/schemas.js';
-import { Banner, GameButton, NewsList, NewsRow, type GlyphId, type NewsOutcome, type NewsTone } from '../../game-ui/index.js';
+import { artIconSrc, Banner, GameButton, NewsList, NewsRow, type GlyphId, type NewsOutcome, type NewsTone } from '../../game-ui/index.js';
 import type { CssVars } from '../../game-ui/style.js';
 import { serverNow } from '../../lib/clock.js';
 import { FEATURE_SYSTEM } from '../../starter/UnlockMoment.js';
@@ -301,6 +301,7 @@ export function AwaySheet({
     <Sheet
       title={t('away.title')}
       headerArt={ATMOSPHERE.season}
+      kit={{ art: artIconSrc('hud-bell'), tone: lead === 'alarm' ? 'hostile' : 'self' }}
       eyebrow={t('away.eyebrow', { duration: duration(story.awayMinutes) })}
       detents={['fit']}
       placement="card"

@@ -58,6 +58,17 @@ describe('the away sheet', () => {
     expect(screen.getByRole('dialog', { name: 'While you were away' })).toHaveAttribute('data-placement', 'card');
   });
 
+  /** On the kit (2026-11-16): the frame is the kit's sheet; its head plate wears what the story leads with. */
+  it('is a kit sheet whose head plate is red when a threat leads and yours otherwise', () => {
+    const { unmount } = render(<AwaySheet story={story()} onDoor={vi.fn()} onAll={vi.fn()} onDismiss={vi.fn()} />);
+    const dialog = screen.getByRole('dialog', { name: 'While you were away' });
+    expect(dialog).toHaveClass('gk-sheet');
+    expect(dialog.querySelector('.gk-sheet__head')).toHaveClass('gk-cut--hostile');
+    unmount();
+    show({ entries: [{ kind: 'accrued', params: { alloy: 900, crystal: 300 }, at: at(0) }] });
+    expect(screen.getByRole('dialog').querySelector('.gk-sheet__head')).toHaveClass('gk-cut--self');
+  });
+
   /**
    * ON THE KIT (C1, 2026-11-14): each line is the kit's row of news, one press as wide as the card
    * that says where it goes under the sentence — not a 20 px link. The coin wears the line's weight:
