@@ -1515,9 +1515,11 @@ function Views({ view }: { view: string }) {
     return <CosmeticFleetGallery engineId={engineId} flagId={flagId} />;
   }
   if (view === 'ship-skin-fleet') return <CosmeticFleetGallery shipSkins={{ CORSAIR: 'ship-red-dragon', CITADEL: 'ship-shark', VIPER: 'ship-scorpion', LEVIATHAN: 'ship-stingray' }} />;
-  if (view === 'ship-skin-inventory') return <SkinInventoryContent onEquip={noop} onEquipCosmetic={noop} onOpenShop={noop} pending={null} failure={null}
-    collection={{ ownedSkinIds: [], ownedCosmeticIds: ['ship-red-dragon', 'ship-shark', 'ship-scorpion', 'ship-stingray'], planets: [],
-      equipment: { SHIP: { CORSAIR: 'ship-red-dragon', CITADEL: 'ship-shark', VIPER: 'ship-scorpion', LEVIATHAN: 'ship-stingray' } } }} />;
+  if (view === 'ship-skin-inventory') return <Sheet detents={['full']} bleed kit={{ art: artIconSrc('cos-planet'), tone: 'self' }} eyebrow={t('skins.collection')} title={t('menu.skinsInventoryLabel')} onClose={noop}>
+    <SkinInventoryContent onEquip={noop} onEquipCosmetic={noop} onOpenShop={noop} pending={null} failure={null}
+      collection={{ ownedSkinIds: [], ownedCosmeticIds: ['ship-red-dragon', 'ship-shark', 'ship-scorpion', 'ship-stingray'], planets: [],
+        equipment: { SHIP: { CORSAIR: 'ship-red-dragon', CITADEL: 'ship-shark', VIPER: 'ship-scorpion', LEVIATHAN: 'ship-stingray' } } }} />
+  </Sheet>;
   if (view.startsWith('cosmetic-card:')) {
     const [id = '', angle] = view.slice('cosmetic-card:'.length).split(':');
     const inspectionView = angle === 'top' || angle === 'side' || angle === 'right' || angle === 'rear' ? angle : undefined;

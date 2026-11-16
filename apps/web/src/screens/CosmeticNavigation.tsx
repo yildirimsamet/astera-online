@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Segmented } from '../v2/kit/Segmented.js';
+import { GameTabs } from '../game-ui/index.js';
 import { capabilities } from '../platform/runtime.js';
 
-/** Both existing cosmetic screens share one visible switch, above their categories. */
+/** Both existing cosmetic screens share one visible switch, above their categories: the kit's tabs. */
 export function CosmeticNavigation({ active, onShop, onInventory }: {
   active: 'shop' | 'inventory';
   onShop: () => void;
@@ -18,15 +18,15 @@ export function CosmeticNavigation({ active, onShop, onInventory }: {
   }, [active, showShop]);
   if (!showShop) return null;
   return (
-    <div ref={root} data-cosmetic-navigation className="cosmetic-navigation mx-auto max-w-2xl px-3 pt-3">
-      <Segmented
+    <div ref={root} data-cosmetic-navigation className="gk-cosmo__nav">
+      <GameTabs
         label={t('skins.collection')}
-        options={[
+        tabs={[
           { id: 'shop', label: t('menu.skinsShopLabel') },
           { id: 'inventory', label: t('menu.skinsInventoryLabel') },
         ]}
         value={active}
-        onChange={(id) => { if (id !== active) (id === 'shop' ? onShop : onInventory)(); }}
+        onChange={(id) => { (id === 'shop' ? onShop : onInventory)(); }}
       />
     </div>
   );

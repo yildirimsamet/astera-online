@@ -5,29 +5,6 @@
   }
 }
 
-@layer utilities {
-  .cosmetic-navigation [role='tablist'] {
-    border-color: color-mix(in srgb, var(--color-v2-premium) 25%, var(--color-v2-line));
-    background: var(--color-v2-deep);
-    padding: 4px;
-  }
-  .cosmetic-navigation [role='tab'] {
-    min-height: 44px;
-    font-weight: 600;
-    transition: color 160ms, background-color 160ms;
-  }
-  .cosmetic-navigation [aria-selected='true'] {
-    color: var(--color-v2-premium);
-    background: color-mix(in srgb, var(--color-v2-premium) 12%, var(--color-v2-deep));
-    --tw-ring-color: color-mix(in srgb, var(--color-v2-premium) 35%, transparent);
-  }
-  .cosmetic-navigation [role='tab']:hover { color: var(--color-v2-premium); }
-  .cosmetic-navigation [role='tab']:focus-visible {
-    outline: 2px solid var(--color-v2-premium);
-    outline-offset: -2px;
-  }
-}
-
 /**
  * THE STORE, ALIVE (owner, 2026-09-25: "kımıl kımıl hareketli canlı etkileyici stunning bir
  * tasarım"). Everything here moves slowly and quietly — a nebula that drifts, the look's own
@@ -116,13 +93,4 @@
 @keyframes v2-store-twinkle {
   0%, 100% { opacity: 0.25; }
   50% { opacity: 0.95; }
-}
-
-.cosmetic-stage-glow {
-  background: radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--cosmetic-accent) 13%, transparent), transparent 64%),
-    radial-gradient(ellipse at 50% 115%, var(--color-v2-cosmetic-horizon) 0%, transparent 68%);
-}
-.cosmetic-collection button:focus-visible {
-  outline: 2px solid var(--cosmetic-accent);
-  outline-offset: 3px;
 }
