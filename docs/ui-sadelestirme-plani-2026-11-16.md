@@ -40,11 +40,11 @@ Her yüzeyin ölçütü: **350×812 ve 375×667'de kaydırmadan ne görünüyor?
 | O10 | Sınıf üstünlüğü (counter) bilgi elemanları küçülür | ek-10 | bekliyor |
 | O11 | Üst bilgi şeritleri (uçuş/iş bitiyor) daha ince; altındaki rozetlerle 8 px; sol ve sağ rozetler aynı hizada | ek-11 | bitti (şerit 58→38 px, halka 28 px, alt satır tek satır; altında 8 px; sol ve sağ rozetler 109 px'te aynı hizada) |
 | O12 | Filo sekmesi toplanır (E1) | ek-12 | bitti (E1) |
-| O13 | Gezegen / Araştırma / Gemi geçişinde sekme çubuğunun genişliği ve yan boşluklar sabit (Gezegen'deki gibi) | ek-13 | bekliyor |
+| O13 | Gezegen / Araştırma / Gemi geçişinde sekme çubuğunun genişliği ve yan boşluklar sabit (Gezegen'deki gibi) | ek-13 | bitti (Araştırma ve Gemi de kenardan kenara; sekme çubuğu üçünde 13 px / 324 px, içerik 12 px kenarda) |
 | O14 | Birden fazla gezegende sol üstteki gezegen düğmesi kompakt ve kit'e uygun | ek-14 | bitti (gezegen düğmesi diğer rozetler gibi 28 px hap, turkuaz, açılır işaretli) |
 | O15 | Mağaza kategori kutuları kompakt | ek-15 | bekliyor |
 | O16 | Komutan menüsü: "Oyuna dön" kalkar; yanındaki iki düğme düzgün | ek-16 | bekliyor |
-| O17 | Komutan gemisi: "Yarık'a gir" düğmesinin altındaki boşluk kapanır | ek-17 | bekliyor |
+| O17 | Komutan gemisi: "Yarık'a gir" düğmesinin altındaki boşluk kapanır | ek-17 | bitti (dock sheet'in tabanına iniyor; düğme kenardan 8 px yukarıda, altında içerik görünmüyor) |
 | K | Kapanış: altı dil, 350/375×667/masaüstü, tam test, görsel denetim | — | bekliyor |
 
 Sıra: S1 → S2 → S3 → H1 → H2 → S4 → S5/S6 → E1 → E2 → E3 → E4 → E5 → E6 → K.

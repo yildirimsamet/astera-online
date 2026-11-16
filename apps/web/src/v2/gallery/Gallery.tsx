@@ -1249,8 +1249,9 @@ function GalleryResearch({ variant = 'map' }: { variant?: 'map' | 'sheet' | 'loc
   }, [variant]);
   const focus = variant === 'locked' ? 'DENSE_FUEL_CELLS' : variant === 'map' ? undefined : 'SHIP_ARMOR';
   return (
-    <Sheet title={i18n.t('research.title')} headerArt={ATMOSPHERE.research} kit={{ art: artIconSrc('nav-research'), tone: 'self' }} eyebrow={i18n.t('research.eyebrow')} onClose={noop} detents={['full']}>
-      <ResearchPanel {...(focus ? { focus } : {})} />
+    <Sheet bleed title={i18n.t('research.title')} headerArt={ATMOSPHERE.research} kit={{ art: artIconSrc('nav-research'), tone: 'self' }} eyebrow={i18n.t('research.eyebrow')} onClose={noop} detents={['full']}>
+      <BaseSwitch value="research" onChange={noop} arenaAvailable />
+      <div className="gk-sheet__pad"><ResearchPanel {...(focus ? { focus } : {})} /></div>
     </Sheet>
   );
 }
@@ -1389,7 +1390,7 @@ function Views({ view }: { view: string }) {
   if (view === 'feedback' || view.startsWith('announcements')) return <GalleryCommunity view={view} />;
   if (view.startsWith('rewards')) return <GalleryRewards state={view.replace('rewards-', '')} />;
   // The Komutan gemisi hangar; the camera mocks `/arena/hangar` with each state it photographs.
-  if (view === 'arena-hangar') return <Sheet detents={['full']} headerArt={ATMOSPHERE.commanderShip} kit={{ art: artIconSrc('cos-ship'), tone: 'self' }} eyebrow="Samet" title="Komutan gemisi" onClose={noop}>
+  if (view === 'arena-hangar') return <Sheet bleed detents={['full']} headerArt={ATMOSPHERE.commanderShip} kit={{ art: artIconSrc('cos-ship'), tone: 'self' }} eyebrow="Samet" title="Komutan gemisi" onClose={noop}>
     <BaseSwitch value="ship" onChange={noop} arenaAvailable /><HangarPanel credential={() => Promise.resolve('dev')} onEnter={noop} />
   </Sheet>;
   if (view === 'arena-team') return <Sheet detents={['full']} title="Yarık" onClose={noop}>

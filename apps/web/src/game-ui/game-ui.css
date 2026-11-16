@@ -17560,3 +17560,6 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 [data-now-float]:has(> [data-now-line]) { padding-bottom: 8px; }
 /* O11/ek-11: on the galaxy the left pills stand as tall as the right tallies, so their tops and bottoms meet one line. */
 .gk-hudcol .gk-status { height: 28px; border-radius: 14px; }
+
+/* ── O13 (owner 2026-11-17): a bled sheet's own content keeps the sheet's gutter (the Base switch spans the bleed) ── */
+.gk-sheet__pad { padding: 0 var(--gk-gutter); }

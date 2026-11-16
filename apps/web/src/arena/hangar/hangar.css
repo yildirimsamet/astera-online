@@ -205,3 +205,6 @@
 .gk-shipstate i { width: 7px; height: 7px; border-radius: 50%; background: var(--gk-ink-3); }
 .gk-shipstate[data-tone='self'] i { background: var(--gk-self); }
 .gk-shipstate[data-tone='warn'] i { background: var(--gk-warn); }
+/* O17 (owner 2026-11-17): the dock reaches the sheet's floor through the body's 24 px foot padding, so nothing
+   shows under it, and the button sits 8 px over the edge instead of floating 34 px up. */
+.hp-dock { bottom: calc(-1 * var(--gk-s6)); padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }

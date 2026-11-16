@@ -2071,6 +2071,7 @@ export function GalaxyView({
       */}
       {panel === 'research' && (
         <V2Sheet
+          bleed
           detents={['full']}
           headerArt={ATMOSPHERE.research}
           kit={{ art: artIconSrc('nav-research'), tone: 'self' }}
@@ -2081,7 +2082,9 @@ export function GalaxyView({
             onPanel(null);
           }}
         >
+          {/* Bled like the world page, so the switch keeps one width and one gutter on all three (owner 2026-11-17, ek-13). */}
           <BaseSwitch value="research" onChange={openBase} arenaAvailable={arenaAvailable} />
+          <div className="gk-sheet__pad">
           <ResearchPanel
             {...(researchFocus === null ? {} : { focus: researchFocus })}
             onNeed={(id) => {
@@ -2092,11 +2095,12 @@ export function GalaxyView({
               setRequestedPlanetGroup(TAB_OF[id] ?? 'grow');
             }}
           />
+          </div>
         </V2Sheet>
       )}
 
       {panel === 'ship' && onEnterArena && (
-        <V2Sheet detents={['full']} headerArt={ATMOSPHERE.commanderShip} kit={{ art: artIconSrc('cos-ship'), tone: 'self' }} eyebrow={commander} title={t('arena.nav')} onClose={() => { onPanel(null); }}>
+        <V2Sheet bleed detents={['full']} headerArt={ATMOSPHERE.commanderShip} kit={{ art: artIconSrc('cos-ship'), tone: 'self' }} eyebrow={commander} title={t('arena.nav')} onClose={() => { onPanel(null); }}>
           <BaseSwitch value="ship" onChange={openBase} arenaAvailable />
           <Suspense fallback={null}><HangarPanel credential={() => arenaCredential(api)} onEnter={onEnterArena}
             onSpent={() => { for (const queryKey of [keys.planet, keys.commanderShip]) void queryClient.invalidateQueries({ queryKey }); }} /></Suspense>
