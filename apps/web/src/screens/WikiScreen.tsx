@@ -4,6 +4,7 @@ import { WikiArticleList, WikiBreadcrumbs, WikiMenu, WikiPageContent, WikiPublic
 import { wikiLabels } from '../wiki/labels.js';
 import type { WikiLanguage } from '../wiki/model.js';
 import '../wiki/styles.css';
+import { Choices, GameButton } from '../game-ui/index.js';
 
 /** Same content and URLs as the public edition. No game query or mutation. */
 export function WikiScreen({ language: initialLanguage = 'en' }: { language?: string }) {
@@ -46,9 +47,17 @@ export function WikiScreen({ language: initialLanguage = 'en' }: { language?: st
   const previousPage = previous ? getWikiPage(previous) : undefined;
   const previousName = (previousPage?.articleId ? getWikiArticle(previousPage.articleId)?.title[language]
     : wikiCategories.find(category => category.id === previousPage?.categoryId)?.title[language]) ?? words.home;
-  return <div className="wiki wiki-room" ref={container} lang={language}>
-    <div className="wiki-room-tools" ref={tools}>{previous ? <button className="wiki-back" onClick={() => { setQuery(''); setTrail(current => current.slice(0, -1)); }}>← {words.back} {previousName}</button> : <span className="wiki-eyebrow">ASTERA / WIKI</span>}<div className="wiki-editions" aria-label={words.edition}>{(['en', 'tr'] as const).map(next => <button key={next} aria-pressed={language === next} onClick={() => { setLanguage(next); setTrail(current => current.map(item => { const old = getWikiPage(item); return old ? translatedWikiPath(old, next) : wikiRoot(next); })); }}>{next === 'en' ? 'English' : 'Türkçe'}</button>)}</div></div>
-    <label className="wiki-search"><span>{words.search}</span><input type="search" value={query} placeholder={words.search} onChange={event => { setQuery(event.target.value); }} /></label>
+  const edition = (next: WikiLanguage): void => {
+    setLanguage(next);
+    setTrail(current => current.map(item => { const old = getWikiPage(item); return old ? translatedWikiPath(old, next) : wikiRoot(next); }));
+  };
+  /* G11-a: the sheet's kit head already names the Wiki; the room opens on its tools, on the kit. */
+  return <div className="wiki wiki-room gk" ref={container} lang={language}>
+    <div className="wiki-room-tools" ref={tools}>
+      {previous ? <GameButton size="sm" glyph="back" className="wiki-room-back" spoken={`${words.back} ${previousName}`} onPress={() => { setQuery(''); setTrail(current => current.slice(0, -1)); }}>{previousName}</GameButton> : null}
+      <Choices label={words.edition} value={language} onChange={edition} options={[{ id: 'en', label: 'English' }, { id: 'tr', label: 'Türkçe' }]} />
+    </div>
+    <label className="wiki-search"><span>{words.search}</span><input type="search" className="gk-field__input" value={query} placeholder={words.search} onChange={event => { setQuery(event.target.value); }} /></label>
     {results ? <section className="wiki-search-results"><h1>{words.search}</h1><p role="status">{results.length ? `“${query.trim()}” · ${results.length} ${words.articles}` : words.noResults}</p><WikiArticleList articles={results} language={language} onNavigate={navigate} /></section> : <><WikiMenu page={page} onNavigate={navigate} className="wiki-room-menu" menuRef={menu} /><div className="wiki-room-content" ref={content}><WikiBreadcrumbs page={page} onNavigate={navigate} /><WikiPublicLink page={page} /><WikiPageContent page={page} onNavigate={navigate} /></div></>}
   </div>;
 }

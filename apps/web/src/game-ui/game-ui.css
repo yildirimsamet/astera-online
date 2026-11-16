@@ -16097,3 +16097,133 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 /* the same purse, small, beside a commander on the ladder */
 .gk-lb__purse.gk-lb__rowprize { gap: var(--gk-s2); font-size: var(--gk-t-floor); }
 .gk-lb__rowprize .gk-lb__coin img { width: 14px; height: 14px; }
+
+/* ── G11-a (2026-11-16): the Wiki room in the game wears the kit. The articles keep the public edition's
+   markup and its own sheet; only `.gk.wiki-room` dresses them, so the published Wiki does not change. ── */
+.gk.wiki-room {
+  padding: 0 var(--gk-gutter) var(--gk-s5);
+  font-family: var(--gk-font-text);
+  font-stretch: var(--gk-text-stretch);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--gk-ink);
+}
+.gk.wiki-room :is(h1, h2, h3) { font-family: var(--gk-font-display); font-weight: var(--gk-display-weight); font-stretch: var(--gk-display-stretch); letter-spacing: 0.01em; color: var(--gk-ink); }
+.gk.wiki-room h1 { font-size: 26px; line-height: 1.1; margin: 6px 0 10px; }
+.gk.wiki-room h2 { font-size: 20px; margin: 0 0 12px; }
+.gk.wiki-room h3 { font-size: 17px; }
+.gk.wiki-room p { margin: 0 0 12px; }
+.gk.wiki-room a { color: var(--gk-self); }
+.gk.wiki-room .wiki-lede { font-size: 14px; line-height: 1.5; color: var(--gk-ink-2); }
+.gk.wiki-room .wiki-eyebrow { font-size: 12px; letter-spacing: 0.12em; color: var(--gk-ink-3); }
+/* the tools stay under the thumb as the article scrolls: the way back, the edition */
+.gk.wiki-room .wiki-room-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gk-s2);
+  margin: 0 calc(-1 * var(--gk-gutter)) var(--gk-s2);
+  padding: var(--gk-s2) var(--gk-gutter);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  border-bottom: 1px solid var(--gk-metal-edge);
+}
+.gk.wiki-room .wiki-room-tools .gk-choices { flex: 0 0 auto; margin-left: auto; }
+.gk.wiki-room .wiki-room-back { min-width: 0; flex: 1 1 auto; justify-content: flex-start; }
+.gk.wiki-room .wiki-search { margin: 0 0 var(--gk-s2); }
+.gk.wiki-room .wiki-search input { font-size: 16px; }
+/* the topics: the kit's rules row, closed until pressed */
+.gk.wiki-room .wiki-menu {
+  margin-bottom: var(--gk-s3);
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+}
+.gk.wiki-room .wiki-menu summary { min-height: var(--gk-hit); padding: 6px var(--gk-s3); color: var(--gk-ink); }
+.gk.wiki-room .wiki-menu-label { font-size: 12px; color: var(--gk-ink-2); }
+.gk.wiki-room .wiki-menu-current { font-size: 15px; font-weight: 700; color: var(--gk-ink); }
+.gk.wiki-room .wiki-navigation a { min-height: var(--gk-hit); font-size: 14px; color: var(--gk-ink-2); }
+.gk.wiki-room .wiki-navigation a[aria-current='page'] { color: var(--gk-self); }
+/* the home page's breadcrumb only said where you already are */
+.gk.wiki-room .wiki-room-content:has(.wiki-hero) .wiki-breadcrumbs { display: none; }
+.gk.wiki-room .wiki-breadcrumbs { font-size: 13px; color: var(--gk-ink-3); }
+.gk.wiki-room .wiki-breadcrumbs a { color: var(--gk-ink-2); }
+.gk.wiki-room .wiki-public-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  margin-bottom: var(--gk-s3);
+  padding: 0 var(--gk-s2);
+  border: 1px solid color-mix(in srgb, var(--gk-self) 45%, var(--gk-metal-edge));
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gk-self);
+}
+/* the welcome: a compact well, not a website's hero */
+.gk.wiki-room .wiki-hero {
+  min-height: 0;
+  padding: var(--gk-s3);
+  border: 1px solid var(--gk-glass-edge);
+  border-radius: var(--gk-r-sm);
+  background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+}
+.gk.wiki-room .wiki-hero-orbit { display: none; }
+.gk.wiki-room .wiki-hero h1 { font-size: 24px; max-width: none; }
+.gk.wiki-room .wiki-hero .wiki-hero-caption { margin-top: var(--gk-s2); font-size: 12px; color: var(--gk-ink-3); }
+.gk.wiki-room .wiki-start {
+  min-height: var(--gk-hit);
+  gap: var(--gk-s3);
+  padding: 0 var(--gk-s3);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--gk-action-hi), var(--gk-action) 55%, var(--gk-action-lo));
+  box-shadow: inset 0 -3px 0 var(--gk-action-lip);
+  color: var(--gk-action-ink);
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.gk.wiki-room .wiki-start:active { transform: translateY(1px); }
+/* the topics as kit doors */
+.gk.wiki-room .wiki-index { margin-top: var(--gk-s4); }
+.gk.wiki-room .wiki-categories { gap: var(--gk-s2); }
+.gk.wiki-room .wiki-category-card {
+  padding: var(--gk-s3);
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  color: var(--gk-ink);
+}
+.gk.wiki-room .wiki-category-card:active { transform: translateY(1px); }
+.gk.wiki-room .wiki-category-card h3 { font-size: 17px; margin: 0 0 4px; }
+.gk.wiki-room .wiki-category-card p { font-size: 13px; line-height: 1.45; color: var(--gk-ink-2); }
+.gk.wiki-room .wiki-category-icon { color: var(--gk-self); }
+/* an article: its rows, figures, tables and notes in the kit's glass */
+.gk.wiki-room .wiki-article-row { padding: var(--gk-s2) 0; border-bottom-color: var(--gk-glass-edge); color: var(--gk-ink); }
+.gk.wiki-room .wiki-toc { padding: var(--gk-s2) 0; margin-bottom: var(--gk-s3); border-color: var(--gk-glass-edge); font-size: 13px; }
+.gk.wiki-room .wiki-toc a { color: var(--gk-ink-2); }
+.gk.wiki-room .wiki-stats { margin: var(--gk-s3) 0; padding: var(--gk-s2) 0; border-color: var(--gk-glass-edge); border-radius: var(--gk-r-sm); background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass)); }
+.gk.wiki-room .wiki-stats dt { font-size: 12px; color: var(--gk-ink-2); }
+.gk.wiki-room .wiki-stats dd { font-family: var(--gk-font-display); font-size: 20px; color: var(--gk-ink); }
+.gk.wiki-room .wiki-table-scroll { border-color: var(--gk-glass-edge); border-radius: var(--gk-r-sm); }
+.gk.wiki-room table { font-size: 13px; background: var(--gk-glass); }
+.gk.wiki-room caption { font-size: 12px; color: var(--gk-ink-2); background: var(--gk-glass-2); border-color: var(--gk-glass-edge); }
+.gk.wiki-room :is(th, td) { padding: 8px 10px; border-color: var(--gk-glass-edge); }
+.gk.wiki-room thead th { font-size: 12px; color: var(--gk-ink-2); }
+.gk.wiki-room .wiki-note { font-size: 13px; line-height: 1.5; color: var(--gk-ink-2); border-left: 3px solid var(--gk-self); background: color-mix(in srgb, var(--gk-self) 6%, transparent); padding: var(--gk-s2) var(--gk-s3); border-radius: 0 4px 4px 0; }
+.gk.wiki-room .wiki-related { border-color: var(--gk-glass-edge); }
+.gk.wiki-room .wiki-related-links a { min-height: var(--gk-hit); border-color: var(--gk-metal-edge); background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3)); color: var(--gk-ink); font-size: 14px; border-radius: 4px; }
+/* the editions are names in their own language: no capitals by the room's (Turkish) rules ("ENGLİSH") */
+.gk.wiki-room .wiki-room-tools .gk-choices :is(button, [role='radio']) { text-transform: none; letter-spacing: 0.02em; }
+/* the head already says "Astera Online · Wiki": the welcome keeps its heading for readers only */
+.gk.wiki-room .wiki-hero > .wiki-eyebrow { display: none; }
+.gk.wiki-room .wiki-hero h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.gk.wiki-room .wiki-hero > :last-child { margin-bottom: 0; }
+/* one row under the thumb: the way back (its face the place it returns to) and the edition */
+.gk.wiki-room .wiki-room-tools { flex-wrap: nowrap; }
+.gk.wiki-room .wiki-room-back { flex: 1 1 auto; max-width: 100%; text-transform: none; letter-spacing: 0.01em; }
+.gk.wiki-room .wiki-room-back > span:not(.gk-glyph) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* a press is felt on the topics row and the outward link too */
+.gk.wiki-room .wiki-menu summary:active, .gk.wiki-room .wiki-public-link:active { background: color-mix(in srgb, var(--gk-ink) 8%, transparent); transform: translateY(1px); }
+.gk.wiki-room .wiki-navigation a:active { background: color-mix(in srgb, var(--gk-self) 10%, transparent); }

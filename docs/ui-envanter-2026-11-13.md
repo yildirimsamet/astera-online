@@ -2026,6 +2026,14 @@ Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası geli
 | 2 | Akademi menüsü | `MenuPanel` › Akademi | v2 | G1'de |
 | 3 | Savaş simülatörü | `battle-simulator/BattleSimulator` (141), `SimulatorDialog` (37), `SideEditor` (94), `UnitInspector` (48), `SimulationNumberInput` (25), `BattleBalance`, `RetreatRoster`, 3D `BattleStage` | kendi `simulator.css`'i (`sim-*`) | **Beşinci dil.** Tam ekran (`?simulator=1`), menü karosu, rapordan "dene". |
 
+
+**G11-a Oyun içi Wiki ✅ (2026-11-16).** G11 #1, yalnız oyun içindeki oda (`WikiScreen`); yayınlanan Wiki (G13) değişmedi.
+- **An:** "Aradığım kural nerede, bulup oyuna döneyim." İçerik ve arama aynı.
+- Sayfa kitin başlığıyla açılıyor (önce başlık gizliydi, içeride "ASTERA / WIKI" ve dev bir "Astera Online Wiki" web başlığı vardı). Odada tekrar yok; karşılama başlığı yalnız okuyucuya.
+- Araç satırı tek satır ve yapışkan: kit geri tuşu (yüzünde gidilecek yer, okuyucuya "Geri dön: …"), dil seçimi kitin seçenekleri (Türkçe büyük harf kuralı "ENGLİSH" yazmasın diye büyük harf yok). Arama kit alanı.
+- İçerik yalnız `.gk.wiki-room` kapsamında giyiniyor: kitin yazısı; konu menüsü kitin kural satırı; karşılama kompakt kuyu, "İlk adımların" kitin eylem rengi; kategoriler kit kapıları; tablolar, rakamlar ve notlar kit camında; dış bağlantı kit çipi. Basılı hâller eklendi.
+- Audit (tr; telefon, dar, masaüstü): 45 → 10. 12 px altı metin 10 → 0; tepkisiz hedef 23 → 4. Kalan: galeri kabuğu ve arama alanında ölçüm aracının 2 px'lik kenar kaydı.
+
 ## G12. Savaş Alanı (arena)
 
 Okundu: dosya haritası. `src/arena` 50 dosya, 17 bileşen; kendi `arena.css`'i (altıncı dil), kendi HUD'u.
