@@ -40,14 +40,17 @@ describe('the Shopier step on the kit', () => {
     expect(screen.getByRole('alert')).toHaveClass('gk-banner', 'gk-banner--warn');
   });
 
-  it('answers the press with a tap and asks once, and the way on lands with weight in a new tab', () => {
+  /** Spending money is one weight on every road (owner 2026-11-16): Shopier's press is heavy like Polar's. */
+  it('answers the press with weight and asks once, and the way on lands with weight in a new tab', () => {
     const press = vi.fn();
     render(<ShopierPayButton amount={9900} state={null} onPress={press} wide />);
     const buy = screen.getByRole('button', { name: i18n.t('skins.shopierBuy', { price: '₺99' }) });
     expect(buy).toHaveClass('gk-btn--wide');
     fireEvent.click(buy);
     expect(press).toHaveBeenCalledTimes(1);
-    expect(heard).toHaveBeenCalledWith('tap');
+    expect(heard).toHaveBeenCalledWith('confirm');
+    expect(buzz).toHaveBeenCalledWith('commit');
+    heard.mockClear(); buzz.mockClear();
     render(<ShopierProgress state={{ itemId: 'planet-toxic', status: 'ready', url: 'https://www.shopier.com/1' }} />);
     const go = screen.getByRole('link', { name: i18n.t('skins.shopierGo') });
     expect(go).toHaveAttribute('href', 'https://www.shopier.com/1');

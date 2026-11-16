@@ -53,7 +53,7 @@ export function ShopierPayButton({ amount, state, onPress, wide = false }: {
   const busy = state?.status === 'loading';
   // Once the page is open, the panel's link is the way forward; this one steps back.
   const ready = state?.status === 'ready';
-  return <GameButton tone="action" wide={wide} glyph={ready ? 'check' : undefined} pending={busy} onPress={onPress}
+  return <GameButton tone="action" wide={wide} heavy glyph={ready ? 'check' : undefined} pending={busy} onPress={onPress}
     disabledReason={busy ? t('skins.shopierPreparing') : ready ? t('skins.shopierReady') : null}>
     {t('skins.shopierBuy', { price: shopierPrice(amount, t('units.numberLocale')) })}
   </GameButton>;
