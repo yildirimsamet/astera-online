@@ -2034,6 +2034,17 @@ Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası geli
 - İçerik yalnız `.gk.wiki-room` kapsamında giyiniyor: kitin yazısı; konu menüsü kitin kural satırı; karşılama kompakt kuyu, "İlk adımların" kitin eylem rengi; kategoriler kit kapıları; tablolar, rakamlar ve notlar kit camında; dış bağlantı kit çipi. Basılı hâller eklendi.
 - Audit (tr; telefon, dar, masaüstü): 45 → 10. 12 px altı metin 10 → 0; tepkisiz hedef 23 → 4. Kalan: galeri kabuğu ve arama alanında ölçüm aracının 2 px'lik kenar kaydı.
 
+
+**G11-b1 Savaş sahnesi: tekrar ve simülatörün ortak kontrolleri ✅ (2026-11-16).** G11 #3'ün sahne kısmı (`BattleReplay`, `simulator.css`); oyun içi savaş tekrarı ile simülatör aynı sahneyi kullanıyor.
+- **An:** "Savaş nasıl gitti, hangi atış ne yaptı?" Oynat, adım adım ilerle, tura atla, özet ve atış dökümü.
+- Sahnenin kendi paleti kitin belirteçlerine bağlandı (kendi taraf, düşman, metal, cam); yazı kitin yazısı.
+- 12 px tabanı: 9–11 px'lik bütün yazılar (en küçüğü 5 px'lik "ONLINE") 12 px'e; telefonda markanın alt satırı kalktı. Büyüyen durum satırı ve Aegis satırı artık kesilmiyor, alta iniyor.
+- Dokunma: oynat 48 px kitin yuvarlak ışıklı tuşu; önceki/sonraki, hız, genel görünüm, sekmeler, sayfa kapatma, döküm satırları 44 px; tur işaretleri 30 px; kaydırıcının tutamağı büyüdü. Her basışın basılı hâli var.
+- Alandaki taraf işaretleri (◆/▲) yazı değil şekil: kendi tarafın elması, düşmanın üçgeni, kitin renklerinde.
+- 320 px'te iki tarafın sayıları ortada çakışıyordu; göz simgesi çekiliyor, boşluklar daralıyor.
+- **Hata:** atış dökümünün tur satırı savaşın sınırını sayıyordu ("Tur 1 / 8"), üstteki durum satırı yapılan turu ("Tur 1 / 4"). Artık ikisi de yapılan tur (test).
+- Audit (tr, simülatör sayfası; telefon): 151 → 28; 12 px altı 56 → 0, kontrast 11 → 0, tepkisiz 20 → 4. Kalan küçük hedefler simülatörün başlığı ve araç çubuğu (G11-b2). Masaüstündeki kontrast kayıtları açık düzenleyicinin sayı alanları (G11-b2).
+
 ## G12. Savaş Alanı (arena)
 
 Okundu: dosya haritası. `src/arena` 50 dosya, 17 bileşen; kendi `arena.css`'i (altıncı dil), kendi HUD'u.
