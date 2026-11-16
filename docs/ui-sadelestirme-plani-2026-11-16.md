@@ -38,7 +38,7 @@ Her yüzeyin ölçütü: **350×812 ve 375×667'de kaydırmadan ne görünüyor?
 | O8 | Profil sayfasının sonu: hesabı sil sakin, çıkış en altta; kırmızı tehlike düğmeleri kibar | ek-8 | bekliyor |
 | O9 | Saldırı sheet'i: kart içi satırlar yan kartla hizalı, kargo rengi, hız çubuğunu sola sürükleme hatası, kalkan uyarısı kırmızı ve üst boşluğu az | ek-9 | bitti (kart satırları sabit, kargo yeşil, kalkan satırı kırmızı ve yakın; hız çubuğunun dokunma alanı tutamağı kapsıyor — tarayıcıda sola sürükleme doğrulandı) |
 | O10 | Sınıf üstünlüğü (counter) bilgi elemanları küçülür | ek-10 | bekliyor |
-| O11 | Üst bilgi şeritleri (uçuş/iş bitiyor) daha ince; altındaki rozetlerle 8 px; sol ve sağ rozetler aynı hizada | ek-11 | bekliyor |
+| O11 | Üst bilgi şeritleri (uçuş/iş bitiyor) daha ince; altındaki rozetlerle 8 px; sol ve sağ rozetler aynı hizada | ek-11 | bitti (şerit 58→38 px, halka 28 px, alt satır tek satır; altında 8 px; sol ve sağ rozetler 109 px'te aynı hizada) |
 | O12 | Filo sekmesi toplanır (E1) | ek-12 | bitti (E1) |
 | O13 | Gezegen / Araştırma / Gemi geçişinde sekme çubuğunun genişliği ve yan boşluklar sabit (Gezegen'deki gibi) | ek-13 | bekliyor |
 | O14 | Birden fazla gezegende sol üstteki gezegen düğmesi kompakt ve kit'e uygun | ek-14 | bekliyor |

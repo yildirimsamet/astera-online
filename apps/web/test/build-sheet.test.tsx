@@ -1238,13 +1238,14 @@ describe('the room sections', () => {
     expect(room.querySelector('[data-room-legend]')).toHaveTextContent(`away ${String(2 * dart)}`);
   });
 
-  it('says what the next Hangar rung does to the room, and that a returning fleet fits', () => {
+  // The next rung's room is the Hangar card's to say (owner review 2026-11-16: one fact, one place).
+  it('says a returning fleet fits, and leaves the next rung to the Hangar card', () => {
     show({
       buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4, HANGAR: 2 },
       capacity: { hangar: hangarCapacity(2), hangarUsed: 0, ground: groundSlots(6), groundUsed: 0 },
     });
     const section = document.querySelector<HTMLElement>('[data-hangar-room]')!;
-    expect(section).toHaveTextContent(`Hangar 3 makes it ${compact(hangarCapacity(2))} → ${compact(hangarCapacity(3))}`);
+    expect(section).not.toHaveTextContent(/Hangar 3 makes it/);
     expect(section).toHaveTextContent(/returning fleet always fits/i);
   });
 

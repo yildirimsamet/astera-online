@@ -17541,3 +17541,17 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 .gk-launch__price [data-shield-warning] { margin-top: -4px; font-weight: 700; }
 /* A thumb-sized grab around the 14 px track: a finger on the thumb's edge or past the bar's end still drags. */
 .gk-throttle__track::before { content: ''; position: absolute; inset: -12px -14px -8px; }
+
+/* ── O11 (owner 2026-11-17): the Now line over the galaxy, slimmer, with air under it ── */
+[data-now-line] .gk-tplate__plate {
+  grid-template-columns: 28px auto minmax(0, 1fr) auto;
+  column-gap: 6px;
+  min-height: 38px;
+  padding: 3px 8px 3px 4px;
+}
+[data-now-line] .gk-timer__ring { width: 28px; height: 28px; font-size: 13px; }
+[data-now-line] .gk-tplate__time { font-size: var(--gk-t-body); }
+/* The clause keeps to one line here; the board a press away says it whole. */
+[data-now-line] .gk-tplate__text .gk-sub { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; overflow-wrap: normal; }
+/* 8 px between the line and the badges under it, on both sides (the right corner reads the float's height). */
+[data-now-float]:has(> [data-now-line]) { padding-bottom: 8px; }
