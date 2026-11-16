@@ -505,7 +505,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
             <strong className="gk-num">{result === 'extracted' ? '+' : '−'}{flownPoints}</strong> {c.pointsShort}
             {result !== 'extracted' && <small> {c.lostPoints}</small>}
           </p>
-          <ul className="gk-haul">{flown.map((units, kind) => Math.floor(units) > 0 && <li key={kind} className="gk-haulchip" style={{ '--tone': FARM_TONE[kind] } as React.CSSProperties}>
+          <ul className="gk-arenahaul">{flown.map((units, kind) => Math.floor(units) > 0 && <li key={kind} className="gk-haulchip" style={{ '--tone': FARM_TONE[kind] } as React.CSSProperties}>
             <i aria-hidden /><b className="gk-num">{Math.floor(units)}</b> {c.kinds[kind]} <small>×{FARM_POINTS[kind]}</small></li>)}</ul>
         </>}
         {/* What the ending meant for the hold: nothing is said scattered or left behind when nothing was carried. */}

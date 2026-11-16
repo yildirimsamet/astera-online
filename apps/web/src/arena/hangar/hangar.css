@@ -78,8 +78,8 @@
   background: color-mix(in srgb, var(--ship) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ship) 30%, transparent); }
 
 /* G12-d2 (2026-11-16): the ship's desk on the kit. Wells under kit tags; every spend a steel hold. */
-.gk-desk { display: grid; gap: var(--gk-s2); min-width: 0; }
-.gk-desk--class { gap: var(--gk-s4); }
+.gk-shipdesk { display: grid; gap: var(--gk-s2); min-width: 0; }
+.gk-shipdesk--class { gap: var(--gk-s4); }
 .gk-deskwell { display: grid; gap: var(--gk-s2); min-width: 0; padding: var(--gk-s2) var(--gk-s3) var(--gk-s3); }
 .gk-deskwell[data-tone='warn'] { border-color: color-mix(in srgb, var(--gk-warn) 45%, var(--gk-glass-edge)); }
 .gk-deskwell p { margin: 0; }
@@ -91,21 +91,21 @@
 .hangar-root .gk-sub b { color: var(--gk-ink); font-weight: 600; }
 .hangar-root .gk-sub[data-tone='warn'], .hangar-root .gk-note[data-tone='warn'] { color: var(--gk-warn); }
 .hangar-root .gk-note[data-tone='self'] { color: var(--gk-self); }
-.gk-desk__points { color: var(--gk-ink-3); }
-.gk-desk__points[data-lit] { color: var(--gk-self); }
-.gk-desk__rules { display: grid; gap: 6px; margin: 0; padding: 0 0 0 14px; list-style: disc; font-size: var(--gk-t-floor); line-height: 1.45; color: var(--gk-ink-2); }
+.gk-shipdesk__points { color: var(--gk-ink-3); }
+.gk-shipdesk__points[data-lit] { color: var(--gk-self); }
+.gk-shipdesk__rules { display: grid; gap: 6px; margin: 0; padding: 0 0 0 14px; list-style: disc; font-size: var(--gk-t-floor); line-height: 1.45; color: var(--gk-ink-2); }
 
 /* The level: a hexagon in the ship's colour, its number inside, and the bar towards the next. */
-.gk-level { display: flex; align-items: center; gap: var(--gk-s3); }
-.gk-level__badge { flex: none; display: grid; place-items: center; width: 36px; height: 40px; font-weight: 700; font-size: var(--gk-t-body); color: var(--gk-ink);
+.gk-shiplevel { display: flex; align-items: center; gap: var(--gk-s3); }
+.gk-shiplevel__badge { flex: none; display: grid; place-items: center; width: 36px; height: 40px; font-weight: 700; font-size: var(--gk-t-body); color: var(--gk-ink);
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
   background: linear-gradient(160deg, color-mix(in srgb, var(--ship) 60%, var(--gk-metal-2)), color-mix(in srgb, var(--ship) 18%, var(--gk-deep))); }
-.gk-level__track { display: grid; flex: 1; gap: 6px; min-width: 0; }
-.gk-level__to { font-family: var(--gk-font-text); font-weight: 500; color: var(--gk-ink-3); }
-.gk-level__bar { position: relative; height: 6px; overflow: hidden; border-radius: 3px; background: var(--gk-deep); box-shadow: inset 0 0 0 1px var(--gk-glass-edge); }
-.gk-level__bar > span { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: linear-gradient(90deg, var(--gk-self-lo), var(--gk-self));
+.gk-shiplevel__track { display: grid; flex: 1; gap: 6px; min-width: 0; }
+.gk-shiplevel__to { font-family: var(--gk-font-text); font-weight: 500; color: var(--gk-ink-3); }
+.gk-shiplevel__bar { position: relative; height: 6px; overflow: hidden; border-radius: 3px; background: var(--gk-deep); box-shadow: inset 0 0 0 1px var(--gk-glass-edge); }
+.gk-shiplevel__bar > span { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: linear-gradient(90deg, var(--gk-self-lo), var(--gk-self));
   transition: width .3s var(--gk-ease); }
-.gk-level__bar[data-capped] > span { background: color-mix(in srgb, var(--gk-warn) 70%, transparent); }
+.gk-shiplevel__bar[data-capped] > span { background: color-mix(in srgb, var(--gk-warn) 70%, transparent); }
 
 /* An ability: the tile picked wears the teal edge; the signature wears the class's colour. */
 .gk-abils { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
@@ -125,12 +125,12 @@
 .gk-pips i[data-on] { background: var(--gk-self); }
 
 /* The figures: today solid in the ship's colour, the next level's part breathing in teal. */
-.gk-growth { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; margin: 0; }
+.gk-growth { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; margin: 0; }
 .gk-growth__row { min-width: 0; }
-.gk-growth__row dt { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: var(--gk-t-small); }
+.gk-growth__row dt { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; font-size: var(--gk-t-small); }
 .gk-growth__row dt b { font-weight: 600; color: var(--gk-ink); }
 .gk-growth__name { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--gk-ink-3); }
-.gk-growth__name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gk-growth__name > span { line-height: 1.15; }
 .gk-growth__name svg { width: 14px; height: 14px; flex: none; }
 .gk-growth__bar { position: relative; display: flex; height: 4px; margin: 6px 0 0; overflow: hidden; border-radius: 2px; background: var(--gk-deep); }
 .gk-growth__bar [data-now] { height: 100%; background: color-mix(in srgb, var(--ship) 82%, var(--gk-ink-3)); transition: width .3s var(--gk-ease); }

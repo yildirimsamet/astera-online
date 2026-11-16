@@ -10942,6 +10942,16 @@ button.gk-probe__head:active {
 .gk-hold--md .gk-hold__label {
   font-size: max(var(--gk-t-floor), min(var(--gk-t-lead), calc(100cqi / (var(--gk-len, 8) * 0.6))));
 }
+/* G12 close (2026-11-16): a Japanese face is full width, and its Latin wider than Saira's; the verb
+   shrinks by a whole em a letter and may take a second line, never cut ("Shorten repair · 17 min"). */
+html:lang(ja) .gk-hold__label {
+  font-size: max(var(--gk-t-floor), min(var(--gk-t-head), calc(100cqi / var(--gk-len, 8))));
+  line-height: 1.15;
+  white-space: normal;
+}
+html:lang(ja) .gk-hold--md .gk-hold__label {
+  font-size: max(var(--gk-t-floor), min(var(--gk-t-lead), calc(100cqi / var(--gk-len, 8))));
+}
 .gk-hold--md .gk-btn__detail {
   font-size: var(--gk-t-floor);
 }
@@ -16396,7 +16406,7 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-arenacard__stats .gk-figure__value { font-size: var(--gk-t-title); }
 
 /* A haul as chips: the resource's colour, how much, its name. */
-.gk-haul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.gk-arenahaul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
 .gk-haulchip {
   display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 2px 8px; border: 1px solid var(--gk-metal-edge); border-radius: 2px;
   background: color-mix(in srgb, var(--tone, var(--gk-self)) 8%, var(--gk-metal-2)); font-size: var(--gk-t-small); color: var(--gk-ink-2);

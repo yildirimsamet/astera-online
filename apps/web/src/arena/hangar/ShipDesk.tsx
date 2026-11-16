@@ -100,8 +100,8 @@ export function AbilitiesBlock({ c, hangar, busy, onSpend }: {
   // Out in the Yarık or beside a fleet, the ship is not in the hangar to be worked on.
   const out = ship.flying ? c.blocked.flying : ship.away === 'escort' ? c.blocked.escort : null;
   const refused = out ?? (top ? c.abilityTop : left < 1 ? (ship.level < 20 ? c.pointAt(ship.level + 1) : c.pointsReady(0)) : busy ? c.hangarBusy : null);
-  return <section data-part="abilities" className="gk-desk">
-    <SectionTag as="h3" aside={<span className="gk-num gk-desk__points" {...(left > 0 ? { 'data-lit': '' } : {})}>{c.pointsReady(left)}</span>}>{c.abilitiesTitle}</SectionTag>
+  return <section data-part="abilities" className="gk-shipdesk">
+    <SectionTag as="h3" aside={<span className="gk-num gk-shipdesk__points" {...(left > 0 ? { 'data-lit': '' } : {})}>{c.pointsReady(left)}</span>}>{c.abilitiesTitle}</SectionTag>
     <ul className="gk-abils">
       {ABILITIES.map(ability => {
         const at = abilityRank(ship.class, ability, ship.abilities);
@@ -147,14 +147,14 @@ export function LevelBlock({ c, hangar, busy, onUpgrade }: { c: ArenaCopy; hanga
   const refused = ship.flying ? c.blocked.flying : ship.away === 'escort' ? c.blocked.escort : !full ? c.xpToGo(ship.xpNext - ship.xp)
     : short ? c.capitalShort : busy ? c.hangarBusy : null;
   return <section data-part="level" className="gk-well gk-deskwell">
-    <div className="gk-level">
-      <span aria-hidden className="gk-level__badge gk-num">{ship.level}</span>
-      <div className="gk-level__track">
+    <div className="gk-shiplevel">
+      <span aria-hidden className="gk-shiplevel__badge gk-num">{ship.level}</span>
+      <div className="gk-shiplevel__track">
         <p className="gk-deskwell__head">
-          <b className="gk-display">{c.level(ship.level)}{!top && <span className="gk-level__to"> → {c.level(ship.level + 1)}</span>}</b>
+          <b className="gk-display">{c.level(ship.level)}{!top && <span className="gk-shiplevel__to"> → {c.level(ship.level + 1)}</span>}</b>
           <span className="gk-num gk-note">{top ? c.topLevel : c.xpBar(ship.xp, ship.xpNext)}</span>
         </p>
-        <span aria-hidden className="gk-level__bar" {...(capped ? { 'data-capped': '' } : {})}>
+        <span aria-hidden className="gk-shiplevel__bar" {...(capped ? { 'data-capped': '' } : {})}>
           <span data-bar="" style={{ width: `${String(share * 100)}%` }} />
         </span>
       </div>
@@ -176,7 +176,7 @@ export function GrowthBlock({ c, ship, level }: { c: ArenaCopy; ship: ShipClass;
   const rows = classStatRows(c, level); const after = classStatRows(c, Math.min(20, level + 1)); const most = classStatRows(c, 20);
   const gains = new Map(levelGains(ship, level, c).map(gain => [gain.key, gain.text]));
   const at = (n: number, of: number): string => `${String(Math.max(0, Math.min(1, n / Math.max(1e-9, of))) * 100)}%`;
-  return <section data-part="growth" className="gk-desk">
+  return <section data-part="growth" className="gk-shipdesk">
     <SectionTag as="h3" {...(level < 20 ? { aside: c.growthKey(level + 1) } : {})}>{c.statsTitle}</SectionTag>
     <dl className="gk-growth">
       {rows.map((row, i) => {
@@ -204,8 +204,8 @@ export function ClassBlock({ c, value, level, onPick, aside, children, points = 
   c: ArenaCopy; value: ShipClass; level: number; onPick?: (ship: ShipClass) => void; aside?: string; children?: ReactNode; points?: AbilityPoints;
 }) {
   const signature = abilityStats(value, 'signature', abilityRank(value, 'signature', points));
-  return <div data-part="class" className="gk-desk gk-desk--class" style={shipTone(value)}>
-    <section className="gk-desk">
+  return <div data-part="class" className="gk-shipdesk gk-shipdesk--class" style={shipTone(value)}>
+    <section className="gk-shipdesk">
       <SectionTag as="h3" {...(aside === undefined ? {} : { aside })}>{c.classTitle}</SectionTag>
       {onPick && <div className="gk-classtabs"><GameTabs label={c.shipTitle} value={value} onChange={onPick}
         tabs={SHIP_CLASSES.map(id => ({ id, label: c.classes[id].name,
@@ -220,7 +220,7 @@ export function ClassBlock({ c, value, level, onPick, aside, children, points = 
         </p>
       </div>
     </section>
-    <section data-part="compare" className="gk-desk">
+    <section data-part="compare" className="gk-shipdesk">
       <SectionTag as="h3" aside={c.compareKey}>{c.statsTitle}</SectionTag>
       <table className="gk-compare">
         <thead><tr>
@@ -291,7 +291,7 @@ export function LoadoutBlock({ c, hangar, busy, onPlan }: { c: ArenaCopy; hangar
 export function CapBlock({ c, hangar }: { c: ArenaCopy; hangar: Hangar }) {
   const left = capLeft(hangar);
   const resets = new Date(hangar.resetsAt).toLocaleTimeString(i18n.resolvedLanguage, { hour: '2-digit', minute: '2-digit' });
-  return <section data-part="cap" className="gk-desk">
+  return <section data-part="cap" className="gk-shipdesk">
     <SectionTag as="h3" aside={`${c.capResets} ${resets}`}>{c.capTitle}</SectionTag>
     <ul className="gk-capcells">
       {KINDS.map((key, kind) => <li key={key} className="gk-well gk-capcell" data-kind={key} {...(left[key] > 0 ? {} : { 'data-full': '' })}>
@@ -309,7 +309,7 @@ export function CapBlock({ c, hangar }: { c: ArenaCopy; hangar: Hangar }) {
 export function RulesBlock({ c }: { c: ArenaCopy }) {
   return <div data-part="rules">
     <RulesRow glyph="help" title={c.rulesOpen}>
-      <ul className="gk-desk__rules">{c.rules.map(line => <li key={line}>{line}</li>)}</ul>
+      <ul className="gk-shipdesk__rules">{c.rules.map(line => <li key={line}>{line}</li>)}</ul>
     </RulesRow>
   </div>;
 }

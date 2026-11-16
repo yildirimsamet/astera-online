@@ -36,7 +36,7 @@ export function SortieSummary({ c, report, hold, now }: { c: ArenaCopy; report: 
   const carried = hold.map(n => Math.floor(n));
   const dropped = report?.outcome === 'recalled' ? [] : carried;
   const t = teamCopy();
-  const chips = (values: readonly number[], sign: '+' | '−', part: 'pooled' | 'landed' | 'lost') => <ul className="gk-haul" data-haul={part}>{values.map((n, kind) => n > 0 && <li key={kind} className="gk-haulchip" style={tone(kind)}>
+  const chips = (values: readonly number[], sign: '+' | '−', part: 'pooled' | 'landed' | 'lost') => <ul className="gk-arenahaul" data-haul={part}>{values.map((n, kind) => n > 0 && <li key={kind} className="gk-haulchip" style={tone(kind)}>
     <i aria-hidden /><b className="gk-num">{sign}{amount(n)}</b> <small>{c.kinds[kind]}</small></li>)}</ul>;
   return <div className="gk-sortie">
     {landed && (report?.teamId ? <>

@@ -2145,6 +2145,18 @@ Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak ala
 - Denetim (tr, telefon): 81 → 32. 12 px altı yazı 25 → 4; kalan 4'ü yalnız geliştirmede görünen fps satırı. Kontrast 16 → 8; kalanlar mesafeyle bilerek sönen uzak yer adları.
 - Galeride hangar bölmesinin boş görünmesi hata değil: yerelde gemi paketi (`/__ref/dist/v2/…`) yok, prod'da arena sunucusu veriyor.
 
+
+### G12 kapanış — arena 6 dilde telefonda (2026-11-16)
+
+- 7 arena yolu (hangar, ekip, klan-arena, uçuş masası, uçuş, menü, sonuç) tr, en, de, es, fr ve ja'da telefonda ölçüldü.
+- Tek bulgu Japoncadaydı: kit'in basılı tutma etiketi harf başına 0,6 em varsayıyordu (dar Saira). Japonca yazı tipinde etiket taşıyordu. Japoncada artık harf başına 1 em hesaplanıyor ve etiket ikinci satıra geçebiliyor.
+- 320 px'te hangar'ın değer adları kesiliyordu ("Ateş gücü"). Artık alt satıra geçiyor.
+- Sınıf çakışmaları düzeltildi:
+  - G12-d2'nin `gk-level` ve `gk-desk` sınıfları kit'in seviye rozeti ve masa sütunu kurallarını devralıyordu: seviye başlığında mavi şerit, değerlerde fazladan panel. Sınıflar `gk-shiplevel` ve `gk-shipdesk` oldu.
+  - G12-c'nin `gk-haul` kuralı savaş raporu ve hedef dosyasındaki eski `gk-haul` ızgarasını eziyordu. Arena olanı `gk-arenahaul` oldu.
+- Sonuç: hiçbir dilde 12 px altı yazı, kesilme ya da taşma yok. Hangar (tr) puanı 6.
+- Sahibe açık konu: arena metinleri yalnız tr/en. de, es, fr ve ja oyuncuları arenayı İngilizce görüyor (`arenaCopy`). Ayrıca galerideki hangar başlığı sabit Türkçe bir test metni; oyunda `t('arena.nav')` kullanılıyor.
+
 ## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
 
 | # | Yüzey | Dosya (satır) | Dil | Not |
