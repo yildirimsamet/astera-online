@@ -2135,6 +2135,16 @@ Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak ala
 - Kalan kontrast hataları bölmenin üstündeki plaka/ipucu yazılarında ve kaydırılmış karedeki başlık altı satırda.
 - Açık: galeride bölme gemi modelini göstermiyor (9 sn beklemede de boş). Bu değişiklikten bağımsız, G12 kapanışında bakılacak.
 
+
+### G12-e — uçuş ekranı kit'te (2026-11-16)
+
+- Uçuş göstergeleri, hız kutusu, bildirim, sahne işaretleri, gaz, yetenek düğmeleri, işaret çarkı ve harita kit renklerine ve yazı tipine geçti. Arenanın eski v2 adları kit'e bağlandı.
+- 12 px altında yazı kalmadı. Sahne üstündeki adlar koyu konturlu; düğme etiketleri motor parlamasında da okunsun diye ince koyu zemin üstünde.
+- Menü 44 px metal yuvarlak düğme oldu. Radar ve menü basınca küçülüyor. Haritanın kapatma düğmesi de 44 px.
+- Harita: etiketler büyük harften çıktı (12 px'te birbirine binmesin diye). Açıklamalı lejant satırları tam satır ve asılı girintili.
+- Denetim (tr, telefon): 81 → 32. 12 px altı yazı 25 → 4; kalan 4'ü yalnız geliştirmede görünen fps satırı. Kontrast 16 → 8; kalanlar mesafeyle bilerek sönen uzak yer adları.
+- Galeride hangar bölmesinin boş görünmesi hata değil: yerelde gemi paketi (`/__ref/dist/v2/…`) yok, prod'da arena sunucusu veriyor.
+
 ## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
 
 | # | Yüzey | Dosya (satır) | Dil | Not |
