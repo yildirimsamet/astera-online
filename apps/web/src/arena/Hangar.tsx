@@ -1,4 +1,5 @@
 import i18n from '../i18n/index.js';
+import { Glyph } from '../game-ui/index.js';
 import type { ArenaCopy } from './copy.js';
 import { teamCopy } from './teamCopy.js';
 import { FARM_TONE } from './farmColors.js';
@@ -35,25 +36,22 @@ export function SortieSummary({ c, report, hold, now }: { c: ArenaCopy; report: 
   const carried = hold.map(n => Math.floor(n));
   const dropped = report?.outcome === 'recalled' ? [] : carried;
   const t = teamCopy();
-  return <div className="ss">
+  const chips = (values: readonly number[], sign: '+' | '−', part: 'pooled' | 'landed' | 'lost') => <ul className="gk-haul" data-haul={part}>{values.map((n, kind) => n > 0 && <li key={kind} className="gk-haulchip" style={tone(kind)}>
+    <i aria-hidden /><b className="gk-num">{sign}{amount(n)}</b> <small>{c.kinds[kind]}</small></li>)}</ul>;
+  return <div className="gk-sortie">
     {landed && (report?.teamId ? <>
-      {carried.some(n => n > 0) && <><p className="ap-eyebrow">{t.pooled}</p>
-        <ul className="ss-landed ss-pooled">{carried.map((n, kind) => n > 0 && <li key={kind} style={tone(kind)}><i aria-hidden /><b>+{amount(n)}</b> <small>{c.kinds[kind]}</small></li>)}</ul></>}
-      <p className="ss-pool">{t.pool}</p>
+      {carried.some(n => n > 0) && <><p className="gk-label">{t.pooled}</p>{chips(carried, '+', 'pooled')}</>}
+      <p className="gk-inote" data-tone="self"><Glyph id="support" /><span>{t.pool}</span></p>
     </> : landed.some(n => n > 0) ? <>
-      <p className="ap-eyebrow">{c.landedTitle}</p>
-      <ul className="ss-landed">{landed.map((n, kind) => n > 0 && <li key={kind} style={tone(kind)}><i aria-hidden /><b>+{amount(n)}</b> <small>{c.kinds[kind]}</small></li>)}</ul>
-    </> : <p className="ss-empty">{c.nothingLanded}</p>)}
-    {!landed && dropped.some(n => n > 0) && <>
-      <p className="ap-eyebrow">{c.lostTitle}</p>
-      <ul className="ss-lost">{dropped.map((n, kind) => n > 0 && <li key={kind} style={tone(kind)}><i aria-hidden /><b>−{amount(n)}</b> <small>{c.kinds[kind]}</small></li>)}</ul>
-    </>}
-    {over.some(n => n > 0) && <p className="ss-overflow">{c.overflow} {over.flatMap((n, kind) => n > 0 ? [`${amount(n)} ${c.kinds[kind] ?? ''}`] : []).join(' · ')}</p>}
-    {report && report.outcome !== 'test' && <p className="ss-xp"><b>+{report.xp.banked} XP</b>
+      <p className="gk-label">{c.landedTitle}</p>{chips(landed, '+', 'landed')}
+    </> : <p className="gk-sub">{c.nothingLanded}</p>)}
+    {!landed && dropped.some(n => n > 0) && <><p className="gk-label" data-tone="hostile">{c.lostTitle}</p>{chips(dropped, '−', 'lost')}</>}
+    {over.some(n => n > 0) && <p className="gk-inote" data-tone="warn" data-overflow=""><Glyph id="warn" /><span>{c.overflow} {over.flatMap((n, kind) => n > 0 ? [`${amount(n)} ${c.kinds[kind] ?? ''}`] : []).join(' · ')}</span></p>}
+    {report && report.outcome !== 'test' && <p className="gk-sortie__xp" data-xp=""><b className="gk-num">+{report.xp.banked} XP</b>
       {report.xp.kept < report.xp.earned && <small>{c.xpKept(report.xp.earned)}</small>}
       {report.xp.banked < report.xp.kept && <small>{c.xpUnbanked(report.xp.kept - report.xp.banked)}</small>}</p>}
-    {report && until > now && <p className="ss-ready" data-reason={report.readyReason}>
-      {report.readyReason === 'repair' ? c.repairing : c.servicing} · {clockText(until - now)}</p>}
+    {report && until > now && <p className="gk-inote" data-tone="warn" data-ready="" data-reason={report.readyReason}><Glyph id="repair" />
+      <span>{report.readyReason === 'repair' ? c.repairing : c.servicing} · <span className="gk-num">{clockText(until - now)}</span></span></p>}
   </div>;
 }
 

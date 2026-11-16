@@ -16372,3 +16372,87 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-shipline .gk-chip { color: var(--gk-self); }
 /* The launch stays under the thumb while the desk scrolls past it on a short phone. */
 .gk-arenadock > .ap-launch { position: sticky; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); z-index: 2; box-shadow: 0 -10px 24px rgba(2, 5, 10, 0.75); }
+
+/* ---------- G12-c: the arena's own screens (result, settings, loading, watching) ---------- */
+/* A card over the live scene: the ending in its colour, what it meant, the next flight lit. */
+.gk-arenacard {
+  --tone: var(--gk-self);
+  width: 100%; max-width: 420px; margin: 0 auto; display: grid; gap: var(--gk-s2); padding: var(--gk-s3) var(--gk-s4);
+  border: 1px solid var(--gk-metal-edge); border-top: 2px solid var(--tone); border-radius: 2px;
+  background: color-mix(in srgb, var(--gk-deep) 94%, transparent); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+  font-family: var(--gk-font-text); color: var(--gk-ink); max-height: 100%; overflow-y: auto; overscroll-behavior: contain;
+}
+.gk-arenacard[data-tone='hostile'] { --tone: var(--gk-hostile-hi); }
+.gk-arenacard[data-tone='warn'] { --tone: var(--gk-warn); }
+.gk-arenacard > p { margin: 0; }
+.gk-arenacard__title { margin: 0; font-size: var(--gk-t-title); line-height: 1.1; color: var(--tone); }
+.arena-menu .gk-arenacard__title { color: var(--gk-ink); }
+.gk-arenacard__what { display: grid; gap: 2px; padding: 6px 10px; border-left: 2px solid var(--tone); background: color-mix(in srgb, var(--tone) 8%, transparent); font-size: var(--gk-t-small); }
+.gk-arenacard__what .gk-label { color: var(--tone); }
+.gk-arenacard__points { display: flex; align-items: baseline; gap: 6px; font-size: var(--gk-t-small); color: var(--gk-ink-2); }
+.gk-arenacard__points strong { font-size: var(--gk-t-hero); line-height: 1; color: var(--gk-self); }
+.gk-arenacard__points[data-tone='hostile'] strong { color: var(--gk-hostile-hi); }
+.gk-arenacard__stats { padding-top: var(--gk-s2); }
+.gk-arenacard__stats .gk-figure__value { font-size: var(--gk-t-title); }
+
+/* A haul as chips: the resource's colour, how much, its name. */
+.gk-haul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.gk-haulchip {
+  display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 2px 8px; border: 1px solid var(--gk-metal-edge); border-radius: 2px;
+  background: color-mix(in srgb, var(--tone, var(--gk-self)) 8%, var(--gk-metal-2)); font-size: var(--gk-t-small); color: var(--gk-ink-2);
+}
+.gk-haulchip i { width: 8px; height: 8px; border-radius: 50%; background: var(--tone, var(--gk-self)); }
+.gk-haulchip b { font-weight: 700; color: var(--gk-ink); }
+.gk-haulchip small { font-size: var(--gk-t-floor); color: var(--gk-ink-3); }
+.gk-sortie { display: grid; gap: var(--gk-s2); }
+.gk-sortie > p { margin: 0; }
+.gk-sortie .gk-label[data-tone='hostile'] { color: var(--gk-hostile-hi); }
+.gk-sortie .gk-inote { flex-wrap: wrap; }
+.gk-sortie__xp { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.gk-sortie__xp b { font-size: var(--gk-t-body); color: var(--gk-self); }
+.gk-sortie__xp small { font-size: var(--gk-t-floor); color: var(--gk-ink-2); }
+
+/* The settings: each a kit control under its name. */
+.gk-arenaset { display: grid; gap: 6px; }
+.gk-arenaset > p { margin: 0; }
+.gk-arenacredits { margin: 0 0 6px; padding: 0; list-style: none; display: grid; gap: 4px; font-size: var(--gk-t-small); color: var(--gk-ink-2); }
+.gk-arenacard a { color: var(--gk-self); }
+
+/* The room's standings. */
+.gk-arenaboard { display: grid; gap: 4px; }
+.gk-arenaboard header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 8px; }
+.gk-arenaboard header p { margin: 0; }
+.gk-arenaboard table { width: 100%; border-collapse: collapse; font-size: var(--gk-t-small); }
+.gk-arenaboard th { padding: 0 6px 4px; font-size: var(--gk-t-floor); font-weight: 600; color: var(--gk-ink-2); text-align: right; }
+.gk-arenaboard td { padding: 6px; border-top: 1px solid color-mix(in srgb, var(--gk-ink) 10%, transparent); text-align: right; color: var(--gk-ink-2); }
+.gk-arenaboard td:nth-child(1) { width: 20px; text-align: left; color: var(--gk-ink-3); }
+.gk-arenaboard td:nth-child(2) { text-align: left; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gk-ink); }
+.gk-arenaboard td:nth-child(3) { font-weight: 700; color: var(--gk-ink); }
+.gk-arenaboard tr[data-self] td { color: var(--gk-self); background: color-mix(in srgb, var(--gk-self) 8%, transparent); }
+
+/* Loading into the zone: the stage, the share, a tip while it fills. */
+.arena-loading .gk-arenahead { position: relative; }
+.gk-arenaload { position: relative; width: min(300px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 6px; }
+.gk-arenaload p { margin: 0; }
+.gk-arenaload strong { font-size: var(--gk-t-body); color: var(--gk-self); }
+.gk-arenaload i { grid-column: 1 / -1; height: 3px; overflow: hidden; border-radius: 2px; background: color-mix(in srgb, var(--gk-self) 14%, transparent); }
+.gk-arenaload i b { display: block; height: 100%; transform-origin: left; background: linear-gradient(90deg, color-mix(in srgb, var(--gk-self) 40%, transparent), var(--gk-self)); transition: transform 0.25s ease-out; }
+.gk-arenaload__tip { position: relative; max-width: 300px; margin: 0; min-height: 3em; text-align: center; }
+.gk-arenaload__failed { position: relative; width: min(300px, 100%); display: grid; gap: var(--gk-s2); }
+
+/* Watching a teammate: who, how much hull each has, and the way back to the result. */
+.gk-watch { gap: var(--gk-s2); }
+.gk-watch__status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0; font-size: var(--gk-t-small); color: var(--gk-ink-2); }
+.gk-watch__status > i { width: 8px; height: 8px; border-radius: 50%; background: var(--gk-self); box-shadow: 0 0 10px var(--gk-self); }
+.gk-watch__status strong { margin-left: auto; font-size: var(--gk-t-body); color: var(--gk-ink); }
+.gk-watch__roster { display: flex; gap: var(--gk-s2); overflow-x: auto; }
+.gk-watch__mate {
+  position: relative; flex: 1 0 110px; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: var(--gk-hit); padding: 4px 10px;
+  border: 1px solid var(--gk-metal-edge); border-radius: 2px; background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2)); color: var(--gk-ink-2);
+  font-size: var(--gk-t-small); cursor: pointer;
+}
+.gk-watch__mate[aria-pressed='true'] { color: var(--gk-ink); border-color: color-mix(in srgb, var(--gk-self) 60%, var(--gk-metal-edge)); box-shadow: inset 0 -2px 0 var(--gk-self); }
+.gk-watch__mate small { font-size: var(--gk-t-floor); color: var(--gk-self); }
+.gk-watch__mate i { position: absolute; left: 0; bottom: 0; height: 2px; width: calc(var(--hp) * 100%); background: var(--gk-self); }
+.gk-watch__acts { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--gk-s2); }
+.gk-arenapanel:empty { display: none; }

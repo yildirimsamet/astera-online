@@ -219,7 +219,7 @@ export const SURFACES: GameSurface[] = [
     id: 'arena',
     what: 'Komutan gemisi arenası: hangar, takım, maç HUD, kontroller',
     files: ['arena/ArenaGate.tsx', 'arena/Sandbox.tsx', 'arena/Hud.tsx', 'arena/Controls.tsx', 'arena/PingWheel.tsx', 'arena/MapSheet.tsx', 'arena/LoopLine.tsx', 'arena/ModePicker.tsx', 'arena/GraphicsPicker.tsx', 'arena/SpectatorPanel.tsx', 'arena/ClassPicker.tsx', 'arena/Hangar.tsx', 'arena/credits.tsx', 'arena/TeamPanel.tsx', 'arena/hangar/HangarPanel.tsx', 'arena/hangar/HangarStage.tsx', 'arena/hangar/ShipDesk.tsx'],
-    reach: ['gallery:arena-hangar', 'gallery:arena-team', 'gallery:clan-arena', 'arena:sandbox', 'arena:match'],
+    reach: ['gallery:arena-hangar', 'gallery:arena-team', 'gallery:clan-arena', 'arena:sandbox', 'arena:match', 'arena:menu', 'arena:result'],
     group: 'G12', unreached: ['ping çarkı', "harita sheet'i", 'izleyici paneli'],
   },
 ];

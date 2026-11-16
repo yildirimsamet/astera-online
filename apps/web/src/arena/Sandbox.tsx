@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefCallback } from 'react';
 import { ARENA_TUNING as T, FARM_POINTS, SHIP_CLASSES, TACTICS, alive, createInput, createSandboxWorld, holdPoints, sameSide, type ArenaWorld, type Pilot, type ShipClass,
   type SteeringSettings, type Tactic, type TeamView } from '@astera/rules/arena';
-import { GameButton, Glyph } from '../game-ui/index.js';
+import { GameButton, Glyph, Slider, Toggle } from '../game-ui/index.js';
 import { ClassPicker, TacticPicker } from './ClassPicker.js';
 import { SortieSummary, launchText } from './Hangar.js';
 import { debriefText, pilotName, readDebrief, type Debrief } from './debrief.js';
@@ -451,29 +451,29 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
       {!mouse && !menu && <p className="arena-mouse-hint">{c.mouseHint}</p>}
       {board && <div className="arena-board-peek" role="dialog" aria-label={c.standings}>
         {mode === 'online' && connection.board.length > 0 ? <Standings board={connection.board} c={c} />
-          : <header><p className="ap-eyebrow">{c.standings}</p><small>{c.practiceBoard}</small></header>}
-        <p className="ap-eyebrow">{c.keysTitle}</p>
+          : <header><p className="gk-label">{c.standings}</p><small className="gk-sub">{c.practiceBoard}</small></header>}
+        <p className="gk-label">{c.keysTitle}</p>
         <dl className="ab-keys">{c.keyList.map(([key, what]) => <div key={key}><dt><kbd>{key}</kbd></dt><dd>{what}</dd></div>)}</dl>
       </div>}
     </>}
     {screen === 'spectate' && connection.teamId && <SpectatorPanel world={world} store={store} network={network} teamId={connection.teamId}
       watching={connection.watching} onResults={() => { setScreen('result'); }} />}
-    {screen === 'spectate' && !connection.teamId && <section className="arena-spectator">
-      <p role="status">{connection.phase === 'failed' ? c.connectionFailed : c.connecting}</p>
-      <button type="button" className="as-result" onClick={() => { setScreen('result'); }}>{teamCopy().results}</button>
+    {screen === 'spectate' && !connection.teamId && <section className="arena-spectator gk gk-arenacard gk-watch">
+      <p role="status" className="gk-watch__status">{connection.phase === 'failed' ? c.connectionFailed : c.connecting}</p>
+      <div className="gk-watch__acts"><GameButton size="sm" glyph="back" onPress={() => { setScreen('result'); }}>{teamCopy().results}</GameButton></div>
     </section>}
-    {screen === 'loading' && <section className="arena-loading">
-      <div className="al-mark"><span>ASTERA</span><small>{c.brand}</small></div>
-      <div className="al-progress">
-        <p>{warming ? c.stages.shaders : c.stages[progress.stage]}</p>
-        <i><b style={{ transform: `scaleX(${String(warming ? 1 : percent / 100)})` }} /></i>
-        <strong>{warming ? 100 : percent}%</strong>
+    {screen === 'loading' && <section className="arena-loading gk">
+      <div className="gk-arenahead"><span className="gk-arenahead__brand">ASTERA</span><p className="gk-display gk-arenahead__title">{c.brand}</p></div>
+      <div className="gk-arenaload">
+        <p className="gk-sub">{warming ? c.stages.shaders : c.stages[progress.stage]}</p>
+        <strong className="gk-num">{warming ? 100 : percent}%</strong>
+        <i aria-hidden><b style={{ transform: `scaleX(${String(warming ? 1 : percent / 100)})` }} /></i>
       </div>
-      {loadFailed ? <div className="al-failed" role="alert">
-        <p>{c.loadFailed}</p>
-        <button className="ap-launch" onClick={() => { setLoadFailed(false); setProgress({ done: 0, total: 1, stage: 'manifest' }); setLoadTry(n => n + 1); }}>{c.loadRetry}</button>
-        <button className="ap-leave" onClick={leave}>{c.leave}</button>
-      </div> : <p className="al-tip">{c.tips[tip % c.tips.length]}</p>}
+      {loadFailed ? <div className="gk-arenaload__failed" role="alert">
+        <p className="gk-inote" data-tone="warn"><Glyph id="warn" /><span>{c.loadFailed}</span></p>
+        <GameButton tone="action" size="lg" wide glyph="refresh" onPress={() => { setLoadFailed(false); setProgress({ done: 0, total: 1, stage: 'manifest' }); setLoadTry(n => n + 1); }}>{c.loadRetry}</GameButton>
+        <GameButton size="sm" tone="ghost" glyph="home" className="gk-arenadock__leave" onPress={leave}>{c.leave}</GameButton>
+      </div> : <p className="gk-sub gk-arenaload__tip">{c.tips[tip % c.tips.length]}</p>}
     </section>}
     {screen === 'preflight' && <section className="arena-preflight gk">
       <header className="gk-arenahead"><span className="gk-arenahead__brand">ASTERA</span><h1 className="gk-display gk-arenahead__title">{c.brand}</h1>
@@ -491,57 +491,73 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
         {(!real || desk?.ok) && !(real && inLobby) && <GameButton tone="action" size="lg" wide glyph="rocket" className="ap-launch" heavy={real}
           disabledReason={grounded ? launchFace.line : null} {...(launchFace.note ? { detail: launchFace.note } : {})}
           onPress={() => { launch(); }}>{launchFace.line}</GameButton>}
-        <GameButton size="sm" tone="ghost" glyph="back" className="ap-leave gk-arenadock__leave" onPress={leave}>{c.leave}</GameButton>
+        <GameButton size="sm" tone="ghost" glyph="back" className="gk-arenadock__leave" onPress={leave}>{c.leave}</GameButton>
         <p className="gk-note gk-arenadock__keys">{c.keyboard}</p>
       </div>
     </section>}
-    {screen === 'result' && <section className="arena-result">
-      <div className={`ar-card is-${result}`}>
-        <p className="ap-eyebrow">{c.brand}</p>
-        <h2>{c[result]}</h2>
-        {what && <p className="ar-what" data-debrief={what.kind}><span>{c.debrief.title}</span>{debriefText(what, c, id => pilotName(id, c, world, network))}</p>}
-        {real ? <SortieSummary c={c} report={connection.sortie} hold={flown} now={now} /> : <>
-          <p className={`ar-points is-${result}`}>
-            {flownPoints > 0 ? <><strong>{result === 'extracted' ? '+' : '−'}{flownPoints}</strong> {c.pointsShort}
-              {result !== 'extracted' && <small> {c.lostPoints}</small>}</> : <small>{c.emptyHint}</small>}
+    {screen === 'result' && <section className="arena-result gk">
+      <div className="gk-arenacard" data-tone={result === 'extracted' ? 'self' : result === 'dead' ? 'hostile' : 'warn'}>
+        <p className="gk-label">{c.brand}</p>
+        <h2 className="gk-display gk-arenacard__title">{c[result]}</h2>
+        {what && <p className="gk-arenacard__what" data-debrief={what.kind}><span className="gk-label">{c.debrief.title}</span>{debriefText(what, c, id => pilotName(id, c, world, network))}</p>}
+        {real ? <SortieSummary c={c} report={connection.sortie} hold={flown} now={now} /> : flownPoints > 0 && <>
+          <p className="gk-arenacard__points" data-tone={result === 'extracted' ? 'self' : 'hostile'}>
+            <strong className="gk-num">{result === 'extracted' ? '+' : '−'}{flownPoints}</strong> {c.pointsShort}
+            {result !== 'extracted' && <small> {c.lostPoints}</small>}
           </p>
-          {flownPoints > 0 && <ul className="ar-kinds">{flown.map((units, kind) => Math.floor(units) > 0 && <li key={kind} style={{ '--tone': FARM_TONE[kind] } as React.CSSProperties}>
-            <i /><b>{Math.floor(units)}</b> {c.kinds[kind]} <small>×{FARM_POINTS[kind]}</small></li>)}</ul>}
+          <ul className="gk-haul">{flown.map((units, kind) => Math.floor(units) > 0 && <li key={kind} className="gk-haulchip" style={{ '--tone': FARM_TONE[kind] } as React.CSSProperties}>
+            <i aria-hidden /><b className="gk-num">{Math.floor(units)}</b> {c.kinds[kind]} <small>×{FARM_POINTS[kind]}</small></li>)}</ul>
         </>}
-        {!(real && result === 'extracted') && what?.kind !== 'recalled' && <p>{result === 'extracted' ? flownPoints > 0 ? c.extractedHint : c.emptyHint : result === 'dead' ? c.deadHint : c.towedHint}</p>}
-        <div className={`ar-stats ${real ? 'is-two' : ''}`}>
-          {!real && <div><span>{c.delivered}</span><strong>{result === 'extracted' ? flownPoints : 0}</strong></div>}
-          <div><span>{c.hits}</span><strong>{status.hits}</strong></div>
-          <div><span>{c.kills}</span><strong>{status.kills}</strong></div>
-        </div>
+        {/* What the ending meant for the hold: nothing is said scattered or left behind when nothing was carried. */}
+        {!(real && result === 'extracted') && what?.kind !== 'recalled' && <p className="gk-sub">{result === 'extracted' ? flownPoints > 0 ? c.extractedHint : c.emptyHint
+          : flownPoints > 0 ? result === 'dead' ? c.deadHint : c.towedHint : c.emptyLoss}</p>}
+        <dl className="gk-figures gk-arenacard__stats">
+          {!real && <div className="gk-figure"><dt className="gk-label">{c.delivered}</dt><dd className="gk-num gk-figure__value">{result === 'extracted' ? flownPoints : 0}</dd></div>}
+          <div className="gk-figure"><dt className="gk-label">{c.hits}</dt><dd className="gk-num gk-figure__value">{status.hits}</dd></div>
+          <div className="gk-figure"><dt className="gk-label">{c.kills}</dt><dd className="gk-num gk-figure__value">{status.kills}</dd></div>
+        </dl>
         {mode === 'online' && <Standings board={connection.board} c={c} />}
-        {real && <div className="ap-team"><TeamPanel credential={hangarToken} claimsOnly {...room} /></div>}
-        {connection.teamId && connection.watching !== null && <button className="ap-launch" onClick={() => { setScreen('spectate'); }}>{teamCopy().watch}</button>}
+        {real && <div className="gk-arenapanel"><TeamPanel credential={hangarToken} claimsOnly {...room} /></div>}
+        {connection.teamId && connection.watching !== null && <GameButton wide glyph="eye" onPress={() => { setScreen('spectate'); }}>{teamCopy().watch}</GameButton>}
         {/* After a real flight the ship rests: the hangar's clock says when it flies again. */}
-        {real ? <button className="ap-launch" onClick={leave}>{c.backToHangar}</button>
-          : <button className="ap-launch ar-return" onClick={again} style={{ '--left': String(countdown / RETURN_AFTER) } as React.CSSProperties}>
-            <span>{c.retry}</span><small>{c.returning} {countdown} {c.seconds}</small></button>}
-        <button className="ap-leave" onClick={leave}>{c.leave}</button>
-        <p className="ap-keys">{real ? c.resultLive : c.resultNote}</p>
+        {real ? <GameButton tone="action" size="lg" wide glyph="back" onPress={leave}>{c.backToHangar}</GameButton>
+          : <GameButton tone="action" size="lg" wide glyph="rocket" detail={`${c.returning} ${String(countdown)} ${c.seconds}`} onPress={again}>{c.retry}</GameButton>}
+        <GameButton size="sm" tone="ghost" glyph="home" className="gk-arenadock__leave" onPress={leave}>{c.leave}</GameButton>
+        <p className="gk-note gk-arenadock__keys">{real ? c.resultLive : c.resultNote}</p>
       </div>
     </section>}
-    {menu && <div className="arena-menu"><section role="dialog" aria-label={c.settings}>
-      <h2>{c.settings}</h2>
+    {menu && <div className="arena-menu gk"><section role="dialog" aria-label={c.settings} className="gk-arenacard">
+      <h2 className="gk-display gk-arenacard__title">{c.settings}</h2>
       {mode === 'online' && <Standings board={connection.board} c={c} />}
-      <label>{c.sensitivity}<input type="range" min="0.5" max="1.5" step="0.05" defaultValue={settings.sensitivity}
-        onChange={event => { settings.sensitivity = Number(event.target.value); }} /></label>
-      <label className="is-check"><input type="checkbox" defaultChecked={settings.invertPitch} onChange={event => { settings.invertPitch = event.target.checked; }} />{c.invert}</label>
-      <GraphicsPicker c={c} value={graphics} onPick={pickGraphics} />
-      <label className="is-check"><input type="checkbox" defaultChecked={audio.enabled} onChange={event => { audio.enabled = event.target.checked; }} />{c.sound}</label>
-      <p className="ap-keys">{c.keyboard}</p>
-      <button className="ap-launch" onClick={() => { audio.ui(); setMenu(false); takeMouse(); }}>{c.resume}</button>
-      <button className="ap-leave" onClick={leave}>{c.leave}</button>
+      <FlightSettings c={c} settings={settings} audio={audio} graphics={graphics} onGraphics={pickGraphics} />
+      <p className="gk-note gk-arenadock__keys">{c.keyboard}</p>
+      <GameButton tone="action" size="lg" wide glyph="rocket" onPress={() => { audio.ui(); setMenu(false); takeMouse(); }}>{c.resume}</GameButton>
+      <GameButton size="sm" tone="ghost" glyph="home" className="gk-arenadock__leave" onPress={leave}>{c.leave}</GameButton>
       <ModelCredits c={c} />
     </section></div>}
     {import.meta.env.DEV && <button className="arena-dev" onClick={() => { setDiagOpen(open => !open); }}>
       fps {Math.round(client.current?.metrics.fps ?? 0)} · {T.tickRate} Hz · tanı</button>}
     {import.meta.env.DEV && diagOpen && <pre className="arena-diag" data-last={diagLines}>{diag.lines.join('\n')}</pre>}
   </main>;
+}
+
+/** The settings over a flight: the steering's feel, the picture's cost and the sound, each a kit control that acts at once. */
+function FlightSettings({ c, settings, audio, graphics, onGraphics }: {
+  c: ArenaCopy; settings: SteeringSettings; audio: { enabled: boolean }; graphics: ArenaGraphicsChoice; onGraphics: (choice: ArenaGraphicsChoice) => void;
+}) {
+  const [sensitivity, setSensitivity] = useState(() => Math.round(settings.sensitivity * 100));
+  const [invert, setInvert] = useState(settings.invertPitch);
+  const [sound, setSound] = useState(audio.enabled);
+  return <>
+    <div className="gk-arenaset">
+      <p className="gk-label">{c.sensitivity}</p>
+      <Slider label={c.sensitivity} value={sensitivity} min={50} max={150} step={5} readout={`×${(sensitivity / 100).toFixed(2)}`}
+        onChange={next => { setSensitivity(next); settings.sensitivity = next / 100; }} />
+    </div>
+    <Toggle checked={invert} label={c.invert} onChange={next => { setInvert(next); settings.invertPitch = next; }} />
+    <GraphicsPicker c={c} value={graphics} onPick={onGraphics} />
+    <Toggle checked={sound} label={c.sound} onChange={next => { setSound(next); audio.enabled = next; }} />
+  </>;
 }
 
 /** The ship a real flight takes, as the hangar left it: chosen, levelled and refilled there. */
@@ -572,12 +588,12 @@ function standingLine(board: readonly Standing[], c: ArenaCopy): string {
 
 function Standings({ board, c }: { board: readonly Standing[]; c: ArenaCopy }) {
   if (board.length === 0) return null;
-  return <section className="ar-board" aria-label={c.standings}>
-    <header><p className="ap-eyebrow">{c.standings}</p><small>{c.standingsRule}</small></header>
+  return <section className="gk-arenaboard" aria-label={c.standings}>
+    <header><p className="gk-label">{c.standings}</p><small className="gk-sub">{c.standingsRule}</small></header>
     <table>
-      <thead><tr><th>#</th><th /><th>{c.pointsCol}</th><th>{c.killsCol}</th><th>{c.deathsCol}</th></tr></thead>
-      <tbody>{board.map((row, i) => <tr key={row.id} className={row.self ? 'is-self' : ''}>
-        <td>{i + 1}</td><td>{row.self ? `${row.name} · ${c.you}` : row.name}</td><td>{row.points}</td><td>{row.kills}</td><td>{row.deaths}</td>
+      <thead><tr><th scope="col">#</th><th scope="col" /><th scope="col">{c.pointsCol}</th><th scope="col">{c.killsCol}</th><th scope="col">{c.deathsCol}</th></tr></thead>
+      <tbody>{board.map((row, i) => <tr key={row.id} {...(row.self ? { 'data-self': '' } : {})}>
+        <td className="gk-num">{i + 1}</td><td>{row.self ? `${row.name} · ${c.you}` : row.name}</td><td className="gk-num">{row.points}</td><td className="gk-num">{row.kills}</td><td className="gk-num">{row.deaths}</td>
       </tr>)}</tbody>
     </table>
   </section>;

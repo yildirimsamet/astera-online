@@ -2104,6 +2104,16 @@ Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak ala
 - Kök neden notu: arena.css'in eski başlat ve dön kuralları yalnız kite geçmemiş tuşlara uygulanıyor (`:where(:not(.gk-btn))`, G12-c'ye kadar). Araçların `.ap-launch` seçicisi korundu. Uçuş öncesine ait 63 satır eski kural ve kullanılmayan `LaunchLabel` silindi.
 - Audit (tr): uçuş öncesi 126 → 19. Kalanın tamamı yalnız geliştirme modunda görünen fps göstergesi. Gerçek uçuş, tamir, takım lobisi ve 320 px durumları ayrıca sahte hangar yanıtlarıyla çekildi.
 
+
+**G12-c Sonuç, ayarlar, yükleme ve izleme ✅ (2026-11-16).** `Sandbox` (sonuç, menü, yükleme, sıralama), `SortieSummary`, `GraphicsPicker`, `ModelCredits`, `SpectatorPanel`.
+- **An:** "Ne oldu, şimdi ne?" Sonuç kartı uçuşun nasıl bittiğini kendi renginde söylüyor: teslim yeşil, yok edilme kırmızı, çekilme sarı. "Ne oldu?" kutusu, puan/isabet/yok edilen kitin rakamlarında. Sonraki uçuş tek ışıklı tuş ve ikinci satırında geri sayım ("Alana dönüş 3 sn").
+- Düzeltilen çelişki: boş ambarla düşen gemiye "Ambar boştu; bu çıkış puan getirmedi" ile "Ambarın enkazın çevresine saçıldı" birlikte yazılıyordu. Boş çıkışta da "Ambar boştu" iki kez çıkıyordu. Artık ambar boşken kayıp yoksa "Ambar boştu; kargo kaybın yok." yazıyor. Saçıldı/alanda kaldı yalnız taşınan bir şey varken söyleniyor.
+- Gerçek uçuşun dönüşü: başkente gidenler, düşen kargo ve takım havuzu kitin kaynak çiplerinde; günlük sınır ve tamir saati uyarı notunda; XP kendi satırında.
+- Uçuş üstü ayarlar: dönüş hassasiyeti kitin kaydırıcısı (×0,50–×1,50), ters çevirme ve ses kitin şalteri, grafik kitin seçenekleri ve neye mal olduğu notu; "Uçuşa dön" ışıklı tuş. Emeği geçenler kitin kural satırında.
+- Yükleme: aşama, yüzde ve çubuk kitte; yükleme hatası uyarı notu ve "Yeniden dene" tuşu. Takım izleme: arkadaş seçici 44 px, gövde çubuğu, "Sonuca dön" kit tuşu.
+- 110 eski kural silindi (ar-*, ss-*, al-*, as-*, ap-mode, ap-eyebrow, ap-keys, eski başlat/dön). `.arena-spectator` yalnız konum.
+- Audit'e iki giriş yolu: `arena:menu` (antrenman + menü) ve `arena:result` (geliştirme kancasıyla gemiyi düşürür). Audit (tr): menü 68 → 19, sonuç 54 → 19; kalanın tamamı geliştirme fps göstergesi. Yükleme ekranı çok kısa sürdüğü için fotoğraflanamadı; yalnız testlerle doğrulandı.
+
 ## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
 
 | # | Yüzey | Dosya (satır) | Dil | Not |
