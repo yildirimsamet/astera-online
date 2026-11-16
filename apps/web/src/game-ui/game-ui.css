@@ -16308,7 +16308,7 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 
 /* ---------- G12-b: the flight desk (Komutan Gemisi › Yarık) ---------- */
 /* The ship and the field stay the picture: a title at the top, the desk docked at the thumbs. */
-.gk-arenahead { display: grid; justify-items: center; gap: 0; text-align: center; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.7); }
+.gk-arenahead { display: grid; justify-items: center; gap: 0; text-align: center; text-shadow: 0 1px 12px color-mix(in srgb, var(--gk-outline) 70%, transparent); }
 .gk-arenahead__brand { font: 600 var(--gk-t-floor) / 1 var(--gk-font-display); letter-spacing: 0.5em; padding-left: 0.5em; color: var(--gk-ink-2); }
 .gk-arenahead__title { margin: 0; font-size: var(--gk-t-title); color: var(--gk-ink); }
 .gk-arenahead__sector { color: var(--gk-self); }
@@ -16319,7 +16319,7 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 /* A dark glass panel over a live scene: dense enough that the ship behind never shows through the words. */
 .gk-arenapanel {
   padding: var(--gk-s2) var(--gk-s3); border: 1px solid var(--gk-metal-edge); border-radius: 2px;
-  background: color-mix(in srgb, var(--gk-deep) 90%, transparent); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  background: color-mix(in srgb, var(--gk-deep) 90%, transparent); box-shadow: 0 10px 28px color-mix(in srgb, var(--gk-outline) 45%, transparent);
 }
 
 /* The loop: three steps on one line; a press opens how each is done. */
@@ -16339,9 +16339,9 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-loop__steps li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; }
 
 /* The class: three kit choices, what it is for, its signature in its own colour, the numbers on bars. */
-.gk-shipclass { --sig: #ffc66b; display: grid; gap: var(--gk-s2); }
-.gk-shipclass[data-ship='muhafiz'] { --sig: #7fd7ff; }
-.gk-shipclass[data-ship='kilavuz'] { --sig: #7cf0a8; }
+.gk-shipclass { --sig: var(--gk-ship-akinci); display: grid; gap: var(--gk-s2); }
+.gk-shipclass[data-ship='muhafiz'] { --sig: var(--gk-ship-muhafiz); }
+.gk-shipclass[data-ship='kilavuz'] { --sig: var(--gk-ship-kilavuz); }
 .gk-shipclass .gk-tab { text-transform: none; letter-spacing: 0.02em; }
 .gk-shipclass__line { margin: 0; min-height: 2.7em; font-size: var(--gk-t-small); line-height: 1.35; color: var(--gk-ink-2); }
 .gk-shipclass__line b { color: var(--gk-self); font-weight: 700; }
@@ -16381,7 +16381,7 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-shipline .gk-display { font-size: var(--gk-t-body); color: var(--gk-ink); }
 .gk-shipline .gk-chip { color: var(--gk-self); }
 /* The launch stays under the thumb while the desk scrolls past it on a short phone. */
-.gk-arenadock > .ap-launch { position: sticky; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); z-index: 2; box-shadow: 0 -10px 24px rgba(2, 5, 10, 0.75); }
+.gk-arenadock > .ap-launch { position: sticky; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); z-index: 2; box-shadow: 0 -10px 24px color-mix(in srgb, var(--gk-outline) 75%, transparent); }
 
 /* ---------- G12-c: the arena's own screens (result, settings, loading, watching) ---------- */
 /* A card over the live scene: the ending in its colour, what it meant, the next flight lit. */
@@ -16389,7 +16389,7 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
   --tone: var(--gk-self);
   width: 100%; max-width: 420px; margin: 0 auto; display: grid; gap: var(--gk-s2); padding: var(--gk-s3) var(--gk-s4);
   border: 1px solid var(--gk-metal-edge); border-top: 2px solid var(--tone); border-radius: 2px;
-  background: color-mix(in srgb, var(--gk-deep) 94%, transparent); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+  background: color-mix(in srgb, var(--gk-deep) 94%, transparent); box-shadow: 0 18px 50px color-mix(in srgb, var(--gk-outline) 50%, transparent);
   font-family: var(--gk-font-text); color: var(--gk-ink); max-height: 100%; overflow-y: auto; overscroll-behavior: contain;
 }
 .gk-arenacard[data-tone='hostile'] { --tone: var(--gk-hostile-hi); }
@@ -16494,7 +16494,7 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
   padding: var(--gk-s2) var(--gk-s4) calc(var(--gk-s5) + env(safe-area-inset-bottom, 0px));
   border: 1px solid var(--gk-metal-edge); border-bottom: 0; border-radius: var(--gk-r-lg) var(--gk-r-lg) 0 0;
   background: linear-gradient(180deg, var(--gk-metal-2), var(--gk-deep) 220px); color: var(--gk-ink); font-family: var(--gk-font-text);
-  box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.55), inset 0 1px 0 var(--gk-metal-hi); }
+  box-shadow: 0 -18px 48px color-mix(in srgb, var(--gk-outline) 55%, transparent), inset 0 1px 0 var(--gk-metal-hi); }
 @media (min-width: 640px) { .gk-authsheet { border-bottom: 1px solid var(--gk-metal-edge); border-radius: var(--gk-r-lg); padding-bottom: var(--gk-s5); } }
 .gk-authsheet__grab { justify-self: center; width: 36px; height: 4px; border-radius: 2px; background: var(--gk-metal-edge); }
 @media (min-width: 640px) { .gk-authsheet__grab { display: none; } }
@@ -16508,7 +16508,7 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 /* ── G13-c (2026-11-16): the app's front door ─────────────────────────────── */
 .gk-frontdoor { background: var(--gk-void); color: var(--gk-ink); font-family: var(--gk-font-text); }
 /* Words over a moving scene: dark round their letters, so a planet passing behind never takes them. */
-.gk-frontdoor__people, .gk-frontdoor__greet, .gk-frontdoor__hint { text-shadow: 0 0 2px #000, 0 1px 3px #000, 0 0 10px rgba(0, 0, 0, 0.75); }
+.gk-frontdoor__people, .gk-frontdoor__greet, .gk-frontdoor__hint { text-shadow: 0 0 2px var(--gk-outline), 0 1px 3px var(--gk-outline), 0 0 10px color-mix(in srgb, var(--gk-outline) 75%, transparent); }
 .gk-frontdoor__foot { display: grid; gap: var(--gk-s2); width: 100%; max-width: 28rem; margin-inline: auto; }
 .gk-frontdoor__people { margin: 0; text-align: center; color: var(--gk-ink); }
 .gk-frontdoor__people .gk-num { font-weight: 700; color: var(--gk-ink); }
@@ -16572,7 +16572,7 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-quizopt > .gk-glyph { flex: none; width: 16px; height: 16px; color: var(--gk-ink-3); }
 .gk-returncard { position: fixed; z-index: 35; bottom: calc(var(--v2-dock-h, 64px) + 8px); left: 8px; right: 8px; max-width: 350px; margin-inline: auto;
   display: grid; gap: var(--gk-s2); padding: var(--gk-s3); border: 1px solid var(--gk-metal-edge); border-radius: var(--gk-r-md);
-  background: linear-gradient(180deg, var(--gk-metal-2), var(--gk-deep)); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 var(--gk-metal-hi);
+  background: linear-gradient(180deg, var(--gk-metal-2), var(--gk-deep)); box-shadow: 0 12px 40px color-mix(in srgb, var(--gk-outline) 60%, transparent), inset 0 1px 0 var(--gk-metal-hi);
   color: var(--gk-ink); font-family: var(--gk-font-text); animation: gk-quiz-pop .35s var(--gk-ease) both; }
 @media (min-width: 1100px) { .gk-returncard { left: auto; right: 24px; bottom: 24px; width: 350px; } }
 .gk-returncard__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--gk-s2); }
@@ -16628,13 +16628,13 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-bubble[data-side='self'] { --shape: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%); }
 .gk-bubble[data-tone='self'] { --tone: var(--gk-self); --who: var(--gk-self); }
 .gk-bubble[data-tone='clan'] { --tone: var(--gk-info); --who: var(--gk-info); }
-.gk-bubble[data-tone='admin'] { --tone: #fb7185; --who: #fda4af; }
+.gk-bubble[data-tone='admin'] { --tone: var(--gk-admin); --who: var(--gk-admin-ink); }
 .gk-bubble[data-tone='gold'] { --tone: var(--gk-gold-lo); }
 .gk-bubble[data-tone='silver'] { --tone: var(--gk-silver-lo); }
 .gk-bubble[data-tone='bronze'] { --tone: var(--gk-bronze-lo); }
 /* A supporter is someone else: the heart names them, the edge carries the mark, the glass stays plain so
    their words never read as yours. */
-.gk-bubble[data-tone='supporter'] { --tone: #2dd4bf; --wash: transparent; }
+.gk-bubble[data-tone='supporter'] { --tone: var(--gk-supporter); --wash: transparent; }
 .gk-bubble:focus-visible { --edge: var(--gk-self); }
 /* Held (C3): the cut edge would clip a glow, so the edge itself lights and the glass warms. */
 .gk-bubble[data-held] { --edge: var(--gk-self); --wash: color-mix(in srgb, var(--gk-self) 20%, transparent); }
@@ -16663,7 +16663,7 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-bubble__badge[data-tone='gold'], .gk-chathint[data-tone='gold'] { --badge: var(--gk-gold); }
 .gk-bubble__badge[data-tone='silver'], .gk-chathint[data-tone='silver'] { --badge: var(--gk-silver); }
 .gk-bubble__badge[data-tone='bronze'], .gk-chathint[data-tone='bronze'] { --badge: var(--gk-bronze); }
-.gk-bubble__badge[data-tone='supporter'], .gk-chathint[data-tone='supporter'] { --badge: #5eead4; }
+.gk-bubble__badge[data-tone='supporter'], .gk-chathint[data-tone='supporter'] { --badge: var(--gk-supporter-ink); }
 .gk-bubble__quote {
   display: grid; margin-top: 4px; padding: 3px 8px; max-width: 100%;
   border-left: 2px solid var(--gk-self); background: color-mix(in srgb, var(--gk-self) 7%, var(--gk-deep));
@@ -16672,9 +16672,9 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-bubble__quotewho { color: var(--gk-self); font-weight: 700; }
 .gk-bubble__quotetext { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gk-ink-2); }
 /* Sentences people wrote, read in a row: 16 px like the composer (owner 2026-10-04). */
-.gk-bubble__text { margin: 2px 0 0; color: var(--gk-ink); font-size: 16px; line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.gk-bubble__text { margin: 2px 0 0; color: var(--gk-ink); font-size: var(--gk-t-lead); line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere; }
 /* The explanation under a cup or a heart: the kit's tip with an edge in that metal. */
-.gk-chathint { border-color: color-mix(in srgb, var(--badge) 55%, var(--gk-metal-edge)); box-shadow: 0 10px 24px rgb(0 0 0 / 45%); }
+.gk-chathint { border-color: color-mix(in srgb, var(--badge) 55%, var(--gk-metal-edge)); box-shadow: 0 10px 24px color-mix(in srgb, var(--gk-outline) 45%, transparent); }
 /* A line nobody typed: the clan's log between the bubbles, a strip with its tone on the edge. */
 .gk-chatevent {
   display: flex; align-items: center; gap: 8px; max-width: 92%; margin: 0; padding: 5px 10px;

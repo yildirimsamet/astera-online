@@ -84,6 +84,17 @@
   --gk-bronze: #e09a62;
   --gk-bronze-lo: #8c4d22;
 
+  /* the chat's two marks of standing (2026-11-16): an admin's rose, a supporter's teal (distinct from yours) */
+  --gk-admin: #fb7185;
+  --gk-admin-ink: #fda4af;
+  --gk-supporter: #2dd4bf;
+  --gk-supporter-ink: #5eead4;
+
+  /* the Yarık ship classes' signatures (arena/shipTone.ts keeps the same three for inline styles) */
+  --gk-ship-akinci: #ffc66b;
+  --gk-ship-muhafiz: #7fd7ff;
+  --gk-ship-kilavuz: #7cf0a8;
+
   /* type: one family. Names, numbers and buttons in Saira narrow and bold, an instrument's
      lettering (owner 2026-11-12, look 2.9, in place of Russo One); the rest in Saira. */
   --gk-font-display: 'Saira Variable', 'Arial Narrow', system-ui, sans-serif;
