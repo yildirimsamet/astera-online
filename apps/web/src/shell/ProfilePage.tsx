@@ -73,8 +73,9 @@ export function ProfilePage({ name, country = 'TR', onCountryChange, onSignOut, 
             <a key={page} className="gk-acct__link" href={publisherUrl(page, i18n.resolvedLanguage)}>{t(label)}</a>
           ))}
         </nav>
-        <GameButton tone="ghost" wide glyph="back" onPress={onSignOut}>{t('galaxy.commander.signOut')}</GameButton>
+        {/* Deletion quiet above, sign out last (owner 2026-11-17, ek-8). */}
         <AccountDeletionEntry />
+        <GameButton tone="ghost" wide glyph="back" onPress={onSignOut}>{t('galaxy.commander.signOut')}</GameButton>
         {countryPickerOpen && onCountryChange && <CountryPicker value={country} onSelect={(next) => { setCountryPickerOpen(false); void onCountryChange(next); }} onClose={() => { setCountryPickerOpen(false); }} />}
         {vacationOpen && <VacationSheet onClose={() => { setVacationOpen(false); }} />}
         {legacyOpen && <LegacyProfileSheet source={{ kind: 'me' }} name={name} onClose={() => { setLegacyOpen(false); }} />}

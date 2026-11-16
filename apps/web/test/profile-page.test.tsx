@@ -91,15 +91,20 @@ describe('the account page on the kit', () => {
     expect(screen.getByRole('dialog', { name: i18n.t('vacation.title') })).toBeVisible();
   });
 
-  /** What ends the session or the account sits at the foot, the account's deletion last of all. */
-  it('keeps sign out and deletion at the foot, deletion last', () => {
+  /**
+   * What ends the session or the account sits at the foot (owner 2026-11-17, ek-8): sign out last,
+   * the deletion just above it and quiet — a small line, not a red door in the player's eye.
+   */
+  it('keeps deletion and sign out at the foot, sign out last, the deletion quiet', () => {
     show();
     const buttons = screen.getAllByRole('button');
     const signOut = buttons.indexOf(screen.getByRole('button', { name: i18n.t('galaxy.commander.signOut') }));
-    const deletion = buttons.indexOf(screen.getByRole('button', { name: new RegExp(i18n.t('accountDeletion.title')) }));
-    expect(signOut).toBeGreaterThan(-1);
-    expect(deletion).toBe(buttons.length - 1);
-    expect(deletion).toBeGreaterThan(signOut);
+    const deletionButton = screen.getByRole('button', { name: new RegExp(i18n.t('accountDeletion.title')) });
+    const deletion = buttons.indexOf(deletionButton);
+    expect(signOut).toBe(buttons.length - 1);
+    expect(deletion).toBe(signOut - 1);
+    expect(deletionButton).not.toHaveClass('gk-door');
+    expect(deletionButton).toHaveClass('gk-acct__quiet');
   });
 
   it('gives each publisher link a thumb-sized target', () => {

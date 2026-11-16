@@ -7,7 +7,9 @@ import { Sheet } from '../v2/kit/Sheet.js';
 import { SecurityField, useSecurityError } from './securityFields.js';
 import { publisherUrl } from '../lib/publisherPages.js';
 import { matchLanguage } from '../i18n/languages.js';
-import { Banner, DoorRow, GameButton, GameHold, Toggle, Well } from '../game-ui/index.js';
+import { Banner, GameButton, GameHold, Glyph, Toggle, Well } from '../game-ui/index.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 
 const deletionKey = ['account-deletion'] as const;
 
@@ -15,7 +17,10 @@ const deletionKey = ['account-deletion'] as const;
 export function AccountDeletionEntry() {
   const { t } = useTranslation(); const [open, setOpen] = useState(false);
   return <>
-    <DoorRow glyph="block" tone="hostile" title={t('accountDeletion.title')} onPress={() => { setOpen(true); }} />
+    {/* Quiet on purpose (owner 2026-11-17, ek-8): there for whoever looks for it, never a red door in the eye. */}
+    <button type="button" className="gk-acct__quiet" {...OWN_SOUND} onClick={() => { playSound('tap'); haptic('tap'); setOpen(true); }}>
+      <Glyph id="block" />{t('accountDeletion.title')}
+    </button>
     {open ? <AccountDeletionSheet onClose={() => { setOpen(false); }} /> : null}
   </>;
 }

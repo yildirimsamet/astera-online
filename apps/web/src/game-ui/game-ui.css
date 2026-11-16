@@ -17563,3 +17563,22 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 
 /* ── O13 (owner 2026-11-17): a bled sheet's own content keeps the sheet's gutter (the Base switch spans the bleed) ── */
 .gk-sheet__pad { padding: 0 var(--gk-gutter); }
+
+/* ── O8 (owner 2026-11-17): the account's deletion, quiet — a small line, red only in its mark ── */
+.gk-acct__quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-self: center;
+  gap: 6px;
+  min-height: var(--gk-hit);
+  padding: 0 var(--gk-s3);
+  border: 0;
+  background: none;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-3);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.gk-acct__quiet .gk-glyph { width: 13px; height: 13px; color: color-mix(in srgb, var(--gk-hostile) 70%, var(--gk-ink-3)); }
+.gk-acct__quiet:active { color: var(--gk-ink-2); }
+.gk-acct__quiet:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 2px; border-radius: 4px; }
