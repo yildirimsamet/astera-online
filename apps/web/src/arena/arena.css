@@ -116,29 +116,6 @@
 .ap-class-signature span { font-size: 10.5px; line-height: 1.4; color: var(--color-v2-ink-2); padding-top: 2px; }
 .ap-class:has([data-ship="muhafiz"][aria-checked="true"]) .ap-class-signature { --sig: #7fd7ff; }
 .ap-class:has([data-ship="kilavuz"][aria-checked="true"]) .ap-class-signature { --sig: #7cf0a8; }
-.ap-tactic { margin-top: 6px; padding: 6px 8px 7px; border-radius: 11px; background: rgba(2,6,12,.86); border: 1px solid var(--edge); }
-.ap-tactic-head { display: flex; justify-content: space-between; align-items: baseline; margin: 0 2px 6px; }
-.ap-tactic-head span { font: 600 9px var(--font-v2-mono); letter-spacing: .18em; text-transform: uppercase; color: var(--color-v2-ink-2); }
-.ap-tactic-head small { font: 8.5px var(--font-v2-mono); letter-spacing: .04em; color: var(--color-v2-ink-3); }
-.ap-tactic-options { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.ap-tactic-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 7px; }
-.ap-tactic-slots button { display: flex; align-items: center; gap: 7px; min-height: 44px; padding: 6px 9px; border: 1px solid var(--edge); border-radius: 8px; background: rgba(0,0,0,.35); color: var(--color-v2-ink-2); text-align: left; }
-.ap-tactic-slots button[aria-pressed="true"] { border-color: var(--self); background: color-mix(in srgb, var(--self) 12%, #060d15); box-shadow: inset 0 -2px var(--self), 0 0 14px color-mix(in srgb, var(--self) 12%, transparent); color: var(--self); }
-.ap-tactic-slots kbd { display: grid; place-items: center; width: 23px; height: 23px; border: 1px solid currentColor; border-radius: 5px; font: 600 11px var(--font-v2-mono); }
-.ap-tactic-slots span { flex: 1; font: 600 12px var(--font-v2-ui); }
-.ap-tactic-slots i { width: 19px; height: 19px; }
-.ap-tactic-slots svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.ap-tactic-slots button:focus-visible, .ap-tactic-options button:focus-visible { outline: 2px solid var(--self); outline-offset: 2px; }
-.ap-tactic-options button { display: grid; grid-template-columns: 20px 1fr; grid-template-rows: auto auto; column-gap: 7px; row-gap: 2px; align-items: center; text-align: left;
-  min-height: 52px; padding: 6px 8px; border-radius: 8px !important; background: rgba(0,0,0,.32) !important; border: 1px solid var(--edge) !important; color: var(--color-v2-ink-2) !important; }
-.ap-tactic-options button i { grid-row: 1; width: 18px; height: 18px; color: var(--color-v2-ink-2); }
-.ap-tactic-options button i svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.ap-tactic-options button b { font: 600 12px var(--font-v2-ui); color: var(--color-v2-ink); }
-.ap-tactic-options button small { grid-column: 1 / -1; font-size: 9.5px; line-height: 1.35; color: var(--color-v2-ink-3); }
-.ap-tactic-options button.is-selected { border-color: color-mix(in srgb, var(--self) 70%, transparent) !important; background: color-mix(in srgb, var(--self) 10%, rgba(0,0,0,.3)) !important;
-  box-shadow: 0 0 14px color-mix(in srgb, var(--self) 22%, transparent), inset 0 1px 0 rgba(255,255,255,.06); }
-.ap-tactic-options button.is-selected i { color: var(--self); }
-.ap-tactic-options button.is-selected small { color: var(--color-v2-ink-2); }
 
 /* ---------- HUD ---------- */
 .ah-root { position: absolute; inset: 0; pointer-events: none; z-index: 5; }

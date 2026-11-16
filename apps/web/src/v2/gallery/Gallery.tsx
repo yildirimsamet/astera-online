@@ -579,7 +579,7 @@ function GalleryIntel({ blind = false, shelf, named = false }: { blind?: boolean
  * the identity card, the seats, the treasury, forces, the crew, aid and the war room —
  * is photographed here.
  */
-function GalleryClan({ tab, quote = false, outside = false, donate = false, pact = false }: { tab: 'overview' | 'strength' | 'members' | 'aid' | 'war'; quote?: boolean; outside?: boolean; donate?: boolean; pact?: boolean }) {
+function GalleryClan({ tab, quote = false, outside = false, donate = false, pact = false, arena = false }: { tab: 'overview' | 'strength' | 'members' | 'aid' | 'war'; quote?: boolean; outside?: boolean; donate?: boolean; pact?: boolean; arena?: boolean }) {
   const client = useQueryClient();
   useState(() => {
     const ago = (minutes: number) => new Date(NOW - minutes * MIN);
@@ -701,7 +701,7 @@ function GalleryClan({ tab, quote = false, outside = false, donate = false, pact
   const screen = (
     <Sheet title="Klan" headerArt={ATMOSPHERE.clan} kit={{ art: artIconSrc('menu-clan'), tone: 'self' }} eyebrow="Sezonluk klanlar" onClose={noop} detents={['full']} bleed>
       <WorldProvider>
-        <ClanScreen initialTab={tab} onOpenClanChat={noop} />
+        <ClanScreen initialTab={tab} onOpenClanChat={noop} {...(arena ? { arena: { credential: () => Promise.resolve('dev'), onEnter: noop } } : {})} />
       </WorldProvider>
     </Sheet>
   );
@@ -1496,6 +1496,8 @@ function Views({ view }: { view: string }) {
   if (view === 'clan-donate') return <GalleryClan tab="war" donate />;
   if (view === 'clan-outside') return <GalleryClan tab="overview" outside />;
   if (view === 'clan-pact') return <GalleryClan tab="overview" outside pact />;
+  // G12-a: the Yarık team over the clan's overview, as the leader's lobby (the audit answers `/arena/team`).
+  if (view === 'clan-arena') return <GalleryClan tab="overview" arena />;
   if (view === 'menu' || view === 'menu-settings' || view === 'menu-academy' || view === 'menu-community' || view === 'menu-ended') return <GalleryCommander page={view} />;
   if (view === 'leaderboard') return <GalleryCommander page="leaderboard" />;
   if (view === 'leaderboard-archive') return <GalleryCommander page="leaderboard-archive" />;

@@ -2079,6 +2079,20 @@ Okundu: dosya haritası. `src/arena` 50 dosya, 17 bileşen; kendi `arena.css`'i 
 
 Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak alanı, hareket halinde okuma) ayrı incelenecek. `docs/komutan-gemisi/README.md` okunacak.
 
+
+**G12 bölümleme (2026-11-16).** a: takım paneli + taktik seçici · b: uçuş öncesi ekran (sınıf, kip, başlat) · c: yükleme, sonuç, menü, izleyici · d: hangar + Komutan gemisi sayfa başı · e: uçuş HUD'u (gerçek zamanlı; başparmak alanı ve hareket halinde okuma ayrıca).
+- Ölçüm önkoşulu: audit'in galeri sürücüsü hangarı ve takımı arena sunucusu olmadan ölçüyordu (ekranda yalnız "alınamadı" satırı). Sürücüye görünüm başına sabit yanıtlar eklendi (`GALLERY_ANSWERS`, araçların fotoğrafladığı aynı veri); klan sayfasındaki takım için `clan-arena` görünümü.
+- Önce (tr, telefon puanı): takım 220, hangar 116, uçuş öncesi 126, maç 77.
+
+**G12-a Takım paneli ve taktik seçici ✅ (2026-11-16).** `TeamPanel`, `TacticPicker`. Klan sayfası (hazırlan), hangar (ganimet payı) ve uçuş masası (lobi) aynı paneli kullanıyor.
+- **An:** "Kim benimle uçuyor, kalkabilir miyiz?"
+- Kök neden (galeri): taktik seçicinin stili yalnız uçuş ekranının `arena.css`'indeydi; o dosya yüklenmeden ikonlar ekran boyu siyah şekiller oldu. Seçici artık kitin kendi parçası (`gk-tactics`), her yerde aynı.
+- Ekip kitin ekip listesinde: hazır lambası, "Sen" ve durum çipi (Hazır / Hazırlanıyor / tamir uyarısı), sınıf · seviye · yakıt; lider için her satırda kısa "Çıkar" (okuyucu kimi çıkardığını duyar).
+- Her basış kit basışı ve neden basılamadığını söylüyor: "Birlikte kalk" herkes hazır olana dek "Herkes hazır olunca açılır"; tamirdeki gemi için "Hazırım" yerine "Tamir veya bakım bitmedi".
+- Taktik seçenekleri hangi yuvada olduklarını E/C rozetiyle gösteriyor (önce yalnız etkin yuvanınki belliydi).
+- Ganimet kuralları kitin kural satırında bir dokunuş uzakta; bağlantı hatası uyarı notunda, "Yeniden bağlan" kit basışı; pay alımı ve sınır uyarısı kit kuyusunda.
+- Audit (tr): takım 220 → 0; klan sayfasındaki takım 3 (kalan sayfanın üstündeki 2 px'lik öğe, klan sayfasına ait). Uçuş öncesi ekran 126 → 96 (geri kalanı G12-b).
+
 ## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
 
 | # | Yüzey | Dosya (satır) | Dil | Not |

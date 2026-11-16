@@ -62,21 +62,24 @@ export function TacticPicker({ c, value, value2, onPick, ship = 'kilavuz', point
 }) {
   const [slot, setSlot] = useState<1 | 2>(1);
   const second = value2 ?? (value === 'cloak' ? 'smoke' : 'cloak');
-  return <section className="ap-tactic" aria-label={c.tacticTitle}>
-    <p className="ap-tactic-head"><span>{c.tacticTitle}</span><small>{c.tacticKey}</small></p>
-    <div className="ap-tactic-slots" role="group" aria-label={c.tacticTitle}>
-      {([1, 2] as const).map(index => <button key={index} type="button" data-slot={index} aria-pressed={slot === index}
-        onClick={() => { setSlot(index); }}><kbd>{index === 1 ? 'E' : 'C'}</kbd><span>{c[index === 1 ? value : second]}</span><i aria-hidden>{ACTION_ICONS[index === 1 ? value : second]}</i></button>)}
+  const held = (tactic: Tactic): 'E' | 'C' | undefined => tactic === value ? 'E' : tactic === second ? 'C' : undefined;
+  return <section className="gk-tactics" aria-label={c.tacticTitle}>
+    <p className="gk-tactics__head"><span className="gk-label">{c.tacticTitle}</span><small className="gk-sub">{c.tacticKey}</small></p>
+    <div className="gk-tactics__slots" role="group" aria-label={c.tacticTitle}>
+      {([1, 2] as const).map(index => <button key={index} type="button" className="gk-tactics__slot" data-slot={index} aria-pressed={slot === index}
+        onClick={() => { setSlot(index); }}><kbd className="gk-tactics__key">{index === 1 ? 'E' : 'C'}</kbd><span>{c[index === 1 ? value : second]}</span><i aria-hidden>{ACTION_ICONS[index === 1 ? value : second]}</i></button>)}
     </div>
-    <div className="ap-tactic-options" role="radiogroup" aria-label={c.tacticTitle}>
+    <div className="gk-tactics__opts" role="radiogroup" aria-label={c.tacticTitle}>
       {TACTICS.map(tactic => {
         const skill = abilityStats(ship, tactic, abilityRank(ship, tactic, points));
+        const key = held(tactic);
         return <button key={tactic} type="button" role="radio" aria-checked={tactic === (slot === 1 ? value : second)} data-tactic={tactic}
-        className={tactic === (slot === 1 ? value : second) ? 'is-selected' : ''} onClick={() => {
+          className="gk-tactics__opt" {...(key ? { 'data-key': key } : {})} onClick={() => {
           if (slot === 1) onPick(tactic, tactic === second ? value : second);
           else onPick(tactic === value ? second : value, tactic);
         }}>
-        <i aria-hidden>{ACTION_ICONS[tactic]}</i><b>{c[tactic]}</b><small>{c.tactics[tactic](one(skill.duration), one(skill.cooldown))}</small>
+        <i aria-hidden>{ACTION_ICONS[tactic]}</i><b>{c[tactic]}</b>{key && <kbd className="gk-tactics__key" aria-hidden>{key}</kbd>}
+        <small>{c.tactics[tactic](one(skill.duration), one(skill.cooldown))}</small>
       </button>;
       })}
     </div>
