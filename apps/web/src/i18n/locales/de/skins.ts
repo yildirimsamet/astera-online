@@ -19,7 +19,7 @@ export const skins = {
   trialTitle: "Vorübergehende Vorschau",
   trialHint: "Nur du siehst dies. Nach dem Test erscheint dein ausgerüsteter Look.",
   trialWorld: "Welt zum Testen",
-  trialCompare: "Ausgerüsteten Look zeigen",
+  trialCompare: "Meinen Look zeigen",
   trialShow: "Test-Look zeigen",
   trialShop: "Zurück zum Shop",
   trialEnd: "Test beenden",

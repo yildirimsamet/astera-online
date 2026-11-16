@@ -3,6 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../src/i18n/index.js';
 import { CosmeticCategories, CosmeticCollection } from '../src/screens/CosmeticCollection.js';
 import { CosmeticNavigation } from '../src/screens/CosmeticNavigation.js';
+import { skins as tr } from '../src/i18n/locales/tr/skins.js';
+import { skins as en } from '../src/i18n/locales/en/skins.js';
+import { skins as de } from '../src/i18n/locales/de/skins.js';
+import { skins as es } from '../src/i18n/locales/es/skins.js';
+import { skins as fr } from '../src/i18n/locales/fr/skins.js';
+import { skins as ja } from '../src/i18n/locales/ja/skins.js';
 
 vi.mock('../src/screens/CosmeticPreview.js', () => ({ CosmeticPreview: ({ id }: { id: string }) => <div data-testid="cosmetic-preview">{id}</div> }));
 const { heard, buzz } = vi.hoisted(() => ({ heard: vi.fn(), buzz: vi.fn() }));
@@ -110,5 +116,12 @@ describe('the cosmetic shelves on the kit', () => {
     expect(go).toHaveClass('gk-btn--self');
     fireEvent.click(go);
     expect(onOpenOther).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps every word of the try-on strip\'s compare press short enough for its half of a phone (G6 close, 2026-11-16)', () => {
+    for (const [lng, copy] of Object.entries({ tr, en, de, es, fr, ja })) {
+      const words = copy.trialCompare.split(/\s+/);
+      expect(words.filter((word) => word.length > 12), lng).toEqual([]);
+    }
   });
 });

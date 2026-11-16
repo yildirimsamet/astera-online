@@ -1349,6 +1349,8 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - **Test:** `cosmetic-kit.test.tsx` (8).
 - **Ölçüm** (tr; telefon, dar, masaüstü): `skin-shop` 43 → 3, `skin-shop-live` 43 → 3, `skin-inventory` 19 → 3, `skin-inventory-empty` 61 → 3, `ship-skin-inventory` 66 → 3 (kalan 3 sac arkalığı); 12 px altı ve kontrast 0. `reports/ui-audit/c37-cosmetic-after-2026-11-16.md` (önce: c35/c36 sonra raporları).
 
+**G6 kapanışı: altı dilde telefon ölçümü (2026-11-16, yardımcı oturum).** 5 yüzey (ödüller, destek, mağaza, envanter, deneme), 13 görünüm × 6 dil = 78 ölçüm (`g6-close-6lang-2026-11-16.md`). Kesilen 0, yana taşma 0. Bütün G6 görünümleri tr/en'de 2–3 puanda (kalan: sac arkalığı). Bulunan bir şey düzeltildi: de deneme şeridinin "Ausgerüsteten Look zeigen" düğmesi tek uzun kelimesiyle kırpılıyordu → "Meinen Look zeigen", kırpılan 0 (altı dilde 12 harften uzun kelime yok testi). Kalan: `cosmetic-trial` akış görünümü 22 puan; hepsi galaksi haritasındaki gezegen etiketleri (8 px, harita üstü kontrast), G6 dışı (galaksi HUD).
+
 **G4 kapanışı: altı dilde telefon ölçümü (2026-11-15).** 9 yüzey, 40 görünüm × 6 dil = 239 ölçüm (`g4-close-6lang-2026-11-15.md`). Kesilen 0, yana taşma 0. Bulunan iki şey düzeltildi (`g4-close-fix-2026-11-15.md`): Ölüm Yıldızı başlığı ve "1 hazır" çipi kendi kırmızı zemininde 4,3:1 kalıyordu → tonun açık ucu, kontrast 0. fr yerleşme tutuşu "Envoyer les vaisseaux de colonisation" kırpılıyordu → "Envoyer les colons", kırpılan 0. Kalan: yerleşme `claim-other` görünümünde 3 küçük/tepkisiz hedef (yarış satırının yanındaki başkasının hakkı), sheet'lerin ortak karartması (3 puan).
 
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
