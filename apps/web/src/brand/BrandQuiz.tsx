@@ -5,8 +5,7 @@ import type { Api } from '../api/client.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { Banner, GameButton, Glyph } from '../game-ui/index.js';
 import { playSound } from '../lib/sound.js';
-import { AsteraSigil, AsteraWordmark } from './Identity.js';
-import { BrandRewardTray, useBrandPanelFocus } from './Panel.js';
+import { BrandLockup, BrandRewardTray, useBrandPanelFocus } from './Panel.js';
 
 export type BrandQuizResult = Awaited<ReturnType<Api['answerBrandRecall']>>;
 
@@ -31,10 +30,7 @@ export function BrandQuiz({ result, message, pending, reward, onAnswer, onClose 
 
   return <Sheet title={title} detents={['fit']} placement="card" quietTitle bleed kit={{ tone: 'self' }} onClose={onClose}>
     <div ref={content} tabIndex={-1} data-testid="brand-quiz" className="gk-quiz" aria-busy={pending}>
-      <div className="gk-quizbrand" aria-label="Astera Online">
-        <span className="sr-only">Astera Online</span><AsteraSigil className="gk-quizbrand__sigil" />
-        <AsteraWordmark className="gk-quizbrand__word" /><span aria-hidden="true">ONLINE</span>
-      </div>
+      <BrandLockup />
       {completed ? <>
         <div className="gk-quiz__done"><span className="gk-quiz__mark" aria-hidden="true"><Glyph id="check" /></span><h3 className="gk-display gk-quiz__title">{title}</h3></div>
         <p className="gk-quiz__address select-all">asteraonline<span>.space</span></p>

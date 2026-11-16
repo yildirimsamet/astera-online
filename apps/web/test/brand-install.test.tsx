@@ -103,7 +103,7 @@ describe('the native install offer', () => {
     await openGuide();
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Install app' })); await Promise.resolve(); });
     expect(screen.getByRole('dialog')).toHaveTextContent('Waiting for your choice in the browser…');
-    expect(screen.getByRole('button', { name: 'Install app' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Install app' })).toHaveAttribute('aria-busy', 'true');
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('dialog')).toBeNull();
   });

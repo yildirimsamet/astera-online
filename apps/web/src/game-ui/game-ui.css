@@ -16581,3 +16581,24 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-returncard__address { margin-top: 2px; font: 700 var(--gk-t-small) var(--gk-font-display); font-stretch: var(--gk-display-stretch); }
 .gk-returncard > .gk-sub { margin: 0; }
 .gk-returncard__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--gk-s2); }
+
+/* ── G13-d2 (2026-11-16): the install guide ─────────────────────────────── */
+.gk-installsheet p { margin: 0; }
+.gk-installsheet > .gk-well { padding: var(--gk-s3); }
+.gk-installsteps { display: grid; gap: var(--gk-s2); margin: 0; padding: 0; list-style: none; }
+.gk-installsteps li { display: flex; align-items: center; gap: var(--gk-s3); }
+.gk-installsteps .gk-num { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: var(--gk-r-sm);
+  border: 1px solid color-mix(in srgb, var(--gk-self) 45%, var(--gk-metal-edge)); background: color-mix(in srgb, var(--gk-self) 10%, var(--gk-deep));
+  color: var(--gk-self); font-size: var(--gk-t-small); }
+.gk-installsteps strong { font-size: var(--gk-t-body); font-weight: 600; line-height: 1.35; }
+.gk-installsheet__guide { padding: var(--gk-s2) 0; border-block: 1px solid var(--gk-glass-edge); line-height: 1.55; }
+.gk-installsheet__bookmark { display: flex; align-items: center; gap: var(--gk-s3); }
+.gk-installsheet__bookmark > .gk-glyph { flex: none; width: 22px; height: 22px; color: var(--gk-self); }
+.gk-installsheet__bookmark > div { min-width: 0; flex: 1; }
+.gk-installsheet__lead { font: 700 var(--gk-t-body) var(--gk-font-display); font-stretch: var(--gk-display-stretch); }
+.gk-installsheet__key { display: flex; align-items: center; gap: 4px; padding: 6px 9px; border-radius: var(--gk-r-sm); white-space: nowrap;
+  border: 1px solid var(--gk-metal-edge); border-bottom-width: 3px; background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass));
+  color: var(--gk-ink); font: 700 var(--gk-t-small) var(--gk-font-display); }
+.gk-installsheet__key span { color: var(--gk-ink-3); }
+.gk-installsheet__address { text-align: center; font: 700 var(--gk-t-lead) var(--gk-font-display); font-stretch: var(--gk-display-stretch); letter-spacing: .02em; }
+.gk-installsheet__address span { color: var(--gk-self); }

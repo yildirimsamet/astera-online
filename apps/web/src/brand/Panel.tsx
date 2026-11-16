@@ -36,9 +36,9 @@ export function useBrandPanelFocus(open = true, completed = false) {
 }
 
 export function BrandLockup() {
-  return <div className="brand-panel-lockup" aria-label="Astera Online">
-    <span className="sr-only">Astera Online</span><AsteraSigil className="brand-panel-sigil" />
-    <AsteraWordmark className="brand-panel-wordmark" /><span aria-hidden="true">ONLINE</span>
+  return <div className="gk-quizbrand" aria-label="Astera Online">
+    <span className="sr-only">Astera Online</span><AsteraSigil className="gk-quizbrand__sigil" />
+    <AsteraWordmark className="gk-quizbrand__word" /><span aria-hidden="true">ONLINE</span>
   </div>;
 }
 

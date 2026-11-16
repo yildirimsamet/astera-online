@@ -5,7 +5,7 @@ import { BRAND_RECALL } from '@astera/rules';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { BrandQuiz } from '../src/brand/BrandQuiz.js';
-import { InstallProvider } from '../src/brand/Install.js';
+import { InstallButton, InstallProvider } from '../src/brand/Install.js';
 import { RecallHost } from '../src/brand/RecallHost.js';
 import i18n from '../src/i18n/index.js';
 
@@ -16,7 +16,7 @@ import i18n from '../src/i18n/index.js';
  * return card a kit plate with a kit round close.
  */
 
-const OLD = /(^|\s)(text|bg|border|font)-v2-|rounded-control|(^|\s)text-(micro|body|caption|label|title)(\s|$)|(^|\s)brand-(panel|quiz|reward|choice|success|return|small)/;
+const OLD = /(^|\s)(text|bg|border|font)-v2-|rounded-control|(^|\s)text-(micro|body|caption|label|title)(\s|$)|(^|\s)brand-(panel|quiz|reward|choice|success|return|small|install|bookmark|address)/;
 const oldPaint = (root: Element): string[] =>
   [root, ...root.querySelectorAll('[class]')].map((el) => el.getAttribute('class') ?? '').filter((name) => OLD.test(name));
 
@@ -74,5 +74,32 @@ describe('the return card on the kit', () => {
     expect(oldPaint(card)).toEqual([]);
     expect(within(card).getByRole('button', { name: i18n.t('brand.close') })).toHaveClass('gk-round');
     expect(within(card).getByRole('button', { name: /home screen|quick access/i })).toHaveClass('gk-btn', 'gk-btn--action');
+  });
+});
+
+/** The guide to keep Astera one touch away: a kit sheet, its steps numbered on the kit, the address in a kit well. */
+describe('the install guide on the kit', () => {
+  const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+  const WINDOWS = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+  const openGuide = async (ua: string) => {
+    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(ua);
+    render(<InstallProvider><InstallButton /></InstallProvider>);
+    fireEvent.click(await screen.findByRole('button', { name: /home screen|quick access/i }));
+    return screen.getByRole('dialog');
+  };
+
+  it('is a kit sheet whose steps and address speak the kit', async () => {
+    const dialog = await openGuide(IPHONE);
+    expect(dialog).toHaveClass('gk-sheet');
+    expect(oldPaint(dialog)).toEqual([]);
+    expect(dialog.querySelectorAll('.gk-installsteps .gk-num')).toHaveLength(3);
+    expect(dialog.querySelector('.gk-well .gk-installsheet__address')).toHaveTextContent('asteraonline.space');
+    expect(within(dialog).getByRole('button', { name: i18n.t('brand.copyAddress') })).toHaveClass('gk-btn');
+  });
+
+  it('shows a computer its bookmark key on a kit key', async () => {
+    const dialog = await openGuide(WINDOWS);
+    expect(oldPaint(dialog)).toEqual([]);
+    expect(dialog.querySelector('kbd')).toHaveClass('gk-installsheet__key');
   });
 });

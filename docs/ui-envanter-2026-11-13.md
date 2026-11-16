@@ -2203,7 +2203,13 @@ Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak ala
 - Dönüş kartı (`RecallHost`) kit plakası; kapatma kit yuvarlak düğmesi; hızlı erişim düğmesi (`InstallButton`) artık kit düğmesi.
 - `brand/styles.css` içindeki kullanılmayan 27 kural silindi (soru, ödül, seçim, kart).
 - Bu ekranlar denetim envanterinde yok (brand klasörü listelenmiyor); `brand-preview` üzerinden telefon genişliğinde önce/sonra fotoğraflarıyla kontrol edildi. 12 px altı yazı yok, kesilme yok.
-- Kaldı: kurulum talimat sayfası (Install.tsx, eski Button/Icon) ayrı birimde.
+- Kurulum talimat sayfası G13-d2'de kit'e geçti.
+
+### G13-d2 — kurulum rehberi kit'te (2026-11-16)
+
+- "Ana ekrana ekle / hızlı erişim" rehberi kit levhası: marka imzası soruyla ortak (`BrandLockup` artık kit), iPhone adımları kit numaralı kutularda, masaüstünde yer imi kısayolu kit tuşu (`Ctrl + D`), adres kit kuyusunda, kopyalama kit düğmesi; yükleme reddedilirse sarı kit afişi.
+- Tarayıcının kurulum cevabı beklenirken düğmeler artık soluk-kapalı değil, dönen işaretli "bekliyor" (`pending`); basış yine işlemez. `brand-install` testi buna göre güncellendi.
+- Kullanılmayan 24 marka kuralı silindi. iPhone, Android ve masaüstü önce/sonra fotoğraflandı; 12 px altı yazı yok.
 ## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
 
 | # | Yüzey | Dosya (satır) | Dil | Not |
