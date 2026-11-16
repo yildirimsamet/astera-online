@@ -568,3 +568,12 @@ describe('the clan’s outside on the kit', () => {
     expect(submit).toHaveTextContent('Found a clan');
   });
 });
+
+/** G8 close (2026-11-15): the room's rules, asked before public clan text, stand on the kit too. */
+it('asks for the community agreement on the kit', async () => {
+  show(outside, false);
+  const agree = await screen.findByRole('checkbox', { name: 'I agree to the community guidelines and terms of use.' });
+  const gate = agree.closest('section')!;
+  expect(gate).toHaveClass('gk-well');
+  expect(oldPaint(gate)).toEqual([]);
+});

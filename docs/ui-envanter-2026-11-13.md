@@ -1598,6 +1598,8 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 - Sınıf çakışması önlendi: `gk-banner` kitin bildirim şeridi; bunlar `gk-standard`.
 - Audit: sancak 126 → 0, altın 70 → 0, savaş odası 107 → 3 (kalan: ortak sheet karartması). G7 böylece kapanmaya hazır; 6 dilde telefon ölçümü sırada.
 
+**G7 kapanışı (2026-11-16).** 6 dil, telefon, klan + destek yüzeyleri, 96 ölçüm (`reports/ui-audit/g7-close-6lang-2026-11-15.md`): taşma, kırpılma ve kesilme 0; 12 px altı metin 0; kontrast hatası 0. Klan görünümlerinde kalan 1 "küçük hedef" galeri kabuğunun 2×2 px kökü (oyunda yok). CDP hatası veren tek ölçüm (klan, tr) yeniden alındı: temiz.
+
 ## G8. İletişim
 
 Okundu: `screens/ChatScreen.tsx` iskelet + 235–266 (dil seçimi); `v2/shell/ChatHost.tsx` (tam, G1); diğerlerinde dil sayımı.
@@ -1850,6 +1852,12 @@ Doğrulanamayanlar:
 - **Oyuncu engelleme (C4):** zaten 0,6 sn'ydi. Değişmedi; testte sabitlendi.
 - **Tamirhanedeki parçalama:** koordinatörün işi, bu birimde dokunulmadı.
 - **Testler:** iki tuşun süresi testte ölçülüyor (`--gk-hold-ms` 600 ms). Tuşun görünüşü değişmedi; yalnız dolma süresi kısaldı. Bu yüzden ölçüm (audit) koşulmadı.
+
+
+**G8 kapanışı (2026-11-16).** 6 dil, telefon; sohbet, Bildirim Merkezi, duyurular, geri bildirim, 137 ölçüm (`reports/ui-audit/g8-close-6lang-b-2026-11-16.md`) ve kural kapısı (`g8-close-6lang-2026-11-16.md`).
+- **Kural kapısı kitte:** `CommunityPolicyGate` son v2 boyasını bıraktı. Tek başına durduğunda (sohbetin altı, klan ayarları) kit kuyusu; kurma kuyusunun içindeyse düzleşip o kuyunun son parçası oluyor, kart içinde kart değil. Hata ve güncelleme uyarıları kit notu. Galeride ölçülebilsin diye `clan-pact` görünümü eklendi.
+- **Kesilen başlık:** şikâyet sayfasının başlığı es/fr/ja'da kesiliyordu; kısaldı: "Denunciar un abuso", "Signaler un abus", "違反を通報". Yeniden ölçüldü: kalan 4 kesilme yanıtlanan mesajın bilinçli tek satırlık alıntısı.
+- Taşma ve kırpılma 0; 12 px altı metin 0. Kalan küçük hedefler C3'te yazılı olanlar (balon ucu, tepki paneli altındaki sekme) ve galeri kabuğunun 2×2 px kökü. Kabul satırı basınca kutuyu işaretliyor; ölçüm aracı çocuk öğedeki tepkiyi görmüyor.
 
 ## G9. Sıralama, sezon, anıtlar
 

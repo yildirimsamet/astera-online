@@ -45,15 +45,15 @@ export function CommunityPolicyGate({ policy, children }: { policy: ReturnType<t
   };
   if (policyIsAccepted(policy)) return children;
   /* THE ROOM'S RULES (C4): read, tick, accept — on the kit; the dead key says what it still needs. */
-  return <section className="gk grid shrink-0 gap-3 overflow-y-auto border-t border-v2-line bg-v2-panel px-[var(--gk-gutter)] py-3">
-    <h3 className="gk-display text-title">{t('moderation.policy.title')}</h3>
+  return <section className="gk gk-well gk-pact">
+    <h3 className="gk-display gk-pact__title">{t('moderation.policy.title')}</h3>
     {policy.isPending ? <p className="gk-copy">{t('moderation.policy.loading')}</p> : policy.isError ? <>
-      <p role="alert" className="text-v2-warn">{t('moderation.policy.unavailable')}</p>
+      <p role="alert" className="gk-inote" data-tone="warn">{t('moderation.policy.unavailable')}</p>
       <GameButton wide glyph="refresh" onPress={() => { void policy.refetch(); }}>{t('moderation.blocks.retry')}</GameButton>
-    </> : policy.data.version !== COMMUNITY_POLICY_VERSION ? <p role="alert" className="text-v2-warn">{t('moderation.policy.update')}</p> : <>
+    </> : policy.data.version !== COMMUNITY_POLICY_VERSION ? <p role="alert" className="gk-inote" data-tone="warn">{t('moderation.policy.update')}</p> : <>
       <p className="gk-copy">{t('moderation.policy.summary')}</p>
       <CommunityPolicyAgreement checked={checked} onChange={setChecked} disabled={busy} />
-      {failed ? <p role="alert" className="text-v2-warn">{t('moderation.policy.failed')}</p> : null}
+      {failed ? <p role="alert" className="gk-inote" data-tone="warn">{t('moderation.policy.failed')}</p> : null}
       <GameButton wide tone="action" glyph="check" pending={busy} disabledReason={checked ? null : t('moderation.policy.agreeFirst')}
         onPress={() => { void agree(); }}>{t('moderation.policy.accept')}</GameButton>
     </>}

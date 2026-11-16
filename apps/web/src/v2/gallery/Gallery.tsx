@@ -579,14 +579,15 @@ function GalleryIntel({ blind = false, shelf, named = false }: { blind?: boolean
  * the identity card, the seats, the treasury, forces, the crew, aid and the war room —
  * is photographed here.
  */
-function GalleryClan({ tab, quote = false, outside = false, donate = false }: { tab: 'overview' | 'strength' | 'members' | 'aid' | 'war'; quote?: boolean; outside?: boolean; donate?: boolean }) {
+function GalleryClan({ tab, quote = false, outside = false, donate = false, pact = false }: { tab: 'overview' | 'strength' | 'members' | 'aid' | 'war'; quote?: boolean; outside?: boolean; donate?: boolean; pact?: boolean }) {
   const client = useQueryClient();
   useState(() => {
     const ago = (minutes: number) => new Date(NOW - minutes * MIN);
     if (outside) {
       // G7-f: a clanless commander — an invitation, an application waiting, loot left from a former clan, a directory of four.
       const later = (minutes: number) => new Date(NOW + minutes * MIN);
-      client.setQueryData(keys.communityPolicy, { version: COMMUNITY_POLICY_VERSION, acceptedAt: ago(9000) });
+      // G8 close: `pact` — the room's rules not yet agreed, so founding waits behind the gate.
+      client.setQueryData(keys.communityPolicy, { version: COMMUNITY_POLICY_VERSION, acceptedAt: pact ? null : ago(9000) });
       client.setQueryData(keys.clanHome, {
         state: 'OUTSIDE',
         requests: [
@@ -1490,6 +1491,7 @@ function Views({ view }: { view: string }) {
   if (view === 'clan-war') return <GalleryClan tab="war" />;
   if (view === 'clan-donate') return <GalleryClan tab="war" donate />;
   if (view === 'clan-outside') return <GalleryClan tab="overview" outside />;
+  if (view === 'clan-pact') return <GalleryClan tab="overview" outside pact />;
   if (view === 'menu' || view === 'menu-settings' || view === 'menu-academy' || view === 'menu-community' || view === 'menu-ended') return <GalleryCommander page={view} />;
   if (view === 'leaderboard') return <GalleryCommander page="leaderboard" />;
   if (view === 'leaderboard-archive') return <GalleryCommander page="leaderboard-archive" />;

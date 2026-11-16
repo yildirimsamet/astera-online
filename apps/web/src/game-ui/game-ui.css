@@ -15987,3 +15987,21 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-ledgerbook__spark rect[data-tone='self'] { fill: var(--gk-self); }
 .gk-ledgerbook__spark rect[data-tone='quiet'] { fill: color-mix(in srgb, var(--gk-ink) 18%, transparent); }
 .gk-ledgerbook__count { font-size: var(--gk-t-floor); line-height: 1; color: var(--gk-ink-2); }
+
+/* G8 close (2026-11-15): the room's rules gate — a kit well wherever it stands (the chat's foot, the clan's forms). */
+.gk-pact {
+  display: grid;
+  flex-shrink: 0;
+  gap: 10px;
+  max-height: 60dvh;
+  overflow-y: auto;
+  margin: 8px var(--gk-gutter);
+  padding: var(--gk-s3);
+}
+.gk-pact__title {
+  font-size: 17px;
+  color: var(--gk-ink);
+}
+.gk-clan .gk-pact { margin-inline: 0; }
+/* Inside the founding well it is that well's last part, not a card in a card. */
+.gk-guild__found .gk-pact { margin: 0; padding: 0; border: 0; background: none; box-shadow: none; max-height: none; overflow: visible; }
