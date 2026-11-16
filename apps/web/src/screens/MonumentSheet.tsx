@@ -23,8 +23,8 @@ import { HULL_ART } from '../ui/assets.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { GameButton, GameHold } from '../game-ui/buttons.js';
-import { Toggle } from '../game-ui/controls.js';
-import { Banner, SectionTag } from '../game-ui/surfaces.js';
+import { InfoPeek, Toggle } from '../game-ui/controls.js';
+import { Banner, Fold, SectionTag } from '../game-ui/surfaces.js';
 import { GameActions, useSeasonLocked } from '../session/seasonLock.js';
 import { useCommanderShip } from '../api/commanderShip.js';
 import { escortOf } from '../lib/admiralEscort.js';
@@ -120,39 +120,42 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
       {actions.send.error && <p role="alert" className="gk-report__copy" data-tone="warn">{describeError(actions.send.error)}</p>}
     </div></GameActions>}>
     <GameActions><div className="gk-mon">
-      <HonorSoloNotice />
       {view.isPending && <p className="gk-report__label">{t('monument.loading')}</p>}
       {view.error && <p role="alert" className="gk-report__copy" data-tone="warn">{describeError(view.error)}</p>}
       {target && <section data-testid="monument-target" className="gk-well gk-mon__facts">
-        {target.motion && <p className="gk-report__label">{t('monument.motionRule')}</p>}
         {target.difficulty !== 'LEGACY' && <p className="gk-mon__access" data-tone={target.difficulty === 'HARD' ? 'threat' : 'good'}>
           {t(target.difficulty === 'EASY' ? 'monument.easyAccess' : 'monument.hardAccess')}</p>}
         <p className="gk-mon__fact gk-num">{t('monument.capacity', { used: full(target.used), reserved: full(target.reserved), total: full(target.capacity) })}</p>
-        <p className="gk-mon__fact" data-tone="deut">{t('monument.production', { rate: decimal(target.productionPerMinute) })}</p>
+        {/* The rules of holding (and the turn of a moving one) one press away (owner 2026-11-17, ek-2). */}
+        <InfoPeek about={t('monument.rulesAbout')}
+          fact={<span className="gk-mon__fact" data-tone="deut">{t('monument.production', { rate: decimal(target.productionPerMinute) })}</span>}
+          rule={<>{target.motion && <p className="gk-sub">{t('monument.motionRule')}</p>}<p className="gk-sub">{t('monument.purpose')}</p></>} />
         <p className="gk-mon__fact" data-tone="warn">{target.difficulty === 'LEGACY'
           ? t('monument.radiationRate', { rate: decimal(target.radiationHpPerMinute) })
           : t('monument.radiationLevelRate', { level: MONUMENT_BALANCE[target.difficulty].radiationLevel, rate: decimal(target.radiationHpPerMinute) })}</p>
         {target.emptySince && target.controller.kind === 'NEUTRAL' && <p className="gk-report__label">{t('monument.emptySince', { time: duration(Math.max(0, (now - target.emptySince.getTime()) / 60_000)) })}</p>}
         {target.respawnAt && target.controller.kind === 'NEUTRAL' && <p className="gk-report__label">{target.respawnAt.getTime() > now
           ? t('monument.respawnAt', { time: countdown(target.respawnAt.getTime() - now) }) : t('monument.respawnDue')}</p>}
-        <p className="gk-report__copy">{t('monument.purpose')}</p>
         {monumentHonoree(target.ordinal) !== null && <p className="gk-report__label">
           {t('monument.honouredNote', { name: monumentHonoree(target.ordinal), rank: target.ordinal })}</p>}
         {onClanTarget && !friendly && <div><GameButton size="sm" glyph="target" onPress={() => { onClanTarget(monumentId); }}>{t('monument.clanTarget')}</GameButton></div>}
       </section>}
-      {target && <TargetRadiationInstrument target={{ kind: 'MONUMENT', id: target.id }} tech={techOf(origin)} />}
+      {/* The rate is the facts card's to say; the dial and what guards you against it fold here. */}
+      {target && <Fold data-monument-radiation="" glyph="radiation" tone="warn" title={t('planet.radiationBomb.radiation')}>
+        <TargetRadiationInstrument target={{ kind: 'MONUMENT', id: target.id }} tech={techOf(origin)} />
+      </Fold>}
       {target && !friendly && origin.radiationBombsAvailable && <RadiationBombControl origin={origin}
         target={{ kind: 'MONUMENT', id: target.id }} targetName={monumentName(target.ordinal)}
         position={target.position} motion={target.motion} disabledReason={silentSpace ? t('faults.launchBlock.SILENT_SPACE') : null} />}
       {incoming && <Banner tone="hostile" role="alert" title={t('monument.incoming')} />}
-      <p className="gk-report__label">{t('monument.fog')}</p>
       {waves.length > 0 && <section className="gk-mon__part">
         <SectionTag as="h3">{t('monument.yourWaves')}</SectionTag>
         {waves.map((wave) => <MonumentWaveCard key={wave.id} wave={wave}
           arrival={target && wave.status === 'OUTBOUND' ? arrivalOutcome(target, friendly, wave.arriveAt) : null} />)}
       </section>}
-      <section className="gk-mon__part">
+      <section data-monument-dispatch="" className="gk-mon__part">
         <SectionTag as="h3">{t('monument.launch', { world: origin.planet.name })} · {t(friendly ? 'monument.reinforce' : 'monument.attack')}</SectionTag>
+        <HonorSoloNotice />
         {target?.difficulty !== undefined && target.difficulty !== 'LEGACY' && <p className="gk-report__copy" {...(tierBlocked ? { 'data-tone': 'warn' } : {})}>
           {tierBlocked ? t('monument.tierBlocked', { tier: target.sendAccess?.playerTier })
             : t('monument.initialFleetRule')}</p>}
@@ -207,7 +210,11 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
           {quote.data.shieldWouldDrop && <Toggle checked={shield} onChange={setShield} label={t('monument.shield')} />}
         </div>}
       </section>
-      <section data-testid="monument-probe" className="gk-well gk-mon__probe">
+      {/* What stands there, one press away: the probe and its last report (ek-2). */}
+      <Fold data-monument-intel="" glyph="eye" title={t('monument.probe')}
+        {...(report ? { sub: t('monument.seenCount', { count: fleetCount(report.fleet) }) } : {})}>
+      <p className="gk-sub">{t('monument.fog')}</p>
+      <section data-testid="monument-probe" className="gk-mon__probe">
         <p className="gk-report__copy" data-tone="warn">{t('monument.probeRisk', { chance: percent(MONUMENT_PROBE_LOSS_CHANCE) })}</p>
         <p className="gk-mon__fact">{t('monument.probePrice', { alloy: full(PROBE.alloy), crystal: full(PROBE.crystal) })}</p>
         <GameHold weight="spends" size="md" tone="steel" glyph="eye" label={t('monument.probe')} disabledReason={probeRefusal}
@@ -227,6 +234,7 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
           </li>)}
         </ul>
       </section>}
+      </Fold>
     </div></GameActions>
   </Sheet>;
 }

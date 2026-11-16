@@ -29,7 +29,7 @@ Her yüzeyin ölçütü: **350×812 ve 375×667'de kaydırmadan ne görünüyor?
 | E5 | Ödüller: hangi ödülün açıldığı belli; parlama kutuya sıkışmaz; bir ödül alınırken diğerleri pasif, yükleniyor değil | 13, 14 | bekliyor |
 | E6 | Kalan oyun ekranlarında metin taraması (altı dil) | 17 | bekliyor |
 | O1 | Anıt: galaksideki etiket ve alt kartta radyasyon ikonu | ek-1 | bitti (radyasyon çubuğunun başında ve anıt kartının radyasyon satırında radyasyon işareti; harita etiketi aynı çubuğu kullanıyor) |
-| O2 | Anıt focus sheet'i: alta uzayan tek sütun yerine sekme / ⓘ / akordiyon | ek-2 | bekliyor |
+| O2 | Anıt focus sheet'i: alta uzayan tek sütun yerine sekme / ⓘ / akordiyon | ek-2 | bitti (kurallar bilgi kartının ⓘ'sinde, radyasyon göstergesi ve sonda+rapor akordiyonda, Honor notu gönderme bölümünün başında; 1427→1127 px. Sonraki adım adayı: Durum / Gönder sekmeleri) |
 | O3 | Çökme: "useToast called outside ToastProvider" (arka plandan dönüşte) — kök neden + düzelt; bir yüzeyin hatası bütün oyunu düşürmesin (yüzey başına hata sınırı) | ek-3 | bitti (kök neden: geliştirme sunucusunda kit düzenlemesi `Toast.tsx`'i yeniden çalıştırıp yeni context üretiyordu; context'ler artık yalnız React'e bağlı `toastContext.ts`'te. Her sheet gövdesinde `PanelBoundary`: hata o panelde kalır, \"Tekrar dene\") |
 | O4 | Liderlik tablosu: sıralama ilk ekranda; ödül ve kural metni ⓘ / sekmeye (CoC, Survivor.io, Whiteout Survival incelenir) | ek-4 | bekliyor |
 | O5 | Klan sheet'i sekmelere: ara / listele / kur / klanım (E4 ile birleşik) | ek-5 | bekliyor |

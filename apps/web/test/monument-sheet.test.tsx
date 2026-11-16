@@ -400,3 +400,38 @@ describe('monument decision surface, through the real client and cache', () => {
     expect(within(card).getByText(text)).toBeVisible();
   });
 });
+
+/**
+ * NOT ONE LONG COLUMN (owner 2026-11-17, ek-2: "alta doğru uzayan sectionlar yapısı çok yanlış").
+ * The facts stay one card with their rules behind its ⓘ; the radiation dial and the probe with
+ * its last report fold away; the waves and the dispatch stay open, the dispatch led by its Honor note.
+ */
+describe('the monument sheet folds what is read rarely', () => {
+  it('keeps the purpose rule behind the facts card ⓘ', async () => {
+    show();
+    const facts = await screen.findByTestId('monument-target');
+    expect(facts).not.toHaveTextContent(/Hold with combat ships to earn deuterium/);
+    fireEvent.click(within(facts).getByRole('button', { name: i18n.t('monument.rulesAbout') }));
+    expect(facts).toHaveTextContent(/Hold with combat ships to earn deuterium/);
+  });
+
+  it('folds the radiation dial and the probe behind one-line heads', async () => {
+    show();
+    await screen.findByTestId('monument-target');
+    const radiation = document.querySelector<HTMLDetailsElement>('[data-monument-radiation]')!;
+    expect(radiation.tagName).toBe('DETAILS');
+    expect(radiation.open).toBe(false);
+    const intel = document.querySelector<HTMLDetailsElement>('[data-monument-intel]')!;
+    expect(intel.tagName).toBe('DETAILS');
+    expect(intel.open).toBe(false);
+    expect(intel.querySelector('summary')).toHaveTextContent(i18n.t('monument.probe'));
+    expect(intel.querySelector('[data-testid="monument-probe"]')).not.toBeNull();
+  });
+
+  it('leads the dispatch with the Honor note', async () => {
+    show(catalog, 0, false, undefined, { honorSoloCredit: true });
+    const notice = await screen.findByText(/Shared sides cannot earn positive Honor/);
+    expect(notice.closest('[data-monument-dispatch]')).not.toBeNull();
+  });
+});
+
