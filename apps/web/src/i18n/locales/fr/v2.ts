@@ -124,6 +124,7 @@ export const view = {
   events: 'Guide des événements galactiques',
   /** The round button under the View chip: the disc's old Home mark. */
   home: 'Aller à ton monde',
+  youAreHere: 'Tu es ici',
 };
 
 /** B3 : l’emplacement de contexte, une carte à la fois. */

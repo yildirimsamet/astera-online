@@ -20,7 +20,7 @@ Her yüzeyin ölçütü: **350×812 ve 375×667'de kaydırmadan ne görünüyor?
 | S5 | Kit'e standart `Fold` (akordiyon) ve `InfoPeek` kullanımı; uzun kural metni bunların arkasına | 2. amaç | bekliyor |
 | S6 | Yazım kuralı: bilineni yazma, tek cümle, kural ⓘ'de (`docs/ux-writing.md`'ye ek) | 17 | bekliyor |
 | H1 | Galaksi HUD bölgeleri: status bar altı tam genişlikte uçuş şeridi + toast; sol sütun durum rozetleri (sıkı); sağ üst bulunabilecekler; altında 2×2 araç (teleskop, dünyalar, market, zil); çevrimiçi sayısı gizli; etkinlik bitiş şeridi olduğu gibi | 2, 3, 4 | bitti |
-| H2 | Eve dön düğmesi: zaten evdeyken ne yaptığı görünür olsun ya da gizlensin | 12 | bekliyor |
+| H2 | Eve dön düğmesi: zaten evdeyken ne yaptığı görünür olsun ya da gizlensin | 12 | bitti (her basışta evde halka + "Buradasın"; HUD harita etiketlerinin üstünde) |
 | E1 | Filo sekmesi: Onur/duruş bloğu akordiyona, gemiler kaydırmadan görünür; gemi kartında saldırı/savunma/hız | 8, 9 | bekliyor |
 | E2 | Gemi üretim kartı baştan | 10 | bekliyor |
 | E3 | Saldırı sheet'i baştan (owner, 2026-11-16 ek): kit'in basılı tutmalı gemi kartları (`UnitCard`), hız ilerleme çubuğu gibi (solda solucan/yavaş renk, sağda roket/alev), kısa ekranda gemi alanı korunur, uyarılar tek satır + ⓘ | 16, 17, ek | bitti (kartlar, gaz kolu tüm uçuşlarda, tek satır fiyat, kısa ekranda cetvel kayar, eşleşme payları ⓘ'de) |
@@ -84,3 +84,4 @@ Son sırada: G11 simulator / wiki-sheet / wiki-public · G13 faults / landing / 
 - 2026-11-16: plan yazıldı; S1 başladı.
 - 2026-11-16: S1, S2, H1 bitti (başlık 48 px, yumuşak geçiş, eşit boşluk; sekmeler eşit; HUD bölgeleri, araçlar 2×2, tek araç sağda). E7 bitti. Sıradaki: S3, E3.
 - 2026-11-16: E3 bitti (saldırı sheet'i: basılı tutmalı gemi kartları, solucan→roket hız çubuğu, tek satır fiyat + ⓘ); S3 bitti (alt kartlar ~%40 kısa). Sıradaki: H2, S4.
+- 2026-11-16: H2 bitti; ayrıca harita etiketleri HUD araçlarını örtüyordu (z-index), düzeltildi. Sıradaki: S4.

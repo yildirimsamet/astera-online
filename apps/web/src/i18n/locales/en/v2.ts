@@ -129,6 +129,7 @@ export const view = {
   events: 'Galaxy events guide',
   /** The round button under the View chip: the disc's old Home mark. */
   home: 'Fly to your world',
+  youAreHere: 'You are here',
 };
 
 /** B3: the context slot, one card at a time. */

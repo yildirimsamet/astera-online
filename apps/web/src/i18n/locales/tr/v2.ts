@@ -124,6 +124,7 @@ export const view = {
   events: 'Galaksi olayları rehberi',
   /** The round button under the View chip: the disc's old Home mark. */
   home: 'Dünyana uç',
+  youAreHere: 'Buradasın',
 };
 
 /** B3: bağlam yuvası, bir seferde tek kart. */

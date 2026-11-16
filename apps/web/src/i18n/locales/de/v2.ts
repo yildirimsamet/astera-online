@@ -124,6 +124,7 @@ export const view = {
   events: 'Leitfaden zu Galaxie-Ereignissen',
   /** The round button under the View chip: the disc's old Home mark. */
   home: 'Zu deiner Welt fliegen',
+  youAreHere: 'Du bist hier',
 };
 
 /** B3: der Kontextplatz, immer nur eine Karte. */

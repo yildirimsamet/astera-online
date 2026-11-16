@@ -17469,3 +17469,46 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 .gk-ccard .gk-btn--sm .gk-glyph { width: 15px; height: 15px; }
 .gk-crow { padding: 3px 0; }
 .gk-crow__name { font-size: var(--gk-t-floor); }
+
+/* ── H2 · the home button answers: rings open out from the home world and say where you are ── */
+.gk-beacon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 120px;
+  height: 120px;
+  pointer-events: none;
+}
+.gk-beacon__ring {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--gk-self);
+  border-radius: 50%;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--gk-self) 60%, transparent), inset 0 0 10px color-mix(in srgb, var(--gk-self) 40%, transparent);
+  animation: gk-beacon-ring 1.2s var(--gk-ease) 2 both;
+}
+.gk-beacon__ring--late { animation-delay: 0.35s; }
+@keyframes gk-beacon-ring {
+  0% { transform: scale(0.25); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: scale(1.15); opacity: 0; }
+}
+.gk-beacon__label {
+  position: absolute;
+  top: -6px;
+  padding: 2px 8px;
+  border: 1px solid var(--gk-self);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--gk-void) 80%, transparent);
+  color: var(--gk-self);
+  font-size: var(--gk-t-small);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  animation: gk-beacon-label 2.4s var(--gk-ease) both;
+}
+@keyframes gk-beacon-label {
+  0% { transform: translateY(6px); opacity: 0; }
+  12%, 80% { transform: translateY(0); opacity: 1; }
+  100% { opacity: 0; }
+}

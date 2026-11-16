@@ -128,6 +128,7 @@ export const view = {
   events: "銀河イベントの案内",
   /** The round button under the View chip: the disc's old Home mark. */
   home: "自分の惑星へ移動",
+  youAreHere: '現在地',
 };
 
 /** B3: the context slot, one card at a time. */

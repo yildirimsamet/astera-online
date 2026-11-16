@@ -1481,7 +1481,7 @@ export function GalaxyView({
         one chip at top right, which the Academy hides with the sensor switches
         until its Telescope exercise (`data-sensor-toggles`).
       */}
-      <div data-galaxy-top-corners="" style={{ paddingTop: 'var(--v2-float-h, 0px)' }} className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between px-[var(--gk-gutter)] pb-2">
+      <div data-galaxy-top-corners="" style={{ paddingTop: 'var(--v2-float-h, 0px)' }} className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between px-[var(--gk-gutter)] pb-2">
         {/* Under the status column the top bar's float hangs on the left (H1): the events stack below it. */}
         <div style={{ marginTop: 'calc(var(--v2-badges-h, 0px) + 2px)' }} className="gk-hudcol pointer-events-none flex min-w-0 flex-col items-start gap-1">
           <UnknownSignalHud data={signalData} planet={planet.data} worlds={worlds}
