@@ -16041,7 +16041,7 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
   padding: var(--gk-s3);
 }
 .gk-pact__title {
-  font-size: 17px;
+  font-size: var(--gk-t-lead);
   color: var(--gk-ink);
 }
 .gk-clan .gk-pact { margin-inline: 0; }
@@ -16059,7 +16059,7 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-honorperk__head { display: flex; align-items: center; gap: var(--gk-s2); min-width: 0; }
 .gk-honorperk__head .gk-badge, .gk-honorperk__head img { flex: none; }
 .gk-honorperk__name { display: grid; gap: 2px; min-width: 0; }
-.gk-honorperk__tier { font-size: 18px; color: var(--gk-ink); overflow-wrap: anywhere; }
+.gk-honorperk__tier { font-size: var(--gk-t-title); color: var(--gk-ink); overflow-wrap: anywhere; }
 .gk-honorperk[data-tone='good'] .gk-honorperk__tier { color: var(--gk-good); }
 .gk-honorperk[data-tone='hostile'] .gk-honorperk__tier { color: var(--gk-hostile-hi); }
 .gk-honorperk__now {
@@ -16069,7 +16069,7 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
   padding: var(--gk-s2) 0;
   border-block: 1px solid color-mix(in srgb, var(--gk-ink) 10%, transparent);
 }
-.gk-honorperk__now .gk-figure__value { font-size: 17px; }
+.gk-honorperk__now .gk-figure__value { font-size: var(--gk-t-number); }
 .gk-honorperk__now .gk-figure__value[data-tone='good'], .gk-honorperk__rate[data-tone='good'] { color: var(--gk-good); }
 .gk-honorperk__now .gk-figure__value[data-tone='hostile'], .gk-honorperk__rate[data-tone='hostile'] { color: var(--gk-hostile-hi); }
 .gk-honorperk__next {
@@ -16077,14 +16077,14 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
   align-items: center;
   gap: 6px;
   color: var(--gk-ink-2);
-  font-size: 13px;
+  font-size: var(--gk-t-small);
 }
 .gk-honorperk__next .gk-glyph { width: 16px; height: 16px; flex: none; color: var(--gk-self); }
 .gk-honorperk__ladder { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
 /* One column per effect, aligned over every rung's values: which % is which is never guessed. */
 .gk-honorperk__cols, .gk-honorperk__rates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .gk-honorperk__cols { padding: 0 6px 4px calc(6px + 28px + 8px); }
-.gk-honorperk__cols span { font-size: 12px; line-height: 1.25; font-weight: 600; color: var(--gk-ink-3); hyphens: auto; }
+.gk-honorperk__cols span { font-size: var(--gk-t-floor); line-height: 1.25; font-weight: 600; color: var(--gk-ink-3); hyphens: auto; }
 .gk-honorperk__rung {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
@@ -16102,22 +16102,22 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
   box-shadow: inset 2px 0 0 var(--gk-self);
 }
 .gk-honorperk__rung img { grid-row: span 2; justify-self: center; max-width: 28px; height: auto; }
-.gk-honorperk__rungname { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: 8px; min-width: 0; font-size: 13px; line-height: 1.3; }
+.gk-honorperk__rungname { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: 8px; min-width: 0; font-size: var(--gk-t-small); line-height: 1.3; }
 .gk-honorperk__rungname strong { font-weight: 700; }
-.gk-honorperk__rungname .gk-num { font-size: 12px; color: var(--gk-ink-3); }
-.gk-honorperk__rate { font-size: 14px; font-weight: 700; }
+.gk-honorperk__rungname .gk-num { font-size: var(--gk-t-floor); color: var(--gk-ink-3); }
+.gk-honorperk__rate { font-size: var(--gk-t-body); font-weight: 700; }
 
 /* The quote beside a repair, a trade or a convoy: a receipt with named columns. */
 .gk-honorquote { display: grid; gap: var(--gk-s2); padding: var(--gk-s2) var(--gk-s3); }
 .gk-honorquote[data-tone='good'] { box-shadow: inset 3px 0 0 var(--gk-good); }
 .gk-honorquote[data-tone='hostile'] { box-shadow: inset 3px 0 0 var(--gk-hostile-hi); }
-.gk-honorquote__title { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; color: var(--gk-ink-2); }
+.gk-honorquote__title { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: var(--gk-t-body); color: var(--gk-ink-2); }
 .gk-honorquote__title[data-tone='good'] { color: var(--gk-good); }
 .gk-honorquote__title[data-tone='hostile'] { color: var(--gk-hostile-hi); }
 .gk-honorquote__icon { width: 16px; height: 16px; flex: none; }
-.gk-honorquote__table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
+.gk-honorquote__table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: var(--gk-t-small); }
 .gk-honorquote__table th, .gk-honorquote__table td { padding: 3px 0 3px 6px; text-align: right; overflow-wrap: anywhere; }
-.gk-honorquote__table thead th { font-size: 12px; font-weight: 600; color: var(--gk-ink-3); }
+.gk-honorquote__table thead th { font-size: var(--gk-t-floor); font-weight: 600; color: var(--gk-ink-3); }
 .gk-honorquote__table th:first-child { width: 36%; padding-left: 0; }
 .gk-honorquote__table tbody th { display: flex; align-items: center; gap: 4px; text-align: left; font-weight: 500; color: var(--gk-ink-2); overflow-wrap: normal; hyphens: auto; }
 .gk-honorquote__table tbody th img { width: 16px; height: 16px; flex: none; }
