@@ -150,8 +150,11 @@ describe('the order sheet on the kit', () => {
     await userEvent.click(screen.getByRole('button', { name: /how it works/i }));
     const detail = sheet().querySelector('[data-item-detail]')!;
     expect(detail).toHaveClass('gk-well');
-    // the ship shield's rule stays under its figure, never behind the tap
-    expect(sheet().querySelector('[data-build-art] .gk-hullstats__note')).toHaveTextContent(/start full each battle/i);
+    // Owner 2026-11-17: the ship shield's rule is one press away on its own figure, not a paragraph under the grid.
+    expect(sheet().querySelector('.gk-hullstats__note')).toBeNull();
+    expect(sheet()).not.toHaveTextContent(/start full each battle/i);
+    await userEvent.click(screen.getByRole('button', { name: /ship shield/i }));
+    expect(sheet().querySelector('[data-stat="ship-shield"]')).toHaveTextContent(/start full each battle/i);
   });
 
   it('draws a special role as a kit well under the figures, before the room', () => {

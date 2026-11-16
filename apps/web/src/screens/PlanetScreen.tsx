@@ -3037,17 +3037,32 @@ export function HullStats({ hull, tech }: { hull: HullId; tech: TechLevels }) {
           </div>
         );
       })}
-      {!spec.ground && (
-        <div data-stat="ship-shield" data-tone="crystal" className="gk-hullstat gk-hullstat--half gk-well">
-          <dt>{i18n.t('research.shipShieldStat')}</dt>
-          <dd className="gk-num"><Glyph id="shield" />{compact(shipShieldHp(tech, hull))}</dd>
-        </div>
-      )}
+      {!spec.ground && <ShipShieldStat hp={shipShieldHp(tech, hull)} />}
       <ShipRadiationProtection hull={hull} tech={tech} />
     </dl>
-    {/* What the shield number means, read where it is shown (ship shields, 2026-10-20). */}
-    {!spec.ground && <p className="gk-sub gk-hullstats__note">{i18n.t('research.shipShieldHint')}</p>}
     </>
+  );
+}
+
+/**
+ * THE SHIP SHIELD, ITS RULE ONE PRESS AWAY (owner 2026-11-17: a paragraph under the grid becomes
+ * the figure's own ⓘ, as the radiation guard beside it already was).
+ */
+function ShipShieldStat({ hp }: { hp: number }) {
+  const [open, setOpen] = useState(false);
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); setOpen((was) => !was); });
+  return (
+    <div data-stat="ship-shield" data-tone="crystal" {...(open ? { 'data-open': '' } : {})} className="gk-hullstat gk-hullstat--half gk-hullstat--peek gk-well">
+      <dt>
+        {i18n.t('research.shipShieldStat')}
+        <button type="button" {...OWN_SOUND} className="gk-round gk-round--small gk-hullstat__peek" aria-label={i18n.t('research.shipShieldStat')}
+          aria-expanded={open} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+          <span className="gk-round__face"><Glyph id="help" /></span>
+        </button>
+      </dt>
+      <dd className="gk-num"><Glyph id="shield" />{compact(hp)}</dd>
+      {open && <dd className="gk-hullstat__more"><p>{i18n.t('research.shipShieldHint')}</p></dd>}
+    </div>
   );
 }
 

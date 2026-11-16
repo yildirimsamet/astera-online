@@ -17624,3 +17624,11 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 .gk-cycle__rung { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 4px; letter-spacing: 0.03em; }
 .gk-cycle__rung .gk-emblem { flex: none; width: 16px; height: 16px; }
 .gk-cycle__arrow .gk-glyph { width: 11px; height: 11px; }
+
+/* ── E2 (owner 2026-11-16/17): the build sheet's figures, compact — small label, the number beside its mark ── */
+.gk-hullstats { gap: 4px; }
+.gk-hullstat { padding: 4px 7px; gap: 0; }
+.gk-hullstat > dd.gk-num { font-size: var(--gk-t-body); }
+.gk-hullstat > dd.gk-num > .gk-glyph { width: 13px; height: 13px; }
+.gk-hullstat--peek > dt, .gk-hullstat--peek > dd.gk-num { padding-right: 30px; }
+.gk-hullstat__peek { top: -2px; right: -4px; }
