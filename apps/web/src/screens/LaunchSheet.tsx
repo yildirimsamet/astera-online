@@ -243,7 +243,7 @@ export function LaunchSheet({
                 </>}
               />
               {spendsShield && (
-                <p data-shield-warning className="gk-inote" data-tone="threat">
+                <p data-shield-warning className="gk-inote" data-tone="hostile">
                   <Glyph id="shield" />
                   {season.data?.shieldKind === 'RECOVERY' ? t('launch.recoveryShieldShort') : t('launch.shieldShort')}
                 </p>

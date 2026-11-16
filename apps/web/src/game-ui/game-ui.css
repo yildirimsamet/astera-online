@@ -17531,3 +17531,13 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
   background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
 }
 .gk-panelfail__title { margin: 0; font-size: var(--gk-t-small); color: var(--gk-ink); }
+
+/* ── O9 (owner 2026-11-17): the attack sheet, second pass ── */
+/* Fixed rows, spare height at the bottom: a cargo line on one card never shifts its neighbour's ship, count or Max. */
+.gk-unitgrid .gk-unit { grid-template-rows: auto auto auto; align-content: start; }
+/* What a hauler adds is cargo, in the haul's green. */
+.gk-unitgrid .gk-unit__extra { color: var(--gk-good); }
+/* The shield line sits close under the price line it belongs to. */
+.gk-launch__price [data-shield-warning] { margin-top: -4px; font-weight: 700; }
+/* A thumb-sized grab around the 14 px track: a finger on the thumb's edge or past the bar's end still drags. */
+.gk-throttle__track::before { content: ''; position: absolute; inset: -12px -14px -8px; }
