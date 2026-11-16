@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { GALLERY_STEPS, galleryUrl, galleryVisits } from '../src/drivers/gallery.js';
+import type { Page } from 'playwright';
+import { GALLERY_ANSWERS, GALLERY_STEPS, answerGallery, galleryUrl, galleryVisits } from '../src/drivers/gallery.js';
 import { KIT_SURFACES, SURFACES } from '../src/inventory.js';
 
 describe('the gallery driver', () => {
@@ -22,5 +23,27 @@ describe('the gallery driver', () => {
   it('has steps only for views the inventory visits', () => {
     const views = new Set(SURFACES.flatMap((s) => s.reach).filter((r) => r.startsWith('gallery:')).map((r) => r.slice('gallery:'.length)));
     expect(Object.keys(GALLERY_STEPS).filter((view) => !views.has(view))).toEqual([]);
+  });
+
+  it('has fixed answers only for views the inventory visits', () => {
+    const views = new Set(SURFACES.flatMap((s) => s.reach).filter((r) => r.startsWith('gallery:')).map((r) => r.slice('gallery:'.length)));
+    expect(Object.keys(GALLERY_ANSWERS).filter((view) => !views.has(view))).toEqual([]);
+  });
+
+  /** G12 (2026-11-16): the arena's hangar and team ask the arena server; the gallery has none, so the audit measured an error line. */
+  it('answers the arena’s hangar and team before the view opens', async () => {
+    expect(Object.keys(GALLERY_ANSWERS['arena-hangar'] ?? {}).sort()).toEqual(['/arena/hangar', '/arena/team']);
+    expect(GALLERY_ANSWERS['arena-team']?.['/arena/team']).toMatchObject({ team: { state: 'forming', joined: true } });
+    const answered: string[] = [];
+    const page: Pick<Page, 'route'> = {
+      route: (match: string | RegExp | ((url: URL) => boolean)) => {
+        if (typeof match === 'function') answered.push(['/arena/hangar', '/arena/team', '/arena/ship'].filter((path) => match(new URL(`http://x${path}`))).join(','));
+        return Promise.resolve();
+      },
+    };
+    await answerGallery(page, 'arena-hangar');
+    expect([...answered].sort()).toEqual(['/arena/hangar', '/arena/team']);
+    await answerGallery(page, 'wiki');
+    expect(answered).toHaveLength(2);
   });
 });

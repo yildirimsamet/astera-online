@@ -4,9 +4,10 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { App } from '../src/App.js';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
+import type * as SoundModule from '../src/lib/sound.js';
 
 vi.mock('../src/lib/music.js', () => ({ useAmbientMusic: () => undefined }));
-vi.mock('../src/lib/sound.js', () => ({ useSoundEffects: () => undefined }));
+vi.mock('../src/lib/sound.js', async (importOriginal) => ({ ...await importOriginal<typeof SoundModule>(), useSoundEffects: () => undefined }));
 vi.mock('../src/session/useEventStream.js', () => ({ useEventStream: () => undefined }));
 vi.mock('../src/session/useLiveAlerts.js', () => ({ useLiveAlerts: () => undefined }));
 vi.mock('../src/onboarding/flightSchool/FlightSchool.js', () => ({ FlightSchool: () => <main>Private Academy</main> }));

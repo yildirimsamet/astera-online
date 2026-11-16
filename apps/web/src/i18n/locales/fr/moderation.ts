@@ -14,7 +14,7 @@ export const moderation = {
     "accept": "Accepter et continuer"
 },
   "report": "Signaler",
-  "title": "Signaler un contenu ou un joueur",
+  "title": "Signaler un abus",
   "explanation": "L’équipe examine les signalements en privé. Un signalement ne supprime aucun contenu et ne bloque pas automatiquement le joueur.",
   "target": "Que souhaites-tu signaler ?",
   "message": "Message",

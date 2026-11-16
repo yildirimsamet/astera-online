@@ -4,10 +4,15 @@
   --glass-hi: color-mix(in srgb, #0a1424 80%, transparent);
   --edge: color-mix(in srgb, #9fd8ff 16%, transparent);
   --edge-hi: color-mix(in srgb, #9fd8ff 30%, transparent);
-  --self: var(--color-v2-self);
-  --hostile: var(--color-v2-hostile);
-  --crystal: var(--color-v2-crystal);
-  --warn: var(--color-v2-warn);
+  --self: var(--gk-self);
+  --hostile: var(--gk-hostile-hi);
+  --crystal: var(--gk-crystal);
+  --warn: var(--gk-warn);
+  /* G12-e (2026-11-16): the flight speaks the kit's ink and type; the old names point at it. */
+  --color-v2-ink: var(--gk-ink); --color-v2-ink-2: var(--gk-ink-2); --color-v2-ink-3: var(--gk-ink-3);
+  --font-v2-mono: var(--gk-font-display); --font-v2-ui: var(--gk-font-text);
+  /* A name over the scene: dark round its letters, so it reads over rock as over space. */
+  --ah-outline: 0 0 2px #000, 0 1px 3px #000, 0 0 8px rgba(0,0,0,.6);
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   position: fixed; inset: 0; overflow: hidden; background: #02050a; color: var(--color-v2-ink);
@@ -30,135 +35,36 @@
     radial-gradient(1px 1px at 58% 46%, #ffffff 50%, transparent 51%), radial-gradient(1px 1px at 22% 58%, #9fe8ff 50%, transparent 51%);
   animation: al-drift 18s linear infinite; }
 @keyframes al-drift { to { transform: translateY(-14px) scale(1.04); } }
-.al-mark { position: relative; text-align: center; }
-.al-mark span { display: block; font-size: 30px; letter-spacing: .52em; font-weight: 300; padding-left: .52em; color: #e9f6ff;
-  text-shadow: 0 0 24px color-mix(in srgb, var(--self) 45%, transparent); }
-.al-mark small { display: block; margin-top: 10px; font: 10px var(--font-v2-mono); letter-spacing: .32em; text-transform: uppercase; color: var(--self); }
-.al-progress { position: relative; width: min(280px, 100%); display: grid; grid-template-columns: 1fr auto; row-gap: 9px; align-items: end; }
-.al-progress p { margin: 0; font: 10px var(--font-v2-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--color-v2-ink-2); }
-.al-progress strong { font: 600 11px var(--font-v2-mono); color: var(--self); }
-.al-progress i { grid-column: 1 / -1; height: 2px; background: color-mix(in srgb, var(--self) 14%, transparent); overflow: hidden; border-radius: 2px; }
-.al-progress i b { display: block; height: 100%; background: linear-gradient(90deg, color-mix(in srgb, var(--self) 40%, transparent), var(--self));
-  transform-origin: left; transition: transform .25s ease-out; box-shadow: 0 0 12px var(--self); }
-.al-tip { position: relative; max-width: 280px; margin: 0; text-align: center; font-size: 12px; line-height: 1.5; color: var(--color-v2-ink-2); min-height: 3em; }
-.al-failed { position: relative; display: grid; gap: 8px; width: min(280px, 100%); text-align: center; }
-.al-failed p { margin: 0 0 4px; font-size: 13px; line-height: 1.5; color: var(--color-v2-ink); }
 
 /* ---------- Preflight ---------- */
 .arena-preflight { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; justify-content: space-between;
   padding: calc(22px + var(--safe-top)) 16px calc(16px + var(--safe-bottom));
   overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: none;
   background: linear-gradient(180deg, rgba(2,5,10,.6) 0%, transparent 18%, transparent 66%, rgba(2,5,10,.82) 100%); }
-.arena-preflight header { text-align: center; text-shadow: 0 1px 12px rgba(0,0,0,.6); }
-.arena-preflight header span { display: block; font-size: 11px; letter-spacing: .5em; padding-left: .5em; font-weight: 300; color: #dff3ff; }
-.arena-preflight header p { margin: 6px 0 0; font-size: 19px; font-weight: 600; letter-spacing: .02em; }
-.arena-preflight header small { display: block; margin-top: 5px; font: 9px var(--font-v2-mono); letter-spacing: .26em; text-transform: uppercase; color: var(--self); }
-/* The launch dock: no card, so the ship and the field stay the picture. */
-.ap-dock { width: 100%; max-width: 420px; margin: 0 auto; display: grid; gap: 8px; }
-.ap-dock .ap-mode { margin: 0; background: rgba(2,6,12,.55); }
-.ap-dock .ap-leave { margin-top: 0; min-height: 32px; }
-.ap-loop button { width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 30px; padding: 0 8px;
-  border-radius: 999px; background: rgba(2,6,12,.5) !important; border: 1px solid var(--edge) !important;
-  font-size: 11.5px; color: var(--color-v2-ink) !important; }
-.ap-loop span { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
-.ap-loop span + span::before { content: '→'; margin-right: 6px; color: var(--color-v2-ink-3); }
-.ap-loop b { font: 600 9px var(--font-v2-mono); color: var(--self); }
-.ap-loop i { margin-left: 2px; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%; font: 600 10px var(--font-v2-mono); font-style: normal;
-  color: var(--self); border: 1px solid color-mix(in srgb, var(--self) 45%, transparent); }
-.ap-loop ol { list-style: none; margin: 6px 0 0; padding: 8px 10px; display: grid; gap: 5px; border-radius: 10px; background: rgba(2,6,12,.72);
-  border: 1px solid var(--edge); font-size: 11px; color: var(--color-v2-ink-2); animation: ah-fade .2s ease-out; }
-.ap-loop li { display: grid; grid-template-columns: 14px 1fr; gap: 6px; }
-.ar-card, .arena-menu section { width: 100%; max-width: 420px; margin: 0 auto; padding: 16px; border-radius: 14px;
-  background: linear-gradient(180deg, color-mix(in srgb, #0b1626 90%, transparent), color-mix(in srgb, #050a13 95%, transparent));
-  border: 1px solid var(--edge); box-shadow: 0 18px 50px rgba(0,0,0,.45), inset 0 1px 0 color-mix(in srgb, #bfe7ff 10%, transparent);
-  }
-.ap-eyebrow { margin: 0 0 10px; font: 9px var(--font-v2-mono); letter-spacing: .24em; text-transform: uppercase; color: var(--color-v2-ink-3); }
-.ap-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; padding: 3px; border-radius: 9px; background: rgba(0,0,0,.3); border: 1px solid var(--edge); }
-.ap-mode button { min-height: 36px; border-radius: 7px; font-size: 12px; color: var(--color-v2-ink-2) !important; }
-/* F8: each mode says what it is worth under its name. */
-.ap-mode.is-noted button { display: grid; gap: 1px; min-height: 42px; padding: 4px 6px; line-height: 1.15; }
-.ap-mode.is-noted b { font-size: 12.5px; font-weight: 600; }
-.ap-mode.is-noted small { font-size: 10px; opacity: .78; }
-.ap-mode button.is-selected { background: color-mix(in srgb, var(--self) 16%, transparent); color: var(--self) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--self) 40%, transparent); }
-.ap-launch { width: 100%; min-height: 50px; display: flex; align-items: center; justify-content: center; gap: 10px; border-radius: 10px;
-  background: linear-gradient(180deg, #43f0d4, #1fbfa6) !important; color: #032520 !important; font-weight: 700 !important; font-size: 15px !important; letter-spacing: .02em;
-  box-shadow: 0 8px 26px color-mix(in srgb, var(--self) 35%, transparent), inset 0 1px 0 rgba(255,255,255,.4); }
-.ap-launch svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; }
-.ap-launch:active { transform: translateY(1px); }
-.ap-leave { width: 100%; min-height: 40px; margin-top: 6px; font-size: 12px; color: var(--color-v2-ink-2) !important; }
-.ap-keys { margin: 8px 0 0; text-align: center; font: 9px/1.5 var(--font-v2-mono); color: var(--color-v2-ink-3); }
-@media (pointer: coarse) { .ap-keys { display: none; } }
-/* The class for the next flight (Y4): tabs, one line on its job, six bars against the best class. */
-/* F4: denser than before (.66) so the dock's ship does not show through the cards; no blur over a live canvas. */
-.ap-class { padding: 6px 8px 7px; border-radius: 11px; background: rgba(2,6,12,.86); border: 1px solid var(--edge); }
-.ap-class .ap-mode { margin: 0 0 7px; background: rgba(0,0,0,.34); }
-.ap-mode.is-three { grid-template-columns: repeat(3, 1fr); gap: 4px; }
-.ap-mode.is-three button { min-height: 32px; font-size: 12px; letter-spacing: .01em; }
-/* Two lines kept for every class: switching never moves the dock. */
-.ap-class-line { margin: 0 2px 8px; min-height: 2.8em; font-size: 11px; line-height: 1.4; color: var(--color-v2-ink-2); }
-.ap-class-line b { font-weight: 600; color: var(--self); }
-.ap-class-stats { list-style: none; margin: 0 2px; padding: 0; display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; row-gap: 7px; }
-.ap-class-stats li { display: grid; grid-template-columns: 1fr auto; align-items: baseline; row-gap: 4px; }
-.ap-class-stats span { font: 8.5px var(--font-v2-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--color-v2-ink-3); }
-.ap-class-stats strong { font: 600 11px var(--font-v2-mono); color: var(--color-v2-ink); font-variant-numeric: tabular-nums; }
-.ap-class-stats i { grid-column: 1 / -1; position: relative; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--self) 12%, transparent); }
-.ap-class-stats i b { position: absolute; inset: 0 auto 0 0; width: calc(var(--fill) * 100%); border-radius: inherit;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--self) 35%, transparent), var(--self));
-  box-shadow: 0 0 8px color-mix(in srgb, var(--self) 55%, transparent); transition: width .28s cubic-bezier(.2,.8,.2,1); }
-.ap-class-stats span em { font-style: normal; color: var(--self); letter-spacing: 0; }
-.ap-class-key { margin: 8px 2px 0; font: 8.5px var(--font-v2-mono); letter-spacing: .06em; color: var(--color-v2-ink-3); }
-/* Y4c: the class's A slot, one line with its own colour; the B slot, two tactics side by side. */
-.ap-class-signature { --sig: #ffc66b; display: grid; grid-template-columns: 22px auto 1fr; align-items: start; column-gap: 7px; margin: 0 2px 9px; padding: 6px 8px;
-  min-height: 3.6em; border-radius: 8px; background: color-mix(in srgb, var(--sig) 7%, rgba(0,0,0,.3)); border: 1px solid color-mix(in srgb, var(--sig) 26%, transparent); }
-.ap-class-signature i { width: 20px; height: 20px; color: var(--sig); filter: drop-shadow(0 0 4px color-mix(in srgb, var(--sig) 60%, transparent)); }
-.ap-class-signature i svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.ap-class-signature b { font: 600 10px var(--font-v2-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--sig); line-height: 20px; }
-.ap-class-signature span { font-size: 10.5px; line-height: 1.4; color: var(--color-v2-ink-2); padding-top: 2px; }
-.ap-class:has([data-ship="muhafiz"][aria-checked="true"]) .ap-class-signature { --sig: #7fd7ff; }
-.ap-class:has([data-ship="kilavuz"][aria-checked="true"]) .ap-class-signature { --sig: #7cf0a8; }
-.ap-tactic { margin-top: 6px; padding: 6px 8px 7px; border-radius: 11px; background: rgba(2,6,12,.86); border: 1px solid var(--edge); }
-.ap-tactic-head { display: flex; justify-content: space-between; align-items: baseline; margin: 0 2px 6px; }
-.ap-tactic-head span { font: 600 9px var(--font-v2-mono); letter-spacing: .18em; text-transform: uppercase; color: var(--color-v2-ink-2); }
-.ap-tactic-head small { font: 8.5px var(--font-v2-mono); letter-spacing: .04em; color: var(--color-v2-ink-3); }
-.ap-tactic-options { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.ap-tactic-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 7px; }
-.ap-tactic-slots button { display: flex; align-items: center; gap: 7px; min-height: 44px; padding: 6px 9px; border: 1px solid var(--edge); border-radius: 8px; background: rgba(0,0,0,.35); color: var(--color-v2-ink-2); text-align: left; }
-.ap-tactic-slots button[aria-pressed="true"] { border-color: var(--self); background: color-mix(in srgb, var(--self) 12%, #060d15); box-shadow: inset 0 -2px var(--self), 0 0 14px color-mix(in srgb, var(--self) 12%, transparent); color: var(--self); }
-.ap-tactic-slots kbd { display: grid; place-items: center; width: 23px; height: 23px; border: 1px solid currentColor; border-radius: 5px; font: 600 11px var(--font-v2-mono); }
-.ap-tactic-slots span { flex: 1; font: 600 12px var(--font-v2-ui); }
-.ap-tactic-slots i { width: 19px; height: 19px; }
-.ap-tactic-slots svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.ap-tactic-slots button:focus-visible, .ap-tactic-options button:focus-visible { outline: 2px solid var(--self); outline-offset: 2px; }
-.ap-tactic-options button { display: grid; grid-template-columns: 20px 1fr; grid-template-rows: auto auto; column-gap: 7px; row-gap: 2px; align-items: center; text-align: left;
-  min-height: 52px; padding: 6px 8px; border-radius: 8px !important; background: rgba(0,0,0,.32) !important; border: 1px solid var(--edge) !important; color: var(--color-v2-ink-2) !important; }
-.ap-tactic-options button i { grid-row: 1; width: 18px; height: 18px; color: var(--color-v2-ink-2); }
-.ap-tactic-options button i svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.ap-tactic-options button b { font: 600 12px var(--font-v2-ui); color: var(--color-v2-ink); }
-.ap-tactic-options button small { grid-column: 1 / -1; font-size: 9.5px; line-height: 1.35; color: var(--color-v2-ink-3); }
-.ap-tactic-options button.is-selected { border-color: color-mix(in srgb, var(--self) 70%, transparent) !important; background: color-mix(in srgb, var(--self) 10%, rgba(0,0,0,.3)) !important;
-  box-shadow: 0 0 14px color-mix(in srgb, var(--self) 22%, transparent), inset 0 1px 0 rgba(255,255,255,.06); }
-.ap-tactic-options button.is-selected i { color: var(--self); }
-.ap-tactic-options button.is-selected small { color: var(--color-v2-ink-2); }
 
 /* ---------- HUD ---------- */
 .ah-root { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
-.ah-top { position: absolute; top: calc(8px + var(--safe-top)); left: 10px; right: 10px; display: grid; grid-template-columns: 1fr 1fr 1fr 34px; gap: 5px; }
-.ah-gauge { --fill: 1; position: relative; display: grid; grid-template-columns: 14px 1fr; align-items: center; column-gap: 5px; height: 34px;
+.ah-top { position: absolute; top: calc(8px + var(--safe-top)); left: 10px; right: 10px; display: grid; grid-template-columns: 1fr 1fr 1fr 44px; gap: 5px; align-items: center; }
+.ah-gauge { --fill: 1; position: relative; display: grid; grid-template-columns: 14px 1fr; align-items: center; column-gap: 5px; height: 40px;
   padding: 0 8px 4px; border-radius: 8px; background: var(--glass); border: 1px solid var(--edge); overflow: hidden;
   }
 .ah-gauge-icon { width: 14px; height: 14px; color: var(--tone); }
 .ah-gauge-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.ah-gauge strong { justify-self: end; font: 600 12.5px var(--font-v2-mono); font-variant-numeric: tabular-nums; color: var(--color-v2-ink); }
+.ah-gauge strong { justify-self: end; font: 700 var(--gk-t-body) var(--font-v2-mono); font-stretch: var(--gk-display-stretch); font-variant-numeric: tabular-nums; color: var(--color-v2-ink); }
 .ah-gauge i { position: absolute; left: 8px; right: 8px; bottom: 5px; height: 2px; border-radius: 2px; background: color-mix(in srgb, var(--tone) 14%, transparent); }
 .ah-gauge i b { display: block; height: 100%; width: calc(var(--fill) * 100%); border-radius: 2px; background: var(--tone); box-shadow: 0 0 8px var(--tone); transition: width .2s; }
 .ah-gauge.is-alert { border-color: color-mix(in srgb, var(--hostile) 55%, transparent); animation: ah-alert 1s ease-in-out infinite; }
 @keyframes ah-alert { 50% { background: color-mix(in srgb, var(--hostile) 18%, var(--glass)); } }
-.ah-menu { pointer-events: auto; width: 34px; height: 34px; border-radius: 8px !important; background: var(--glass) !important; border: 1px solid var(--edge) !important; display: grid; place-items: center; }
+.ah-menu { pointer-events: auto; width: 44px; height: 44px; border-radius: 50% !important; display: grid; place-items: center;
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2)) !important; border: 1px solid var(--gk-metal-edge) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,.4), inset 0 1px 0 var(--gk-metal-hi); transition: transform var(--gk-quick) var(--gk-pop); }
+.ah-menu:active { transform: scale(.92); }
 .ah-menu svg { width: 18px; height: 18px; fill: none; color: var(--color-v2-ink-2); }
 
-.ah-instruments { position: absolute; top: calc(48px + var(--safe-top)); left: 10px; right: 10px; display: grid; grid-template-columns: 66px 1fr 58px; gap: 6px; align-items: stretch; }
+.ah-instruments { position: absolute; top: calc(56px + var(--safe-top)); left: 10px; right: 10px; display: grid; grid-template-columns: 66px 1fr 58px; gap: 6px; align-items: stretch; }
 .ah-radar { width: 66px; height: 66px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, #0b2030 70%, transparent), var(--glass) 72%);
-  border: 1px solid var(--edge); position: relative; overflow: hidden; }
+  border: 1px solid var(--edge); position: relative; overflow: hidden; transition: transform var(--gk-quick) var(--gk-pop); }
+.ah-radar:active { transform: scale(.94); }
 .ah-radar canvas { width: 100%; height: 100%; }
 .ah-radar::after { content: ''; position: absolute; inset: 0; border-radius: 50%;
   background: conic-gradient(from 0deg, color-mix(in srgb, var(--self) 22%, transparent), transparent 22%); animation: ah-sweep 3.2s linear infinite; }
@@ -174,15 +80,16 @@
 /* Right edge stops short of the throttle column: the throttle stays usable while the map is open.
    While it is open the HUD rises over the controls (z 6): the Kalk and ability keys drew over the map (F21). */
 .ah-root:has(.ah-map) { z-index: 7; }
-.ah-map { pointer-events: auto; position: absolute; z-index: 6; top: calc(122px + var(--safe-top)); left: 10px; right: 52px; padding: 8px 10px 9px;
+.ah-map { pointer-events: auto; position: absolute; z-index: 6; top: calc(130px + var(--safe-top)); left: 10px; right: 52px; padding: 8px 10px 9px;
   border-radius: 14px; border: 1px solid var(--edge-hi); background: color-mix(in srgb, #040912 88%, transparent);
   box-shadow: 0 18px 40px rgba(0,0,0,.55), inset 0 1px 0 color-mix(in srgb, #9fd8ff 10%, transparent); animation: ah-map-in .18s ease-out; }
 @keyframes ah-map-in { from { opacity: 0; translate: 0 -6px; scale: .98; } }
 .ah-map header { display: flex; align-items: center; gap: 8px; }
-.ah-map header strong { font: 600 10px var(--font-v2-mono); letter-spacing: .28em; text-transform: uppercase; color: var(--self); }
-.ah-map header small { font: 10px var(--font-v2-mono); letter-spacing: .06em; color: var(--color-v2-ink-2); }
-.ah-map header button { margin-left: auto; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; border: 1px solid var(--edge) !important; color: var(--color-v2-ink-2); }
-.ah-map header button svg { width: 12px; height: 12px; }
+.ah-map header strong { font: 700 var(--gk-t-small) var(--font-v2-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--self); }
+.ah-map header small { font: var(--gk-t-floor) var(--font-v2-mono); letter-spacing: .04em; color: var(--color-v2-ink-2); }
+.ah-map header button { margin-left: auto; width: 44px; height: 44px; margin-block: -6px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--edge) !important; color: var(--color-v2-ink-2); }
+.ah-map header button svg { width: 14px; height: 14px; }
+.ah-map header button:active { transform: scale(.92); }
 .ah-map-body { display: grid; grid-template-columns: 1fr 16px; gap: 6px; margin-top: 4px; }
 .ah-map-chart { position: relative; aspect-ratio: 1; }
 .ah-map-chart svg { width: 100%; height: 100%; overflow: visible; }
@@ -210,7 +117,7 @@
 @keyframes ah-map-ping { from { transform: scale(.6); opacity: 1; } to { transform: scale(1.7); opacity: 0; } }
 /* A two-word place breaks onto two lines, so neighbours 5 km apart on the 13 km map never run together. */
 .ah-map-label { position: absolute; transform: translate(-50%, 8px); pointer-events: none; width: max-content; max-width: 7em; text-align: center; line-height: 1.2;
-  font: 600 8.5px var(--font-v2-mono); letter-spacing: .08em; text-transform: uppercase; color: #c9d6e2; text-shadow: 0 1px 3px #000, 0 0 6px #000; }
+  font: 700 var(--gk-t-floor) var(--font-v2-mono); letter-spacing: 0; color: #dce6f0; text-shadow: var(--ah-outline); }
 /* Exits label above their diamond, places below theirs: an exit on a station keeps both readable. */
 .ah-map-label[data-side="top"], .ah-map-label[data-side="north"] { transform: translate(-50%, calc(-100% - 9px)); }
 .ah-map-label[data-side="east"] { transform: translate(9px, -50%); text-align: start; }
@@ -218,14 +125,17 @@
 .ah-map-label.is-exit { white-space: nowrap; color: var(--self); transform: translate(-50%, calc(-100% - 8px)); }
 .ah-map-label.is-dust { color: #dcbf92; }
 .ah-map-dust { stroke: color-mix(in srgb, #c9a46e 45%, transparent); stroke-width: 1px; stroke-dasharray: 1 3; }
-.ah-map-scale { position: absolute; left: 2px; bottom: 0; white-space: nowrap; padding-bottom: 3px; border-bottom: 1px solid var(--color-v2-ink-2); font: 8px var(--font-v2-mono); color: var(--color-v2-ink-2); }
+.ah-map-scale { position: absolute; left: 2px; bottom: 0; white-space: nowrap; padding-bottom: 3px; border-bottom: 1px solid var(--color-v2-ink-2); font: var(--gk-t-floor) var(--font-v2-mono); color: var(--color-v2-ink-2); }
 .ah-map-alt { display: grid; grid-template-rows: auto 1fr; justify-items: center; gap: 5px; padding: 2px 0 6px; }
-.ah-map-alt span { writing-mode: vertical-rl; transform: rotate(180deg); font: 7.5px var(--font-v2-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--color-v2-ink-2); }
+.ah-map-alt span { writing-mode: vertical-rl; transform: rotate(180deg); font: var(--gk-t-floor) var(--font-v2-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--color-v2-ink-2); }
 .ah-map-alt i { position: relative; width: 4px; border-radius: 2px; background: linear-gradient(to top, rgba(159,216,255,.08), rgba(159,216,255,.28)); }
 .ah-map-alt b { position: absolute; left: 50%; bottom: 50%; width: 12px; height: 3px; margin: 0 0 -1.5px -6px; border-radius: 2px; background: #fff; box-shadow: 0 0 6px #fff; }
 .ah-map footer { margin-top: 6px; }
-.ah-map footer ul { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; padding: 0; list-style: none; font: 9.5px var(--font-v2-ui); color: var(--color-v2-ink-2); }
+.ah-map footer ul { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; padding: 0; list-style: none; font: var(--gk-t-floor)/1.3 var(--font-v2-ui); color: var(--color-v2-ink-2); }
 .ah-map footer li { display: flex; align-items: center; gap: 5px; }
+/* A key with a sentence takes its own row, the sentence hanging beside its mark. */
+.ah-map footer li:has(> i.is-refinery, > i.is-outpost, > i.is-cave, > i.is-dust) { flex-basis: 100%; align-items: baseline; }
+.ah-map footer li > i { flex: none; }
 .ah-map footer li i { display: block; width: 8px; height: 8px; }
 .ah-map footer li i.is-self { background: #fff; clip-path: polygon(50% 0, 100% 100%, 50% 72%, 0 100%); }
 .ah-map footer li i.is-exit { width: 7px; height: 7px; background: var(--self); rotate: 45deg; box-shadow: 0 0 4px var(--self); }
@@ -235,18 +145,18 @@
 .ah-map footer li i.is-entry { border-radius: 50%; border: 1.2px solid #8aa0b4; }
 .ah-map footer li i.is-belt { width: 11px; height: 11px; border-radius: 50%; background: radial-gradient(circle, rgba(109,140,255,.75), rgba(109,140,255,0) 72%); }
 .ah-map footer li i.is-dust { width: 11px; height: 11px; border-radius: 50%; background: radial-gradient(circle, rgba(201,164,110,.8), rgba(201,164,110,.2) 70%, transparent 72%); }
-.ah-map footer p { margin: 5px 0 0; font: 9.5px var(--font-v2-ui); color: color-mix(in srgb, var(--color-v2-ink) 58%, transparent); }
+.ah-map footer p { margin: 5px 0 0; font: var(--gk-t-floor)/1.3 var(--font-v2-ui); color: var(--color-v2-ink-2); }
 .ah-speed { grid-column: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 10px; background: var(--glass); border: 1px solid var(--edge); }
-.ah-speed strong { font: 600 19px var(--font-v2-mono); font-variant-numeric: tabular-nums; line-height: 1; }
-.ah-speed small { font: 8px var(--font-v2-mono); letter-spacing: .14em; color: var(--color-v2-ink-3); margin-top: 2px; }
-.ah-speed em { margin-top: 5px; font: normal 600 8px var(--font-v2-mono); letter-spacing: .12em; text-transform: uppercase; padding: 2px 5px; border-radius: 4px;
+.ah-speed strong { font: 700 22px var(--font-v2-mono); font-stretch: var(--gk-display-stretch); font-variant-numeric: tabular-nums; line-height: 1; }
+.ah-speed small { font: var(--gk-t-floor) var(--font-v2-mono); letter-spacing: .06em; color: var(--color-v2-ink-2); margin-top: 2px; }
+.ah-speed em { margin-top: 4px; font: normal 700 var(--gk-t-floor) var(--font-v2-mono); letter-spacing: .06em; text-transform: uppercase; padding: 2px 5px; border-radius: 4px;
   color: var(--color-v2-ink-2); background: rgba(255,255,255,.05); }
 .ah-speed em[data-state='turbo'] { color: #e4f8ff; background: color-mix(in srgb, #5fd6ff 30%, transparent); }
 .ah-speed em[data-state='landed'] { color: var(--self); background: color-mix(in srgb, var(--self) 16%, transparent); }
 .ah-speed em[data-state='stopped'] { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
 
 /* Link status: a live-feed tag in the open band between radar and speed, clear of every note. */
-.ah-link { position: absolute; top: calc(54px + var(--safe-top)); left: 88px; z-index: 2; display: flex; gap: 5px; align-items: center; font: 8px var(--font-v2-mono); letter-spacing: .06em; color: var(--color-v2-ink-2); text-shadow: 0 1px 3px #000; }
+.ah-link { position: absolute; top: calc(62px + var(--safe-top)); left: 88px; z-index: 2; display: flex; gap: 5px; align-items: center; font: var(--gk-t-floor) var(--font-v2-mono); letter-spacing: .04em; color: var(--color-v2-ink-2); text-shadow: var(--ah-outline); }
 .ah-link i { width: 5px; height: 5px; border-radius: 50%; background: var(--self); box-shadow: 0 0 8px var(--self); }
 .ah-link small { opacity: .6; flex: none; }
 /* Live: one line across that band, never under the speed box. */
@@ -258,13 +168,13 @@
 .ah-link.is-failed button { min-height: 40px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--self) !important; color: var(--self); }
 .ah-link.is-reconnecting { color: var(--warn); }
 
-.ah-note { --tone: var(--self); position: absolute; top: calc(124px + var(--safe-top)); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px);
+.ah-note { --tone: var(--self); position: absolute; top: calc(132px + var(--safe-top)); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px);
   display: grid; justify-items: center; gap: 2px; padding: 7px 14px 8px; border-radius: 10px; background: var(--glass-hi);
   border: 1px solid color-mix(in srgb, var(--tone) 38%, transparent); box-shadow: 0 0 22px color-mix(in srgb, var(--tone) 14%, transparent);
   animation: ah-in .25s ease-out; text-align: center; }
 @keyframes ah-in { from { opacity: 0; transform: translate(-50%, -4px); } }
-.ah-note strong { font-size: 12px; font-weight: 600; color: var(--tone); letter-spacing: .01em; }
-.ah-note span { font-size: 10.5px; color: var(--color-v2-ink-2); }
+.ah-note strong { font: var(--gk-display-weight) var(--gk-t-body) var(--gk-font-display); font-stretch: var(--gk-display-stretch); color: var(--tone); letter-spacing: .02em; }
+.ah-note span { font-size: var(--gk-t-floor); color: var(--color-v2-ink-2); }
 .ah-note i { width: 120px; height: 2px; margin-top: 4px; border-radius: 2px; background: color-mix(in srgb, var(--tone) 18%, transparent); overflow: hidden; }
 .ah-note i b { display: block; height: 100%; background: var(--tone); transform-origin: left; box-shadow: 0 0 8px var(--tone); }
 .ah-note.tone-warn { --tone: var(--warn); } .ah-note.tone-hostile { --tone: var(--hostile); } .ah-note.tone-crystal { --tone: var(--crystal); }
@@ -296,7 +206,7 @@
 .ah-kill { width: 0; height: 0; opacity: 0; --k: 0; }
 .ah-kill i { position: absolute; width: 40px; height: 40px; margin: -20px; border-radius: 50%; border: 2px solid var(--hostile);
   transform: scale(calc(0.6 + var(--k) * 1.4)); box-shadow: 0 0 16px var(--hostile); }
-.ah-kill span { position: absolute; transform: translate(-50%, 30px); font: 700 11px var(--font-v2-mono); letter-spacing: .26em; color: #ffd9cf; text-shadow: 0 0 10px var(--hostile); white-space: nowrap; }
+.ah-kill span { position: absolute; transform: translate(-50%, 30px); font: 700 var(--gk-t-body) var(--font-v2-mono); letter-spacing: .16em; color: #ffd9cf; text-shadow: 0 0 10px var(--hostile); white-space: nowrap; }
 /* The diamond turns inside a zero-size anchor: a `rotate` on the anchor itself would also turn
    the translate3d that places it, flinging the mark across the screen. */
 .ah-lead { width: 0; height: 0; display: none; }
@@ -309,7 +219,7 @@
 .ah-enemy > i:nth-of-type(3) { left: calc(var(--size) / -2); bottom: calc(var(--size) / -2); border-right: 0; border-top: 0; }
 .ah-enemy > i:nth-of-type(4) { right: calc(var(--size) / -2); bottom: calc(var(--size) / -2); border-left: 0; border-top: 0; }
 .ah-enemy span { position: absolute; left: 0; bottom: calc(var(--size) / 2 + 5px); transform: translateX(-50%); white-space: nowrap;
-  font: 9px var(--font-v2-mono); letter-spacing: .06em; color: #ffd2c8; text-shadow: 0 1px 3px #000; }
+  font: 700 var(--gk-t-floor) var(--font-v2-mono); letter-spacing: .04em; color: #ffd2c8; text-shadow: var(--ah-outline); }
 .ah-enemy span b { font-weight: 400; color: color-mix(in srgb, #ffd2c8 70%, transparent); }
 .ah-enemy u { position: absolute; left: calc(var(--size) / -2); top: calc(var(--size) / 2 + 5px); width: var(--size); height: 2px; background: rgba(255,255,255,.12); }
 .ah-enemy u b { display: block; height: 100%; background: var(--hostile); }
@@ -324,25 +234,10 @@
 .ah-map-friend { fill: #4bd5ff; stroke: #b2f0ff; stroke-width: 8px; }
 .ah-map-friend .is-ring { fill: none; stroke: #4bd5ff; stroke-opacity: .45; }
 .ah-map footer i.is-friend { background: #4bd5ff; }
-.ap-team { margin-block: 12px; padding: 14px; border: 1px solid rgba(75,213,255,.2); border-radius: 12px;
-  background: linear-gradient(120deg,rgba(11,39,56,.8),rgba(7,15,27,.9)); text-align: left; }
-.ap-team button { touch-action: manipulation; }
-/* F11: a solo result has no share to take; the frame goes with it. */
-.ap-team:empty { display: none; }
-.ss-pool { color: #a3eaff; font-size: 13px; line-height: 1.6; }
+
 .arena-spectator { position: absolute; z-index: 4; left: max(14px,env(safe-area-inset-left)); right: max(14px,env(safe-area-inset-right));
-  bottom: max(24px,env(safe-area-inset-bottom)); max-width: 480px; margin-inline: auto; padding: 16px;
-  border: 1px solid rgba(75,213,255,.3); border-radius: 16px; background: rgba(5,14,25,.94); box-shadow: 0 12px 60px #0008; }
-.arena-spectator > p { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; color: #78c6dc; font-size: 11px; }
-.arena-spectator > p > i { width: 6px; height: 6px; border-radius: 50%; background: #4bd5ff; box-shadow: 0 0 12px #4bd5ff; }
-.arena-spectator strong { margin-left: auto; color: #e6fbff; font-size: 14px; }
-.as-roster { display: flex; gap: 8px; overflow-x: auto; }
-.as-roster > button { position: relative; display: flex; flex: 1 0 100px; align-items: center; gap: 12px; justify-content: space-between;
-  min-height: 44px; padding: 10px; border: 1px solid #4bd5ff30; border-radius: 8px; background: #0c1d2b; color: #b0d6e3; overflow: hidden; }
-.as-roster > button[aria-pressed=true] { border-color: #4bd5ff; color: #fff; background: #153446; }
-.as-roster small { font: 10px var(--font-mono,monospace); color: #80d9f5; }
-.as-roster i { position: absolute; left: 0; bottom: 0; width: calc(var(--hp) * 100%); height: 2px; background: #4bd5ff; }
-.as-result { display: block; min-height: 36px; margin: 12px auto 0; padding: 6px 16px; color: #92a9b9; font-size: 12px; }
+  bottom: max(24px,env(safe-area-inset-bottom)); max-width: 480px; margin-inline: auto; }
+
 /* Behind rock: the corners stay where it went in, thin and dashed, no hull bar; it is a guess now. */
 .ah-enemy[data-lost] > i { border-style: dashed; border-width: 1px; filter: none; }
 .ah-enemy[data-lost] u { display: none; }
@@ -391,12 +286,12 @@
 /* Place markers: a hollow diamond and a name, quieter than the exit's; opacity set per frame. */
 .ah-place { display: none; position: absolute; left: 0; top: 0; width: 0; height: 0; }
 .ah-place i { position: absolute; width: 7px; height: 7px; margin: -3.5px; border: 1px solid color-mix(in srgb, #dff3ff 70%, transparent); rotate: 45deg; }
-.ah-place span { position: absolute; transform: translate(-50%, 8px); white-space: nowrap; font: 500 8px var(--font-v2-mono); letter-spacing: .14em;
-  text-transform: uppercase; color: color-mix(in srgb, #dff3ff 82%, transparent); text-shadow: 0 1px 3px rgba(0,0,0,.85); }
-.ah-place span b { font-weight: 400; color: var(--color-v2-ink-3); }
+.ah-place span { position: absolute; transform: translate(-50%, 8px); white-space: nowrap; font: 600 var(--gk-t-floor) var(--font-v2-mono); letter-spacing: .06em;
+  text-transform: uppercase; color: #e6f4ff; text-shadow: var(--ah-outline); }
+.ah-place span b { font-weight: 500; color: var(--color-v2-ink-2); }
 .ah-exit i { position: absolute; width: 14px; height: 14px; margin: -7px; border: 2px solid var(--self); rotate: 45deg; box-shadow: 0 0 10px color-mix(in srgb, var(--self) 60%, transparent); }
-.ah-exit span, .ah-crystal span { position: absolute; transform: translate(-50%, 14px); white-space: nowrap; font: 600 9px var(--font-v2-mono); letter-spacing: .12em;
-  text-transform: uppercase; color: var(--self); text-shadow: 0 1px 3px #000; }
+.ah-exit span, .ah-crystal span { position: absolute; transform: translate(-50%, 14px); white-space: nowrap; font: 700 var(--gk-t-floor) var(--font-v2-mono); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--self); text-shadow: var(--ah-outline); }
 .ah-exit span b, .ah-crystal span b { font-weight: 400; color: color-mix(in srgb, currentColor 75%, #fff); }
 .ah-exit[data-edge] i { rotate: 0deg; border: 0; width: 0; height: 0; margin: -7px 0 0 -5px; border-left: 12px solid var(--self);
   border-top: 7px solid transparent; border-bottom: 7px solid transparent; transform: rotate(var(--angle)); box-shadow: none; filter: drop-shadow(0 0 6px var(--self)); }
@@ -432,8 +327,8 @@
 .ap-wheel-ring path.is-hot { fill: color-mix(in srgb, var(--tone) 34%, #071222); stroke: var(--tone); }
 .ap-wheel::after { content: ''; position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; background: #e8fbff; box-shadow: 0 0 10px var(--self); }
 .ap-call { --tone: var(--ping-enemy); position: absolute; width: 64px; margin-left: -32px; margin-top: -21px; display: grid; justify-items: center; gap: 2px;
-  font: 600 8.5px var(--font-v2-mono) !important; letter-spacing: .12em; text-transform: uppercase; color: var(--tone) !important;
-  background: none !important; border: 0 !important; padding: 0; text-shadow: 0 1px 3px #000; }
+  font: 700 var(--gk-t-floor) var(--font-v2-mono) !important; letter-spacing: .06em; text-transform: uppercase; color: var(--tone) !important;
+  background: none !important; border: 0 !important; padding: 0; text-shadow: var(--ah-outline); }
 .ap-call span { width: 20px; height: 20px; }
 .ap-call svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
 .ap-call.is-enemy { left: 0; top: -62px; } .ap-call.is-farm { --tone: var(--ping-farm); left: 62px; top: 0; }
@@ -450,8 +345,8 @@
 .ah-ping > i b { display: none; width: 14px; height: 14px; }
 .ah-ping > i b svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .ah-ping[data-kind='enemy'] b.is-enemy, .ah-ping[data-kind='farm'] b.is-farm, .ah-ping[data-kind='go'] b.is-go, .ah-ping[data-kind='danger'] b.is-danger { display: block; }
-.ah-ping span { position: absolute; transform: translate(-50%, -30px); white-space: nowrap; font: 600 8.5px var(--font-v2-mono); letter-spacing: .12em;
-  text-transform: uppercase; color: var(--tone); text-shadow: 0 1px 3px #000; }
+.ah-ping span { position: absolute; transform: translate(-50%, -30px); white-space: nowrap; font: 700 var(--gk-t-floor) var(--font-v2-mono); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--tone); text-shadow: var(--ah-outline); }
 .ah-ping span em { font-style: normal; } .ah-ping span b { font-weight: 400; color: color-mix(in srgb, var(--tone) 60%, #fff); }
 .ah-ping[data-edge]::before { content: ''; position: absolute; width: 0; height: 0; margin: -6px 0 0 -4px; border-left: 9px solid var(--tone);
   border-top: 6px solid transparent; border-bottom: 6px solid transparent; transform: rotate(var(--angle)) translateX(20px); filter: drop-shadow(0 0 4px var(--tone)); }
@@ -470,14 +365,14 @@
   background: radial-gradient(circle at 40% 35%, #dff8ff 0%, #74d9ec 38%, #1b8fa3 100%); box-shadow: 0 0 18px color-mix(in srgb, var(--self) 55%, transparent), inset 0 -3px 6px rgba(0,0,0,.3); }
 .ac-throttle { position: absolute; right: 8px; bottom: calc(252px + var(--safe-bottom)); width: 40px; height: 176px; pointer-events: auto; touch-action: none;
   display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.ac-throttle > span { font: 8px var(--font-v2-mono); letter-spacing: .16em; color: var(--color-v2-ink-3); text-transform: uppercase; }
-.ac-throttle > strong { font: 600 11px var(--font-v2-mono); font-variant-numeric: tabular-nums; }
+.ac-throttle > span { align-self: flex-end; white-space: nowrap; font: 700 var(--gk-t-floor) var(--font-v2-mono); letter-spacing: .06em; color: var(--color-v2-ink-2); text-shadow: var(--ah-outline); text-transform: uppercase; }
+.ac-throttle > strong { font: 700 var(--gk-t-small) var(--font-v2-mono); text-shadow: var(--ah-outline); font-variant-numeric: tabular-nums; }
 .ac-rail { --level: 0; position: relative; flex: 1; width: 14px; border-radius: 8px; background: color-mix(in srgb, #0a1626 72%, transparent); border: 1px solid var(--edge-hi); }
 .ac-rail i { position: absolute; left: 2px; right: 2px; bottom: 2px; height: calc((100% - 4px) * var(--level)); border-radius: 6px;
   background: linear-gradient(0deg, #1fbfa6, #64f3dc); box-shadow: 0 0 10px color-mix(in srgb, var(--self) 50%, transparent); transition: height .1s; }
 .ac-rail b { position: absolute; left: -7px; right: -7px; bottom: calc(var(--level) * (100% - 8px)); height: 8px; border-radius: 3px; background: #e8fbff; box-shadow: 0 0 10px var(--self); transition: bottom .1s; }
-.ac-rail em { position: absolute; right: 18px; width: 6px; height: 1px; background: var(--color-v2-ink-3); transform: translateY(50%); font: normal 7px var(--font-v2-mono);
-  color: var(--crystal); white-space: nowrap; line-height: 0; text-indent: -36px; letter-spacing: .1em; text-transform: uppercase; }
+.ac-rail em { position: absolute; right: 18px; width: 6px; height: 1px; background: var(--color-v2-ink-3); transform: translateY(50%); font: normal 700 var(--gk-t-floor) var(--font-v2-mono);
+  color: var(--crystal); white-space: nowrap; line-height: 0; text-indent: -40px; letter-spacing: .04em; text-shadow: var(--ah-outline); text-transform: uppercase; }
 .ac-rail em[data-land] { background: var(--crystal); width: 8px; }
 .ac-action { --charge: 0; position: absolute; pointer-events: auto; touch-action: none; border-radius: 50% !important; display: grid; place-items: center;
   background: radial-gradient(circle at 50% 35%, color-mix(in srgb, #12253a 82%, transparent), color-mix(in srgb, #050b14 85%, transparent)) !important;
@@ -508,11 +403,11 @@
 .ac-link.is-off { opacity: .3; }
 .ac-action .ac-icon { width: 46%; height: 46%; }
 .ac-action .ac-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.ac-action small { position: absolute; bottom: -14px; font: 8px var(--font-v2-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--color-v2-ink-2); text-shadow: 0 1px 2px #000; }
+.ac-action small { position: absolute; bottom: -18px; padding: 0 5px; border-radius: 3px; background: rgba(2,5,10,.62); white-space: nowrap; font: 700 var(--gk-t-floor) var(--font-v2-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--gk-ink); text-shadow: var(--ah-outline); }
 .ac-ring { position: absolute; inset: -3px; width: calc(100% + 6px); height: calc(100% + 6px); transform: rotate(-90deg); pointer-events: none; }
 .ac-ring circle { fill: none; stroke: var(--self); stroke-width: 3; stroke-dasharray: 295; stroke-dashoffset: calc(295 * var(--charge)); opacity: .9; filter: drop-shadow(0 0 3px var(--self)); }
 .ac-action:disabled { opacity: .55; }
-.ac-action:disabled small { color: var(--warn); font-weight: 700; font-size: 10px; }
+.ac-action:disabled small { color: var(--warn); }
 /* Owner 2026-10-22: FIRE's centre at the stick's height (116 px up), where the right thumb lands without looking. */
 .ac-fire { right: 8px; bottom: calc(74px + var(--safe-bottom)); width: 84px; height: 84px;
   background: radial-gradient(circle at 50% 35%, color-mix(in srgb, #4a1a1c 85%, transparent), color-mix(in srgb, #1a0607 90%, transparent)) !important;
@@ -564,8 +459,8 @@
 .ac-aim-chip:active { transform: scale(.97); background: color-mix(in srgb, var(--sig) 16%, transparent); }
 .ac-aim-chip.is-self { border-color: color-mix(in srgb, var(--sig) 50%, transparent); background: color-mix(in srgb, var(--sig) 10%, transparent); }
 .ac-aim-chip b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 12px var(--font-v2-ui); }
-.ac-aim-chip small { font: 9.5px var(--font-v2-mono); font-variant-numeric: tabular-nums; color: var(--color-v2-ink-3); }
-.ac-aim-chip kbd { display: none; min-width: 16px; padding: 1px 4px; border-radius: 4px; font: 600 9px var(--font-v2-mono); text-align: center;
+.ac-aim-chip small { font: var(--gk-t-floor) var(--font-v2-mono); font-variant-numeric: tabular-nums; color: var(--color-v2-ink-3); }
+.ac-aim-chip kbd { display: none; min-width: 16px; padding: 1px 4px; border-radius: 4px; font: 700 var(--gk-t-floor) var(--font-v2-mono); text-align: center;
   color: var(--color-v2-ink-2); background: rgba(255,255,255,.07); border: 1px solid var(--edge-hi); }
 /* The chip's hull: a hurt friend shows at a glance, red under a third. */
 .ac-aim-chip u { position: absolute; left: 7px; right: 7px; bottom: 3px; height: 2px; border-radius: 2px; background: rgba(255,255,255,.08); }
@@ -580,7 +475,7 @@
  */
 @media (hover: hover) and (pointer: fine) {
   .ac-stick-pad { display: none; }
-  .ac-key { display: block; position: absolute; top: -6px; right: -8px; padding: 1px 5px; border-radius: 5px; font: 600 9px var(--font-v2-mono);
+  .ac-key { display: block; position: absolute; top: -6px; right: -8px; padding: 1px 5px; border-radius: 5px; font: 700 var(--gk-t-floor) var(--font-v2-mono);
     letter-spacing: .04em; color: var(--color-v2-ink); background: #0b1626; border: 1px solid var(--edge-hi); box-shadow: 0 2px 6px rgba(0,0,0,.4); }
   .ac-aim-chip kbd { display: block; }
   .ac-mouse { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
@@ -598,15 +493,15 @@
     background: color-mix(in srgb, var(--self) 14%, #061220); border: 1px solid color-mix(in srgb, var(--self) 45%, transparent); box-shadow: 0 6px 18px rgba(0,0,0,.35); }
   .arena-board-peek { display: block; position: absolute; z-index: 24; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(440px, calc(100% - 32px));
     padding: 16px 18px; border-radius: 14px; pointer-events: none; background: rgba(4,8,15,.9); border: 1px solid var(--edge-hi); box-shadow: 0 18px 40px rgba(0,0,0,.5); }
-  .arena-board-peek .ar-board { margin: 0 0 14px; }
+
   .arena-board-peek > header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
-  .arena-board-peek > header .ap-eyebrow { margin: 0; }
+
   .arena-board-peek > header small { font-size: 10px; color: var(--color-v2-ink-3); }
-  .arena-board-peek > .ap-eyebrow { margin: 0 0 8px; }
+
   .ab-keys { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 18px; margin: 0; }
   .ab-keys div { display: flex; align-items: center; gap: 10px; }
   .ab-keys dt { flex: 0 0 64px; }
-  .ab-keys kbd { display: inline-block; padding: 2px 7px; border-radius: 5px; font: 600 10px var(--font-v2-mono); color: var(--color-v2-ink);
+  .ab-keys kbd { display: inline-block; padding: 2px 7px; border-radius: 5px; font: 700 var(--gk-t-floor) var(--font-v2-mono); color: var(--color-v2-ink);
     background: #0b1626; border: 1px solid var(--edge-hi); box-shadow: 0 2px 0 rgba(0,0,0,.4); }
   .ab-keys dd { margin: 0; font-size: 12px; color: var(--color-v2-ink-2); }
 }
@@ -618,7 +513,7 @@
 .ac-land.is-takeoff i { position: absolute; inset: 0; background: color-mix(in srgb, var(--self) 38%, transparent); transform-origin: left; transform: scaleX(0); }
 .ac-land.is-takeoff.is-holding i { transform: scaleX(1); transition: transform var(--hold, .165s) linear; }
 .ac-land.is-cancel { background: color-mix(in srgb, var(--warn) 14%, #061220) !important; border-color: color-mix(in srgb, var(--warn) 60%, transparent) !important; color: #fff1cc !important; display: flex; gap: 8px; align-items: center; }
-.ac-land.is-cancel small { font: 600 10px var(--font-v2-mono); opacity: .8; }
+.ac-land.is-cancel small { font: 700 var(--gk-t-floor) var(--font-v2-mono); opacity: .8; }
 .ah-landing { display: none; width: 0; height: 0; }
 .ah-landing i { position: absolute; width: 34px; height: 34px; margin: -17px; border-radius: 50%; border: 2px dashed color-mix(in srgb, var(--crystal) 85%, transparent);
   box-shadow: 0 0 12px color-mix(in srgb, var(--crystal) 45%, transparent); animation: ah-spin 6s linear infinite; }
@@ -631,34 +526,9 @@
   background: linear-gradient(180deg, transparent 30%, rgba(2,5,10,.85)); animation: ah-fade .4s ease-out; }
 @keyframes ah-fade { from { opacity: 0; } }
 .arena-menu { align-items: center; background: rgba(2,5,10,.78); }
-.ar-card h2, .arena-menu h2 { margin: 0 0 6px; font-size: 22px; font-weight: 650; }
-.ar-card > p:not(.ap-eyebrow):not(.ap-keys) { margin: 0 0 14px; font-size: 12.5px; line-height: 1.5; color: var(--color-v2-ink-2); }
-.ar-card.is-extracted h2 { color: var(--self); } .ar-card.is-dead h2 { color: #ff8a73; } .ar-card.is-towed h2 { color: var(--warn); }
-.ar-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 14px; }
-.ar-stats div { padding: 10px; border-radius: 9px; background: rgba(255,255,255,.04); border: 1px solid var(--edge); display: grid; gap: 4px; }
-.ar-stats span { font: 8px var(--font-v2-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--color-v2-ink-3); }
-.ar-stats strong { font: 600 20px var(--font-v2-mono); }
-.ar-board { margin-bottom: 14px; }
-.ar-board header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-.ar-board header .ap-eyebrow { margin: 0; flex: none; white-space: nowrap; } /* F11: it broke in two at 360 px; the rule beside it wraps instead. */
-.ar-board header small { font-size: 10px; color: var(--color-v2-ink-3); text-align: right; }
-.ar-board table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
-.ar-board th { padding: 0 6px 4px; font: 8px var(--font-v2-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--color-v2-ink-3); text-align: right; }
-.ar-board td { padding: 6px; border-top: 1px solid var(--edge); text-align: right; font-family: var(--font-v2-mono); }
-.ar-board td:nth-child(1) { width: 18px; text-align: left; color: var(--color-v2-ink-3); }
-.ar-board td:nth-child(2) { text-align: left; font-family: var(--font-v2-ui); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ar-board td:nth-child(3) { font-weight: 600; color: var(--color-v2-ink); }
-.ar-board td:nth-child(4), .ar-board td:nth-child(5) { color: var(--color-v2-ink-2); }
-.ar-board tr.is-self td { color: var(--self); background: color-mix(in srgb, var(--self) 8%, transparent); }
-.arena-menu label { display: grid; gap: 8px; margin: 12px 0; font-size: 12px; color: var(--color-v2-ink-2); }
-.arena-menu label.is-check { display: flex; align-items: center; gap: 10px; }
-.arena-menu input[type='range'] { accent-color: var(--self); }
-.arena-menu input[type='checkbox'] { accent-color: var(--self); width: 18px; height: 18px; }
-.am-graphics { display: grid; gap: 7px; margin: 12px 0; font-size: 12px; color: var(--color-v2-ink-2); }
-.am-graphics .ap-mode { margin: 0; }
-.ap-mode.is-four { grid-template-columns: repeat(4, 1fr); gap: 3px; }
-.ap-mode.is-four button { min-height: 34px; padding: 0 2px; font-size: 11.5px; }
-.am-graphics small { font-size: 10.5px; color: var(--color-v2-ink-3); }
+
+
+
 .arena-dev { position: absolute; z-index: 40; left: 6px; bottom: calc(2px + var(--safe-bottom)); padding: 4px; font: 8px var(--font-v2-mono) !important; color: rgba(255,255,255,.4) !important; }
 .arena-diag { position: absolute; z-index: 41; left: 6px; right: 6px; top: calc(170px + var(--safe-top)); max-height: 46%; overflow: auto; margin: 0; padding: 8px;
   font: 9px/1.45 var(--font-v2-mono); color: #d7ffe9; background: rgba(0,0,0,.78); border: 1px solid #2ee6c8; border-radius: 6px; white-space: pre-wrap; pointer-events: auto; }
@@ -672,8 +542,8 @@
 /* ---------- Farm: hold gauge, markers ---------- */
 /* The shield layer: its own line over the hull's and its own number, in the shield's blue. */
 .ah-hull strong { white-space: nowrap; }
-.ah-hull.has-shield strong { font-size: 11px; }
-.ah-hull strong small { display: inline-flex; align-items: center; gap: 2px; margin-left: 4px; font-size: 10px; color: var(--color-v2-ally); }
+.ah-hull.has-shield strong { font-size: var(--gk-t-floor); }
+.ah-hull strong small { display: inline-flex; align-items: center; gap: 2px; margin-left: 4px; font-size: var(--gk-t-floor); color: var(--color-v2-ally); }
 .ah-hull strong small svg { width: 9px; height: 9px; }
 .ah-hull em { position: absolute; left: 8px; right: 8px; bottom: 9px; height: 2px; border-radius: 2px; background: color-mix(in srgb, var(--color-v2-ally) 16%, transparent); }
 .ah-hull em b { display: block; height: 100%; width: calc(var(--shield) * 100%); border-radius: 2px; background: var(--color-v2-ally);
@@ -685,81 +555,15 @@
 /* It ends where the speed box begins (that box sits under the hold's right end) and grows left. */
 .ah-hold-kinds { position: absolute; top: calc(100% + 4px); right: 31px; display: flex; gap: 7px;
   padding: 2px 6px; border-radius: 7px; background: color-mix(in srgb, var(--color-v2-deep) 72%, transparent); pointer-events: none; }
-.ah-hold-kinds b { display: inline-flex; align-items: center; gap: 3px; font: 600 10.5px var(--font-v2-mono); font-variant-numeric: tabular-nums;
+.ah-hold-kinds b { display: inline-flex; align-items: center; gap: 3px; font: 700 var(--gk-t-floor) var(--font-v2-mono); font-variant-numeric: tabular-nums;
   color: color-mix(in srgb, var(--tone) 70%, var(--color-v2-ink)); }
 .ah-hold-kinds b::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--tone); box-shadow: 0 0 5px var(--tone); }
-.ah-hold-kinds b.is-empty { opacity: .38; }
-.ah-hold strong small { font-size: 8px; font-weight: 400; letter-spacing: .04em; color: var(--color-v2-ink-3); }
+.ah-hold-kinds b.is-empty { opacity: .62; }
+.ah-hold strong small { font-size: var(--gk-t-floor); font-weight: 500; letter-spacing: 0; color: var(--color-v2-ink-2); }
 .ah-hold.is-full { border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
 .ah-hold.is-full strong { color: var(--warn); }
 .ah-exit span em { font-style: normal; color: var(--warn); }
 .ah-crystal span em { font-style: normal; }
 
-/* ---------- Result: what this flight was worth ---------- */
-/* "Ne oldu?": the cause in one sentence, marked in the result's own colour. */
-.ar-card > p.ar-what { margin: 0 0 12px; padding: 7px 10px; display: grid; gap: 2px; border-left: 2px solid var(--what, var(--warn));
-  border-radius: 0 8px 8px 0; background: color-mix(in srgb, var(--what, var(--warn)) 8%, transparent); font-size: 12.5px; line-height: 1.45; color: var(--color-v2-ink); }
-.ar-card > p.ar-what span { font: 600 9.5px var(--font-v2-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--what, var(--warn)); }
-.ar-card.is-dead > p.ar-what { --what: #ff8a73; }
-.ar-card > p.ar-points { margin: 2px 0 8px; font: 600 13px var(--font-v2-mono); color: var(--color-v2-ink-2); }
-.ar-points strong { font-size: 30px; line-height: 1; color: var(--self); text-shadow: 0 0 18px color-mix(in srgb, var(--self) 45%, transparent); }
-.ar-points.is-dead strong, .ar-points.is-towed strong { color: #ff8a73; text-shadow: none; }
-.ar-points small { font-weight: 400; font-size: 11px; color: var(--color-v2-ink-3); }
-.ar-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; padding: 0; list-style: none; }
-.ar-kinds li { display: flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 7px; font-size: 11px; color: var(--color-v2-ink-2);
-  background: color-mix(in srgb, var(--tone) 10%, transparent); border: 1px solid color-mix(in srgb, var(--tone) 30%, transparent); }
-.ar-kinds li i { width: 7px; height: 7px; border-radius: 50%; background: var(--tone); box-shadow: 0 0 8px var(--tone); }
-.ar-kinds li b { font: 600 12px var(--font-v2-mono); color: var(--color-v2-ink); }
-.ar-kinds li small { font: 10px var(--font-v2-mono); color: var(--color-v2-ink-3); }
-.ar-return { position: relative; overflow: hidden; display: grid !important; place-items: center; gap: 1px; }
-.ar-return::after { content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: rgba(0,0,0,.35);
-  transform-origin: left; transform: scaleX(var(--left)); transition: transform .25s linear; }
-.ar-return span { position: relative; }
-.ar-return small { position: relative; font: 9px var(--font-v2-mono); letter-spacing: .08em; opacity: .7; }
-
-/* ---------- Credits: one quiet line under the menu, the list one tap deeper ---------- */
-.ap-credits { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--edge); }
-.ap-credits summary { cursor: pointer; list-style: none; font: 9px var(--font-v2-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--color-v2-ink-3); }
-.ap-credits summary::-webkit-details-marker { display: none; }
-.ap-credits summary::after { content: ' +'; }
-.ap-credits[open] summary::after { content: ' −'; }
-.ap-credits ul { list-style: none; margin: 8px 0 6px; padding: 0; display: grid; gap: 4px; font-size: 11px; color: var(--color-v2-ink-2); }
-.ap-credits p { margin: 0; font-size: 10px; line-height: 1.45; color: var(--color-v2-ink-3); }
-.ap-credits a { color: var(--self); text-decoration: none; }
-
-/* The ship a real flight takes, in one line: everything about it is set in the hangar. */
-.ap-ship { margin: 0; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(2,6,12,.86); border: 1px solid var(--edge); }
-.ap-ship span { font: 9px var(--font-v2-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--color-v2-ink-3); }
-.ap-ship b { font-size: 14px; font-weight: 600; }
-.ap-ship em { padding: 1px 6px; border-radius: 5px; font: 600 10px var(--font-v2-mono); font-style: normal; color: var(--self);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--self) 38%, transparent); }
-.hg-wait, .hg-note { margin: 0; padding: 0 2px; font-size: 11px; color: var(--color-v2-ink-3); }
-.hg-wait { animation: ah-pulse 1.4s ease-in-out infinite; }
-.hg-note { padding: 7px 9px; border-radius: 9px; color: var(--color-v2-ink-2); background: rgba(2,6,12,.66); border: 1px solid var(--edge); }
-.arena-root .ap-launch:disabled { cursor: default; background: rgba(255,255,255,.06) !important; color: var(--color-v2-ink-2) !important;
-  box-shadow: inset 0 0 0 1px var(--edge-hi); min-height: 40px; font-size: 13px !important; font-weight: 600 !important; font-variant-numeric: tabular-nums; }
-/* The price on the button, and under it what pays it. */
-.ap-launch-text { display: grid; justify-items: center; gap: 1px; line-height: 1.15; }
-.ap-launch-text small { font: 500 9.5px var(--font-v2-mono); letter-spacing: .04em; font-variant-numeric: tabular-nums; opacity: .72; }
-.arena-root .ap-launch:disabled:active { transform: none; }
-.arena-root .ap-mode button:disabled { opacity: .32; cursor: default; }
 .arena-root button:disabled { cursor: default; }
-/* The sortie's end: what reached the capital, what the day kept out, what fell with the wreck. */
-.ss { display: grid; gap: 6px; margin-bottom: 12px; }
-.ss .ap-eyebrow { margin: 0; }
-.ss-landed, .ss-lost { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-.ss-landed li, .ss-lost li { display: grid; grid-template-columns: 7px 1fr; align-items: center; column-gap: 6px; row-gap: 1px; padding: 7px 9px; border-radius: 9px;
-  background: rgba(255,255,255,.04); border: 1px solid color-mix(in srgb, var(--tone) 32%, transparent); }
-.ss-landed li i, .ss-lost li i { width: 7px; height: 7px; border-radius: 50%; background: var(--tone); box-shadow: 0 0 8px var(--tone); }
-.ss-landed li b, .ss-lost li b { font: 600 15px var(--font-v2-mono); font-variant-numeric: tabular-nums; color: var(--color-v2-ink); white-space: nowrap; }
-.ss-landed li small, .ss-lost li small { grid-column: 2; font-size: 10px; color: var(--color-v2-ink-3); }
-.ss-lost li { border-color: color-mix(in srgb, #ff8a73 28%, transparent); }
-.ss-lost li b { color: #ff8a73; }
-.ss-empty, .ss-overflow, .ss-ready { margin: 0; font-size: 11px; color: var(--color-v2-ink-2); }
-.ss-overflow { color: var(--warn); }
-.ss-xp { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; row-gap: 2px; }
-.ss-xp b { font: 600 13px var(--font-v2-mono); font-variant-numeric: tabular-nums; color: var(--self); }
-.ss-xp small { font-size: 10.5px; color: var(--color-v2-ink-3); }
-.ss-ready { font-family: var(--font-v2-mono); font-variant-numeric: tabular-nums; color: var(--warn); }
-.ss-ready[data-reason="repair"] { color: #ff8a73; }
-.ar-stats.is-two { grid-template-columns: 1fr 1fr; }
+

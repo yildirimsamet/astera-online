@@ -19,6 +19,12 @@ import i18n from '../src/i18n/index.js';
 import { planetView } from './fixtures.js';
 
 const now = Date.parse('2026-10-17T09:00:00Z');
+/** G4-k: the send is the kit's one-second hold; a keyboard holds it with Enter, pressed and committed. */
+const hold = (name: RegExp): void => {
+  const button = screen.getByRole('button', { name });
+  fireEvent.keyDown(button, { key: 'Enter' });
+  fireEvent.keyDown(button, { key: 'Enter' });
+};
 const signal = (outcome: UnknownSignalOutcome | null = null): UnknownSignalView => ({
   id: '00000000-0000-4000-8000-000000000001', at: { x: 2000, y: 0, z: 0 }, status: outcome ? 'returning' : 'open',
   appearedAt: new Date(now), expiresAt: new Date(now + 3_600_000), originPlanetId: null, origin: null,
@@ -47,7 +53,7 @@ describe('unknown signal commitment sheet', () => {
   it('defaults to the cheapest available warship, requires a Courier, and explains all five odds', () => {
     render(<UnknownSignalSheet {...props()} />);
     expect(screen.getByRole('radio', { name: /Dart/ })).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByRole('button', { name: 'Investigate signal' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Investigate signal/ })).toBeEnabled();
     for (const percent of ['56%', '15%', '12%', '16%', '1%']) expect(screen.getByText(percent)).toBeInTheDocument();
     expect(screen.getByText(/If pirates are waiting/)).toBeInTheDocument();
     expect(screen.getByText(/You have no Radar yet/)).toBeInTheDocument();
@@ -67,7 +73,7 @@ describe('unknown signal commitment sheet', () => {
     const p = props();
     render(<UnknownSignalSheet {...p} />);
     fireEvent.click(screen.getByRole('radio', { name: /Rampart/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Investigate signal' }));
+    hold(/Investigate signal/);
     expect(p.onSend).toHaveBeenCalledWith('RAMPART');
   });
 
@@ -80,8 +86,10 @@ describe('unknown signal commitment sheet', () => {
     if (reason === 'fuel') p.planet.planet.deuterium = 0;
     if (reason === 'expired') p.signal.expiresAt = new Date(now);
     render(<UnknownSignalSheet {...p} />);
-    expect(screen.getByRole('button', { name: 'Investigate signal' })).toBeDisabled();
-    expect(screen.getByRole('status')).not.toBeEmptyDOMElement();
+    // G4-k: the refused hold says why on its own face.
+    const refused = document.querySelector<HTMLElement>('[data-hold-refused]')!;
+    expect(refused).toBeDisabled();
+    expect(refused.textContent).not.toBe('');
     if (reason === 'shipyard') expect(screen.getByText(/Courier needs Shipyard level 1/)).toBeInTheDocument();
   });
 
@@ -141,7 +149,7 @@ describe('unknown signal client integration', () => {
     fireEvent.click(screen.getByRole('button', { name: /Unknown signal/ }));
     expect(onFocus).toHaveBeenCalledWith(data.signals[0]!.id);
     view.rerender(<UnknownSignalHud {...hud} focusedId={data.signals[0]!.id} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Investigate signal' }));
+    hold(/Investigate signal/);
     expect(onSend).toHaveBeenCalledWith(data.signals[0]!.id, 'DART');
   });
   /** G1-d2 (2026-11-14): beside the galaxy's events, a kit chip with the signal's mark and its time. */

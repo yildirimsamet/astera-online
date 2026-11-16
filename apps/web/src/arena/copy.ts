@@ -6,7 +6,7 @@ type Goal = readonly [title: string, detail: string];
 const goals = (...items: Goal[]): readonly Goal[] => items;
 const roles = (hunter: string, miner: string, patrol: string): Readonly<Record<'hunter' | 'miner' | 'patrol', string>> => ({ hunter, miner, patrol });
 const tr = {
-  brand: 'Komutan Gemisi', sector: 'Yarık', launch: 'Uçuşa başla', shared: 'Gerçek uçuş', solo: 'Antrenman',
+  brand: 'Komutan Gemisi', sector: 'Yarık', launch: 'Uçuşa başla', shared: 'Gerçek uçuş', solo: 'Antrenman', modeTitle: 'Uçuş türü',
   sharedNote: 'Ganimet ve XP · canlı oda', soloNote: 'Ödülsüz · yalnız sen',
   coreShort: (core: number, need: number): string => `Çekirdek ${String(need)} gerekir · şu an ${String(core)}`,
   leave: 'Ana gezegene dön', resume: 'Uçuşa dön', settings: 'Ayarlar', sound: 'Ses', sensitivity: 'Dönüş hassasiyeti',
@@ -52,7 +52,7 @@ const tr = {
   extracted: 'Teslim edildi', dead: 'Gemin yok edildi', towed: 'Gemin çekildi',
   deadHint: 'Ambarın enkazın çevresine saçıldı; yakındaki herkes toplayabilir.',
   towedHint: 'Ambarın alanda kaldı. Gemin yeni hasar almadan çekildi.',
-  extractedHint: 'Puanların oda sıralamasına yazıldı.', emptyHint: 'Ambar boştu; bu çıkış puan getirmedi.',
+  extractedHint: 'Puanların oda sıralamasına yazıldı.', emptyHint: 'Ambar boştu; bu çıkış puan getirmedi.', emptyLoss: 'Ambar boştu; kargo kaybın yok.',
   lostPoints: 'kaybedilen', earned: 'Kazanılan', delivered: 'Puan', hits: 'İsabet', kills: 'Yok edilen', retry: 'Şimdi uç',
   returning: 'Alana dönüş', seconds: 'sn',
   resultNote: 'Antrenman: gerçek kaynak harcanmaz ve kaydedilmez.',
@@ -193,7 +193,7 @@ const tr = {
     'Yerin görüldü · yer değiştir ya da gizlen'],
 };
 const en: typeof tr = {
-  brand: 'Commander ship', sector: 'The Yarık', launch: 'Start flight', shared: 'Real flight', solo: 'Practice',
+  brand: 'Commander ship', sector: 'The Yarık', launch: 'Start flight', shared: 'Real flight', solo: 'Practice', modeTitle: 'Flight type',
   sharedNote: 'Loot and XP · live room', soloNote: 'No rewards · just you',
   coreShort: (core: number, need: number): string => `Needs Core ${String(need)} · now ${String(core)}`,
   leave: 'Return to home world', resume: 'Back to flight', settings: 'Settings', sound: 'Sound', sensitivity: 'Turn sensitivity',
@@ -239,7 +239,7 @@ const en: typeof tr = {
   extracted: 'Delivered', dead: 'Your ship was destroyed', towed: 'Your ship was towed',
   deadHint: 'Your hold scattered round the wreck; anyone nearby can take it.',
   towedHint: 'Your hold stayed in the zone. Your ship was towed without new damage.',
-  extractedHint: 'Your points are on the room standings.', emptyHint: 'The hold was empty; this exit scored nothing.',
+  extractedHint: 'Your points are on the room standings.', emptyHint: 'The hold was empty; this exit scored nothing.', emptyLoss: 'The hold was empty; you lost no cargo.',
   lostPoints: 'lost', earned: 'Earned', delivered: 'Points', hits: 'Hits', kills: 'Destroyed', retry: 'Fly now',
   returning: 'Back to the zone in', seconds: 's',
   resultNote: 'Practice: no real resources are spent or saved.',

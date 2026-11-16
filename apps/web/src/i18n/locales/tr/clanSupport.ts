@@ -64,6 +64,7 @@ export const clanSupport = {
   recallRule: 'Havadayken geri döndür ya da indikten sonra istediğin an eve çağır.',
   noOrigin: 'Dünyalarından birini seç.',
   noFleet: 'En az bir gemi seç.',
+  lineShips: 'Hattın',
   noShips: 'Bu dünyada evde gemi yok.',
   quoting: 'Rota hesaplanıyor…',
   sending: 'Gönderiliyor…',

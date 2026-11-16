@@ -241,7 +241,7 @@ export function BattleReplay({ simulation, environment, suspended = false, initi
       {logSide === 'ATTACK' && openingStrikes.filter(event => event.round === Math.max(1, frame.round)).map(event => <button type="button" className="sim-opening-shot" key={`opening:${event.strike.sourceId}`} aria-label={t('simulator.showOpening', { name: event.strike.sourceId })} onClick={() => { seek(event.at); }}>
         <span>{hullLabel('NULLIFIER')} #{event.strike.sourceId}<small>{t('simulator.aegisOpening')}</small></span><b>{time >= event.at ? number(event.strike.damage) : '—'}</b>
       </button>)}
-      {logShots.length > 0 && <p className="sim-shot-caption" aria-hidden="true"><span>{t('simulator.round', { number: Math.max(1, frame.round), total: simulation.recording.roundLimit })}</span><span>{t('simulator.hullDamage')}</span></p>}
+      {logShots.length > 0 && <p className="sim-shot-caption" aria-hidden="true"><span>{t('simulator.round', { number: Math.max(1, frame.round), total: roundsFought })}</span><span>{t('simulator.hullDamage')}</span></p>}
       <div className="sim-shot-list">{logShots.length === 0 ? <p className="sim-caption">{t('simulator.empty')}</p> : logShots.map(event =>
         <ShotRow key={event.shot.sourceId} event={event} hull={ships.get(event.shot.sourceId)!.hull} selected={shownShot === event} onSeek={seek}
           state={time >= event.impactEnd ? 'completed' : time < event.at ? 'upcoming' : 'firing'} />)}</div>

@@ -14,7 +14,7 @@ export const moderation = {
     "accept": "Aceptar y continuar"
 },
   "report": "Denunciar",
-  "title": "Denunciar contenido o jugador",
+  "title": "Denunciar un abuso",
   "explanation": "El equipo revisa las denuncias en privado. Denunciar no elimina contenido ni bloquea automáticamente al jugador.",
   "target": "¿Qué quieres denunciar?",
   "message": "Mensaje",

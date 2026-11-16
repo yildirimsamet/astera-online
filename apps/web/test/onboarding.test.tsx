@@ -195,7 +195,7 @@ describe('the compact native landing screen', () => {
 
     const dialog = screen.getByRole('dialog', { name: /sign in/i });
     expect(dialog).toBeInTheDocument();
-    expect(within(dialog).getByRole('heading')).toHaveClass('text-v2-ink');
+    expect(within(dialog).getByRole('heading')).toHaveClass('gk-display');
     expect(within(dialog).getByLabelText(/username or email/i)).toHaveAttribute('aria-invalid', 'false');
     await userEvent.setup().click(within(dialog).getByRole('button', { name: /^close$/i }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

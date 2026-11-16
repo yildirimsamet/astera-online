@@ -277,3 +277,31 @@ export function ContextStrip({ tone, glyph, eyebrow, title, label, onPress }: {
     </button>
   );
 }
+
+/**
+ * A STRIKE THAT FOLDS (G4-j, 2026-11-15): a weapon on the focus panel, closed until wanted. The
+ * head names the strike, what it is aimed at and how many are ready; opening it is a press with
+ * its own click, and the launch inside is a hold — folding is the way back.
+ */
+export function StrikeFold({ glyph, title, target, ready, children, ...data }: {
+  glyph: GlyphId;
+  title: string;
+  target: string;
+  ready: string;
+  children: ReactNode;
+} & Record<`data-${string}`, string>) {
+  return (
+    <details {...data} className="gk gk-strike">
+      <summary className="gk-strike__head" {...OWN_SOUND} onClick={() => { playSound('tap'); haptic('tap'); }}>
+        <span className="gk-strike__mark" aria-hidden="true"><Glyph id={glyph} /></span>
+        <span className="gk-strike__words">
+          <span className="gk-strike__title">{title}</span>
+          <span className="gk-sub gk-strike__target">{target}</span>
+        </span>
+        <span className="gk-chip gk-num gk-strike__ready">{ready}</span>
+        <span className="gk-strike__chev" aria-hidden="true"><Glyph id="down" /></span>
+      </summary>
+      <div className="gk-strike__body">{children}</div>
+    </details>
+  );
+}

@@ -149,3 +149,30 @@ describe('the contribution ledger', () => {
     expect(hours(rows[2]!)[0]).toHaveAttribute('data-quiet', 'true');
   });
 });
+
+/**
+ * G7-j (2026-11-15): THE CLAN BANNER ON THE GAME KIT. "What does our clan unlock next, and who is
+ * carrying it?" Ten notches a thumb can press on a cloth that turns gold at the top, the rung in a
+ * kit well, the purse as kit bars, Donate on the kit's press, the raise on the kit's spend hold, and
+ * the ledger as kit rows with the last day drawn in kit colours.
+ */
+const V2_LOOK = /(^|\s)(text|bg|border|font|ring|fill|shadow)-v2-|rounded-(control|cell|chip)|v2-premium|(^|\s)text-(micro|body|caption|label|title)(\s|$)/;
+const oldPaint = (root: Element): string[] =>
+  [root, ...root.querySelectorAll('[class]')].map((el) => el.getAttribute('class') ?? '').filter((name) => V2_LOOK.test(name));
+
+describe('the clan banner on the kit', () => {
+  beforeEach(async () => { await i18n.changeLanguage('en'); });
+
+  it('draws the banner, the purse and the ledger with none of the old look', async () => {
+    show(war({ canUpgrade: true, treasury: { alloy: 2260, crystal: 609, deuterium: 0 } }), 'LEADER');
+    await screen.findAllByTestId('ledger-row');
+    const banner = document.querySelector<HTMLElement>('[data-banner]')!.closest<HTMLElement>('.gk-standard')!;
+    expect(banner).toHaveClass('gk-well');
+    expect(oldPaint(banner)).toEqual([]);
+    expect(document.querySelector('[data-rung="1"]')).toHaveClass('gk-standard__rung');
+    expect(screen.getByRole('button', { name: /^donate/i })).toHaveClass('gk-btn');
+    const hold = within(document.querySelector<HTMLElement>('[data-banner-raise]')!).getByRole('button');
+    expect(hold).toHaveClass('gk-hold');
+    expect(hold.style.getPropertyValue('--gk-hold-ms')).toBe('1000ms');
+  });
+});

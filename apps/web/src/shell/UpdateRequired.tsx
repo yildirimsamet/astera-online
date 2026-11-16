@@ -3,6 +3,7 @@ import { AsteraWordmark } from '../brand/Identity.js';
 import { OpeningScene } from '../brand/OpeningScene.js';
 import { runtime } from '../platform/runtime.js';
 import { reloadWebApp } from '../platform/updateGate.js';
+import { GameButton, Glyph } from '../game-ui/index.js';
 
 const PLAY_STORE = 'https://play.google.com/store/apps/details?id=space.asteraonline.app';
 
@@ -19,19 +20,15 @@ export function UpdateRequired() {
           <span className="brand-loading-online">ONLINE</span>
         </p>
       </div>
-      <div role="alert" className="mx-auto mt-8 w-[min(86%,320px)] text-left">
-        <h1 id="update-required-title" className="text-title font-semibold text-bone">{t('app.updateTitle')}</h1>
-        <p className="mt-2 text-body leading-relaxed text-bone/80">{t(platform === 'web' ? 'app.updateWebBody' : 'app.updateBody')}</p>
+      <div role="alert" className="gk-brandstatus">
+        <h1 id="update-required-title" className="gk-display gk-brandstatus__title">{t('app.updateTitle')}</h1>
+        <p className="gk-sub gk-brandstatus__body">{t(platform === 'web' ? 'app.updateWebBody' : 'app.updateBody')}</p>
         {platform === 'web' && (
-          <button type="button" onClick={reloadWebApp}
-            className="slab slab-primary mt-4 flex min-h-[52px] w-full items-center justify-center px-6 py-3 text-center text-body">
-            {t('app.reloadGame')}
-          </button>
+          <GameButton tone="action" size="lg" wide glyph="refresh" onPress={reloadWebApp}>{t('app.reloadGame')}</GameButton>
         )}
         {platform === 'android' && (
-          <a href={PLAY_STORE} target="_blank" rel="noopener noreferrer"
-            className="slab slab-primary mt-4 flex min-h-[52px] w-full items-center justify-center px-6 py-3 text-center text-body">
-            {t('app.updateStore')}
+          <a href={PLAY_STORE} target="_blank" rel="noopener noreferrer" className="gk-btn gk-btn--action gk-btn--lg gk-btn--wide">
+            <span className="gk-btn__glyph"><Glyph id="up" /></span><span>{t('app.updateStore')}</span>
           </a>
         )}
       </div>

@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { BottomNav, Choices, GameTabs, InfoPeek, Lever, SettingLink, Slider, Toggle } from '../../src/game-ui/index.js';
+import { BottomNav, Choices, GameTabs, InfoPeek, Lever, Picker, SettingLink, Slider, Toggle } from '../../src/game-ui/index.js';
 
 /** A press that began on the control, as a finger makes it (see `useOwnPress`). */
 const press = (element: HTMLElement): void => {
@@ -139,6 +139,35 @@ describe('the slider', () => {
     const level = screen.getByText('%35');
     expect(level.tagName).toBe('OUTPUT');
     expect(screen.getByRole('slider', { name: 'Müzik ses düzeyi' })).toHaveAttribute('aria-valuenow', '35');
+  });
+
+  /**
+   * G4-i1, 2026-11-15: a trade offers in whole lots (64 alloy buys a deuterium) and its split
+   * has a floor below which the merchant would keep a unit — so a slider can start above zero
+   * and move in steps, and every way of moving it lands on a step inside its ends.
+   */
+  it('can start above zero and move in steps', () => {
+    const onChange = vi.fn();
+    render(<Slider label="Alloy" value={128} min={64} max={640} step={64} onChange={onChange} />);
+    const slider = screen.getByRole('slider', { name: 'Alloy' });
+    expect(slider).toHaveAttribute('aria-valuemin', '64');
+    fireEvent.keyDown(slider, { key: 'ArrowRight' });
+    expect(onChange).toHaveBeenLastCalledWith(192);
+    fireEvent.keyDown(slider, { key: 'Home' });
+    expect(onChange).toHaveBeenLastCalledWith(64);
+    fireEvent.pointerDown(slider, { button: 0, clientX: 0 });
+    fireEvent.pointerUp(slider, { clientX: 0 });
+    expect(onChange).toHaveBeenLastCalledWith(64);
+    fireEvent.pointerDown(screen.getByRole('button', { name: /fewer Alloy/i }), { button: 0 });
+    fireEvent.pointerUp(screen.getByRole('button', { name: /fewer Alloy/i }));
+    expect(onChange).toHaveBeenLastCalledWith(64);
+  });
+
+  it('never reports a value off its steps', () => {
+    const onChange = vi.fn();
+    render(<Slider label="Alloy" value={0} max={100} step={64} onChange={onChange} />);
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'End' });
+    expect(onChange).toHaveBeenLastCalledWith(64);
   });
 });
 
@@ -426,5 +455,44 @@ describe('the info peek', () => {
     press(toggle);
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
     expect(document.querySelector('p ul')).toBeNull();
+  });
+});
+
+/**
+ * G7-a (2026-11-15): A PICK FROM A LIST THAT CAN BE LONG — a clanmate among thirty, a world among
+ * four. The face names the field and what is picked; a press drops the kit list; a pick closes it.
+ * No browser `<select>`: the list is the game's, and a lone answer is a fact, not a control.
+ */
+describe('the picker', () => {
+  const options = [{ id: 'ada', label: 'Ada' }, { id: 'kim', label: 'Kim', sub: '2 worlds' }];
+
+  it('names the field and the pick on its face, and drops the list on a press', () => {
+    const onChange = vi.fn();
+    render(<Picker label="Recipient" value="ada" options={options} onChange={onChange} />);
+    const face = screen.getByRole('button', { name: 'Recipient: Ada' });
+    expect(face).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('listbox')).toBeNull();
+    press(face);
+    expect(face).toHaveAttribute('aria-expanded', 'true');
+    const list = screen.getByRole('listbox', { name: 'Recipient' });
+    expect(within(list).getByRole('option', { name: /Ada/ })).toHaveAttribute('aria-selected', 'true');
+    press(within(list).getByRole('option', { name: /Kim/ }));
+    expect(onChange).toHaveBeenCalledWith('kim');
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  it('closes on Escape without picking', () => {
+    const onChange = vi.fn();
+    render(<Picker label="Recipient" value="ada" options={options} onChange={onChange} />);
+    press(screen.getByRole('button', { name: 'Recipient: Ada' }));
+    fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' });
+    expect(screen.queryByRole('listbox')).toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('shows a lone answer as a fact, with nothing to press', () => {
+    render(<Picker label="Origin" value="ada" options={[options[0]!]} onChange={vi.fn()} />);
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getByText('Ada')).toBeInTheDocument();
   });
 });

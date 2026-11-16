@@ -213,7 +213,7 @@ export const focus = {
       fuel: "Carburant de vol",
       arrives: "Temps d’arrivée",
       closes: "Fermeture de la course dans",
-      confirm: "Envoyer les vaisseaux de colonisation",
+      confirm: "Envoyer les colons",
       confirming: "Envoi…",
     },
     deathStar: "Étoile de la Mort",

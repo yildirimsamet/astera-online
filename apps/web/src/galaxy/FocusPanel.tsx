@@ -92,16 +92,14 @@ import { rateAnchor } from '../lib/trade.js';
 import type { TradeShipEvent } from '../lib/trade.js';
 import type { IntergalacticConvoyEvent } from '../lib/intergalacticConvoy.js';
 import { HullMark } from '../ui/icons/hulls.js';
-import { ReturnedIcon, HonorIcon } from '../ui/icons/index.js';
 import { Band } from '../ui/UpgradeRow.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { useOwnPress } from '../ui/kit/index.js';
-import { Choices, CostLine, GameButton, Glyph, RoundButton, SectionTag, type GlyphId, type TimerTone } from '../game-ui/index.js';
+import { Choices, CostLine, GameButton, GameHold, Glyph, RoundButton, SectionTag, StrikeFold, type GlyphId, type TimerTone } from '../game-ui/index.js';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
-import { HoldButton } from '../v2/kit/HoldButton.js';
 import { TargetDossier } from '../v2/hud/TargetDossier.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import { useNativeBack } from '../platform/nativeBack.js';
@@ -175,14 +173,6 @@ export function MonumentFocus({ monument, onInspect, onClose }: {
     peek={<div className="flex"><TargetRadiationInstrument target={{ kind: 'MONUMENT', id: monument.id }} variant="bar" /></div>}
     open={false} onToggle={onInspect} onClose={onClose}>{null}</Shell>;
 }
-
-/**
- * THE GÖZLEMEVI'S BUTTONS (K2). One primary per surface, in your colour, marked
- * `data-primary` so a test can hold the rule; everything else is outlined. A disabled
- * control keeps its words — its reason is on its face — and only dims.
- */
-const BTN = 'flex min-h-10 items-center justify-center gap-1.5 rounded-control px-3 text-center font-v2-ui text-caption font-semibold leading-tight transition-colors disabled:cursor-not-allowed';
-const BTN_PRIMARY = `${BTN} bg-v2-self text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-3`;
 
 /**
  * FOCUS OPENS CLOSED. Owner decision.
@@ -1311,67 +1301,68 @@ function StrikeDetails({ target, report, origin }: {
 
   return (
     <>
-    <p className="text-caption leading-snug text-v2-ink">{t('focus.planet.strikeConfirm.lead')}</p>
-    {origin && (
-      <div data-strike-origin className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-        <span className="shrink-0 text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.origin')}</span>
-        <span className="min-w-0 truncate text-right text-caption font-semibold text-v2-ink">
-          {t('focus.planet.strikeConfirm.originRead', { world: origin.planet.name, ready })}
-        </span>
+    <p className="gk-strike__lead">{t('focus.planet.strikeConfirm.lead')}</p>
+    <dl className="gk-well gk-strike__facts">
+      {origin && (
+        <div data-strike-origin className="gk-strike__fact">
+          <dt className="gk-label">{t('focus.planet.strikeConfirm.origin')}</dt>
+          <dd>{t('focus.planet.strikeConfirm.originRead', { world: origin.planet.name, ready })}</dd>
+        </div>
+      )}
+      <div className="gk-strike__fact">
+        <dt className="gk-label">{t('focus.planet.strikeConfirm.outage')}</dt>
+        <dd className="gk-num">{duration(DEATH_STAR.empMinutes)}</dd>
       </div>
-    )}
-    <div className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-      <span className="text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.outage')}</span>
-      <span className="font-v2-mono text-caption font-semibold text-v2-ink">{duration(DEATH_STAR.empMinutes)}</span>
-    </div>
-    {colony && (
-      <div data-strike-loyalty className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-        <span className="text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.loyalty')}</span>
-        <span className={`text-right text-caption font-semibold ${hits === 1 ? 'text-v2-hostile' : 'text-v2-ink'}`}>
-          {report?.loyalty === undefined || hits === null
-            ? t('focus.planet.strikeConfirm.loyaltyUnknown')
-            : t('focus.planet.strikeConfirm.loyaltyRead', {
-              value: report.loyalty,
-              hits: t('focus.planet.strikeConfirm.hits', { count: hits }),
-            })}
-        </span>
-      </div>
-    )}
-    {report?.interceptors !== undefined && (
-      <div data-strike-charges className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-        <span className="text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.charges')}</span>
-        <span className="text-right text-caption font-semibold text-v2-ink">
-          {report.interceptors > 0
-            ? t('focus.planet.strikeConfirm.chargesRead', {
-              count: report.interceptors,
-              needed: report.interceptors + 1,
-            })
-            : t('focus.planet.strikeConfirm.chargesNone')}
-        </span>
-      </div>
-    )}
+      {colony && (
+        <div data-strike-loyalty className="gk-strike__fact" {...(hits === 1 ? { 'data-tone': 'hostile' } : {})}>
+          <dt className="gk-label">{t('focus.planet.strikeConfirm.loyalty')}</dt>
+          <dd>
+            {report?.loyalty === undefined || hits === null
+              ? t('focus.planet.strikeConfirm.loyaltyUnknown')
+              : t('focus.planet.strikeConfirm.loyaltyRead', {
+                value: report.loyalty,
+                hits: t('focus.planet.strikeConfirm.hits', { count: hits }),
+              })}
+          </dd>
+        </div>
+      )}
+      {report?.interceptors !== undefined && (
+        <div data-strike-charges className="gk-strike__fact">
+          <dt className="gk-label">{t('focus.planet.strikeConfirm.charges')}</dt>
+          <dd>
+            {report.interceptors > 0
+              ? t('focus.planet.strikeConfirm.chargesRead', { count: report.interceptors, needed: report.interceptors + 1 })
+              : t('focus.planet.strikeConfirm.chargesNone')}
+          </dd>
+        </div>
+      )}
+    </dl>
     {/* Both readings come from one look, so its age is said once, under them. */}
     {age !== null && ((colony && report?.loyalty !== undefined) || report?.interceptors !== undefined) && (
-      <p data-strike-probe-age className="-mt-1 text-right text-micro text-v2-ink-3">
-        {t('focus.planet.strikeConfirm.probeAge', { age })}
-      </p>
+      <p data-strike-probe-age className="gk-sub gk-strike__age">{t('focus.planet.strikeConfirm.probeAge', { age })}</p>
     )}
     {/* And what it does NOT do, because D179 took the teeth out and a commander
         about to spend twenty thousand alloy should know what they are buying. */}
-    <p className="text-micro leading-snug text-v2-ink-3">{t('focus.planet.strikeConfirm.keeps')}</p>
-    {colony && (
-      <p className="text-micro leading-snug text-v2-ink-3">
-        {t('focus.planet.strikeConfirm.keepsColony', { loss, hits: hitsToTakeLoyalColony })}
-      </p>
-    )}
-    <section data-honor-weapon-rule className="grid gap-1.5 rounded-control border border-v2-self/25 bg-v2-self/5 px-3 py-2.5">
-      <p className="flex items-center gap-1.5 text-caption font-semibold text-v2-ink"><HonorIcon className="size-3.5 text-v2-self" />{t('leaderboard.honorTitle')}</p>
+    <p className="gk-sub">{t('focus.planet.strikeConfirm.keeps')}</p>
+    {colony && <p className="gk-sub">{t('focus.planet.strikeConfirm.keepsColony', { loss, hits: hitsToTakeLoyalColony })}</p>}
+    <WeaponHonor credit={origin?.honorTacticalCredit === true}>
       {origin?.honorTacticalCredit ? <>
-        <p className="text-caption leading-relaxed text-v2-ink-2">{t('leaderboard.honorEmpGain')}</p>
-        <p className="text-micro leading-relaxed text-v2-ink-2">{t('leaderboard.honorEmpRisk')}</p>
-      </> : <p className="text-caption leading-relaxed text-v2-ink-2">{t('leaderboard.honorWeaponsInactive')}</p>}
-    </section>
+        <p className="gk-sub">{t('leaderboard.honorEmpGain')}</p>
+        <p className="gk-sub">{t('leaderboard.honorEmpRisk')}</p>
+      </> : <p className="gk-sub">{t('leaderboard.honorWeaponsInactive')}</p>}
+    </WeaponHonor>
     </>
+  );
+}
+
+/** A weapon's Honor rule, in the launch's Honor box (G4-e3): the same for the Death Star and the radiation strike. */
+function WeaponHonor({ credit, children }: { credit: boolean; children: ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <section data-honor-weapon-rule className="gk-well gk-honor" data-kind={credit ? 'credit' : 'none'}>
+      <p className="gk-label gk-honor__title"><Glyph id="ranking" />{t('leaderboard.honorTitle')}</p>
+      {children}
+    </section>
   );
 }
 
@@ -1394,25 +1385,13 @@ export function DeathStarSection({ target, origin, report, disabledReason, onLau
   const world = target.intel === 'UNKNOWN' ? t('focus.planet.unsurveyedTitle') : target.name;
   const ready = deathStarsOf(origin).filter((asset) => asset.status === 'READY').length;
   return (
-    <details data-strike-section className="strike-launch strike-launch--death-star">
-      <summary className="strike-launch__summary">
-        <span className="strike-launch__heading">
-          <span className="strike-launch__title">{t('focus.planet.deathStarSection.title')}</span>
-          <span className="strike-launch__target">{t('planet.radiationBomb.target', { target: world })}</span>
-        </span>
-        <span className="strike-launch__ready">{t('focus.planet.strikeReady', { ready })}</span>
-      </summary>
-      <div className="strike-launch__body flex flex-col gap-2.5 font-v2-ui">
-        <StrikeDetails target={target} report={report} origin={origin} />
-        <HoldButton
-          marker="death-star"
-          label={t('focus.planet.deathStarSection.hold')}
-          tone="hostile"
-          disabledReason={disabledReason}
-          onCommit={onLaunch}
-        />
-      </div>
-    </details>
+    <StrikeFold data-strike-section="" data-weapon="death-star" glyph="target" title={t('focus.planet.deathStarSection.title')}
+      target={t('planet.radiationBomb.target', { target: world })} ready={t('focus.planet.strikeReady', { ready })}>
+      <StrikeDetails target={target} report={report} origin={origin} />
+      {/* A weapon fired is gone and cannot be called back: the kit's final weight, 1.5 s. */}
+      <GameHold weight="final" tone="danger" glyph="target" commitSound="impact" marks={{ 'data-death-star': '' }}
+        label={t('focus.planet.deathStarSection.hold')} disabledReason={disabledReason} onCommit={onLaunch} />
+    </StrikeFold>
   );
 }
 
@@ -1443,14 +1422,19 @@ export function StrikeSheet({
   // paint the strip and the toasts over this sheet's scrim (the confirm's old fault).
   return createPortal(
     <V2Sheet
-      detents={['half']}
+      detents={['full']}
+      kit={{ tone: 'hostile' }}
       eyebrow={t('focus.planet.strikeConfirm.eyebrow')}
       title={t('focus.planet.strikeConfirm.title', { world })}
       onClose={onClose}
+      footer={(
+        <div className="gk gk-launch__commit">
+          <GameHold weight="final" tone="danger" glyph="target" commitSound="impact" label={t('focus.planet.strikeConfirm.commit')} onCommit={onConfirm} />
+        </div>
+      )}
     >
-      <div data-strike-sheet className="flex flex-col gap-2.5 pt-1 font-v2-ui">
+      <div data-strike-sheet className="gk gk-strike__body">
         <StrikeDetails target={target} report={report} origin={origin} />
-        <HoldButton label={t('focus.planet.strikeConfirm.commit')} onCommit={onConfirm} tone="hostile" />
       </div>
     </V2Sheet>,
     document.body,
@@ -2661,7 +2645,7 @@ export function PirateFocus({
       onClose={onClose}
       summary={
         <span>
-          <span className={pirate.expiresInMinutes < 30 ? 'text-v2-warn' : ''}>
+          <span className={pirate.expiresInMinutes < 30 ? 'gk-tone-warn' : ''}>
             {duration(pirate.expiresInMinutes)}
           </span>
           {soonest !== null && ` · ${t('pirate.reach', { duration: duration(soonest) })}`}
@@ -2679,23 +2663,17 @@ export function PirateFocus({
       */
       actions={
         raiding ? (
-          <p className="font-v2-mono text-caption text-v2-self">{t('pirate.alreadyRaiding')}</p>
+          <p className="gk-inote gk-focus__wide" data-tone="self"><Glyph id="rocket" />{t('pirate.alreadyRaiding')}</p>
         ) : (
-          <button
-            type="button"
-            data-primary
-            className={`${BTN_PRIMARY} basis-full whitespace-normal`}
-            disabled={launchBlock !== null || !hasShips}
-            onClick={onAttack}
-          >
-            {launchBlock !== null
-              ? t(`faults.launchBlock.${launchBlock}`)
-              : hasShips ? t('pirate.attack') : t('pirate.noShips')}
-          </button>
+          <GameButton tone="action" wide glyph="attack" className="gk-focus__wide" marks={{ 'data-primary': '' }} onPress={onAttack}
+            disabledReason={launchBlock !== null ? t(`faults.launchBlock.${launchBlock}`) : hasShips ? null : t('pirate.noShips')}>
+            {t('pirate.attack')}
+          </GameButton>
         )
       }
     >
-      <div className="grid grid-cols-2 gap-2">
+      <div className="gk-fbody">
+      <div className="gk-well gk-figures gk-figures--well gk-figures--two">
         <Figure
           label={t('pirate.leavesIn')}
           value={duration(pirate.expiresInMinutes)}
@@ -2736,7 +2714,7 @@ export function PirateFocus({
         player who cannot read it is being asked to price a fight blind.
       */}
       {identified && pirate.damageMult !== undefined && (
-        <p className="mt-3 border-l border-v2-self/60 pl-3 text-caption leading-snug text-v2-self">
+        <p className="gk-inote" data-tone="self"><Glyph id="shield" />
           {t('pirate.damagePenalty', { percent: Math.round((1 - pirate.damageMult) * 100) })}
         </p>
       )}
@@ -2749,53 +2727,26 @@ export function PirateFocus({
         to inform. One line, no panel: this is a caveat, not a section.
       */}
       {pirate.remembered === true && (
-        <p className="mt-3 border-l border-v2-line pl-3 text-caption leading-snug text-v2-ink-3">
+        <p className="gk-inote"><Glyph id="eye" />
           {t('pirate.remembered')}
         </p>
       )}
 
       {/* Actual sight carries the actual crew; a radar return carries a size. */}
-      <p className="v2-legend mt-2 mb-2">{t('pirate.roster')}</p>
-      {crewEntries.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {/*
-            THE NAME IS DRAWN, BECAUSE A PHONE HAS NO HOVER. Owner instruction.
+      <p className="gk-label">{t('pirate.roster')}</p>
+      {crewEntries.length > 0
+        ? <CrewChips entries={crewEntries} />
+        : <p className="gk-sub">{t('pirate.rosterUnknown')}</p>}
 
-            This chip was a silhouette and an integer, with the hull's name in a
-            `title` — an attribute that does not exist on the device this game is
-            played on. So the one fact that says WHAT is out there was mouse-only,
-            and a commander pricing a raid read two glyphs and two numbers.
-
-            `text-micro` is the smallest step on the scale and it is the right one:
-            the name is a label on a chip, not a heading. The COUNT keeps
-            `text-caption` so it stays the figure the eye lands on — the name says
-            what, the number says how many, and they are not the same question.
-            `title` is gone with it: a fact that is drawn is not also written.
-          */}
-          {crewEntries.map(([hull, count]) => (
-            <span
-              key={hull}
-              data-crew-hull={hull}
-              className="flex items-center gap-1.5 rounded-chip border border-v2-line px-2 py-1"
-            >
-              <HullMark hull={hull} className="size-4 text-v2-ink-2" />
-              <span data-crew-name className="text-micro text-v2-ink-2">{hullLabel(hull)}</span>
-              <span className="font-v2-mono text-caption text-v2-ink">{count}</span>
-            </span>
-          ))}
-        </div>
-      ) : (
-        <p className="text-caption text-v2-ink-3">{t('pirate.rosterUnknown')}</p>
-      )}
-
-      {crewEntries.some(([hull]) => HULLS[hull].cls === 'SUPPORT') && (
-        <p className="mt-3 text-caption leading-snug text-v2-ink-2">{t('pirate.holdsHint')}</p>
-      )}
-      <p className="mt-3 text-caption leading-snug text-v2-ink-3">{t('pirate.captureHint')}</p>
-      <p className="mt-1 text-caption leading-snug text-v2-ink-3">{t('pirate.hoardHint')}</p>
-      <p className="mt-3 text-caption leading-snug text-v2-ink-2">{t('pirate.boundary')}</p>
-      {/* Information now, not a warning: the raid can turn home once before its engagement (owner, 2026-10-08). */}
-      <p className="mt-2 text-caption leading-snug text-v2-ink-2">{t('pirate.outbound')}</p>
+      <div className="gk-fnotes">
+        {crewEntries.some(([hull]) => HULLS[hull].cls === 'SUPPORT') && <p className="gk-sub">{t('pirate.holdsHint')}</p>}
+        <p className="gk-sub">{t('pirate.captureHint')}</p>
+        <p className="gk-sub">{t('pirate.hoardHint')}</p>
+        <p className="gk-sub">{t('pirate.boundary')}</p>
+        {/* Information now, not a warning: the raid can turn home once before its engagement (owner, 2026-10-08). */}
+        <p className="gk-sub">{t('pirate.outbound')}</p>
+      </div>
+      </div>
     </Shell>
   );
 }
@@ -2870,34 +2821,27 @@ export function IntergalacticConvoyFocus({
       onClose={onClose}
       summary={(
         <span>
-          <span className={minutesLeft < 15 ? 'text-v2-warn' : ''}>{duration(minutesLeft)}</span>
+          <span className={minutesLeft < 15 ? 'gk-tone-warn' : ''}>{duration(minutesLeft)}</span>
           {reachMinutes !== null
             ? ` · ${t('convoy.summaryReach', { duration: duration(reachMinutes) })}`
             : ''}
         </span>
       )}
       actions={(
-        <button
-          type="button"
-          data-testid="convoy-open"
-          data-primary
-            className={`${BTN_PRIMARY} basis-full whitespace-normal`}
-          disabled={refusal !== null}
-          onClick={onRaid}
-        >
-          {refusal ?? t('convoy.open')}
-        </button>
+        <GameButton tone="action" wide glyph="attack" className="gk-focus__wide" marks={{ 'data-testid': 'convoy-open', 'data-primary': '' }}
+          disabledReason={refusal} onPress={onRaid}>
+          {t('convoy.open')}
+        </GameButton>
       )}
     >
-      <div className="grid grid-cols-2 gap-2">
-        <Figure label={t('convoy.engagementLabel')} value={t('convoy.engagementDuration')} />
-        <Figure
-          label={t('convoy.shipChance')}
-          value={`${compact(convoy.rewardPolicy.shipDropChanceAtFullQuality * 100)}%`}
-        />
+      <div className="gk-fbody">
+        <div className="gk-well gk-figures gk-figures--well gk-figures--two">
+          <Figure label={t('convoy.engagementLabel')} value={t('convoy.engagementDuration')} />
+          <Figure label={t('convoy.shipChance')} value={`${compact(convoy.rewardPolicy.shipDropChanceAtFullQuality * 100)}%`} />
+        </div>
+        <p className="gk-sub gk-convoy__lead">{t('convoy.boundary')}</p>
+        <p className="gk-inote" data-tone="warn"><Glyph id="lock" />{t('convoy.irreversible')}</p>
       </div>
-      <p className="mt-3 text-caption leading-snug text-v2-ink">{t('convoy.boundary')}</p>
-      <p className="mt-1 text-caption leading-snug text-v2-ink-2">{t('convoy.irreversible')}</p>
     </Shell>
   );
 }
@@ -2977,37 +2921,29 @@ export function TradeFocus({
       onClose={onClose}
       summary={(
         <span>
-          <span className={minutesLeft < 30 ? 'text-v2-warn' : ''}>{duration(minutesLeft)}</span>
+          <span className={minutesLeft < 30 ? 'gk-tone-warn' : ''}>{duration(minutesLeft)}</span>
           {reach !== null && ` · ${t('trade.summaryReach', { duration: duration(reach) })}`}
         </span>
       )}
       actions={(
-        <button
-          type="button"
-          data-testid="trade-open"
-          data-primary
-            className={`${BTN_PRIMARY} basis-full whitespace-normal`}
-          disabled={launchBlock !== null || !hasCraft || !hasCarrier || tooLate}
-          onClick={onTrade}
-        >
-          {/*
-            THE SAME LADDER THE SHEET USES, TRUNCATED TO WHAT A RAIL CAN KNOW.
-            Everything below this — the bay, the swap, the hold, the store, the fuel
-            — depends on a convoy that has not been chosen yet, so it belongs to the
-            sheet. What a rail can answer is whether there is any point opening one.
-          */}
-          {launchBlock !== null
+        /*
+          THE SAME LADDER THE SHEET USES, TRUNCATED TO WHAT A RAIL CAN KNOW. Everything below
+          this — the bay, the swap, the hold, the store, the fuel — depends on a convoy that has
+          not been chosen yet, so it belongs to the sheet.
+        */
+        <GameButton tone="action" wide glyph="share" className="gk-focus__wide" marks={{ 'data-testid': 'trade-open', 'data-primary': '' }}
+          onPress={onTrade}
+          disabledReason={launchBlock !== null
             ? t(`faults.launchBlock.${launchBlock}`)
             : carriersAway
               ? t('trade.carriersAway')
-            : !hasCraft
-              ? t('trade.noCraft')
-              : !hasCarrier
-                ? t('trade.noCarrier')
-                : tooLate
-                  ? t('trade.tooLate')
-                  : t('trade.open')}
-        </button>
+              : !hasCraft
+                ? t('trade.noCraft')
+                : !hasCarrier
+                  ? t('trade.noCarrier')
+                  : tooLate ? t('trade.tooLate') : null}>
+          {t('trade.open')}
+        </GameButton>
       )}
     >
       {/*
@@ -3018,8 +2954,9 @@ export function TradeFocus({
         so current and persisted historical rates both render without fractions.
         D208's 1 · 2 · 32 rate reads 32 Alloy · 16 Crystal · 1 Deuterium.
       */}
-      <p className="v2-legend mb-2">{t('trade.rateHeading')}</p>
-      <div data-testid="trade-rate" className="space-y-2">
+      <div className="gk-fbody">
+      <p className="gk-label">{t('trade.rateHeading')}</p>
+      <div data-testid="trade-rate" className="gk-par">
         {TRADE_RESOURCES.map((resource) => {
           const anchor = rateAnchor(merchant.rate);
           const amount = anchor / merchant.rate[resource];
@@ -3029,35 +2966,26 @@ export function TradeFocus({
             merchant.rate.deuterium,
           );
           return (
-            <div key={resource} data-rate-row data-resource={resource} className="flex items-center gap-2">
-              <img
-                src={RESOURCE_ART[resource]}
-                alt=""
-                aria-hidden
-                className="size-4 shrink-0 object-contain"
-              />
+            <div key={resource} data-rate-row data-resource={resource} className="gk-par__row">
+              <img src={RESOURCE_ART[resource]} alt="" aria-hidden />
               <span
-                className="rounded-control border border-v2-line bg-v2-raise h-2.5 min-w-0 flex-1 overflow-hidden rounded-full"
+                className="gk-par__bar"
+                data-resource={resource}
                 role="img"
                 aria-label={t('trade.rateReading', {
                   amount: full(amount),
                   resource: t(`trade.${resource}`),
                 })}
               >
-                <span
-                  className={`block h-full ${RATE_FILL[resource]}`}
-                  style={{ width: `${String(Math.max(2, (amount / widest) * 100))}%` }}
-                />
+                <span className="gk-par__fill" style={{ width: `${String(Math.max(2, (amount / widest) * 100))}%` }} />
               </span>
-              <span className="font-v2-mono w-14 shrink-0 text-right text-caption text-v2-ink">
-                {full(amount)}
-              </span>
+              <span className="gk-num gk-par__amount">{full(amount)}</span>
             </div>
           );
         })}
       </div>
 
-      <div className="mt-2 grid grid-cols-2 gap-2">
+      <div className="gk-well gk-figures gk-figures--well gk-figures--two">
         <Figure
           label={t('trade.leavesIn')}
           value={duration(minutesLeft)}
@@ -3093,7 +3021,8 @@ export function TradeFocus({
         />
       </div>
 
-      <p className="mt-3 text-caption leading-snug text-v2-ink-2">{t('trade.boundary')}</p>
+      <p className="gk-sub">{t('trade.boundary')}</p>
+      </div>
     </Shell>
   );
 }
@@ -3101,12 +3030,6 @@ export function TradeFocus({
 /** The three substances, in the order every surface in the game lists them. */
 const TRADE_RESOURCES = ['alloy', 'crystal', 'deuterium'] as const;
 
-/** Each substance's own colour, so a bar is identified before it is read. */
-const RATE_FILL: Record<(typeof TRADE_RESOURCES)[number], string> = {
-  alloy: 'bg-alloy/80',
-  crystal: 'bg-v2-self/80',
-  deuterium: 'bg-deuterium/80',
-};
 
 /* ── your own craft, in transit ──────────────────────────────── */
 
@@ -3157,13 +3080,15 @@ export function RunFocus({
       onClose={onClose}
       summary={<span>{countdown(remainingMs)}</span>}
       actions={recallable && onRecall ? (
-        <button type="button" className={`${BTN_PRIMARY} basis-full`} disabled={recalling} onClick={onRecall}>
-          <ReturnedIcon className="size-4" />
-          {t(recalling ? 'pendingStrip.recallingProspectors' : 'pendingStrip.recallProspectors')}
-        </button>
+        // Once, and never undone, but nothing spent: the kit's light hold (owner 2026-11-14, 0.6 s).
+        <div className="gk-focus__wide">
+          <GameHold weight="reversible" size="md" tone="steel" glyph="recall" label={t('pendingStrip.recallProspectors')}
+            disabledReason={recalling ? t('pendingStrip.recallingProspectors') : null} onCommit={onRecall} />
+        </div>
       ) : undefined}
     >
-      <div className="grid grid-cols-2 gap-2">
+      <div className="gk-fbody">
+      <div className="gk-well gk-figures gk-figures--well gk-figures--two">
         <Figure
           label={t(
             returning
@@ -3191,7 +3116,7 @@ export function RunFocus({
       </div>
 
       {returning ? (
-        <p className="mt-3 text-body leading-snug text-v2-ink">
+        <p className="gk-inote" data-tone="self"><Glyph id="crate" />
           {run.minedAlloy + run.minedCrystal + run.minedDeuterium > 0
             ? t(
                 run.minedDeuterium > 0
@@ -3206,14 +3131,15 @@ export function RunFocus({
             : t(salvage ? 'focus.run.emptySalvage' : 'focus.run.emptyRock')}
         </p>
       ) : salvage ? (
-        <p className="mt-3 text-caption leading-snug text-v2-ink-2">
+        <p className="gk-sub">
           {t('focus.run.salvageNote', {
             clock: wreck ? t('focus.run.salvageClock', { duration: duration(wreck.minutesLeft) }) : '',
           })}
         </p>
       ) : (
-        <p className="mt-3 text-caption leading-snug text-v2-ink-2">{t('focus.run.miningNote')}</p>
+        <p className="gk-sub">{t('focus.run.miningNote')}</p>
       )}
+      </div>
     </Shell>
   );
 }
@@ -3266,13 +3192,15 @@ export function ThreadFocus({
       peek={thread.admiral ? <FlightEscort admiral={thread.admiral} /> : undefined}
       summary={<span>{countdown(remainingMs)}</span>}
       actions={recallable && onRecall ? (
-        <button type="button" className={`${BTN_PRIMARY} basis-full`} disabled={recalling} onClick={onRecall}>
-          <ReturnedIcon className="size-4" />
-          {t(recalling ? 'pendingStrip.recallingFleet' : 'pendingStrip.recallFleet')}
-        </button>
+        // Once, and never undone, but nothing spent: the kit's light hold (owner 2026-11-14, 0.6 s).
+        <div className="gk-focus__wide">
+          <GameHold weight="reversible" size="md" tone="steel" glyph="recall" label={t('pendingStrip.recallFleet')}
+            disabledReason={recalling ? t('pendingStrip.recallingFleet') : null} onCommit={onRecall} />
+        </div>
       ) : undefined}
     >
-      <div className="grid grid-cols-2 gap-2">
+      <div className="gk-fbody">
+      <div className="gk-well gk-figures gk-figures--well gk-figures--two">
         <Figure label={t('focus.thread.arrivesIn')} value={duration(minutesRemaining)} />
         <Figure
           label={t('focus.thread.craft')}
@@ -3286,37 +3214,25 @@ export function ThreadFocus({
 
       {thread.admiral && <FlightEscort admiral={thread.admiral} />}
 
-      {composition && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {(Object.entries(thread.fleet ?? {}) as [HullId, number][])
-            .filter(([, n]) => n > 0)
-            .map(([hull, n]) => (
-              <span
-                key={hull}
-                className="flex items-center gap-2 rounded-chip border border-v2-line/70 px-2 py-1"
-              >
-                <HullMark hull={hull} className="size-4 text-v2-ink-2" />
-                <span className="font-v2-mono text-caption text-v2-ink">
-                  {n} {hullLabel(hull)}
-                </span>
-              </span>
-            ))}
-        </div>
-      )}
+      {composition && thread.fleet && <CrewChips entries={fleetEntries(thread.fleet)} />}
 
       {/*
         WHAT IS TRUE OF THIS FLIGHT, NOT OF FLIGHTS IN GENERAL. Owner report, 2026-10-06: every
         outbound fleet read "a launched fleet cannot be recalled" — right over the Recall button.
       */}
-      <p className="mt-3 text-caption leading-snug text-v2-ink-2">
+      <p className="gk-sub">
         {t(thread.leg === 'return'
           ? 'focus.thread.returning'
           : recallable
             ? thread.kind === 'monument' ? 'monument.recallFlightRule' : 'focus.thread.recallable'
             : thread.kind === 'pirate' ? 'focus.thread.outboundPirate' : 'focus.thread.outbound')}
       </p>
-      {thread.monumentId && onFocusMonument && <button type="button" className="mt-3 min-h-10 w-full rounded-control border border-v2-line px-3 text-caption font-semibold text-v2-self"
-        onClick={() => { if (thread.monumentId) onFocusMonument(thread.monumentId); }}>{t('monument.look', { name: thread.targetName })}</button>}
+      {thread.monumentId && onFocusMonument && (
+        <GameButton size="sm" wide glyph="eye" onPress={() => { if (thread.monumentId) onFocusMonument(thread.monumentId); }}>
+          {t('monument.look', { name: thread.targetName })}
+        </GameButton>
+      )}
+      </div>
     </Shell>
   );
 }
@@ -3446,7 +3362,7 @@ export function ContactFocus({
       peek={contact.kind === 'fleet' && !contact.effectOnly && contact.admiral ? <FlightEscort admiral={contact.admiral} /> : undefined}
       summary={
         mining ? (
-          <span className="text-v2-warn">
+          <span className="gk-tone-warn">
             {contact.minutesRemaining === undefined
               ? t('focus.contact.working')
               : duration(contact.minutesRemaining)}
@@ -3460,12 +3376,12 @@ export function ContactFocus({
             standing on the world.
           */
           <>
-            <span className="text-v2-hostile">
+            <span className="gk-tone-hostile">
               {exactCount === null
                 ? massLabel ?? t('focus.contact.bombarding')
                 : t('focus.contact.craftCount', { count: exactCount })}
             </span>
-            <span className="block text-label text-v2-ink-3">{t('focus.contact.settling')}</span>
+            <span className="gk-focus__quiet">{t('focus.contact.settling')}</span>
           </>
         ) : (
           /*
@@ -3481,12 +3397,12 @@ export function ContactFocus({
             player holds, and the panel says so rather than leaving a gap.
           */
           <>
-            <span className={massLabel || exactCount !== null ? '' : 'text-v2-ink-3'}>
+            <span className={massLabel || exactCount !== null ? '' : 'gk-focus__quiet'}>
               {exactCount === null
                 ? massLabel ?? t('focus.contact.unattributed')
                 : t('focus.contact.craftCount', { count: exactCount })}
             </span>
-            <span className="block text-label text-v2-ink-3">
+            <span className="gk-focus__quiet">
               {t(contact.inbound === true
                 ? 'focus.contact.inboundNoClock'
                 : 'focus.contact.arrivalUnknown')}
@@ -3495,7 +3411,8 @@ export function ContactFocus({
         )
       }
     >
-      <div className="grid grid-cols-2 gap-2">
+      <div className="gk-fbody">
+      <div className="gk-well gk-figures gk-figures--well gk-figures--two">
         <Figure
           label={t('focus.contact.craftLabel')}
           /*
@@ -3532,21 +3449,7 @@ export function ContactFocus({
 
       {contact.kind === 'fleet' && !contact.effectOnly && contact.admiral && <FlightEscort admiral={contact.admiral} />}
 
-      {exactEntries.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {exactEntries.map(([hull, count]) => (
-            <span
-              key={hull}
-              className="flex items-center gap-2 rounded-chip border border-v2-line/70 px-2 py-1"
-            >
-              <HullMark hull={hull} className="size-4 text-v2-ink-2" />
-              <span className="font-v2-mono text-caption text-v2-ink">
-                {count} {hullLabel(hull)}
-              </span>
-            </span>
-          ))}
-        </div>
-      )}
+      {exactEntries.length > 0 && <CrewChips entries={exactEntries} />}
 
       {/*
         WHERE THE HULL CHIPS USED TO BE. D123.
@@ -3555,18 +3458,18 @@ export function ContactFocus({
         reads as a bug while a stated absence reads as a price.
       */}
       {unidentified && (
-        <p className="mt-3 text-caption text-v2-ink-3">{t('focus.contact.unknownHint')}</p>
+        <p className="gk-sub">{t('focus.contact.unknownHint')}</p>
       )}
       {radarKind !== undefined && (
-        <p className="mt-3 text-caption text-v2-self/80">
+        <p className="gk-inote" data-tone="self"><Glyph id="target" />
           {t('focus.contact.radarKind', { kind: t(CONTACT_TITLE[radarKind]).toLowerCase() })}
         </p>
       )}
       {massLabel !== null && exactFleet === undefined && !mining && (
-        <p className="mt-3 text-caption text-v2-ink-3">{t('focus.contact.massHint')}</p>
+        <p className="gk-sub">{t('focus.contact.massHint')}</p>
       )}
       {contact.inbound === true && !battle && (
-        <p className="mt-3 text-caption text-v2-hostile">{t('focus.contact.inboundHint')}</p>
+        <p className="gk-inote" data-tone="hostile"><Glyph id="siren" />{t('focus.contact.inboundHint')}</p>
       )}
 
       {/*
@@ -3574,7 +3477,7 @@ export function ContactFocus({
         thing that sends a player to the Telescope — an absence they cannot see is
         an absence they will not pay to close.
       */}
-      <p className="mt-3 text-caption leading-snug text-v2-ink-2">
+      <p className="gk-sub">
         {t(
           contact.kind === 'fleet' && exactFleet && contact.clanFleet
             ? 'clanWar.contactBoundary'
@@ -3590,13 +3493,12 @@ export function ContactFocus({
         )}
       </p>
       {!mining && !battle && (
-        <p className="mt-2 text-caption leading-snug text-v2-ink-3">
-          {t('focus.contact.telescopeHint')}
-        </p>
+        <p className="gk-sub">{t('focus.contact.telescopeHint')}</p>
       )}
       {battle && (
-        <p className="mt-2 text-caption leading-snug text-v2-ink-3">{t('focus.contact.wreckHint')}</p>
+        <p className="gk-sub">{t('focus.contact.wreckHint')}</p>
       )}
+      </div>
     </Shell>
   );
 }
@@ -3882,6 +3784,27 @@ export function DebrisFocus({
         <p className="gk-sub gk-mine__notes">{t('focus.debris.body')}</p>
       </div>
     </Shell>
+  );
+}
+
+/**
+ * A CREW, HULL BY HULL, ON KIT CHIPS (G4-h2): the hull's mark, its name, the count.
+ *
+ * THE NAME IS DRAWN, BECAUSE A PHONE HAS NO HOVER (owner instruction): the name says what,
+ * the number says how many, and they are not the same question — so the count is the figure
+ * the eye lands on and the name a label beside it.
+ */
+function CrewChips({ entries }: { entries: readonly (readonly [HullId, number])[] }) {
+  return (
+    <ul className="gk-crew">
+      {entries.map(([hull, count]) => (
+        <li key={hull} data-crew-hull={hull} className="gk-crew__hull">
+          <HullMark hull={hull} className="gk-crew__mark" />
+          <span data-crew-name className="gk-crew__name">{hullLabel(hull)}</span>
+          <span className="gk-num gk-crew__count">{count}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

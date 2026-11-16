@@ -167,38 +167,6 @@
 .radiation-instrument__sources li strong { font: 500 10px var(--font-v2-mono, monospace); white-space: nowrap; }
 .radiation-instrument__sources li small { grid-column: 1/-1; font-size: 9px; color: var(--color-v2-ink-2); }
 
-.radiation-launch { padding: 12px; border: 1px solid var(--color-v2-radiation-forge-border); border-radius: 10px; background: linear-gradient(130deg, var(--color-v2-radiation-forge-glow), transparent 60%), var(--color-v2-panel); font-family: var(--font-v2-ui, sans-serif); }
-.radiation-launch h3 { font-size: 14px; font-weight: 600; color: var(--color-v2-radiation-title); }
-.radiation-launch p { font-size: 11px; line-height: 1.5; color: var(--color-v2-ink-2); margin-top: 5px; }
-.radiation-launch__levels { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 5px; margin: 10px 0; }
-.radiation-launch__levels button { display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 8px 3px; border: 1px solid var(--color-v2-radiation-level-border); border-radius: 6px; color: var(--color-v2-radiation-level-copy); background: var(--color-v2-radiation-level-ground); }
-.radiation-launch__levels button[aria-checked='true'] { background: var(--color-v2-radiation-selected-ground); border-color: var(--color-v2-radiation-selected-border); color: var(--color-v2-radiation-selected-copy); box-shadow: inset 0 1px var(--color-v2-radiation-selected-shine); }
-.radiation-launch__levels button:disabled { opacity: .4; }
-.radiation-launch__levels button span { font: 9px/1.2 var(--font-v2-mono, monospace); }
-.radiation-launch .radiation-launch__target { color: var(--color-v2-radiation-title); font-size: 12px; overflow-wrap: anywhere; }
-.radiation-launch .radiation-launch__flight { color: var(--color-v2-radiation-flight); font-family: var(--font-v2-mono, monospace); }
-/* THE STRIKE SECTIONS FOLD (owner, 2026-10-16): the radiation strike and the Death Star share one
-   accordion on the focus panel; folded, the header still names the weapon, its target and what is
-   ready. The Death Star wears the colour of harm, like its hold. */
-.strike-launch > summary.strike-launch__summary { display: flex; align-items: center; gap: 10px; min-height: 34px; cursor: pointer; list-style: none; -webkit-tap-highlight-color: transparent; }
-.strike-launch > summary::-webkit-details-marker { display: none; }
-.strike-launch > summary::after { content: ''; flex-shrink: 0; width: 7px; height: 7px; margin: 0 3px 3px 0; border-right: 1.5px solid var(--color-v2-ink-3); border-bottom: 1.5px solid var(--color-v2-ink-3); transform: rotate(45deg); transition: transform .18s ease; }
-.strike-launch[open] > summary::after { margin: 3px 3px 0 0; transform: rotate(-135deg); }
-.strike-launch > summary:focus-visible { outline: 2px solid var(--color-v2-self); outline-offset: 3px; border-radius: 6px; }
-.strike-launch__heading { display: grid; gap: 2px; flex: 1; min-width: 0; }
-.strike-launch__title { font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--color-v2-radiation-title); }
-.strike-launch__target { font-size: 11px; line-height: 1.35; color: var(--color-v2-ink-2); overflow-wrap: anywhere; }
-.strike-launch__ready { flex-shrink: 0; padding: 2px 8px; border: 1px solid color-mix(in srgb, currentColor 45%, transparent); border-radius: 999px; font: 500 10px/1.4 var(--font-v2-mono, monospace); color: var(--color-v2-radiation-title); white-space: nowrap; }
-.strike-launch[open] > .strike-launch__body { margin-top: 10px; }
-.strike-launch--death-star { margin-top: 12px; padding: 12px; border: 1px solid color-mix(in srgb, var(--color-v2-hostile) 55%, transparent); border-radius: 10px; background: linear-gradient(130deg, color-mix(in srgb, var(--color-v2-hostile) 18%, transparent), transparent 62%), var(--color-v2-panel); font-family: var(--font-v2-ui, sans-serif); }
-.strike-launch--death-star .strike-launch__title, .strike-launch--death-star .strike-launch__ready { color: var(--color-v2-hostile); }
-.strike-launch--death-star + .radiation-launch { margin-top: 10px; }
-/* The radiation strike's Honor box reads like the Death Star's; `.radiation-launch p` would shrink it. */
-.radiation-launch .honor-note { margin: 10px 0; }
-.radiation-launch .honor-note p { margin-top: 0; }
-.radiation-launch .honor-note .honor-note__title { font-size: 12px; font-weight: 600; color: var(--color-v2-ink); }
-.radiation-launch .honor-note .honor-note__body { font-size: 12px; line-height: 1.55; color: var(--color-v2-ink-2); }
-.radiation-launch > button { margin-top: 10px; }
 
 /* Dev-only art review page. */
 .bomb-preview { margin: 0 auto; max-width: 1280px; padding: 28px; display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 18px; background: var(--color-v2-radiation-preview-ground); min-height: 100dvh; color: var(--color-v2-radiation-preview-copy); }

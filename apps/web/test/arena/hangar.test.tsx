@@ -163,14 +163,14 @@ describe('the sortie summary', () => {
     const view = render(<SortieSummary c={arenaCopy()} now={NOW} hold={[120.4, 0, 8]} report={{ outcome: 'extracted',
       teamId: '00000000-0000-4000-8000-000000000001', deposit: zero, overflow: zero, readyAt: null, readyReason: null,
       xp: { earned: 10, kept: 10, banked: 10 } }} />).container;
-    expect(view.querySelector('.ap-eyebrow')?.textContent).toBe(teamCopy().pooled);
-    expect([...view.querySelectorAll('.ss-pooled li')].map(li => li.textContent)).toEqual(['+120 Alaşım', '+8 Döteryum']);
-    expect(view.querySelector('.ss-lost')).toBeNull();
+    expect(view.querySelector('.gk-label')?.textContent).toBe(teamCopy().pooled);
+    expect([...view.querySelectorAll('[data-haul="pooled"] li')].map(li => li.textContent)).toEqual(['+120 Alaşım', '+8 Döteryum']);
+    expect(view.querySelector('[data-haul="lost"]')).toBeNull();
   });
   it('does not call a recalled hold lost: it stays in the ship', () => {
     const view = render(<SortieSummary c={arenaCopy()} now={NOW} hold={[50, 0, 0]} report={{ outcome: 'recalled', deposit: zero, overflow: zero,
       readyAt: null, readyReason: null, xp: { earned: 5, kept: 5, banked: 5 } }} />).container;
-    expect(view.querySelector('.ss-lost')).toBeNull();
+    expect(view.querySelector('[data-haul="lost"]')).toBeNull();
   });
   it('explains pooled cargo instead of reporting an empty solo deposit', () => {
     const view = render(<SortieSummary c={arenaCopy()} now={NOW} hold={[0, 0, 0]} report={{ outcome: 'extracted',
@@ -183,17 +183,17 @@ describe('the sortie summary', () => {
     const view = render(<SortieSummary c={arenaCopy()} now={NOW} hold={[0, 0, 0]} report={{ outcome: 'extracted',
       deposit: { alloy: 240, crystal: 112, deuterium: 10 }, overflow: { alloy: 0, crystal: 0, deuterium: 15 },
       readyAt: '2026-10-23T12:10:00.000Z', readyReason: 'service', xp: { earned: 62, kept: 62, banked: 62 } }} />).container;
-    expect([...view.querySelectorAll('.ss-landed li')].map(li => li.textContent)).toEqual(['+240 Alaşım', '+112 Kristal', '+10 Döteryum']);
-    expect(view.querySelector('.ss-overflow')?.textContent).toContain('15 Döteryum');
-    expect(view.querySelector('.ss-ready')?.textContent).toContain('10:00');
+    expect([...view.querySelectorAll('[data-haul="landed"] li')].map(li => li.textContent)).toEqual(['+240 Alaşım', '+112 Kristal', '+10 Döteryum']);
+    expect(view.querySelector('[data-overflow]')?.textContent).toContain('15 Döteryum');
+    expect(view.querySelector('[data-ready]')?.textContent).toContain('10:00');
   });
 
   it('lists a lost hold, and an hour of repair', () => {
     const view = render(<SortieSummary c={arenaCopy()} now={NOW} hold={[80.6, 0, 4]} report={{ outcome: 'dead', deposit: zero, overflow: zero,
       readyAt: '2026-10-23T13:00:00.000Z', readyReason: 'repair', xp: { earned: 60, kept: 24, banked: 24 } }} />).container;
-    expect([...view.querySelectorAll('.ss-lost li')].map(li => li.textContent)).toEqual(['−80 Alaşım', '−4 Döteryum']);
-    expect(view.querySelector('.ss-ready')?.textContent).toContain(arenaCopy().repairing);
-    expect(view.querySelector('.ss-landed')).toBeNull();
+    expect([...view.querySelectorAll('[data-haul="lost"] li')].map(li => li.textContent)).toEqual(['−80 Alaşım', '−4 Döteryum']);
+    expect(view.querySelector('[data-ready]')?.textContent).toContain(arenaCopy().repairing);
+    expect(view.querySelector('[data-haul="landed"]')).toBeNull();
   });
 });
 
@@ -272,11 +272,11 @@ describe('the ship\'s level (Y6b)', () => {
     const zero = { alloy: 0, crystal: 0, deuterium: 0 };
     const won = render(<SortieSummary c={c} now={NOW} hold={[0, 0, 0]} report={{ outcome: 'extracted', deposit: zero, overflow: zero, readyAt: null,
       readyReason: 'service', xp: { earned: 117, kept: 117, banked: 50 } }} />).container;
-    expect(won.querySelector('.ss-xp b')?.textContent).toBe('+50 XP');
-    expect(won.querySelector('.ss-xp small')?.textContent).toBe(c.xpUnbanked(67));
+    expect(won.querySelector('[data-xp] b')?.textContent).toBe('+50 XP');
+    expect(won.querySelector('[data-xp] small')?.textContent).toBe(c.xpUnbanked(67));
     const lost = render(<SortieSummary c={c} now={NOW} hold={[0, 0, 0]} report={{ outcome: 'dead', deposit: zero, overflow: zero, readyAt: null,
       readyReason: 'repair', xp: { earned: 60, kept: 24, banked: 24 } }} />).container;
-    expect(lost.querySelector('.ss-xp small')?.textContent).toBe(c.xpKept(60));
+    expect(lost.querySelector('[data-xp] small')?.textContent).toBe(c.xpKept(60));
   });
 
   it('reads the gauges against the ship\'s level', () => {

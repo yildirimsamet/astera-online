@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   TRANSFER_CARGO_HULLS,
@@ -38,10 +38,8 @@ import { RadiationPreview } from '../ui/RadiationPreview.js';
 import { HonorEffectQuote } from '../ui/HonorBenefits.js';
 import { lethalAfterRefusal, radiationRefusalCount, routeHpRadiation, toHpRadiationSources, type RadiationRefusal } from '../lib/radiation.js';
 import { SpendBar } from '../ui/SpendBar.js';
-import { Tally } from '../ui/Tally.js';
 import { HullMark } from '../ui/icons/hulls.js';
-import { Segmented } from '../ui/kit/index.js';
-import { HoldButton } from '../v2/kit/HoldButton.js';
+import { Choices, GameHold, Glyph, SectionTag, Slider } from '../game-ui/index.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { describe, useToast } from '../ui/Toast.js';
 
@@ -357,30 +355,40 @@ export function TradeSheet({
   */
   const { wall } = offerCeiling(store, hold, give, rate);
 
+  const keepsLine = t('trade.homeDefence', {
+    ships: fleetCount(remainingFleet) + fleetCount(planet.ground),
+    power: compact(holdingPower),
+  });
+  const splitLabel = t('trade.splitLabel');
+
   return (
     <Sheet
       detents={['full']}
+      kit={{ tone: 'self' }}
       eyebrow={t('trade.sheetEyebrow', { duration: duration(minutesLeft) })}
       title={t('trade.sheetTitle')}
       onClose={onClose}
       footer={(
-        <div className="grid gap-2">
+        <div className="gk gk-launch__commit">
           {/*
             THE PRICE, BEFORE THE BUTTON (K4, B14). The second screen said it after the
             decision; a trade that would go says it here: it cannot be turned, and for how
             long this world does without the ships.
           */}
           {refusal === null && (
-            <div data-trade-warning className="grid gap-1">
-              <p className="text-caption leading-snug text-v2-warn">
+            <div data-trade-warning className="gk-trade__warning">
+              <p className="gk-inote" data-tone="warn"><Glyph id="warn" />
                 {t('trade.warning', { duration: duration(route?.exposureMinutes ?? 0) })}
               </p>
-              <p className="text-micro leading-snug text-v2-ink-3">{t('trade.fleetsave')}</p>
+              <p className="gk-sub">{t('trade.fleetsave')}</p>
             </div>
           )}
           <div data-testid="trade-commit">
             <RadiationPreview radiation={radiation} />
-            <HoldButton
+            {/* A trade spends the offer and the fuel: the kit's spend weight, one second. */}
+            <GameHold
+              weight="spends"
+              glyph="share"
               label={t('trade.send')}
               /*
                 A DISABLED CONTROL STATES ITS OWN REASON. `interface.md`: an unavailable
@@ -412,62 +420,52 @@ export function TradeSheet({
         </div>
       )}
     >
-      <div className="flex flex-col gap-3 pt-1">
+      <div className="gk-trade">
       <HonorEffectQuote kind="trade" value={planet.honorBenefits} base={want} net={netWant} />
-      {/* ── the convoy, first, because it sets every maximum below ── */}
-      <section className="grid gap-1.5">
-      <h3 className={HEADING}>{t('trade.convoyHeading')}</h3>
-      <div>
-        {/*
-          THE THREE CARRIERS AND NOTHING ELSE. Owner instruction: *"Filo yollarken
-          sadece cargo gemilerimizi seçebilmeliyiz."* A warship in a trade convoy
-          takes hangar bulk, burns fuel and occupies the same flight bay while
-          adding not one unit of hold — `transferCargoCapacity` counts these three
-          and only these three. Offering the rest was `TransferSheet`'s shape
-          inherited without its reason: that screen moves ships between worlds as
-          well as ore, and this one does not.
 
-          THEY ARE LISTED WHETHER OR NOT THIS WORLD OWNS ONE, which is the lesson
-          the transfer sheet had to learn first: a commander with no Atlas otherwise
-          saw no Atlas row, a hold of nothing, and the reason written nowhere.
+      {/*
+        WHAT THIS WORLD IS LEFT HOLDING, on the transfer's garrison bar. A convoy is not an
+        attack, so the departing slice is alloy rather than threat red — but the shape is the
+        same, because the consequence is: those craft are not here while they are out there.
+      */}
+      <div className="gk-keeps">
+        <div data-origin-defence className="gk-keeps__bar" role="img" aria-label={keepsLine}>
+          <span data-part="holds" className="gk-keeps__holds" style={{ width: `${String(share(holdingPower, powerNow))}%` }} />
+          <span data-part="leaves" className="gk-keeps__leaves" style={{ width: `${String(share(powerNow - holdingPower, powerNow))}%` }} />
+        </div>
+        <p className="gk-sub gk-num">{keepsLine}</p>
+      </div>
+
+      {/* ── the convoy, first, because it sets every maximum below ── */}
+      <section className="gk-launch__fleet">
+        <SectionTag as="h3">{t('trade.convoyHeading')}</SectionTag>
+        {/*
+          THE CARRIERS AND NOTHING ELSE. Owner instruction: *"Filo yollarken sadece cargo
+          gemilerimizi seçebilmeliyiz."* A warship in a trade convoy takes hangar bulk, burns
+          fuel and occupies the same flight bay while adding not one unit of hold —
+          `transferCargoCapacity` counts the carriers and only them.
+
+          THEY ARE LISTED WHETHER OR NOT THIS WORLD OWNS ONE: a commander with no Atlas
+          otherwise saw no Atlas row, a hold of nothing, and the reason written nowhere.
         */}
-        {CARRIERS.map((id) => {
-          const held = planet.fleet[id] ?? 0;
-          const art = HULL_ART[id];
-          return (
-            <div
-              key={id}
-              data-hull-row={id}
-              data-owned={held > 0 ? 'true' : 'false'}
-              className={`border-b border-v2-line/70 px-1 py-2 last:border-b-0 ${
-                (fleet[id] ?? 0) > 0 ? 'bg-v2-self/5' : ''
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span data-art className="grid size-8 shrink-0 place-items-center">
-                  {art ? (
-                    <img
-                      src={art}
-                      alt=""
-                      aria-hidden
-                      className={`size-8 object-contain ${held > 0 ? '' : 'opacity-35 grayscale'}`}
-                      loading="lazy"
-                    />
-                  ) : (
-                    <HullMark hull={id} className="size-6 text-v2-ink-3" />
-                  )}
+        <div className="gk-ledger gk-launch__rows">
+          {CARRIERS.map((id) => {
+            const held = planet.fleet[id] ?? 0;
+            const packed = fleet[id] ?? 0;
+            const art = HULL_ART[id];
+            return (
+              <div key={id} data-hull-row={id} data-owned={held > 0 ? 'true' : 'false'} className="gk-lrow"
+                {...(packed > 0 ? { 'data-chosen': '' } : {})}>
+                <span data-art className="gk-lrow__art" {...(held > 0 ? {} : { 'data-none': '' })}>
+                  {art ? <img src={art} alt="" aria-hidden width={36} height={36} loading="lazy" /> : <HullMark hull={id} className="gk-lrow__mark" />}
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-caption font-semibold text-v2-ink">{hullLabel(id)}</span>
-                  <span className={`block font-v2-mono text-micro ${held > 0 ? 'text-v2-ink-3' : 'text-v2-warn'}`}>
-                    {held > 0
-                      ? t('trade.carrierRoom', { count: held, volume: full(holdOf(id, mods.tech)) })
-                      : t('trade.hullNone')}
-                  </span>
-                </span>
+                <span className="gk-lrow__name">{hullLabel(id)}</span>
+                {held > 0
+                  ? <span className="gk-sub gk-num gk-lrow__info">{t('trade.carrierRoom', { count: held, volume: full(holdOf(id, mods.tech)) })}</span>
+                  : <span className="gk-sub gk-lrow__info" data-tone="warn">{t('trade.hullNone')}</span>}
                 <QuantityStepper
-                  look="v2"
-                  value={fleet[id] ?? 0}
+                  look="kit"
+                  value={packed}
                   min={0}
                   max={held}
                   onChange={(value) => { setShip(id, value); }}
@@ -478,270 +476,142 @@ export function TradeSheet({
                   maxText={t('trade.maxShort')}
                 />
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+        {/*
+          THE HOLD, AS ONE NUMBER, DIRECTLY UNDER WHAT SETS IT. The controls below cannot
+          exceed it, so what is left to say is how much room this convoy has.
+        */}
+        <p data-testid="trade-hold" className="gk-inote" {...(carrying ? {} : { 'data-tone': 'warn' })}>
+          <Glyph id={carrying ? 'crate' : 'warn'} />
+          {carrying ? t('trade.holdReading', { volume: full(hold) }) : t('trade.holdNoCarrier')}
+        </p>
+        {/* A launch takes a flight bay; none free is the reason the send would refuse. */}
+        <p className="gk-inote" {...(baysFree > 0 ? {} : { 'data-tone': 'warn' })}><Glyph id="bay" />
+          {t('trade.baysReading', { used: planet.flight.used, total: planet.flight.total })}
+        </p>
       </section>
 
-      {/*
-        THE HOLD, AS ONE NUMBER, DIRECTLY UNDER WHAT SETS IT. A bar was drawn here
-        before, against a demand the player was expected to keep inside by hand.
-        There is nothing to keep inside any more — the controls below cannot exceed
-        it — so what is left to say is how much room this convoy has.
-      */}
-      <p
-        data-testid="trade-hold"
-        className={`px-1 text-caption ${carrying ? 'text-v2-ink-2' : 'text-v2-warn'}`}
-      >
-        {carrying
-          ? t('trade.holdReading', { volume: full(hold) })
-          : t('trade.holdNoCarrier')}
-      </p>
-
       {/* ── what leaves ─────────────────────────────────────────── */}
-      <h3 className={`${HEADING} mt-2`}>{t('trade.offerHeading')}</h3>
-      <Segmented
-        flush
-        label={t('trade.givePick')}
-        segments={(['alloy', 'crystal', 'deuterium'] as const).map((good) => ({
-          id: good,
-          label: t(`trade.${good}`),
-        }))}
-        value={give}
-        onSelect={pickGive}
-      />
-      <label className="block rounded-control border border-v2-line bg-v2-panel px-3 py-2.5">
-        <span className="flex items-center gap-2">
-          <img
-            src={RESOURCE_ART[give]}
-            alt=""
-            aria-hidden
-            className="size-4 shrink-0 object-contain"
-          />
-          <span className="flex-1 text-caption text-v2-ink-2">{t(`trade.${give}`)}</span>
-          <span data-testid="trade-offer" className="shrink-0 font-v2-mono text-body font-semibold text-v2-ink">
-            {full(amount)}
-          </span>
-        </span>
-        {/*
-          NO SPEND BAR HERE, AND THAT IS A REMOVAL RATHER THAN AN OMISSION. Owner
-          report: *"Sliderlarda neden 'depodan çıkan' bölümü var? Zaten ne kadar
-          göndereceğimi seçiyorum, hemen üstünde de aynı şeyi gösteriyor."* The
-          figure, the bar and the slider were three drawings of one number. The
-          readout above states it and the line below states its ceiling and why —
-          which is the part that was actually missing. The fuel bar further down
-          keeps its `SpendBar` because deuterium in a hold and deuterium in a tank
-          are two different quantities competing for one store (D136).
-        */}
-        <input
-          type="range"
-          min={0}
-          max={Math.max(step, top)}
-          step={step}
-          value={amount}
-          aria-label={t('trade.giveAmount', { resource: t(`trade.${give}`) })}
-          onChange={(event) => {
-            setOffer(Math.max(0, Math.floor(event.currentTarget.valueAsNumber || 0)));
-          }}
-          style={{ '--slider-fill': `${String(share(amount, Math.max(1, top)))}%` } as CSSProperties}
-          className={`slider slider-${give} mt-2 w-full`}
+      <section className="gk-launch__fleet">
+        <SectionTag as="h3">{t('trade.offerHeading')}</SectionTag>
+        <Choices
+          label={t('trade.givePick')}
+          options={(['alloy', 'crystal', 'deuterium'] as const).map((good) => ({ id: good, label: t(`trade.${good}`) }))}
+          value={give}
+          onChange={pickGive}
         />
-        {/*
-          WHAT THE CEILING IS AND WHY. Owner report: *"benim maximumum ne belli
-          değil."* The number alone is half an answer — the other half is whether
-          to wait for the mine or add a ship, and only the wall knows that.
-        */}
-        <span data-testid="trade-ceiling" className="mt-2 block text-micro text-v2-ink-3">
-          {t(wall === 'hold' ? 'trade.ceilingHold' : 'trade.ceilingStore', {
-            amount: full(top),
-            worth: full((top * rate[give]) / rate[dear]),
-            good: t(`trade.${dear}`),
-          })}
-        </span>
-      </label>
+        <div className="gk-well gk-cargo__row">
+          {/*
+            NO SPEND BAR HERE, AND THAT IS A REMOVAL RATHER THAN AN OMISSION. Owner report:
+            *"Sliderlarda neden 'depodan çıkan' bölümü var?"* The figure states the amount and
+            the line below its ceiling and why — which is the part that was actually missing.
+          */}
+          <span className="gk-cargo__head">
+            <img src={RESOURCE_ART[give]} alt="" aria-hidden />
+            <span className="gk-label">{t(`trade.${give}`)}</span>
+          </span>
+          <span data-testid="trade-offer" className="gk-num gk-trade__amount">{full(amount)}</span>
+          <Slider
+            label={t('trade.giveAmount', { resource: t(`trade.${give}`) })}
+            value={amount}
+            max={Math.max(step, top)}
+            step={step}
+            onChange={(value) => { setOffer(Math.max(0, Math.floor(value))); }}
+          />
+          {/*
+            WHAT THE CEILING IS AND WHY. Owner report: *"benim maximumum ne belli değil."*
+            The number alone is half an answer — the other half is whether to wait for the
+            mine or add a ship, and only the wall knows that.
+          */}
+          <p data-testid="trade-ceiling" className="gk-sub gk-trade__wide">
+            {t(wall === 'hold' ? 'trade.ceilingHold' : 'trade.ceilingStore', {
+              amount: full(top),
+              worth: full((top * rate[give]) / rate[dear]),
+              good: t(`trade.${dear}`),
+            })}
+          </p>
+        </div>
+      </section>
 
       {/* ── what comes home ─────────────────────────────────────── */}
-      <h3 className={`${HEADING} mt-2`}>
-        {t('trade.askHeading')}
-        <span className="ml-2 font-v2-mono normal-case tracking-normal text-v2-ink-2">{t('trade.askUnits', { units: full(units) })}</span>
-      </h3>
-      <div
-        data-testid="trade-split"
-        className="rounded-control border border-v2-line bg-v2-panel px-3 py-2.5"
-      >
+      <section className="gk-launch__fleet">
+        <SectionTag as="h3" aside={t('trade.askUnits', { units: full(units) })}>{t('trade.askHeading')}</SectionTag>
         {/*
-          BOTH ENDS OF THE SWAP, READ OFF ONE CONTROL. The units are already bought;
-          all that is left is which goods they come home as. Two independent amounts
-          would let a player pay for units they never collect, which is the leftover
-          the first sheet had to invent a "use it all" button to clean up after.
+          BOTH ENDS OF THE SWAP, READ OFF ONE CONTROL. The units are already bought; all that
+          is left is which goods they come home as. CHEAP LEFT, DEAR RIGHT — the order the
+          handle moves in (owner): the slider's value IS the dear good, so dragging right buys
+          more of it.
         */}
-        {/*
-          CHEAP LEFT, DEAR RIGHT — THE ORDER THE HANDLE MOVES IN. Owner instruction:
-          *"Al kısmında alınan, yani tercih edilen sağda olmalı, çünkü slider'ı o
-          tarafa doğru çekiyoruz."* The slider's value IS the dear good, so dragging
-          right buys more of it; the readouts sat dear-first, which put the number
-          that grows on the far side of the control that grows it.
-        */}
-        <div className="flex items-center gap-2">
-          {([cheap, dear] as const).map((good, index) => (
-            <span key={good} className={`flex min-w-0 flex-1 items-center gap-2 ${index % 2 === 1 ? 'flex-row-reverse' : ''}`}>
-              <img
-                src={RESOURCE_ART[good]}
-                alt=""
-                aria-hidden
-                className="size-5 shrink-0 object-contain"
-              />
-              <span className="min-w-0">
-                <span className="block truncate text-micro text-v2-ink-3">{t(`trade.${good}`)}</span>
-                <span data-take={good} className="block font-v2-mono text-body font-semibold text-v2-ink">
-                  {full(netWant[good])}
+        <div data-testid="trade-split" className="gk-well gk-trade__split">
+          <div className="gk-trade__ends">
+            {([cheap, dear] as const).map((good) => (
+              <span key={good} className="gk-trade__end">
+                <img src={RESOURCE_ART[good]} alt="" aria-hidden />
+                <span className="gk-trade__endwords">
+                  <span className="gk-label">{t(`trade.${good}`)}</span>
+                  <span data-take={good} className="gk-num gk-trade__take">{full(netWant[good])}</span>
                 </span>
               </span>
-            </span>
-          ))}
+            ))}
+          </div>
+          {units > 0
+            ? <Slider label={splitLabel} value={want[dear]} min={splitFloor} max={Math.max(splitFloor, splitTop)}
+                onChange={(value) => { setLead(Math.max(0, Math.floor(value))); }} />
+            : <p className="gk-sub">{t('trade.noOffer')}</p>}
+          <div className="gk-trade__toward gk-sub">
+            <span>{t('trade.splitToward', { resource: t(`trade.${cheap}`) })}</span>
+            <span>{t('trade.splitToward', { resource: t(`trade.${dear}`) })}</span>
+          </div>
         </div>
-        <input
-          type="range"
-          min={splitFloor}
-          max={Math.max(splitFloor, splitTop)}
-          step={1}
-          value={want[dear]}
-          disabled={units <= 0}
-          aria-label={t('trade.splitLabel')}
-          onChange={(event) => {
-            setLead(Math.max(0, Math.floor(event.currentTarget.valueAsNumber || 0)));
-          }}
-          style={{
-            '--slider-fill': `${String(share(want[dear] - splitFloor, Math.max(1, splitTop - splitFloor)))}%`,
-          } as CSSProperties}
-          className={`slider slider-${dear} mt-3 w-full`}
-        />
-        <div className="mt-2 flex justify-between text-micro text-v2-ink-3">
-          <span>{t('trade.splitToward', { resource: t(`trade.${cheap}`) })}</span>
-          <span>{t('trade.splitToward', { resource: t(`trade.${dear}`) })}</span>
+
+        {/*
+          WHY A FULL STORE STILL BUYS SO LITTLE. Owner report: *"Bir sürü döteryumum var ama
+          örneğin sadece 20-30 tane verebiliyorum."* The convoy is sized by the leg that
+          carries the most, and for a commander selling the dear good that is always the way
+          HOME. BOTH LEGS ARE DRAWN AGAINST THE ROOM THEY COMPETE FOR (D142), and the sentence
+          appears only when the return is the binding one.
+        */}
+        <div data-testid="trade-legs" className="gk-well gk-trade__legs">
+          <dl className="gk-figures gk-trade__legfigs">
+            <div className="gk-figure" {...(returnDecides ? {} : { 'data-binding': '' })}>
+              <dt className="gk-label">{t('trade.legOut')}</dt>
+              <dd className="gk-num gk-figure__value">{full(quote.outboundVolume)}</dd>
+            </div>
+            <div className="gk-figure" {...(returnDecides ? { 'data-binding': '' } : {})}>
+              <dt className="gk-label">{t(planet.honorBenefits && planet.honorBenefits.tradePct > 0 ? 'honorBenefits.grossReturn' : 'trade.legHome')}</dt>
+              <dd className="gk-num gk-figure__value">{full(quote.returnVolume)}</dd>
+            </div>
+            <div className="gk-figure">
+              <dt className="gk-label">{t('trade.legHold')}</dt>
+              <dd className="gk-num gk-figure__value">{full(hold)}</dd>
+            </div>
+          </dl>
+          {planet.honorBenefits && planet.honorBenefits.tradePct > 0
+            ? <p className="gk-sub">{t('honorBenefits.grossCargoRule')}</p> : null}
+          {returnDecides && <p className="gk-inote" data-tone="warn"><Glyph id="warn" />{t('trade.legReturnDecides')}</p>}
         </div>
-      </div>
-
-      {/*
-        WHY A FULL STORE STILL BUYS SO LITTLE. Owner report: *"Bir sürü döteryumum
-        var ama örneğin sadece 20-30 tane verebiliyorum."*
-
-        Because the convoy is sized by the leg that carries the most, and for a
-        commander selling the dear good that is always the way HOME: twenty
-        deuterium is twenty units of hold going out and eighteen hundred coming
-        back. The screen stated the ceiling and named what it bought, and never once
-        said which of the two legs had set it — so six thousand of hold beside an
-        offer of thirty-two read as a bug rather than as the trade-off it is.
-
-        BOTH LEGS ARE DRAWN AGAINST THE ROOM THEY COMPETE FOR (D142), and the
-        sentence appears only when the return is the binding one — the other way
-        round it would be noise on a screen that already has enough.
-      */}
-      <div data-testid="trade-legs" className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-        <div className="flex items-baseline justify-between gap-2 text-caption">
-          <span className="text-v2-ink-3">{t('trade.legOut')}</span>
-          <span className={`font-v2-mono ${returnDecides ? 'text-v2-ink-2' : 'text-v2-ink'}`}>
-            {full(quote.outboundVolume)}
-          </span>
-          <span className="text-v2-ink-3">{t(planet.honorBenefits && planet.honorBenefits.tradePct > 0 ? 'honorBenefits.grossReturn' : 'trade.legHome')}</span>
-          <span className={`font-v2-mono ${returnDecides ? 'text-v2-ink' : 'text-v2-ink-2'}`}>
-            {full(quote.returnVolume)}
-          </span>
-          <span className="text-v2-ink-3">{t('trade.legHold')}</span>
-          <span className="font-v2-mono text-v2-ink-2">{full(hold)}</span>
-        </div>
-        {planet.honorBenefits && planet.honorBenefits.tradePct > 0
-          ? <p className="mt-2 text-micro leading-snug text-v2-ink-2">{t('honorBenefits.grossCargoRule')}</p> : null}
-        {returnDecides && (
-          <p className="mt-2 text-caption leading-snug text-v2-warn">
-            {t('trade.legReturnDecides')}
-          </p>
-        )}
-      </div>
+      </section>
 
       {/* ── the flight ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-x-3 gap-y-2.5 rounded-control border border-v2-line bg-v2-deep/40 px-3 py-2.5">
-        <Figure
-          label={t('trade.figureOut')}
-          value={route === null ? t('trade.figureNone') : duration(route.oneWayMinutes)}
-          tone={route === null ? 'threat' : undefined}
-        />
-        <Figure
-          label={t('trade.figureAway')}
-          value={route === null ? t('trade.figureNone') : duration(route.exposureMinutes)}
-        />
-        <Figure
-          label={t('trade.figureDistance')}
-          value={route === null ? t('trade.figureNone') : route.distance.toFixed(0)}
-        />
-      </div>
+      <dl className="gk-well gk-figures gk-figures--well">
+        <TradeFigure label={t('trade.figureOut')} value={route === null ? t('trade.figureNone') : duration(route.oneWayMinutes)}
+          threat={route === null} />
+        <TradeFigure label={t('trade.figureAway')} value={route === null ? t('trade.figureNone') : duration(route.exposureMinutes)} />
+        <TradeFigure label={t('trade.figureDistance')} value={route === null ? t('trade.figureNone') : route.distance.toFixed(0)} />
+      </dl>
 
       {fuel > 0 && (
-        <div data-testid="trade-fuel" className="rounded-control border border-v2-line bg-v2-panel px-3 py-2.5">
+        <div data-testid="trade-fuel" className="gk-well gk-cargo__fuel">
           {/*
-            THE TANK, MINUS WHAT THE MERCHANT WAS PAID. `assertFuel`'s guard is on
-            the SUM — deuterium in a hold has already left this world as far as the
-            flight is concerned — so offering the last of the tank visibly eats the
-            fuel bar rather than producing a refusal with nothing on screen to
-            explain it. D136.
+            THE TANK, MINUS WHAT THE MERCHANT WAS PAID. `assertFuel`'s guard is on the SUM —
+            deuterium in a hold has already left this world as far as the flight is concerned —
+            so offering the last of the tank visibly eats the fuel bar. D136.
           */}
-          <SpendBar
-            stock={spendableDeuterium}
-            spend={fuel}
-            tone="deuterium"
-            label={t('trade.fuel')}
-          />
+          <SpendBar inline stock={spendableDeuterium} spend={fuel} tone="deuterium" label={t('trade.fuel')} />
         </div>
       )}
-
-      {/* A launch takes a flight bay, and a rack this small is counted, not read. */}
-      <div className="flex items-center gap-2 px-1">
-        <span className="flex-1 text-caption text-v2-ink-2">{t('trade.bays')}</span>
-        <Tally
-          used={planet.flight.used}
-          total={planet.flight.total}
-          label={t('trade.baysReading', {
-            used: planet.flight.used,
-            total: planet.flight.total,
-          })}
-          tone={baysFree > 0 ? 'crystal' : 'alloy'}
-        />
-      </div>
-
-      {/*
-        WHAT THIS WORLD IS LEFT HOLDING, drawn the way both neighbouring sheets
-        draw it. A convoy is not an attack, so the departing slice is alloy rather
-        than threat red — but the shape is deliberately the same, because the
-        consequence is: those craft are not here while they are out there.
-      */}
-      <div
-        data-origin-defence
-        className="flex h-2 w-full overflow-hidden rounded-full bg-v2-line"
-        role="img"
-        aria-label={t('trade.homeDefence', {
-          ships: fleetCount(remainingFleet) + fleetCount(planet.ground),
-          power: compact(holdingPower),
-        })}
-      >
-        <span
-          data-part="holds"
-          className="h-full bg-v2-self transition-[width] duration-200"
-          style={{ width: `${String(share(holdingPower, powerNow))}%` }}
-        />
-        <span
-          data-part="leaves"
-          className="h-full bg-v2-alloy transition-[width] duration-200"
-          style={{ width: `${String(share(powerNow - holdingPower, powerNow))}%` }}
-        />
-      </div>
-      <p className="-mt-1.5 text-micro text-v2-ink-3">
-        {t('trade.homeDefence', {
-          ships: fleetCount(remainingFleet) + fleetCount(planet.ground),
-          power: compact(holdingPower),
-        })}
-      </p>
-
       </div>
     </Sheet>
   );
@@ -756,25 +626,12 @@ export function TradeSheet({
  */
 const holdOf = (id: HullId, tech: TechLevels): number => transferCargoCapacity({ [id]: 1 }, tech);
 
-/** A section's name, as the launch and transfer sheets set it. */
-const HEADING = 'px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3';
-
-function Figure({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  /** Red for a figure that is the reason the commit will refuse. */
-  tone?: 'threat';
-}) {
+/** A figure of the flight, in the kit's figure; red when it is why the send will refuse. */
+function TradeFigure({ label, value, threat = false }: { label: string; value: string; threat?: boolean }) {
   return (
-    <div className="min-w-0">
-      <p className="truncate text-micro text-v2-ink-3">{label}</p>
-      <p className={`mt-0.5 font-v2-mono text-caption font-semibold ${tone === 'threat' ? 'text-v2-hostile' : 'text-v2-ink'}`}>
-        {value}
-      </p>
+    <div className="gk-figure">
+      <dt className="gk-label">{label}</dt>
+      <dd className="gk-num gk-figure__value" {...(threat ? { 'data-tone': 'hostile' } : {})}>{value}</dd>
     </div>
   );
 }

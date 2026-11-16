@@ -122,3 +122,28 @@ describe('the clan support sheet', () => {
     expect(await screen.findByText(/home before the season ends/i)).toBeInTheDocument();
   });
 });
+
+/**
+ * G7-i (2026-11-15): SENDING CLAN SUPPORT ON THE GAME KIT. "Can my ships hold my clanmate's world, and
+ * on what terms?" A kit sheet in our colour, the ships on the launch's kit rows, the flight in kit
+ * figures, the binding rules in a well before the hold, and the send on the kit's spend hold (1 s):
+ * the fuel is burnt, though the line can be called home.
+ */
+const V2_LOOK = /(^|\s)(text|bg|border|font|ring)-v2-|rounded-(control|cell|chip)|(^|\s)text-(micro|body|caption|label|title)(\s|$)/;
+const oldPaint = (root: Element): string[] =>
+  [root, ...root.querySelectorAll('[class]')].map((el) => el.getAttribute('class') ?? '').filter((name) => V2_LOOK.test(name));
+
+describe('the support sheet on the kit', () => {
+  it('is a kit sheet with kit rows, kit figures, the rules in a well and the spend hold', async () => {
+    show(quote({ seasonClipped: true, band: { ok: false, mine: 3, theirs: 5 } }));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveClass('gk-sheet');
+    expect(document.querySelector('[data-hull-row="PIKE"]')).toHaveClass('gk-lrow');
+    await pick(2);
+    await screen.findByText(/home before the season ends/i);
+    expect(oldPaint(dialog)).toEqual([]);
+    expect(document.querySelector('[data-support-rules]')).toHaveClass('gk-well');
+    expect(document.querySelector('[data-support-figures]')).toHaveClass('gk-figures');
+    expect(commit().style.getPropertyValue('--gk-hold-ms')).toBe('1000ms');
+  });
+});

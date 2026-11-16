@@ -1,7 +1,6 @@
 import { Component, Suspense, lazy, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { launchLoad, pointsLeft, remainingFlightSeconds, shipTuning, type LoadoutPlan, type ShipClass } from '@astera/rules/arena';
-import { HoldButton } from '../../v2/kit/HoldButton.js';
-import { Segmented } from '../../v2/kit/Segmented.js';
+import { DoorRow, GameButton, GameHold, GameTabs } from '../../game-ui/index.js';
 import { openReferenceSession } from '../access.js';
 import { arenaCopy, type ArenaCopy } from '../copy.js';
 import { blockLine, launchText, levelGains } from '../Hangar.js';
@@ -153,54 +152,49 @@ export function HangarPanel({ credential, onEnter, onSpent }: { credential: () =
   const points = owned ? pointsLeft(owned.level, owned.abilities) : 0;
   const classBlock = <ClassBlock c={c} value={shown} level={owned?.level ?? 1} points={owned?.class === shown ? owned.abilities : {}} onPick={pick}
     {...(open ? { aside: c.changeLeft(left(changeUntil - now, c)) } : {})}>
-    {change && <p className="text-caption leading-relaxed text-v2-ink-2">{c.changeNote}</p>}
+    {change && <p className="gk-inote" data-tone="warn">{c.changeNote}</p>}
   </ClassBlock>;
   const holding = busy ? c.hangarBusy : null;
   return <div className="hangar-root" data-ship={shown} style={shipTone(shown)}>
     <div className="hp-stage">
       {flat ? <FlatShip ship={shown} /> : <BayBoundary fallback={<FlatShip ship={shown} />}>
-        <Suspense fallback={<p className="hp-wait">{c.hangarLoading}</p>}>
+        <Suspense fallback={<p className="gk-sub hp-wait">{c.hangarLoading}</p>}>
           <HangarStage ship={shown} pulse={pulse} refs={refs} onLost={lost} />
         </Suspense>
       </BayBoundary>}
-      <div className="hp-plate">
-        <small>{c.classes[shown].role}</small>
-        <p><b>{c.classes[shown].name}</b>{trying ? <em className="is-preview">{c.preview}</em> : owned && <em key={owned.level}>{c.level(owned.level)}</em>}</p>
+      <div data-part="ship-plate" className="gk-hangarplate">
+        <small className="gk-label">{c.classes[shown].role}</small>
+        <p><b className="gk-display">{c.classes[shown].name}</b>{trying ? <span className="gk-chip" data-tone="warn">{c.preview}</span>
+          : owned && <span key={owned.level} className="gk-chip gk-num" data-tone="self">{c.level(owned.level)}</span>}</p>
       </div>
       {hangar && owned && !trying && <div className="hp-state"><ShipStatus c={c} hangar={hangar} now={now} /></div>}
-      <p className="hp-drag" aria-hidden>{c.hangarDrag}</p>
+      <p className="gk-note hp-drag" aria-hidden>{c.hangarDrag}</p>
       {risen !== null && <div key={risen} data-part="level-up" className="hp-levelup" role="status">
         <b>{c.levelUp(risen)}</b>
         <span>{levelGains(shown, risen - 1, c).map(gain => <i key={gain.key}>{gain.name} <em>{gain.text}</em></i>)}</span>
       </div>}
     </div>
     <div className="hp-desk">
-      {!desk ? <p className="hp-loading" aria-busy>{c.hangarTitle} …</p>
+      {!desk ? <p className="gk-sub" aria-busy>{c.hangarTitle} …</p>
         : !desk.ok ? <DeskNote>{c.kicks[desk.error] ?? c.hangarError}</DeskNote>
-        : desk.hangar.core < desk.hangar.minCore ? <div className="hp-lead"><b className="is-gap">{c.coreLine(desk.hangar.core, desk.hangar.minCore)}</b><span>{c.coreHint}</span></div>
-        : !owned && <div className="hp-lead"><b>{c.chooseTitle}</b><span>{c.chooseNote}</span></div>}
+        : desk.hangar.core < desk.hangar.minCore ? <div className="gk-well gk-hangarlead" data-tone="warn"><b className="gk-display">{c.coreLine(desk.hangar.core, desk.hangar.minCore)}</b><span className="gk-sub">{c.coreHint}</span></div>
+        : !owned && <div className="gk-well gk-hangarlead"><b className="gk-display">{c.chooseTitle}</b><span className="gk-sub">{c.chooseNote}</span></div>}
       {note && <DeskNote>{note}</DeskNote>}
       {desk && <Suspense fallback={null}><TeamClaims credential={ask} claimsOnly onClaim={() => { act(token => fetchHangar(token)); }}
         {...(hangar ? { room: { left: capLeft(hangar), resetsAt: hangar.resetsAt } } : {})} /></Suspense>}
       {hangar && owned && !looking ? <>
         <RepairBlock c={c} hangar={hangar} now={now} busy={busy} onRepair={() => { act(token => repairShip(token)); }} />
-        <Segmented label={c.deskTabs} value={section} onChange={setSection} options={[
+        <GameTabs label={c.deskTabs} value={section} onChange={setSection} tabs={[
           { id: 'grow', label: c.tabGrow },
-          { id: 'skills', label: c.tabSkills, dot: points > 0, dotLabel: c.pointsReady(points) },
+          { id: 'skills', label: c.tabSkills, ...(points > 0 ? { badge: points, spoken: `${c.tabSkills} — ${c.pointsReady(points)}` } : {}) },
           { id: 'launch', label: c.tabLaunch },
         ]} />
         {section === 'grow' && <>
           <LevelBlock c={c} hangar={hangar} busy={busy} onUpgrade={() => { act(token => upgradeShip(token), () => { setPulse(n => n + 1); setRisen(owned.level + 1); }); }} />
           <GrowthBlock c={c} ship={owned.class} level={owned.level} />
-          <button type="button" data-part="class-row" onClick={() => { setClasses(true); }}
-            className="hp-card flex items-center gap-3 text-left">
-            <i aria-hidden className="hp-sig-icon hp-glyph grid size-8 shrink-0 place-items-center rounded-control">{SIGNATURE_ICONS[owned.class]}</i>
-            <span className="flex min-w-0 flex-1 flex-col">
-              <b className="text-caption font-semibold text-v2-ink">{open ? c.changeClass : c.compareClasses}</b>
-              {open && <small className="font-v2-mono text-micro text-v2-ink-3">{c.changeLeft(left(changeUntil - now, c))}</small>}
-            </span>
-            <svg viewBox="0 0 20 20" aria-hidden className="size-4 shrink-0 fill-none stroke-v2-ink-3 [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.8]"><path d="M8 5l5 5-5 5" /></svg>
-          </button>
+          <div data-part="class-row"><DoorRow lead={<i aria-hidden className="hp-sig-icon hp-glyph">{SIGNATURE_ICONS[owned.class]}</i>}
+            title={open ? c.changeClass : c.compareClasses} {...(open ? { sub: c.changeLeft(left(changeUntil - now, c)), tone: 'warn' as const } : {})}
+            onPress={() => { setClasses(true); }} /></div>
         </>}
         {section === 'skills' && <AbilitiesBlock c={c} hangar={hangar} busy={busy} onSpend={ability => { act(token => spendAbility(token, ability)); }} />}
         {section === 'launch' && <>
@@ -212,21 +206,16 @@ export function HangarPanel({ credential, onEnter, onSpent }: { credential: () =
     </div>
     <div className="hp-dock">
       {/* Before the first choice, choosing is the one thing to do; while classes are open, going back or the change. A season's class is held, never tapped (B4). */}
-      {choosing ? <HoldButton marker="hp-choose" label={c.choose(c.classes[shown].name)} disabledReason={holding} onCommit={() => { act(token => pickShip(token, shown)); }} />
-        : change ? <div className="grid gap-1.5">
-          <HoldButton marker="hp-change" label={c.changeTo(c.classes[change].name)} disabledReason={holding} onCommit={() => { act(token => pickShip(token, change)); }} />
-          <button type="button" className="min-h-8 text-caption text-v2-ink-2" onClick={back}>{c.cancelPreview}</button>
+      {choosing ? <GameHold weight="final" glyph="check" marks={{ 'data-hp-choose': '' }} label={c.choose(c.classes[shown].name)} disabledReason={holding} onCommit={() => { act(token => pickShip(token, shown)); }} />
+        : change ? <div className="gk-hangardock__pair">
+          <GameHold weight="final" glyph="refresh" marks={{ 'data-hp-change': '' }} label={c.changeTo(c.classes[change].name)} disabledReason={holding} onCommit={() => { act(token => pickShip(token, change)); }} />
+          <GameButton size="sm" tone="ghost" glyph="back" onPress={back}>{c.cancelPreview}</GameButton>
         </div>
-        : looking ? <button type="button" className="hp-go is-back" onClick={back}><span className="text-body font-semibold">{c.backToShip}</span></button>
-        : <>{facts && <p data-part="entry-facts" className="hp-facts">
-          <i aria-hidden className={hangar?.live?.pilots ? 'is-live' : ''} />{facts}</p>}
-        <button type="button" data-testid="hangar-enter" onClick={onEnter} className={`hp-go ${cta.ready ? 'is-ready' : 'is-blocked'}`}>
-          <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left leading-tight">
-            <span className="text-body font-semibold">{cta.line}</span>
-            {cta.note && <small className="max-w-full truncate font-v2-mono text-micro tabular-nums">{cta.note}</small>}
-          </span>
-          <svg viewBox="0 0 20 20" aria-hidden className="size-5 shrink-0 fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:2]"><path d="M5 10h10M11 6l4 4-4 4" /></svg>
-        </button></>}
+        : looking ? <GameButton wide glyph="back" onPress={back}>{c.backToShip}</GameButton>
+        : <>{facts && <p data-part="entry-facts" className="gk-note gk-hangardock__facts">
+          <i aria-hidden {...(hangar?.live?.pilots ? { 'data-live': '' } : {})} />{facts}</p>}
+        <GameButton tone={cta.ready ? 'action' : 'steel'} size="lg" wide glyph="rocket" marks={{ 'data-testid': 'hangar-enter' }}
+          {...(cta.note ? { detail: cta.note } : {})} onPress={onEnter}>{cta.line}</GameButton></>}
     </div>
   </div>;
 }

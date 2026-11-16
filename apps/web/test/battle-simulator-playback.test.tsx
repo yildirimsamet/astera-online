@@ -87,3 +87,16 @@ describe('replay state follows navigation', () => {
     expect(screen.getByRole('button', { name: 'Play battle' })).toBeInTheDocument();
   });
 });
+
+// G11-b1 (2026-11-16): the shot log's round line counted to the battle's limit ("Round 1 / 8") while the
+// status line above counted the rounds fought ("Round 1 / 4"): one battle, two different ends.
+describe('the shot log counts the rounds the battle lasted', () => {
+  it('heads its round with the same total the status line shows', () => {
+    const simulation = simulateScenario(DEFAULT_SCENARIO);
+    const fought = simulation.recording.rounds.length;
+    expect(fought).toBeLessThan(simulation.recording.roundLimit);
+    const { container } = render(<BattleReplay simulation={simulation} environment="PLANET" />);
+    const caption = container.querySelector('.sim-shot-caption');
+    expect(caption).toHaveTextContent(`Round 1 / ${String(fought)}`);
+  });
+});

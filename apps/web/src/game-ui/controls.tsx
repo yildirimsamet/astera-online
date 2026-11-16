@@ -157,40 +157,47 @@ function LeverStop({ label, checked, onPress, onKeyDown }: {
 
 /**
  * A SLIDER FOR A COUNT: drag the knob, nudge with − and + (hold to run), or send
- * everything with MAX. Ticks as it moves.
+ * everything with MAX. Ticks as it moves. It may start above zero and move in lots
+ * (G4-i1: a trade offers whole lots, and its split has a floor): every way of moving it
+ * lands on a step between `min` and the last step that fits under `max`.
  */
-export function Slider({ label, value, max, onChange, readout }: {
+export function Slider({ label, value, max, onChange, readout, min = 0, step = 1 }: {
   label: string;
   value: number;
   max: number;
   onChange: (next: number) => void;
   /** A level (a volume) says where it stands in place of the max button: "all of it" means nothing there. */
   readout?: string;
+  min?: number;
+  step?: number;
 }) {
   const { t } = useTranslation();
   const dragging = useRef(false);
   const start = useRef<number | null>(null);
+  const top = min + Math.max(0, Math.floor((max - min) / step)) * step;
   const set = (next: number): void => {
-    const clamped = Math.min(max, Math.max(0, next));
+    const clamped = Math.min(top, Math.max(min, min + Math.round((next - min) / step) * step));
     if (clamped === value) return;
     playSound('tick');
-    if (clamped === 0 || clamped === max) haptic('thunk');
+    if (clamped === min || clamped === top) haptic('thunk');
     onChange(clamped);
   };
-  const fewer = useRepeatPress((n) => { set(value - n); }, value > 0, max);
-  const more = useRepeatPress((n) => { set(value + n); }, value < max, max);
+  const lots = Math.max(1, Math.floor((top - min) / step));
+  const fewer = useRepeatPress((n) => { set(value - n * step); }, value > min, lots);
+  const more = useRepeatPress((n) => { set(value + n * step); }, value < top, lots);
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    const page = Math.max(1, Math.round(max / 10));
+    const page = Math.max(1, Math.round(lots / 10)) * step;
     const moves: Record<string, number> = {
-      ArrowRight: value + 1, ArrowUp: value + 1, ArrowLeft: value - 1, ArrowDown: value - 1,
-      PageUp: value + page, PageDown: value - page, Home: 0, End: max,
+      ArrowRight: value + step, ArrowUp: value + step, ArrowLeft: value - step, ArrowDown: value - step,
+      PageUp: value + page, PageDown: value - page, Home: min, End: top,
     };
     const next = moves[event.key];
     if (next === undefined) return;
     event.preventDefault();
     set(next);
   };
-  const share = max <= 0 ? 0 : (value / max) * 100;
+  const fromTrack = (fraction: number): number => min + sliderValue(fraction, top - min);
+  const share = top <= min ? 0 : ((value - min) / (top - min)) * 100;
   return (
     <div className="gk-slider" {...OWN_SOUND}>
       <button type="button" className="gk-round gk-round--small" aria-label={t('launch.fewer', { name: label })} {...fewer}>
@@ -200,8 +207,8 @@ export function Slider({ label, value, max, onChange, readout }: {
         role="slider"
         tabIndex={0}
         aria-label={label}
-        aria-valuemin={0}
-        aria-valuemax={max}
+        aria-valuemin={min}
+        aria-valuemax={top}
         aria-valuenow={value}
         className="gk-slider__track"
         onKeyDown={onKeyDown}
@@ -212,10 +219,10 @@ export function Slider({ label, value, max, onChange, readout }: {
           if (start.current === null) return;
           if (!dragging.current && Math.abs(event.clientX - start.current) < 6) return;
           if (!dragging.current) { dragging.current = true; event.currentTarget.setPointerCapture(event.pointerId); }
-          set(sliderValue(along(event), max));
+          set(fromTrack(along(event)));
         }}
         onPointerUp={(event) => {
-          if (start.current !== null && !dragging.current) set(sliderValue(along(event), max));
+          if (start.current !== null && !dragging.current) set(fromTrack(along(event)));
           start.current = null;
           dragging.current = false;
         }}
@@ -228,7 +235,7 @@ export function Slider({ label, value, max, onChange, readout }: {
         <span className="gk-round__face"><Glyph id="plus" /></span>
       </button>
       {readout === undefined
-        ? <Chip label={t('launch.max', { name: label })} onPress={() => { set(max); }} disabled={value === max}>{t('launch.maxShort')}</Chip>
+        ? <Chip label={t('launch.max', { name: label })} onPress={() => { set(top); }} disabled={value === top}>{t('launch.maxShort')}</Chip>
         : <output className="gk-slider__level gk-num">{readout}</output>}
     </div>
   );
@@ -360,6 +367,8 @@ export interface TabItem<T extends string = string> {
    * tone lit with the tab itself, as a stacked bar draws it.
    */
   glyph?: { id: GlyphId; tone?: 'alloy' | 'crystal' | 'deut' | 'self' | 'good' | 'warn' | 'hostile' | 'info' };
+  /** A drawing of its own where the glyph set has no word (a ship class's signature), in its own colour. */
+  art?: ReactNode;
 }
 
 /** The keys that walk a tablist: arrows wrap round the ends, Home and End jump. */
@@ -454,6 +463,7 @@ function GameTab<T extends string>({ tab, selected, marked, tabId, panelId, onMo
       {tab.glyph && (
         <span className="gk-tab__glyph" aria-hidden="true" data-glyph={tab.glyph.id} {...(tab.glyph.tone === undefined ? {} : { style: { color: `var(--gk-${tab.glyph.tone})` } })}><Glyph id={tab.glyph.id} /></span>
       )}
+      {tab.art !== undefined && <span className="gk-tab__glyph" aria-hidden="true">{tab.art}</span>}
       {tab.label}
       {tab.mark && <span className="gk-tab__mark"><Glyph id={tab.mark.glyph} /></span>}
       {tab.badge !== undefined && tab.badge > 0 && <Dot count={tab.badge} />}
@@ -691,6 +701,62 @@ function LanguageOption({ language, chosen, onChoose, onKeyDown }: {
       <img className="gk-lang__flag" src={LANGUAGE_FLAG[language]} alt="" width={40} height={41} draggable={false} />
       <span className="gk-lang__name">{LANGUAGE_LABEL[language]}</span>
       {chosen && <span className="gk-lang__tick"><Glyph id="check" /></span>}
+    </button>
+  );
+}
+
+/**
+ * A PICK FROM A LIST THAT CAN BE LONG (G7-a): a clanmate among thirty, a world among four. The face
+ * names the field and what is picked; a press drops the kit list below it; a pick closes it, and so
+ * does Escape. A lone answer is a fact on a dashed face, with nothing to press.
+ */
+export function Picker<T extends string>({ label, value, options, onChange }: {
+  label: string;
+  value: T;
+  options: readonly { id: T; label: string; sub?: string }[];
+  onChange: (id: T) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+  const current = options.find((option) => option.id === value) ?? options[0];
+  const toggle = useOwnPress(() => { playSound('tap'); haptic('tap'); setOpen((was) => !was); });
+  if (options.length <= 1) {
+    return (
+      <div className="gk-picker gk-picker--fact">
+        <span className="gk-label">{label}</span>
+        <span className="gk-picker__box"><span className="gk-picker__value">{current?.label ?? '—'}</span></span>
+      </div>
+    );
+  }
+  return (
+    <div className="gk-picker">
+      <button type="button" {...OWN_SOUND} className="gk-picker__face" aria-label={`${label}: ${current?.label ?? ''}`}
+        aria-haspopup="listbox" aria-expanded={open} {...(open ? { 'aria-controls': listId } : {})}
+        onPointerDown={toggle.onPointerDown} onClick={toggle.onClick}>
+        <span className="gk-label">{label}</span>
+        <span className="gk-picker__box"><span className="gk-picker__value">{current?.label}</span><Glyph id="down" /></span>
+      </button>
+      {open && (
+        <div id={listId} role="listbox" aria-label={label} className="gk-picker__list"
+          onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); setOpen(false); } }}>
+          {options.map((option) => (
+            <PickerOption key={option.id} label={option.label} sub={option.sub} chosen={option.id === value}
+              onPick={() => { setOpen(false); if (option.id !== value) onChange(option.id); }} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PickerOption({ label, sub, chosen, onPick }: { label: string; sub: string | undefined; chosen: boolean; onPick: () => void }) {
+  const own = useOwnPress(() => { playSound('tab'); haptic('tap'); onPick(); });
+  return (
+    <button type="button" role="option" aria-selected={chosen} {...OWN_SOUND} className="gk-picker__pick"
+      onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-picker__name">{label}</span>
+      {sub !== undefined && <span className="gk-sub">{sub}</span>}
+      {chosen && <Glyph id="check" />}
     </button>
   );
 }

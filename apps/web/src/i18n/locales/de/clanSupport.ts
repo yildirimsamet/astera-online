@@ -64,6 +64,7 @@ export const clanSupport = {
   recallRule: 'Im Flug umkehren lassen oder nach der Landung jederzeit heimrufen.',
   noOrigin: 'Wähle eine deiner Welten.',
   noFleet: 'Wähle mindestens ein Schiff.',
+  lineShips: 'Deine Linie',
   noShips: 'Auf dieser Welt sind keine Schiffe zu Hause.',
   quoting: 'Route wird berechnet…',
   sending: 'Wird gesendet…',

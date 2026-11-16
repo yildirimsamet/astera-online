@@ -64,6 +64,7 @@ export const clanSupport = {
   recallRule: 'Fais-la faire demi-tour en vol, ou rappelle-la à tout moment après l’atterrissage.',
   noOrigin: 'Choisis l’un de tes mondes.',
   noFleet: 'Choisis au moins un vaisseau.',
+  lineShips: 'Ta ligne',
   noShips: 'Aucun vaisseau à quai sur ce monde.',
   quoting: 'Calcul de la route…',
   sending: 'Envoi…',

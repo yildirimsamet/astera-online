@@ -133,7 +133,7 @@ describe('the A and B keys', () => {
 describe('the hangar', () => {
   it('names each class\'s signature beside its line', () => {
     const view = render(<ClassPicker c={arenaCopy()} value="akinci" onPick={() => undefined} />);
-    expect(view.container.querySelector('.ap-class-signature')?.textContent).toContain(arenaCopy().signatures.akinci.name);
+    expect(view.container.querySelector('.gk-shipclass__sig')?.textContent).toContain(arenaCopy().signatures.akinci.name);
   });
 
   it('offers the B slot as one choice of the tactics, the picked one checked', () => {

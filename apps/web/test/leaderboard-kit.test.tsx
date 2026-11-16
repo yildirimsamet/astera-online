@@ -81,6 +81,17 @@ describe('the live ladder on the kit (C19)', () => {
     expect(screen.getByRole('searchbox')).toHaveClass('gk-field__input');
   });
 
+  // G9 close (2026-11-16): the page sat outside the kit's root, so its copy fell back to the browser's face;
+  // and the purse borrowed the report haul's row, which became a three-column grid and stacked "820 / 1,750" on the next art.
+  it('speaks in the kit’s type, and sets the purse on its own row', () => {
+    show();
+    expect(document.querySelector('[data-v2-leaderboard]')).toHaveClass('gk');
+    const purse = document.querySelector('[data-honor-prize] .gk-lb__purse');
+    expect(purse).not.toBeNull();
+    expect(document.querySelector('[data-honor-prize] .gk-haul__row')).toBeNull();
+    expect(purse!.querySelectorAll('[data-res]')).toHaveLength(3);
+  });
+
   it('leaves no v1 or v2 utility on the page', () => {
     show();
     noLegacy(document.querySelector('[data-v2-leaderboard]')!);

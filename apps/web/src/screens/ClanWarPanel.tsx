@@ -1,4 +1,4 @@
-import { CLAN, HULLS, MOBILE_HULLS, fleetCount, pacesForMinutes, shipCanFight, shipHealthGroups, healthGroupKey, type MissionPace } from '@astera/rules';
+import { CLAN, MOBILE_HULLS, fleetCount, pacesForMinutes, shipCanFight, shipHealthGroups, healthGroupKey, type MissionPace } from '@astera/rules';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClanWarActions } from '../api/queries.js';
@@ -8,18 +8,18 @@ import { describeError } from '../i18n/errors.js';
 import { hullName, monumentName } from '../i18n/names.js';
 import { healthDisplay } from '../lib/maintenanceInventory.js';
 import { decimal, full } from '../lib/format.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { countdown, duration, useNow } from '../lib/time.js';
 import { planetArt } from '../ui/assets.js';
+import { HullMark } from '../ui/icons/hulls.js';
 import { PaceRow } from '../ui/PaceRow.js';
 import { RadiationPreview } from '../ui/RadiationPreview.js';
-import { Confirm } from '../ui/kit/Confirm.js';
+import { RulesRow } from '../ui/RulesRow.js';
 import { initials } from '../v2/hud/CommanderCard.js';
-import { Icon } from '../v2/icons.js';
-import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
-import { HoldButton } from '../v2/kit/HoldButton.js';
-import { Button, Plate } from '../v2/kit/Surface.js';
-import { Toggle } from '../v2/kit/Toggle.js';
+import { GameButton, GameHold, Glyph, Toggle } from '../game-ui/index.js';
 import { ClanBanner } from './ClanBanner.js';
+import { ClanConfirmation } from './ClanConfirmation.js';
 import { ClanDonateSheet } from './ClanDonateSheet.js';
 import { ClanWaveSheet } from './ClanWaveSheet.js';
 
@@ -66,15 +66,15 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
   const [acknowledgeRadiation, setAcknowledgeRadiation] = useState(false);
   const operation = war.operation;
 
-  if (!war.available) return <p className="px-2 py-4 text-body text-v2-ink-2">{t('clanWar.unavailable')}</p>;
+  if (!war.available) return <p className="gk-inote">{t('clanWar.unavailable')}</p>;
 
   const hangar = <ClanHangar war={war} />;
   const treasury = <ClanBanner war={war} role={role} selfPlayerId={selfPlayerId} canGive={worlds.length > 0} onDonate={() => { setDonateOpen(true); }} />;
+  // Why the room exists: a member reads it once, so it waits one press away.
   const purpose = (
-    <Plate className="p-3">
-      <h3 className="text-caption font-semibold text-v2-ink">{t('clanWar.purpose')}</h3>
-      <p className="mt-1 text-micro leading-snug text-v2-ink-2">{t('clanWar.purposeHint')}</p>
-    </Plate>
+    <RulesRow glyph="help" title={t('clanWar.purpose')}>
+      <p className="gk-sub">{t('clanWar.purposeHint')}</p>
+    </RulesRow>
   );
   const donation = donateOpen && (
     <ClanDonateSheet war={war} worlds={worlds} onClose={() => { setDonateOpen(false); }} />
@@ -82,12 +82,12 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
 
   if (!operation) {
     return (
-      <div className="flex min-w-0 flex-col gap-3 pb-5">
+      <div className="gk-war">
         {purpose}
-        <Plate className="p-3">
-          <h3 className="text-caption font-semibold text-v2-ink">{t('clanWar.target')}</h3>
-          <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">{t('clanWar.noTarget')}</p>
-        </Plate>
+        <section className="gk-well gk-war__state">
+          <p className="gk-inote"><Glyph id="target" />{t('clanWar.target')}</p>
+          <p className="gk-sub">{t('clanWar.noTarget')}</p>
+        </section>
         {hangar}
         {treasury}
         {donation}
@@ -119,49 +119,35 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
       : (radiation?.missingConsents.length ?? 0) > 0 ? t('clanWar.radiationMemberRequired')
       : ownRadiationLoss && !acknowledgeRadiation ? t('monument.consent')
       : actions.start.isPending ? t('clanWar.starting') : null);
-  const sendRefusal = !mature ? t('clanWar.immature') : null;
+  const sendRefusal = !mature ? t('clanWar.immature') : worlds.length === 0 ? t('clanWar.noOrigin') : null;
 
   return (
-    <div className="flex min-w-0 flex-col gap-3 pb-5">
-      <HonorSoloNotice />
+    <div className="gk-war">
+      <HonorSoloNotice look="kit" />
       <WarTarget operation={operation} now={now} />
       <Seats operation={operation} members={members} selfPlayerId={selfPlayerId} now={now} />
       {hangar}
 
       {assembling && (
-        <div className="flex flex-col gap-2">
-          <p className="rounded-control border border-v2-line bg-v2-deep/50 px-3 py-2 text-micro leading-snug text-v2-ink-2">
-            {t('clanWar.roomNote')}
-          </p>
-          {sendRefusal && <p className="text-micro text-v2-warn">{sendRefusal}</p>}
-          <div className="grid grid-cols-[auto_1fr] gap-2">
-            <button
-              type="button"
-              onClick={onOpenClanChat}
-              disabled={!onOpenClanChat}
-              className="flex min-h-10 items-center gap-1.5 rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-ink disabled:opacity-40"
-            >
-              <Icon id="i-chat" className="size-4" />
+        <section className="gk-war__send">
+          <p className="gk-inote"><Glyph id="recall" />{t('clanWar.roomNote')}</p>
+          <div className="gk-war__pair">
+            <GameButton glyph="chat" disabledReason={onOpenClanChat ? null : t('clanWar.chat')} onPress={() => { onOpenClanChat?.(); }}>
               {t('clanWar.chat')}
-            </button>
-            <button
-              type="button"
-              disabled={sendRefusal !== null || worlds.length === 0}
-              onClick={() => { setWaveOpen(true); }}
-              className="min-h-10 rounded-control bg-v2-self px-3 text-caption font-semibold text-v2-self-ink disabled:opacity-40"
-            >
-              {t('clanWar.composer')} ›
-            </button>
+            </GameButton>
+            <GameButton tone="action" glyph="plus" marks={{ 'data-wave-open': '' }} disabledReason={sendRefusal} onPress={() => { setWaveOpen(true); }}>
+              {t('clanWar.composer')}
+            </GameButton>
           </div>
-        </div>
+        </section>
       )}
 
       {role === 'LEADER' && assembling && (
-        <Plate className="flex flex-col gap-2 p-3">
-          <h3 className="text-caption font-semibold text-v2-ink">{t('clanWar.leaderTitle')}</h3>
+        <section className="gk-well gk-war__lead">
+          <p className="gk-label gk-war__leadhead"><Glyph id="flag" />{t('clanWar.leaderTitle')}</p>
           {strikeMinutes !== null && (
             <>
-              <p data-clan-strike-eta className="text-caption text-v2-ink-2">{t('clanWar.strikeEta', {
+              <p data-clan-strike-eta className="gk-inote" data-tone="self"><Glyph id="clock" />{t('clanWar.strikeEta', {
                 time: duration(operation.pool.meetings.find(m=>m.pace===strikePace)?.minutes ?? strikeMinutes / strikePace) })}</p>
               <PaceRow data-clan-pace paces={strikePaces} pace={strikePace} onChange={(pace) => {
                 setWantedPace(pace); setAcknowledgeRadiation(false);
@@ -173,23 +159,22 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
           {radiation?.own.map((forecast, index) => <RadiationPreview key={index} combat radiation={{ kind: 'HP',
             doseHp: forecast.doseHp, destroyed: forecast.destroyed, lostFleet: forecast.lostFleet,
             lots: forecast.health, docks: forecast.health.some((lot) => lot.needsDock) }} />)}
-          {ownRadiationLoss && <Toggle tone="hostile" checked={acknowledgeRadiation} onChange={setAcknowledgeRadiation}>
-            {t('monument.radiation')}
-          </Toggle>}
-          {radiation?.missingConsents.map((member) => <p key={member.playerId} className="text-caption text-v2-hostile">
-            {t('clanWar.radiationMember', { name: member.username, count: member.count })}
+          {ownRadiationLoss && <Toggle checked={acknowledgeRadiation} onChange={setAcknowledgeRadiation} label={t('monument.radiation')} />}
+          {radiation?.missingConsents.map((member) => <p key={member.playerId} className="gk-inote" data-tone="hostile">
+            <Glyph id="radiation" />{t('clanWar.radiationMember', { name: member.username, count: member.count })}
           </p>)}
           {operation.startShieldWouldDrop && (
-            <div className="flex flex-col gap-1 rounded-control border border-v2-hostile/40 bg-v2-hostile/5 px-2.5 py-2">
-              <p className="text-caption text-v2-hostile">{t('clanWar.launchShield', { kind: operation.startShieldWouldDrop.kind })}</p>
-              <Toggle tone="hostile" checked={acknowledgeStartShield} onChange={setAcknowledgeStartShield}>
-                {t('clanWar.acknowledgeShield')}
-              </Toggle>
+            <div className="gk-war__shield">
+              <p className="gk-inote" data-tone="hostile"><Glyph id="shield" />{t('clanWar.launchShield', { kind: operation.startShieldWouldDrop.kind })}</p>
+              <Toggle checked={acknowledgeStartShield} onChange={setAcknowledgeStartShield} label={t('clanWar.acknowledgeShield')} />
             </div>
           )}
-          {/* Irreversible — every wave flies into battle — so it is held (K4), its reason on its face. */}
+          {/* Every wave flies into battle and none comes back on a press: the kit's final hold, its reason on its face. */}
           <div data-strike-commit="">
-            <HoldButton
+            <GameHold
+              weight="final"
+              glyph="attack"
+              commitSound="impact"
               label={t('clanWar.launch')}
               disabledReason={strikeRefusal}
               onCommit={() => {
@@ -198,40 +183,41 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
               }}
             />
           </div>
-          <Button size="sm" variant="ghost" disabled={actions.cancel.isPending}
-            onClick={() => { actions.cancel.reset(); setCancelOperationId(operation.id); }}>{t('clanWar.cancel')}</Button>
-          {actions.start.isError && <p role="alert" className="text-caption text-v2-warn">{describeError(actions.start.error)}</p>}
-          {actions.cancel.isError && !confirmingCancel && <p role="alert" className="text-caption text-v2-warn">{describeError(actions.cancel.error)}</p>}
-        </Plate>
+          {actions.start.isError && <p role="alert" className="gk-inote" data-tone="warn"><Glyph id="warn" />{describeError(actions.start.error)}</p>}
+          {confirmingCancel ? (
+            <ClanConfirmation
+              title={t('clanWar.cancelTitle')}
+              body={t('clanWar.cancelBody')}
+              confirm={t('clanWar.cancelConfirm')}
+              back={t('clanWar.cancelBack')}
+              busy={actions.cancel.isPending}
+              error={actions.cancel.isError ? describeError(actions.cancel.error) : null}
+              onCancel={() => { setCancelOperationId(null); }}
+              onConfirm={() => {
+                if (actions.cancel.isPending) return;
+                actions.cancel.mutate(undefined, { onSuccess: () => { setCancelOperationId(null); } });
+              }}
+            />
+          ) : (
+            <GameButton size="sm" glyph="close" className="gk-war__cancel" pending={actions.cancel.isPending}
+              onPress={() => { actions.cancel.reset(); setCancelOperationId(operation.id); }}>
+              {t('clanWar.cancel')}
+            </GameButton>
+          )}
+          {actions.cancel.isError && !confirmingCancel && <p role="alert" className="gk-inote" data-tone="warn"><Glyph id="warn" />{describeError(actions.cancel.error)}</p>}
+        </section>
       )}
 
       {operation.status === 'RETURNING' && (
-        <Plate className="p-3">
-          <h3 className="text-caption font-semibold text-v2-ink">{t('clanWar.returning')}</h3>
-          <p className="mt-1 text-caption text-v2-ink-2">{t('clanWar.returningHint')}</p>
-        </Plate>
+        <section className="gk-well gk-war__state">
+          <p className="gk-inote" data-tone="self"><Glyph id="recall" />{t('clanWar.returning')}</p>
+          <p className="gk-sub">{t('clanWar.returningHint')}</p>
+        </section>
       )}
 
       {treasury}
       {purpose}
       {donation}
-      {confirmingCancel && (
-        <Confirm
-          eyebrow={t('clanWar.leaderTitle')}
-          title={t('clanWar.cancelTitle')}
-          confirmLabel={t('clanWar.cancelConfirm')}
-          backLabel={t('clanWar.cancelBack')}
-          pending={actions.cancel.isPending}
-          onClose={() => { setCancelOperationId(null); }}
-          onConfirm={() => {
-            if (actions.cancel.isPending) return;
-            actions.cancel.mutate(undefined, { onSuccess: () => { setCancelOperationId(null); } });
-          }}
-        >
-          <p className="text-body leading-relaxed text-v2-ink-2">{t('clanWar.cancelBody')}</p>
-          {actions.cancel.isError && <p role="alert" className="mt-2 text-caption text-v2-warn">{describeError(actions.cancel.error)}</p>}
-        </Confirm>
-      )}
       {waveOpen && (
         <ClanWaveSheet
           operation={operation}
@@ -259,7 +245,7 @@ function placeOf(wave: Wave, now: number): number | null {
 }
 
 /** A label near either end is pinned inside the row rather than centred off its edge. */
-const anchor = (at: number): string => (at < 14 ? 'translate-x-0' : at > 86 ? '-translate-x-full' : '-translate-x-1/2');
+const anchor = (at: number): 'start' | 'mid' | 'end' => (at < 14 ? 'start' : at > 86 ? 'end' : 'mid');
 
 /**
  * THE TARGET AND THE LINE THE WAVES FLY ON. E9: who is struck, where the clan gathers, how
@@ -276,76 +262,62 @@ function WarTarget({ operation, now }: { operation: Operation; now: number }) {
   const staged = operation.contributions.filter((wave) => wave.status === 'STAGED').length;
 
   return (
-    <Plate className="flex flex-col gap-3 p-3">
-      <div data-war-target="" className="flex flex-col gap-3">
-        <div className="flex items-center gap-2.5">
-          {operation.target.kind === 'MONUMENT'
-            ? <span className="flex size-11 shrink-0 items-center justify-center rounded-control border border-v2-line text-v2-self"><Icon id="i-attack" className="size-6" /></span>
-            : <img src={planetArt(operation.target.planetId)} alt="" className="size-11 shrink-0 rounded-full object-cover" />}
-          <div className="min-w-0 flex-1">
-            <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-              <span className="text-micro text-v2-ink-3">{t('clanWar.target')}</span>
-              {operation.target.kind !== 'MONUMENT' && operation.target.username && <span className="rounded-chip border border-v2-rival/60 px-1 font-v2-mono text-micro font-semibold leading-4 text-v2-rival">
-                {operation.target.username}
-              </span>}
-              <span className="break-words text-caption font-semibold text-v2-ink">{operation.target.kind === 'MONUMENT'
-                ? monumentName(operation.target.monumentOrdinal ?? undefined)
-                : operation.target.planetName}</span>
-            </p>
-            {operation.status === 'ASSEMBLING' && (
-              <p className="text-micro text-v2-ink-2">{t('clanWar.expires', { time: countdown(operation.expiresAt.getTime() - now) })}</p>
-            )}
-          </div>
-          <span aria-live="polite" className="shrink-0 text-micro font-semibold text-v2-self">
-            {t(`clanWar.operationStatus.${operation.status}`)}
-          </span>
-        </div>
-
-        <div data-war-line="" className="relative h-[4.5rem] font-v2-ui">
-          {/* Waves in flight, named above the line on two alternating rows so neighbours never collide. */}
-          {flying.map(({ wave, at }, index) => (
-            <span
-              key={`label-${wave.id}`}
-              data-wave-label=""
-              className={`absolute flex items-center gap-1 whitespace-nowrap text-micro leading-none text-v2-ink-2 ${anchor(at)} ${index % 2 === 0 ? 'top-0' : 'top-3.5'}`}
-              style={{ left: `${String(at)}%` }}
-            >
-              <span className="font-semibold text-v2-ink">{wave.username} · {fleetCount(wave.fleet)}</span>
-              {wave.arrivesAt && (
-                <span className="font-v2-mono text-v2-ink-3">{duration(Math.max(1, (wave.arrivesAt.getTime() - now) / 60_000))}</span>
-              )}
-            </span>
-          ))}
-          {staged > 0 && (
-            <span className={`absolute top-0 whitespace-nowrap text-micro font-semibold leading-none text-v2-ally ${anchor(GATHER)}`} style={{ left: `${String(GATHER)}%` }}>
-              {t('clanWar.readyCount', { count: staged })}
-            </span>
+    <section data-war-target="" className="gk-well gk-war__target">
+      <div className="gk-war__head">
+        {operation.target.kind === 'MONUMENT'
+          ? <span className="gk-war__mark" aria-hidden="true"><Glyph id="banner" /></span>
+          : <img src={planetArt(operation.target.planetId)} alt="" className="gk-war__world" />}
+        <div className="gk-war__who">
+          <p className="gk-crewlist__name">
+            <span className="gk-label">{t('clanWar.target')}</span>
+            {operation.target.kind !== 'MONUMENT' && operation.target.username
+              ? <span className="gk-chip gk-crewlist__chip gk-num" data-tone="hostile">{operation.target.username}</span> : null}
+          </p>
+          <p className="gk-war__name">{operation.target.kind === 'MONUMENT'
+            ? monumentName(operation.target.monumentOrdinal ?? undefined)
+            : operation.target.planetName}</p>
+          {operation.status === 'ASSEMBLING' && (
+            <p className="gk-sub gk-num">{t('clanWar.expires', { time: countdown(operation.expiresAt.getTime() - now) })}</p>
           )}
-
-          <span aria-hidden="true" className="absolute inset-x-1 top-8 h-0.5 -translate-y-1/2 rounded-full bg-v2-ally/30" />
-          <span aria-hidden="true" className="absolute left-1 top-8 h-0.5 -translate-y-1/2 rounded-full bg-v2-ally/70" style={{ width: `${String(GATHER)}%` }} />
-          <span aria-hidden="true" className="absolute top-8 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-v2-ally bg-v2-panel" style={{ left: `${String(GATHER)}%` }} />
-          <span aria-hidden="true" className="absolute right-0 top-8 size-3.5 -translate-y-1/2 rounded-full border-2 border-v2-rival bg-v2-panel" />
-          {operation.contributions.map((wave) => {
-            const at = placeOf(wave, now);
-            return at === null ? null : (
-              <span
-                key={wave.id}
-                data-wave-marker=""
-                title={wave.username}
-                className="absolute top-8 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-v2-ally ring-2 ring-v2-panel"
-                style={{ left: `${String(at)}%` }}
-              />
-            );
-          })}
-
-          <span className={`absolute top-12 whitespace-nowrap text-micro text-v2-ink-2 ${anchor(GATHER)}`} style={{ left: `${String(GATHER)}%` }}>
-            {t('clanWar.gatherAt', { world: operation.staging.name })}
-          </span>
-          <span className="absolute right-0 top-12 whitespace-nowrap text-micro text-v2-ink-2">{t('clanWar.target')}</span>
         </div>
+        <span aria-live="polite" className="gk-chip gk-crewlist__chip" data-tone="self">
+          {t(`clanWar.operationStatus.${operation.status}`)}
+        </span>
       </div>
-    </Plate>
+
+      <div data-war-line="" className="gk-war__line">
+        {/* Waves in flight, named above the line on two alternating rows so neighbours never collide. */}
+        {flying.map(({ wave, at }, index) => (
+          <span key={`label-${wave.id}`} data-wave-label="" className="gk-war__tag" data-row={index % 2} data-anchor={anchor(at)}
+            style={{ left: `${String(at)}%` }}>
+            <b>{wave.username} · {fleetCount(wave.fleet)}</b>
+            {wave.arrivesAt && <span className="gk-num">{duration(Math.max(1, (wave.arrivesAt.getTime() - now) / 60_000))}</span>}
+          </span>
+        ))}
+        {staged > 0 && (
+          <span className="gk-war__tag gk-war__ready" data-row={0} data-anchor={anchor(GATHER)} style={{ left: `${String(GATHER)}%` }}>
+            {t('clanWar.readyCount', { count: staged })}
+          </span>
+        )}
+
+        <span aria-hidden="true" className="gk-war__track" />
+        <span aria-hidden="true" className="gk-war__run" style={{ width: `${String(GATHER)}%` }} />
+        <span aria-hidden="true" className="gk-war__node" style={{ left: `${String(GATHER)}%` }} />
+        <span aria-hidden="true" className="gk-war__node" data-end="" />
+        {operation.contributions.map((wave) => {
+          const at = placeOf(wave, now);
+          return at === null ? null : (
+            <span key={wave.id} data-wave-marker="" title={wave.username} className="gk-war__dot" style={{ left: `${String(at)}%` }} />
+          );
+        })}
+
+        {/* The gathering's name ends at its node, so the target's name always has the far stretch to itself. */}
+        <span className="gk-war__end" data-anchor="end" style={{ left: `calc(${String(GATHER)}% + 8px)` }}>
+          {t('clanWar.gatherAt', { world: operation.staging.name })}
+        </span>
+        <span className="gk-war__end" data-end="">{t('clanWar.target')}</span>
+      </div>
+    </section>
   );
 }
 
@@ -382,16 +354,15 @@ function Seats({ operation, members, selfPlayerId, now }: {
   const theirs = selected ? waves.filter((wave) => wave.playerId === selected.playerId) : [];
 
   return (
-    <Plate className="flex flex-col gap-3 p-3">
-      <div role="group" aria-label={t('clanWar.seats')} className="grid grid-cols-5 gap-1.5">
+    <section className="gk-well gk-war__crew">
+      <div role="group" aria-label={t('clanWar.seats')} className="gk-war__seats">
         {Array.from({ length: CLAN.maxMembers }, (_, index) => {
           const member = seats[index];
           if (!member) {
             return (
-              <button key={`open-${String(index)}`} type="button" disabled
-                className="flex min-w-0 flex-col items-center gap-1 text-v2-ink-3">
-                <span className="grid size-10 place-items-center rounded-control border border-dashed border-v2-line-hi text-body">+</span>
-                <span className="max-w-full truncate text-micro">{t('clanWar.seatEmpty')}</span>
+              <button key={`open-${String(index)}`} type="button" disabled className="gk-warseat" data-empty="">
+                <span className="gk-warseat__face" aria-hidden="true"><Glyph id="plus" /></span>
+                <span className="gk-warseat__name">{t('clanWar.seatEmpty')}</span>
               </button>
             );
           }
@@ -402,78 +373,67 @@ function Seats({ operation, members, selfPlayerId, now }: {
             <button
               key={member.playerId}
               type="button"
+              {...OWN_SOUND}
               aria-pressed={on}
               aria-label={`${member.username} · ${String(share)}%`}
               {...(self ? { 'data-self': '' } : {})}
-              onClick={() => { setChosen(member.playerId); }}
-              className="flex min-w-0 flex-col items-center gap-1"
+              onClick={() => { playSound('tab'); haptic('tap'); setChosen(member.playerId); }}
+              className="gk-warseat"
             >
-              <span className={`grid size-10 place-items-center rounded-control border font-v2-mono text-caption font-semibold ${
-                self ? 'border-v2-self/70 text-v2-self' : 'border-v2-line-hi text-v2-ink'
-              } ${on ? 'bg-v2-raise ring-2 ring-v2-ink/30' : 'bg-v2-panel'}`}>
-                {initials(member.username)}
+              <span className="gk-warseat__face gk-num">{initials(member.username)}</span>
+              <span aria-hidden="true" className="gk-warseat__share">
+                <span data-seat-share="" data-tone={self ? 'self' : 'ally'} style={{ width: `${String(share)}%` }} />
               </span>
-              <span aria-hidden="true" className="h-1 w-8 overflow-hidden rounded-full bg-v2-ally/15">
-                <span data-seat-share="" className={`block h-full rounded-full ${self ? 'bg-v2-self' : 'bg-v2-ally'}`} style={{ width: `${String(share)}%` }} />
-              </span>
-              <span className={`max-w-full truncate text-micro ${self ? 'text-v2-self' : 'text-v2-ink-2'}`}>
-                {self ? t('clanWar.seatYou') : member.username}
-              </span>
+              <span className="gk-warseat__name">{self ? t('clanWar.seatYou') : member.username}</span>
             </button>
           );
         })}
       </div>
 
-      <p className="text-micro text-v2-ink-3">{t('clanWar.stagingRadiation')}</p>
+      <p className="gk-sub">{t('clanWar.stagingRadiation')}</p>
 
       {selected && (
-        <div data-seat-waves="" className="flex flex-col gap-2 border-t border-v2-line/70 pt-2.5">
+        <div data-seat-waves="" className="gk-war__waves">
           {theirs.length === 0 ? (
-            <p className="text-caption text-v2-ink-2">{t('clanWar.seatNoWave', { name: selected.username })}</p>
+            <p className="gk-sub">{t('clanWar.seatNoWave', { name: selected.username })}</p>
           ) : theirs.map((wave) => (
-            <div key={wave.id} className="flex flex-col gap-1">
-              <p className="flex flex-wrap items-baseline justify-between gap-x-2">
-                <span className="break-words text-caption font-semibold text-v2-ink">{t('clanWar.wave', { name: wave.username, world: wave.originPlanetName })}</span>
-                <span className="text-micro text-v2-self">{t(`clanWar.status.${wave.status}`)}</span>
+            <div key={wave.id} className="gk-war__wave">
+              <p className="gk-crewlist__name">
+                <strong>{t('clanWar.wave', { name: wave.username, world: wave.originPlanetName })}</strong>
+                <span className="gk-war__status">{t(`clanWar.status.${wave.status}`)}</span>
               </p>
-              <p className="flex flex-wrap gap-x-2 gap-y-0.5 text-micro text-v2-ink-2">
+              <p className="gk-war__hulls">
                 {MOBILE_HULLS.filter((hull) => (wave.fleet[hull] ?? 0) > 0).map((hull) => (
-                  <span key={hull} className="flex items-center gap-1">
-                    <ClassEmblem cls={HULLS[hull].cls} className="size-2.5 text-v2-ink-3" />
-                    {hullName(hull)} ×{wave.fleet[hull] ?? 0}
-                  </span>
+                  <span key={hull}><HullMark hull={hull} className="gk-war__hullmark" />{hullName(hull)} <b className="gk-num">×{wave.fleet[hull] ?? 0}</b></span>
                 ))}
               </p>
-              <div className="flex flex-col gap-1">
-                {shipHealthGroups(wave.fleet, wave.damage).filter(lot => lot.damageBp > 0 || (lot.remainderBp ?? 0) > 0).map(lot => {
-                  const health = healthDisplay(lot);
-                  const critical = !shipCanFight(lot);
-                  return <div key={healthGroupKey(lot)} data-staged-health="" className="rounded-cell border border-v2-line bg-v2-deep/60 px-2 py-1">
-                    <p className={`flex flex-wrap justify-between gap-x-2 text-micro ${critical ? 'text-v2-warn' : 'text-v2-ink-2'}`}>
-                      <span>{hullName(lot.hull)} ×{full(lot.count)}</span>
-                      <span>{t(`repairStation.maintenance.health${health.relation === 'above' ? 'Above' : health.relation === 'below' ? 'Below' : 'Exact'}`,
-                        { pct: decimal(health.percent, Number.isInteger(health.percent) ? 0 : 2) })}</span>
-                    </p>
-                    <span aria-hidden="true" className="mt-1 block h-1 overflow-hidden rounded-full bg-v2-line">
-                      <span className={`block h-full ${critical ? 'bg-v2-warn' : 'bg-v2-self'}`} style={{ width: `${String(health.percent)}%` }} />
-                    </span>
-                    {critical && <p className="mt-0.5 text-micro text-v2-warn">{t('repairStation.maintenance.critical')}</p>}
-                  </div>;
-                })}
-              </div>
-              <p className="font-v2-mono text-micro text-v2-ink-3">
+              {shipHealthGroups(wave.fleet, wave.damage).filter(lot => lot.damageBp > 0 || (lot.remainderBp ?? 0) > 0).map(lot => {
+                const health = healthDisplay(lot);
+                const critical = !shipCanFight(lot);
+                return <div key={healthGroupKey(lot)} data-staged-health="" className="gk-war__health" {...(critical ? { 'data-tone': 'warn' } : {})}>
+                  <p className="gk-war__healthline">
+                    <span>{hullName(lot.hull)} ×{full(lot.count)}</span>
+                    <span className="gk-num">{t(`repairStation.maintenance.health${health.relation === 'above' ? 'Above' : health.relation === 'below' ? 'Below' : 'Exact'}`,
+                      { pct: decimal(health.percent, Number.isInteger(health.percent) ? 0 : 2) })}</span>
+                  </p>
+                  <span aria-hidden="true" className="gk-war__bar"><span style={{ width: `${String(health.percent)}%` }} /></span>
+                  {critical && <p className="gk-inote" data-tone="warn"><Glyph id="critical" />{t('repairStation.maintenance.critical')}</p>}
+                </div>;
+              })}
+              <p className="gk-sub gk-num">
                 {t('clanWar.waveMeta', { ships: fleetCount(wave.fleet), bulk: full(wave.bulk) })}
                 {wave.arrivesAt && <> · {t('clanWar.eta', { time: countdown(wave.arrivesAt.getTime() - now) })}</>}
               </p>
               {wave.canRecall && (
-                <Button size="sm" variant="ghost" disabled={actions.recall.isPending}
-                  onClick={() => { actions.recall.mutate(wave.id); }}>{t('clanWar.recall')}</Button>
+                <GameHold weight="reversible" size="md" tone="steel" glyph="recall" label={t('clanWar.recall')}
+                  disabledReason={actions.recall.isPending ? t('clanWar.recall') : null}
+                  onCommit={() => { actions.recall.mutate(wave.id); }} />
               )}
             </div>
           ))}
         </div>
       )}
-    </Plate>
+    </section>
   );
 }
 
@@ -483,24 +443,19 @@ function ClanHangar({ war }: { war: ClanWar }) {
   const total = Math.max(1, war.hangar.total);
   const share = (value: number): string => `${String(Math.round((Math.max(0, value) / total) * 100))}%`;
   return (
-    <Plate className="p-3">
-      <div data-clan-hangar="" className="flex flex-col gap-1.5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-caption font-semibold text-v2-ink">{t('clanWar.hangar')}</h3>
-          <strong className="font-v2-mono tabular-nums text-micro text-v2-ink">
-            {full(war.hangar.used)} / {full(war.hangar.total)}
-            <span className="ml-2 font-v2-ui font-normal text-v2-self">{t('clanWar.level', { level: war.level ?? 1 })}</span>
-          </strong>
-        </div>
-        <span aria-hidden="true" className="flex h-1.5 overflow-hidden rounded-full bg-v2-ally/15">
-          <span data-part="used" className="h-full bg-v2-ally" style={{ width: share(war.hangar.used) }} />
-          <span data-part="reserved" className="h-full" style={{ width: share(war.hangar.reserved), backgroundColor: 'color-mix(in srgb, var(--color-v2-ally) 42%, transparent)' }} />
-        </span>
-        <p className="text-micro text-v2-ink-2">{t('clanWar.capacity', {
-          used: full(war.hangar.used), reserved: full(war.hangar.reserved), total: full(war.hangar.total),
-        })}</p>
-        <p className="text-micro leading-snug text-v2-ink-3">{t('clanWar.hangarHint')}</p>
-      </div>
-    </Plate>
+    <section data-clan-hangar="" className="gk-well gk-war__hangar">
+      <p className="gk-war__hangarhead">
+        <span className="gk-label">{t('clanWar.hangar')}</span>
+        <b className="gk-num">{full(war.hangar.used)} / {full(war.hangar.total)}</b>
+      </p>
+      <span aria-hidden="true" className="gk-war__bar gk-war__bar--hangar">
+        <span data-part="used" className="gk-war__used" style={{ width: share(war.hangar.used) }} />
+        <span data-part="reserved" className="gk-war__reserved" style={{ width: share(war.hangar.reserved) }} />
+      </span>
+      <p className="gk-sub">{t('clanWar.capacity', {
+        used: full(war.hangar.used), reserved: full(war.hangar.reserved), total: full(war.hangar.total),
+      })} · <span className="gk-war__status">{t('clanWar.level', { level: war.level ?? 1 })}</span></p>
+      <p className="gk-sub">{t('clanWar.hangarHint')}</p>
+    </section>
   );
 }

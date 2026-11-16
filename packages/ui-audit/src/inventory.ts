@@ -80,15 +80,15 @@ export const SURFACES: GameSurface[] = [
   { id: 'silent-space', what: 'Sessiz Uzay dönüş bildirimi (panel return)', files: ['shell/SilentSpaceNotice.tsx'], reach: ['gallery:silent-space', 'gallery:silent-space-queued', 'client:return'], group: 'G10' },
   { id: 'worlds', what: 'Dünyalar paneli', files: ['screens/WorldsPanel.tsx'], reach: ['client:worlds', 'gallery:worlds', 'gallery:worlds-one'], group: 'G2' },
   { id: 'events-guide', what: 'Galaksi olayları rehberi', files: ['screens/GalaxyEventsGuide.tsx'], reach: ['client:events-guide', 'gallery:events-guide', 'gallery:events-guide-tokyo'], group: 'G3' },
-  { id: 'unknown-signal', what: 'Bilinmeyen sinyal sayfası', files: ['screens/UnknownSignalSheet.tsx'], reach: ['client:unknown-signal'], group: 'G4', unreached: ['sonuç: korsan', 'sonuç: kaplama', 'gemi yok, üretime yönlendirme'] },
+  { id: 'unknown-signal', what: 'Bilinmeyen sinyal sayfası', files: ['screens/UnknownSignalSheet.tsx'], reach: ['client:unknown-signal', 'gallery:signal', 'gallery:signal-noship', 'gallery:signal-pirates', 'gallery:signal-skin', 'gallery:signal-derelict'], group: 'G4' },
 
   // Reading a target and acting on it.
   {
     id: 'focus',
     what: 'Odak paneli: hedef dosyası, iplik, radyasyon, bant, anıt',
     files: ['v2/hud/TargetDossier.tsx', 'starter/OutpostReading.tsx', 'starter/PartHere.tsx', 'screens/RadiationBombControls.tsx'],
-    reach: ['gallery:focus-closed', 'gallery:focus-own', 'gallery:focus-own-open', 'gallery:focus-neutral', 'gallery:focus-radiation', 'gallery:focus-band', 'gallery:focus-monument', 'gallery:focus-thread', 'gallery:focus-thread-pirate', 'gallery:focus-asteroid', 'gallery:focus-debris', 'gallery:support-focus', 'client:focus'],
-    group: 'G4', unreached: ['keşfedilmemiş dünya', 'kalkanlı / tatildeki hedef', 'Ölüm Yıldızı bölümü', 'korsan', 'ticaret gemisi', 'galaksiler arası konvoy', 'temas'],
+    reach: ['gallery:focus-closed', 'gallery:focus-own', 'gallery:focus-own-open', 'gallery:focus-neutral', 'gallery:focus-radiation', 'gallery:focus-band', 'gallery:focus-monument', 'gallery:focus-thread', 'gallery:focus-thread-pirate', 'gallery:focus-asteroid', 'gallery:focus-debris', 'gallery:focus-pirate', 'gallery:focus-contact', 'gallery:focus-contact-fleet', 'gallery:focus-run', 'gallery:focus-trade', 'gallery:focus-convoy', 'gallery:focus-strike', 'gallery:support-focus', 'client:focus'],
+    group: 'G4', unreached: ['keşfedilmemiş dünya', 'kalkanlı / tatildeki hedef'],
   },
   { id: 'launch', what: 'Saldırı/gönderme sayfası', files: ['screens/LaunchSheet.tsx', 'starter/TempoNote.tsx'], reach: ['gallery:launch', 'gallery:launch-pirate', 'gallery:launch-radiation', 'gallery:launch-radiation-lethal', 'gallery:support-launch'], group: 'G4' },
   { id: 'transfer', what: 'Kaynak/filo aktarımı', files: ['screens/TransferSheet.tsx'], reach: ['gallery:transfer', 'gallery:transfer-radiation'], group: 'G4' },
@@ -134,9 +134,9 @@ export const SURFACES: GameSurface[] = [
   {
     id: 'clan',
     what: 'Klan: genel, güç, üyeler, yardım, savaş, dalga',
-    files: ['screens/ClanScreen.tsx', 'screens/ClanWarPanel.tsx', 'screens/ClanBanner.tsx', 'screens/ClanDonateSheet.tsx', 'screens/ClanWaveSheet.tsx', 'screens/CommunityPolicy.tsx'],
-    reach: ['gallery:clan', 'gallery:clan-strength', 'gallery:clan-members', 'gallery:clan-aid', 'gallery:clan-war', 'gallery:wave', 'gallery:wave-critical', 'gallery:support-banner', 'gallery:support-banner-gold'],
-    group: 'G7', unreached: ['dışarıda: tanıtım, klan kur, katıl', 'lider eylem onayı'],
+    files: ['screens/ClanScreen.tsx', 'screens/ClanConfirmation.tsx', 'screens/ClanWarPanel.tsx', 'screens/ClanBanner.tsx', 'screens/ClanDonateSheet.tsx', 'screens/ClanWaveSheet.tsx', 'screens/CommunityPolicy.tsx'],
+    reach: ['gallery:clan', 'gallery:clan-strength', 'gallery:clan-members', 'gallery:clan-aid', 'gallery:clan-aid-quote', 'gallery:clan-outside', 'gallery:clan-pact', 'gallery:clan-war', 'gallery:clan-donate', 'gallery:wave', 'gallery:wave-critical', 'gallery:support-banner', 'gallery:support-banner-gold'],
+    group: 'G7', unreached: ['lider eylem onayı'],
   },
   { id: 'clan-support', what: 'Klan savunma desteği', files: ['screens/ClanSupportSheet.tsx'], reach: ['gallery:support-sheet', 'gallery:support-sheet-alarm', 'gallery:support-clanmate', 'gallery:support-clanmate-closed'], group: 'G7' },
   {
@@ -192,7 +192,7 @@ export const SURFACES: GameSurface[] = [
     id: 'landing',
     what: 'Ön kapı, giriş/kayıt, şifre sıfırlama, çerez izni',
     files: ['screens/LandingScreen.tsx', 'landing/LandingScene.tsx', 'landing/public/PublicLandingScreen.tsx', 'landing/public/PublicLanding.tsx', 'landing/public/WebLandingGate.tsx', 'landing/public/ConsentPlacement.tsx', 'shell/ConsentNotice.tsx', 'screens/LandingAuthDialog.tsx', 'screens/PasswordResetSheet.tsx'],
-    reach: ['landing:front', 'landing:sign-in', 'landing:password-reset', 'gallery:password-reset', 'landing:consent', 'landing:guide', 'landing:legal'],
+    reach: ['landing:front', 'landing:sign-in', 'landing:password-reset', 'gallery:password-reset', 'gallery:front-door', 'landing:consent', 'landing:guide', 'landing:legal'],
     group: 'G13',
   },
   { id: 'loading', what: 'Yükleme ekranı', files: ['shell/LoadingScreen.tsx'], reach: ['landing:loading'], group: 'G13', unreached: ['galaksi yükleme örtüsü (tarama / harita / yükseltme)'] },
@@ -212,14 +212,14 @@ export const SURFACES: GameSurface[] = [
     reach: ['starter:arrival', 'starter:vessel', 'starter:repair', 'starter:crate', 'starter:tutorial', 'starter:jump', 'starter:drive'],
     group: 'G15',
   },
-  { id: 'faults', what: 'Bakım, güncelleme zorunlu, çökme ekranı', files: ['shell/MaintenanceScreen.tsx', 'shell/UpdateRequired.tsx', 'shell/ErrorBoundary.tsx'], reach: ['special:maintenance-flag', 'special:update-required', 'special:render-error'], group: 'G13' },
+  { id: 'faults', what: 'Bakım, güncelleme zorunlu, çökme ekranı', files: ['shell/MaintenanceScreen.tsx', 'shell/UpdateRequired.tsx', 'shell/ErrorBoundary.tsx', 'shell/BlockedScreen.tsx'], reach: ['special:maintenance-flag', 'special:update-required', 'special:render-error'], group: 'G13' },
 
   // The commander-ship arena.
   {
     id: 'arena',
     what: 'Komutan gemisi arenası: hangar, takım, maç HUD, kontroller',
     files: ['arena/ArenaGate.tsx', 'arena/Sandbox.tsx', 'arena/Hud.tsx', 'arena/Controls.tsx', 'arena/PingWheel.tsx', 'arena/MapSheet.tsx', 'arena/LoopLine.tsx', 'arena/ModePicker.tsx', 'arena/GraphicsPicker.tsx', 'arena/SpectatorPanel.tsx', 'arena/ClassPicker.tsx', 'arena/Hangar.tsx', 'arena/credits.tsx', 'arena/TeamPanel.tsx', 'arena/hangar/HangarPanel.tsx', 'arena/hangar/HangarStage.tsx', 'arena/hangar/ShipDesk.tsx'],
-    reach: ['gallery:arena-hangar', 'gallery:arena-team', 'arena:sandbox', 'arena:match'],
+    reach: ['gallery:arena-hangar', 'gallery:arena-team', 'gallery:clan-arena', 'arena:sandbox', 'arena:match', 'arena:menu', 'arena:result'],
     group: 'G12', unreached: ['ping çarkı', "harita sheet'i", 'izleyici paneli'],
   },
 ];

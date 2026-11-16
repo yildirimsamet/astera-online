@@ -9,7 +9,7 @@ import { full } from '../lib/format.js';
 import { LANDING_ASSETS, usePreload, type Loader } from '../lib/preload.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { useOpeningCover } from '../lib/openingCover.js';
-import { Button as V2Button } from '../v2/kit/Surface.js';
+import { Banner, GameButton } from '../game-ui/index.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.jsx';
 import { Wordmark } from '../ui/Wordmark.jsx';
 import { commanderKnownHere } from '../lib/returning.js';
@@ -35,7 +35,7 @@ import { useLandingTelemetry } from '../lib/playerAnalytics/useLandingTelemetry.
  * fourteen-day season kept in one browser's cookie jar is a season you lose by
  * opening your laptop.
  */
-function CompactLandingScreen({
+export function CompactLandingScreen({
   onAuthenticate,
   onBegin,
   open,
@@ -128,7 +128,7 @@ function CompactLandingScreen({
 
 
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-v2-void font-v2-ui">
+    <main className="gk gk-frontdoor relative min-h-dvh overflow-hidden">
       <Suspense fallback={null}><LandingScene onReady={() => { setDrawn(true); }} /></Suspense>
 
       {/**
@@ -173,7 +173,7 @@ function CompactLandingScreen({
         */}
         <div>
           <div className="flex justify-end">
-            <LanguageSwitch compact />
+            <LanguageSwitch compact kit />
           </div>
 
           <header className="w-full">
@@ -203,14 +203,10 @@ function CompactLandingScreen({
          * with the one decision the page is asking for, and it reads to a first-
          * time visitor as a wall.
          */}
-        <footer className="mx-auto w-full max-w-md">
+        <footer className="gk-frontdoor__foot">
           <Population commanders={commanders} online={online} />
 
-          {error !== undefined && mode === null && (
-            <p className="mb-3 text-caption text-v2-hostile" role="alert">
-              {error}
-            </p>
-          )}
+          {error !== undefined && mode === null && <Banner tone="hostile" role="alert" title={error} />}
 
           {/**
            * A SHARED DEVICE NEEDS BOTH DOORS. Onboarding review, B2.
@@ -232,86 +228,37 @@ function CompactLandingScreen({
            * The flag is a HINT about the device, never proof of identity. See
            * `lib/returning.ts`.
            */}
-          <p className="mb-3 text-center text-micro font-semibold uppercase tracking-wide text-v2-ink-2">
+          <p className="gk-label gk-frontdoor__greet">
             {returning ? t('landing.welcomeBack') : t('landing.ready')}
           </p>
 
           {returning ? (
             <>
-              <V2Button
-                testId="landing-primary"
-                variant="primary"
-                size="lg"
-                full
-                className="min-h-12"
-                onClick={() => {
+              <GameButton tone="action" size="lg" wide glyph="rocket" marks={{ 'data-testid': 'landing-primary' }}
+                onPress={() => {
                   telemetry.login();
                   setMode('login');
-                }}
-              >
+                }}>
                 {t('landing.signInPrimary')}
-              </V2Button>
-
-              <p className="mt-2 text-center text-micro text-v2-ink-3">
-                {t('landing.returningHint')}
-              </p>
-
-              <div className="mt-2 text-center">
-                <V2Button
-                  variant="default"
-                  size="lg"
-                  full
-                  disabled={opening}
-                  className="min-h-12"
-                  onClick={() => {
-                    if (opening) return;
-                    setOpening(true);
-                    void telemetry.play(onBegin).catch(() => {
-                      setOpening(false);
-                    });
-                  }}
-                >
-                  {opening ? t('landing.opening') : t('landing.newCommander')}
-                </V2Button>
-              </div>
+              </GameButton>
+              <p className="gk-note gk-frontdoor__hint">{t('landing.returningHint')}</p>
+              <GameButton tone="steel" size="lg" wide pending={opening} onPress={begin}>
+                {opening ? t('landing.opening') : t('landing.newCommander')}
+              </GameButton>
             </>
           ) : (
             <>
-              <V2Button
-                testId="landing-primary"
-                variant="primary"
-                size="lg"
-                full
-                disabled={opening}
-                className="min-h-12"
-                onClick={() => {
-                  if (opening) return;
-                  setOpening(true);
-                  void telemetry.play(onBegin).catch(() => {
-                    // The session hook has already put the reason on this page.
-                    setOpening(false);
-                  });
-                }}
-              >
+              <GameButton tone="action" size="lg" wide glyph="rocket" pending={opening} marks={{ 'data-testid': 'landing-primary' }} onPress={begin}>
                 {opening ? t('landing.opening') : t('landing.register')}
-              </V2Button>
-
-              <p className="mt-2 text-center text-micro text-v2-ink-3">
-                {t('landing.reassurance')}
-              </p>
-
-              <div className="mt-1 text-center">
-                <button
-                  type="button"
-                  className="min-h-10 rounded-control px-2 text-caption text-v2-ink-2 underline decoration-v2-ink-3/50 underline-offset-4 hover:text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self"
-                  onClick={() => {
-                    telemetry.login();
-                    setMode('login');
-                  }}
-                >
-                  {t('landing.signIn')}
-                </button>
-              </div>
+              </GameButton>
+              <p className="gk-note gk-frontdoor__hint">{t('landing.reassurance')}</p>
+              <GameButton tone="ghost" size="sm" className="gk-frontdoor__signin"
+                onPress={() => {
+                  telemetry.login();
+                  setMode('login');
+                }}>
+                {t('landing.signIn')}
+              </GameButton>
             </>
           )}
 
@@ -328,9 +275,9 @@ function CompactLandingScreen({
           */}
           <nav
             aria-label={t('landing.publicLinksLabel')}
-            className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 border-t border-v2-line pt-3"
+            className="gk-frontdoor__links"
           >
-            <a className="text-micro text-v2-ink-3 underline underline-offset-4 hover:text-v2-ink-2" href={publisherWikiUrl(i18n.resolvedLanguage)}>Wiki</a>
+            <a className="gk-frontdoor__link" href={publisherWikiUrl(i18n.resolvedLanguage)}>Wiki</a>
             {(
               [
                 ['about', 'landing.aboutLink'],
@@ -344,7 +291,7 @@ function CompactLandingScreen({
             ).filter(([page]) => capabilities().webCheckout || (page !== 'pricing' && page !== 'refunds')).map(([page, label]) => (
               <a
                 key={page}
-                className="text-micro text-v2-ink-3 underline decoration-transparent underline-offset-4 transition-colors hover:text-v2-ink-2 hover:decoration-v2-ink-3/50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-v2-self"
+                className="gk-frontdoor__link"
                 href={publisherUrl(page, i18n.resolvedLanguage)}
               >
                 {t(label)}
@@ -384,7 +331,7 @@ export type Mode = 'login';
 function Population({ commanders, online }: { commanders: number | null; online: number | null }) {
   if (commanders === null || commanders === 0) return null;
   return (
-    <p className="mb-2 text-center text-micro text-v2-ink-3">
+    <p className="gk-note gk-frontdoor__people">
       {/*
         `Trans` rather than two fragments of a sentence: which side of the figure
         the noun sits on is a property of the language, and splitting the string
@@ -394,7 +341,7 @@ function Population({ commanders, online }: { commanders: number | null; online:
       <Trans
         i18nKey="landing.populationHeld"
         values={{ amount: full(commanders) }}
-        components={[<span key="n" className="font-v2-mono text-v2-ink-2" />]}
+        components={[<span key="n" className="gk-num" />]}
       />
       {online !== null && online > 0 && (
         <>
@@ -402,7 +349,7 @@ function Population({ commanders, online }: { commanders: number | null; online:
           <Trans
             i18nKey="landing.populationOnline"
             values={{ amount: full(online) }}
-            components={[<span key="n" className="font-v2-mono text-v2-self" />]}
+            components={[<span key="n" className="gk-num" data-tone="self" />]}
           />
         </>
       )}

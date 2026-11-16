@@ -64,6 +64,7 @@ export const clanSupport = {
   recallRule: '飛行中に引き返させるか、着陸後いつでも帰還させられます。',
   noOrigin: '自分の惑星を一つ選んでください。',
   noFleet: '少なくとも1隻選んでください。',
+  lineShips: 'あなたの防衛線',
   noShips: 'この惑星に待機中の艦はありません。',
   quoting: 'ルートを計算中…',
   sending: '送信中…',

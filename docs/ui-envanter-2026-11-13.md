@@ -1255,6 +1255,47 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - Rakamlar kit kuyusunda, iki sütun. Döteryum yolu yeşil not. Sığmayan yük sarı not ve kitin "Önce topla" düğmesi; sığarsa sessiz.
 - **Ölçüm** `g4h1-before/after-2026-11-15.md`: `focus-asteroid` 47 → 0, `focus-debris` 25 → 0.
 
+**G4-h2 korsan, temas, maden seferi, uçuşum ✅ (2026-11-15).** Oyuncunun anı: "saldırayım mı, o ne, geri çağırayım mı?"
+- Galeriye dört görünüm eklendi: `focus-pirate`, `focus-contact` (bana gelen radar teması), `focus-contact-fleet` (tam görüş), `focus-run` (eve dönen Kazıcılar).
+- Ekipler kitin çiplerinde: geminin işareti, adı (12 px), sayısı (kalın). Korsan, temas ve uçuşum aynı çipi kullanıyor.
+- Rakamlar kit kuyusunda, iki sütun (korsanda üç sütun "Bölgeden ayrılmasına"yı kelime ortasından kırıyordu).
+- Notlar kit notları: korsanın hasar cezası (kalkan), izleniyor (göz), radar okuması (hedef), bana yönelmiş (kırmızı siren), eve dönen yük (sandık).
+- Korsana saldır kitin ana düğmesi; akın zaten yoldaysa not. Ayrıca anıta bak kit düğmesi.
+- Geri çağırma artık kitin hafif basılı tutması (0,6 sn). Bir kez yapılır ve geri alınamaz, ama harcamaz. Bekleyen şeritteki geri çağırma hâlâ dokunma; kendi biriminde gelecek. **Owner sorusu açık.**
+- **Ölçüm** `g4h2-before/after-2026-11-15.md`: korsan 30 → 0, temas 19 → 0, tam filo 15 → 0, uçuş 7 → 0, korsan uçuşu 3 → 0, sefer 0 → 0.
+
+**G4-i1 ticaret sayfası ✅ (2026-11-15).** Oyuncunun anı: "tüccarla takas edeyim mi, neyi neye?"
+- Kit sayfası, benim rengimde. Üstte garnizon çubuğu (transfer'deki gibi). Konvoy kitin gemi satırlarında, ambar ve uçuş yatağı kit notları.
+- Veriyorum: kitin seçim plakaları ve kit kaydırıcısı; tüccarın lotlarıyla adım adım ilerliyor, tavan ve sebebi altında.
+- Alıyorum: iki uç (ucuz solda, pahalı sağda) ve tek kit kaydırıcı. Taban değerin altına inmiyor, böylece tüccara bir birim bile kalmıyor. Bacaklar ve uçuş kit kuyularında; bağlayan bacak parlak.
+- Kit Slider'a `min` ve `step` eklendi (test: her hareket kendi adımında, uçlar içinde). Yerli `range`, `Segmented` ve eski HoldButton bu ekrandan çıktı. Gönder: kitin basılı tutması, 1 sn.
+- Açık not: "Gidiş" iki kuyuda iki ayrı şey (hacim / süre). Eskiden de böyleydi; owner bakışında ele alınabilir.
+- **Ölçüm** `g4i1-before/after-2026-11-15.md`: `trade` 147 → 3 (kalan: sayfa arka planı).
+
+**G4-i2 konvoy akını, ticaret ve konvoy kartları ✅ (2026-11-15).** Oyuncunun anı: "konvoya vurayım mı, tüccara gitmeye değer mi?"
+- Konvoy sayfası kitte, akın renginde. Önce kurallar bir kuyuda (karşılık vermez / 5 sn / geri çağrılamaz), ardından filo kitin gemi satırlarında. Eve gelecekler gerçek bir tablo: sütun başlıkları adlı, inen sütun kalın. Gönder 1 sn basılı tutma.
+- Ticaret kartında eşit değer, her malın kendi renginde kit çubukları; rakamlar kuyuda. Konvoy kartı da kitte; iki kartın düğmesi kitin ana düğmesi (engelde sebep yazar).
+- Galeriye `focus-trade` ve `focus-convoy` eklendi. Tüccar ve konvoy olayları ortak sabitlere alındı.
+- `gk-rate` bildirim merkeziyle çakışıyordu, `gk-par` oldu. FocusPanel'in eski `BTN`/`BTN_PRIMARY` sabitleri artık kullanılmadığı için silindi.
+- **Ölçüm** `g4i2-before/after-2026-11-15.md`: konvoy 154 → 3, ticaret kartı 12 → 0, konvoy kartı 6 → 0.
+
+### G4-j — iki vuruş (Ölüm Yıldızı, radyasyon) kitte (2026-11-15)
+
+- Ortak katlanır baş `StrikeFold`: silahın işareti, adı, hedef, "N hazır" çipi, ok. Ölüm Yıldızı kırmızı, radyasyon sarı tonda; açıkken işaret nabız atar.
+- Gerçekler kit kuyusunda (`gk-strike__facts`), Honor kuralı Honor kutusunda (`gk-honor`), fırlatma kitin kesin basılı tutuşunda (1,5 sn, tehlike tonu). Sayfa hâli de (`StrikeSheet`) kit sayfası.
+- Radyasyon: seviye plakaları kit sesi/titreşimiyle; koloni yükü yüzde, uzun koloni kuralı "?" arkasında; kalkan onayı kit şalteri; hata uyarı notu.
+- `GameHold` `marks` aldı (`data-death-star`). Eski `strike-launch`/`radiation-launch`/`honor-note` CSS'i ve 11 kullanılmayan radyasyon token'ı silindi.
+- Galeri: `focus-strike` (iki vuruş açık). Audit: strike 37 → 0, focus-strike 0; envanterden "Ölüm Yıldızı bölümü" ulaşılamazı kalktı.
+
+### G4-k — bilinmeyen sinyal kitte (2026-11-15)
+
+- **An:** "Sinyale gemi göndereyim mi, neyi riske atarım?"
+- Kit sheet'i (kayıpta düşman tonu). Başta nefes alan bir işaret (iki halka dalgası). Kalkış dünyası yerli `<select>` yerine kit plakaları (`Choices`, görünür etiketli). Yolculuk kit kuyusunda, gemiler kit gemi plakalarında (seçili kristal ışıklı, olmayan soluk), Kurye satırı dar ekranda üret düğmesini alta alıyor.
+- Beş sonuç kuyuda glyph + yüzde + ad (korsan kırmızı, sıfır olan üstü çizili), ödül ayrıntıları `RulesRow` katında. Risk düşman notu + kit maliyet satırı.
+- Gönder: kitin 1 sn'lik basılı tutuşu; engelde neden düğmenin yüzünde (eski ayrı durum satırı kalktı). Sunucu hatası uyarı notu.
+- Sonuçlar: korsan (kırmızı kafatası halesi), kaplama kartı, enkaz gemi — her biri kendi tonunda kit kuyusunda, buluntu görseli açılırken büyür.
+- Galeri: `signal`, `signal-noship`, `signal-pirates`, `signal-skin`, `signal-derelict`; envanterdeki üç ulaşılamaz durum kapandı. Audit: 191 → 3 (kalan: ortak sheet karartması).
+
 **C34 Ödüller ✅ (2026-11-15, yardımcı oturum).** G6 #1 `RewardsScreen` (+ galaksideki ve galerideki sac).
 - **An:** "Ne kazandım, al." Sunucu ilerlemesi, kademe kimlikleri, tek istek kuralı ve taşma uyarısı değişmedi.
 - **Değişen:** Alınabilir ödül varsa listenin üstünde kitin **ikmal kapsülü** (`RewardPod`): dokun, sarsılır, kapak açılır, içindeki alaşım/kristal görünür ve sıradaki alınabilir kademe alınır; 1,8 sn sonra sıradaki kapsül gelir. Her kademe yine kendi "Al" düğmesini taşıyor (kitin ana düğmesi, ağır basış, bekleyişte döner). Özet camda iki değer; her hedef kesik plaka (bekleyen yeşil kenarlı), kademe şeridi, kademeler camda, kalan yol kitin çubuğunda, "Tüm kademeler" katlama kitin basışıyla. Topluluk ödülü: ödül camda, adımlar numaralı, komutan adı seçilebilir kutuda, X bağlantısı kit satırı. Hata ve taşma banner; boş durum kitin boş-durum çizimi. Sac kitin (hediye resmi).
@@ -1284,6 +1325,8 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - **Test:** `shopier-checkout.test.tsx` (3): kit düğmesi ve durumları, plaka + banner + eski boya yok, ses/titreşim ve bağlantı hedefi. Eski bileşende FAIL görüldü.
 - **Galeri:** yeni görünüm `shopier-checkout` (dört durum); envanterde `shop` erişimine eklendi, "ulaşılamıyor" kaydı kalktı.
 - **Ölçüm** (tr; telefon, dar, masaüstü): önce galeride yoktu, ölçülemedi. Sonra 1 (galeri arkalığı); 12 px altı 0, kontrast 0, 44 px altı 0. `reports/ui-audit/c38-shopier-after-2026-11-15.md`.
+
+**G4 kapanışı: altı dilde telefon ölçümü (2026-11-15).** 9 yüzey, 40 görünüm × 6 dil = 239 ölçüm (`g4-close-6lang-2026-11-15.md`). Kesilen 0, yana taşma 0. Bulunan iki şey düzeltildi (`g4-close-fix-2026-11-15.md`): Ölüm Yıldızı başlığı ve "1 hazır" çipi kendi kırmızı zemininde 4,3:1 kalıyordu → tonun açık ucu, kontrast 0. fr yerleşme tutuşu "Envoyer les vaisseaux de colonisation" kırpılıyordu → "Envoyer les colons", kırpılan 0. Kalan: yerleşme `claim-other` görünümünde 3 küçük/tepkisiz hedef (yarış satırının yanındaki başkasının hakkı), sheet'lerin ortak karartması (3 puan).
 
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
@@ -1457,6 +1500,112 @@ Okundu: `screens/ClanScreen.tsx` fonksiyon haritası, 100–330 (gövde ve dalla
 | 13 | Klan sohbeti | `ChatScreen` klan kanalı | | | | G8 |
 
 **G7 için ilk gözlemler:** owner'ın tarifi kodda doğrulandı: kart içinde kart, form alanları yerli `select`, uzun metin blokları. Yardım sekmesi kendi içinde en az üç iş taşıyor (istek, bağış, limit); sekme ya da adım gerekecek.
+
+**G7 birim planı (2026-11-15):**
+
+| Birim | Yüzey | Oyuncu anı | İş |
+|---|---|---|---|
+| G7-a | Yardım | "Klan arkadaşıma ne gönderebilirim?" | ✅ aşağıda |
+| G7-b | Klan başlığı + sekmeler + sayfa çerçevesi | "Klanım kim, neredeyim?" | 9 px "Klan Hâkimiyeti", v2 sekmeler → kit sekmeleri |
+| G7-c | Genel | "Klan ne durumda?" | koltuklar, sıralama, olaylar, arena takım paneli |
+| G7-d | Güç | "Ne kadar güçlüyüz?" | |
+| G7-e | Üyeler | "Kim aktif, kimi yöneteyim?" | `Confirmation` → kit basılı tutma |
+| G7-f | Dışarıda | "Klana gireyim mi, kurayım mı?" | ✅ aşağıda |
+| G7-g | Savaş + dalga sheet'i | "Hedefe dalga gönderelim mi?" | ✅ aşağıda |
+| G7-h | Bağış sheet'i | "Hazineye ne kadar, hangi dünyadan?" | ✅ aşağıda |
+| G7-i | Destek gönder | "Gemilerim klan arkadaşımın dünyasını tutabilir mi?" | ✅ aşağıda (duruş kartı Üs yüzeyinde, zaten kitte) |
+| G7-j | Klan sancağı | "Klanımız sırada neyi açıyor, kim taşıyor?" | ✅ aşağıda |
+
+**G7-a Yardım ✅ (2026-11-15).**
+- **An:** "Klan arkadaşıma gemi ya da kaynak gönderebilir miyim, ne kadar, ne zaman varır?"
+- Yardım almak kit şalteri (adı sabit, durumu alt satırda); 12 saatlik bekleme kuralı altında.
+- Üç yerli `<select>` yerine kitin yeni `Picker`'ı: yüzünde alan adı ve seçim, basınca kit listesi düşer, seçince kapanır; tek seçenek kesik çizgili bir gerçek olarak durur. G8 ve G10'da da kullanılacak.
+- Gemiler kit gövde satırlarında; evde olmayan gövde satır kaplamıyor (yoksa "evde gemi yok" notu). Kargo, Aktar sayfasının satırlarında (stoktan düşen çubuk + kit kaydırıcı, sayı kutusu yok); ambar dolu/taşma satırı canlı.
+- "Uçuşu kontrol et" kit düğmesi; teklif kit kuyusunda: süre ve alıcı sınırı rakamları, alıcının uçuş rampaları hücre olarak, uyarılar notlarda, sınırlar kit maliyet satırında. Hediye geri alınamaz → kitin kesin tutuşu (1,5 sn), etiketi kısa "Yardım gönder" (eski uzun etiket 350 px'te kırpılıyordu); dönüş bilgisi üstteki çipte.
+- Silinen: `SelectField`, panelin `Plate`/`Section`/`Stat`/`Tally`/`CapacityBar`/`HoldButton` kullanımı, kullanılmayan `launch`/`launchDelivery` metinleri (6 dil). Yeni: `noShips` (6 dil).
+- Galeri: `clan-aid-quote` (teklifi cevaplayan sahte sunucu); `clan-aid`'e alıcı dünyaları eklendi.
+- Audit: 472 → 30. Kalan: klan başlığı ve sekmeler (G7-b), devre dışı "−" düğmesinin soluk çizgisi.
+
+**G7-b Klan başlığı, sekmeler, çerçeve ✅ (2026-11-15).**
+- **An:** "Klanım hangisi, ben neredeyim?"
+- Sayfa çerçevesi kit başlığı aldı (klan sancağı ikonu + atmosfer resmi). Klan kartı kitte: etiket rozeti, ad (kırpılmaz, her yerden kırılır), Lider çipi altın, slogan, ekip ve Klan Hâkimiyeti 12 px tabanda (eski 9 px).
+- Beş sekme v2 `Segmented` yerine Üs'ün iki katlı kit çubuğu: işaret (ev, çubuklar, kalkan, paylaş, kırmızı saldırı) üstte, kısa ad altta; okuyucu tam adı duyar.
+- Audit: yardım görünümü 30 → 3 (kalan: ortak sheet karartması). Genel sekmesinin 113 puanı içerikten (G7-c).
+
+**G7-c Genel sekmesi ✅ (2026-11-15).**
+- **An:** "Klanım ne durumda, payım ne, kim neredeyiz?"
+- Beş koltuk kit madalyonları (lider altın, boş koltuk kesik çizgi, 12 px taban). Uyum durumu kit kuyusunda not.
+- "Klanın ne yapıyor?" faydaları üye için `RulesRow` katında (üye bunları biliyor; her açılışta 8 kart kaydırmıyor); dışarıdakine açık durur (G7-f). Fayda işaretleri kit glyph'leri.
+- 5 klan saldırısı kuralı tek satırlık uyarı notu. Sıralama kit satırları: sıra, etiket + ad, merkez çizgisinden çubuk (geride olan sola, kırmızı), işaretli puan.
+- Ganimet payı kuyuda: üç kaynak hücresi, "Ana gezegene al" kit düğmesi. Kayıt kit satırları, "daha eskiler" kit düğmesi.
+- Silinen: `SmallRule`, `ResourceFigure`, `RESOURCE_INK`, v2 fayda ikonları. Sınıf çakışması önlendi: `gk-event`/`gk-res` başkasının, bunlar `gk-clanlog`/`gk-depot`.
+- Audit: genel 113 → 3 (kalan: ortak sheet karartması).
+
+**G7-d Güç sekmesi ✅ (2026-11-15).**
+- **An:** "Birlikte ne kadar güçlüyüz, kim ne katıyor?"
+- Kahraman kuyu: klan etiketi, başlık, açıklama, iki büyük rakam (ekip Hâkimiyeti, toplam filo) ipucu alt satırlarıyla. Toplamlar tek kuyuda kit rakamları (havadaki uçuşlar tam satır).
+- Filo dağılımı gemi görseli + sayı + çubuk; üye katkısı Hâkimiyet çubuğu (en güçlüye göre) + satır. Lider çipi altın.
+- Sınıf çakışması önlendi: `gk-force` savaş raporunun, bunlar `gk-might`. Silinen: `Stat` kullanımı.
+- Audit: güç görünümü 3 (kalan: ortak sheet karartması; eski ölçümde sekme ayrı ölçülmemişti, G0'da klanın bütünü 472'nin parçasıydı).
+
+**G7-e Üyeler sekmesi ✅ (2026-11-15).**
+- **An:** "Kim aktif, kimi yöneteyim, kimi davet edeyim?"
+- Ekip listesi tek kuyuda: aktiflik lambası (yeşil parlar / gri), ad, Sen ve Lider çipleri, durum satırı; liderin iki hamlesi (Lider yap, Çıkar) her satırda kit düğmesi.
+- `Confirmation` kitte: kırmızı kenarlı kuyuda ne olacağı, hamlenin kendisi kitin 0,6 sn tutuşu (owner 2026-11-14: eski onaylar 0,6 sn), yanında İptal. Çıkarma, liderlik devri, ayrılma, dağıtma ve düşman uçuşlu üye kabulü hepsi bunu kullanıyor.
+- Başvurular kuyuda, Kabul / Reddet kit düğmeleri. Davet: yerli `<select>` yerine kit `Picker` (aday yoksa kesik çizgili gerçek). Ayarlar: kit metin alanı, işe alım kit şalteri, Kaydet kit düğmesi.
+- Silinen: üyeler panelindeki `Plate`/`Section`/`Chip`/`Button`/`Note`/`EmptyState` ve yerli `select`/checkbox.
+- Audit: üyeler 3 (kalan: ortak sheet karartması).
+
+**G7-f Dışarıda (klansız komutan) ✅ (2026-11-15).**
+- **An:** "Klana gireyim mi, hangisine, yoksa kendim mi kurayım?"
+- Tanıtım klanın atmosferinde: başlık, kuruluş bedeli tam rakamla ("2K" değil), şart, iki yol (Ekibini bul / Klanını kur). Telefonda iki yol alt alta, her biri tek satır. Sayfa başlığıyla aynı "Sezonluk klanlar" üst yazısı silindi.
+- İstekler kuyuda: davet Kabul / Reddet, başvuru Geri çek kit düğmeleri; kalan süre çipte. Eski ganimet kuyuda kit düğmesiyle.
+- Dizin: kit arama alanı + Ara; her klan bir kapı (etiket rozeti, ad, seviye çipi, iki satır slogan, lider/üye/Hâkimiyet, ok). Başvur sağda küçük kit düğmesi; basılamıyorsa yüzünde nedeni (bekliyor, dolu, alım kapalı, kilitli).
+- Klan profili kit sheet'i: slogan, seviye, kadro tek kuyuda (Lider altın çip, Hâkimiyet sütun başlığıyla), altta Başvur.
+- Klan kur: Komuta Çekirdeği çipi (kilit/onay), bedel, kimlik uyarısı, ad + kısa etiket yan yana, açıklama, işe alım kit şalteri (yerli checkbox gitti). Düğme kararmak yerine eksik olanı söyler: "Önce koşulları karşıla" / "Ad ve etiket gir" (6 dil, yeni).
+- Çeviri düzeltmeleri: de "Einen Clan gefunden" → "Clan gründen", es "Encontrado un clan" → "Fundar clan" (ikisi de "bir klan bulundu" diyordu); de/es dizindeki "Anwenden"/"Aplicar" → "Bewerben"/"Solicitar". Türkçe yol düğmeleri kısaldı.
+- Silinen: dışarıdaki `Plate`/`Section`/`Chip`/`Button`/`Note`/`EmptyState`/`PriceTag`, `ClanIcon`/`CoreIcon`, `.clan-command-head` CSS'i. `MutationError` kit notu oldu.
+- Galeri: `clan-outside` (davet, bekleyen başvuru, eski ganimet, dört klan, profil). Envanterde "dışarıda" artık ulaşılamayan değil.
+- Audit (yalnız sonrası; görünüm önce galeride yoktu): 3 (kalan: ortak sheet karartması). Taşma 0, kontrast 0. Kelime yükü 77/ekran: tanıtımın fayda kartları (G7-c kararı).
+- Not: topluluk sözleşmesi kapısı (`CommunityPolicyGate`) sohbetle ortak; içindeki v2 kalıntıları ve yerli onay kutusu G8'de.
+
+**G7-g Savaş odası + dalga sayfası ✅ (2026-11-15).**
+- **An:** "Hedefe dalga gönderelim mi, lider saldırıyı başlatsın mı?"
+- Hedef kırmızı kenarlı kuyuda: gezegen (kırmızı hale), rakip çipi, ad, kalan süre, durum çipi. Hat: toplanmaya uçan dalgalar adları ve süreleriyle üstte, mavi iz toplanma noktasına, oradan kırmızı nabız atan hedefe. 320'de "Toplanma · Mira" ile "Hedef" çakışıyordu: toplanma adı artık düğümün soluna biter.
+- Beş koltuk kit plakaları (baş harfler, payı gösteren çubuk, ad; Sen kendi renginde, boş koltuk kesik çizgi). Seçilen komutanın dalgası: gemiler, sağlık çubukları (kritik sarı), "Filomu geri çağır" kitin 0,6 sn tutuşu (eski v1 düğme). Hangar kuyuda mavi çubuk; seviye kapasite satırına indi (boş satır gitti).
+- Gönder satırı: Klan sohbeti + "Gemi ekle" kit düğmeleri; basılamıyorsa yüzünde nedeni. Liderin bölümü: varış, hız, radyasyon, kit şalterleri; ortak saldırı kitin kesin tutuşu (1,5 sn, her dalga savaşa girer). "Hedefi iptal et" artık açılan pencere değil: yerinde kırmızı kuyu + 0,6 sn tutuş + Geri dön (owner 2026-11-14 kararı). Bu soru kalıbı `ClanConfirmation.tsx`'e taşındı; klanın bütün onayları onu kullanıyor.
+- "Neden bu oda?" açıklaması `RulesRow` katında.
+- Dalga sayfası kit sheet'i, saldırı rengi: köken kit seçenekleri, gemiler Konvoy'un kit satırlarında (seçilen / evdeki), teklif kit rakamlarında, kurallar notlarda, gönder kitin harcama tutuşu (1 sn). Yeni metin: `clanWar.waveShips` (6 dil).
+- Silinen: savaş odasındaki `Plate`/`Button`/v2 `Toggle`/`HoldButton`/`Confirm`/`Icon`/`ClassEmblem` kullanımı; artık kimsenin kullanmadığı `v2/kit/Toggle.tsx`.
+- Audit: 196 → 110. Kalan bulguların hepsi sancakta (9 px basamaklar, küçük basamak hedefleri; G7-j). Rakip çipi kontrastı düzeltildi. Teklifli dalga sayfası galeride fiyatlanamıyor; testlerle doğrulandı.
+
+**G7-h Bağış sayfası ✅ (2026-11-15).**
+- **An:** "Ortak hazineye ne kadar vereyim, hangi dünyadan?"
+- Kit sheet'i. Dünya kit seçeneklerinde. Her kaynak Yardım sayfasının satırında: ad, hazinenin kalan ihtiyacı ("hazine 40.000 ister"), dünyanın stoğundan düşen çubuk ve seçilen miktar, kit kaydırıcı (stok ya da ihtiyaç, hangisi azsa) ve Maks.
+- Bağış geri alınamaz → kitin kesin tutuşu (1,5 sn); miktar seçilmeden yüzünde "Önce miktar seç". Odanın küçülmesi korunur: gönderilen, kaydırıcının gösterdiğidir.
+- Yeni metinler: `clanWar.donatePick`, `clanWar.donateNeed` (6 dil). Galeri: `clan-donate`.
+- Envanter düzeltmesi: G7-g'de eklenen `ClanConfirmation.tsx` klan yüzeyine yazıldı (envanter testi kırmızıydı).
+- Audit (yalnız sonrası; sayfa önce galeride yoktu): 0.
+
+**G7-i Destek gönder ✅ (2026-11-15).**
+- **An:** "Gemilerim klan arkadaşımın dünyasını tutabilir mi, hangi şartla?"
+- Kit sheet'i, bizim renkte. Alarma cevapsa üstte kırmızı nabız atan şerit: "Klan alarmına cevap" ve saldırının inişine kalan süre; fiyatlanınca yeşil "zamanında" / sarı "geç" notu.
+- Gemiler Konvoy/dalga sayfasının kit satırlarında ("Hattın"), komutan gemisi eşliği aynı yerde. Uçuş kit rakamlarında (yakıt, varış, ev sahibinin yeri, rampalar); bağlayan kurallar tutuştan önce kuyuda ikonlu notlar (kalış süresi, sezon kesmesi, kademe bandı, geri çekilememe, sıralama payı).
+- Gönder kitin harcama tutuşu (1 sn; yakıt yanar, hat eve çağrılabilir), ilk ret yüzünde.
+- Duruş kartı (`DefencePostureCard`) Üs yüzeyinin `ClanSupportBay.tsx` dosyasında ve zaten kitte; bu birimde değişmedi.
+- Yeni metin: `clanSupport.lineShips` (6 dil). Silinen: kimsenin kullanmadığı `v2/kit/ChoiceChips.tsx`.
+- Audit: 71 → 0.
+
+**G7-j Klan sancağı ✅ (2026-11-15).**
+- **An:** "Klanımız sırada neyi açıyor, hazine ne kadar dolu, kim taşıyor?"
+- On basamak artık 20 px'lik çentik değil: kumaş üzerinde iki sıra (1–5 etekte, 6–10 direkte), her biri 44 px. Açık basamaklar mavi parlar, sıradaki nabız atar, seçilen halkalı, yükselen basamak iki kez atar; en üstte kumaş ve basamaklar altın.
+- Basamak kartı tam genişlik kuyuda (kilitli olanın resmi gri); "Klanında olanlar" satırı; kese kaynak çubukları ve bağışçılara bölünmüş çubuk.
+- Bağışla kit düğmesi; lider yükseltmesi kitin harcama tutuşu (1 sn; hazine harcanır), nedeni yüzünde.
+- Katkı Defteri kit satırları: ad (kendi satırın renkli), eylemler tam genişlik, bağış adın altında, son 24 saat kit renklerinde.
+- Sınıf çakışması önlendi: `gk-banner` kitin bildirim şeridi; bunlar `gk-standard`.
+- Audit: sancak 126 → 0, altın 70 → 0, savaş odası 107 → 3 (kalan: ortak sheet karartması). G7 böylece kapanmaya hazır; 6 dilde telefon ölçümü sırada.
+
+**G7 kapanışı (2026-11-16).** 6 dil, telefon, klan + destek yüzeyleri, 96 ölçüm (`reports/ui-audit/g7-close-6lang-2026-11-15.md`): taşma, kırpılma ve kesilme 0; 12 px altı metin 0; kontrast hatası 0. Klan görünümlerinde kalan 1 "küçük hedef" galeri kabuğunun 2×2 px kökü (oyunda yok). CDP hatası veren tek ölçüm (klan, tr) yeniden alındı: temiz.
 
 ## G8. İletişim
 
@@ -1711,6 +1860,12 @@ Doğrulanamayanlar:
 - **Tamirhanedeki parçalama:** koordinatörün işi, bu birimde dokunulmadı.
 - **Testler:** iki tuşun süresi testte ölçülüyor (`--gk-hold-ms` 600 ms). Tuşun görünüşü değişmedi; yalnız dolma süresi kısaldı. Bu yüzden ölçüm (audit) koşulmadı.
 
+
+**G8 kapanışı (2026-11-16).** 6 dil, telefon; sohbet, Bildirim Merkezi, duyurular, geri bildirim, 137 ölçüm (`reports/ui-audit/g8-close-6lang-b-2026-11-16.md`) ve kural kapısı (`g8-close-6lang-2026-11-16.md`).
+- **Kural kapısı kitte:** `CommunityPolicyGate` son v2 boyasını bıraktı. Tek başına durduğunda (sohbetin altı, klan ayarları) kit kuyusu; kurma kuyusunun içindeyse düzleşip o kuyunun son parçası oluyor, kart içinde kart değil. Hata ve güncelleme uyarıları kit notu. Galeride ölçülebilsin diye `clan-pact` görünümü eklendi.
+- **Kesilen başlık:** şikâyet sayfasının başlığı es/fr/ja'da kesiliyordu; kısaldı: "Denunciar un abuso", "Signaler un abus", "違反を通報". Yeniden ölçüldü: kalan 4 kesilme yanıtlanan mesajın bilinçli tek satırlık alıntısı.
+- Taşma ve kırpılma 0; 12 px altı metin 0. Kalan küçük hedefler C3'te yazılı olanlar (balon ucu, tepki paneli altındaki sekme) ve galeri kabuğunun 2×2 px kökü. Kabul satırı basınca kutuyu işaretliyor; ölçüm aracı çocuk öğedeki tepkiyi görmüyor.
+
 ## G9. Sıralama, sezon, anıtlar
 
 Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde); diğerlerinde dil sayımı.
@@ -1760,6 +1915,24 @@ Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde
 - **Tutmalar:** gönder `GameHold` lg, harcar (1 sn); sonda md, harcar (1 sn); geri çağır md, geri alınabilir (0,6 sn). Eski v2 `HoldButton`, `Plate`, `Button`, `Toggle` kalktı.
 - **Ölçüm** (tr; telefon, dar, masaüstü; galeriye `monument-sheet` ve `monument-sheet-quote`, ui-audit'e sayaç dolduran adım; envanterdeki "dalga beklemede" artık ulaşılıyor): puan 114→3, 142→3; 12 px altı 49/74→0 ve 64/95→0, kontrast 14→0, 44 px altı 36→2, tepkisiz 29→2. Kalan 3: sayfa arkalığının 2×2 kapatma alanı (G1). Sayfa uzadı (1561→2161 px): 10 px metinler 12–13 px'e çıktı.
 - **Kalan:** kitin sayacında devre dışı "−" ikonu 2,4:1 (G2-f'nin parçası); çocuk parçalar (`TargetRadiationInstrument`, `EscortRow`, `MonumentRoutePreview`) kendi birimlerinde.
+
+
+**G9-a Onur ayrıcalıkları ✅ (2026-11-16).** G9 #2'nin son v2 parçası (`ui/HonorBenefits.tsx`) ve onarım, ticaret, konvoy sayfalarındaki Onur fiyat kutusu.
+- **An:** "Onurum bana ne kazandırıyor, bir sonraki kademeye ne kadar var?" Kurallar ve oranlar değişmedi.
+- Bölüm kit kuyusu: kademenin kendi rozeti (hazır `HonorBadge` sanatı), adı kendi renginde; üç etki kit rakamı, her biri bana ne yaptığının renginde (ucuz onarım ve büyük konvoy yeşil, komisyon kırmızı; eskiden üçü de kademenin rengindeydi).
+- Yeni satır: "Sonraki kademeye 45,9 Honor: Avantaj kademesi 2"; kesinti kademesinde "Honor -25 üstüne çık: Nötr". En üst kademede yok. 6 dilde yeni iki anahtar.
+- Tüm kademeler kitin kural satırında, bir dokunuş uzakta: her basamak rozet + ad + aralık, altında üç değer; sütun başlıkları en üstte (önce hangi yüzdenin ne olduğu yazmıyordu). Şu anki basamak işaretli.
+- Fiyat kutusu kit makbuzu: başlık etkinin renginde, sütunları adlı gerçek tablo; bir şey seçilmeden boş tablo çizilmiyor (kural metni duruyor).
+- Kitin gemi satırı: uzun ad (Wayfarer) 320 px'te sayacın altına kayıyordu; artık ikinci satıra iniyor.
+- Galeri: Onur sıralaması ve ticaret sayfası örnek Onur verisi taşıyor. Audit (tr; telefon, dar, masaüstü): sıralama 0, ticaret 3 (galeri kabuğu).
+
+
+**G9 kapanışı (2026-11-16).** 6 dil, telefon; sıralama ve arşiv, sezon özeti, anıt, ticaret, 60 ölçüm (`reports/ui-audit/g9-close-6lang-2026-11-16.md`): taşma, kırpılma ve kesilme 0; 12 px altı metin 0.
+- **Sıralama kitin kökünde değildi:** sayfa `gk` sınıfı olmadan açılıyordu; gövde yazısı tarayıcının yazı tipine düşüyordu. Artık kitin yazısı.
+- **Onur ödülü satırı:** rapor ganimetinin `gk-haul__row` sınıfını ödünç alıyordu; o sınıf sonradan üç sütunlu ızgaraya dönüşünce "820 / 1.750" bir sonraki resmin üstüne biniyordu (sıra satırlarındaki küçük ödül de aynı sınıfı kullanıyordu). İkisi de kendi `gk-lb__purse` satırında.
+- Kalan: anıt sayfasında en'de bir satır 1.97:1 ölçüldü; ekranda koyu zeminde okunuyor, tr'de geçiyor (ölçüm alttaki tutma çubuğunun gölgesine denk geldi).
+
+**Sayfa başlıkları kitte (2026-11-16, kesişen).** Menü, sıralama, araştırma, kozmetik mağaza, envanter ve Wiki sayfaları kitin içeriğiyle ama eski düz v2 başlığıyla açılıyordu. Hepsi kitin başlık plakasında (sıralama ve araştırma kendi sanatıyla; menüde sanat yok, hemen altındaki komutan kartı madalyonu taşıyor). `test/sheet-heads.test.ts` galaksideki her sayfanın kit başlığı taşıdığını denetliyor; sırası gelmemiş üçü (G12 arena, G14 yönetim, G15 gemi) listede, liste yalnız küçülür. Görselli başlıkta üst yazı ("Yerel galaksi") gün batımı resmi üstünde 3.1:1 kalıyordu; birinci mürekkep ve gölge.
 
 ## G10. Hesap
 
@@ -1860,6 +2033,44 @@ Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası geli
 | 2 | Akademi menüsü | `MenuPanel` › Akademi | v2 | G1'de |
 | 3 | Savaş simülatörü | `battle-simulator/BattleSimulator` (141), `SimulatorDialog` (37), `SideEditor` (94), `UnitInspector` (48), `SimulationNumberInput` (25), `BattleBalance`, `RetreatRoster`, 3D `BattleStage` | kendi `simulator.css`'i (`sim-*`) | **Beşinci dil.** Tam ekran (`?simulator=1`), menü karosu, rapordan "dene". |
 
+
+**G11-a Oyun içi Wiki ✅ (2026-11-16).** G11 #1, yalnız oyun içindeki oda (`WikiScreen`); yayınlanan Wiki (G13) değişmedi.
+- **An:** "Aradığım kural nerede, bulup oyuna döneyim." İçerik ve arama aynı.
+- Sayfa kitin başlığıyla açılıyor (önce başlık gizliydi, içeride "ASTERA / WIKI" ve dev bir "Astera Online Wiki" web başlığı vardı). Odada tekrar yok; karşılama başlığı yalnız okuyucuya.
+- Araç satırı tek satır ve yapışkan: kit geri tuşu (yüzünde gidilecek yer, okuyucuya "Geri dön: …"), dil seçimi kitin seçenekleri (Türkçe büyük harf kuralı "ENGLİSH" yazmasın diye büyük harf yok). Arama kit alanı.
+- İçerik yalnız `.gk.wiki-room` kapsamında giyiniyor: kitin yazısı; konu menüsü kitin kural satırı; karşılama kompakt kuyu, "İlk adımların" kitin eylem rengi; kategoriler kit kapıları; tablolar, rakamlar ve notlar kit camında; dış bağlantı kit çipi. Basılı hâller eklendi.
+- Audit (tr; telefon, dar, masaüstü): 45 → 10. 12 px altı metin 10 → 0; tepkisiz hedef 23 → 4. Kalan: galeri kabuğu ve arama alanında ölçüm aracının 2 px'lik kenar kaydı.
+
+
+**G11-b1 Savaş sahnesi: tekrar ve simülatörün ortak kontrolleri ✅ (2026-11-16).** G11 #3'ün sahne kısmı (`BattleReplay`, `simulator.css`); oyun içi savaş tekrarı ile simülatör aynı sahneyi kullanıyor.
+- **An:** "Savaş nasıl gitti, hangi atış ne yaptı?" Oynat, adım adım ilerle, tura atla, özet ve atış dökümü.
+- Sahnenin kendi paleti kitin belirteçlerine bağlandı (kendi taraf, düşman, metal, cam); yazı kitin yazısı.
+- 12 px tabanı: 9–11 px'lik bütün yazılar (en küçüğü 5 px'lik "ONLINE") 12 px'e; telefonda markanın alt satırı kalktı. Büyüyen durum satırı ve Aegis satırı artık kesilmiyor, alta iniyor.
+- Dokunma: oynat 48 px kitin yuvarlak ışıklı tuşu; önceki/sonraki, hız, genel görünüm, sekmeler, sayfa kapatma, döküm satırları 44 px; tur işaretleri 30 px; kaydırıcının tutamağı büyüdü. Her basışın basılı hâli var.
+- Alandaki taraf işaretleri (◆/▲) yazı değil şekil: kendi tarafın elması, düşmanın üçgeni, kitin renklerinde.
+- 320 px'te iki tarafın sayıları ortada çakışıyordu; göz simgesi çekiliyor, boşluklar daralıyor.
+- **Hata:** atış dökümünün tur satırı savaşın sınırını sayıyordu ("Tur 1 / 8"), üstteki durum satırı yapılan turu ("Tur 1 / 4"). Artık ikisi de yapılan tur (test).
+- Audit (tr, simülatör sayfası; telefon): 151 → 28; 12 px altı 56 → 0, kontrast 11 → 0, tepkisiz 20 → 4. Kalan küçük hedefler simülatörün başlığı ve araç çubuğu (G11-b2). Masaüstündeki kontrast kayıtları açık düzenleyicinin sayı alanları (G11-b2).
+
+
+**G11-b2 Simülatörün sayfası ve filo düzenleyicisi ✅ (2026-11-16).** G11 #3'ün kalanı (`BattleSimulator`, `SideEditor`).
+- **An:** "Bu gemileri göndersem ne olur?" Filoları kur, savaşı çalıştır, izle.
+- Araç çubuğunda yalnız filo düğmesi (kurduğu savaşın sayılarıyla) ve tek ışıklı tuş: "Savaşı simüle et" kitin eylem tuşu (ayar değişince nabız atar). Eskiden üç öğe sığmıyor, tuş ince bir şeride eziliyordu.
+- Savaş alanı (Gezegen/Uzay) bir senaryo ayarı: düzenleyicinin başında kitin seçenekleri; örnek savaşlar yerli açılır listeden iki sütunlu kit seçeneklerine. Elle düzenlenince hiçbiri seçili değil (özel senaryo). "EMP / savunma kapalı" ve "otomatik geri çekilme" kitin şalteri.
+- Düzenleyicide her sayaç, sayı alanı, seçici, katlama ve tuş 44 px; yazılar 14–16 px.
+- **Kök neden:** simülatörün genel `.simulator button` kuralı kitin tuşlarını eziyordu (renk, zemin, kenar). Artık `:where(:not([class*="gk-"]))` ile yalnız sahnenin düz tuşlarına uygulanıyor; özgüllük eskisi gibi düşük, özel kurallar bozulmadı.
+- Sahne üstündeki gemi sayıları koyu plakada (parlak gezegen üstünde 1.7:1 kalıyordu).
+- Kalan bilinçli: araştırma seviyesi (0–20) ve korsan seviyesi kit görünümlü seçici olarak kaldı (uzun liste).
+- Audit (tr; telefon): 151 (G11-b1 öncesi) → 15. Kalan: kaydırıcı ile tur işaretleri birlikte 58 px'lik tek kontrol; masaüstündeki kontrast kayıtları sahne üstü plakalarda, ölçüm arkadaki gemi resmini örnekliyor.
+
+
+**G11 kapanışı ✅ (2026-11-16).** Altı dilde telefon audit'i (oyun içi Wiki galeriden, simülatör herkese açık sayfasından ayrı koşu).
+- Taşma, kesilme, yana taşma: altı dilde 0. 12 px altı metin: 0.
+- Wiki: puan tr 8 / en 6. Kalan: arama alanının kenar kaydı (2 px ölçüm, alanın kendisi 46 px) ve iki kapak bağlantısı.
+- Simülatör: puan tr 15 / en 10. Kalan: kaydırıcı ile tur işaretleri (tek kontrol), gezegen üstündeki hasar rozeti 4.41:1 (koyu plakada okunuyor).
+- Almanca ("KAMPF SIMULIEREN") ve Japonca eylem tuşu tek satıra sığıyor; Wiki içeriği bilinçli olarak yalnız en/tr sürümünde.
+- Raporlar: `reports/ui-audit/g11close-wiki-2026-11-16.md`, `reports/ui-audit/g11close-sim-2026-11-16.md`.
+
 ## G12. Savaş Alanı (arena)
 
 Okundu: dosya haritası. `src/arena` 50 dosya, 17 bileşen; kendi `arena.css`'i (altıncı dil), kendi HUD'u.
@@ -1875,6 +2086,137 @@ Okundu: dosya haritası. `src/arena` 50 dosya, 17 bileşen; kendi `arena.css`'i 
 
 Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak alanı, hareket halinde okuma) ayrı incelenecek. `docs/komutan-gemisi/README.md` okunacak.
 
+
+**G12 bölümleme (2026-11-16).** a: takım paneli + taktik seçici · b: uçuş öncesi ekran (sınıf, kip, başlat) · c: yükleme, sonuç, menü, izleyici · d: hangar + Komutan gemisi sayfa başı · e: uçuş HUD'u (gerçek zamanlı; başparmak alanı ve hareket halinde okuma ayrıca).
+- Ölçüm önkoşulu: audit'in galeri sürücüsü hangarı ve takımı arena sunucusu olmadan ölçüyordu (ekranda yalnız "alınamadı" satırı). Sürücüye görünüm başına sabit yanıtlar eklendi (`GALLERY_ANSWERS`, araçların fotoğrafladığı aynı veri); klan sayfasındaki takım için `clan-arena` görünümü.
+- Önce (tr, telefon puanı): takım 220, hangar 116, uçuş öncesi 126, maç 77.
+
+**G12-a Takım paneli ve taktik seçici ✅ (2026-11-16).** `TeamPanel`, `TacticPicker`. Klan sayfası (hazırlan), hangar (ganimet payı) ve uçuş masası (lobi) aynı paneli kullanıyor.
+- **An:** "Kim benimle uçuyor, kalkabilir miyiz?"
+- Kök neden (galeri): taktik seçicinin stili yalnız uçuş ekranının `arena.css`'indeydi; o dosya yüklenmeden ikonlar ekran boyu siyah şekiller oldu. Seçici artık kitin kendi parçası (`gk-tactics`), her yerde aynı.
+- Ekip kitin ekip listesinde: hazır lambası, "Sen" ve durum çipi (Hazır / Hazırlanıyor / tamir uyarısı), sınıf · seviye · yakıt; lider için her satırda kısa "Çıkar" (okuyucu kimi çıkardığını duyar).
+- Her basış kit basışı ve neden basılamadığını söylüyor: "Birlikte kalk" herkes hazır olana dek "Herkes hazır olunca açılır"; tamirdeki gemi için "Hazırım" yerine "Tamir veya bakım bitmedi".
+- Taktik seçenekleri hangi yuvada olduklarını E/C rozetiyle gösteriyor (önce yalnız etkin yuvanınki belliydi).
+- Ganimet kuralları kitin kural satırında bir dokunuş uzakta; bağlantı hatası uyarı notunda, "Yeniden bağlan" kit basışı; pay alımı ve sınır uyarısı kit kuyusunda.
+- Audit (tr): takım 220 → 0; klan sayfasındaki takım 3 (kalan sayfanın üstündeki 2 px'lik öğe, klan sayfasına ait). Uçuş öncesi ekran 126 → 96 (geri kalanı G12-b).
+
+
+**G12-b Uçuş öncesi ekran ✅ (2026-11-16).** `Sandbox` (uçuş öncesi bölüm), `ClassPicker`, `ModePicker`, `LoopLine`, gemi satırı.
+- **An:** "Hangi gemi, hangi uçuş, başla." Gemi ve alan resim olarak kalıyor; başlık üstte, masa başparmakların altında.
+- Başlık kitin display yazısında (h1). Döngü satırı 44 px. Kitin yardım işareti sağ uca sabitlendi, 320 px'te de taşmıyor; adımlar kit kuyusunda açılıyor.
+- Uçuş türü (Gerçek uçuş / Antrenman) artık masanın ilk kararı ve döngü satırının hemen altında: gerçek uçuşta sınıf paneli yerine tek satırlık gemi bilgisi geldiği için gerisi bu karardan doğuyor. Plakalar ne kazandırdığını söylüyor; çekirdeği yetmeyen için kilitli plaka hangi çekirdeği beklediğini yazıyor; grup adı "Uçuş türü".
+- Sınıf kitin seçeneklerinde. Görev satırı, sınıfın kendi rengindeki imza yeteneği ve sekiz değer kitin rakamlarında, çubuklarla. Paneller sahne üstünde koyu cam (`gk-arenapanel`); gemi yazının arkasından görünmüyor.
+- Başlat kitin büyük eylem tuşu. Fiyatı ve onu ödeyen kaynak ikinci satırda. Uçamıyorsa nedenini yazıyor ("Tamirde · 59:54"). Kısa telefonda masa kaydırılırken başparmak altında sabit kalıyor.
+- Takım lobisinde masanın başlat tuşu yok: devre dışı bilgi tuşu takımın kendi "Hazırım / Birlikte kalk" tuşlarını örtüyordu ve lidere de yanlış şey söylüyordu. Yerine "Kalkışı klan liderin başlatır." notu geliyor.
+- Kök neden notu: arena.css'in eski başlat ve dön kuralları yalnız kite geçmemiş tuşlara uygulanıyor (`:where(:not(.gk-btn))`, G12-c'ye kadar). Araçların `.ap-launch` seçicisi korundu. Uçuş öncesine ait 63 satır eski kural ve kullanılmayan `LaunchLabel` silindi.
+- Audit (tr): uçuş öncesi 126 → 19. Kalanın tamamı yalnız geliştirme modunda görünen fps göstergesi. Gerçek uçuş, tamir, takım lobisi ve 320 px durumları ayrıca sahte hangar yanıtlarıyla çekildi.
+
+
+**G12-c Sonuç, ayarlar, yükleme ve izleme ✅ (2026-11-16).** `Sandbox` (sonuç, menü, yükleme, sıralama), `SortieSummary`, `GraphicsPicker`, `ModelCredits`, `SpectatorPanel`.
+- **An:** "Ne oldu, şimdi ne?" Sonuç kartı uçuşun nasıl bittiğini kendi renginde söylüyor: teslim yeşil, yok edilme kırmızı, çekilme sarı. "Ne oldu?" kutusu, puan/isabet/yok edilen kitin rakamlarında. Sonraki uçuş tek ışıklı tuş ve ikinci satırında geri sayım ("Alana dönüş 3 sn").
+- Düzeltilen çelişki: boş ambarla düşen gemiye "Ambar boştu; bu çıkış puan getirmedi" ile "Ambarın enkazın çevresine saçıldı" birlikte yazılıyordu. Boş çıkışta da "Ambar boştu" iki kez çıkıyordu. Artık ambar boşken kayıp yoksa "Ambar boştu; kargo kaybın yok." yazıyor. Saçıldı/alanda kaldı yalnız taşınan bir şey varken söyleniyor.
+- Gerçek uçuşun dönüşü: başkente gidenler, düşen kargo ve takım havuzu kitin kaynak çiplerinde; günlük sınır ve tamir saati uyarı notunda; XP kendi satırında.
+- Uçuş üstü ayarlar: dönüş hassasiyeti kitin kaydırıcısı (×0,50–×1,50), ters çevirme ve ses kitin şalteri, grafik kitin seçenekleri ve neye mal olduğu notu; "Uçuşa dön" ışıklı tuş. Emeği geçenler kitin kural satırında.
+- Yükleme: aşama, yüzde ve çubuk kitte; yükleme hatası uyarı notu ve "Yeniden dene" tuşu. Takım izleme: arkadaş seçici 44 px, gövde çubuğu, "Sonuca dön" kit tuşu.
+- 110 eski kural silindi (ar-*, ss-*, al-*, as-*, ap-mode, ap-eyebrow, ap-keys, eski başlat/dön). `.arena-spectator` yalnız konum.
+- Audit'e iki giriş yolu: `arena:menu` (antrenman + menü) ve `arena:result` (geliştirme kancasıyla gemiyi düşürür). Audit (tr): menü 68 → 19, sonuç 54 → 19; kalanın tamamı geliştirme fps göstergesi. Yükleme ekranı çok kısa sürdüğü için fotoğraflanamadı; yalnız testlerle doğrulandı.
+
+
+**G12-d1 Hangarın kabuğu ✅ (2026-11-16).** `HangarPanel` (sahne plakası, masa sekmeleri, sınıf kapısı, alt dok), `ShipStatus`, `DeskNote`; Komutan gemisi sayfası kitin başlığında.
+- **An:** "Gemim ne durumda, sırada ne var?"
+- Sayfa başı kitte, gemi sanatıyla (`cos-ship`); `sheet-heads` testindeki istisna listesinden arena çıktı.
+- Bölmede geminin rolü kendi renginde, adı kitin display yazısında, seviyesi (denemede "Önizleme") kit çipinde; durum (Hazır / Tamirde · saat / Yarık'ta) renkli lambalı kit çipi.
+- Masanın üç bölümü kit sekmeleri; Yetenekler sekmesi bekleyen puan sayısını rozetle gösteriyor, okuyucu "Yetenekler — 3 puan hazır" duyuyor.
+- Sınıfları karşılaştır / değiştir kitin kapı satırı (değişim süresi sarı alt satırda).
+- Alt dok: "Yarık'a gir" kitin büyük tuşu; uçabiliyorsa ışıklı, yalnız antrenman açıksa çelik ve nedeni ikinci satırda. Sezonun sınıfını seçmek ve değiştirmek kitin kesin tutması (1,5 sn): geri alınmıyor. Vazgeç ve gemime dön kit tuşları.
+- Masa notları kit uyarısı; "Gemini seç" ve çekirdek eksikliği kit kuyusunda.
+- Audit (tr, galeri sabit yanıtlarıyla): hangar 116 → 93. Kalan masanın blokları (tamir, seviye, yetenekler, değerler, yükleme): G12-d2.
+
+
+### G12-d2 — gemi masası kit'te (2026-11-16)
+
+- Seviye, tamir, yetenek, değerler, sınıf, kalkış planı, günlük tavan ve kurallar kit kuyularına ve etiketlerine taşındı.
+- Her harcama (seviye, puan, kısa tamir) 1 sn'lik çelik `GameHold`. Tek parlak düğme Yarık'a giriş.
+- Bedeller artık `CostLine` ile gösteriliyor. Kurallar `RulesRow` içinde. Sınıf sekmeleri `GameTabs`; kit'e küçük bir `art` alanı eklendi, sınıf imzası sekmede kaldı.
+- Denetim (tr, telefon): 93 → 9. 12 px altı yazı 36 → 0, kontrast hatası 18 → 2.
+- Kalan kontrast hataları bölmenin üstündeki plaka/ipucu yazılarında ve kaydırılmış karedeki başlık altı satırda.
+- Açık: galeride bölme gemi modelini göstermiyor (9 sn beklemede de boş). Bu değişiklikten bağımsız, G12 kapanışında bakılacak.
+
+
+### G12-e — uçuş ekranı kit'te (2026-11-16)
+
+- Uçuş göstergeleri, hız kutusu, bildirim, sahne işaretleri, gaz, yetenek düğmeleri, işaret çarkı ve harita kit renklerine ve yazı tipine geçti. Arenanın eski v2 adları kit'e bağlandı.
+- 12 px altında yazı kalmadı. Sahne üstündeki adlar koyu konturlu; düğme etiketleri motor parlamasında da okunsun diye ince koyu zemin üstünde.
+- Menü 44 px metal yuvarlak düğme oldu. Radar ve menü basınca küçülüyor. Haritanın kapatma düğmesi de 44 px.
+- Harita: etiketler büyük harften çıktı (12 px'te birbirine binmesin diye). Açıklamalı lejant satırları tam satır ve asılı girintili.
+- Denetim (tr, telefon): 81 → 32. 12 px altı yazı 25 → 4; kalan 4'ü yalnız geliştirmede görünen fps satırı. Kontrast 16 → 8; kalanlar mesafeyle bilerek sönen uzak yer adları.
+- Galeride hangar bölmesinin boş görünmesi hata değil: yerelde gemi paketi (`/__ref/dist/v2/…`) yok, prod'da arena sunucusu veriyor.
+
+
+### G12 kapanış — arena 6 dilde telefonda (2026-11-16)
+
+- 7 arena yolu (hangar, ekip, klan-arena, uçuş masası, uçuş, menü, sonuç) tr, en, de, es, fr ve ja'da telefonda ölçüldü.
+- Tek bulgu Japoncadaydı: kit'in basılı tutma etiketi harf başına 0,6 em varsayıyordu (dar Saira). Japonca yazı tipinde etiket taşıyordu. Japoncada artık harf başına 1 em hesaplanıyor ve etiket ikinci satıra geçebiliyor.
+- 320 px'te hangar'ın değer adları kesiliyordu ("Ateş gücü"). Artık alt satıra geçiyor.
+- Sınıf çakışmaları düzeltildi:
+  - G12-d2'nin `gk-level` ve `gk-desk` sınıfları kit'in seviye rozeti ve masa sütunu kurallarını devralıyordu: seviye başlığında mavi şerit, değerlerde fazladan panel. Sınıflar `gk-shiplevel` ve `gk-shipdesk` oldu.
+  - G12-c'nin `gk-haul` kuralı savaş raporu ve hedef dosyasındaki eski `gk-haul` ızgarasını eziyordu. Arena olanı `gk-arenahaul` oldu.
+- Sonuç: hiçbir dilde 12 px altı yazı, kesilme ya da taşma yok. Hangar (tr) puanı 6.
+- Sahibe açık konu: arena metinleri yalnız tr/en. de, es, fr ve ja oyuncuları arenayı İngilizce görüyor (`arenaCopy`). Ayrıca galerideki hangar başlığı sabit Türkçe bir test metni; oyunda `t('arena.nav')` kullanılıyor.
+
+
+### G13-a — çökme, bakım, sürüm ve engellendi ekranları kit'te (2026-11-16)
+
+- Çökme ekranı v1'den kit'e geçti: başlık kit yazı tipinde, tek parlak "Yeniden yükle" düğmesi, rapor araçları sessiz kit düğmeleri, rapor bir kit kuyusunda.
+- Bakım ve "güncelleme gerekli" ekranlarında açılışın marka sahnesi korundu; yalnız yazılar ve tek düğme kit'e geçti. Android'deki mağaza bağlantısı da aynı kit düğmesi görünümünde.
+- Uygulamadaki "engellendi" görünümü `App.tsx` içinde çıplak v1 idi. `shell/BlockedScreen` bileşeni oldu ve kit'e geçti; web eskisi gibi giriş sayfasını gösteriyor.
+- Yükleme ekranına dokunulmadı: marka kompozisyonu, puanı zaten 0.
+- Denetim (tr, 3 profil): bakım 1 → 0, güncelleme 0 → 0, çökme 9 → 0.
+- `landing-api-failure` testindeki ses modülü sahtesi gerçek modülü yayacak şekilde genişletildi; kit düğmesi `OWN_SOUND`'u istiyor.
+
+
+### G13-b — giriş paneli kit'te (2026-11-16)
+
+- Giriş paneli v2'den kit'e geçti:
+  - kit metal panel ve kit yazı tipiyle başlık; kapat düğmesi kit yuvarlak düğmesi;
+  - iki alan kit cam yuvası, kit etiketleriyle;
+  - ret, zarar renginde bir kit afişi; ilgili alanın kenarı yanıyor;
+  - tek parlak "Giriş yap" düğmesi; "Parolamı unuttum" ve "Yeni komutan oluştur" sessiz kit düğmeleri.
+- Davranış aynı: arka plana yanlışlıkla gelen tıklamaya karşı koruma (`useOwnPress`), geri tuşu, Esc, odak tuzağı, form tek giriş noktası.
+- Şifre sıfırlama zaten kit'teydi (puan 0).
+- Denetim (tr, 3 profil): giriş 23 → 2. Kalan 2 "tepkisiz" bulgusu arkadaki açılış sayfasının dil seçicisi ve Wiki bağlantısı.
+
+
+### G13-c — uygulama giriş ekranı kit'te (2026-11-16)
+
+- Android'in giriş ekranı (`CompactLandingScreen`) v2'den kit'e geçti:
+  - nüfus satırı kit sayılarıyla;
+  - tek parlak düğme: ilk kez gelende eğitim, daha önce komutan tutmuş cihazda geri giriş;
+  - öbür kapı çelik ya da sessiz kit düğmesi;
+  - ret bir kit afişi; yayıncı sayfaları sessiz kit bağlantıları, 44 px yüksekliğinde;
+  - dil seçici kit camında: `LanguageSwitch`'e `kit` seçeneği eklendi, web açılışı ve simülatör eskisi gibi.
+- Sahne üstündeki yazılara koyu kontur verildi; arkadan geçen parlak gezegen artık okunuşu bozmuyor.
+- Web açılış sayfasına (`PublicLandingScreen`) dokunulmadı; sahibin 2026-10-18 premium tasarımı kendi CSS'iyle duruyor.
+- Galeriye `front-door` görünümü eklendi (`gallery:front-door`); ekran web'de görünmediği için denetim ancak böyle ulaşabiliyor. Galeri görünümün üstüne kaynak çubuğunu da çizdiği için puan (31) şişik. Ekranın kendi bulguları: 12 px altı yazı yok, kesilme yok; kontrast bulguları konturu saymayan ölçümden.
+- G13-b'de kaçan bir test (`onboarding`: giriş başlığının sınıfı) kit'e göre güncellendi.
+
+
+### G13-d — adres sorusu, dönüş kartı ve hızlı erişim düğmesi kit'te (2026-11-16)
+
+- Adres sorusu (`BrandQuiz`) kit levhası oldu:
+  - önce ödül: üç kaynak kit kuyusunda, kit sayılarıyla;
+  - her adres harf anahtarlı bir kit plakası; seçince dokunma sesi, yanlış seçim sarsılır ve sarı kit afişiyle doğru adresi söyler;
+  - ödül verilince onay işareti büyüyerek gelir, tek parlak düğme "oyuna devam et"; atla sessiz kit düğmesi.
+- Dönüş kartı (`RecallHost`) kit plakası; kapatma kit yuvarlak düğmesi; hızlı erişim düğmesi (`InstallButton`) artık kit düğmesi.
+- `brand/styles.css` içindeki kullanılmayan 27 kural silindi (soru, ödül, seçim, kart).
+- Bu ekranlar denetim envanterinde yok (brand klasörü listelenmiyor); `brand-preview` üzerinden telefon genişliğinde önce/sonra fotoğraflarıyla kontrol edildi. 12 px altı yazı yok, kesilme yok.
+- Kurulum talimat sayfası G13-d2'de kit'e geçti.
+
+### G13-d2 — kurulum rehberi kit'te (2026-11-16)
+
+- "Ana ekrana ekle / hızlı erişim" rehberi kit levhası: marka imzası soruyla ortak (`BrandLockup` artık kit), iPhone adımları kit numaralı kutularda, masaüstünde yer imi kısayolu kit tuşu (`Ctrl + D`), adres kit kuyusunda, kopyalama kit düğmesi; yükleme reddedilirse sarı kit afişi.
+- Tarayıcının kurulum cevabı beklenirken düğmeler artık soluk-kapalı değil, dönen işaretli "bekliyor" (`pending`); basış yine işlemez. `brand-install` testi buna göre güncellendi.
+- Kullanılmayan 24 marka kuralı silindi. iPhone, Android ve masaüstü önce/sonra fotoğraflandı; 12 px altı yazı yok.
 ## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
 
 | # | Yüzey | Dosya (satır) | Dil | Not |

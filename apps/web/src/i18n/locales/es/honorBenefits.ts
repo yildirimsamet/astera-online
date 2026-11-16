@@ -2,6 +2,7 @@ export const honorBenefits = {
   grossReturn: 'Regreso bruto',
   grossCargoRule: 'Se reserva carga para el intercambio bruto antes de la comisión.',
   title: 'Ventajas de Honor', current: 'Tu nivel actual', allTiers: 'Todos los niveles',
+  next: 'Faltan {{amount}} de Honor para {{tier}}', climb: 'Supera Honor {{amount}}: {{tier}}',
   positiveTier: 'Nivel de ventaja {{tier}}', negativeTier: 'Nivel de penalización {{tier}}', neutral: 'Neutral',
   repair: 'Coste de reparación', convoy: 'Recursos del convoy', trade: 'Comisión comercial',
   percent: '{{amount}} %', atLeast: 'Honor ≥ {{amount}}', atMost: 'Honor ≤ {{amount}}',

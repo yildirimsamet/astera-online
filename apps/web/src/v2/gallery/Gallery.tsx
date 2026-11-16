@@ -13,7 +13,8 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
 import { nowEntries } from '../../lib/nowLine.js';
 import { roomOf } from '../../lib/fleetPage.js';
-import type { FaultView, GalaxyPlanet, IntelView, PlanetView } from '../../api/schemas.js';
+import type { ClanWar, FaultView, GalaxyPlanet, IntelView, PlanetView, UnknownSignalView } from '../../api/schemas.js';
+import { UnknownSignalSheet } from '../../screens/UnknownSignalSheet.js';
 import { FaultSheet } from '../../screens/FaultSheet.js';
 import { LaunchSheet } from '../../screens/LaunchSheet.js';
 import { HangarPanel } from '../../arena/hangar/HangarPanel.js';
@@ -21,6 +22,8 @@ import TeamPanel from '../../arena/TeamPanel.js';
 import { BaseSwitch } from '../hud/BaseSwitch.js';
 import { SettlementSheet } from '../../screens/SettlementSheet.js';
 import { IntergalacticConvoySheet } from '../../screens/IntergalacticConvoySheet.js';
+import type { IntergalacticConvoyEvent } from '../../lib/intergalacticConvoy.js';
+import type { TradeShipEvent } from '../../lib/trade.js';
 import { TransferSheet } from '../../screens/TransferSheet.js';
 import { IntelScreen } from '../../screens/IntelScreen.js';
 import { BuildSheet, PlanetScreen } from '../../screens/PlanetScreen.js';
@@ -29,7 +32,8 @@ import { keys } from '../../api/keys.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
 import { LateAlerts, NotificationCenterSheet } from '../../screens/NotificationCenterSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
-import { AsteroidFocus, DebrisFocus, MonumentFocus, PlanetFocus, StrikeSheet, ThreadFocus } from '../../galaxy/FocusPanel.js';
+import { ClanDonateSheet } from '../../screens/ClanDonateSheet.js';
+import { AsteroidFocus, ContactFocus, DebrisFocus, IntergalacticConvoyFocus, MonumentFocus, PirateFocus, PlanetFocus, RunFocus, StrikeSheet, ThreadFocus, TradeFocus } from '../../galaxy/FocusPanel.js';
 import { StrategicReportSheet } from '../../screens/BattleReports.js';
 import i18n from '../../i18n/index.js';
 import { ReportScene } from '../hud/ReportScene.js';
@@ -46,7 +50,7 @@ import { GalleryReplay } from './GalleryReplay.js';
 import { ProfileGallery, isProfileView } from './ProfileGallery.js';
 import { WorldProvider } from '../../api/world.js';
 import { clanWarSchema } from '../../api/schemas.js';
-import { TRADE } from '@astera/rules';
+import { COMMUNITY_POLICY_VERSION, HONOR_BENEFIT_THRESHOLDS_V1, PIRATE, TRADE, honorBenefits } from '@astera/rules';
 // Development only: the same world the tests draw, so the gallery needs no server.
 import { planetView } from '../../../test/fixtures.js';
 import type { AirborneItem } from '../../lib/airborne.js';
@@ -576,10 +580,39 @@ function GalleryIntel({ blind = false, shelf, named = false }: { blind?: boolean
  * the identity card, the seats, the treasury, forces, the crew, aid and the war room —
  * is photographed here.
  */
-function GalleryClan({ tab }: { tab: 'overview' | 'strength' | 'members' | 'aid' | 'war' }) {
+function GalleryClan({ tab, quote = false, outside = false, donate = false, pact = false, arena = false }: { tab: 'overview' | 'strength' | 'members' | 'aid' | 'war'; quote?: boolean; outside?: boolean; donate?: boolean; pact?: boolean; arena?: boolean }) {
   const client = useQueryClient();
   useState(() => {
     const ago = (minutes: number) => new Date(NOW - minutes * MIN);
+    if (outside) {
+      // G7-f: a clanless commander — an invitation, an application waiting, loot left from a former clan, a directory of four.
+      const later = (minutes: number) => new Date(NOW + minutes * MIN);
+      // G8 close: `pact` — the room's rules not yet agreed, so founding waits behind the gate.
+      client.setQueryData(keys.communityPolicy, { version: COMMUNITY_POLICY_VERSION, acceptedAt: pact ? null : ago(9000) });
+      client.setQueryData(keys.clanHome, {
+        state: 'OUTSIDE',
+        requests: [
+          { id: 'r-1', clanId: 'c-orb', clanName: 'Orbital Guild', clanTag: 'ORB', kind: 'INVITATION', status: 'PENDING', expiresAt: later(20 * 60), resolvedAt: null },
+          { id: 'r-2', clanId: 'c-ash', clanName: 'Ashen Wake', clanTag: 'ASH', kind: 'APPLICATION', status: 'PENDING', expiresAt: later(9 * 60), resolvedAt: null },
+        ],
+        depot: { alloy: 1_840, crystal: 620, deuterium: 0 },
+        creation: { capitalPlanetId: 'p-1', coreLevel: 6, intel: 'RESOLVED', requiredCoreLevel: 7,
+          cost: { alloy: 20_000, crystal: 10_000, deuterium: 0 }, affordable: false, unlockedAt: null },
+      });
+      client.setQueryData(keys.clanDepot, { resources: { alloy: 1_840, crystal: 620, deuterium: 0 }, purseRemaining: { alloy: 0, crystal: 0, deuterium: 0 } });
+      const listed = [
+        { id: 'c-orb', name: 'Orbital Guild', tag: 'ORB', description: 'Watch the rim. Bring everyone home.', recruiting: true, leaderName: 'Ada', memberCount: 4, score: 2_900, level: 6, members: [] },
+        { id: 'c-ash', name: 'Ashen Wake', tag: 'ASH', description: 'Night raids, clean returns.', recruiting: true, leaderName: 'Korr', memberCount: 3, score: 1_420, level: 3, members: [] },
+        { id: 'c-tide', name: 'Tidebreakers of the Long Dark', tag: 'TIDE', description: '', recruiting: false, leaderName: 'Mira', memberCount: 5, score: 880, level: null, members: [] },
+        { id: 'c-lum', name: 'Lumen', tag: 'LUM', description: 'Miners first. We share the haul.', recruiting: true, leaderName: 'Orin', memberCount: 1, score: 0, level: null, members: [] },
+      ];
+      client.setQueryData(keys.clanDirectory(''), { pages: [{ clans: listed, total: listed.length }], pageParams: [0] });
+      client.setQueryData(keys.clanProfile('c-orb'), { ...listed[0], members: [
+        { playerId: 'ada', username: 'Ada', role: 'LEADER', dominion: 14_200 }, { playerId: 'mira', username: 'Mira', role: 'MEMBER', dominion: 9_800 },
+        { playerId: 'tarn', username: 'Tarn', role: 'MEMBER', dominion: 2_100 }, { playerId: 'orin', username: 'Orin', role: 'MEMBER', dominion: 0 },
+      ] });
+      return null;
+    }
     const person = (playerId: string, username: string, slot: number, active: number, role: 'LEADER' | 'MEMBER' = 'MEMBER') => ({
       playerId, username, role, slot, joinedAt: ago(9000), matureAt: ago(8000), mature: true, aidEnabled: true,
       lastActiveAt: ago(active), activeRecently: active < 30,
@@ -651,16 +684,33 @@ function GalleryClan({ tab }: { tab: 'overview' | 'strength' | 'members' | 'aid'
         pool: { combatHulls: 98, waves: 3, participants: 3 },
       },
     }));
-    client.setQueryData(keys.galaxy, { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [] });
+    client.setQueryData(keys.galaxy, { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [],
+      // G7-a: where each clanmate can be sent aid, so the route's third picker names a world.
+      clanPresence: { clan, members: [
+        { playerId: 'mira', username: 'Mira', worlds: [{ planetId: 'p-mira', name: 'Lantern', position: { x: 900, y: 0, z: 300 } }, { planetId: 'p-mira-2', name: 'Halcyon', position: { x: 1400, y: 0, z: -200 } }] },
+        { playerId: 'orin', username: 'Orin', worlds: [{ planetId: 'p-orin', name: 'Brask', position: { x: -700, y: 0, z: 500 } }] },
+      ] } });
     return null;
   });
-  return (
-    <Sheet title="Clan" headerArt={ATMOSPHERE.clan} eyebrow="Seasonal clans" onClose={noop} detents={['full']} bleed>
+  // G7-a: a server that prices any aid flight, so the quote can be photographed after "Check flight".
+  const [api] = useState(() => new Api({ fetch: () => Promise.resolve(new Response(JSON.stringify({
+    clanId: 'c-nova', canLand: true, withinAllowance: true, bay: { used: 1, total: 3, available: true }, cargoCapacity: 4_000,
+    value: { alloy: 600, crystal: 0, deuterium: 0 }, remaining: { alloy: 9_000, crystal: 4_000, deuterium: 900 },
+    nextReleaseAt: new Date(NOW + 140 * MIN).toISOString(), arriveAt: new Date(NOW + 22 * MIN).toISOString(),
+    possibleReturnAt: new Date(NOW + 44 * MIN).toISOString(), canFinishBeforeSeasonEnd: true, travelMinutes: 22,
+  }), { status: 200, headers: { 'content-type': 'application/json' } })) }));
+  const screen = (
+    <Sheet title="Klan" headerArt={ATMOSPHERE.clan} kit={{ art: artIconSrc('menu-clan'), tone: 'self' }} eyebrow="Sezonluk klanlar" onClose={noop} detents={['full']} bleed>
       <WorldProvider>
-        <ClanScreen initialTab={tab} onOpenClanChat={noop} />
+        <ClanScreen initialTab={tab} onOpenClanChat={noop} {...(arena ? { arena: { credential: () => Promise.resolve('dev'), onEnter: noop } } : {})} />
       </WorldProvider>
     </Sheet>
   );
+  // G7-h: the treasury's gift page, opened over the war room.
+  const war = client.getQueryData<ClanWar>(keys.clanWar);
+  const worlds = client.getQueryData<{ planets: PlanetView[] }>(keys.planets)?.planets ?? [];
+  if (donate && war) return <>{screen}<ClanDonateSheet war={war} worlds={worlds} onClose={noop} /></>;
+  return quote ? <ApiProvider api={api}>{screen}</ApiProvider> : screen;
 }
 
 /** The commander surface and live ladder, staged together so their v2 density can be inspected. */
@@ -669,6 +719,9 @@ const ARCHIVE_ID = '11111111-1111-4111-8111-111111111111';
 type GalleryMenu = 'menu' | 'menu-settings' | 'menu-academy' | 'menu-community' | 'menu-ended';
 
 type GalleryArchive = 'leaderboard-archive' | 'leaderboard-archive-profile' | 'leaderboard-archive-career';
+
+/** G9-a: Honor's terms for a score, as the server quotes them. */
+const galleryHonor = (score: number) => ({ version: 1 as const, score, thresholds: HONOR_BENEFIT_THRESHOLDS_V1, ...honorBenefits(score, HONOR_BENEFIT_THRESHOLDS_V1) });
 
 function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leaderboard-honor' | GalleryArchive }) {
   const [client] = useState(() => {
@@ -695,6 +748,7 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
       const ladder = Array.from({ length: 16 }, (_, index) => honorRow(index));
       next.setQueryData(keys.leaderboard, {
         ranking: 'HONOR', honorEnabled: true, honorSoloCredit: false, honorStartsAt: null, ladder, you: { ...ladder[11], isBot: false },
+        honorBenefits: galleryHonor(29_100_000),
         honorReward: { rank: 12, honor: 29_100_000, nominal: { alloy: 1_750, crystal: 1_250, deuterium: 250 },
           reward: { alloy: 820, crystal: 590, deuterium: 118 }, fullThreshold: 61_250_000 },
       });
@@ -824,7 +878,7 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
       <ApiProvider api={api}>
         {page.startsWith('menu') ? (
           // Headed as the game heads it (G1-f): the commander's eyebrow, the page's name, a way back from a page.
-          <Sheet eyebrow={i18n.t('galaxy.panelCommanderEyebrow')} title={i18n.t(menuPage === 'home' ? 'menu.navigation.title' : `menu.navigation.${menuPage}`)}
+          <Sheet kit={{ tone: 'self' }} eyebrow={i18n.t('galaxy.panelCommanderEyebrow')} title={i18n.t(menuPage === 'home' ? 'menu.navigation.title' : `menu.navigation.${menuPage}`)}
             {...(menuPage === 'home' ? {} : { onBack: noop })} onClose={noop} detents={['full']} bleed>
             <div className="flex flex-col gap-4 p-3">
               <MenuPanel
@@ -836,16 +890,70 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
             </div>
           </Sheet>
         ) : page === 'leaderboard' || page === 'leaderboard-honor' ? (
-          <Sheet title="Dominion" headerArt={ATMOSPHERE.season} eyebrow="Season ladder" onClose={noop} detents={['full']} bleed>
+          <Sheet title={i18n.t('leaderboard.title')} headerArt={ATMOSPHERE.season} kit={{ art: artIconSrc('menu-ranking'), tone: 'self' }} eyebrow={i18n.t('leaderboard.eyebrow')} onClose={noop} detents={['full']} bleed>
             <LeaderboardScreen onFocusPlanet={noop} />
           </Sheet>
         ) : (
-          <Sheet title="Dominion" headerArt={ATMOSPHERE.season} eyebrow="Season archive" onClose={noop} detents={['full']} bleed>
+          <Sheet title={i18n.t('leaderboard.title')} headerArt={ATMOSPHERE.season} kit={{ art: artIconSrc('menu-ranking'), tone: 'self' }} eyebrow={i18n.t('leaderboard.eyebrow')} onClose={noop} detents={['full']} bleed>
             <SeasonArchiveScreen onFocusPlanet={noop} initialSeasonId={ARCHIVE_ID} />
           </Sheet>
         )}
       </ApiProvider>
     </QueryClientProvider>
+  );
+}
+
+/**
+ * G4-k: THE UNKNOWN SIGNAL — open from a capital with two colonies, with no Courier at home,
+ * and three outcomes come home: an ambush, a cosmetic, a derelict warship.
+ */
+function GallerySignal({ state }: { state: 'open' | 'noship' | 'pirates' | 'skin' | 'derelict' }) {
+  const outcome = state === 'pirates' ? { kind: 'PIRATES' as const }
+    : state === 'skin' ? { kind: 'SKIN' as const, cosmeticId: 'planet-lava' }
+    : state === 'derelict' ? { kind: 'DERELICT' as const, hull: 'PIKE' as const, damageBp: 3000 } : null;
+  const signal: UnknownSignalView = {
+    id: '00000000-0000-4000-8000-000000000001', at: { x: 2000, y: 0, z: 0 }, status: outcome ? 'returning' : 'open',
+    appearedAt: new Date(NOW - 12 * MIN), expiresAt: new Date(NOW + 48 * MIN), originPlanetId: null, origin: null,
+    fleet: null, damage: null, departAt: null, arriveAt: null, returnDepartAt: null, returnAt: null,
+    recalledAt: null, outcome, deliveredAt: null, pirateFree: false,
+  };
+  const fleet = state === 'noship' ? { DART: 2 } : { DART: 3, PIKE: 1, COURIER: 2 };
+  const planet = { ...launchWorld, fleet };
+  return (
+    <UnknownSignalSheet signal={signal} planet={planet} radar={{ level: 2, range: 3200 }} tier={1} now={NOW}
+      origins={state === 'open' ? [{ id: planet.planet.id, name: planet.planet.name }, { id: 'c-2', name: 'Vesta' }, { id: 'c-3', name: 'Hollow' }] : undefined}
+      onOrigin={noop} onClose={noop} onSend={noop} onBuild={noop} onSkins={noop} />
+  );
+}
+
+/**
+ * G4-j: THE TWO STRIKES ON THE FOCUS RAIL, OPENED — a probed colony, a Death Star ready on the
+ * pad and two radiation bombs in stock, so the camera sees both folds' heads and bodies.
+ */
+function GalleryStrikes() {
+  const client = useQueryClient();
+  useState(() => {
+    client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [], radiation: [] });
+    client.setQueryData(['reports'], { reports: [], rivals: [] });
+    return null;
+  });
+  useEffect(() => {
+    document.querySelectorAll('details.gk-strike').forEach((fold) => { if (fold instanceof HTMLDetailsElement) fold.open = true; });
+  }, []);
+  const colony: GalaxyPlanet = { ...rival, kind: 'COLONY' };
+  const read = { ...launchIntel.probeReports[0]!, targetPlanetId: colony.id, loyalty: 38, interceptors: 2 };
+  const armed: PlanetView = {
+    ...launchWorld,
+    deathStars: [{ id: 'ds-1', status: 'READY', readyAt: null, remainingSeconds: 0 }],
+    radiationBombsAvailable: true,
+    radiationBombs: [
+      { id: 'rb-1', level: 1, status: 'READY', readyAt: null, remainingSeconds: 0 },
+      { id: 'rb-3', level: 3, status: 'READY', readyAt: null, remainingSeconds: 0 },
+    ],
+  };
+  return (
+    <PlanetFocus target={colony} planet={armed} intel={{ ...launchIntel, probeReports: [read] }} reports={[]} now={NOW}
+      onClose={noop} onAttack={noop} onDeathStar={noop} onInstallTelescope={noop} onLaunched={noop} open onToggle={noop} />
   );
 }
 
@@ -911,6 +1019,22 @@ function GalleryMonumentFocus() {
     controller: { kind: 'NEUTRAL' }, capacity: 7270, used: 0, productionPerMinute: 8, radiationHpPerMinute: 12.5,
     emptySince: null, respawnAt: null }} onInspect={noop} onClose={noop} />;
 }
+
+/** The convoy and the merchant every gallery view of them shares: one crossing, one window. */
+const GALLERY_CONVOY: IntergalacticConvoyEvent = {
+  id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'INTERGALACTIC_CONVOY',
+  startsAt: new Date(NOW - 10 * MIN), endsAt: new Date(NOW + 110 * MIN),
+  appearsAtMinute: 1140, expiresAtMinute: 1260,
+  route: { from: { x: -2000, y: 0, z: 0 }, to: { x: 2000, y: 0, z: 0 }, velocity: { x: 100 / 3, y: 0, z: 0 }, speed: 100 / 3 },
+  visual: { formationVersion: 1 },
+  rewardPolicy: { resourceCapHours: 4, fullRewardForceRatio: 1, shipDropFullFirepower: 5780, shipDropChanceAtFullQuality: 0.15, maxAwardedShips: 3 },
+};
+const GALLERY_MERCHANT: TradeShipEvent = {
+  id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'TRADE_SHIP',
+  startsAt: new Date(NOW - 30 * MIN), endsAt: new Date(NOW + 150 * MIN),
+  rate: TRADE.rate, appearsAtMinute: 570, expiresAtMinute: 750,
+  orbit: { radius: 1_100, period: (2 * Math.PI * 1_100) / TRADE.speed, phase: 0.7, inclination: 0.4, ascendingNode: 1.9, speed: TRADE.speed },
+};
 
 /**
  * G4-h1: the two mining cards as a player meets them. The rock: an isotope-rich one, a craft already
@@ -1125,7 +1249,7 @@ function GalleryResearch({ variant = 'map' }: { variant?: 'map' | 'sheet' | 'loc
   }, [variant]);
   const focus = variant === 'locked' ? 'DENSE_FUEL_CELLS' : variant === 'map' ? undefined : 'SHIP_ARMOR';
   return (
-    <Sheet title="Araştırma" headerArt={ATMOSPHERE.research} eyebrow="Astera · örnek veriler" onClose={noop} detents={['full']}>
+    <Sheet title={i18n.t('research.title')} headerArt={ATMOSPHERE.research} kit={{ art: artIconSrc('nav-research'), tone: 'self' }} eyebrow={i18n.t('research.eyebrow')} onClose={noop} detents={['full']}>
       <ResearchPanel {...(focus ? { focus } : {})} />
     </Sheet>
   );
@@ -1256,7 +1380,7 @@ function GalleryToast({ tone }: { tone: 'info' | 'warn' | 'error' }) {
 
 function Views({ view }: { view: string }) {
   const { t } = useTranslation();
-  if (view === 'wiki') return <div className="wiki-gallery"><Sheet detents={['full']} bleed quietTitle eyebrow="Astera Online" title="Wiki" onClose={noop}><WikiScreen language={i18n.resolvedLanguage} /></Sheet></div>;
+  if (view === 'wiki') return <div className="wiki-gallery"><Sheet detents={['full']} bleed headerArt={ATMOSPHERE.intel} kit={{ tone: 'self' }} eyebrow="Astera Online" title="Wiki" onClose={noop}><WikiScreen language={i18n.resolvedLanguage} /></Sheet></div>;
   if (view.startsWith('support-')) return <GallerySupport view={view} />;
   if (view.startsWith('report-sheet')) return <GalleryReports view={view} />;
   if (view.startsWith('monument-sheet')) return <GalleryMonument />;
@@ -1265,7 +1389,7 @@ function Views({ view }: { view: string }) {
   if (view === 'feedback' || view.startsWith('announcements')) return <GalleryCommunity view={view} />;
   if (view.startsWith('rewards')) return <GalleryRewards state={view.replace('rewards-', '')} />;
   // The Komutan gemisi hangar; the camera mocks `/arena/hangar` with each state it photographs.
-  if (view === 'arena-hangar') return <Sheet detents={['full']} headerArt={ATMOSPHERE.commanderShip} eyebrow="Samet" title="Komutan gemisi" onClose={noop}>
+  if (view === 'arena-hangar') return <Sheet detents={['full']} headerArt={ATMOSPHERE.commanderShip} kit={{ art: artIconSrc('cos-ship'), tone: 'self' }} eyebrow="Samet" title="Komutan gemisi" onClose={noop}>
     <BaseSwitch value="ship" onChange={noop} arenaAvailable /><HangarPanel credential={() => Promise.resolve('dev')} onEnter={noop} />
   </Sheet>;
   if (view === 'arena-team') return <Sheet detents={['full']} title="Yarık" onClose={noop}>
@@ -1319,6 +1443,10 @@ function Views({ view }: { view: string }) {
   if (view === 'launch-radiation-lethal') return <GalleryRadiation surface="launch-lethal" />;
   if (view === 'transfer-radiation') return <GalleryRadiation surface="transfer" />;
   if (view === 'focus-radiation') return <GalleryRadiation surface="focus" />;
+  if (view === 'focus-strike') return <GalleryStrikes />;
+  if (view === 'signal' || view === 'signal-noship' || view === 'signal-pirates' || view === 'signal-skin' || view === 'signal-derelict') {
+    return <GallerySignal state={view === 'signal' ? 'open' : view === 'signal-noship' ? 'noship' : view === 'signal-pirates' ? 'pirates' : view === 'signal-skin' ? 'skin' : 'derelict'} />;
+  }
   if (view === 'focus-band') return <GalleryBand />;
   if (view === 'focus-closed') return <GalleryFocusClosed own={false} />;
   if (view === 'focus-own') return <GalleryFocusClosed own />;
@@ -1326,11 +1454,51 @@ function Views({ view }: { view: string }) {
   if (view === 'focus-neutral') return <GalleryFocusNeutral />;
   if (view === 'focus-monument') return <GalleryMonumentFocus />;
   if (view === 'focus-asteroid' || view === 'focus-debris') return <GalleryMining kind={view === 'focus-asteroid' ? 'asteroid' : 'debris'} />;
+  // G4-h2: a pirate seen by the eye; a contact read by Radar coming at me; one in full sight; my Prospectors coming home.
+  if (view === 'focus-pirate') {
+    return (
+      <PirateFocus pirate={{ id: 'pirate-9', callsign: 'mJtQ', zone: 'IDENTIFIED', at: { x: 100, y: 0, z: 0 }, expiresInMinutes: 96,
+        reachMinutes: 12, reach: [{ hull: 'DART', minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } }], level: 3,
+        fleet: { TEMPEST: 1, DART: 4, COURIER: 2 }, damageMult: PIRATE.damageMult[3], mass: 'MEDIUM', remembered: true }}
+        fleetAtHome={{ DART: 12, LANCER: 3 }} onClose={noop} onAttack={noop} raiding={false} open onToggle={noop} />
+    );
+  }
+  if (view === 'focus-contact' || view === 'focus-contact-fleet') {
+    const radar = view === 'focus-contact';
+    return (
+      <ContactFocus open onToggle={noop} onClose={noop} contact={{ id: 'c-1', kind: radar ? 'unknown' : 'fleet',
+        from: { x: 0, y: 0, z: 0 }, to: { x: 100, y: 0, z: 0 }, startAt: new Date(NOW - MIN), endAt: new Date(NOW + 9 * MIN),
+        ...(radar ? { mass: 'HEAVY' as const, silhouette: 'fleet' as const, inbound: true } : { fleet: { DART: 8, TEMPEST: 2, COURIER: 3 } }) }} />
+    );
+  }
+  // G4-i2: the merchant and the convoy as the focus card shows them, before the sheet opens.
+  if (view === 'focus-trade') {
+    return <TradeFocus merchant={GALLERY_MERCHANT} fleetAtHome={{ ATLAS: 12, DART: 4 }} fleetAway={{}} minutesLeft={150} reachMinutes={10}
+      onClose={noop} onTrade={noop} open onToggle={noop} />;
+  }
+  if (view === 'focus-convoy') {
+    return <IntergalacticConvoyFocus convoy={GALLERY_CONVOY} minutesLeft={110} reachMinutes={14} hasCombatCraft launchLocked={false}
+      occurrenceSpent={false} onClose={noop} onRaid={noop} open onToggle={noop} />;
+  }
+  if (view === 'focus-run') {
+    return (
+      <RunFocus run={{ id: 'run-2', targetKind: 'asteroid', asteroidId: 'rock-7', debrisFieldId: null, status: 'returning', craft: 2,
+        departAt: new Date(NOW - 20 * MIN), arriveAt: new Date(NOW - 8 * MIN), recalledAt: null, homeAt: new Date(NOW + 6 * MIN),
+        intercept: { x: 0, y: 0, z: 0 }, minedAlloy: 380, minedCrystal: 160, minedDeuterium: 60 }}
+        rock={undefined} wreck={undefined} minutesRemaining={6} onClose={noop} open onToggle={noop} />
+    );
+  }
   if (view === 'clan') return <GalleryClan tab="overview" />;
   if (view === 'clan-strength') return <GalleryClan tab="strength" />;
   if (view === 'clan-members') return <GalleryClan tab="members" />;
   if (view === 'clan-aid') return <GalleryClan tab="aid" />;
+  if (view === 'clan-aid-quote') return <GalleryClan tab="aid" quote />;
   if (view === 'clan-war') return <GalleryClan tab="war" />;
+  if (view === 'clan-donate') return <GalleryClan tab="war" donate />;
+  if (view === 'clan-outside') return <GalleryClan tab="overview" outside />;
+  if (view === 'clan-pact') return <GalleryClan tab="overview" outside pact />;
+  // G12-a: the Yarık team over the clan's overview, as the leader's lobby (the audit answers `/arena/team`).
+  if (view === 'clan-arena') return <GalleryClan tab="overview" arena />;
   if (view === 'menu' || view === 'menu-settings' || view === 'menu-academy' || view === 'menu-community' || view === 'menu-ended') return <GalleryCommander page={view} />;
   if (view === 'leaderboard') return <GalleryCommander page="leaderboard" />;
   if (view === 'leaderboard-archive') return <GalleryCommander page="leaderboard-archive" />;
@@ -1373,7 +1541,7 @@ function Views({ view }: { view: string }) {
   if (view === 'skin-inventory' || view === 'skin-inventory-empty') {
     const owned = view === 'skin-inventory' ? (['planet-lava', 'planet-ice', 'planet-turkey'] as const) : [];
     return (
-      <Sheet detents={['full']} bleed eyebrow={t('menu.asteraHeading')} title={t('menu.skinsInventoryLabel')} onClose={noop}>
+      <Sheet detents={['full']} bleed kit={{ art: artIconSrc('cos-planet'), tone: 'self' }} eyebrow={t('skins.collection')} title={t('menu.skinsInventoryLabel')} onClose={noop}>
         <SkinInventoryContent onEquip={noop} onOpenShop={noop}
           collection={{ ownedSkinIds: [...owned], planets: [
             { id: 'p-home', name: 'Kestrel', skinId: owned.length > 0 ? 'planet-lava' : null },
@@ -1553,14 +1721,7 @@ function Views({ view }: { view: string }) {
   if (view === 'convoy') {
     return (
       <IntergalacticConvoySheet
-        event={{
-          id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'INTERGALACTIC_CONVOY',
-          startsAt: new Date(NOW - 10 * MIN), endsAt: new Date(NOW + 110 * MIN),
-          appearsAtMinute: 1140, expiresAtMinute: 1260,
-          route: { from: { x: -2000, y: 0, z: 0 }, to: { x: 2000, y: 0, z: 0 }, velocity: { x: 100 / 3, y: 0, z: 0 }, speed: 100 / 3 },
-          visual: { formationVersion: 1 },
-          rewardPolicy: { resourceCapHours: 4, fullRewardForceRatio: 1, shipDropFullFirepower: 5780, shipDropChanceAtFullQuality: 0.15, maxAwardedShips: 3 },
-        }}
+        event={GALLERY_CONVOY}
         seasonStart={new Date(NOW - 1150 * MIN)}
         planet={launchWorld}
         onClose={noop}
@@ -1701,14 +1862,10 @@ function Views({ view }: { view: string }) {
   if (view === 'trade') {
     return (
       <TradeSheet
-        merchant={{
-          id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'TRADE_SHIP',
-          startsAt: new Date(NOW - 30 * MIN), endsAt: new Date(NOW + 150 * MIN),
-          rate: TRADE.rate, appearsAtMinute: 570, expiresAtMinute: 750,
-          orbit: { radius: 1_100, period: (2 * Math.PI * 1_100) / TRADE.speed, phase: 0.7, inclination: 0.4, ascendingNode: 1.9, speed: TRADE.speed },
-        }}
+        merchant={GALLERY_MERCHANT}
         seasonStart={new Date(NOW - 600 * MIN)}
-        planet={planetView({ fleet: { ATLAS: 12, COURIER: 3, DART: 4 } }, { alloy: 5_000, crystal: 5_000, deuterium: 5_000 })}
+        // G9-a: a commander in the first penalty tier, so the commission's receipt is on the page.
+        planet={{ ...planetView({ fleet: { ATLAS: 12, COURIER: 3, DART: 4 } }, { alloy: 5_000, crystal: 5_000, deuterium: 5_000 }), honorBenefits: galleryHonor(-30_000_000) }}
         onClose={noop}
         onLaunched={noop}
       />
