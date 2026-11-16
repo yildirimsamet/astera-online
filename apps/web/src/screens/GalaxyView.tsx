@@ -2131,7 +2131,6 @@ export function GalaxyView({
             commander={commander}
             page={menuPage}
             onPageChange={setMenuPage}
-            onResume={() => { onPanel(null); }}
             galaxy={season.data?.shardName ?? null}
             shard={season.data?.shard ?? null}
             endsAt={season.data?.endsAt ?? null}

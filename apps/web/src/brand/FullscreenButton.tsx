@@ -32,11 +32,12 @@ type Help = 'unsupported' | 'enterFailed' | 'exitFailed';
 interface Transition { leaving: boolean; timer: number }
 
 /** Document fullscreen includes every body-mounted overlay. Only a click can enter. */
-export function FullscreenButton() {
-  return capabilities().browserFullscreen ? <WebFullscreenButton /> : null;
+/** `labelled`: a kit button with its word beside the mark (the menu's foot, ek-16); otherwise a round icon. */
+export function FullscreenButton({ labelled = false }: { labelled?: boolean }) {
+  return capabilities().browserFullscreen ? <WebFullscreenButton labelled={labelled} /> : null;
 }
 
-function WebFullscreenButton() {
+function WebFullscreenButton({ labelled }: { labelled: boolean }) {
   const { t } = useTranslation();
   const [view, setView] = useState(snapshot);
   const [busy, setBusy] = useState(false);
@@ -111,15 +112,16 @@ function WebFullscreenButton() {
     : appOnly ? 'brand.fullscreen.appActive' : 'brand.fullscreen.enter');
   const profile = help ? installProfile() : null;
   return <>
-    <button type="button" data-fullscreen-button className="gk-round gk-round--small"
+    <button type="button" data-fullscreen-button className={labelled ? 'gk-btn gk-btn--sm' : 'gk-round gk-round--small'}
       aria-label={label} title={label} aria-pressed={view.active || view.browserFullscreen || appOnly}
       {...(view.active || view.browserFullscreen || appOnly ? { 'data-lit': '' } : {})}
       aria-busy={busy} disabled={busy || view.browserFullscreen || appOnly} onClick={toggle}>
-      <span className="gk-round__face">
+      <span className={labelled ? 'gk-btn__glyph' : 'gk-round__face'}>
         <svg aria-hidden="true" viewBox="0 0 24 24" className="gk-glyph" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
           <path d={view.active ? 'M4 9h5V4M15 4v5h5M20 15h-5v5M9 20v-5H4' : 'M9 4H4v5M15 4h5v5M20 15v5h-5M9 20H4v-5'} />
         </svg>
       </span>
+      {labelled && <span aria-hidden="true">{t('brand.fullscreen.title')}</span>}
     </button>
     {help && profile && createPortal(<div className="[--v2-dock-h:0px]">
       <Sheet title={t('brand.fullscreen.title')} detents={['fit']} placement="card" kit={{ tone: 'self' }} onClose={() => { setHelp(null); }}>

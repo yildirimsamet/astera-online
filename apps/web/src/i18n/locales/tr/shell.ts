@@ -184,7 +184,6 @@ export const menu = {
     settingsHint: "Ses, görüntü ve dil",
     account: "Komutan profili",
     back: "Menüye dön",
-    resume: "Oyuna dön",
     rewardsReady_one: "{{count}} ödül hazır",
     rewardsReady_other: "{{count}} ödül hazır",
   },

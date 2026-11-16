@@ -229,7 +229,6 @@ export const menu = {
     settingsHint: "音声・画質・言語",
     account: "司令官プロフィール",
     back: "メニューに戻る",
-    resume: "ゲームに戻る",
     rewardsReady_one: "報酬{{count}}件を受取可能",
     rewardsReady_other: "報酬{{count}}件を受取可能",
   },

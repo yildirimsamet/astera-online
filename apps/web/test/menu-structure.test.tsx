@@ -216,15 +216,18 @@ describe('the compact commander menu', () => {
     expect(sign).toHaveTextContent('asteraonline.space');
   });
 
-  /** On the kit (2026-11-16): the foot's presses, the way back to the game and the signature speak the kit. */
-  it('keeps its foot, its way back and its signature on the kit', () => {
+  /**
+   * On the kit (2026-11-16); owner 2026-11-17 (ek-16): no "back to the game" — the close above
+   * does it — and full screen is a labelled button like its neighbour, not a lone round icon.
+   */
+  it('keeps its foot and its signature on the kit, with no second way back', () => {
     const OLD = /(^|\s)(text|bg|border|font)-v2-|(^|\s)text-(micro|caption|body|label)(\s|$)|brand-masthead/;
     const oldPaint = (root: Element | null): string[] => root ? [root, ...root.querySelectorAll('[class]')].map((el) => el.getAttribute('class') ?? '').filter((name) => OLD.test(name)) : ['missing'];
-    const onResume = vi.fn();
-    const view = show({ onResume });
-    expect(screen.getByRole('button', { name: /fullscreen/i })).toHaveClass('gk-round');
-    const resume = screen.getByRole('button', { name: i18n.t('menu.navigation.resume') });
-    expect(resume).toHaveClass('gk-btn', 'gk-btn--ghost');
+    const view = show();
+    const full = screen.getByRole('button', { name: /fullscreen/i });
+    expect(full).toHaveClass('gk-btn', 'gk-btn--sm');
+    expect(full).toHaveTextContent(i18n.t('brand.fullscreen.title'));
+    expect(screen.queryByRole('button', { name: /return to game/i })).toBeNull();
     expect(oldPaint(view.container.querySelector('[data-menu-foot]'))).toEqual([]);
     expect(oldPaint(view.container.querySelector('[data-menu-brand]'))).toEqual([]);
     enter('settings');

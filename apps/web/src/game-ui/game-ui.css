@@ -17582,3 +17582,9 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 .gk-acct__quiet .gk-glyph { width: 13px; height: 13px; color: color-mix(in srgb, var(--gk-hostile) 70%, var(--gk-ink-3)); }
 .gk-acct__quiet:active { color: var(--gk-ink-2); }
 .gk-acct__quiet:focus-visible { outline: 2px solid var(--gk-self); outline-offset: 2px; border-radius: 4px; }
+
+/* ── O16 (owner 2026-11-17): the menu's foot — two equal labelled presses, no second way back ── */
+.gk-menufoot { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+.gk-menufoot > .gk-btn { width: 100%; min-width: 0; }
+.gk-menufoot > .gk-btn { white-space: normal; line-height: 1.1; text-align: center; letter-spacing: 0.02em; padding-inline: var(--gk-s2); }
+.gk-menufoot > .gk-btn .gk-btn__glyph .gk-glyph { width: 16px; height: 16px; }

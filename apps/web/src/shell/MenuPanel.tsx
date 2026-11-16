@@ -27,7 +27,7 @@ import {
   setRenderQuality,
   useRenderQuality,
 } from '../lib/quality.js';
-import { artIconSrc, Choices, GameButton, Glyph, LanguagePicker, MenuTile, Plate, RoundButton, SectionTag, SettingLink, Slider, TileGrid, Toggle } from '../game-ui/index.js';
+import { artIconSrc, Choices, Glyph, LanguagePicker, MenuTile, Plate, RoundButton, SectionTag, SettingLink, Slider, TileGrid, Toggle } from '../game-ui/index.js';
 import { currentLanguage } from '../i18n/index.js';
 import { setLanguage } from '../i18n/document.js';
 import { analyticsAvailable } from '../lib/playerAnalytics/preference.js';
@@ -70,12 +70,10 @@ export function MenuPanel({
   commander,
   page: controlledPage,
   onPageChange,
-  onResume,
 }: {
   commander?: string;
   page?: MenuPage;
   onPageChange?: (page: MenuPage) => void;
-  onResume?: () => void;
   galaxy: string | null;
   shard: string | null;
   endsAt: Date | null;
@@ -286,11 +284,9 @@ export function MenuPanel({
 
           {/* The app's own controls; full screen came here when the brand strip left the game screen (G1-b, 2026-11-14). */}
           <div data-menu-foot="" className="gk-menufoot">
-            <span className="gk-menufoot__tools">
-              <InstallButton compact variant="ghost" />
-              <FullscreenButton />
-            </span>
-            {onResume && <GameButton tone="ghost" size="sm" glyph="next" onPress={onResume}>{t('menu.navigation.resume')}</GameButton>}
+            {/* Two equal presses; no "back to the game" — the close above is that (owner 2026-11-17, ek-16). */}
+            <InstallButton compact variant="steel" />
+            <FullscreenButton labelled />
           </div>
           {/* Brand recall (2026-10-07): the name and the address that reopens the game, here since the strip left the game screen. */}
           <p data-menu-brand="" className="gk-menubrand">

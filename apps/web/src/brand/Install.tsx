@@ -190,11 +190,11 @@ export function useInstalled(): boolean {
   return useContext(InstallContext)?.installed ?? (runningAsPwa() || remembersInstalledPwa());
 }
 
-export function InstallButton({ compact = false, variant = 'primary' }: { compact?: boolean; variant?: 'primary' | 'ghost' }) {
+export function InstallButton({ compact = false, variant = 'primary' }: { compact?: boolean; variant?: 'primary' | 'ghost' | 'steel' }) {
   const { t } = useTranslation();
   const install = useContext(InstallContext);
   if (!capabilities().pwaInstall) return null;
   if (install ? install.installed || install.checking : runningAsPwa() || remembersInstalledPwa()) return null;
   if (!install) return <InstallProvider><InstallButton compact={compact} variant={variant} /></InstallProvider>;
-  return <GameButton size={compact ? 'sm' : 'md'} tone={variant === 'ghost' ? 'ghost' : 'action'} glyph="home" onPress={install.request}>{t(install.desktop ? 'brand.installDesktop' : 'brand.install')}</GameButton>;
+  return <GameButton size={compact ? 'sm' : 'md'} tone={variant === 'primary' ? 'action' : variant} glyph="home" onPress={install.request}>{t(install.desktop ? 'brand.installDesktop' : 'brand.install')}</GameButton>;
 }

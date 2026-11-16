@@ -182,7 +182,6 @@ export const menu = {
     settingsHint: "Son, graphismes et langue",
     account: "Profil du commandant",
     back: "Retour au menu",
-    resume: "Reprendre le jeu",
     rewardsReady_one: "{{count}} récompense prête",
     rewardsReady_other: "{{count}} récompenses prêtes",
   },
