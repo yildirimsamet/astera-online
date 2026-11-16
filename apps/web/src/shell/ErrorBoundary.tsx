@@ -1,7 +1,7 @@
 import { Component, useState, type ErrorInfo, type ReactNode } from 'react';
 import i18n from '../i18n/index.js';
 import { copyText } from '../lib/clipboard.js';
-import { Button } from '../ui/kit/index.js';
+import { GameButton } from '../game-ui/index.js';
 import { observe } from '../lib/playerAnalytics/runtime.js';
 import { failTrainingEntry } from '../lib/playerAnalytics/trainingEntry.js';
 import {
@@ -120,40 +120,31 @@ function CrashScreen({ record, onReload }: { record: CrashRecord; onReload: () =
         job is to be the only thing visible cannot share a rung with the things
         it covers.
       */
-      className="fixed inset-0 z-[70] flex flex-col items-center justify-center overflow-y-auto bg-void px-8 py-10"
+      className="fixed inset-0 z-[70] flex flex-col items-center justify-center overflow-y-auto bg-void px-6 py-10"
       role="alert"
     >
-      <div className="flex w-full max-w-xs flex-col items-center text-center">
-        <p className="legend">{i18n.t('crash.title')}</p>
-        <p className="mt-2 text-body text-dim">{i18n.t('crash.body')}</p>
+      <div className="gk-crash">
+        <h1 className="gk-display gk-crash__title">{i18n.t('crash.title')}</h1>
+        <p className="gk-sub gk-crash__body">{i18n.t('crash.body')}</p>
 
-        <Button variant="primary" size="lg" full onClick={onReload} className="mt-5">
+        <GameButton tone="action" size="lg" wide glyph="refresh" onPress={onReload}>
           {i18n.t('crash.reload')}
-        </Button>
+        </GameButton>
 
         {/* The two diagnostic controls, on one line and both quiet. */}
-        <div className="mt-3 flex items-center justify-center gap-4">
-          <button
-            type="button"
-            aria-expanded={open}
-            className="text-caption text-faint underline-offset-2 hover:underline"
-            onClick={() => { setOpen(!open); }}
-          >
-            {open ? i18n.t('crash.detailHide') : i18n.t('crash.detailShow')}
+        <div className="gk-crash__tools">
+          <button type="button" aria-expanded={open} className="gk-btn gk-btn--ghost gk-btn--sm" onClick={() => { setOpen(!open); }}>
+            <span>{open ? i18n.t('crash.detailHide') : i18n.t('crash.detailShow')}</span>
           </button>
-          <button
-            type="button"
-            className="text-caption text-faint underline-offset-2 hover:underline"
-            onClick={() => {
-              void copyText(report).then((ok) => { setCopy(ok ? 'done' : 'failed'); });
-            }}
-          >
+          <GameButton tone="ghost" size="sm" onPress={() => {
+            void copyText(report).then((ok) => { setCopy(ok ? 'done' : 'failed'); });
+          }}>
             {i18n.t('crash.copy')}
-          </button>
+          </GameButton>
         </div>
 
         {copy !== 'idle' && (
-          <p className="mt-1.5 text-micro text-faint">
+          <p role="status" className="gk-note">
             {copy === 'done' ? i18n.t('crash.copied') : i18n.t('crash.copyFailed')}
           </p>
         )}
@@ -163,9 +154,7 @@ function CrashScreen({ record, onReload }: { record: CrashRecord; onReload: () =
             Its own scroll box, both ways. A stack trace is wider than 350px and
             longer than the screen, and the page body must never scroll sideways.
           */
-          <pre className="mt-3 max-h-56 w-full overflow-auto whitespace-pre-wrap break-words rounded-cell bg-black/30 p-2 text-left text-micro text-faint">
-            {report}
-          </pre>
+          <div className="gk-well gk-crash__report"><pre>{report}</pre></div>
         )}
       </div>
     </main>

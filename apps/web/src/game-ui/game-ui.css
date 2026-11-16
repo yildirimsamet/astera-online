@@ -16466,3 +16466,24 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-watch__mate i { position: absolute; left: 0; bottom: 0; height: 2px; width: calc(var(--hp) * 100%); background: var(--gk-self); }
 .gk-watch__acts { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--gk-s2); }
 .gk-arenapanel:empty { display: none; }
+
+/* ── G13-a (2026-11-16): the screens before and around the game ─────────────── */
+/* A crash: what happened, one lit press to reload, the report's two tools quiet beneath it. */
+.gk-crash { display: grid; justify-items: center; gap: var(--gk-s3); width: 100%; max-width: 340px; text-align: center; }
+.gk-crash__title { margin: 0; font-size: var(--gk-t-title); line-height: 1.1; color: var(--gk-ink); }
+.gk-crash__body { margin: 0 0 var(--gk-s2); font-size: var(--gk-t-body); line-height: 1.45; color: var(--gk-ink-2); }
+.gk-crash__tools { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--gk-s2); }
+.gk-crash__report { width: 100%; max-height: 14rem; overflow: auto; padding: var(--gk-s2); text-align: left; }
+.gk-crash__report pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: var(--gk-t-floor)/1.4 ui-monospace, monospace; color: var(--gk-ink-2); }
+/* Maintenance and a needed update keep the opening's brand scene; what they say speaks the kit. */
+.gk-brandstatus { display: grid; gap: var(--gk-s2); width: min(86%, 340px); margin: var(--gk-s5) auto 0; text-align: left; }
+.gk-brandstatus__title { display: flex; align-items: center; gap: var(--gk-s2); margin: 0; font-size: var(--gk-t-title); line-height: 1.1; color: var(--gk-ink); }
+.gk-brandstatus__lamp { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--gk-warn); box-shadow: 0 0 10px var(--gk-warn);
+  animation: gk-brandstatus-lamp 1.6s ease-in-out infinite; }
+@keyframes gk-brandstatus-lamp { 50% { opacity: .4; } }
+.gk-brandstatus__body { margin: 0; font-size: var(--gk-t-body); line-height: 1.45; color: var(--gk-ink-2); }
+.gk-brandstatus__clock { display: flex; align-items: baseline; justify-content: space-between; gap: var(--gk-s3); margin-top: var(--gk-s2); }
+.gk-brandstatus__clock p { margin: 0; font-size: var(--gk-t-body); }
+.gk-brandstatus__clock [role='timer'] { flex: none; font-size: var(--gk-t-lead); font-weight: 700; color: var(--gk-warn); }
+.gk-brandstatus .gk-sub[data-tone='warn'] { color: var(--gk-warn); font-size: var(--gk-t-body); }
+.gk-brandstatus .gk-btn { margin-top: var(--gk-s2); text-decoration: none; }

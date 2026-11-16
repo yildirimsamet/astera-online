@@ -27,7 +27,7 @@ import { WorldProvider } from './api/world.js';
 import { LocalAlertSync } from './shell/LocalAlertSync.js';
 import { PushDeviceSync } from './shell/PushDeviceSync.js';
 import { PushOpenRoute } from './shell/PushOpenRoute.js';
-import { Button } from './ui/kit/index.js';
+import { BlockedScreen } from './shell/BlockedScreen.js';
 const ArrivalHost = lazy(() => import('./starter/ArrivalHost.js').then(module => ({ default: module.ArrivalHost })));
 const GameShell = lazy(() => import('./v2/shell/GameShell.js').then(module => ({ default: module.GameShell })));
 import { WebLandingGate } from './landing/public/WebLandingGate.js';
@@ -255,13 +255,7 @@ function SessionApp() {
 
   if (session.phase === 'blocked') {
     if (publicWeb) return <LandingScreen onAuthenticate={authenticate} onBegin={rehearse} error={session.message} onRetry={retry} />;
-    return (
-      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-8 text-center">
-        <p className="legend">{t('app.blockedTitle')}</p>
-        <p className="text-body text-dim">{session.message}</p>
-        <Button onClick={retry}>{t('app.blockedRetry')}</Button>
-      </main>
-    );
+    return <BlockedScreen message={session.message} onRetry={retry} />;
   }
 
   if (academyReplay) return <TrainingDoor replay onClaim={() => Promise.reject(new Error('REPLAY_ONLY'))}

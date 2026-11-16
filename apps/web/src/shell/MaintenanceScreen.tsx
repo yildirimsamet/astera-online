@@ -47,20 +47,20 @@ export function MaintenanceScreen({ endsAt }: { endsAt: string | null }) {
           <span className="brand-loading-online">ONLINE</span>
         </p>
       </div>
-      <div role="status" className="mx-auto mt-8 w-[min(86%,320px)] text-left">
-        <h1 id="maintenance-title" className="flex items-center gap-2 text-title font-semibold text-bone">
-          <span aria-hidden="true" className="size-2 shrink-0 animate-pulse rounded-full bg-v2-warn" />
+      <div role="status" className="gk-brandstatus">
+        <h1 id="maintenance-title" className="gk-display gk-brandstatus__title">
+          <span aria-hidden="true" className="gk-brandstatus__lamp" />
           {t('app.maintenanceTitle')}
         </h1>
-        <p className="mt-2 text-body leading-relaxed text-bone/80">{t('app.maintenanceBody')}</p>
+        <p className="gk-sub gk-brandstatus__body">{t('app.maintenanceBody')}</p>
         {known && (left > 0
-          ? <div className="mt-4 flex items-baseline justify-between gap-3">
-            <p className="text-body text-bone/80">{t('app.maintenanceReturn', { time: clockTime(new Date(until)) })}</p>
-            <p role="timer" className="shrink-0 font-v2-mono text-body tabular-nums text-v2-warn">{countdown(left)}</p>
+          ? <div className="gk-brandstatus__clock">
+            <p className="gk-sub">{t('app.maintenanceReturn', { time: clockTime(new Date(until)) })}</p>
+            <p role="timer" className="gk-num">{countdown(left)}</p>
           </div>
-          : <p className="mt-4 text-body text-v2-warn">{t('app.maintenanceLate')}</p>)}
-        <div className="brand-loading-rail mt-3" aria-hidden="true"><span className="brand-loading-sweep" /></div>
-        <p className="mt-3 text-label leading-relaxed text-bone/70">{t('app.maintenanceBack')}</p>
+          : <p className="gk-sub" data-tone="warn">{t('app.maintenanceLate')}</p>)}
+        <div className="brand-loading-rail" aria-hidden="true"><span className="brand-loading-sweep" /></div>
+        <p className="gk-note">{t('app.maintenanceBack')}</p>
       </div>
     </div>
   </main>;

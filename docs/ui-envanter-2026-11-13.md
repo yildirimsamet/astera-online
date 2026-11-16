@@ -2157,6 +2157,16 @@ Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak ala
 - Sonuç: hiçbir dilde 12 px altı yazı, kesilme ya da taşma yok. Hangar (tr) puanı 6.
 - Sahibe açık konu: arena metinleri yalnız tr/en. de, es, fr ve ja oyuncuları arenayı İngilizce görüyor (`arenaCopy`). Ayrıca galerideki hangar başlığı sabit Türkçe bir test metni; oyunda `t('arena.nav')` kullanılıyor.
 
+
+### G13-a — çökme, bakım, sürüm ve engellendi ekranları kit'te (2026-11-16)
+
+- Çökme ekranı v1'den kit'e geçti: başlık kit yazı tipinde, tek parlak "Yeniden yükle" düğmesi, rapor araçları sessiz kit düğmeleri, rapor bir kit kuyusunda.
+- Bakım ve "güncelleme gerekli" ekranlarında açılışın marka sahnesi korundu; yalnız yazılar ve tek düğme kit'e geçti. Android'deki mağaza bağlantısı da aynı kit düğmesi görünümünde.
+- Uygulamadaki "engellendi" görünümü `App.tsx` içinde çıplak v1 idi. `shell/BlockedScreen` bileşeni oldu ve kit'e geçti; web eskisi gibi giriş sayfasını gösteriyor.
+- Yükleme ekranına dokunulmadı: marka kompozisyonu, puanı zaten 0.
+- Denetim (tr, 3 profil): bakım 1 → 0, güncelleme 0 → 0, çökme 9 → 0.
+- `landing-api-failure` testindeki ses modülü sahtesi gerçek modülü yayacak şekilde genişletildi; kit düğmesi `OWN_SOUND`'u istiyor.
+
 ## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
 
 | # | Yüzey | Dosya (satır) | Dil | Not |

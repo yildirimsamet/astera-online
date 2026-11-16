@@ -212,7 +212,7 @@ export const SURFACES: GameSurface[] = [
     reach: ['starter:arrival', 'starter:vessel', 'starter:repair', 'starter:crate', 'starter:tutorial', 'starter:jump', 'starter:drive'],
     group: 'G15',
   },
-  { id: 'faults', what: 'Bakım, güncelleme zorunlu, çökme ekranı', files: ['shell/MaintenanceScreen.tsx', 'shell/UpdateRequired.tsx', 'shell/ErrorBoundary.tsx'], reach: ['special:maintenance-flag', 'special:update-required', 'special:render-error'], group: 'G13' },
+  { id: 'faults', what: 'Bakım, güncelleme zorunlu, çökme ekranı', files: ['shell/MaintenanceScreen.tsx', 'shell/UpdateRequired.tsx', 'shell/ErrorBoundary.tsx', 'shell/BlockedScreen.tsx'], reach: ['special:maintenance-flag', 'special:update-required', 'special:render-error'], group: 'G13' },
 
   // The commander-ship arena.
   {
