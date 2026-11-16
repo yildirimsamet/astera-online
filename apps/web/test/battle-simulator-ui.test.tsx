@@ -40,7 +40,7 @@ describe('battle simulator editor and replay', () => {
     const defender = screen.getByRole('tabpanel', { name: 'Defender' });
     expect(within(defender).getByLabelText('Bastion · Quantity')).toBeInTheDocument();
     expect(within(defender).getByLabelText('Aegis level')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Battlefield'), { target: { value: 'MONUMENT' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Space' }));
     fireEvent.click(screen.getByRole('button', { name: /^Simulate (battle|again)$/ }));
     await waitFor(() => { expect(vi.mocked(runSimulation).mock.calls.at(-1)?.[0].environment).toBe('MONUMENT'); });
     const input = vi.mocked(runSimulation).mock.calls.at(-1)![0];
@@ -118,9 +118,10 @@ describe('battle simulator editor and replay', () => {
     render(<BattleSimulator onLeave={vi.fn()} />);
     await screen.findByTestId('battle-stage');
     fireEvent.change(screen.getByLabelText('Corsair · Quantity'), { target: { value: '5' } });
-    expect(screen.getByLabelText('Example battle')).toHaveDisplayValue('Custom scenario');
-    fireEvent.change(screen.getByLabelText('Example battle'), { target: { value: 'shieldDuel' } });
-    expect(screen.getByLabelText('Example battle')).toHaveDisplayValue('Aegis vs Nullifiers');
+    const examples = screen.getByRole('radiogroup', { name: 'Example battle' });
+    expect(within(examples).queryByRole('radio', { checked: true })).toBeNull();
+    fireEvent.click(within(examples).getByRole('radio', { name: 'Aegis vs Nullifiers' }));
+    expect(within(examples).getByRole('radio', { name: 'Aegis vs Nullifiers' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByLabelText('Nullifier · Quantity')).toHaveDisplayValue('8');
   });
 
@@ -140,7 +141,7 @@ describe('battle simulator editor and replay', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Defender' }));
     fireEvent.click(screen.getByRole('button', { name: '+ Add allied fleet' }));
     fireEvent.change(screen.getByLabelText('Defender pirate modifier'), { target: { value: '2' } });
-    expect(screen.getByLabelText('Battlefield')).toHaveValue('MONUMENT');
+    expect(screen.getByRole('radio', { name: 'Space' })).toHaveAttribute('aria-checked', 'true');
     const defender = screen.getByRole('tabpanel', { name: 'Defender' });
     expect(within(defender).queryByLabelText('Aegis level')).toBeNull();
     expect(within(defender).queryByText('Research')).toBeNull();
@@ -152,7 +153,7 @@ describe('battle simulator editor and replay', () => {
     expect(input.defenders).toHaveLength(1);
     expect(input.environment).toBe('MONUMENT');
     // Back to a planet: no pirate attacks one.
-    fireEvent.change(screen.getByLabelText('Battlefield'), { target: { value: 'PLANET' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Planet' }));
     expect(screen.getByLabelText('Defender pirate modifier')).toHaveValue('0');
   });
 
@@ -240,13 +241,45 @@ describe('battle simulator editor and replay', () => {
     await screen.findByTestId('battle-stage');
     fireEvent.click(screen.getByRole('tab', { name: 'Defender' }));
     const defender = screen.getByRole('tabpanel', { name: 'Defender' });
-    fireEvent.click(within(defender).getByLabelText('Automatic retreat before battle'));
+    fireEvent.click(within(defender).getByRole('switch', { name: /Automatic retreat before battle/ }));
     fireEvent.click(within(defender).getByRole('button', { name: /Add allied fleet/ }));
-    const retreat = within(defender).getByLabelText('Automatic retreat before battle');
-    expect(retreat).toBeChecked();
+    const retreat = within(defender).getByRole('switch', { name: /Automatic retreat before battle/ });
+    expect(retreat).toHaveAttribute('aria-checked', 'true');
     expect(retreat).toBeEnabled();
     fireEvent.click(screen.getByRole('button', { name: /^Simulate (battle|again)$/ }));
     await waitFor(() => { expect(vi.mocked(runSimulation).mock.calls.at(-1)?.[0].defenders).toHaveLength(2); });
     expect(vi.mocked(runSimulation).mock.calls.at(-1)?.[0].automaticEscape).toBe(true);
+  });
+});
+
+/**
+ * G11-b2 (2026-11-16): THE SIMULATOR'S PAGE ON THE GAME KIT. "What if I sent these ships?" A choice of
+ * two or four is a row of the kit's plates, not a phone's drop-down; a switch is the kit's switch;
+ * the run is the kit's lit press.
+ */
+describe('the simulator page on the kit', () => {
+  it('chooses the battlefield and the example on the kit’s choices', async () => {
+    render(<BattleSimulator onLeave={vi.fn()} />);
+    await screen.findByTestId('battle-stage');
+    expect(screen.getByRole('radiogroup', { name: 'Battlefield' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Planet' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radiogroup', { name: 'Example battle' })).toBeInTheDocument();
+  });
+
+  it('runs the battle on the kit’s lit press', async () => {
+    render(<BattleSimulator onLeave={vi.fn()} />);
+    await screen.findByTestId('battle-stage');
+    expect(screen.getByRole('button', { name: /^Simulate (battle|again)$/ })).toHaveClass('gk-btn', 'gk-btn--action');
+  });
+
+  it('turns the planet’s defences off and the retreat on with the kit’s switches', async () => {
+    render(<BattleSimulator onLeave={vi.fn()} />);
+    await screen.findByTestId('battle-stage');
+    fireEvent.click(screen.getByRole('tab', { name: 'Defender' }));
+    const offline = screen.getByRole('switch', { name: /EMP \/ defences offline/ });
+    expect(offline).toHaveClass('gk-toggle');
+    fireEvent.click(offline);
+    expect(offline).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('switch', { name: /Automatic retreat before battle/ })).toBeInTheDocument();
   });
 });

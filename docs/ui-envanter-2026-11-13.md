@@ -2045,6 +2045,17 @@ Okundu: dosya haritası ve dil sayımı. Ayrıntılı okuma grubun sırası geli
 - **Hata:** atış dökümünün tur satırı savaşın sınırını sayıyordu ("Tur 1 / 8"), üstteki durum satırı yapılan turu ("Tur 1 / 4"). Artık ikisi de yapılan tur (test).
 - Audit (tr, simülatör sayfası; telefon): 151 → 28; 12 px altı 56 → 0, kontrast 11 → 0, tepkisiz 20 → 4. Kalan küçük hedefler simülatörün başlığı ve araç çubuğu (G11-b2). Masaüstündeki kontrast kayıtları açık düzenleyicinin sayı alanları (G11-b2).
 
+
+**G11-b2 Simülatörün sayfası ve filo düzenleyicisi ✅ (2026-11-16).** G11 #3'ün kalanı (`BattleSimulator`, `SideEditor`).
+- **An:** "Bu gemileri göndersem ne olur?" Filoları kur, savaşı çalıştır, izle.
+- Araç çubuğunda yalnız filo düğmesi (kurduğu savaşın sayılarıyla) ve tek ışıklı tuş: "Savaşı simüle et" kitin eylem tuşu (ayar değişince nabız atar). Eskiden üç öğe sığmıyor, tuş ince bir şeride eziliyordu.
+- Savaş alanı (Gezegen/Uzay) bir senaryo ayarı: düzenleyicinin başında kitin seçenekleri; örnek savaşlar yerli açılır listeden iki sütunlu kit seçeneklerine. Elle düzenlenince hiçbiri seçili değil (özel senaryo). "EMP / savunma kapalı" ve "otomatik geri çekilme" kitin şalteri.
+- Düzenleyicide her sayaç, sayı alanı, seçici, katlama ve tuş 44 px; yazılar 14–16 px.
+- **Kök neden:** simülatörün genel `.simulator button` kuralı kitin tuşlarını eziyordu (renk, zemin, kenar). Artık `:where(:not([class*="gk-"]))` ile yalnız sahnenin düz tuşlarına uygulanıyor; özgüllük eskisi gibi düşük, özel kurallar bozulmadı.
+- Sahne üstündeki gemi sayıları koyu plakada (parlak gezegen üstünde 1.7:1 kalıyordu).
+- Kalan bilinçli: araştırma seviyesi (0–20) ve korsan seviyesi kit görünümlü seçici olarak kaldı (uzun liste).
+- Audit (tr; telefon): 151 (G11-b1 öncesi) → 15. Kalan: kaydırıcı ile tur işaretleri birlikte 58 px'lik tek kontrol; masaüstündeki kontrast kayıtları sahne üstü plakalarda, ölçüm arkadaki gemi resmini örnekliyor.
+
 ## G12. Savaş Alanı (arena)
 
 Okundu: dosya haritası. `src/arena` 50 dosya, 17 bileşen; kendi `arena.css`'i (altıncı dil), kendi HUD'u.
