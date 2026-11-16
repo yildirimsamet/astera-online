@@ -2223,6 +2223,9 @@ Halka açık sayfalar, hızlı başlangıç ve Wiki en sona kaldı; G13-e'nin ya
   - kupa/kalp ipucu kitin `gk-tip`'i, kenarı o metalde;
   - kesik köşe balonun kendisinde değil arka katmanlarda: ad ve kupanın 44 px basışı balon kenarını aşabiliyor; basılı tutulan balonun parıltısı köşeyi izleyen `drop-shadow`.
   - Testler sınıf yerine `data-tone` / `data-side` okur. Ölçüm (tr; telefon, dar, masaüstü): genel 7 → 7, klan 4 → 4, DM 0 → 2 (ilk balon kaydırmayla görünür alanın üstüne taşıyor; kusur değil). Altı dil telefon: kesilme 0, kontrast hatası 0.
+- **Dönüş hikâyesinin çerçevesi ✅.** Sheet artık kitin sheet'i: başlık plakasında haber zili sanatı, tehdit öndeyse plaka kırmızı, değilse teal. Satırlar C1'den beri kit. Koloni gemisindeki kahraman satırı ve "ayrıntılar" G15'e ait, dokunulmadı. Ölçüm 0 → 0.
+- **Menünün alt satırı ✅.** Hızlı erişim sessiz kit düğmesi; tam ekran kit yuvarlak düğmesi (açıkken ışığı yanar); "oyuna dön" sessiz kit düğmesi; imza satırı kit yazısıyla (adres Saira, `.space` teal); alt sayfa başlığı kit display. Tam ekran yardımı kit sheet'i, iPhone adımları kurulum rehberinin numaralı kutularıyla aynı. `.brand-masthead-fullscreen*` kuralları silindi. Ölçüm menü 2 → 3 (fark sheet arka perdesinin ölçüm dalgalanması), ayarlar 3 → 3.
+- **Ölü kod adayı (silinmedi):** `ui/QueueStrip.tsx` ve `ui/kit/Confirm.tsx` canlı oyunda hiç çizilmiyor; yalnız kendi testleri (`queue-strip`, `irreversible-confirm`'ün bir kısmı) kullanıyor. Silmek 5 dilde `queueStrip` metinlerine de dokunur.
 ## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
 
 | # | Yüzey | Dosya (satır) | Dil | Not |

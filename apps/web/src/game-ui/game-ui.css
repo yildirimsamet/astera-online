@@ -16684,3 +16684,17 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-chatevent[data-tone='info'] { --event: var(--gk-info); }
 .gk-chatevent[data-tone='hostile'] { --event: var(--gk-hostile); }
 .gk-chatevent__time { margin-left: 6px; color: var(--gk-ink-3); font-size: var(--gk-t-floor); white-space: nowrap; }
+
+/* ── 2026-11-16: the menu's foot, its signature and a sub-page's head ─────── */
+.gk-menufoot { display: flex; align-items: center; justify-content: space-between; gap: var(--gk-s3); padding-top: var(--gk-s2); border-top: 1px solid var(--gk-glass-edge); }
+.gk-menufoot__tools { display: flex; align-items: center; gap: var(--gk-s2); }
+.gk-menubrand { display: flex; align-items: center; justify-content: center; gap: 6px; margin: calc(-1 * var(--gk-s1)) 0 0; color: var(--gk-ink-2); font-size: var(--gk-t-small); }
+.gk-menubrand__sigil { width: 16px; height: 16px; color: var(--gk-self); }
+.gk-menubrand__address { font: 700 var(--gk-t-small) var(--gk-font-display); font-stretch: var(--gk-display-stretch); letter-spacing: .02em; color: var(--gk-ink); }
+.gk-menubrand__address span { color: var(--gk-self); }
+.gk-menupage__head { display: flex; align-items: center; gap: var(--gk-s3); padding-bottom: var(--gk-s3); border-bottom: 1px solid var(--gk-glass-edge); }
+.gk-menupage__title { margin: 0; font-size: var(--gk-t-title); outline: none; }
+/* Full screen's help: the same numbered steps as the install guide, the way to launch in the colour of yours. */
+.gk-fullhelp { display: grid; gap: var(--gk-s3); padding: var(--gk-s1) 0; }
+.gk-fullhelp p { margin: 0; }
+.gk-fullhelp__launch { color: var(--gk-self); font-weight: 600; font-size: var(--gk-t-small); }

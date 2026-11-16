@@ -216,6 +216,21 @@ describe('the compact commander menu', () => {
     expect(sign).toHaveTextContent('asteraonline.space');
   });
 
+  /** On the kit (2026-11-16): the foot's presses, the way back to the game and the signature speak the kit. */
+  it('keeps its foot, its way back and its signature on the kit', () => {
+    const OLD = /(^|\s)(text|bg|border|font)-v2-|(^|\s)text-(micro|caption|body|label)(\s|$)|brand-masthead/;
+    const oldPaint = (root: Element | null): string[] => root ? [root, ...root.querySelectorAll('[class]')].map((el) => el.getAttribute('class') ?? '').filter((name) => OLD.test(name)) : ['missing'];
+    const onResume = vi.fn();
+    const view = show({ onResume });
+    expect(screen.getByRole('button', { name: /fullscreen/i })).toHaveClass('gk-round');
+    const resume = screen.getByRole('button', { name: i18n.t('menu.navigation.resume') });
+    expect(resume).toHaveClass('gk-btn', 'gk-btn--ghost');
+    expect(oldPaint(view.container.querySelector('[data-menu-foot]'))).toEqual([]);
+    expect(oldPaint(view.container.querySelector('[data-menu-brand]'))).toEqual([]);
+    enter('settings');
+    expect(screen.getByRole('heading', { name: i18n.t('menu.navigation.settings') })).toHaveClass('gk-display');
+  });
+
   it('retains independent rival focus and lost-mark removal without adding rows', () => {
     const onFocusRival = vi.fn(), onClearRival = vi.fn();
     const view = show({ rivals: [{ planetId: 'a', slot: 0, owner: 'Sable', name: 'A', lost: false }, { planetId: 'b', slot: 1, owner: '', name: '', lost: true }], onFocusRival, onClearRival });

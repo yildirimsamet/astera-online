@@ -27,7 +27,7 @@ import {
   setRenderQuality,
   useRenderQuality,
 } from '../lib/quality.js';
-import { artIconSrc, Choices, Glyph, LanguagePicker, MenuTile, Plate, RoundButton, SectionTag, SettingLink, Slider, TileGrid, Toggle } from '../game-ui/index.js';
+import { artIconSrc, Choices, GameButton, Glyph, LanguagePicker, MenuTile, Plate, RoundButton, SectionTag, SettingLink, Slider, TileGrid, Toggle } from '../game-ui/index.js';
 import { currentLanguage } from '../i18n/index.js';
 import { setLanguage } from '../i18n/document.js';
 import { analyticsAvailable } from '../lib/playerAnalytics/preference.js';
@@ -44,7 +44,6 @@ import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { capabilities } from '../platform/runtime.js';
 import { SimulatorHost } from '../battle-simulator/SimulatorHost.js';
 
-import { Icon } from '../v2/icons.js';
 import { openProfile } from './profileRoute.js';
 
 /** The store's poster: lava with an Inferno ring, and the Red Dragon under a Phoenix standard. */
@@ -286,26 +285,26 @@ export function MenuPanel({
           )}
 
           {/* The app's own controls; full screen came here when the brand strip left the game screen (G1-b, 2026-11-14). */}
-          <div data-menu-foot="" className="flex items-center justify-between gap-3 border-t border-v2-line pt-2">
-            <span className="flex items-center gap-2">
+          <div data-menu-foot="" className="gk-menufoot">
+            <span className="gk-menufoot__tools">
               <InstallButton compact variant="ghost" />
               <FullscreenButton />
             </span>
-            {onResume && <button type="button" onClick={onResume} className="ml-auto flex min-h-11 items-center gap-2 text-caption font-medium text-v2-ink-2 hover:text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self">{t('menu.navigation.resume')}<Icon id="i-chev" className="size-3.5" /></button>}
+            {onResume && <GameButton tone="ghost" size="sm" glyph="next" onPress={onResume}>{t('menu.navigation.resume')}</GameButton>}
           </div>
           {/* Brand recall (2026-10-07): the name and the address that reopens the game, here since the strip left the game screen. */}
-          <p data-menu-brand="" className="-mt-2 flex items-center justify-center gap-1.5 text-body text-v2-ink-2">
-            <AsteraSigil className="size-4" />
+          <p data-menu-brand="" className="gk-menubrand">
+            <AsteraSigil className="gk-menubrand__sigil" />
             <span>Astera Online</span>
             <span aria-hidden="true">·</span>
-            <span className="font-v2-mono">asteraonline<span className="text-v2-self">.space</span></span>
+            <span className="gk-menubrand__address">asteraonline<span>.space</span></span>
           </p>
         </>
       ) : (
         <>
-          <div className={controlledPage === undefined ? 'flex items-center gap-3 border-b border-v2-line pb-3' : 'sr-only'}>
+          <div className={controlledPage === undefined ? 'gk-menupage__head' : 'sr-only'}>
             {controlledPage === undefined && <RoundButton small glyph="back" label={t('menu.navigation.back')} onPress={() => { navigate('home'); }} />}
-            <h2 ref={heading} tabIndex={-1} className="text-body font-semibold outline-none">{t(`menu.navigation.${page}`)}</h2>
+            <h2 ref={heading} tabIndex={-1} className="gk-display gk-menupage__title">{t(`menu.navigation.${page}`)}</h2>
           </div>
           {page === 'community' && (
             <section data-menu-group className="grid gap-2">
