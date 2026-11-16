@@ -627,8 +627,6 @@ export const launch = {
   holdWorld_other: "{{count}} gemi gönder",
   holdPirate_one: "{{count}} gemi gönder",
   holdPirate_other: "{{count}} gemi gönder",
-  warningWorld: "Bu filo dönene kadar {{world}} savunmasında yer almaz. Tahmini süre: {{duration}}.",
-  warningPirate: "Bu akını çatışmadan önce bir kez geri çağırabilirsin. Filo dönene kadar {{world}} savunmasında yer almaz. Tahmini süre: {{duration}}.",
   recallNote:
     "Yoldayken bir kez geri çağrılabilir — uçtuğu süre kadar sürede döner. Yakıt iade edilmez.",
   chooseFleet: "Filonu seç",
@@ -643,12 +641,8 @@ export const launch = {
   pace: "Uçuş hızı",
   paceHint: "Yavaşlatılan filo daha geç varır ve aynı hızla döner. Daha düşük hız yakıt bedelini azaltır. Yavaşlatma yalnız her uçuş ayağı 12 saati aşmıyorsa seçilebilir.",
   paceFull: "Tam",
-  paceBenefit: "Daha yavaş uçuş seçerek daha az yakıt harca.",
   paceFuelValue: "{{amount}} döteryum",
-  paceFuelBaseline: "Tam hızda: {{amount}}",
   paceSaved: "{{amount}} döteryum tasarruf",
-  paceArrival: "Hedefe varış",
-  paceTimeBaseline: "Tam hızda: {{duration}}",
   paceDelay: "{{duration}} daha geç",
   paceRounding: "Yakıt yuvarlaması nedeniyle bu filoda tasarruf oluşmuyor.",
   paceReset: "Seçilen hız uçuş süresi sınırını aştığı için bu filo tam hızla uçacak.",
@@ -711,6 +705,12 @@ export const launch = {
   cargoEach: "{{amount}} kargo/gemi",
   cargoAdds: "+{{amount}} kargo",
   paceBrief: "daha az yakıt · yavaş uçuş ≤12 sa",
+  priceRules: "Uçuş kuralları",
+  awayFor: "{{world}} · {{duration}} bu filo olmadan",
+  awayOpen: "{{world}} · filo dönene dek onsuz",
+  pirateRecall: "Bu akını çatışmadan önce bir kez geri çağırabilirsin.",
+  shieldShort: "Başlangıç kalkanın biter",
+  recoveryShieldShort: "Toparlanma kalkanın ve +%50 üretim biter",
   escort: "Komutan gemisi filoya eşlik etsin",
   escortLabel: "Komutan gemisi",
   escortBonusAkinci: "hasar +{{pct}}%",
@@ -724,8 +724,6 @@ export const launch = {
   escortService: "Bakımda · {{clock}}",
   escortYarik: "Yarık'ta uçuyor",
   escortAway: "Başka bir filoya eşlik ediyor",
-  warningWorldOpen: "Bu filo dönene kadar {{world}} savunmasında yer almaz.",
-  warningPirateOpen: "Bu akını çatışmadan önce bir kez geri çağırabilirsin. Filo dönene kadar {{world}} savunmasında yer almaz.",
 } as const;
 
 export const transfer = {

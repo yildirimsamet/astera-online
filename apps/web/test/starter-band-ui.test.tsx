@@ -198,7 +198,7 @@ describe('the words a ship\'s surfaces use', () => {
   it('warns of the fleet\'s absence without calling the ship a planet', async () => {
     const { default: i18n } = await import('../src/i18n/index.js');
     const tr = i18n.getFixedT('tr');
-    for (const key of ['launch.warningWorld', 'launch.warningPirate', 'launch.warningWorldOpen', 'launch.warningPirateOpen'] as const) {
+    for (const key of ['launch.awayFor', 'launch.awayOpen', 'launch.pirateRecall'] as const) {
       expect(tr(key, { world: 'Kara Şahin', duration: '5 dk' })).not.toMatch(/gezegen/u);
     }
     expect(tr('starter.launchFleetsave')).not.toMatch(/geminiz/u);

@@ -654,8 +654,6 @@ export const launch = {
   holdWorld_other: "{{count}}隻を発進",
   holdPirate_one: "{{count}}隻を発進",
   holdPirate_other: "{{count}}隻を発進",
-  warningWorld: "この艦隊は帰還するまで{{world}}を防衛できません。推定不在時間：{{duration}}。",
-  warningPirate: "この襲撃は交戦前に一度だけ呼び戻せます。艦隊は帰還するまで{{world}}を防衛できません。推定不在時間：{{duration}}。",
   recallNote:
     "飛行中に一度だけ呼び戻せます。帰還には往路で経過した時間と同じだけかかります。燃料は返還されません。",
   chooseFleet: "艦隊を選択してください",
@@ -669,12 +667,8 @@ export const launch = {
   pace: "飛行速度",
   paceHint: "減速した艦隊は到着が遅くなり、同じ速度で帰還します。速度を下げると燃料費が減ります。減速するには、各飛行区間が12時間以内である必要があります。",
   paceFull: "フル",
-  paceBenefit: "速度を下げると燃料を節約できます。",
   paceFuelValue: "重水素{{amount}}",
-  paceFuelBaseline: "最高速度：{{amount}}",
   paceSaved: "重水素{{amount}}を節約",
-  paceArrival: "目標への到着",
-  paceTimeBaseline: "最高速度：{{duration}}",
   paceDelay: "{{duration}}遅く到着",
   paceRounding: "燃料の切り上げにより、この艦隊では節約できません。",
   paceReset: "選択した速度では飛行時間の上限を超えるため、この艦隊は最高速度で飛行します。",
@@ -746,6 +740,12 @@ export const launch = {
   cargoEach: "{{amount}} 貨物各",
   cargoAdds: "+{{amount}} 貨物",
   paceBrief: "燃料を節約・減速区間12時間以内",
+  priceRules: "出撃のルール",
+  awayFor: "{{world}}・{{duration}} この艦隊なし",
+  awayOpen: "{{world}}・帰還までこの艦隊なし",
+  pirateRecall: "この襲撃は交戦前に一度だけ呼び戻せます。",
+  shieldShort: "初期シールドが終了します",
+  recoveryShieldShort: "回復シールドと生産+50%が終了します",
   escort: "司令官艦がフリートに随伴",
   escortLabel: "司令官艦",
   escortBonusAkinci: "ダメージ +{{pct}}%",
@@ -759,8 +759,6 @@ export const launch = {
   escortService: "整備中 · {{clock}}",
   escortYarik: "Yarıkを飛行中",
   escortAway: "別のフリートに随伴中",
-  warningWorldOpen: "この艦隊は帰還するまで{{world}}を防衛できません。",
-  warningPirateOpen: "この襲撃は交戦前に一度だけ呼び戻せます。艦隊は帰還するまで{{world}}を防衛できません。",
 } as const;
 
 export const transfer = {

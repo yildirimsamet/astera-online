@@ -23,8 +23,6 @@ import { SpendBar } from '../ui/SpendBar.js';
 import { HULL_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { MatchupMark } from '../ui/CounterMark.js';
-import { QuantityStepper } from '../ui/QuantityStepper.js';
-import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
 import { ForceRuler } from '../v2/kit/ForceRuler.js';
 import { Figure, Figures } from '../v2/kit/Figure.js';
 import { MatchupLine } from '../v2/kit/MatchupLine.js';
@@ -32,7 +30,7 @@ import { Sheet } from '../v2/kit/Sheet.js';
 import { PirateProfitCard } from '../ui/PirateProfitCard.js';
 import { HonorTargetCard } from '../ui/HonorTargetCard.js';
 import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
-import { GameButton, GameHold, Glyph } from '../game-ui/index.js';
+import { GameButton, GameHold, Glyph, InfoPeek, UnitCard } from '../game-ui/index.js';
 
 /**
  * WHAT A FLEET CAN BE COMMITTED AT. D150.
@@ -109,62 +107,35 @@ export function LaunchSheet({
   const wall = namedWall(classReading);
 
   /**
-   * ONE HULL'S ROW, AS THE MOCK DRAWS IT: the ship, its class, how many stand ready,
-   * and the stepper. What a wing is worth here is the ruler's job above, the stats the
-   * shipyard's; a hull that carries rather than fires says what it adds to the hold,
-   * because the hold is what it is sent for. `available` is what stands here; `roomFor`
-   * is the lesson's ceiling and what the stepper obeys. A hull the lesson does not want
-   * keeps its row with every control dead — owner correction: hiding the captured
-   * Warden made the commander's prize vanish from the one screen that lists their fleet.
+   * ONE HULL, ONE KIT CARD (owner, 2026-11-16: "basılı tutmalı kartlar"): the ship is the
+   * button — a tap sends one, a hold sends many — with its class, how it meets the wall the
+   * probe named, how many stand home, the count to write in and Max. A hull that carries
+   * rather than fires says what it adds to the hold. `roomFor` is the lesson's ceiling; a hull
+   * the lesson does not want keeps its card with every control dead — owner correction: hiding
+   * the captured Warden made the commander's prize vanish from the one screen that lists their fleet.
    */
   const row = (hull: MobileHullId) => {
     const available = planet.fleet[hull] ?? 0;
     if (available === 0) return null;
     const chosen = sending[hull] ?? 0;
-    const art = HULL_ART[hull];
     const carries = HULLS[hull].atk <= 0 ? fleetCargo({ [hull]: 1 }, mods.tech) : 0;
     return (
-      <div key={hull} data-hull-row={hull} className="gk-lrow" {...(chosen > 0 ? { 'data-chosen': '' } : {})}>
-        <span data-art className="gk-lrow__art">
-          {art ? (
-            <img src={art} alt="" aria-hidden width={36} height={36} loading="lazy" />
-          ) : (
-            <HullMark hull={hull} className="gk-lrow__mark" />
-          )}
-        </span>
-        <span className="gk-lrow__name">
-          {hullLabel(hull)}
-          {/*
-            THE ROLE IT FIGHTS AS, not the band it was bought under (D124): the
-            emblem, named for a reader; the matchup line above names it in words.
-          */}
-          <ClassEmblem cls={HULLS[hull].cls} className="gk-lrow__cls" />
-          {/* How it meets the class the probe named (F4c); a hull that does not fight meets nothing. */}
-          {wall && HULLS[hull].cls !== 'SUPPORT' && <MatchupMark attacker={HULLS[hull].cls} defender={wall} />}
-        </span>
-        <span className="gk-sub gk-num gk-lrow__info">
-          {t('launch.atHome', { count: available })}
-          {carries > 0 && (
-            <span className="gk-lrow__carry">
-              {' · '}
-              {chosen > 0
-                ? t('launch.cargoAdds', { amount: compact(carries * chosen) })
-                : t('launch.cargoEach', { amount: compact(carries) })}
-            </span>
-          )}
-        </span>
-        <QuantityStepper
-          value={chosen}
-          min={0}
-          max={roomFor(hull)}
-          onChange={(value) => { set(hull, value); }}
-          decreaseLabel={t('launch.fewer', { name: hullLabel(hull) })}
-          increaseLabel={t('launch.more', { name: hullLabel(hull) })}
-          valueLabel={t('launch.quantity', { name: hullLabel(hull) })}
-          maxLabel={t('launch.max', { name: hullLabel(hull) })}
-          maxText={t('launch.maxShort')}
-        />
-      </div>
+      <UnitCard
+        key={hull}
+        data-hull-row={hull}
+        name={hullLabel(hull)}
+        art={HULL_ART[hull] ?? null}
+        mark={<HullMark hull={hull} className="gk-unit__hullmark" />}
+        cls={HULLS[hull].cls}
+        {...(wall && HULLS[hull].cls !== 'SUPPORT' ? { badge: <MatchupMark attacker={HULLS[hull].cls} defender={wall} /> } : {})}
+        home={available}
+        max={roomFor(hull)}
+        chosen={chosen}
+        onChange={(value) => { set(hull, value); }}
+        {...(carries > 0 ? {
+          extra: chosen > 0 ? t('launch.cargoAdds', { amount: compact(carries * chosen) }) : t('launch.cargoEach', { amount: compact(carries) }),
+        } : {})}
+      />
     );
   };
 
@@ -244,35 +215,45 @@ export function LaunchSheet({
           : target.world.name}
       onClose={onClose}
       footer={
-        <div data-launch-commit className="gk gk-launch__commit">
+        <div className="gk gk-launch__commit">
           {/*
             THE PRICE, BEFORE THE BUTTON. What stays home while the fleet is out, and —
             since K8 — whether it can be turned: a raid at a world once, a pirate raid
             never. Nothing is said while nothing is picked: a price for no fleet is noise.
           */}
           {total > 0 && !choosing && (
-            <div className="gk-launch__price">
-              {/* The mock's "Başkent 2 sa 52 dk zayıf kalır": the world and how long; the count is a figure above. */}
-              <p data-launch-warning className="gk-launch__warn">
-                {exposure === null
-                  ? t(pirate ? 'launch.warningPirateOpen' : 'launch.warningWorldOpen', { world: planet.planet.name })
-                  : t(pirate ? 'launch.warningPirate' : 'launch.warningWorld', { world: planet.planet.name, duration: exposure })}
-              </p>
+            <div data-launch-price className="gk-launch__price">
+              {/*
+                ONE LINE, ITS RULES ONE PRESS AWAY (owner, 2026-11-16: no paragraphs over the
+                hold). The line is what the world goes without and for how long; the ⓘ keeps
+                the recall rule and fleetsave for whoever wants them.
+              */}
+              <InfoPeek
+                about={t('launch.priceRules')}
+                lead={<Glyph id="warn" />}
+                fact={<span data-launch-warning>{exposure === null
+                  ? t('launch.awayOpen', { world: planet.planet.name })
+                  : t('launch.awayFor', { world: planet.planet.name, duration: exposure })}</span>}
+                rule={<>
+                  {pirate && <p data-launch-pirate-recall className="gk-sub">{t('launch.pirateRecall')}</p>}
+                  {!pirate && !lesson && <p data-launch-recall className="gk-sub">{t('launch.recallNote')}</p>}
+                  {/* Fleetsave (D28): a launch is a risk to the world AND the only way to make the fleet safe. */}
+                  <p className="gk-sub">{planet.vessel ? t('starter.launchFleetsave') : t('launch.fleetsave')}</p>
+                  {spendsShield && <p className="gk-sub">{season.data?.shieldKind === 'RECOVERY' ? t('launch.recoveryShieldWarning') : t('launch.shieldWarning')}</p>}
+                </>}
+              />
               {spendsShield && (
-                <p data-shield-warning className="gk-launch__warn">
-                  {season.data?.shieldKind === 'RECOVERY' ? t('launch.recoveryShieldWarning') : t('launch.shieldWarning')}
+                <p data-shield-warning className="gk-inote" data-tone="threat">
+                  <Glyph id="shield" />
+                  {season.data?.shieldKind === 'RECOVERY' ? t('launch.recoveryShieldShort') : t('launch.shieldShort')}
                 </p>
               )}
               {/* Radyasyon (D10): what the route takes from every ship, or how many it finishes. */}
               <RadiationPreview radiation={radiation} combat />
-              <p className="gk-sub">
-                {!pirate && !lesson && <span data-launch-recall>{t('launch.recallNote')} </span>}
-                {/* Fleetsave (D28): a launch is a risk to the world AND the only way to make the fleet safe. */}
-                {planet.vessel ? t('starter.launchFleetsave') : t('launch.fleetsave')}
-              </p>
             </div>
           )}
           {/* A launch spends fuel and uncovers the world: the kit's spend weight, one second. */}
+          <div data-launch-commit>
           <GameHold
             weight="spends"
             glyph={pirate ? 'pirate' : 'attack'}
@@ -281,6 +262,7 @@ export function LaunchSheet({
             disabledReason={busy ? t('launch.launching') : refusal}
             onCommit={() => { commit(() => undefined); }}
           />
+          </div>
         </div>
       }
     >
@@ -319,7 +301,7 @@ export function LaunchSheet({
           has it — and out of the sticky header, which keeps only what a "+" moves: the
           two strips and the tank. The ships scroll under those, not under a paragraph.
         */}
-        {!choosing && classReading && <MatchupLine wing={sending} reading={classReading} />}
+        {!choosing && classReading && <MatchupLine folded wing={sending} reading={classReading} />}
         {!choosing && <div><TempoNote aboard={planet.vessel !== undefined} beforeLaunch /></div>}
 
         <section data-launch-fleet className="gk-launch__fleet">
@@ -358,7 +340,7 @@ export function LaunchSheet({
             </div>
           )}
           {/* A lesson reads in the order the lesson means; the ordinary picker in the shipyard's. */}
-          <div className="gk-ledger gk-launch__rows">{(lessonOrder ?? order).map(row)}</div>
+          <div className="gk-unitgrid">{(lessonOrder ?? order).map(row)}</div>
           {atHome === 0 && <p className="gk-sub">{t('launch.noShips')}</p>}
         </section>
 

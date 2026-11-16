@@ -1,22 +1,27 @@
 import type { HullClass } from '@astera/rules';
-import { useId, type ReactNode } from 'react';
+import { useId, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
+import { useCountField } from '../ui/QuantityStepper.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { Chip } from './buttons.js';
 import { Glyph } from './icons.js';
-import { CountBadge, Emblem, MultiplierBadge, ProgressBar } from './readouts.js';
+import { Emblem, MultiplierBadge, ProgressBar } from './readouts.js';
 import type { CssVars } from './style.js';
 import { useRepeatPress } from './useRepeatPress.js';
 
 export interface UnitCardProps {
   name: string;
-  art: string;
+  /** The painted ship; null draws `mark` (a hull with no painting yet) in its place. */
+  art: string | null;
+  mark?: ReactNode;
   cls: HullClass;
-  /** How this ship meets the target's main class; null when it does not fight. */
-  multiplier: number | null;
+  /** How this ship meets the target's main class (a multiplier or a matchup mark); none when it does not fight. */
+  badge?: ReactNode;
   home: number;
+  /** The most that may go: what stands home, or a lesson's lower ceiling. Zero keeps every control dead. */
+  max?: number;
   chosen: number;
   onChange: (next: number) => void;
   /** One more line under the bar: what a hauler adds to the hold. */
@@ -24,43 +29,57 @@ export interface UnitCardProps {
 }
 
 /**
- * THE SHIP CARD. The art is the button: a tap sends one more, a hold sends many.
- * The minus takes one back, MAX sends the whole stock, and nothing goes past what
- * stands at home. Each ship added bumps the count and nudges the ship.
+ * THE SHIP CARD. The ship is the button: a tap sends one more, a hold sends many (owner,
+ * 2026-11-16: the attack sheet takes these cards). The count is a field that can be written
+ * in, the minus takes one back, MAX sends all that may go, and nothing goes past the ceiling.
+ * Each ship added bumps the count and nudges the ship.
  */
-export function UnitCard({ name, art, cls, multiplier, home, chosen, onChange, extra }: UnitCardProps) {
+export function UnitCard({ name, art, mark, cls, badge, home, max = home, chosen, onChange, extra, ...data }: UnitCardProps & Record<`data-${string}`, string>) {
   const { t } = useTranslation();
+  const ceiling = Math.max(0, Math.min(home, max));
+  const dead = ceiling === 0;
+  // A held ship repeats faster than a frame may draw: each step counts from the last one sent.
+  const latest = useRef(chosen);
+  latest.current = chosen;
   const change = (next: number): void => {
-    const clamped = Math.min(home, Math.max(0, next));
-    if (clamped === chosen) return;
+    const clamped = Math.min(ceiling, Math.max(0, next));
+    if (clamped === latest.current) return;
     playSound('tick');
-    haptic(clamped === home ? 'thunk' : 'tap');
+    haptic(clamped === ceiling ? 'thunk' : 'tap');
+    latest.current = clamped;
     onChange(clamped);
   };
-  const more = useRepeatPress((n) => { change(chosen + n); }, chosen < home, home);
-  const fewer = useRepeatPress((n) => { change(chosen - n); }, chosen > 0, home);
-  const full = chosen >= home;
+  const more = useRepeatPress((n) => { change(latest.current + n); }, chosen < ceiling, ceiling);
+  const fewer = useRepeatPress((n) => { change(latest.current - n); }, chosen > 0, ceiling);
+  const full = chosen >= ceiling;
   const countId = useId();
+  const count = useCountField({ value: chosen, min: 0, max: ceiling, onChange, label: t('launch.quantity', { name }), disabled: dead, id: countId });
   return (
-    <div className={`gk-unit gk-plate${chosen > 0 ? ' gk-edge-self' : ''}`} {...OWN_SOUND} {...(full ? { 'data-full': '' } : {})}>
+    <div {...data} className={`gk-unit gk-plate${chosen > 0 ? ' gk-edge-self' : ''}`} {...OWN_SOUND}
+      {...(full && !dead ? { 'data-full': '' } : {})} {...(chosen > 0 ? { 'data-chosen': '' } : {})} {...(dead ? { 'data-dead': '' } : {})}>
       <div className="gk-unit__head">
         <Emblem cls={cls} />
         <span className="gk-unit__name gk-display gk-outlined">{name}</span>
-        <span className="gk-unit__home gk-display gk-num"><Glyph id="home" />{home}</span>
+        <span className="gk-unit__home gk-display gk-num"><Glyph id="home" /><span aria-hidden="true">{home}</span>
+          <span className="sr-only">{t('launch.atHome', { count: home })}</span></span>
       </div>
-      <button type="button" className="gk-unit__stage" aria-label={t('launch.more', { name })} aria-describedby={countId} aria-disabled={full || undefined} {...more}>
-        <img key={chosen} className="gk-unit__art" src={art} alt="" {...(chosen > 0 ? { 'data-nudge': '' } : {})} />
-        {multiplier !== null && <span className="gk-unit__mult"><MultiplierBadge value={multiplier} /></span>}
-        <span id={countId} className="gk-unit__count"><CountBadge value={chosen} /></span>
-      </button>
-      {chosen > 0 && (
-        <button type="button" className="gk-round gk-round--small gk-unit__minus" aria-label={t('launch.fewer', { name })} {...fewer}>
-          <span className="gk-round__face"><Glyph id="minus" /></span>
+      <div className="gk-unit__stage">
+        <button type="button" className="gk-unit__ship" aria-label={t('launch.more', { name })} aria-describedby={countId} aria-disabled={full || undefined} disabled={dead} {...more}>
+          {art ? <img key={chosen} className="gk-unit__art" src={art} alt="" {...(chosen > 0 ? { 'data-nudge': '' } : {})} />
+            : <span className="gk-unit__art gk-unit__art--mark">{mark}</span>}
         </button>
-      )}
+        {badge !== undefined && <span className="gk-unit__mult">{badge}</span>}
+        {count.field(`gk-count gk-num gk-unit__count${chosen > 0 ? '' : ' gk-count--idle'}`)}
+        {chosen > 0 && (
+          <button type="button" className="gk-round gk-round--small gk-unit__minus" aria-label={t('launch.fewer', { name })} {...fewer}>
+            <span className="gk-round__face"><Glyph id="minus" /></span>
+          </button>
+        )}
+      </div>
       <div className="gk-unit__foot">
-        <ProgressBar value={chosen} max={home} />
-        <Chip label={t('launch.max', { name })} onPress={() => { change(home); }} disabled={full}>{t('launch.maxShort')}</Chip>
+        <ProgressBar value={chosen} max={Math.max(1, ceiling)} />
+        {/* `data-count-max` is where the tutorial hand points (Academy, Flight School). */}
+        <span data-count-max className="gk-unit__max"><Chip label={t('launch.max', { name })} onPress={() => { change(ceiling); }} disabled={full}>{t('launch.maxShort')}</Chip></span>
         {extra !== undefined && <span className="gk-unit__extra">{extra}</span>}
       </div>
     </div>

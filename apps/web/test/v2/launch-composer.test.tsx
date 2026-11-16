@@ -120,7 +120,9 @@ describe('the launch composer', () => {
     expect(document.querySelector('[data-launch-warning]')).toBeNull();
     await pick('2');
     const warning = document.querySelector('[data-launch-warning]');
-    expect(warning).toHaveTextContent(/cannot defend/);
+    expect(warning).toHaveTextContent(/without this fleet/);
+    // The recall rule waits one press away, behind the price line's ⓘ (owner, 2026-11-16).
+    await userEvent.setup().click(screen.getByRole('button', { name: /flight rules/i }));
     expect(document.querySelector('[data-launch-recall]')).toHaveTextContent(/recalled once while in flight/i);
   });
 
@@ -134,7 +136,8 @@ describe('the launch composer', () => {
   it('explains a pirate raid can be recalled once before engagement', async () => {
     open('pirate');
     await pick('2');
-    expect(document.querySelector('[data-launch-warning]')).toHaveTextContent(/call this raid back once before its engagement/i);
+    await userEvent.setup().click(screen.getByRole('button', { name: /flight rules/i }));
+    expect(document.querySelector('[data-launch-pirate-recall]')).toHaveTextContent(/call this raid back once before its engagement/i);
     expect(commitControl()).toHaveTextContent(/Launch 2 ships/i);
     expect(screen.queryByText(/cannot be recalled|no recall/i)).toBeNull();
     expect(document.querySelector('[data-launch-recall]')).toBeNull();
@@ -188,7 +191,7 @@ describe('the launch composer', () => {
   it('says how long the world stays thin, before the button', async () => {
     open('world');
     await pick('2');
-    expect(document.querySelector('[data-launch-warning]')).toHaveTextContent(/^This fleet cannot defend Kestrel-12 until it returns\. Estimated time away: .+\.$/);
+    expect(document.querySelector('[data-launch-warning]')).toHaveTextContent(/^Kestrel-12 · .+ without this fleet$/);
   });
 
   it('keeps the pace rule beside the control, short', async () => {

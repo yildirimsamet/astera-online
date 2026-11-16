@@ -180,7 +180,7 @@ function LaunchScreen({ layout }: { layout: 'cards' | 'bay' }) {
                 name={ship.name}
                 art={art(HULL_ART[ship.id])}
                 cls={ship.cls}
-                multiplier={ship.mult}
+                {...(ship.mult === null ? {} : { badge: <MultiplierBadge value={ship.mult} /> })}
                 home={ship.home}
                 chosen={fleet[ship.id]}
                 onChange={(next) => { setShip(ship.id, next); }}
@@ -1031,8 +1031,8 @@ function Catalog() {
 
         <Section title="Gemi kartı · bölme">
           <div className="grid grid-cols-2 gap-2">
-            <UnitCard name="Kargı" art={art(HULL_ART.PIKE)} cls="LANCE" multiplier={1} home={20} chosen={chosen} onChange={setChosen} />
-            <UnitCard name="Sur" art={art(HULL_ART.RAMPART)} cls="BULWARK" multiplier={1.6} home={12} chosen={0} onChange={() => undefined} />
+            <UnitCard name="Kargı" art={art(HULL_ART.PIKE)} cls="LANCE" badge={<MultiplierBadge value={1} />} home={20} chosen={chosen} onChange={setChosen} />
+            <UnitCard name="Sur" art={art(HULL_ART.RAMPART)} cls="BULWARK" badge={<MultiplierBadge value={1.6} />} home={12} chosen={0} onChange={() => undefined} />
           </div>
           <div className="grid grid-cols-4 gap-1.5">
             <UnitBay name="Ok" art={art(HULL_ART.DART)} cls="SKIRMISHER" multiplier={0.625} home={52} chosen={24} selected onSelect={() => undefined} />

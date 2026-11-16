@@ -11,18 +11,20 @@ describe('personal-flight speed decision', () => {
   it('places exact fuel savings and extra travel time at the speed control', () => {
     const view = render(<PaceRow paces={MISSION_PACES} pace={0.5} onChange={vi.fn()} comparison={comparison} />);
     expect(view.container.querySelector('[data-pace-fuel]')).toHaveTextContent('750');
+    // Two deltas on the face (owner, 2026-11-16), each said in full for a screen reader.
+    expect(view.container.querySelector('[data-pace-saving]')).toHaveTextContent('−250');
     expect(view.container.querySelector('[data-pace-saving]')).toHaveTextContent('250 deuterium saved');
-    expect(view.container.querySelector('[data-pace-saving]')).toHaveTextContent('1,000');
     expect(view.container.querySelector('[data-pace-time]')).toHaveTextContent('40m');
+    expect(view.container.querySelector('[data-pace-delay]')).toHaveTextContent(`+${durationPrecise(20)}`);
     expect(view.container.querySelector('[data-pace-delay]')).toHaveTextContent(`${durationPrecise(20)} later`);
-    expect(view.container.querySelector('[data-pace-delay]')).toHaveTextContent(`Full speed: ${durationPrecise(20)}`);
   });
 
-  it('teaches the benefit at full speed and lets the player choose a slower rung', async () => {
+  it('says no saving at full speed, the rocket end lit, and lets the player choose a slower rung', async () => {
     const onChange = vi.fn();
-    render(<PaceRow paces={MISSION_PACES} pace={1} onChange={onChange}
+    const view = render(<PaceRow paces={MISSION_PACES} pace={1} onChange={onChange}
       comparison={{ fuel: 1_000, fullFuel: 1_000, minutes: 20, fullMinutes: 20 }} />);
-    expect(screen.getByText(/choose a slower speed to spend less fuel/i)).toBeVisible();
+    expect(view.container.querySelector('[data-pace-saving]')).toBeNull();
+    expect(view.container.querySelector('[data-pace-throttle]')).toHaveAttribute('data-flat-out');
     await userEvent.setup().click(screen.getByRole('radio', { name: '50%' }));
     expect(onChange).toHaveBeenCalledWith(0.5);
   });

@@ -449,7 +449,8 @@ describe('what the launch costs the world it leaves', () => {
     // Combat v3: "power" is the ruler's matchup power alone; the garrison is priced as the probe prices a wall.
     expect(document.querySelector('[data-launch-figures]')).toHaveTextContent(/armed unit value/i);
     expect(document.querySelector('[data-launch-figures]')).not.toHaveTextContent(/power/i);
-    expect(document.querySelector('[data-launch-warning]')).toHaveTextContent(/cannot defend Kestrel-12 until it returns.*Estimated time away:/i);
+    // One line over the hold (owner, 2026-11-16): the world and how long it goes without this fleet.
+    expect(document.querySelector('[data-launch-warning]')).toHaveTextContent(/^Kestrel-12 · .+ without this fleet$/);
     expect(document.body.textContent).not.toMatch(/cannot be recalled/i);
   });
 
@@ -457,6 +458,8 @@ describe('what the launch costs the world it leaves', () => {
     show({ DART: 4 });
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /more dart/i }));
+    // One press away, behind the price line's ⓘ.
+    await user.click(screen.getByRole('button', { name: /flight rules/i }));
     expect(document.body.textContent).toMatch(/cannot be raided/i);
   });
 });
@@ -884,6 +887,7 @@ describe('committing a fleet at a pirate', () => {
     const user = userEvent.setup();
     await openAllBands(user);
     await user.click(screen.getByRole('button', { name: /max.*dart/i }));
+    await user.click(screen.getByRole('button', { name: /flight rules/i }));
 
     expect(screen.getByText(/ships in flight cannot be raided/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /back/i })).toBeNull();
@@ -1437,14 +1441,15 @@ describe('choosing how fast to fly', () => {
 
     const row = view.container.querySelector<HTMLElement>('[data-launch-pace]');
     expect(row).toBeTruthy();
-    const rungs = within(row!).getAllByRole('radio');
+    // The throttle runs slow to fast (owner, 2026-11-16); a speed this flight may not take is locked.
+    const rungs = within(row!).getAllByRole('radio').filter((rung) => !(rung as HTMLButtonElement).disabled);
     expect(rungs.length).toBeGreaterThan(1);
-    expect(rungs[0]).toBeChecked();
+    expect(rungs[rungs.length - 1]).toBeChecked();
 
     const figures = view.container.querySelector<HTMLElement>('[data-launch-figures]')!;
     const atFullSpeed = figures.textContent;
-    await user.click(rungs[rungs.length - 1]!);
-    expect(rungs[rungs.length - 1]).toBeChecked();
+    await user.click(rungs[0]!);
+    expect(rungs[0]).toBeChecked();
     expect(figures.textContent).not.toBe(atFullSpeed);
   });
 
@@ -1484,9 +1489,7 @@ describe('choosing how fast to fly', () => {
       onClose={vi.fn()} onLaunched={vi.fn()} />, { wrapper: paceWrapper });
     const user = userEvent.setup();
     await user.type(screen.getByRole('textbox', { name: /dart quantity/i }), '5');
-    const rungs = within(view.container.querySelector<HTMLElement>('[data-launch-pace]')!)
-      .getAllByRole('radio');
-    await user.click(rungs[1]!);
+    await user.click(within(view.container.querySelector<HTMLElement>('[data-launch-pace]')!).getByRole('radio', { name: '75%' }));
     // The commit is held (K4); Enter twice is the keyboard's hold.
     const commit = screen.getByRole('button', { name: /^launch/i });
     fireEvent.keyDown(commit, { key: 'Enter' });
@@ -1525,6 +1528,9 @@ describe('what the sheet promises about turning a raid back', () => {
     render(ui, { wrapper });
     const user = userEvent.setup();
     await user.type(screen.getByRole('textbox', { name: /dart quantity/i }), '2');
+    // The rules sit one press away, behind the price line's ⓘ (owner, 2026-11-16).
+    const rules = screen.queryByRole('button', { name: /flight rules/i });
+    if (rules) await user.click(rules);
   };
 
   it('launches a raid on a world with the recall rule beside the button', async () => {

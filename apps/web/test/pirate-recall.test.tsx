@@ -54,7 +54,7 @@ describe('the words around a pirate raid', () => {
     const noRecall = /cannot be recalled|geri çağrılamaz|nicht zurückgerufen|no se puede (retirar|recuperar|llamar)|ne peut pas être rappel|呼び戻せません/i;
     for (const language of ['en', 'tr', 'de', 'es', 'fr', 'ja']) {
       await i18n.changeLanguage(language);
-      for (const key of ['pirate.outbound', 'launch.warningPirate', 'launch.warningPirateOpen', 'academy.steps.pirate'] as const) {
+      for (const key of ['pirate.outbound', 'launch.pirateRecall', 'launch.awayFor', 'launch.awayOpen', 'academy.steps.pirate'] as const) {
         if (!i18n.exists(key)) continue;
         expect(i18n.t(key, { world: 'Kestrel', duration: '1h' })).not.toMatch(noRecall);
       }

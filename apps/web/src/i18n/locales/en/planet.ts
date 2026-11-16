@@ -654,8 +654,6 @@ export const launch = {
   holdWorld_other: "Launch {{count}} ships",
   holdPirate_one: "Launch {{count}} ship",
   holdPirate_other: "Launch {{count}} ships",
-  warningWorld: "This fleet cannot defend {{world}} until it returns. Estimated time away: {{duration}}.",
-  warningPirate: "You can call this raid back once before its engagement. The fleet cannot defend {{world}} until it returns. Estimated time away: {{duration}}.",
   recallNote:
     "Can be recalled once while in flight — it returns in the time already flown. Fuel is not refunded.",
   chooseFleet: "Choose a fleet",
@@ -669,12 +667,8 @@ export const launch = {
   pace: "Flight speed",
   paceHint: "Slower fleets arrive later and return at the same speed. Lower speed reduces fuel cost. Slower speeds require every flight leg to fit within 12 hours.",
   paceFull: "Full",
-  paceBenefit: "Choose a slower speed to spend less fuel.",
   paceFuelValue: "{{amount}} deuterium",
-  paceFuelBaseline: "Full speed: {{amount}}",
   paceSaved: "{{amount}} deuterium saved",
-  paceArrival: "Target arrival",
-  paceTimeBaseline: "Full speed: {{duration}}",
   paceDelay: "{{duration}} later",
   paceRounding: "Fuel rounding leaves no fuel savings for this fleet.",
   paceReset: "This fleet uses full speed because the selected speed exceeds the flight time limit.",
@@ -746,6 +740,12 @@ export const launch = {
   cargoEach: "{{amount}} cargo each",
   cargoAdds: "+{{amount}} cargo",
   paceBrief: "less fuel · slower legs ≤12h",
+  priceRules: "Flight rules",
+  awayFor: "{{world}} · {{duration}} without this fleet",
+  awayOpen: "{{world}} · without this fleet until it returns",
+  pirateRecall: "You can call this raid back once before its engagement.",
+  shieldShort: "Your starting shield ends",
+  recoveryShieldShort: "Your recovery shield and +50% output end",
   escort: "Commander ship escorts the fleet",
   escortLabel: "Commander ship",
   escortBonusAkinci: "damage +{{pct}}%",
@@ -759,8 +759,6 @@ export const launch = {
   escortService: "In maintenance · {{clock}}",
   escortYarik: "Flying in the Yarık",
   escortAway: "Escorting another fleet",
-  warningWorldOpen: "This fleet cannot defend {{world}} until it returns.",
-  warningPirateOpen: "You can call this raid back once before its engagement. The fleet cannot defend {{world}} until it returns.",
 } as const;
 
 export const transfer = {

@@ -60,8 +60,7 @@ describe('remembering only transfer return choices', () => {
     await user.click(screen.getByRole('radio', { name: /other ships.*return/i }));
     await user.click(screen.getByRole('button', { name: 'More Courier' }));
     fireEvent.keyDown(screen.getByRole('slider', { name: /Alloy/i }), { key: 'End' });
-    const speeds = within(first.container.querySelector<HTMLElement>('[data-transfer-pace]')!).getAllByRole('radio');
-    await user.click(speeds[1]!);
+    await user.click(within(first.container.querySelector<HTMLElement>('[data-transfer-pace]')!).getByRole('radio', { name: '75%' }));
     first.unmount();
     open();
     expect(screen.getByRole('radio', { name: /haulers.*stay/i })).toBeChecked();
@@ -71,7 +70,7 @@ describe('remembering only transfer return choices', () => {
     expect(document.querySelector('[data-transfer-pace]')).toBeNull();
     expect(JSON.parse(localStorage.getItem(RETURN_CHOICE_KEY) ?? '{}')).toEqual({ cargoShips: 'STAY', otherShips: 'RETURN' });
     await user.click(screen.getByRole('button', { name: 'More Courier' }));
-    expect(within(document.querySelector<HTMLElement>('[data-transfer-pace]')!).getAllByRole('radio')[0]).toBeChecked();
+    expect(within(document.querySelector<HTMLElement>('[data-transfer-pace]')!).getByRole('radio', { name: 'Full' })).toBeChecked();
   });
 
   it('uses a persisted plan in the next actual order', async () => {
@@ -836,14 +835,15 @@ describe('choosing how fast a transfer flies', () => {
 
     const row = view.container.querySelector<HTMLElement>('[data-transfer-pace]');
     expect(row).toBeTruthy();
-    const rungs = within(row!).getAllByRole('radio');
+    // Slow to fast along the throttle (owner, 2026-11-16); speeds this flight may not take are locked.
+    const rungs = within(row!).getAllByRole('radio').filter((rung) => !(rung as HTMLButtonElement).disabled);
     expect(rungs.length).toBeGreaterThan(1);
-    expect(rungs[0]).toBeChecked();
+    expect(rungs[rungs.length - 1]).toBeChecked();
 
     const eta = view.container.querySelector<HTMLElement>('[data-transfer-eta]')!;
     const atFullSpeed = eta.textContent;
-    await user.click(rungs[rungs.length - 1]!);
-    expect(rungs[rungs.length - 1]).toBeChecked();
+    await user.click(rungs[0]!);
+    expect(rungs[0]).toBeChecked();
     expect(eta.textContent).not.toBe(atFullSpeed);
   });
 
@@ -854,7 +854,7 @@ describe('choosing how fast a transfer flies', () => {
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
     const row = view.container.querySelector<HTMLElement>('[data-transfer-pace]')!;
     expect(row).toHaveTextContent(/cannot be raided/i);
-    expect(row).toHaveTextContent(/less fuel/i);
+    expect(row).toHaveTextContent(/reduces fuel cost/i);
     expect(row).toHaveTextContent(/each slower flight leg must fit within 12 hours/i);
   });
 
@@ -874,9 +874,7 @@ describe('choosing how fast a transfer flies', () => {
     const user = userEvent.setup();
     const view = open();
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
-    const rungs = within(view.container.querySelector<HTMLElement>('[data-transfer-pace]')!)
-      .getAllByRole('radio');
-    await user.click(rungs[1]!);
+    await user.click(within(view.container.querySelector<HTMLElement>('[data-transfer-pace]')!).getByRole('radio', { name: '75%' }));
     // The commit is held (K4); Enter twice is the keyboard's hold.
     const commit = screen.getByRole('button', { name: /^transfer\b/i });
     fireEvent.keyDown(commit, { key: 'Enter' });

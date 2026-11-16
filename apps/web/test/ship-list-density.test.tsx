@@ -218,8 +218,10 @@ describe('what the attack sheet no longer spends a plate on', () => {
       at a world cannot be turned), and the fleetsave rule.
     */
     expect(view.container.textContent).not.toMatch(/cannot be recalled/i);
-    expect(view.container.textContent).toMatch(/cannot defend Kestrel-12 until it returns.*Estimated time away:/i);
+    expect(view.container.querySelector('[data-launch-warning]')).toHaveTextContent(/^Kestrel-12 · .+ without this fleet$/);
     expect(view.container.querySelector('[data-launch-figures]')).toHaveTextContent(/\d+ units/);
+    // Fleetsave sits one press away, behind the price line's ⓘ (owner, 2026-11-16).
+    await user.click(screen.getByRole('button', { name: /flight rules/i }));
     expect(view.container.textContent).toMatch(/cannot be raided/i);
   });
 });

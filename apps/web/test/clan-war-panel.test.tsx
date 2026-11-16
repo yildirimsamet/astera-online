@@ -397,21 +397,21 @@ describe('choosing when the joint strike lands', () => {
     show(timed(60), 'LEADER', [origin]);
     const row = document.querySelector<HTMLElement>('[data-clan-pace]');
     expect(row).toBeTruthy();
-    const rungs = within(row!).getAllByRole('radio');
+    // Slow to fast along the throttle (owner, 2026-11-16); speeds this strike may not take are locked.
+    const rungs = within(row!).getAllByRole('radio').filter((rung) => !(rung as HTMLButtonElement).disabled);
     expect(rungs.length).toBeGreaterThan(1);
-    expect(rungs[0]).toBeChecked();
+    expect(rungs[rungs.length - 1]).toBeChecked();
 
     const eta = document.querySelector<HTMLElement>('[data-clan-strike-eta]')!;
     const atFullSpeed = eta.textContent;
-    await userEvent.setup().click(rungs[rungs.length - 1]!);
+    await userEvent.setup().click(rungs[0]!);
     expect(eta.textContent).not.toBe(atFullSpeed);
   });
 
   it('sends the chosen speed with the held launch', async () => {
     const { api } = show(timed(60), 'LEADER', [origin]);
     const started = vi.spyOn(api, 'startClanWar').mockReturnValue(new Promise(() => undefined));
-    const rungs = within(document.querySelector<HTMLElement>('[data-clan-pace]')!).getAllByRole('radio');
-    await userEvent.setup().click(rungs[1]!);
+    await userEvent.setup().click(within(document.querySelector<HTMLElement>('[data-clan-pace]')!).getByRole('radio', { name: '75%' }));
     hold(strike());
 
     await waitFor(() => { expect(started).toHaveBeenCalledWith(false, 0.75); });
@@ -423,9 +423,10 @@ describe('choosing when the joint strike lands', () => {
     } });
     show(war, 'LEADER', [origin]);
     const row = within(document.querySelector<HTMLElement>('[data-clan-pace]')!);
-    expect(row.getAllByRole('radio')).toHaveLength(3);
-    expect(row.queryByRole('radio', { name: '25%' })).not.toBeInTheDocument();
-    expect(row.queryByRole('radio', { name: '10%' })).not.toBeInTheDocument();
+    // Every speed keeps its stop on the throttle; the ones the server did not approve are locked.
+    expect(row.getAllByRole('radio').filter((rung) => !(rung as HTMLButtonElement).disabled)).toHaveLength(3);
+    expect(row.getByRole('radio', { name: '25%' })).toBeDisabled();
+    expect(row.getByRole('radio', { name: '10%' })).toBeDisabled();
   });
 
   it('rejects a server speed outside the shared ladder at the API boundary', () => {

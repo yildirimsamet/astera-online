@@ -5389,7 +5389,7 @@ html:lang(ja) .gk-tab {
 .gk-unit__name {
   flex: 1;
   min-width: 0;
-  font-size: var(--gk-t-lead);
+  font-size: var(--gk-t-body);
   text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
@@ -5409,9 +5409,14 @@ html:lang(ja) .gk-tab {
 .gk-unit__stage {
   position: relative;
   display: grid;
-  place-items: center;
-  min-height: 88px;
+  min-height: 76px;
   margin: 2px 0;
+}
+/* The ship is the button: the whole stage under the overlays, a tap for one, a hold for many. */
+.gk-unit__ship {
+  display: grid;
+  place-items: center;
+  width: 100%;
   padding: 0;
   border: 0;
   border-radius: 2px;
@@ -5419,11 +5424,14 @@ html:lang(ja) .gk-tab {
   cursor: pointer;
   touch-action: pan-y;
   user-select: none;
+  -webkit-touch-callout: none;
 }
+.gk-unit__ship:focus-visible { outline: 2px solid var(--gk-self); outline-offset: -2px; }
+.gk-unit__ship[aria-disabled='true'] { cursor: default; }
 .gk-unit__art {
   width: 92%;
   max-width: 132px;
-  height: 84px;
+  height: 72px;
   object-fit: contain;
   filter: drop-shadow(0 6px 6px var(--gk-outline));
   animation: gk-hover 5s ease-in-out infinite;
@@ -5431,7 +5439,7 @@ html:lang(ja) .gk-tab {
   transition: scale var(--gk-press) var(--gk-ease);
 }
 /* The ship gives under the thumb before the count moves (scale rides on the hover). */
-.gk-unit__stage:active .gk-unit__art {
+.gk-unit__ship:not([aria-disabled='true']):active .gk-unit__art {
   scale: 0.92;
 }
 .gk-unit__art[data-nudge] {
@@ -5459,8 +5467,8 @@ html:lang(ja) .gk-tab {
 .gk-unit__minus {
   position: absolute;
   z-index: 1;
-  left: -2px;
-  top: 28px;
+  left: -8px;
+  top: -6px;
 }
 .gk-unit__foot {
   display: grid;
@@ -17285,3 +17293,179 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 [data-galaxy-readout] .gk-tally-wrap {
   min-height: 32px;
 }
+
+
+/* ── E3 · the attack sheet rebuilt (owner 2026-11-16): hold-press ship cards, a worm-to-rocket throttle ── */
+.gk-unitgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: var(--gk-s2);
+}
+/* The count is a field the player may write in, drawn as the kit's count badge. */
+.gk-unit__count {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 44px;
+  text-align: center;
+  font: inherit;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-size: var(--gk-t-lead);
+  appearance: none;
+  outline: none;
+}
+.gk-unit__count:focus-visible { box-shadow: 0 0 0 2px var(--gk-self-hi); }
+.gk-unit__count.gk-count--idle { color: var(--gk-ink-3); }
+.gk-unit__count:disabled { opacity: 0.5; }
+.gk-unit__art--mark { display: grid; place-items: center; }
+.gk-unit__hullmark { width: 48px; height: 48px; color: var(--gk-ink-2); }
+.gk-unit[data-dead] .gk-unit__art { filter: grayscale(1) brightness(0.6); animation: none; }
+.gk-unit__mult .gk-mark { font-size: var(--gk-t-floor); font-weight: 700; padding: 1px 5px; border-radius: 2px; background: color-mix(in srgb, var(--gk-void) 70%, transparent); }
+.gk-unit__mult [data-matchup='strong'] { color: var(--gk-good); }
+.gk-unit__mult [data-matchup='weak'] { color: var(--gk-hostile); }
+.gk-unit__extra { margin-top: -2px; }
+
+/* The flight speed: one bar from a worm to a rocket, cold to flame, the thumb where the pace is. */
+.gk-throttle {
+  --slow: color-mix(in srgb, var(--gk-crystal) 80%, var(--gk-info));
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) 26px;
+  align-items: start;
+  gap: 6px;
+}
+.gk-throttle__end { display: grid; place-items: center; height: 26px; }
+.gk-throttle__end .gk-glyph { width: 22px; height: 22px; }
+.gk-throttle__end--slow { color: var(--slow); }
+.gk-throttle__end--fast { color: var(--gk-action); }
+.gk-throttle[data-flat-out] .gk-throttle__end--fast { animation: gk-throttle-burn 0.9s ease-in-out infinite alternate; }
+@keyframes gk-throttle-burn {
+  from { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--gk-action) 60%, transparent)); }
+  to { filter: drop-shadow(0 0 7px var(--gk-action)); transform: translateX(1px); }
+}
+.gk-throttle__rail { display: grid; gap: 2px; min-width: 0; padding-top: 6px; }
+.gk-throttle__track {
+  position: relative;
+  height: 14px;
+  border-radius: 7px;
+  border: 1px solid var(--gk-metal-edge);
+  background: linear-gradient(180deg, var(--gk-void), color-mix(in srgb, var(--gk-void) 70%, var(--gk-metal-2)));
+  box-shadow: inset 0 2px 3px var(--gk-outline);
+  cursor: pointer;
+  touch-action: none;
+}
+/* The fill shows the slice of one cold-to-flame gradient that spans the whole track. */
+.gk-throttle__fill {
+  position: absolute;
+  inset: 1px auto 1px 1px;
+  width: max(10px, calc(var(--pace) * (100% - 2px)));
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--slow), var(--gk-self) 30%, var(--gk-warn) 62%, var(--gk-action) 82%, var(--gk-hostile));
+  background-size: calc(100% / max(var(--pace), 0.04)) 100%;
+  box-shadow: 0 0 10px -2px color-mix(in srgb, var(--gk-action) calc(var(--pace) * 80%), transparent);
+  transition: width var(--gk-quick) var(--gk-ease);
+}
+.gk-throttle__thumb {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--pace) * 100%);
+  width: 22px;
+  height: 22px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  border: 2px solid var(--gk-ink);
+  background: radial-gradient(circle at 40% 35%, var(--gk-ink), color-mix(in srgb, var(--gk-action) calc(var(--pace) * 100%), var(--slow)) 70%);
+  box-shadow: 0 2px 4px var(--gk-outline), 0 0 calc(4px + var(--pace) * 10px) color-mix(in srgb, var(--gk-action) calc(var(--pace) * 90%), transparent);
+  transition: left var(--gk-quick) var(--gk-ease);
+  pointer-events: none;
+}
+.gk-throttle__rungs { position: relative; height: 26px; }
+.gk-throttle__rung {
+  position: absolute;
+  top: 0;
+  left: calc(var(--at) * 100%);
+  translate: -50% 0;
+  min-width: 34px;
+  height: 26px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink-3);
+  cursor: pointer;
+}
+.gk-throttle__rung:first-child { translate: -12% 0; }
+.gk-throttle__rung:last-child { translate: -88% 0; }
+.gk-throttle__rung[aria-checked='true'] { color: var(--gk-ink); }
+.gk-throttle__rung:disabled { opacity: 0.35; cursor: default; text-decoration: line-through; }
+.gk-throttle__rung:focus-visible { outline: 2px solid var(--gk-self); outline-offset: -2px; }
+.gk-pace__head { display: flex; align-items: baseline; gap: var(--gk-s2); flex-wrap: wrap; }
+.gk-pace__trade {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px var(--gk-s3);
+  padding: 0;
+}
+.gk-pace__side { display: inline-flex; align-items: center; gap: 5px; font-size: var(--gk-t-small); color: var(--gk-ink); }
+.gk-pace__side .gk-glyph { width: 14px; height: 14px; color: var(--gk-ink-3); }
+.gk-pace__side [data-tone='self'] { color: var(--gk-good); font-weight: 700; }
+.gk-pace__side [data-tone='warn'] { color: var(--gk-warn); font-weight: 700; }
+
+/* The price over the hold: one warning line, its rules behind the ⓘ. */
+.gk-launch__price .gk-peek__row { min-height: 32px; }
+.gk-launch__price .gk-peek__row > .gk-glyph { width: 16px; height: 16px; flex: none; color: var(--gk-warn); }
+.gk-launch__price .gk-peek__fact { font-size: var(--gk-t-small); font-weight: 700; color: var(--gk-warn); }
+.gk-launch__price .gk-peek__rule { display: grid; gap: 4px; }
+
+/* The ruler over the cards, tightened (owner 2026-11-16): one line per fact, the axis words gone
+   (the ratio sentence says them), and on a short phone it scrolls away so the ships keep the screen. */
+.gk-launch__ruler { padding-top: var(--gk-s2); padding-bottom: var(--gk-s2); }
+.gk-launch__ruler .gk-ruler { gap: 4px; }
+.gk-launch__ruler .gk-ruler__head { margin-block: -10px -10px; }
+.gk-launch__ruler .gk-ruler__axis { display: none; }
+.gk-launch__ruler .gk-ruler__weigh { gap: 2px; }
+.gk-launch__ruler .gk-ruler__ratio,
+.gk-launch__ruler .gk-ruler__verdict { font-size: var(--gk-t-small); }
+.gk-launch__ruler [data-testid='ruler-notes'] { font-size: var(--gk-t-floor); }
+@media (max-height: 740px) {
+  .gk-launch__ruler[data-sticky] { position: static; box-shadow: none; }
+}
+/* The flight in figures: a compact well, every value on its own top line. */
+.gk-launch .gk-figures--well { gap: 6px 10px; }
+.gk-launch .gk-figure { align-content: start; }
+.gk-mline--folded .gk-peek__fact { font-size: var(--gk-t-small); font-weight: 400; }
+.gk-mline--folded .gk-peek__row { min-height: 32px; }
+
+/* ── S3 · the card at the foot of the galaxy, compact (owner 2026-11-16: "dikey olarak biraz daha küçülmesi
+   lazım; font size ve butonları biraz küçültebilirsin") — a smaller ring, body-size words, the title on its
+   own line, the clause cut to one line with the press beside it; about two fifths shorter than before. ── */
+.gk-ccard {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  grid-template-areas: "head head head" ". title title" ". body actions";
+  column-gap: 6px;
+  row-gap: 2px;
+  padding: 4px 4px 6px 6px;
+  align-items: center;
+}
+.gk-ccard__head { grid-area: head; grid-template-columns: 28px minmax(0, 1fr); column-gap: 6px; }
+.gk-ccard__head .gk-timer__ring { width: 28px; height: 28px; font-size: var(--gk-t-small); }
+.gk-ccard__time { font-size: var(--gk-t-body); line-height: 1.2; }
+.gk-ccard__title { grid-area: title; margin: 0; font-size: var(--gk-t-body); line-height: 1.2; }
+.gk-ccard__actions { grid-area: actions; margin: 0 4px 0 0; gap: 6px; flex-wrap: nowrap; }
+.gk-ccard__body {
+  grid-area: body;
+  margin: 0 6px 0 0;
+  font-size: var(--gk-t-floor);
+  line-height: 1.3;
+}
+.gk-ccard__body:not(:has(ul)) {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.gk-ccard .gk-btn--sm { min-height: 34px; padding-inline: var(--gk-s2); font-size: var(--gk-t-small); }
+.gk-ccard .gk-btn--sm .gk-glyph { width: 15px; height: 15px; }
+.gk-crow { padding: 3px 0; }
+.gk-crow__name { font-size: var(--gk-t-floor); }

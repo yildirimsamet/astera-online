@@ -650,8 +650,6 @@ export const launch = {
   holdWorld_other: "Lanzar {{count}} naves",
   holdPirate_one: "Lanzar {{count}} nave",
   holdPirate_other: "Lanzar {{count}} naves",
-  warningWorld: "Esta flota no defenderá {{world}} hasta su regreso. Ausencia estimada: {{duration}}.",
-  warningPirate: "Puedes retirar esta incursión una vez antes del combate. La flota no defenderá {{world}} hasta su regreso. Ausencia estimada: {{duration}}.",
   recallNote:
     "Se puede recuperar una vez en vuelo: vuelve en el tiempo que ya ha volado. El combustible no se reembolsa.",
   chooseFleet: "Elige una flota",
@@ -665,12 +663,8 @@ export const launch = {
   pace: "Velocidad de vuelo",
   paceHint: "Una flota más lenta llega después y regresa a la misma velocidad. Una velocidad menor reduce el coste de combustible. Cada tramo ralentizado debe durar como máximo 12 horas.",
   paceFull: "Total",
-  paceBenefit: "Elige una velocidad menor para gastar menos combustible.",
   paceFuelValue: "{{amount}} deuterio",
-  paceFuelBaseline: "Velocidad máxima: {{amount}}",
   paceSaved: "{{amount}} de deuterio ahorrado",
-  paceArrival: "Llegada al objetivo",
-  paceTimeBaseline: "Velocidad máxima: {{duration}}",
   paceDelay: "{{duration}} más tarde",
   paceRounding: "El redondeo del combustible impide ahorrar con esta flota.",
   paceReset: "Esta flota viajará a velocidad máxima porque la velocidad elegida supera el límite de tiempo de vuelo.",
@@ -742,6 +736,12 @@ export const launch = {
   cargoEach: "{{amount}} de carga c/u",
   cargoAdds: "+{{amount}} de carga",
   paceBrief: "menos combustible · tramo lento ≤12 h",
+  priceRules: "Reglas del vuelo",
+  awayFor: "{{world}} · {{duration}} sin esta flota",
+  awayOpen: "{{world}} · sin esta flota hasta su regreso",
+  pirateRecall: "Puedes retirar esta incursión una vez antes del combate.",
+  shieldShort: "Tu escudo inicial se acaba",
+  recoveryShieldShort: "Tu escudo de recuperación y la producción +50 % se acaban",
   escort: "La nave del comandante escolta a la flota",
   escortLabel: "Nave del comandante",
   escortBonusAkinci: "daño +{{pct}} %",
@@ -755,8 +755,6 @@ export const launch = {
   escortService: "En mantenimiento · {{clock}}",
   escortYarik: "Volando en el Yarık",
   escortAway: "Escoltando otra flota",
-  warningWorldOpen: "Esta flota no defenderá {{world}} hasta su regreso.",
-  warningPirateOpen: "Puedes retirar esta incursión una vez antes del combate. La flota no defenderá {{world}} hasta su regreso.",
 } as const;
 
 export const transfer = {

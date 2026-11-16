@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { UnitBay, UnitCard } from '../../src/game-ui/index.js';
+import { MultiplierBadge, UnitBay, UnitCard } from '../../src/game-ui/index.js';
 
 /**
  * THE SHIP CARD: the art is the button. A tap adds one ship, a hold adds many, a
@@ -15,7 +15,7 @@ const tap = (element: HTMLElement): void => {
 };
 
 const card = (chosen: number, onChange = vi.fn()) => {
-  render(<UnitCard name="Dart" art="/dart.webp" cls="SKIRMISHER" multiplier={0.625} home={40} chosen={chosen} onChange={onChange} />);
+  render(<UnitCard name="Dart" art="/dart.webp" cls="SKIRMISHER" badge={<MultiplierBadge value={0.625} />} home={40} chosen={chosen} onChange={onChange} />);
   return onChange;
 };
 
@@ -61,7 +61,8 @@ describe('the ship card', () => {
 
   it('shows the chosen count, the stock and the counter multiplier', () => {
     card(24);
-    expect(screen.getByText('24')).toBeVisible();
+    // The count is a field the player can write in (owner, 2026-11-16: the attack sheet's cards).
+    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('24');
     expect(screen.getByText('40')).toBeVisible();
     expect(screen.getByText('×0.625')).toBeVisible();
   });
@@ -79,7 +80,7 @@ describe('the ship card', () => {
     try {
       function Live() {
         const [chosen, setChosen] = useState(3);
-        return <UnitCard name="Dart" art="/dart.webp" cls="SKIRMISHER" multiplier={1} home={40} chosen={chosen} onChange={setChosen} />;
+        return <UnitCard name="Dart" art="/dart.webp" cls="SKIRMISHER" badge={<MultiplierBadge value={1} />} home={40} chosen={chosen} onChange={setChosen} />;
       }
       render(<Live />);
       // held until the minus runs out from under the finger; its release never reaches it
@@ -89,7 +90,7 @@ describe('the ship card', () => {
       tap(screen.getByRole('button', { name: /more Dart/i }));
       wait(2_000);
       expect(screen.getByRole('button', { name: /fewer Dart/i })).toBeInTheDocument();
-      expect(screen.getByText('1')).toBeVisible();
+      expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('1');
     } finally {
       vi.useRealTimers();
     }

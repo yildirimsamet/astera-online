@@ -48,13 +48,13 @@ describe('the launch on the kit', () => {
     expect(sheet.querySelector('[data-launch-owner]')).toHaveClass('gk-chip');
   });
 
-  it('lists each hull as a kit row with the kit’s counter, none of the old look', () => {
+  it('lists each hull as a kit ship card, none of the old look (owner, 2026-11-16)', () => {
     open();
     const fleet = document.querySelector<HTMLElement>('[data-launch-fleet]')!;
     expect(oldPaint(fleet)).toEqual([]);
     const dart = fleet.querySelector<HTMLElement>('[data-hull-row="DART"]')!;
-    expect(dart).toHaveClass('gk-lrow');
-    expect(dart.querySelector('.gk-qty')).not.toBeNull();
+    expect(dart).toHaveClass('gk-unit');
+    expect(dart.querySelector('.gk-unit__ship')).not.toBeNull();
   });
 
   it('reads the flight in kit figures', () => {

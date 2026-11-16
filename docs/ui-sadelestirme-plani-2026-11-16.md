@@ -15,7 +15,7 @@ Her yüzeyin ölçütü: **350×812 ve 375×667'de kaydırmadan ne görünüyor?
 |---|---|---|---|
 | S1 | Tek başlık standardı: sheet başlığı en fazla 48 px; ikon 32, tek satır başlık, bir satır üst yazı, kapat/geri 40 px; resimli başlık aynı 48 px'in zemini | 5, 10, 15 | bitti |
 | S2 | Sekme çubuğu: eşit genişlik, tek satır, 40 px; menü sekmeleri Gezegen / Araştırma / Gemi | 11 | bitti |
-| S3 | Kompakt bağlam kartı (alt kart): saldırı, etkinlik, öneri; yazı ve düğme küçülür, dikeyde ~%40 kısalır | 1 | bekliyor |
+| S3 | Kompakt bağlam kartı (alt kart): saldırı, etkinlik, öneri; yazı ve düğme küçülür, dikeyde ~%40 kısalır | 1 | bitti (saldırı/öneri 175→108 px, olay 118→96) |
 | S4 | Görsel kart oranı: kart resminin %70–80'i görünür, kart gereksiz uzamaz | 7 | bekliyor |
 | S5 | Kit'e standart `Fold` (akordiyon) ve `InfoPeek` kullanımı; uzun kural metni bunların arkasına | 2. amaç | bekliyor |
 | S6 | Yazım kuralı: bilineni yazma, tek cümle, kural ⓘ'de (`docs/ux-writing.md`'ye ek) | 17 | bekliyor |
@@ -23,7 +23,7 @@ Her yüzeyin ölçütü: **350×812 ve 375×667'de kaydırmadan ne görünüyor?
 | H2 | Eve dön düğmesi: zaten evdeyken ne yaptığı görünür olsun ya da gizlensin | 12 | bekliyor |
 | E1 | Filo sekmesi: Onur/duruş bloğu akordiyona, gemiler kaydırmadan görünür; gemi kartında saldırı/savunma/hız | 8, 9 | bekliyor |
 | E2 | Gemi üretim kartı baştan | 10 | bekliyor |
-| E3 | Saldırı sheet'i baştan (owner, 2026-11-16 ek): kit'in basılı tutmalı gemi kartları (`UnitCard`), hız ilerleme çubuğu gibi (solda solucan/yavaş renk, sağda roket/alev), kısa ekranda gemi alanı korunur, uyarılar tek satır + ⓘ | 16, 17, ek | bekliyor |
+| E3 | Saldırı sheet'i baştan (owner, 2026-11-16 ek): kit'in basılı tutmalı gemi kartları (`UnitCard`), hız ilerleme çubuğu gibi (solda solucan/yavaş renk, sağda roket/alev), kısa ekranda gemi alanı korunur, uyarılar tek satır + ⓘ | 16, 17, ek | bitti (kartlar, gaz kolu tüm uçuşlarda, tek satır fiyat, kısa ekranda cetvel kayar, eşleşme payları ⓘ'de) |
 | E7 | Focus: Ölüm Yıldızı akordiyonu silah yokken de görünür (kırmızı, radyasyon sarı), açınca üretim şartı | ek | bitti |
 | E4 | Klan sheet'i sekmelere (Bul / Kur / Neden); kuramayan oyuncuya form kilitli | 6 | bekliyor |
 | E5 | Ödüller: hangi ödülün açıldığı belli; parlama kutuya sıkışmaz; bir ödül alınırken diğerleri pasif, yükleniyor değil | 13, 14 | bekliyor |
@@ -57,7 +57,7 @@ Son sırada: G11 simulator / wiki-sheet / wiki-public · G13 faults / landing / 
 |---|---|---|
 | S1 başlık 48 px | `Sheet` bileşeninden gelir; 48 galeri görünümünde ölçüm (yükseklik + kesilme) tr/de/fr/ja; bütün oyun için sabit başlık uzunluğu testi (`sheet-head-copy.test.ts`) | bitti (rapor başlığı ve dinamik uzun başlıklar E3/rapor biriminde) |
 | S2 sekme | `GameTabs` kullanan her yüzey; eşit genişlik ölçümü | bitti (5 dilde ölçüldü) |
-| S3 alt kart | `ContextCard` / `ContextStrip` her hâli (saldırı, etkinlik, öneri, seçili) | bekliyor |
+| S3 alt kart | `ContextCard` / `ContextStrip` her hâli (saldırı, etkinlik, öneri, seçili) | bitti (tr/de/ja ölçüldü) |
 | S4 görsel kart | resimli her kart (bina, gemi, menü, mağaza, araştırma) — görünen resim oranı ölçülür | bekliyor |
 | S5/S6 yazı | her yüzeyin her paragrafı: sil / kısalt / ⓘ ya da akordiyona; altı dil | bekliyor |
 
@@ -83,3 +83,4 @@ Son sırada: G11 simulator / wiki-sheet / wiki-public · G13 faults / landing / 
 ## İlerleme
 - 2026-11-16: plan yazıldı; S1 başladı.
 - 2026-11-16: S1, S2, H1 bitti (başlık 48 px, yumuşak geçiş, eşit boşluk; sekmeler eşit; HUD bölgeleri, araçlar 2×2, tek araç sağda). E7 bitti. Sıradaki: S3, E3.
+- 2026-11-16: E3 bitti (saldırı sheet'i: basılı tutmalı gemi kartları, solucan→roket hız çubuğu, tek satır fiyat + ⓘ); S3 bitti (alt kartlar ~%40 kısa). Sıradaki: H2, S4.

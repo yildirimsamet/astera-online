@@ -99,7 +99,7 @@ describe('the kit plays them at its moments', () => {
   });
 
   it('ticks as a count goes up, on the ship card and on the slider', () => {
-    const { unmount } = render(<UnitCard name="Dart" art="/dart.webp" cls="SKIRMISHER" multiplier={0.625} home={40} chosen={24} onChange={() => undefined} />);
+    const { unmount } = render(<UnitCard name="Dart" art="/dart.webp" cls="SKIRMISHER" home={40} chosen={24} onChange={() => undefined} />);
     fireEvent.pointerDown(screen.getByRole('button', { name: /more Dart/i }), { button: 0 });
     fireEvent.pointerUp(screen.getByRole('button', { name: /more Dart/i }));
     expect(cues()).toContain('tick');

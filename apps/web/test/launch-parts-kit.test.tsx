@@ -20,14 +20,14 @@ const oldPaint = (root: Element): string[] =>
 const NOW = Date.parse('2026-10-25T12:00:00Z');
 
 describe('the launch controls on the kit', () => {
-  it('picks the pace on the kit’s choice plates, the trade read in a glass well', async () => {
+  it('picks the pace on the kit’s throttle, the trade read under it', async () => {
     const onChange = vi.fn();
     const view = render(<PaceRow data-launch-pace paces={MISSION_PACES} pace={1} onChange={onChange} brief="less fuel, slower"
       comparison={{ fuel: 1_000, fullFuel: 1_000, minutes: 20, fullMinutes: 20 }} />);
     const row = view.container.querySelector<HTMLElement>('[data-launch-pace]')!;
     expect(oldPaint(row)).toEqual([]);
-    expect(screen.getByRole('radiogroup')).toHaveClass('gk-choices');
-    expect(row.querySelector('[data-pace-comparison]')).toHaveClass('gk-well');
+    expect(screen.getByRole('radiogroup')).toHaveClass('gk-throttle__rungs');
+    expect(row.querySelector('[data-pace-comparison]')).toHaveClass('gk-pace__trade');
     await userEvent.setup().click(screen.getByRole('radio', { name: '50%' }));
     expect(onChange).toHaveBeenCalledWith(0.5);
   });

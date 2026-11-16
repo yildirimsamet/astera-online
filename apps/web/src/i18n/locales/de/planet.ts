@@ -650,8 +650,6 @@ export const launch = {
   holdWorld_other: "{{count}} Schiffe starten",
   holdPirate_one: "{{count}} Schiff starten",
   holdPirate_other: "{{count}} Schiffe starten",
-  warningWorld: "Diese Flotte verteidigt {{world}} erst nach ihrer Rückkehr wieder. Geschätzte Abwesenheit: {{duration}}.",
-  warningPirate: "Du kannst diesen Überfall vor dem Gefecht einmal zurückrufen. Die Flotte verteidigt {{world}} erst nach ihrer Rückkehr wieder. Geschätzte Abwesenheit: {{duration}}.",
   recallNote:
     "Im Flug einmal rückrufbar – der Rückweg dauert so lange wie der bisherige Flug. Treibstoff wird nicht erstattet.",
   chooseFleet: "Wähle eine Flotte",
@@ -665,12 +663,8 @@ export const launch = {
   pace: "Fluggeschwindigkeit",
   paceHint: "Langsamere Flotten kommen später an und kehren mit derselben Geschwindigkeit zurück. Ein niedrigeres Tempo senkt die Treibstoffkosten. Jeder verlangsamte Flugabschnitt darf höchstens 12 Stunden dauern.",
   paceFull: "Voll",
-  paceBenefit: "Wähle ein langsameres Tempo, um weniger Treibstoff zu verbrauchen.",
   paceFuelValue: "{{amount}} Deuterium",
-  paceFuelBaseline: "Volles Tempo: {{amount}}",
   paceSaved: "{{amount}} Deuterium gespart",
-  paceArrival: "Ankunft am Ziel",
-  paceTimeBaseline: "Volles Tempo: {{duration}}",
   paceDelay: "{{duration}} später",
   paceRounding: "Die Treibstoffrundung verhindert bei dieser Flotte eine Ersparnis.",
   paceReset: "Diese Flotte fliegt mit vollem Tempo, weil das gewählte Tempo die Flugzeitgrenze überschreitet.",
@@ -742,6 +736,12 @@ export const launch = {
   cargoEach: "je {{amount}} Fracht",
   cargoAdds: "+{{amount}} Fracht",
   paceBrief: "weniger Treibstoff · langsamer Abschnitt ≤12 h",
+  priceRules: "Flugregeln",
+  awayFor: "{{world}} · {{duration}} ohne diese Flotte",
+  awayOpen: "{{world}} · ohne diese Flotte bis zur Rückkehr",
+  pirateRecall: "Du kannst diesen Überfall vor dem Gefecht einmal zurückrufen.",
+  shieldShort: "Dein Startschild endet",
+  recoveryShieldShort: "Dein Erholungsschild und +50 % Produktion enden",
   escort: "Kommandantenschiff begleitet die Flotte",
   escortLabel: "Kommandantenschiff",
   escortBonusAkinci: "Schaden +{{pct}} %",
@@ -755,8 +755,6 @@ export const launch = {
   escortService: "In Wartung · {{clock}}",
   escortYarik: "Fliegt im Yarık",
   escortAway: "Begleitet eine andere Flotte",
-  warningWorldOpen: "Diese Flotte verteidigt {{world}} erst nach ihrer Rückkehr wieder.",
-  warningPirateOpen: "Du kannst diesen Überfall vor dem Gefecht einmal zurückrufen. Die Flotte verteidigt {{world}} erst nach ihrer Rückkehr wieder.",
 } as const;
 
 export const transfer = {

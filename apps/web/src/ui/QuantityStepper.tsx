@@ -29,6 +29,47 @@ interface QuantityStepperProps {
 }
 
 /**
+ * THE COUNT AS A FIELD THAT CAN BE WRITTEN IN (owner, 2026-09-25: "inputu boşaltıp baştan sayı
+ * yazabilmeyi mümkün kıl"). What is typed is kept exactly as typed while the field is being
+ * written in — nothing rewrites it mid-word, so it can be emptied and written again — and goes
+ * out within its bounds as it is typed, so a press that follows (a hold on Launch before the
+ * field has lost focus) sends this number. Settled on leaving. Shared by the stepper and the
+ * kit's ship card.
+ */
+export function useCountField({ value, min, max, onChange, label, disabled = false, id }: {
+  value: number; min: number; max: number; onChange: (value: number) => void; label: string; disabled?: boolean; id?: string;
+}) {
+  const upper = Math.max(min, max);
+  const current = Math.max(min, Math.min(upper, Math.floor(value)));
+  const [draft, setDraft] = useState<string | null>(null);
+  const enter = (event: ChangeEvent<HTMLInputElement>): void => {
+    const typed = event.currentTarget.value.replace(/\D/g, '');
+    setDraft(typed);
+    const parsed = Number.parseInt(typed, 10);
+    onChange(typed === '' ? min : Number.isSafeInteger(parsed) ? Math.max(min, Math.min(upper, parsed)) : upper);
+  };
+  const field = (className: string) => (
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      aria-label={label}
+      {...(id === undefined ? {} : { id })}
+      disabled={disabled}
+      value={draft ?? String(current)}
+      // Entered with the count selected, so the first figure typed replaces it.
+      onFocus={(event) => { event.currentTarget.select(); }}
+      onChange={enter}
+      // Settled on leaving: an empty field is the floor, too many the most there are.
+      onBlur={() => { setDraft(null); }}
+      onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+      className={className}
+    />
+  );
+  return { upper, current, field, settle: () => { setDraft(null); } };
+}
+
+/**
  * One exact count control for build, launch and any later fleet commitment, on the game kit
  * (G2-f): 44 px steps that tick and tap on their own, the last one to the ceiling landing
  * with a thunk. The plate and v2 looks had no caller left (2026-11-16) and are gone.
@@ -46,46 +87,12 @@ export function QuantityStepper({
   resetLabel,
   resetText = resetLabel,
 }: QuantityStepperProps) {
-  const upper = Math.max(min, max);
-  const current = Math.max(min, Math.min(upper, Math.floor(value)));
-  /*
-    WHAT IS BEING TYPED, EXACTLY AS TYPED (owner, 2026-09-25: "inputu boşaltıp baştan sayı
-    yazabilmeyi mümkün kıl"). Null while the field is not being written in, when it shows
-    the count. Nothing rewrites it mid-word — not a bound, not the count coming back — so
-    the field can be emptied and written again; it is settled when the player leaves it.
-  */
-  const [draft, setDraft] = useState<string | null>(null);
+  const { upper, current, field, settle } = useCountField({ value, min, max, onChange, label: valueLabel });
 
   const commit = (next: number): void => {
-    setDraft(null);
+    settle();
     onChange(next);
   };
-
-  /* The count goes out as it is typed, within its bounds, so a press that follows the
-     typing — a hold on Launch before the field has lost focus — sends this number. */
-  const enter = (event: ChangeEvent<HTMLInputElement>): void => {
-    const typed = event.currentTarget.value.replace(/\D/g, '');
-    setDraft(typed);
-    const parsed = Number.parseInt(typed, 10);
-    onChange(typed === '' ? min : Number.isSafeInteger(parsed) ? Math.max(min, Math.min(upper, parsed)) : upper);
-  };
-
-  const field = (className: string) => (
-    <input
-      type="text"
-      inputMode="numeric"
-      pattern="[0-9]*"
-      aria-label={valueLabel}
-      value={draft ?? String(current)}
-      // Entered with the count selected, so the first figure typed replaces it.
-      onFocus={(event) => { event.currentTarget.select(); }}
-      onChange={enter}
-      // Settled on leaving: an empty field is the floor, too many the most there are.
-      onBlur={() => { setDraft(null); }}
-      onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
-      className={className}
-    />
-  );
 
   const press = (next: number): void => {
     playSound('tick');
