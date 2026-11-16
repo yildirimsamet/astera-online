@@ -4,7 +4,7 @@ import type { ActiveGalaxyEvent } from '../../api/schemas.js';
 import type { Focus } from '../../galaxy/FocusPanel.jsx';
 import { EVENT_GLYPH, EVENT_NAME } from '../../lib/nowLine.js';
 import { duration } from '../../lib/time.js';
-import { DropGroup, DropPanel, PickRow, RoundButton, StatusChip, Tally, artIconSrc, type GlyphId, type TallyPaint } from '../../game-ui/index.js';
+import { DropGroup, DropPanel, PickRow, RoundButton, StatusChip, Tally, artIconSrc, type GlyphId, type StatusTone, type TallyPaint } from '../../game-ui/index.js';
 import type { MonumentDifficulty } from '@astera/rules';
 import { useNativeBack } from '../../platform/nativeBack.js';
 
@@ -235,6 +235,13 @@ export function SignalBell({ unseen, urgent, onOpen }: { unseen: number; urgent:
  * shower's multiplier, the time left; the name is the chip's name for the reader and the
  * card's title when the event arrives. A press frames the ship or opens the events guide.
  */
+/** Each event its own colour (owner 2026-11-17, ek-7): the merchant yellow, the convoy red, the shower blue. */
+const EVENT_TONE = {
+  ASTEROID_SHOWER: 'info',
+  TRADE_SHIP: 'warn',
+  INTERGALACTIC_CONVOY: 'hostile',
+} as const satisfies Record<ActiveGalaxyEvent['kind'], StatusTone>;
+
 export function EventChips({
   events,
   now,
@@ -255,7 +262,7 @@ export function EventChips({
           <StatusChip
             key={event.id}
             glyph={EVENT_GLYPH[event.kind]}
-            tone="info"
+            tone={EVENT_TONE[event.kind]}
             label={t(EVENT_NAME[event.kind])}
             value={shower ? `${String(event.asteroidSpawnMultiplier)}x` : left}
             {...(shower ? { until: left } : {})}

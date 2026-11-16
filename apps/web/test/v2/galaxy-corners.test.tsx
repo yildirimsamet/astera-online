@@ -135,6 +135,12 @@ describe('the events running now', () => {
     expect(path(/trade ship/i)).toBe(mark('crate'));
   });
 
+  /** Owner 2026-11-17 (ek-7): the badges were one blue; each event wears its own colour. */
+  it('colours each event by its kind: the merchant yellow, the shower blue', () => {
+    const { container } = render(<EventChips events={[trade, shower]} now={NOW} onOpen={vi.fn()} />);
+    expect([...container.querySelectorAll('.gk-status')].map((chip) => chip.getAttribute('data-tone'))).toEqual(['warn', 'info']);
+  });
+
   it('hands the pressed event to its host', async () => {
     const onOpen = vi.fn();
     render(<EventChips events={[trade]} now={NOW} onOpen={onOpen} />);

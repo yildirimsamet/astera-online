@@ -5704,6 +5704,9 @@ html:lang(ja) .gk-tab {
 .gk-status[data-tone='good'] { --tone: var(--gk-good); --tone-lo: var(--gk-good-lo); }
 .gk-status[data-tone='hostile'] { --tone: var(--gk-hostile); --tone-lo: var(--gk-hostile-lo); }
 .gk-status[data-tone='warn'] { --tone: var(--gk-warn); --tone-lo: var(--gk-action-lo); }
+.gk-status[data-tone='self'] { --tone: var(--gk-self); --tone-lo: var(--gk-self-lo); }
+.gk-status__drop { display: grid; margin-left: -2px; color: var(--gk-ink-3); }
+.gk-status__drop .gk-glyph { width: 10px; height: 10px; }
 /* A chip that answers a question gives under the thumb, lit in its colour (G1-b audit: no press response). */
 .gk-hit .gk-status {
   transition: transform var(--gk-quick) var(--gk-ease), box-shadow var(--gk-quick) var(--gk-ease);
@@ -17555,3 +17558,5 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 [data-now-line] .gk-tplate__text .gk-sub { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; overflow-wrap: normal; }
 /* 8 px between the line and the badges under it, on both sides (the right corner reads the float's height). */
 [data-now-float]:has(> [data-now-line]) { padding-bottom: 8px; }
+/* O11/ek-11: on the galaxy the left pills stand as tall as the right tallies, so their tops and bottoms meet one line. */
+.gk-hudcol .gk-status { height: 28px; border-radius: 14px; }

@@ -34,14 +34,14 @@ Her yüzeyin ölçütü: **350×812 ve 375×667'de kaydırmadan ne görünüyor?
 | O4 | Liderlik tablosu: sıralama ilk ekranda; ödül ve kural metni ⓘ / sekmeye (CoC, Survivor.io, Whiteout Survival incelenir) | ek-4 | bekliyor |
 | O5 | Klan sheet'i sekmelere: ara / listele / kur / klanım (E4 ile birleşik) | ek-5 | bekliyor |
 | O6 | Savaş raporu baştan: sonuç önce, kısa, soru bırakmayan | ek-6 | bekliyor |
-| O7 | Galaksi sol üst zaman rozetleri türüne göre renkli (kalkan yeşil, ticaret sarı, konvoy kırmızı…) | ek-7 | bekliyor |
+| O7 | Galaksi sol üst zaman rozetleri türüne göre renkli (kalkan yeşil, ticaret sarı, konvoy kırmızı…) | ek-7 | bitti (kalkan ve toparlanma takviyesi yeşil, sinyal takviyesi turkuaz, tatil mavi; göktaşı yağmuru mavi, ticaret sarı, konvoy kırmızı) |
 | O8 | Profil sayfasının sonu: hesabı sil sakin, çıkış en altta; kırmızı tehlike düğmeleri kibar | ek-8 | bekliyor |
 | O9 | Saldırı sheet'i: kart içi satırlar yan kartla hizalı, kargo rengi, hız çubuğunu sola sürükleme hatası, kalkan uyarısı kırmızı ve üst boşluğu az | ek-9 | bitti (kart satırları sabit, kargo yeşil, kalkan satırı kırmızı ve yakın; hız çubuğunun dokunma alanı tutamağı kapsıyor — tarayıcıda sola sürükleme doğrulandı) |
 | O10 | Sınıf üstünlüğü (counter) bilgi elemanları küçülür | ek-10 | bekliyor |
 | O11 | Üst bilgi şeritleri (uçuş/iş bitiyor) daha ince; altındaki rozetlerle 8 px; sol ve sağ rozetler aynı hizada | ek-11 | bitti (şerit 58→38 px, halka 28 px, alt satır tek satır; altında 8 px; sol ve sağ rozetler 109 px'te aynı hizada) |
 | O12 | Filo sekmesi toplanır (E1) | ek-12 | bitti (E1) |
 | O13 | Gezegen / Araştırma / Gemi geçişinde sekme çubuğunun genişliği ve yan boşluklar sabit (Gezegen'deki gibi) | ek-13 | bekliyor |
-| O14 | Birden fazla gezegende sol üstteki gezegen düğmesi kompakt ve kit'e uygun | ek-14 | bekliyor |
+| O14 | Birden fazla gezegende sol üstteki gezegen düğmesi kompakt ve kit'e uygun | ek-14 | bitti (gezegen düğmesi diğer rozetler gibi 28 px hap, turkuaz, açılır işaretli) |
 | O15 | Mağaza kategori kutuları kompakt | ek-15 | bekliyor |
 | O16 | Komutan menüsü: "Oyuna dön" kalkar; yanındaki iki düğme düzgün | ek-16 | bekliyor |
 | O17 | Komutan gemisi: "Yarık'a gir" düğmesinin altındaki boşluk kapanır | ek-17 | bekliyor |

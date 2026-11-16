@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { Chip, Glyph, StatusChip } from '../../game-ui/index.js';
+import { StatusChip } from '../../game-ui/index.js';
 import { factor } from '../../lib/format.js';
 import { countdown, duration } from '../../lib/time.js';
 
@@ -55,15 +55,15 @@ export function StatusLine({ now, world, shield, recoveryUntil, signalUntil, vac
   return (
     <div data-status-line="" className="pointer-events-none flex flex-col items-start pl-[var(--gk-gutter)] [&_button]:pointer-events-auto">
       {world && (
-        <Chip label={t(world.capital ? 'statusBar.capitalWorld' : 'statusBar.colonyWorld', { name: world.name })} onPress={onWorld}>
-          <Glyph id={world.capital ? 'home' : 'colony'} />
-          {world.name}
-        </Chip>
+        // One of the pills, not a square of its own (owner 2026-11-17, ek-14); the drop mark says a list opens.
+        <StatusChip glyph={world.capital ? 'home' : 'colony'} tone="self" named drop
+          label={t(world.capital ? 'statusBar.capitalWorld' : 'statusBar.colonyWorld', { name: world.name })}
+          value={world.name} onPress={onWorld} />
       )}
       {shield && shielded && (
         <StatusChip
           glyph="shield"
-          tone="info"
+          tone="good"
           label={t(shield.kind === 'RECOVERY' ? 'statusBar.recoveryShield.name' : 'statusBar.newcomerShield.name')}
           value={chipTime(shieldLeft, t)}
           onPress={() => {
@@ -74,7 +74,7 @@ export function StatusLine({ now, world, shield, recoveryUntil, signalUntil, vac
       {recovery && (
         <StatusChip
           glyph="up"
-          tone="info"
+          tone="good"
           label={t('statusBar.recoveryBoost.name')}
           value={t('statusBar.recoveryBoost.value')}
           until={chipTime(recoveryLeft, t)}
@@ -84,7 +84,7 @@ export function StatusLine({ now, world, shield, recoveryUntil, signalUntil, vac
       {signal && (
         <StatusChip
           glyph="up"
-          tone="good"
+          tone="self"
           label={t('unknownSignal.boostName')}
           value={factor(recoveryLeft > 0 ? 2.5 : 2)}
           until={chipTime(signalLeft, t)}

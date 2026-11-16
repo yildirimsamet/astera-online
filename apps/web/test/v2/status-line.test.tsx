@@ -39,6 +39,15 @@ describe('the status line', () => {
     expect(all.onWorld).toHaveBeenCalledTimes(1);
   });
 
+  /** Owner 2026-11-17 (ek-14): the world button was a big square of its own; it is one of the pills now. */
+  it('draws the world as a pill like the badges under it, with a drop mark', () => {
+    render(<StatusLine {...props({ world: { capital: true, name: 'Hollow' } })} />);
+    const pill = screen.getByRole('button', { name: /Hollow/ }).querySelector('.gk-status');
+    expect(pill).toHaveAttribute('data-tone', 'self');
+    expect(pill).toHaveTextContent('Hollow');
+    expect(pill?.querySelector('.gk-status__drop')).not.toBeNull();
+  });
+
   it('wears the shield with its time rounded down, and says the rule on a press', async () => {
     const all = props({ shield: { until: NOW + 7 * H + 20 * 60_000, kind: 'NEWCOMER' } });
     const { rerender } = render(<StatusLine {...all} />);
@@ -58,7 +67,14 @@ describe('the status line', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Recovery production · +50% · 5h' }));
     expect(all.onHint).toHaveBeenCalledWith('+50% output while shielded');
     const tones = [...container.querySelectorAll('.gk-status')].map((chip) => chip.getAttribute('data-tone'));
-    expect(tones).toEqual(['info', 'info']);
+    // Owner 2026-11-17 (ek-7): each kind its own colour — a shield is green.
+    expect(tones).toEqual(['good', 'good']);
+  });
+
+  it('tells a signal boost from a shield and a break by colour (owner 2026-11-17, ek-7)', () => {
+    const { container } = render(<StatusLine {...props({ shield: { until: NOW + 5 * H, kind: 'NEWCOMER' }, signalUntil: NOW + H, vacationUntil: NOW + 9 * H })} />);
+    const tones = [...container.querySelectorAll('.gk-status')].map((chip) => chip.getAttribute('data-tone'));
+    expect(tones).toEqual(['good', 'self', 'info']);
   });
 
   it('shows the signal’s production with its factor, and how to use it on a press', async () => {

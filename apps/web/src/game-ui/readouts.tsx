@@ -389,19 +389,23 @@ export function RoomGauge({ label, total, home, away, queued, incoming = 0, chil
 }
 
 /** A countdown ring with the time beside it. */
-export type StatusTone = 'good' | 'hostile' | 'warn' | 'info';
+export type StatusTone = 'good' | 'hostile' | 'warn' | 'info' | 'self';
 
 /**
  * AN EFFECT ON A FLEET OR A WORLD: a coin of its colour holding its mark, the size of the
  * change, and the time it has left. Green helps you, red hurts you, yellow is a risk you can
  * still dodge. The name is for a screen reader; on screen the mark carries it.
  */
-export function StatusChip({ glyph, tone, label, value, until, onPress }: {
+export function StatusChip({ glyph, tone, label, value, until, drop = false, named = false, onPress }: {
   glyph: GlyphId;
   tone: StatusTone;
   label: string;
   value: string;
   until?: string;
+  /** A press opens a list (the worlds): a small drop mark says so. */
+  drop?: boolean;
+  /** The label already names the value ("Colony · Hollow"): a reader hears it once. */
+  named?: boolean;
   /** Makes the chip a question: a press says what the effect does (a 44 px target round the chip). */
   onPress?: () => void;
 }) {
@@ -416,6 +420,7 @@ export function StatusChip({ glyph, tone, label, value, until, onPress }: {
       {onPress === undefined && <span className="sr-only">{label}</span>}
       <span className="gk-status__value gk-num">{value}</span>
       {until !== undefined && <span className="gk-status__until gk-num">{until}</span>}
+      {drop && <span className="gk-status__drop" aria-hidden="true"><Glyph id="down" /></span>}
     </span>
   );
   if (onPress === undefined) return chip;
@@ -424,7 +429,7 @@ export function StatusChip({ glyph, tone, label, value, until, onPress }: {
       type="button"
       {...OWN_SOUND}
       className="gk-hit"
-      aria-label={[label, value, ...(until === undefined ? [] : [until])].join(' · ')}
+      aria-label={named ? label : [label, value, ...(until === undefined ? [] : [until])].join(' · ')}
       onPointerDown={own.onPointerDown}
       onClick={own.onClick}
     >
