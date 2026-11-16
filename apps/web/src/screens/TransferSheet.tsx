@@ -417,7 +417,6 @@ export function TransferSheet({
                     </span>
                     : <span className="gk-sub gk-lrow__info" data-tone="warn">{t('transfer.hullNone')}</span>}
                   <QuantityStepper
-                    look="kit"
                     value={packed}
                     min={0}
                     max={held}

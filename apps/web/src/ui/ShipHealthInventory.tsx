@@ -57,7 +57,7 @@ export function ShipHealthInventory({ rows, quantities, onQuantity, disabled = f
         {!row.busy && <div className="gk-hgroup__foot">
           <span className="gk-sub">{t('repairStation.maintenance.available', { count: row.count })}</span>
           <fieldset disabled={disabled} className="gk-hgroup__pick">
-              <QuantityStepper look="kit" min={0} max={row.count} value={quantities[row.key] ?? 0}
+              <QuantityStepper min={0} max={row.count} value={quantities[row.key] ?? 0}
                 onChange={(count) => { onQuantity(row.key, count); }}
                 valueLabel={t('repairStation.maintenance.quantity', { name, health })}
                 decreaseLabel={t('repairStation.maintenance.decrease', { name })}

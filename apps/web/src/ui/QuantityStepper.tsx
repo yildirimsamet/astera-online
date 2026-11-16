@@ -2,7 +2,6 @@ import { useState, type ChangeEvent } from 'react';
 import { Glyph } from '../game-ui/icons.js';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
-import { Button, IconButton } from './kit/index.js';
 
 interface QuantityStepperProps {
   value: number;
@@ -27,16 +26,13 @@ interface QuantityStepperProps {
    */
   resetLabel?: string;
   resetText?: string;
-  /**
-   * `v2` is the Gözlemevi's row control (B14): minus, the count and plus in one
-   * bordered group, Max as a word beside it. The same presses, labels and markers.
-   * `kit` is the same row on the game kit (G2-f): 44 px steps that tick and tap on their
-   * own, the last one to the ceiling landing with a thunk.
-   */
-  look?: 'plate' | 'v2' | 'kit';
 }
 
-/** One exact count control for build, launch and any later fleet commitment. */
+/**
+ * One exact count control for build, launch and any later fleet commitment, on the game kit
+ * (G2-f): 44 px steps that tick and tap on their own, the last one to the ceiling landing
+ * with a thunk. The plate and v2 looks had no caller left (2026-11-16) and are gone.
+ */
 export function QuantityStepper({
   value,
   min,
@@ -49,7 +45,6 @@ export function QuantityStepper({
   maxText = maxLabel,
   resetLabel,
   resetText = resetLabel,
-  look = 'plate',
 }: QuantityStepperProps) {
   const upper = Math.max(min, max);
   const current = Math.max(min, Math.min(upper, Math.floor(value)));
@@ -92,141 +87,36 @@ export function QuantityStepper({
     />
   );
 
-  if (look === 'kit') {
-    const press = (next: number): void => {
-      playSound('tick');
-      haptic(next >= upper && upper > min ? 'thunk' : 'tap');
-      commit(next);
-    };
-    const step = (label: string, disabled: boolean, next: number, glyph: 'minus' | 'plus') => (
-      <button type="button" {...OWN_SOUND} aria-label={label} disabled={disabled} onClick={() => { press(next); }} className="gk-qty__step">
-        <Glyph id={glyph} />
-      </button>
-    );
-    return (
-      <div className="gk-qty">
-        <div className="gk-qty__group">
-          {step(decreaseLabel, current <= min, current - 1, 'minus')}
-          {field('gk-qty__field gk-num')}
-          {step(increaseLabel, current >= upper, current + 1, 'plus')}
-        </div>
-        <span data-count-max>
-          <button type="button" {...OWN_SOUND} aria-label={maxLabel} disabled={current >= upper} onClick={() => { press(upper); }} className="gk-qty__max">
-            {maxText}
-          </button>
-        </span>
-        {resetLabel !== undefined && (
-          <span data-count-reset>
-            <button type="button" {...OWN_SOUND} aria-label={resetLabel} disabled={current <= min} onClick={() => { press(min); }} className="gk-qty__reset">
-              {resetText}
-            </button>
-          </span>
-        )}
-      </div>
-    );
-  }
-
-  if (look === 'v2') {
-    const step = (label: string, disabled: boolean, next: number, face: string) => (
-      <button
-        type="button"
-        aria-label={label}
-        disabled={disabled}
-        onClick={() => { haptic('tap'); commit(next); }}
-        className="w-7 text-body text-v2-ink-2 disabled:text-v2-ink-3/40"
-      >
-        {face}
-      </button>
-    );
-    return (
-      <div className="flex shrink-0 items-center gap-1.5 font-v2-ui">
-        <div className="flex h-7 items-stretch overflow-hidden rounded-control border border-v2-line-hi bg-v2-deep/60">
-          {step(decreaseLabel, current <= min, current - 1, '−')}
-          {field('w-12 border-x border-v2-line bg-transparent text-center font-v2-mono font-semibold text-v2-ink outline-none')}
-          {step(increaseLabel, current >= upper, current + 1, '+')}
-        </div>
-        <span data-count-max>
-          <button
-            type="button"
-            aria-label={maxLabel}
-            disabled={current >= upper}
-            onClick={() => { haptic('tap'); commit(upper); }}
-            className="px-0.5 text-caption font-semibold text-v2-self disabled:text-v2-ink-3"
-          >
-            {maxText}
-          </button>
-        </span>
-        {resetLabel !== undefined && (
-          <span data-count-reset>
-            <button
-              type="button"
-              aria-label={resetLabel}
-              disabled={current <= min}
-              onClick={() => { haptic('tap'); commit(min); }}
-              className="px-0.5 text-caption text-v2-ink-2 disabled:text-v2-ink-3"
-            >
-              {resetText}
-            </button>
-          </span>
-        )}
-      </div>
-    );
-  }
-
+  const press = (next: number): void => {
+    playSound('tick');
+    haptic(next >= upper && upper > min ? 'thunk' : 'tap');
+    commit(next);
+  };
+  const step = (label: string, disabled: boolean, next: number, glyph: 'minus' | 'plus') => (
+    <button type="button" {...OWN_SOUND} aria-label={label} disabled={disabled} onClick={() => { press(next); }} className="gk-qty__step">
+      <Glyph id={glyph} />
+    </button>
+  );
   return (
-    <div className="flex items-center justify-end gap-2">
-      <IconButton
-        ariaLabel={decreaseLabel}
-        disabled={current <= min}
-        onClick={() => { commit(current - 1); }}
-        className="text-title"
-      >
-        −
-      </IconButton>
-      {field('num plate plate-sunk h-9 w-9 rounded-control px-2 text-center text-title text-bone outline-none')}
-      <IconButton
-        ariaLabel={increaseLabel}
-        disabled={current >= upper}
-        onClick={() => { commit(current + 1); }}
-        className="text-title"
-      >
-        +
-      </IconButton>
-      {/* The marker sits on a wrapper because anything outside this component
-          that needs to point at the control — the onboarding gate (D56) — matches
-          by `contains`, and the kit's Button owns its own attributes. */}
-      <span data-count-max className="ml-1">
-        <Button
-          size="sm"
-          ariaLabel={maxLabel}
-          disabled={current >= upper}
-          onClick={() => { commit(upper); }}
-          className="min-h-9"
-        >
+    <div className="gk-qty">
+      <div className="gk-qty__group">
+        {step(decreaseLabel, current <= min, current - 1, 'minus')}
+        {field('gk-qty__field gk-num')}
+        {step(increaseLabel, current >= upper, current + 1, 'plus')}
+      </div>
+      <span data-count-max>
+        <button type="button" {...OWN_SOUND} aria-label={maxLabel} disabled={current >= upper} onClick={() => { press(upper); }} className="gk-qty__max">
           {maxText}
-        </Button>
+        </button>
       </span>
-      {/*
-        THE PAIR. Max fills the order in one press and this empties it in one, so
-        a player who pressed the first can undo it without holding minus twenty
-        times. It goes AFTER Max rather than before, because the row reads as an
-        escalation — minus, the count, plus, all of it, none of it — and putting
-        the undo before the commit would read as a step on the way up.
-      */}
       {resetLabel !== undefined && (
         <span data-count-reset>
-          <Button
-            size="sm"
-            variant="ghost"
-            ariaLabel={resetLabel}
-            disabled={current <= min}
-            onClick={() => { commit(min); }}
-            className="min-h-9"
-          >
+          <button type="button" {...OWN_SOUND} aria-label={resetLabel} disabled={current <= min} onClick={() => { press(min); }} className="gk-qty__reset">
             {resetText}
-          </Button>
+          </button>
         </span>
       )}
     </div>
   );
+
 }

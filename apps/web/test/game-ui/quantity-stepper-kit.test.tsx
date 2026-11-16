@@ -14,7 +14,6 @@ beforeEach(() => { vi.clearAllMocks(); });
 
 const draw = (value = 2, onChange = vi.fn()) => render(
   <QuantityStepper
-    look="kit"
     value={value}
     min={0}
     max={5}
@@ -34,6 +33,13 @@ const draw = (value = 2, onChange = vi.fn()) => render(
  * shared stepper's.
  */
 describe('the kit look of the count', () => {
+  /** Every count in the game is on the kit (2026-11-16): the plate and v2 looks had no caller left and are gone. */
+  it('is the kit with no look to ask for', () => {
+    const { container } = draw();
+    expect(container.querySelector('.gk-qty')).not.toBeNull();
+    expect(container.querySelector('.plate, .rounded-control')).toBeNull();
+  });
+
   it('draws its steps, its field and its Max as the kit’s own presses', () => {
     const { container } = draw();
     for (const name of ['Fewer Darts', 'More Darts', 'All Darts']) {

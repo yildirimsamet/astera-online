@@ -267,7 +267,6 @@ export function IntergalacticConvoySheet({
                   {chosen}<span className="gk-lrow__of">/{available}</span>
                 </span>
                 <QuantityStepper
-                  look="kit"
                   value={chosen}
                   min={0}
                   max={available}

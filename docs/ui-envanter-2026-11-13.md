@@ -2210,6 +2210,12 @@ Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak ala
 - "Ana ekrana ekle / hızlı erişim" rehberi kit levhası: marka imzası soruyla ortak (`BrandLockup` artık kit), iPhone adımları kit numaralı kutularda, masaüstünde yer imi kısayolu kit tuşu (`Ctrl + D`), adres kit kuyusunda, kopyalama kit düğmesi; yükleme reddedilirse sarı kit afişi.
 - Tarayıcının kurulum cevabı beklenirken düğmeler artık soluk-kapalı değil, dönen işaretli "bekliyor" (`pending`); basış yine işlemez. `brand-install` testi buna göre güncellendi.
 - Kullanılmayan 24 marka kuralı silindi. iPhone, Android ve masaüstü önce/sonra fotoğraflandı; 12 px altı yazı yok.
+
+### Kalan oyun yüzeyleri (2026-11-16, owner: "önce oyunla ilgili ekranlar")
+
+Halka açık sayfalar, hızlı başlangıç ve Wiki en sona kaldı; G13-e'nin yarım işi `out/parked/g13e-publisher-kit.patch` içinde (yayıncı sayfaları kit renk/Saira, Saira'yı `wikiPlugin` yayınlıyor, testiyle). Sıra: sayıcı → sohbet balonları → dönüş hikâyesinin kahraman satırı → kuyruk onayı, menü alt satırı, çerez onayı, tam ekran yardımı → G15 → G14 → halka açık sayfalar.
+
+- **Sayıcı (`QuantityStepper`) ✅.** On çağıranın hepsi zaten kit görünümündeydi; eski `plate` ve `v2` kolları ile `look` seçeneği silindi, sayıcı artık yalnız kit. Oyunda görünür değişiklik yok.
 ## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
 
 | # | Yüzey | Dosya (satır) | Dil | Not |

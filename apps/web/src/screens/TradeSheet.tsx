@@ -464,7 +464,6 @@ export function TradeSheet({
                   ? <span className="gk-sub gk-num gk-lrow__info">{t('trade.carrierRoom', { count: held, volume: full(holdOf(id, mods.tech)) })}</span>
                   : <span className="gk-sub gk-lrow__info" data-tone="warn">{t('trade.hullNone')}</span>}
                 <QuantityStepper
-                  look="kit"
                   value={packed}
                   min={0}
                   max={held}

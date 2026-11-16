@@ -22,8 +22,8 @@ describe('the shared quantity stepper', () => {
     expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('3');
     expect(screen.getByRole('textbox', { name: /dart quantity/i })).not.toHaveAttribute('readonly');
     expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveAttribute('inputmode', 'numeric');
-    expect(screen.getByRole('button', { name: /fewer darts/i })).toHaveTextContent('−');
-    expect(screen.getByRole('button', { name: /more darts/i })).toHaveTextContent('+');
+    expect(screen.getByRole('button', { name: /fewer darts/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /more darts/i })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Max' })).toBeInTheDocument();
   });
 

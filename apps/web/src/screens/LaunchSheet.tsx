@@ -154,7 +154,6 @@ export function LaunchSheet({
           )}
         </span>
         <QuantityStepper
-          look="kit"
           value={chosen}
           min={0}
           max={roomFor(hull)}
