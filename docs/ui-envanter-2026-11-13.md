@@ -1334,6 +1334,14 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - **Test:** `skins-shop-kit.test.tsx` (10). `skins-screen` içindeki kalkan düğmesi radyo oldu.
 - **Ölçüm** (tr; telefon, dar, masaüstü): `skin-shop` 133 → 43, `skin-shop-live` 135 → 43; 12 px altı 114 → 28, kontrast 40 → 12, yavaş geçiş 8 → 0. Kalanların hepsi Mağaza/Envanter anahtarı ve kategori ızgarası (C37) ile sac arkalığı. `reports/ui-audit/c35-shop-before/after-2026-11-16.md`.
 
+**C36 Envanter ✅ (2026-11-16, yardımcı oturum).** G6 #3 `SkinInventoryScreen` (gezegen dolabı).
+- **An:** "Hangi dünyam hangi görünümü giysin?" Tek dokunuşla giydirme, Varsayılan ile çıkarma, bir dünya giydirilirken bütün seçimlerin beklemesi ve hatanın o dünyada söylenmesi değişmedi.
+- **Değişen:** Her dünya kitin kesik plakası: görünümü 44 px küre, adı görüntü yüzünde, "Şu an" alt satırda. Görünümler kit çipleri: basınca ses + titreşim + çökme; giyilen yeşil kenar ve tikli, yoldaki nefes alır, bekleyenler söner. Yeni görünüm oturduğunda küre kabarır ve onay sesi + titreşim gelir (toast yok; dünya kendisi söyler). Sahip olunanlar camda tek satır (küreler, ad, 3/9). Hata kitin uyarı bannerı. İntro `gk-copy`, ipucu `gk-note`, bölüm kitin etiketiyle. Yükleme hatası banner.
+- **Kaldırılan:** sahip olunanlar satırındaki "Mağazayı keşfet" bağlantısı: hemen üstteki Mağaza sekmesiyle aynı yere gidiyordu ve satırı ikiye bölüyordu.
+- **Not:** `PlanetInventoryContent`'in boş dalı pratikte ulaşılamaz (gezegen kategorisi yalnız bir gezegen görünümü varken açılır); silinmedi, kitin boş-durum çizimine çevrildi.
+- **Test:** `skin-inventory-kit.test.tsx` (5).
+- **Ölçüm** (tr; telefon, dar, masaüstü): `skin-inventory` 61 → 19 (kalan: Mağaza/Envanter anahtarı ve kategori ızgarası, C37). `skin-inventory-empty` 61 ve `ship-skin-inventory` 66 değişmedi: ikisi de `CosmeticCollection` (C37). 12 px altı 78 → 54, kontrast 27 → 22. `reports/ui-audit/c36-inventory-before/after-2026-11-16.md`.
+
 **G4 kapanışı: altı dilde telefon ölçümü (2026-11-15).** 9 yüzey, 40 görünüm × 6 dil = 239 ölçüm (`g4-close-6lang-2026-11-15.md`). Kesilen 0, yana taşma 0. Bulunan iki şey düzeltildi (`g4-close-fix-2026-11-15.md`): Ölüm Yıldızı başlığı ve "1 hazır" çipi kendi kırmızı zemininde 4,3:1 kalıyordu → tonun açık ucu, kontrast 0. fr yerleşme tutuşu "Envoyer les vaisseaux de colonisation" kırpılıyordu → "Envoyer les colons", kırpılan 0. Kalan: yerleşme `claim-other` görünümünde 3 küçük/tepkisiz hedef (yarış satırının yanındaki başkasının hakkı), sheet'lerin ortak karartması (3 puan).
 
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
