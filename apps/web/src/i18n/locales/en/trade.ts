@@ -55,8 +55,8 @@ export const trade = {
   /** `aria-label` on the split slider. */
   splitLabel: "What you take",
   splitToward: "more {{resource}}",
-  legOut: "Out",
-  legHome: "Home",
+  legOut: "Cargo out",
+  legHome: "Cargo home",
   legHold: "Convoy",
   legReturnDecides:
     "What you take is bulkier than what you give. This is all your convoy carries home, and it is what sets the ceiling above — add a ship to give more.",

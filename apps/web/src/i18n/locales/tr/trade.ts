@@ -50,8 +50,8 @@ export const trade = {
   ceilingHold: "En çok {{amount}} — tam {{worth}} {{good}} eder. Konvoyu büyüt, artsın.",
   splitLabel: "Ne alacağın",
   splitToward: "daha çok {{resource}}",
-  legOut: "Gidiş",
-  legHome: "Dönüş",
+  legOut: "Giden yük",
+  legHome: "Dönen yük",
   legHold: "Konvoy",
   legReturnDecides:
     "Aldığın, verdiğinden hacimli. Dönüşte ancak bu kadarını taşıyabilirsin — üstteki sınırı koyan bu. Daha fazla vermek için konvoya gemi ekle.",

@@ -92,3 +92,20 @@ describe('the merchant’s sheet on the kit', () => {
     expect(hold).toHaveClass('gk-hold');
   });
 });
+
+/**
+ * ONE WORD, ONE MEANING (owner 2026-11-16): the cargo well's two legs say what they carry, so the
+ * journey's own "Out" (a time, in the figures below) is never the same word as a volume.
+ */
+describe('the trade sheet’s words for its two wells', () => {
+  it.each(['tr', 'en', 'de', 'es', 'fr', 'ja'])('keeps the cargo legs apart from the journey’s time in %s', async (language) => {
+    const i18n = (await import('../src/i18n/index.js')).default;
+    await i18n.changeLanguage(language);
+    const out = i18n.t('trade.legOut');
+    const home = i18n.t('trade.legHome');
+    expect(out).not.toBe(i18n.t('trade.figureOut'));
+    expect(home).not.toBe(i18n.t('trade.figureOut'));
+    expect(out).not.toBe(home);
+    await i18n.changeLanguage('en');
+  });
+});
