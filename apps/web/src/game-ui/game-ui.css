@@ -16602,3 +16602,85 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-installsheet__key span { color: var(--gk-ink-3); }
 .gk-installsheet__address { text-align: center; font: 700 var(--gk-t-lead) var(--gk-font-display); font-stretch: var(--gk-display-stretch); letter-spacing: .02em; }
 .gk-installsheet__address span { color: var(--gk-self); }
+
+/* ── 2026-11-16: the chat's messages ──────────────────────────────────────────
+   A bubble is the kit's glass with the speaker's top corner cut, its edge in who it speaks as;
+   the words are the brightest line in it, the name in the display face, the time in figures. */
+.gk-bubble {
+  --tone: var(--gk-glass-edge);
+  --edge: color-mix(in srgb, var(--tone) 55%, var(--gk-metal-edge));
+  --wash: color-mix(in srgb, var(--tone) 12%, transparent);
+  --who: var(--gk-ink);
+  --cut: 7px;
+  --shape: polygon(var(--cut) 0, 100% 0, 100% 100%, 0 100%, 0 var(--cut));
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  padding: 6px 10px 7px;
+  touch-action: manipulation;
+  outline: none;
+}
+/* The shape lives on two layers under the words, never on the bubble: a clip there would also cut the
+   44 px presses (the name, a cup) that reach past its edge. */
+.gk-bubble::before, .gk-bubble::after { content: ''; position: absolute; z-index: -1; clip-path: var(--shape); pointer-events: none; }
+.gk-bubble::before { inset: 0; background: var(--edge); }
+.gk-bubble::after { inset: 1px; background: linear-gradient(180deg, var(--wash), transparent 70%), var(--gk-glass-2); }
+.gk-bubble[data-side='self'] { --shape: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%); }
+.gk-bubble[data-tone='self'] { --tone: var(--gk-self); --who: var(--gk-self); }
+.gk-bubble[data-tone='clan'] { --tone: var(--gk-info); --who: var(--gk-info); }
+.gk-bubble[data-tone='admin'] { --tone: #fb7185; --who: #fda4af; }
+.gk-bubble[data-tone='gold'] { --tone: var(--gk-gold-lo); }
+.gk-bubble[data-tone='silver'] { --tone: var(--gk-silver-lo); }
+.gk-bubble[data-tone='bronze'] { --tone: var(--gk-bronze-lo); }
+/* A supporter is someone else: the heart names them, the edge carries the mark, the glass stays plain so
+   their words never read as yours. */
+.gk-bubble[data-tone='supporter'] { --tone: #2dd4bf; --wash: transparent; }
+.gk-bubble:focus-visible { --edge: var(--gk-self); }
+/* Held (C3): the cut edge would clip a glow, so the edge itself lights and the glass warms. */
+.gk-bubble[data-held] { --edge: var(--gk-self); --wash: color-mix(in srgb, var(--gk-self) 20%, transparent); }
+.gk-bubble__head { display: flex; align-items: center; gap: 8px; min-width: 0; line-height: 18px; }
+.gk-bubble__who {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--who); font: var(--gk-display-weight) var(--gk-t-small) var(--gk-font-display); font-stretch: var(--gk-display-stretch); letter-spacing: .01em;
+}
+/* A commander whose world is known: the name flies there; 44 px for the thumb, the line keeps its height. */
+.gk-bubble__who--link {
+  display: flex; align-items: center; min-height: 44px; margin-block: -12px;
+  text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--who) 40%, transparent); text-underline-offset: 3px;
+  transition: transform var(--gk-quick) var(--gk-ease);
+}
+.gk-bubble__who--link:active { transform: scale(.96); }
+.gk-bubble__time { margin-left: auto; flex: none; color: var(--gk-ink-3); font-size: var(--gk-t-floor); }
+/* A podium's cup or a supporter's heart: a 14 px mark inside a 44 px press that lends the gaps beside it. */
+.gk-bubble__badge {
+  position: relative; display: inline-flex; flex: none; align-items: center; justify-content: center; align-self: center;
+  min-width: 44px; min-height: 44px; margin: -12px -6px; border-radius: var(--gk-r-sm);
+  color: var(--badge, var(--gk-ink-2)); touch-action: manipulation; transition: transform var(--gk-quick) var(--gk-ease);
+}
+.gk-bubble__badge svg { color: currentColor; }
+.gk-bubble__badge:active { transform: scale(.9); }
+.gk-bubble__badge:focus-visible { outline: 2px solid currentColor; outline-offset: -8px; }
+.gk-bubble__badge[data-tone='gold'], .gk-chathint[data-tone='gold'] { --badge: var(--gk-gold); }
+.gk-bubble__badge[data-tone='silver'], .gk-chathint[data-tone='silver'] { --badge: var(--gk-silver); }
+.gk-bubble__badge[data-tone='bronze'], .gk-chathint[data-tone='bronze'] { --badge: var(--gk-bronze); }
+.gk-bubble__badge[data-tone='supporter'], .gk-chathint[data-tone='supporter'] { --badge: #5eead4; }
+.gk-bubble__quote {
+  display: grid; margin-top: 4px; padding: 3px 8px; max-width: 100%;
+  border-left: 2px solid var(--gk-self); background: color-mix(in srgb, var(--gk-self) 7%, var(--gk-deep));
+  font-size: var(--gk-t-floor); line-height: 16px;
+}
+.gk-bubble__quotewho { color: var(--gk-self); font-weight: 700; }
+.gk-bubble__quotetext { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gk-ink-2); }
+/* Sentences people wrote, read in a row: 16 px like the composer (owner 2026-10-04). */
+.gk-bubble__text { margin: 2px 0 0; color: var(--gk-ink); font-size: 16px; line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* The explanation under a cup or a heart: the kit's tip with an edge in that metal. */
+.gk-chathint { border-color: color-mix(in srgb, var(--badge) 55%, var(--gk-metal-edge)); box-shadow: 0 10px 24px rgb(0 0 0 / 45%); }
+/* A line nobody typed: the clan's log between the bubbles, a strip with its tone on the edge. */
+.gk-chatevent {
+  display: flex; align-items: center; gap: 8px; max-width: 92%; margin: 0; padding: 5px 10px;
+  border-left: 3px solid var(--event); background: linear-gradient(90deg, color-mix(in srgb, var(--event) 16%, var(--gk-glass-2)), var(--gk-glass-2) 75%);
+  color: var(--gk-ink); font-size: var(--gk-t-floor); line-height: 16px;
+}
+.gk-chatevent[data-tone='info'] { --event: var(--gk-info); }
+.gk-chatevent[data-tone='hostile'] { --event: var(--gk-hostile); }
+.gk-chatevent__time { margin-left: 6px; color: var(--gk-ink-3); font-size: var(--gk-t-floor); white-space: nowrap; }

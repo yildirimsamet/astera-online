@@ -2216,6 +2216,13 @@ Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak ala
 Halka açık sayfalar, hızlı başlangıç ve Wiki en sona kaldı; G13-e'nin yarım işi `out/parked/g13e-publisher-kit.patch` içinde (yayıncı sayfaları kit renk/Saira, Saira'yı `wikiPlugin` yayınlıyor, testiyle). Sıra: sayıcı → sohbet balonları → dönüş hikâyesinin kahraman satırı → kuyruk onayı, menü alt satırı, çerez onayı, tam ekran yardımı → G15 → G14 → halka açık sayfalar.
 
 - **Sayıcı (`QuantityStepper`) ✅.** On çağıranın hepsi zaten kit görünümündeydi; eski `plate` ve `v2` kolları ile `look` seçeneği silindi, sayıcı artık yalnız kit. Oyunda görünür değişiklik yok.
+- **Sohbet mesajları ✅.** C2–C4'ten kalan balonlar, klan olay satırı ve rozet ipucu kit'te:
+  - balon kit camı, konuşanın üst köşesi kesik; kenar kimin konuştuğunu söyler (kendin teal, klanda bilgi mavisi, yönetici gül, kürsü altın/gümüş/bronz, destekçi teal kenar ama düz cam, böylece senin sözün gibi okunmaz);
+  - ad Saira dar kalın, saat kit rakamı, mesaj en parlak satır ve 16 px (owner 2026-10-04), alıntı ince kuyu;
+  - klan olayı ortada seyir defteri şeridi (alarm kırmızı kenar), 12 px;
+  - kupa/kalp ipucu kitin `gk-tip`'i, kenarı o metalde;
+  - kesik köşe balonun kendisinde değil arka katmanlarda: ad ve kupanın 44 px basışı balon kenarını aşabiliyor; basılı tutulan balonun parıltısı köşeyi izleyen `drop-shadow`.
+  - Testler sınıf yerine `data-tone` / `data-side` okur. Ölçüm (tr; telefon, dar, masaüstü): genel 7 → 7, klan 4 → 4, DM 0 → 2 (ilk balon kaydırmayla görünür alanın üstüne taşıyor; kusur değil). Altı dil telefon: kesilme 0, kontrast hatası 0.
 ## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
 
 | # | Yüzey | Dosya (satır) | Dil | Not |
