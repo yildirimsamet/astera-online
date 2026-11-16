@@ -89,7 +89,7 @@ export function LeaderboardScreen({ onFocusPlanet }: {
     : [];
 
   return (
-    <div data-v2-leaderboard className="gk-lb">
+    <div data-v2-leaderboard className="gk gk-lb">
       <SeasonRewardReceipt receipt={season.data?.seasonReward} />
       {board.data.honorEnabled ? <section className="gk-lb__race">
         <GameTabs<'HONOR' | 'DOMINION'>
@@ -135,8 +135,8 @@ export function LeaderboardScreen({ onFocusPlanet }: {
               <span className="gk-lb__chip">{t('leaderboard.honorPrizeMultiplier', { ranking: t('leaderboard.score') })}</span>
             </p>
             <p className="gk-report__label">{t('leaderboard.honorPayment')}</p>
-            <p className="gk-haul__row gk-num">
-              {(['alloy', 'crystal', 'deuterium'] as const).map(resource => <span key={resource} className="gk-haul__res" data-res={resource}>
+            <p className="gk-lb__purse gk-num">
+              {(['alloy', 'crystal', 'deuterium'] as const).map(resource => <span key={resource} className="gk-lb__coin" data-res={resource}>
                 <img src={RESOURCE_ART[resource]} alt={t(`vocabulary.resource.${resource}`)} />
                 {full(prize.reward[resource])}
                 <span className="gk-lb__of">/ {full(prize.nominal[resource])}</span>
@@ -263,8 +263,8 @@ function RowPrize({ reward }: { reward: Resources | undefined }) {
   if (!reward || (reward.alloy === 0 && reward.crystal === 0 && reward.deuterium === 0)) {
     return <span className="gk-lb__noprize">{t('leaderboard.rewards.noPrize')}</span>;
   }
-  return <span role="group" aria-label={t('leaderboard.rewards.currentPrize')} className="gk-haul__row gk-num gk-lb__rowprize">
-    {(['alloy', 'crystal', 'deuterium'] as const).map(resource => <span key={resource} className="gk-haul__res" data-res={resource}>
+  return <span role="group" aria-label={t('leaderboard.rewards.currentPrize')} className="gk-lb__purse gk-num gk-lb__rowprize">
+    {(['alloy', 'crystal', 'deuterium'] as const).map(resource => <span key={resource} className="gk-lb__coin" data-res={resource}>
       <img src={RESOURCE_ART[resource]} alt={t(`vocabulary.resource.${resource}`)} />
       {full(reward[resource])}
     </span>)}

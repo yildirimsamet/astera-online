@@ -16086,3 +16086,14 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-honorquote__table td[data-tone='good'] { color: var(--gk-good); }
 .gk-honorquote__table td[data-tone='hostile'] { color: var(--gk-hostile-hi); }
 .gk-honorquote__table td.gk-honorquote__net { font-weight: 700; color: var(--gk-ink); }
+
+/* G9 close (2026-11-16): the Honor purse on its own row — each resource earned over its full share, wrapping whole. */
+.gk-lb__purse { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--gk-s3); font-size: var(--gk-t-small); font-weight: 700; }
+.gk-lb__coin { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.gk-lb__coin img { width: 18px; height: 18px; object-fit: contain; }
+.gk-lb__coin[data-res='alloy'] { color: var(--gk-alloy-hi); }
+.gk-lb__coin[data-res='crystal'] { color: var(--gk-crystal); }
+.gk-lb__coin[data-res='deuterium'] { color: var(--gk-deut); }
+/* the same purse, small, beside a commander on the ladder */
+.gk-lb__purse.gk-lb__rowprize { gap: var(--gk-s2); font-size: var(--gk-t-floor); }
+.gk-lb__rowprize .gk-lb__coin img { width: 14px; height: 14px; }
