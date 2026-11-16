@@ -1919,6 +1919,14 @@ Okundu: `screens/SeasonArchiveScreen.tsx` fonksiyon haritası + 66–176 (gövde
 - Kitin gemi satırı: uzun ad (Wayfarer) 320 px'te sayacın altına kayıyordu; artık ikinci satıra iniyor.
 - Galeri: Onur sıralaması ve ticaret sayfası örnek Onur verisi taşıyor. Audit (tr; telefon, dar, masaüstü): sıralama 0, ticaret 3 (galeri kabuğu).
 
+
+**G9 kapanışı (2026-11-16).** 6 dil, telefon; sıralama ve arşiv, sezon özeti, anıt, ticaret, 60 ölçüm (`reports/ui-audit/g9-close-6lang-2026-11-16.md`): taşma, kırpılma ve kesilme 0; 12 px altı metin 0.
+- **Sıralama kitin kökünde değildi:** sayfa `gk` sınıfı olmadan açılıyordu; gövde yazısı tarayıcının yazı tipine düşüyordu. Artık kitin yazısı.
+- **Onur ödülü satırı:** rapor ganimetinin `gk-haul__row` sınıfını ödünç alıyordu; o sınıf sonradan üç sütunlu ızgaraya dönüşünce "820 / 1.750" bir sonraki resmin üstüne biniyordu (sıra satırlarındaki küçük ödül de aynı sınıfı kullanıyordu). İkisi de kendi `gk-lb__purse` satırında.
+- Kalan: anıt sayfasında en'de bir satır 1.97:1 ölçüldü; ekranda koyu zeminde okunuyor, tr'de geçiyor (ölçüm alttaki tutma çubuğunun gölgesine denk geldi).
+
+**Sayfa başlıkları kitte (2026-11-16, kesişen).** Menü, sıralama, araştırma, kozmetik mağaza, envanter ve Wiki sayfaları kitin içeriğiyle ama eski düz v2 başlığıyla açılıyordu. Hepsi kitin başlık plakasında (sıralama ve araştırma kendi sanatıyla; menüde sanat yok, hemen altındaki komutan kartı madalyonu taşıyor). `test/sheet-heads.test.ts` galaksideki her sayfanın kit başlığı taşıdığını denetliyor; sırası gelmemiş üçü (G12 arena, G14 yönetim, G15 gemi) listede, liste yalnız küçülür. Görselli başlıkta üst yazı ("Yerel galaksi") gün batımı resmi üstünde 3.1:1 kalıyordu; birinci mürekkep ve gölge.
+
 ## G10. Hesap
 
 Okundu: `shell/ProfilePage.tsx` (gövde); diğerlerinde dil sayımı.

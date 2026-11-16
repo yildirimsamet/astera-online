@@ -42,6 +42,8 @@
   clip-path: none;
 }
 .sheet-art-head .gk-sheet__head::before { content: none; }
+/* Over a bright picture (the season's sunset) the second ink fell to 3.1:1: the eyebrow takes the first ink and a shade (G9 close, 2026-11-16). */
+.sheet-art-head .gk-sheet__eyebrow { color: var(--gk-ink); text-shadow: 0 1px 2px rgb(4 6 11 / 90%), 0 0 8px rgb(4 6 11 / 70%); }
 
 .commander-menu .atmosphere-image { filter: none; }
 /* The menu's foot: the app's own controls, a thumb's size and answering a press (G1-f2). */

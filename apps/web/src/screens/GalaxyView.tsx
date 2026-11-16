@@ -2061,6 +2061,7 @@ export function GalaxyView({
         <V2Sheet
           detents={['full']}
           headerArt={ATMOSPHERE.research}
+          kit={{ art: artIconSrc('nav-research'), tone: 'self' }}
           eyebrow={t('research.eyebrow')}
           title={t('research.title')}
           onClose={() => {
@@ -2102,6 +2103,7 @@ export function GalaxyView({
       {panel === 'menu' && (
         <V2Sheet
           detents={['full']}
+          kit={{ tone: 'self' }}
           eyebrow={t('galaxy.panelCommanderEyebrow')}
           title={t(menuPage === 'home' ? 'menu.navigation.title' : `menu.navigation.${menuPage}`)}
           {...(menuPage === 'home' ? {} : { onBack: () => { setMenuPage('home'); } })}
@@ -2152,7 +2154,7 @@ export function GalaxyView({
       )}
 
       {panel === 'wiki' && (
-        <V2Sheet detents={['full']} {...menuBack} eyebrow="Astera Online" title="Wiki" quietTitle bleed onClose={() => { onPanel(null); }}>
+        <V2Sheet detents={['full']} {...menuBack} eyebrow="Astera Online" title="Wiki" headerArt={ATMOSPHERE.intel} kit={{ tone: 'self' }} bleed onClose={() => { onPanel(null); }}>
           <Suspense fallback={<p className="p-6 text-v2-ink-2">Wiki…</p>}>
             <WikiScreen language={i18n.resolvedLanguage} />
           </Suspense>
@@ -2181,6 +2183,7 @@ export function GalaxyView({
           {...menuBack}
           eyebrow={t('leaderboard.eyebrow')}
           headerArt={ATMOSPHERE.season}
+          kit={{ art: artIconSrc('menu-ranking'), tone: 'self' }}
           title={t('leaderboard.title')}
           onClose={() => {
             onPanel(null);
@@ -2251,6 +2254,7 @@ export function GalaxyView({
           detents={['full']}
           bleed
           {...menuBack}
+          kit={{ art: artIconSrc('menu-shop'), tone: 'self' }}
           eyebrow={t('skins.collection')}
           title={t('menu.skinsShopLabel')}
           onClose={() => { onPanel(null); }}
@@ -2266,6 +2270,7 @@ export function GalaxyView({
           detents={['full']}
           bleed
           {...menuBack}
+          kit={{ art: artIconSrc('cos-planet'), tone: 'self' }}
           eyebrow={t('skins.collection')}
           title={t('menu.skinsInventoryLabel')}
           onClose={() => { onPanel(null); }}

@@ -877,7 +877,7 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
       <ApiProvider api={api}>
         {page.startsWith('menu') ? (
           // Headed as the game heads it (G1-f): the commander's eyebrow, the page's name, a way back from a page.
-          <Sheet eyebrow={i18n.t('galaxy.panelCommanderEyebrow')} title={i18n.t(menuPage === 'home' ? 'menu.navigation.title' : `menu.navigation.${menuPage}`)}
+          <Sheet kit={{ tone: 'self' }} eyebrow={i18n.t('galaxy.panelCommanderEyebrow')} title={i18n.t(menuPage === 'home' ? 'menu.navigation.title' : `menu.navigation.${menuPage}`)}
             {...(menuPage === 'home' ? {} : { onBack: noop })} onClose={noop} detents={['full']} bleed>
             <div className="flex flex-col gap-4 p-3">
               <MenuPanel
@@ -889,11 +889,11 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
             </div>
           </Sheet>
         ) : page === 'leaderboard' || page === 'leaderboard-honor' ? (
-          <Sheet title="Dominion" headerArt={ATMOSPHERE.season} eyebrow="Season ladder" onClose={noop} detents={['full']} bleed>
+          <Sheet title={i18n.t('leaderboard.title')} headerArt={ATMOSPHERE.season} kit={{ art: artIconSrc('menu-ranking'), tone: 'self' }} eyebrow={i18n.t('leaderboard.eyebrow')} onClose={noop} detents={['full']} bleed>
             <LeaderboardScreen onFocusPlanet={noop} />
           </Sheet>
         ) : (
-          <Sheet title="Dominion" headerArt={ATMOSPHERE.season} eyebrow="Season archive" onClose={noop} detents={['full']} bleed>
+          <Sheet title={i18n.t('leaderboard.title')} headerArt={ATMOSPHERE.season} kit={{ art: artIconSrc('menu-ranking'), tone: 'self' }} eyebrow={i18n.t('leaderboard.eyebrow')} onClose={noop} detents={['full']} bleed>
             <SeasonArchiveScreen onFocusPlanet={noop} initialSeasonId={ARCHIVE_ID} />
           </Sheet>
         )}
@@ -1248,7 +1248,7 @@ function GalleryResearch({ variant = 'map' }: { variant?: 'map' | 'sheet' | 'loc
   }, [variant]);
   const focus = variant === 'locked' ? 'DENSE_FUEL_CELLS' : variant === 'map' ? undefined : 'SHIP_ARMOR';
   return (
-    <Sheet title="Araştırma" headerArt={ATMOSPHERE.research} eyebrow="Astera · örnek veriler" onClose={noop} detents={['full']}>
+    <Sheet title={i18n.t('research.title')} headerArt={ATMOSPHERE.research} kit={{ art: artIconSrc('nav-research'), tone: 'self' }} eyebrow={i18n.t('research.eyebrow')} onClose={noop} detents={['full']}>
       <ResearchPanel {...(focus ? { focus } : {})} />
     </Sheet>
   );
@@ -1379,7 +1379,7 @@ function GalleryToast({ tone }: { tone: 'info' | 'warn' | 'error' }) {
 
 function Views({ view }: { view: string }) {
   const { t } = useTranslation();
-  if (view === 'wiki') return <div className="wiki-gallery"><Sheet detents={['full']} bleed quietTitle eyebrow="Astera Online" title="Wiki" onClose={noop}><WikiScreen language={i18n.resolvedLanguage} /></Sheet></div>;
+  if (view === 'wiki') return <div className="wiki-gallery"><Sheet detents={['full']} bleed headerArt={ATMOSPHERE.intel} kit={{ tone: 'self' }} eyebrow="Astera Online" title="Wiki" onClose={noop}><WikiScreen language={i18n.resolvedLanguage} /></Sheet></div>;
   if (view.startsWith('support-')) return <GallerySupport view={view} />;
   if (view.startsWith('report-sheet')) return <GalleryReports view={view} />;
   if (view.startsWith('monument-sheet')) return <GalleryMonument />;
@@ -1538,7 +1538,7 @@ function Views({ view }: { view: string }) {
   if (view === 'skin-inventory' || view === 'skin-inventory-empty') {
     const owned = view === 'skin-inventory' ? (['planet-lava', 'planet-ice', 'planet-turkey'] as const) : [];
     return (
-      <Sheet detents={['full']} bleed eyebrow={t('menu.asteraHeading')} title={t('menu.skinsInventoryLabel')} onClose={noop}>
+      <Sheet detents={['full']} bleed kit={{ art: artIconSrc('cos-planet'), tone: 'self' }} eyebrow={t('skins.collection')} title={t('menu.skinsInventoryLabel')} onClose={noop}>
         <SkinInventoryContent onEquip={noop} onOpenShop={noop}
           collection={{ ownedSkinIds: [...owned], planets: [
             { id: 'p-home', name: 'Kestrel', skinId: owned.length > 0 ? 'planet-lava' : null },
