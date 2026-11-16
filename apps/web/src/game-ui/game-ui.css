@@ -17615,3 +17615,12 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 .gk-cosmo__catart { width: 28px; height: 28px; }
 .gk-cosmo__catname { white-space: nowrap; overflow-wrap: normal; letter-spacing: 0.02em; }
 .gk-cosmo__catcount { align-self: center; font-size: var(--gk-t-floor); }
+
+/* ── O10 (owner 2026-11-17): the class matchup and its cycle, a size smaller ── */
+.gk-matchup { gap: 4px; }
+.gk-matchup__side { gap: 4px; min-height: 22px; padding: 1px 6px 1px 2px; font-size: var(--gk-t-floor); }
+.gk-matchup__side .gk-emblem { width: 16px; height: 16px; }
+.gk-cycle { gap: 2px; }
+.gk-cycle__rung { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 4px; letter-spacing: 0.03em; }
+.gk-cycle__rung .gk-emblem { flex: none; width: 16px; height: 16px; }
+.gk-cycle__arrow .gk-glyph { width: 11px; height: 11px; }

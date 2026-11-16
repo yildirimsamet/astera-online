@@ -37,7 +37,7 @@ Her yüzeyin ölçütü: **350×812 ve 375×667'de kaydırmadan ne görünüyor?
 | O7 | Galaksi sol üst zaman rozetleri türüne göre renkli (kalkan yeşil, ticaret sarı, konvoy kırmızı…) | ek-7 | bitti (kalkan ve toparlanma takviyesi yeşil, sinyal takviyesi turkuaz, tatil mavi; göktaşı yağmuru mavi, ticaret sarı, konvoy kırmızı) |
 | O8 | Profil sayfasının sonu: hesabı sil sakin, çıkış en altta; kırmızı tehlike düğmeleri kibar | ek-8 | bitti (hesabı sil küçük, gri bir satır, kırmızı yalnız işaretinde; çıkış en altta; Sunucular ekranında da aynı sakin satır) |
 | O9 | Saldırı sheet'i: kart içi satırlar yan kartla hizalı, kargo rengi, hız çubuğunu sola sürükleme hatası, kalkan uyarısı kırmızı ve üst boşluğu az | ek-9 | bitti (kart satırları sabit, kargo yeşil, kalkan satırı kırmızı ve yakın; hız çubuğunun dokunma alanı tutamağı kapsıyor — tarayıcıda sola sürükleme doğrulandı) |
-| O10 | Sınıf üstünlüğü (counter) bilgi elemanları küçülür | ek-10 | bekliyor |
+| O10 | Sınıf üstünlüğü (counter) bilgi elemanları küçülür | ek-10 | bitti (eşleşme çipleri 28→22 px, döngü basamakları tek satır ~70→28 px) |
 | O11 | Üst bilgi şeritleri (uçuş/iş bitiyor) daha ince; altındaki rozetlerle 8 px; sol ve sağ rozetler aynı hizada | ek-11 | bitti (şerit 58→38 px, halka 28 px, alt satır tek satır; altında 8 px; sol ve sağ rozetler 109 px'te aynı hizada) |
 | O12 | Filo sekmesi toplanır (E1) | ek-12 | bitti (E1) |
 | O13 | Gezegen / Araştırma / Gemi geçişinde sekme çubuğunun genişliği ve yan boşluklar sabit (Gezegen'deki gibi) | ek-13 | bitti (Araştırma ve Gemi de kenardan kenara; sekme çubuğu üçünde 13 px / 324 px, içerik 12 px kenarda) |
