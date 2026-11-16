@@ -166,7 +166,7 @@ export function MonumentFocus({ monument, onInspect, onClose }: {
   return <Shell glyph="flag" title={monumentName(monument.ordinal)} eyebrow={controller}
     summary={<><span className="block">{t('monument.capacityShort', { used: full(monument.used), total: full(monument.capacity) })}</span>
       <span className="block text-v2-deut">{t('monument.production', { rate: decimal(monument.productionPerMinute) })}</span>
-      <span className="block text-v2-warn">{monument.difficulty === 'LEGACY'
+      <span className="flex items-center gap-1 text-v2-warn"><span data-radiation-mark aria-hidden="true" className="radiation-meter__mark"><Glyph id="radiation" /></span>{monument.difficulty === 'LEGACY'
         ? t('monument.radiationRate', { rate: decimal(monument.radiationHpPerMinute) })
         : t('monument.radiationLevelRate', { level: MONUMENT_BALANCE[monument.difficulty].radiationLevel, rate: decimal(monument.radiationHpPerMinute) })}</span></>}
     // One meter line, not the dial: the dial made the rail taller than the monument it frames.

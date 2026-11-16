@@ -139,3 +139,10 @@ it('lists independent bomb timers and permanent base radiation in selected-targe
   view.rerender(<RadiationIndicator state={state} variant="bar" now={0} />);
   expect(view.container.querySelector('details')).toBeNull();
 });
+
+/** Owner 2026-11-17 (ek-1): the map meter and the monument card name what they measure with the radiation mark. */
+it('wears the radiation mark on the compact meter', () => {
+  const state = radiationAtTarget(target, [source('a', 12.5, null, 'ENVIRONMENT')], 0, {});
+  const view = render(<RadiationIndicator state={state!} variant="bar" now={0} />);
+  expect(view.container.querySelector('.radiation-meter [data-radiation-mark]')).not.toBeNull();
+});

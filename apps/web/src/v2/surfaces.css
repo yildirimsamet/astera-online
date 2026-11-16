@@ -179,3 +179,6 @@
 .bomb-preview__dial { position: absolute; left: 16px; right: 16px; bottom: 58px; max-width: 340px; }
 .bomb-preview__replay { position: absolute; left: 18px; bottom: 16px; padding: 6px 12px; border: 1px solid var(--color-v2-radiation-preview-button-border); border-radius: 5px; font-size: 12px; background: var(--color-v2-radiation-preview-button-ground); }
 @media(max-width:700px) { .bomb-preview { padding: 12px; grid-template-columns: minmax(0,1fr); gap: 12px; } .bomb-preview__scene { height: 440px; } .bomb-preview h1 { font-size: 25px; } }
+/* ek-1 (owner 2026-11-17): the radiation mark leads the meter and the monument's radiation line. */
+.radiation-meter__mark { display: inline-grid; flex: none; place-items: center; color: currentColor; }
+.radiation-meter__mark .gk-glyph { width: 11px; height: 11px; }
