@@ -16631,3 +16631,248 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-installsheet__key span { color: var(--gk-ink-3); }
 .gk-installsheet__address { text-align: center; font: 700 var(--gk-t-lead) var(--gk-font-display); font-stretch: var(--gk-display-stretch); letter-spacing: .02em; }
 .gk-installsheet__address span { color: var(--gk-self); }
+
+/* ── C35 (2026-11-16): the store. The look turns in its own living light (store.css draws the
+   nebula, aura, orbit, embers and stars); around it the kit: the price on a gold plate over one
+   lit press, the shelf of kit cards that glow in their own colour, the set on its own gold plate. */
+.gk-shopfront {
+  min-height: 100%;
+  background: var(--gk-void);
+  color: var(--gk-ink);
+}
+.gk-shopfront__status {
+  max-width: 42rem;
+  margin: 0 auto var(--gk-s3);
+  padding: 0 var(--gk-gutter);
+}
+.gk-shop {
+  position: relative;
+  min-height: 100%;
+  overflow: hidden;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+.gk-shop__sky {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 34rem;
+  pointer-events: none;
+}
+.gk-shop__fade {
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--gk-void) 30%, transparent) 50%, var(--gk-void));
+}
+.gk-shop__stars {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 26rem;
+  pointer-events: none;
+}
+.gk-shop__body {
+  position: relative;
+  display: grid;
+  gap: var(--gk-s3);
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: var(--gk-s2) var(--gk-gutter) 0;
+}
+.gk-shop__panel { display: grid; gap: var(--gk-s3); }
+.gk-shop__stage { position: relative; }
+.gk-shop__aura {
+  position: absolute;
+  inset: 8% 12% auto;
+  height: 80%;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+.gk-shop__orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 88%;
+  height: 34%;
+  translate: -50% -50%;
+  pointer-events: none;
+}
+.gk-shop__embers {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.gk-shop__drag {
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+.gk-shop__drag .gk-glyph { width: 12px; height: 12px; }
+.gk-shop__name { display: grid; gap: var(--gk-s2); margin-top: -4px; }
+.gk-shop__edition {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--gk-gold);
+}
+.gk-shop__edition .gk-glyph { width: 12px; height: 12px; }
+.gk-shop__title { font-size: var(--gk-t-head); letter-spacing: 0.04em; }
+.gk-shop__price,
+.gk-shop__bundle {
+  --edge: linear-gradient(90deg, var(--gk-gold), color-mix(in srgb, var(--gk-gold) 30%, var(--gk-metal-edge)));
+  --face:
+    linear-gradient(90deg, color-mix(in srgb, var(--gk-gold) 12%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+}
+.gk-shop__pricehead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--gk-s2);
+}
+.gk-shop__amount { font-size: var(--gk-t-head); color: var(--gk-gold); }
+.gk-shop__collection { display: grid; gap: var(--gk-s2); margin-top: var(--gk-s2); }
+.gk-shop__cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gk-s2);
+}
+@media (min-width: 768px) {
+  .gk-shop__cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .gk-shop__cards[data-many] { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+.gk-shop__card {
+  position: relative;
+  display: block;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-md);
+  background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
+  color: var(--gk-ink);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--gk-press) ease-out, filter var(--gk-press) ease-out, box-shadow var(--gk-quick) ease-out;
+}
+.gk-shop__card[aria-pressed='true'] {
+  border-color: var(--card);
+  box-shadow: 0 0 0 1px var(--card), 0 0 22px -4px var(--card);
+}
+.gk-shop__card:active { transform: scale(0.97); filter: brightness(1.12); }
+.gk-shop__card:focus-visible { outline: 2px solid var(--card); outline-offset: 2px; }
+.gk-shop__art {
+  position: relative;
+  display: block;
+  aspect-ratio: 1.25;
+  overflow: hidden;
+  background: var(--gk-deep);
+}
+.gk-shop__art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.gk-shop__art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, color-mix(in srgb, var(--gk-void) 70%, transparent), transparent 55%);
+}
+.gk-shop__ed {
+  position: absolute;
+  left: 6px;
+  top: 5px;
+  z-index: 1;
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+  color: var(--gk-ink);
+  text-shadow: 0 1px 2px var(--gk-outline);
+}
+.gk-shop__owned {
+  position: absolute;
+  right: 6px;
+  top: 5px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px 1px 5px;
+  border-radius: 9999px;
+  background: var(--gk-self);
+  color: var(--gk-void);
+  font-size: var(--gk-t-floor);
+  font-weight: 700;
+}
+.gk-shop__owned .gk-glyph { width: 11px; height: 11px; stroke: none; }
+.gk-shop__cardfoot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 6px 8px 8px;
+}
+.gk-shop__cardname {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 var(--gk-t-small) var(--gk-font-display);
+  font-stretch: var(--gk-display-stretch);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.gk-shop__cardprice { flex-shrink: 0; font-size: var(--gk-t-floor); font-weight: 700; color: var(--gk-gold); }
+.gk-shop__bundle { gap: var(--gk-s3); margin-top: var(--gk-s1); }
+.gk-shop__bundlehead { display: flex; align-items: center; gap: var(--gk-s3); }
+.gk-shop__fan { position: relative; flex-shrink: 0; width: 96px; height: 56px; }
+.gk-shop__fan img {
+  position: absolute;
+  top: 0;
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-md);
+  object-fit: cover;
+  box-shadow: 0 6px 12px var(--gk-outline);
+}
+.gk-shop__kicker { color: var(--gk-gold); }
+.gk-shop__bundletitle { font-size: var(--gk-t-body); font-weight: 700; color: var(--gk-ink); line-height: 1.3; }
+.gk-shop__bundleprice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--gk-s2);
+  margin-top: 2px;
+}
+.gk-shop__bundleprice s { font-size: var(--gk-t-floor); color: var(--gk-ink-3); }
+.gk-shop__bundleprice .gk-display { font-size: var(--gk-t-number); color: var(--gk-gold); }
+.gk-shop__save {
+  padding: 1px 7px;
+  border-radius: 9999px;
+  background: var(--gk-gold);
+  color: var(--gk-action-ink);
+  font-size: var(--gk-t-floor);
+  font-weight: 800;
+}
+.gk-shop__values { display: grid; gap: var(--gk-s2); margin: var(--gk-s1) 0 0; padding: 0; list-style: none; }
+.gk-shop__values li {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: var(--gk-s2);
+  font-size: var(--gk-t-small);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-shop__values .gk-glyph { width: 15px; height: 15px; margin-top: 2px; color: var(--gk-gold); }
+.gk-shop__trust {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: var(--gk-s2);
+  padding: var(--gk-s2) var(--gk-s3);
+  font-size: var(--gk-t-floor);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-shop__trust .gk-glyph { width: 13px; height: 13px; margin-top: 2px; color: var(--gk-ink-3); }

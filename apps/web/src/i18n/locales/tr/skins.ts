@@ -87,6 +87,7 @@ export const skins = {
   buy: 'Polar ile satın al · {{price}}',
   onSaleSoon: 'Satışa çok yakında',
   wearIt: 'Bir dünyana giydir',
+  priceTitle: 'Fiyat',
   oneTime: 'Tek ödeme · Astera Online açık kaldıkça',
   ownedNote: 'Koleksiyonunda',
   bundleKicker: 'Tam koleksiyon',

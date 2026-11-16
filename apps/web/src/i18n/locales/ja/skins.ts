@@ -87,6 +87,7 @@ export const skins = {
   buy: "Polarで購入・{{price}}",
   onSaleSoon: "もうすぐ発売",
   wearIt: "惑星に適用",
+  priceTitle: '価格',
   oneTime: "支払いは1回・Astera Onlineの運営期間中に利用可能",
   ownedNote: "コレクションに追加済み",
   bundleKicker: "全種類セット",

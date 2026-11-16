@@ -31,9 +31,9 @@
 /**
  * THE STORE, ALIVE (owner, 2026-09-25: "kımıl kımıl hareketli canlı etkileyici stunning bir
  * tasarım"). Everything here moves slowly and quietly — a nebula that drifts, the look's own
- * aura breathing, an orbit turning, embers rising in the look's colour, the stars twinkling,
- * a light sweeping over the Buy button — so the page is never still and never busy. The
- * look's colours arrive as `--look` and `--look-glow` on `.v2-store`. Motion is always on in this
+ * aura breathing, an orbit turning, embers rising in the look's colour, the stars twinkling —
+ * so the page is never still and never busy. The look's colours arrive as `--look` and
+ * `--look-glow` on the store (`.gk-shop`). Motion is always on in this
  * game (`no-reduced-motion.test`), and nothing here blurs (`sharpness.test`): soft is a gradient.
  */
 
@@ -116,32 +116,6 @@
 @keyframes v2-store-twinkle {
   0%, 100% { opacity: 0.25; }
   50% { opacity: 0.95; }
-}
-
-/* A light sweeping across a premium press, now and then. */
-.v2-store-shimmer {
-  position: relative;
-  overflow: hidden;
-}
-
-.v2-store-shimmer::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 32%, color-mix(in srgb, var(--color-v2-ink) 55%, transparent) 50%, transparent 68%);
-  transform: translateX(-130%);
-  animation: v2-store-sweep 3.6s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes v2-store-sweep {
-  0%, 58% { transform: translateX(-130%); }
-  100% { transform: translateX(130%); }
-}
-
-/* The chosen card glows in its own colour. */
-.v2-store-chosen {
-  box-shadow: 0 0 0 1px var(--card), 0 0 22px -4px var(--card);
 }
 
 .cosmetic-stage-glow {

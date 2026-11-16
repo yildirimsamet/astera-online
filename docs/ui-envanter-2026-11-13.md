@@ -1326,6 +1326,14 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - **Galeri:** yeni görünüm `shopier-checkout` (dört durum); envanterde `shop` erişimine eklendi, "ulaşılamıyor" kaydı kalktı.
 - **Ölçüm** (tr; telefon, dar, masaüstü): önce galeride yoktu, ölçülemedi. Sonra 1 (galeri arkalığı); 12 px altı 0, kontrast 0, 44 px altı 0. `reports/ui-audit/c38-shopier-after-2026-11-15.md`.
 
+**C35 Mağaza ✅ (2026-11-16, yardımcı oturum).** G6 #2 `SkinsScreen` (gezegen vitrini, diğer kategorilerin satın alma düğmesi, fiyat durumu).
+- **An:** "Hangi görünüm, ne kadar?" Fiyatlar, Türkiye'de Shopier önce / Polar ikinci yol sırası, paket kuralı, sunucuya sorulan değişmedi.
+- **Değişen:** Görünüm yine kendi canlı ışığında döner (bulutsu, aura, yörünge, kıvılcım, yıldız). Koleksiyonlar kitin sekmeleri; sahip olunan sayı "Koleksiyon" etiketinin yanına indi. Görünüm adı görüntü yüzünde, üstünde altın "Premium · 01/04". Sağlam/Toparlanma kalkanı kitin seçim plakaları (radyo). "Gezegenimde dene" kitin düğmesi. Fiyat altın kenarlı kesik plaka: üstte fiyat ve tek ödeme notu, altında tek parlak düğme (Polar ağır basış; sahip olunan için yeşil "Bir dünyana giydir"; satış kapalıysa sebebi yazan ölü düğme). Kartlar kit kartı: basınca ses + titreşim + çökme, seçili olan kendi renginde parlar, "Sende" yeşil rozet. Paket ayrı altın plaka; tasarruf rozeti fiyat satırında (başlıkla çakışmasın diye). Değer satırları kit ikonlarıyla, güven notu camda. Hata ve fiyat durumu kitin bannerı (yeniden dene düğmesiyle). Galeri görünümleri oyundaki gibi kitin sacında.
+- **Silinen:** `.v2-store-shimmer`, `.v2-store-chosen` (store.css), `SECOND_PRESS`, `buyClass`.
+- **Yeni anahtar:** `skins.priceTitle` (6 dil, fiyat plakasının okuyucu adı).
+- **Test:** `skins-shop-kit.test.tsx` (10). `skins-screen` içindeki kalkan düğmesi radyo oldu.
+- **Ölçüm** (tr; telefon, dar, masaüstü): `skin-shop` 133 → 43, `skin-shop-live` 135 → 43; 12 px altı 114 → 28, kontrast 40 → 12, yavaş geçiş 8 → 0. Kalanların hepsi Mağaza/Envanter anahtarı ve kategori ızgarası (C37) ile sac arkalığı. `reports/ui-audit/c35-shop-before/after-2026-11-16.md`.
+
 **G4 kapanışı: altı dilde telefon ölçümü (2026-11-15).** 9 yüzey, 40 görünüm × 6 dil = 239 ölçüm (`g4-close-6lang-2026-11-15.md`). Kesilen 0, yana taşma 0. Bulunan iki şey düzeltildi (`g4-close-fix-2026-11-15.md`): Ölüm Yıldızı başlığı ve "1 hazır" çipi kendi kırmızı zemininde 4,3:1 kalıyordu → tonun açık ucu, kontrast 0. fr yerleşme tutuşu "Envoyer les vaisseaux de colonisation" kırpılıyordu → "Envoyer les colons", kırpılan 0. Kalan: yerleşme `claim-other` görünümünde 3 küçük/tepkisiz hedef (yarış satırının yanındaki başkasının hakkı), sheet'lerin ortak karartması (3 puan).
 
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş

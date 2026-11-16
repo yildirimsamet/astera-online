@@ -1525,17 +1525,23 @@ function Views({ view }: { view: string }) {
     return item ? <div className="bg-v2-void" style={{ width: 600 }}><CosmeticPreview id={id} still inspectionView={inspectionView} productCard={!inspectionView} /></div> : null;
   }
   if (view === 'skin-shop') {
-    return <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} />;
+    return (
+      <Sheet detents={['full']} bleed kit={{ art: artIconSrc('menu-shop'), tone: 'self' }} eyebrow={t('skins.collection')} title={t('menu.skinsShopLabel')} onClose={noop}>
+        <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} />
+      </Sheet>
+    );
   }
   if (view === 'skin-shop-live') {
     const liraQuote = { formatted: '₺99', currencyCode: 'TRY' as const };
     const euroQuote = { formatted: '€2.99', currencyCode: 'EUR' as const };
     const euroCountries = new Set<PlanetSkinId>(SKIN_COLLECTIONS.country.ids.filter((id) => id !== 'planet-turkey'));
     return (
-      <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} enabled
-        onPurchase={noop} countryCode="TR"
-        prices={{ ...Object.fromEntries(PLANET_SKIN_IDS.map((id) => [id, euroCountries.has(id) ? euroQuote : liraQuote])),
-          bundle: { formatted: '₺279', currencyCode: 'TRY' } }} />
+      <Sheet detents={['full']} bleed kit={{ art: artIconSrc('menu-shop'), tone: 'self' }} eyebrow={t('skins.collection')} title={t('menu.skinsShopLabel')} onClose={noop}>
+        <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} enabled
+          onPurchase={noop} countryCode="TR"
+          prices={{ ...Object.fromEntries(PLANET_SKIN_IDS.map((id) => [id, euroCountries.has(id) ? euroQuote : liraQuote])),
+            bundle: { formatted: '₺279', currencyCode: 'TRY' } }} />
+      </Sheet>
     );
   }
   if (view === 'skin-inventory' || view === 'skin-inventory-empty') {
