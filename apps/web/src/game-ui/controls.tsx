@@ -367,6 +367,8 @@ export interface TabItem<T extends string = string> {
    * tone lit with the tab itself, as a stacked bar draws it.
    */
   glyph?: { id: GlyphId; tone?: 'alloy' | 'crystal' | 'deut' | 'self' | 'good' | 'warn' | 'hostile' | 'info' };
+  /** A drawing of its own where the glyph set has no word (a ship class's signature), in its own colour. */
+  art?: ReactNode;
 }
 
 /** The keys that walk a tablist: arrows wrap round the ends, Home and End jump. */
@@ -461,6 +463,7 @@ function GameTab<T extends string>({ tab, selected, marked, tabId, panelId, onMo
       {tab.glyph && (
         <span className="gk-tab__glyph" aria-hidden="true" data-glyph={tab.glyph.id} {...(tab.glyph.tone === undefined ? {} : { style: { color: `var(--gk-${tab.glyph.tone})` } })}><Glyph id={tab.glyph.id} /></span>
       )}
+      {tab.art !== undefined && <span className="gk-tab__glyph" aria-hidden="true">{tab.art}</span>}
       {tab.label}
       {tab.mark && <span className="gk-tab__mark"><Glyph id={tab.mark.glyph} /></span>}
       {tab.badge !== undefined && tab.badge > 0 && <Dot count={tab.badge} />}

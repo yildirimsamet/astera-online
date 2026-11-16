@@ -25,3 +25,16 @@ describe('a tab with news', () => {
     expect(screen.getByRole('tab', { name: 'Genel: arıza var' })).toBeInTheDocument();
   });
 });
+
+/** G12-d2 (2026-11-16): a tab can wear a drawing of its own (a ship class's signature) where the glyph set has no word. */
+describe('a tab with its own picture', () => {
+  it('draws the picture beside its name, hidden from a reader', () => {
+    render(<GameTabs label="Sınıf" value="a" onChange={vi.fn()} tabs={[
+      { id: 'a', label: 'Akıncı', art: <svg data-testid="sig" /> },
+    ]} />);
+    const tab = screen.getByRole('tab', { name: 'Akıncı' });
+    expect(tab.querySelector('.gk-tab__glyph [data-testid="sig"]')).not.toBeNull();
+    expect(tab.querySelector('.gk-tab__glyph')).toHaveAttribute('aria-hidden', 'true');
+  });
+});
+

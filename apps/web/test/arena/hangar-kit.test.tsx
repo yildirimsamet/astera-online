@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CLASS_STATS, type ShipClass } from '@astera/rules/arena';
 import i18n from '../../src/i18n/index.js';
@@ -9,6 +9,7 @@ vi.mock('../../src/arena/hangar/HangarStage.js', () => ({
   default: ({ ship }: { ship: ShipClass }) => <div data-testid="stage" data-ship={ship} />,
 }));
 const { HangarPanel } = await import('../../src/arena/hangar/HangarPanel.js');
+const { AbilitiesBlock, CapBlock, ClassBlock, GrowthBlock, LevelBlock, LoadoutBlock, RepairBlock, RulesBlock } = await import('../../src/arena/hangar/ShipDesk.js');
 await import('../../src/arena/TeamPanel.js');
 
 /**
@@ -91,3 +92,66 @@ describe('the hangar’s shell on the kit', () => {
     expect(part('[data-hp-choose]').style.getPropertyValue('--gk-hold-ms')).toBe('1500ms');
   });
 });
+
+/**
+ * G12-d2 (2026-11-16): THE SHIP'S DESK ON THE GAME KIT. Each block a kit well under a kit tag;
+ * every spend (a level, a point, a shorter repair) the kit's one-second hold in steel, so the way
+ * into the Yarık stays the one lit press; the prices in the kit's cost line; the rules one press away.
+ */
+describe('the ship’s desk on the kit', () => {
+  const holdOf = (selector: string): HTMLElement => part(selector);
+
+  it('the level: a kit well, its price on the kit’s cost line, the next level a one-second hold', () => {
+    render(<LevelBlock c={c} hangar={hangar({ xp: 150 })} busy={false} onUpgrade={vi.fn()} />);
+    const level = part('[data-part="level"]');
+    expect(level).toHaveClass('gk-well');
+    expect(oldPaint(level)).toEqual([]);
+    expect(level.querySelector('.gk-cost')).not.toBeNull();
+    expect(holdOf('[data-hp-level]')).toHaveClass('gk-hold', 'gk-btn--steel');
+    expect(holdOf('[data-hp-level]').style.getPropertyValue('--gk-hold-ms')).toBe('1000ms');
+  });
+
+  it('the repair: a warning well with its price, shortened on a one-second hold', () => {
+    const now = Date.now();
+    render(<RepairBlock c={c} hangar={hangar({ readyAt: new Date(now + 3_600_000).toISOString(), readyReason: 'repair' })} now={now} busy={false} onRepair={vi.fn()} />);
+    const repair = part('[data-part="repair"]');
+    expect(repair).toHaveClass('gk-well');
+    expect(repair).toHaveAttribute('data-tone', 'warn');
+    expect(oldPaint(repair)).toEqual([]);
+    expect(holdOf('[data-hp-repair]').style.getPropertyValue('--gk-hold-ms')).toBe('1000ms');
+  });
+
+  it('the abilities: kit tiles, the picked one’s detail in a well, the point spent on a hold', () => {
+    render(<AbilitiesBlock c={c} hangar={hangar({ class: 'kilavuz', level: 3 })} busy={false} onSpend={vi.fn()} />);
+    const abilities = part('[data-part="abilities"]');
+    expect(oldPaint(abilities)).toEqual([]);
+    expect(part('[data-ability="smoke"]')).toHaveClass('gk-abil');
+    expect(part('[data-part="ability-detail"]')).toHaveClass('gk-well');
+    expect(holdOf('[data-ability-confirm]')).toHaveClass('gk-hold');
+  });
+
+  it('the class: kit tabs for the three and a compare table in the kit’s ink', () => {
+    const view = render(<ClassBlock c={c} value="akinci" level={3} onPick={vi.fn()} />);
+    expect(screen.getByRole('tablist', { name: c.shipTitle })).toHaveClass('gk-tabs');
+    expect(oldPaint(view.container)).toEqual([]);
+  });
+
+  it('the figures, the launch plan and the day’s cap draw none of the old look', () => {
+    const growth = render(<GrowthBlock c={c} ship="muhafiz" level={3} />);
+    expect(oldPaint(growth.container)).toEqual([]);
+    const plan = render(<LoadoutBlock c={c} hangar={hangar()} busy={false} onPlan={vi.fn()} />);
+    expect(oldPaint(plan.container)).toEqual([]);
+    expect(part('[data-gauge="fuel"] [role="radio"]')).toHaveClass('gk-loadcell');
+    const cap = render(<CapBlock c={c} hangar={hangar()} />);
+    expect(oldPaint(cap.container)).toEqual([]);
+  });
+
+  it('keeps the rules one kit press away', () => {
+    const view = render(<RulesBlock c={c} />);
+    const rules = view.container.querySelector('details.gk-rules')!;
+    expect(rules.hasAttribute('open')).toBe(false);
+    fireEvent.click(rules.querySelector('summary')!);
+    expect(rules.hasAttribute('open')).toBe(true);
+  });
+});
+

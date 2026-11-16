@@ -7,7 +7,7 @@
 
 .hp-stage { position: relative; height: clamp(220px, 64vw, 380px); overflow: hidden; border-radius: 14px; isolation: isolate;
   background: radial-gradient(120% 90% at 60% 70%, #0b1626 0%, #04080f 60%, #020409 100%);
-  box-shadow: inset 0 0 0 1px var(--color-v2-line), 0 14px 34px rgba(0,0,0,.45); }
+  box-shadow: inset 0 0 0 1px var(--gk-glass-edge), 0 14px 34px rgba(0,0,0,.45); }
 /* Scrims, so the plate and the hint read over any part of the bay. */
 .hp-stage::before, .hp-stage::after { content: ''; position: absolute; left: 0; right: 0; z-index: 1; pointer-events: none; }
 .hp-stage::before { top: 0; height: 40%; background: linear-gradient(180deg, rgba(2,5,10,.72), rgba(2,5,10,0)); }
@@ -72,41 +72,128 @@
 .hp-dock > * { pointer-events: auto; }
 
 /* The class's own colour (its A key in flight): the signature card, its glyphs, the figures' fills. Solid, never a glow. */
+.hp-glyph { display: block; }
 .hp-glyph svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.hp-sig { border-color: color-mix(in srgb, var(--ship) 28%, var(--color-v2-line)); background: color-mix(in srgb, var(--ship) 6%, var(--color-v2-panel)); }
-.hp-sig-icon { padding: 6px; color: var(--ship); background: color-mix(in srgb, var(--ship) 14%, transparent); }
-.hp-sig-name { color: var(--ship); }
-.hp-fill { background: color-mix(in srgb, var(--ship) 82%, var(--color-v2-ink-3)); transition: width .3s cubic-bezier(.2,.8,.2,1); }
+.hp-sig-icon { flex: none; width: 34px; height: 34px; padding: 6px; border-radius: 2px; color: var(--ship);
+  background: color-mix(in srgb, var(--ship) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ship) 30%, transparent); }
 
-/* Owner 2026-10-27: the desk as cards, the level as a badge, abilities as tiles, the launch plan as gauges. */
-.hp-card { padding: 10px 12px; border-radius: var(--radius-control, 10px); border: 1px solid var(--color-v2-line);
-  background: color-mix(in srgb, var(--color-v2-panel) 88%, transparent); }
-.hp-card.is-warn { border-color: color-mix(in srgb, var(--color-v2-warn) 35%, var(--color-v2-line)); }
-/* The level: a hexagon in the ship's colour, its number inside. */
-.hp-badge { flex: none; display: grid; place-items: center; width: 36px; height: 40px; font: 700 15px var(--font-v2-mono); color: var(--color-v2-ink);
+/* G12-d2 (2026-11-16): the ship's desk on the kit. Wells under kit tags; every spend a steel hold. */
+.gk-desk { display: grid; gap: var(--gk-s2); min-width: 0; }
+.gk-desk--class { gap: var(--gk-s4); }
+.gk-deskwell { display: grid; gap: var(--gk-s2); min-width: 0; padding: var(--gk-s2) var(--gk-s3) var(--gk-s3); }
+.gk-deskwell[data-tone='warn'] { border-color: color-mix(in srgb, var(--gk-warn) 45%, var(--gk-glass-edge)); }
+.gk-deskwell p { margin: 0; }
+.gk-deskwell__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.gk-deskwell__head .gk-display { font-size: var(--gk-t-body); color: var(--gk-ink); }
+.gk-deskwell__price { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.gk-deskwell__total { padding-top: var(--gk-s2); border-top: 1px solid var(--gk-glass-edge); }
+.gk-deskwell__dot { margin: 0 6px; }
+.hangar-root .gk-sub b { color: var(--gk-ink); font-weight: 600; }
+.hangar-root .gk-sub[data-tone='warn'], .hangar-root .gk-note[data-tone='warn'] { color: var(--gk-warn); }
+.hangar-root .gk-note[data-tone='self'] { color: var(--gk-self); }
+.gk-desk__points { color: var(--gk-ink-3); }
+.gk-desk__points[data-lit] { color: var(--gk-self); }
+.gk-desk__rules { display: grid; gap: 6px; margin: 0; padding: 0 0 0 14px; list-style: disc; font-size: var(--gk-t-floor); line-height: 1.45; color: var(--gk-ink-2); }
+
+/* The level: a hexagon in the ship's colour, its number inside, and the bar towards the next. */
+.gk-level { display: flex; align-items: center; gap: var(--gk-s3); }
+.gk-level__badge { flex: none; display: grid; place-items: center; width: 36px; height: 40px; font-weight: 700; font-size: var(--gk-t-body); color: var(--gk-ink);
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
-  background: linear-gradient(160deg, color-mix(in srgb, var(--ship) 60%, #0b1626), color-mix(in srgb, var(--ship) 18%, #04080f)); }
+  background: linear-gradient(160deg, color-mix(in srgb, var(--ship) 60%, var(--gk-metal-2)), color-mix(in srgb, var(--ship) 18%, var(--gk-deep))); }
+.gk-level__track { display: grid; flex: 1; gap: 6px; min-width: 0; }
+.gk-level__to { font-family: var(--gk-font-text); font-weight: 500; color: var(--gk-ink-3); }
+.gk-level__bar { position: relative; height: 6px; overflow: hidden; border-radius: 3px; background: var(--gk-deep); box-shadow: inset 0 0 0 1px var(--gk-glass-edge); }
+.gk-level__bar > span { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: linear-gradient(90deg, var(--gk-self-lo), var(--gk-self));
+  transition: width .3s var(--gk-ease); }
+.gk-level__bar[data-capped] > span { background: color-mix(in srgb, var(--gk-warn) 70%, transparent); }
+
 /* An ability: the tile picked wears the teal edge; the signature wears the class's colour. */
-.hp-tile { border-color: var(--color-v2-line); background: var(--color-v2-panel); color: var(--color-v2-ink-2); transition: border-color .15s, background .15s; }
-.hp-tile.is-signature .hp-glyph { color: var(--ship); }
-.hp-tile.is-picked { border-color: color-mix(in srgb, var(--color-v2-self) 70%, transparent); background: color-mix(in srgb, var(--color-v2-self) 8%, var(--color-v2-panel)); }
-/* The launch plan: a cell aboard is solid, a cell the launch buys is deuterium-striped, the rest is empty. */
-.hp-cell { position: relative; display: grid; place-items: center; height: 28px; border-radius: 6px; border: 1px solid var(--color-v2-line);
-  background: var(--color-v2-deep); color: var(--color-v2-ink-3); }
-.hp-cell.is-empty-step { padding: 0 8px; }
-.hp-cell.is-aboard { background: color-mix(in srgb, var(--color-v2-self) 26%, var(--color-v2-deep)); color: var(--color-v2-ink); }
-.hp-cell.is-plan { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-v2-deut) 22%, transparent) 0 4px, transparent 4px 8px), var(--color-v2-deep);
-  color: var(--color-v2-ink); }
-.hp-cell.is-chosen { border-color: var(--color-v2-self); box-shadow: inset 0 0 0 1px var(--color-v2-self); }
-.hp-cell:disabled { opacity: .6; }
-/* The classes side by side: the class looked at has its column lit. */
-.hp-compare { border-collapse: collapse; }
-.hp-compare th, .hp-compare td { padding: 5px 4px; text-align: center; border-bottom: 1px solid var(--color-v2-line); }
-.hp-compare th[scope="row"] { text-align: left; font-weight: 400; }
-.hp-compare td { color: var(--color-v2-ink-3); font-size: 11px; }
-.hp-compare td[data-best] { color: var(--color-v2-ink); font-weight: 700; }
-.hp-compare .is-own { background: color-mix(in srgb, var(--ship) 10%, transparent); }
-.hp-compare thead .is-own { border-radius: 6px 6px 0 0; }
+.gk-abils { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.gk-abil { display: grid; gap: 6px; width: 100%; min-height: var(--gk-hit); padding: 8px; text-align: left; color: var(--gk-ink-2);
+  border: 1px solid var(--gk-metal-edge); border-radius: var(--gk-r-sm); background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
+  transition: border-color var(--gk-quick) var(--gk-ease), transform var(--gk-quick) var(--gk-pop); }
+.gk-abil:active { transform: scale(.97); }
+.gk-abil[aria-pressed='true'] { border-color: color-mix(in srgb, var(--gk-self) 70%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gk-self) 14%, var(--gk-metal-1)), var(--gk-metal-2)); color: var(--gk-ink); }
+.gk-abil__top { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.gk-abil__glyph { width: 20px; height: 20px; }
+.gk-abil[data-signature] .gk-abil__glyph { color: var(--ship); }
+.gk-abil__rank { font-size: var(--gk-t-floor); color: var(--gk-ink-3); }
+.gk-abil__name { overflow: hidden; font-size: var(--gk-t-small); font-weight: 600; color: var(--gk-ink); text-overflow: ellipsis; white-space: nowrap; }
+.gk-pips { display: flex; gap: 3px; }
+.gk-pips i { width: 10px; height: 4px; border-radius: 2px; background: var(--gk-glass-edge); }
+.gk-pips i[data-on] { background: var(--gk-self); }
+
+/* The figures: today solid in the ship's colour, the next level's part breathing in teal. */
+.gk-growth { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; margin: 0; }
+.gk-growth__row { min-width: 0; }
+.gk-growth__row dt { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: var(--gk-t-small); }
+.gk-growth__row dt b { font-weight: 600; color: var(--gk-ink); }
+.gk-growth__name { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--gk-ink-3); }
+.gk-growth__name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gk-growth__name svg { width: 14px; height: 14px; flex: none; }
+.gk-growth__bar { position: relative; display: flex; height: 4px; margin: 6px 0 0; overflow: hidden; border-radius: 2px; background: var(--gk-deep); }
+.gk-growth__bar [data-now] { height: 100%; background: color-mix(in srgb, var(--ship) 82%, var(--gk-ink-3)); transition: width .3s var(--gk-ease); }
+.gk-growth__bar [data-next] { min-width: 4px; height: 100%; background: color-mix(in srgb, var(--gk-self) 70%, #fff); box-shadow: 0 0 6px var(--gk-self);
+  animation: hp-next 1.6s ease-in-out infinite; }
+.gk-growth__gain { margin: 2px 0 0; text-align: right; font-size: var(--gk-t-floor); color: var(--gk-self); }
+@keyframes hp-next { 50% { opacity: .45; } }
+
+/* The class: its tabs lit in the colour of the one looked at, the signature in a well of that colour. */
+.gk-classtabs .gk-tab[aria-selected='true'] { box-shadow: inset 0 -2px 0 var(--ship); }
+.gk-classtabs__sig { width: 16px; height: 16px; }
+.gk-classtabs .gk-tab[aria-selected='false'] .gk-classtabs__sig { opacity: .55; }
+.gk-shipsig { display: flex; align-items: center; gap: var(--gk-s3); padding: var(--gk-s2) var(--gk-s3);
+  border-color: color-mix(in srgb, var(--ship) 35%, var(--gk-glass-edge)); }
+.gk-shipsig p { display: grid; gap: 2px; min-width: 0; margin: 0; }
+.gk-shipsig__name { font-size: var(--gk-t-small); font-weight: 700; color: var(--ship); }
+/* The classes side by side: the class looked at has its column lit, the best of a row bright. */
+.gk-compare { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: var(--gk-t-small); }
+.gk-compare th:first-child { width: 30%; }
+.gk-compare th, .gk-compare td { padding: 6px 4px; text-align: center; border-bottom: 1px solid var(--gk-glass-edge); }
+.gk-compare th[scope='row'] { text-align: left; font-weight: 400; }
+.gk-compare td { font-size: var(--gk-t-floor); color: var(--gk-ink-3); }
+.gk-compare td[data-best] { font-weight: 700; color: var(--gk-ink); }
+.gk-compare [data-own] { background: color-mix(in srgb, var(--ship) 12%, transparent); }
+.gk-compare thead [data-own] { border-radius: 2px 2px 0 0; }
+.gk-compare__ship { display: grid; justify-items: center; gap: 2px; }
+.gk-compare__ship .hp-glyph { width: 14px; height: 14px; color: var(--ship); }
+.gk-compare__ship > span { max-width: 100%; overflow: hidden; font-size: var(--gk-t-floor); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; color: var(--gk-ink-2); }
+.gk-compare__stat { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--gk-ink-3); }
+.gk-compare__stat > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gk-compare__stat svg { width: 14px; height: 14px; flex: none; }
+
+/* The launch plan: a cell aboard is solid teal, a cell the launch buys deuterium-striped, the rest empty. */
+.gk-gauge { display: grid; gap: 6px; }
+.gk-gauge__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: var(--gk-t-small); }
+.gk-gauge__name { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--gk-ink-2); }
+.gk-gauge__name b { font-weight: 600; color: var(--gk-ink); }
+.gk-gauge__name svg { width: 14px; height: 14px; flex: none; }
+.gk-gauge__price { font-size: var(--gk-t-floor); color: var(--gk-ink-3); }
+.gk-gauge__price[data-paid] { color: var(--gk-deut); }
+.gk-gauge__cells { display: flex; gap: 4px; }
+.gk-loadcell { flex: 1; display: grid; place-items: center; min-height: 32px; padding: 0 4px; font-size: var(--gk-t-floor); color: var(--gk-ink-3);
+  border: 1px solid var(--gk-glass-edge); border-radius: 2px; background: var(--gk-deep); transition: transform var(--gk-quick) var(--gk-pop); }
+.gk-loadcell:active { transform: scale(.95); }
+.gk-loadcell[data-empty] { flex: none; padding: 0 10px; }
+.gk-loadcell[data-fill='aboard'] { background: color-mix(in srgb, var(--gk-self) 26%, var(--gk-deep)); color: var(--gk-ink); }
+.gk-loadcell[data-fill='plan'] { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--gk-deut) 24%, transparent) 0 4px, transparent 4px 8px), var(--gk-deep);
+  color: var(--gk-ink); }
+.gk-loadcell[aria-checked='true'] { border-color: var(--gk-self); box-shadow: inset 0 0 0 1px var(--gk-self); }
+.gk-loadcell:disabled { opacity: .6; }
+
+/* Today's room, per resource in its own colour; a full one dims. */
+.gk-capcells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.gk-capcell { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 6px 8px; }
+.gk-capcell img { width: 16px; height: 16px; flex: none; object-fit: contain; }
+.gk-capcell > span { display: grid; min-width: 0; line-height: 1.2; }
+.gk-capcell b { font-size: var(--gk-t-small); font-weight: 700; }
+.gk-capcell[data-kind='alloy'] b { color: var(--gk-alloy-hi); }
+.gk-capcell[data-kind='crystal'] b { color: var(--gk-crystal); }
+.gk-capcell[data-kind='deuterium'] b { color: var(--gk-deut); }
+.gk-capcell[data-full] b { font-weight: 500; color: var(--gk-ink-3); }
+.gk-capcell[data-full] img { opacity: .4; }
+.gk-capcell small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* The way in: one line of facts, then the one press: lit when it flies, steel when only practice is open. */
 .gk-hangardock__facts { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 0 6px; text-align: center; }
 .gk-hangardock__facts i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--gk-ink-3); }
@@ -118,10 +205,3 @@
 .gk-shipstate i { width: 7px; height: 7px; border-radius: 50%; background: var(--gk-ink-3); }
 .gk-shipstate[data-tone='self'] i { background: var(--gk-self); }
 .gk-shipstate[data-tone='warn'] i { background: var(--gk-warn); }
-/* The class's door carries its signature mark in the class's colour. */
-[data-part='class-row'] .hp-sig-icon { display: grid; place-items: center; width: 34px; height: 34px; padding: 6px; border-radius: 2px; }
-
-/* What the next level adds, on the same bar: never thinner than a sliver, and it breathes so it reads as "to come". */
-.hp-next { min-width: 4px; background: color-mix(in srgb, var(--color-v2-self) 70%, #fff); box-shadow: 0 0 6px var(--color-v2-self);
-  animation: hp-next 1.6s ease-in-out infinite; }
-@keyframes hp-next { 50% { opacity: .45; } }

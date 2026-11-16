@@ -2125,6 +2125,16 @@ Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak ala
 - Masa notları kit uyarısı; "Gemini seç" ve çekirdek eksikliği kit kuyusunda.
 - Audit (tr, galeri sabit yanıtlarıyla): hangar 116 → 93. Kalan masanın blokları (tamir, seviye, yetenekler, değerler, yükleme): G12-d2.
 
+
+### G12-d2 — gemi masası kit'te (2026-11-16)
+
+- Seviye, tamir, yetenek, değerler, sınıf, kalkış planı, günlük tavan ve kurallar kit kuyularına ve etiketlerine taşındı.
+- Her harcama (seviye, puan, kısa tamir) 1 sn'lik çelik `GameHold`. Tek parlak düğme Yarık'a giriş.
+- Bedeller artık `CostLine` ile gösteriliyor. Kurallar `RulesRow` içinde. Sınıf sekmeleri `GameTabs`; kit'e küçük bir `art` alanı eklendi, sınıf imzası sekmede kaldı.
+- Denetim (tr, telefon): 93 → 9. 12 px altı yazı 36 → 0, kontrast hatası 18 → 2.
+- Kalan kontrast hataları bölmenin üstündeki plaka/ipucu yazılarında ve kaydırılmış karedeki başlık altı satırda.
+- Açık: galeride bölme gemi modelini göstermiyor (9 sn beklemede de boş). Bu değişiklikten bağımsız, G12 kapanışında bakılacak.
+
 ## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
 
 | # | Yüzey | Dosya (satır) | Dil | Not |
