@@ -422,6 +422,29 @@ describe('the sheet in the kit look', () => {
     expect(view.container.querySelector('.gk-sheet__foot')).toHaveTextContent('foot');
   });
 
+  /**
+   * ONE HEAD, AT MOST 48 PX (owner 2026-11-16, S1): "headerlar fazla büyük … bizim kaç tip
+   * header'ımız var?" Every kit sheet wears the same bar — no plate inside the panel, its tone
+   * a wash said on `data-tone`, the eyebrow and the meta on one small line over a one-line title,
+   * and the pull handle inside the bar rather than a row of its own.
+   */
+  it('wears one bar: no plate, its tone on data-tone, eyebrow and meta on one line, the handle inside', () => {
+    const view = render(<Sheet title="Dart" eyebrow="Mobile hull" kit={{ ...kit, tone: 'hostile' }} onClose={vi.fn()} detents={['half', 'full']}>body</Sheet>);
+    const head = view.container.querySelector('.gk-sheet__head')!;
+    expect(head.className).not.toMatch(/gk-cut/);
+    expect(head).toHaveAttribute('data-tone', 'hostile');
+    const line = head.querySelector('.gk-sheet__line')!;
+    expect(line.querySelector('.gk-sheet__eyebrow')).toHaveTextContent('Mobile hull');
+    expect(line.querySelector('.gk-sheet__meta')).toHaveTextContent('Gelişim sınırı');
+    expect(head.contains(screen.getByRole('button', { name: 'Expand' }))).toBe(true);
+  });
+
+  it('gives a sheet with no tone the plain bar', () => {
+    const view = render(<Sheet title="Dart" kit={{}} onClose={vi.fn()}>body</Sheet>);
+    expect(view.container.querySelector('.gk-sheet__head')).not.toHaveAttribute('data-tone');
+    expect(view.container.querySelector('.gk-sheet__line')).toBeNull();
+  });
+
   it('keeps the sheet’s own moves: the close, Escape and the handle', async () => {
     const onClose = vi.fn();
     render(<Sheet title="Komuta Çekirdeği" kit={kit} onClose={onClose} detents={['half', 'full']}>body</Sheet>);

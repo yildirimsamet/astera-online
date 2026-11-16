@@ -14,7 +14,7 @@ export const moderation = {
     "accept": "Zustimmen und fortfahren"
 },
   "report": "Melden",
-  "title": "Inhalt oder Spieler melden",
+  "title": "Melden",
   "explanation": "Das Team prüft Meldungen vertraulich. Eine Meldung entfernt keine Inhalte und blockiert den Spieler nicht automatisch.",
   "target": "Was möchtest du melden?",
   "message": "Nachricht",

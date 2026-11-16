@@ -202,6 +202,33 @@ export function Sheet({
   const modal = detent !== 'peek';
   useGalaxyCover(panel, modal);
 
+  const kitHead = Boolean(kit) && !quietTitle;
+  const grab = placement !== 'card' && !floatingHead ? (
+    <button
+      type="button"
+      aria-label={t(atTop ? 'handle.collapse' : 'handle.expand')}
+      onClick={(event) => {
+        const afterPull = dragged.current;
+        dragged.current = false;
+        // Only a pointer click can be the tail of a pull; a key press (`detail` 0) never is.
+        if (afterPull && event.detail !== 0) return;
+        settle(atTop ? 'down' : 'up');
+      }}
+      /*
+        A column on a wide screen has one height: its handle would promise a pull that does nothing.
+        A thumb's 44 px tall, it takes no more room than its 16 px row: it reaches down over the
+        head's quiet middle, between the back and the close (G1-g).
+      */
+      className={kitHead
+        // S1 (owner 2026-11-16): inside the one 48 px bar, over its quiet middle — never a row of its own.
+        ? `gk-sheet__pull group ${placement === 'page' ? 'v2-split:invisible' : ''}`
+        : `group relative z-10 mx-auto -mb-7 flex h-11 w-16 shrink-0 items-start justify-center ${placement === 'page' ? 'v2-split:invisible' : ''}`}
+    >
+      {/* The bar lights and stretches under the thumb: the pull was felt. */}
+      <span aria-hidden="true" className={kit ? 'gk-sheet__grab' : 'mt-1.5 h-1 w-9 rounded-full bg-v2-line-hi transition-[width,background-color] duration-150 group-active:w-12 group-active:bg-v2-ink-2'} />
+    </button>
+  ) : null;
+
   return (
     <div
       data-sheet-holder=""
@@ -232,42 +259,28 @@ export function Sheet({
       >
         <div data-sheet-header="" className={`${floatingHead ? 'pointer-events-none absolute inset-x-0 top-0 z-10' : 'shrink-0'} touch-none ${headerArt && !quietTitle && detent !== 'peek' ? 'sheet-art-head' : ''}`} {...(placement === 'card' ? {} : { onPointerDown: onPull })}>
           {headerArt && !quietTitle && detent !== 'peek' && <div data-sheet-art=""><AtmosphereImage art={headerArt} /></div>}
-          {placement !== 'card' && !floatingHead && <button
-            type="button"
-            aria-label={t(atTop ? 'handle.collapse' : 'handle.expand')}
-            onClick={(event) => {
-              const afterPull = dragged.current;
-              dragged.current = false;
-              // Only a pointer click can be the tail of a pull; a key press (`detail` 0) never is.
-              if (afterPull && event.detail !== 0) return;
-              settle(atTop ? 'down' : 'up');
-            }}
-            /*
-              A column on a wide screen has one height: its handle would promise a pull that does nothing.
-              A thumb's 44 px tall, it takes no more room than its 16 px row: it reaches down over the
-              head's quiet middle, between the back and the close (G1-g).
-            */
-            className={`group relative z-10 mx-auto -mb-7 flex h-11 w-16 shrink-0 items-start justify-center ${placement === 'page' ? 'v2-split:invisible' : ''}`}
-          >
-            {/* The bar lights and stretches under the thumb: the pull was felt. */}
-            <span aria-hidden="true" className={kit ? 'gk-sheet__grab' : 'mt-1.5 h-1 w-9 rounded-full bg-v2-line-hi transition-[width,background-color] duration-150 group-active:w-12 group-active:bg-v2-ink-2'} />
-          </button>}
+          {!kitHead && grab}
           {/* The close owns a stable row; scrolling tabs never need to move around it. */}
           {kit && !quietTitle ? (
-            <header className={`gk-cut${kit.tone ? ` gk-cut--${kit.tone}` : ''} gk-sheet__head${onBack ? ' gk-sheet__head--back' : ''}`}>
-              {onBack && <SheetBack onBack={onBack} />}
+            <header className={`gk-sheet__head${onBack ? ' gk-sheet__head--back' : ''}`} {...(kit.tone ? { 'data-tone': kit.tone } : {})}>
+              {grab}
+              {onBack && <SheetBack onBack={onBack} small />}
               {kit.art ? <img className="gk-sheet__art" src={kit.art} alt="" draggable={false} /> : <span />}
               <div className="min-w-0">
-                {eyebrow && <p className="gk-sheet__eyebrow">{eyebrow}</p>}
+                {(Boolean(eyebrow) || kit.meta !== undefined) && (
+                  <div className="gk-sheet__line">
+                    {eyebrow && <p className="gk-sheet__eyebrow">{eyebrow}</p>}
+                    {kit.meta !== undefined && <div className="gk-sheet__meta">{kit.meta}</div>}
+                  </div>
+                )}
                 <div className={titleAction ? 'flex min-w-0 items-center gap-2' : undefined}>
                   <h2 className="gk-sheet__title gk-display gk-outlined" {...(titleLang ? { lang: titleLang } : {})}>
                     {lead !== undefined ? <span className="inline-flex min-w-0 items-center gap-1.5">{lead}<span className="gk-sheet__titleline">{title}</span></span> : title}
                   </h2>
                   {titleAction !== undefined && <span data-title-action="" className="relative z-20 flex shrink-0 items-center gap-2">{titleAction}</span>}
                 </div>
-                {kit.meta !== undefined && <div className="gk-sheet__meta">{kit.meta}</div>}
               </div>
-              <SheetClose onClose={onClose} />
+              <SheetClose onClose={onClose} small />
             </header>
           ) : <header className={quietTitle ? 'flex shrink-0 items-start justify-end gap-1 px-1 pb-1' : 'flex items-center gap-1 px-1 pb-1'}>
             {/* Pressable in the quiet header's stable row too. */}
@@ -295,7 +308,7 @@ export function Sheet({
         <div
           data-sheet-body=""
           className={kit
-            ? `gk-sheet__body relative ${contained ? 'flex flex-col overflow-hidden!' : ''} ${bleed ? 'px-0! pt-0!' : ''}`
+            ? `gk-sheet__body relative ${contained ? 'flex flex-col overflow-hidden!' : ''} ${bleed ? 'px-0!' : ''}`
             : `relative ${floatingHead ? 'z-0' : ''} min-h-0 flex-auto ${contained ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overscroll-contain'} ${bleed ? '' : 'px-3 pb-3'}`}
         >
           {typeof children === 'function' ? children(detent) : children}

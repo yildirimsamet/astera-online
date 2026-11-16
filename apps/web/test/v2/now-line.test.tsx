@@ -218,10 +218,10 @@ describe('the Now line', () => {
     let sheet = screen.getByRole('dialog', { name: 'Timers' });
     expect(sheet.querySelector('.gk-sheet__art')?.getAttribute('src')).toMatch(/hud-timers\.webp$/);
     expect(within(sheet).getByText('Enemies first, then the soonest')).toBeInTheDocument();
-    expect(sheet.querySelector('.gk-sheet__head')).toHaveClass('gk-cut--self');
+    expect(sheet.querySelector('.gk-sheet__head')).toHaveAttribute('data-tone', 'self');
     rerender(<NowLine entries={entries({ threads: [thread('transfer', 60_000), thread('incoming', 3_600_000)] })} now={NOW} {...closed()} open />);
     sheet = screen.getByRole('dialog', { name: 'Timers' });
-    expect(sheet.querySelector('.gk-sheet__head')).toHaveClass('gk-cut--hostile');
+    expect(sheet.querySelector('.gk-sheet__head')).toHaveAttribute('data-tone', 'hostile');
   });
 
   it.each([

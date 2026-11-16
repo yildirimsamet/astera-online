@@ -1107,7 +1107,7 @@ describe('savaşın bozduğu koloni sistemleri', () => {
     }));
     const line = screen.getByText(/Vantage-3/, { selector: '[data-colony-faults]' });
     expect(line).toHaveTextContent('Store leak');
-    expect(line).toHaveTextContent('Revolt in the yard');
+    expect(line).toHaveTextContent('Yard revolt');
   });
 
   it('hiçbir şey bozulmadıysa satır yoktur', async () => {
@@ -1201,7 +1201,7 @@ it('shows actual colony loyalty in a radiation report without using Death Star s
   expect(parsed.radiation).toHaveProperty('faults', ['CORE_OUTAGE']);
   render(<StrategicReportSheet onClose={() => undefined} report={parsed} />);
   expect(screen.getByText('Colony loyalty 80% → 65%.')).toBeVisible();
-  expect(screen.getByText(/New faults: Command core blackout/)).toBeVisible();
+  expect(screen.getByText(/New faults: Core blackout/)).toBeVisible();
   expect(screen.queryByText(/Death Star/i)).not.toBeInTheDocument();
 });
 

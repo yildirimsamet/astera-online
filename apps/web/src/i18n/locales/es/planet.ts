@@ -78,7 +78,7 @@ export const planet = {
 },
   abandon: {
     "action": "Abandonar colonia",
-    "title": "¿Abandonar esta colonia?",
+    "title": "Abandonar colonia",
     "cancel": "Conservar colonia",
     "confirm": "Abandonar",
     "pending": "Abandonando…",
@@ -850,14 +850,14 @@ export const faults = {
   tab: "Averías activas",
   /** One line per fault: the name a player sees on the row and the sheet. */
   name: {
-    REFINERY_OUTAGE: "Apagón de refinería de aleación",
-    EXTRACTOR_OUTAGE: "Apagón extractor de cristal",
-    PLANT_OUTAGE: "Apagón en la refinería de deuterio",
+    REFINERY_OUTAGE: "Apagón de aleación",
+    EXTRACTOR_OUTAGE: "Apagón de cristal",
+    PLANT_OUTAGE: "Apagón de deuterio",
     VAULT_LEAK: "Fuga del almacén",
-    CORE_OUTAGE: "Apagón del núcleo de comando",
+    CORE_OUTAGE: "Apagón del núcleo",
     TELESCOPE_FAULT: "Fallo del telescopio",
-    SHIPYARD_REVOLT: "Revuelta en el astillero",
-    PROSPECTOR_FAULT: "Prospección en pozo",
+    SHIPYARD_REVOLT: "Motín del astillero",
+    PROSPECTOR_FAULT: "Fallo de prospección",
   },
   /** What it stops, in the player's terms. One sentence, no hedging. */
   stopped: {

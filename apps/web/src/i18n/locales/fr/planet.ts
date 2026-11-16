@@ -86,7 +86,7 @@ export const planet = {
 },
   abandon: {
     "action": "Abandonner la colonie",
-    "title": "Abandonner cette colonie ?",
+    "title": "Abandonner la colonie",
     "cancel": "Garder la colonie",
     "confirm": "Abandonner",
     "pending": "Abandon en cours…",
@@ -808,14 +808,14 @@ export const faults = {
   },
   tab: "Pannes actives",
   name: {
-    REFINERY_OUTAGE: "Coupure de courant à la Raffinerie d’Alliage",
-    EXTRACTOR_OUTAGE: "Coupure de courant à la Mine de Cristal",
-    PLANT_OUTAGE: "Coupure de courant à la Raffinerie de Deutérium",
+    REFINERY_OUTAGE: "Panne d’alliage",
+    EXTRACTOR_OUTAGE: "Panne de cristal",
+    PLANT_OUTAGE: "Panne de deutérium",
     VAULT_LEAK: "Fuite du Magasin",
-    CORE_OUTAGE: "Coupure de courant au centre de commandement",
+    CORE_OUTAGE: "Panne du noyau",
     TELESCOPE_FAULT: "Panne du Télescope",
-    SHIPYARD_REVOLT: "Mutinerie au Chantier spatial",
-    PROSPECTOR_FAULT: "Panne du centre des Prospecteurs",
+    SHIPYARD_REVOLT: "Mutinerie au chantier",
+    PROSPECTOR_FAULT: "Panne des prospecteurs",
   },
   stopped: {
     REFINERY_OUTAGE:

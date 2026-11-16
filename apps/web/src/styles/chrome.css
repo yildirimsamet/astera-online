@@ -1478,15 +1478,17 @@
 }
 /* A held message (C3): the bubble sinks under a thumb that stays, and stands lit once its keys are out. */
 .chat-type [data-chat-message] {
-  transition: transform 280ms cubic-bezier(0.2, 0.7, 0.2, 1), filter 160ms ease;
+  transition: transform 280ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 .chat-type [data-chat-message]:active {
   transform: scale(0.97);
 }
 .chat-type [data-chat-message][data-held] {
-  transform: none;
-  /* A filter, not a box-shadow: it follows the bubble's cut corner instead of squaring it. */
-  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--gk-self) 70%, transparent)) drop-shadow(0 10px 13px var(--gk-outline));
+  transform: translateY(-1px);
+}
+/* Lit by its own cut edge layer, not a filter: no raster layer per bubble (the palette rule above). */
+.chat-type [data-chat-message][data-held]::before {
+  background: color-mix(in srgb, var(--gk-self) 85%, transparent);
 }
 
 .chat-type [data-chat-podium-icon] svg {

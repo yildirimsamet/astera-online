@@ -87,7 +87,7 @@ export const SURFACES: GameSurface[] = [
     id: 'focus',
     what: 'Odak paneli: hedef dosyası, iplik, radyasyon, bant, anıt',
     files: ['v2/hud/TargetDossier.tsx', 'starter/OutpostReading.tsx', 'starter/PartHere.tsx', 'screens/RadiationBombControls.tsx'],
-    reach: ['gallery:focus-closed', 'gallery:focus-own', 'gallery:focus-own-open', 'gallery:focus-neutral', 'gallery:focus-radiation', 'gallery:focus-band', 'gallery:focus-monument', 'gallery:focus-thread', 'gallery:focus-thread-pirate', 'gallery:focus-asteroid', 'gallery:focus-debris', 'gallery:focus-pirate', 'gallery:focus-contact', 'gallery:focus-contact-fleet', 'gallery:focus-run', 'gallery:focus-trade', 'gallery:focus-convoy', 'gallery:focus-strike', 'gallery:support-focus', 'client:focus'],
+    reach: ['gallery:focus-closed', 'gallery:focus-own', 'gallery:focus-own-open', 'gallery:focus-neutral', 'gallery:focus-radiation', 'gallery:focus-band', 'gallery:focus-monument', 'gallery:focus-thread', 'gallery:focus-thread-pirate', 'gallery:focus-asteroid', 'gallery:focus-debris', 'gallery:focus-pirate', 'gallery:focus-contact', 'gallery:focus-contact-fleet', 'gallery:focus-run', 'gallery:focus-trade', 'gallery:focus-convoy', 'gallery:focus-strike', 'gallery:focus-strike-bare', 'gallery:support-focus', 'client:focus'],
     group: 'G4', unreached: ['keşfedilmemiş dünya', 'kalkanlı / tatildeki hedef'],
   },
   { id: 'launch', what: 'Saldırı/gönderme sayfası', files: ['screens/LaunchSheet.tsx', 'starter/TempoNote.tsx'], reach: ['gallery:launch', 'gallery:launch-pirate', 'gallery:launch-radiation', 'gallery:launch-radiation-lethal', 'gallery:support-launch'], group: 'G4' },

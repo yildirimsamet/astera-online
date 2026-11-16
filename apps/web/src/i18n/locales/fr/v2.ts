@@ -112,6 +112,8 @@ export const topBar = {
 
 /** La puce Vue : calques, guide des événements et légende de la galaxie. */
 export const view = {
+  /** H1 (2026-11-16): the round keys under the finds on the galaxy's right. */
+  tools: 'Outils de la galaxie',
   chip: 'Vue',
   title: 'Vue',
   layers: 'Calques',
@@ -201,8 +203,9 @@ export const reportScene = {
 /** K6: the switch at the top of the Base — this world, or the commander's research. */
 export const baseSwitch = {
   label: 'Base',
-  world: 'Ce monde',
+  world: 'Planète',
   research: 'Recherche',
+  ship: 'Vaisseau',
 } as const;
 
 /** E8 · K9: the research constellation. */

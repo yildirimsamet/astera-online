@@ -64,3 +64,13 @@ describe('the bell sheet', () => {
     expect(screen.getByRole('dialog')).toHaveAttribute('data-detent', 'half');
   });
 });
+
+/** S1 (owner 2026-11-16): the bell wears the one 48 px head, with the bell's own mark. */
+describe('the bell sheet head', () => {
+  it('is the kit head with the bell mark', () => {
+    render(<BellSheet {...props({ unseen: 3 })} />);
+    const head = screen.getByRole('dialog').querySelector('.gk-sheet__head')!;
+    expect(head.querySelector('.gk-sheet__art')).toHaveAttribute('src', expect.stringMatching(/hud-bell/));
+    expect(head.querySelector('.gk-sheet__eyebrow')).not.toBeNull();
+  });
+});

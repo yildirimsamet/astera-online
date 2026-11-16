@@ -117,6 +117,8 @@ export const topBar = {
 
 /** The View chip and sheet: layers, the events guide and the galaxy caption. */
 export const view = {
+  /** H1 (2026-11-16): the round keys under the finds on the galaxy's right. */
+  tools: 'Galaxy tools',
   chip: 'View',
   title: 'View',
   layers: 'Layers',
@@ -206,8 +208,9 @@ export const reportScene = {
 /** K6: the switch at the top of the Base — this world, or the commander's research. */
 export const baseSwitch = {
   label: 'Base',
-  world: 'This world',
+  world: 'Planet',
   research: 'Research',
+  ship: 'Ship',
 } as const;
 
 /** E8 · K9: the research constellation. */

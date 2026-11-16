@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GameTabs } from '../../game-ui/index.js';
+import { GameTabs, artIconSrc } from '../../game-ui/index.js';
 import { Sheet } from '../kit/Sheet.js';
 
 export type BellTab = 'signals' | 'chronicle';
@@ -38,6 +38,7 @@ export function BellSheet({ tab, onTab, onClose, unseen, signals, chronicle }: B
     <Sheet
       // Named for both tabs: a "Signals" title over the chronicle misled (seen on the gallery).
       title={t('bell.title')}
+      kit={{ art: artIconSrc('hud-bell') }}
       {...(tab === 'signals' && unseen > 0 ? { eyebrow: t('signals.eyebrowUnread', { count: unseen }) } : {})}
       onClose={onClose}
       detents={FEED}

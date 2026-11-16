@@ -112,6 +112,8 @@ export const topBar = {
 
 /** Der Ansicht-Chip: Ebenen, Ereignisführer und die Galaxie-Überschrift. */
 export const view = {
+  /** H1 (2026-11-16): the round keys under the finds on the galaxy's right. */
+  tools: 'Galaxie-Werkzeuge',
   chip: 'Ansicht',
   title: 'Ansicht',
   layers: 'Ebenen',
@@ -201,8 +203,9 @@ export const reportScene = {
 /** K6: the switch at the top of the Base — this world, or the commander's research. */
 export const baseSwitch = {
   label: 'Basis',
-  world: 'Diese Welt',
+  world: 'Planet',
   research: 'Forschung',
+  ship: 'Schiff',
 } as const;
 
 /** E8 · K9: the research constellation. */

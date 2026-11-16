@@ -39,7 +39,7 @@ export interface UnknownSignalSheetProps {
   onSkins: () => void;
 }
 
-const OUTCOMES: readonly (readonly ['RESOURCES' | 'ENERGY' | 'DERELICT' | 'PIRATES' | 'SKIN', string, GlyphId])[] = [
+const OUTCOMES: readonly (readonly ['RESOURCES' | 'ENERGY' | 'DERELICT' | 'PIRATES' | 'SKIN', 'resources' | 'energy' | 'derelict' | 'pirates' | 'skin', GlyphId])[] = [
   ['RESOURCES', 'resources', 'crate'], ['ENERGY', 'energy', 'speed'], ['DERELICT', 'derelict', 'hull'], ['PIRATES', 'pirates', 'pirate'], ['SKIN', 'skin', 'star'],
 ];
 

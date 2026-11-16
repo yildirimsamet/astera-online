@@ -30,7 +30,7 @@ export const accountSecurity = {
   "credentials": "Le mot de passe actuel ne correspond pas.",
   "limited": "Trop de tentatives. Attends avant de réessayer.",
   "deliveryFailed": "L’e-mail n’a pas pu être livré. Vérifie l’adresse ou réessaie plus tard.",
-  "resetTitle": "Réinitialiser le mot de passe",
+  "resetTitle": "Nouveau mot de passe",
   "forgot": "Mot de passe oublié ?",
   "resetInfo": "Si un compte confirmé utilise cette adresse, nous enverrons un code. Vérifie aussi les courriers indésirables.",
   "noRecovery": "Sans adresse déjà confirmée, cette méthode ne peut pas récupérer ton mot de passe.",

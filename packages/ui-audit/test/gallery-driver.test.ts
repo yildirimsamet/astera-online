@@ -38,7 +38,9 @@ describe('the gallery driver', () => {
     const page: Pick<Page, 'route'> = {
       route: (match: string | RegExp | ((url: URL) => boolean)) => {
         if (typeof match === 'function') answered.push(['/arena/hangar', '/arena/team', '/arena/ship'].filter((path) => match(new URL(`http://x${path}`))).join(','));
-        return Promise.resolve();
+        // what Playwright hands back: a handle that removes the route
+        const done = (): Promise<void> => Promise.resolve();
+        return Promise.resolve({ dispose: done, [Symbol.asyncDispose]: done });
       },
     };
     await answerGallery(page, 'arena-hangar');

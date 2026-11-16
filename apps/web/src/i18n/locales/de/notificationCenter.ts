@@ -1,5 +1,5 @@
 export const notificationCenter = {
-  "title": "Benachrichtigungszentrale",
+  "title": "Benachrichtigungen",
   "eyebrow": "Handy-Warnungen",
   "menuHint": "Eine Warnung aufs Handy, bevor ein Angriff einschlägt.",
   "menuEmpty": "Kasse leer",

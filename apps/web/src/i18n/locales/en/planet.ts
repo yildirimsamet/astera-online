@@ -78,7 +78,7 @@ export const planet = {
 },
   abandon: {
     "action": "Abandon colony",
-    "title": "Abandon this colony?",
+    "title": "Abandon colony",
     "cancel": "Keep colony",
     "confirm": "Abandon",
     "pending": "Abandoning…",
@@ -854,14 +854,14 @@ export const faults = {
   tab: "Active faults",
   /** One line per fault: the name a player sees on the row and the sheet. */
   name: {
-    REFINERY_OUTAGE: "Alloy refinery blackout",
-    EXTRACTOR_OUTAGE: "Crystal extractor blackout",
-    PLANT_OUTAGE: "Deuterium refinery blackout",
+    REFINERY_OUTAGE: "Alloy blackout",
+    EXTRACTOR_OUTAGE: "Crystal blackout",
+    PLANT_OUTAGE: "Deuterium blackout",
     VAULT_LEAK: "Store leak",
-    CORE_OUTAGE: "Command core blackout",
+    CORE_OUTAGE: "Core blackout",
     TELESCOPE_FAULT: "Telescope failure",
-    SHIPYARD_REVOLT: "Revolt in the yard",
-    PROSPECTOR_FAULT: "Prospecting pit down",
+    SHIPYARD_REVOLT: "Yard revolt",
+    PROSPECTOR_FAULT: "Prospectors down",
   },
   /** What it stops, in the player's terms. One sentence, no hedging. */
   stopped: {

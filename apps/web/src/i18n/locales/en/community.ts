@@ -137,8 +137,8 @@ export const community = {
   donate: {
     aboutHeading: "Game development",
     developerNote: "A note from the developer",
-    eyebrow: 'Support Astera Online development',
-    title: 'Support Astera Online',
+    eyebrow: 'Astera Online',
+    title: 'Support',
     menuLabel: 'Donate',
     menuHint: 'Support the game',
     /*

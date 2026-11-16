@@ -274,8 +274,6 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
       <HudTop
         commander={commander}
         onCommander={() => { route('menu'); }}
-        onShop={() => { route('skin-shop'); }}
-        onRewards={() => { route('rewards'); }}
         onWorlds={() => {
           clearPages();
           setWorldsRequest((n) => n + 1);

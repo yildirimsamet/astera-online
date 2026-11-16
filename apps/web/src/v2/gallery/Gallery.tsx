@@ -178,9 +178,7 @@ const statusLine: StatusLineProps = {
   recoveryUntil: null,
   signalUntil: null,
   vacationUntil: null,
-  rewards: 0,
   onWorld: noop,
-  onRewards: noop,
   onHint: noop,
 };
 
@@ -909,7 +907,7 @@ function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leade
  */
 function GallerySignal({ state }: { state: 'open' | 'noship' | 'pirates' | 'skin' | 'derelict' }) {
   const outcome = state === 'pirates' ? { kind: 'PIRATES' as const }
-    : state === 'skin' ? { kind: 'SKIN' as const, cosmeticId: 'planet-lava' }
+    : state === 'skin' ? { kind: 'SKIN' as const, cosmeticId: 'planet-lava' as const }
     : state === 'derelict' ? { kind: 'DERELICT' as const, hull: 'PIKE' as const, damageBp: 3000 } : null;
   const signal: UnknownSignalView = {
     id: '00000000-0000-4000-8000-000000000001', at: { x: 2000, y: 0, z: 0 }, status: outcome ? 'returning' : 'open',
@@ -930,7 +928,8 @@ function GallerySignal({ state }: { state: 'open' | 'noship' | 'pirates' | 'skin
  * G4-j: THE TWO STRIKES ON THE FOCUS RAIL, OPENED — a probed colony, a Death Star ready on the
  * pad and two radiation bombs in stock, so the camera sees both folds' heads and bodies.
  */
-function GalleryStrikes() {
+/** `bare`: no weapon on the pad — both folds closed, each saying 0 ready (owner, 2026-11-16). */
+function GalleryStrikes({ bare = false }: { bare?: boolean }) {
   const client = useQueryClient();
   useState(() => {
     client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [], radiation: [] });
@@ -938,15 +937,16 @@ function GalleryStrikes() {
     return null;
   });
   useEffect(() => {
+    if (bare) return;
     document.querySelectorAll('details.gk-strike').forEach((fold) => { if (fold instanceof HTMLDetailsElement) fold.open = true; });
-  }, []);
+  }, [bare]);
   const colony: GalaxyPlanet = { ...rival, kind: 'COLONY' };
   const read = { ...launchIntel.probeReports[0]!, targetPlanetId: colony.id, loyalty: 38, interceptors: 2 };
   const armed: PlanetView = {
     ...launchWorld,
-    deathStars: [{ id: 'ds-1', status: 'READY', readyAt: null, remainingSeconds: 0 }],
+    deathStars: bare ? [] : [{ id: 'ds-1', status: 'READY', readyAt: null, remainingSeconds: 0 }],
     radiationBombsAvailable: true,
-    radiationBombs: [
+    radiationBombs: bare ? [] : [
       { id: 'rb-1', level: 1, status: 'READY', readyAt: null, remainingSeconds: 0 },
       { id: 'rb-3', level: 3, status: 'READY', readyAt: null, remainingSeconds: 0 },
     ],
@@ -1444,6 +1444,7 @@ function Views({ view }: { view: string }) {
   if (view === 'transfer-radiation') return <GalleryRadiation surface="transfer" />;
   if (view === 'focus-radiation') return <GalleryRadiation surface="focus" />;
   if (view === 'focus-strike') return <GalleryStrikes />;
+  if (view === 'focus-strike-bare') return <GalleryStrikes bare />;
   if (view === 'signal' || view === 'signal-noship' || view === 'signal-pirates' || view === 'signal-skin' || view === 'signal-derelict') {
     return <GallerySignal state={view === 'signal' ? 'open' : view === 'signal-noship' ? 'noship' : view === 'signal-pirates' ? 'pirates' : view === 'signal-skin' ? 'skin' : 'derelict'} />;
   }
@@ -1460,7 +1461,7 @@ function Views({ view }: { view: string }) {
       <PirateFocus pirate={{ id: 'pirate-9', callsign: 'mJtQ', zone: 'IDENTIFIED', at: { x: 100, y: 0, z: 0 }, expiresInMinutes: 96,
         reachMinutes: 12, reach: [{ hull: 'DART', minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } }], level: 3,
         fleet: { TEMPEST: 1, DART: 4, COURIER: 2 }, damageMult: PIRATE.damageMult[3], mass: 'MEDIUM', remembered: true }}
-        fleetAtHome={{ DART: 12, LANCER: 3 }} onClose={noop} onAttack={noop} raiding={false} open onToggle={noop} />
+        fleetAtHome={{ DART: 12, PIKE: 3 }} onClose={noop} onAttack={noop} raiding={false} open onToggle={noop} />
     );
   }
   if (view === 'focus-contact' || view === 'focus-contact-fleet') {
@@ -1996,9 +1997,9 @@ export function Gallery({ view }: { view: string | null }) {
           <SignalBell unseen={12} urgent onOpen={noop} />
           <ChatChip unread={3} onOpen={noop} />
         </div>
-        <StatusLine {...statusLine} shield={{ until: NOW + 7 * 60 * MIN, kind: 'NEWCOMER' }} rewards={2} />
+        <StatusLine {...statusLine} shield={{ until: NOW + 7 * 60 * MIN, kind: 'NEWCOMER' }} />
         <StatusLine {...statusLine} world={{ capital: false, name: 'Hollow' }} shield={{ until: NOW + 50 * 60 * MIN, kind: 'RECOVERY' }} recoveryUntil={NOW + 50 * 60 * MIN} />
-        <StatusLine {...statusLine} world={{ capital: true, name: 'Kestrel-12' }} signalUntil={NOW + 95 * MIN} vacationUntil={NOW + 40 * 60 * MIN} rewards={12} />
+        <StatusLine {...statusLine} world={{ capital: true, name: 'Kestrel-12' }} signalUntil={NOW + 95 * MIN} vacationUntil={NOW + 40 * 60 * MIN} />
       </Section>
 
       <Section title="B2 · now line">

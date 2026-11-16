@@ -33,7 +33,7 @@ export function ContentReportSheet({ subject, onClose }: { subject: ReportSubjec
   };
   const question = 'gk-copy font-semibold';
   return createPortal(<div className="[--v2-dock-h:0px]">
-    <Sheet placement="dialog" title={t('moderation.title')} onClose={onClose} onBack={onClose} detents={['full']}>
+    <Sheet placement="dialog" kit={{}} title={t('moderation.title')} onClose={onClose} onBack={onClose} detents={['full']}>
       <div className="gk grid gap-4 pb-3">
         <div>
           <p className="gk-display break-words text-figure">{subject.username}</p>

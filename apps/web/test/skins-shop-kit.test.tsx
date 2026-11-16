@@ -30,8 +30,8 @@ function shop(over: Partial<Parameters<typeof SkinShopContent>[0]> = {}) {
   const onPurchase = vi.fn();
   const onOpenInventory = vi.fn();
   const view = render(<SkinShopContent collection={none} commander="Samet" onOpenInventory={onOpenInventory} prices={prices} enabled onPurchase={onPurchase} {...over} />);
-  const planets = (): Element => {
-    const found = view.container.querySelector('.gk-shop');
+  const planets = (): HTMLElement => {
+    const found = view.container.querySelector<HTMLElement>('.gk-shop');
     if (!found) throw new Error('the planet store is not on the kit');
     return found;
   };

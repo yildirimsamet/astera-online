@@ -15,7 +15,8 @@ import { artIconSrc } from '../game-ui/index.js';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
 import { bellState } from '../lib/bell.js';
-import { ChatChip, EventChips, GalaxyReadout, HomeChip, SignalBell, type GalaxyTarget } from '../v2/hud/GalaxyCorners.js';
+import { capabilities } from '../platform/runtime.js';
+import { ChatChip, EventChips, GalaxyReadout, GiftChip, HomeChip, HudTools, ShopChip, SignalBell, type GalaxyTarget } from '../v2/hud/GalaxyCorners.js';
 import { outpostFinderTargets } from '../starter/outpostTargets.js';
 import type { MainSky } from '../api/starterSchemas.js';
 import { mainSkyPoints } from '../galaxy/mainSky.js';
@@ -89,6 +90,7 @@ import {
   useUnknownSignalDetail,
   useCollect,
   useNotifications,
+  useRewards,
 } from '../api/queries.js';
 import type {
   AsteroidView,
@@ -520,6 +522,7 @@ export function GalaxyView({
   const now = useNow(5_000);
   // F2: clanmate worlds under a raid, ringed on the map from the reader's own bell.
   const bell = useNotifications();
+  const rewardsWaiting = useRewards().data?.claimable ?? 0;
   const clanAlarms = useMemo(() => activeClanAlarms(bell.data?.notifications ?? [], now), [bell.data, now]);
   /**
    * THE SKY ANSWERS THE EVENT. Owner instruction, D149.
@@ -1355,12 +1358,14 @@ export function GalaxyView({
    * alone on a ship whose chat has not opened yet. Only the shell holds the bell's sheet.
    */
   const bellButton = onOpenBell ? <SignalBell {...bellState(bell.data?.notifications ?? [], now)} onOpen={onOpenBell} /> : null;
-  const cornerButtons = bellButton || chatButton
-    ? <div data-corner-buttons="" className="pointer-events-auto flex items-center gap-2">{bellButton}{chatButton}</div>
+  /* H1 (owner 2026-11-16): off a ship the bell joins the galaxy's tools on the right; aboard, it keeps the corner. */
+  const cornerBell = ship ? bellButton : null;
+  const cornerButtons = cornerBell || chatButton
+    ? <div data-corner-buttons="" className="pointer-events-auto flex items-center gap-2">{cornerBell}{chatButton}</div>
     : null;
   /** Daily activity and the galaxy's objects (top right). */
+  // The online count is hidden for now (owner 2026-11-16, H1): the finds lead the corner.
   const galaxyReadout = {
-    ...(season.data?.onlineToday === undefined ? {} : { onlineToday: season.data.onlineToday }),
     counts: {
       worlds: planets.length,
       fleetsAway: windowsOpen(planets),
@@ -1476,8 +1481,9 @@ export function GalaxyView({
         one chip at top right, which the Academy hides with the sensor switches
         until its Telescope exercise (`data-sensor-toggles`).
       */}
-      <div data-galaxy-top-corners="" style={{ paddingTop: 'calc(var(--v2-float-h, 0px) + 0.25rem)' }} className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between px-[var(--gk-gutter)] pb-2">
-        <div className="pointer-events-none flex min-w-0 flex-col items-start gap-1">
+      <div data-galaxy-top-corners="" style={{ paddingTop: 'var(--v2-float-h, 0px)' }} className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between px-[var(--gk-gutter)] pb-2">
+        {/* Under the status column the top bar's float hangs on the left (H1): the events stack below it. */}
+        <div style={{ marginTop: 'calc(var(--v2-badges-h, 0px) + 2px)' }} className="gk-hudcol pointer-events-none flex min-w-0 flex-col items-start gap-1">
           <UnknownSignalHud data={signalData} planet={planet.data} worlds={worlds}
             focusedId={focus?.kind === 'unknownSignal' ? focus.id : null}
             busy={signalActions.send.isPending || signalActions.recall.isPending}
@@ -1520,14 +1526,20 @@ export function GalaxyView({
           `data-sensor-toggles`, not `data-disc-controls`: the chip carries the sensor
           switches now, and the Academy reveals it with them for its Telescope exercise.
         */}
-        <div className="pointer-events-none flex flex-col items-end">
-          {/* What is out there, at a glance (owner, 2026-09-24): back at the top right. */}
-          {showGuidance && (!ship || gate.open('fleet')) && <GalaxyReadout {...galaxyReadout} targets={findableTargets} onFocusTarget={onFocus} />}
-          {/* Home, back in plain sight and first in the stack (owner, 2026-09-24): never under a card or a rail. */}
-          {showGuidance && <HomeChip onHome={flyHome} aboard={gate.aboard} />}
-          {gate.open('telescope') && <div data-sensor-toggles className="pointer-events-none">
-            <ViewChip layersOn={showTelescopeReach || (hasRadar && showRadarReach)} onOpen={() => { setViewOpen(true); }} />
-          </div>}
+        <div className="pointer-events-none flex flex-col items-end gap-1">
+          {/* What is out there, at a glance (owner, 2026-09-24): back at the top right, first (H1). */}
+          {showGuidance && (!ship || gate.open('fleet')) && <GalaxyReadout census={Boolean(ship)} {...galaxyReadout} targets={findableTargets} onFocusTarget={onFocus} />}
+          {/* Under the finds, the round keys in two columns (H1, owner 2026-11-16). */}
+          <HudTools label={t('view.tools')}>
+            {/* Owner 2026-11-16: "Telescope-Gezegen, Mağaza-Ödül, Alarm" — two to a row, the bell under them. */}
+            {gate.open('telescope') && <div data-sensor-toggles className="pointer-events-none">
+              <ViewChip layersOn={showTelescopeReach || (hasRadar && showRadarReach)} onOpen={() => { setViewOpen(true); }} />
+            </div>}
+            {showGuidance && <HomeChip onHome={flyHome} aboard={gate.aboard} />}
+            {!ship && showGuidance && capabilities().webCheckout && <ShopChip onOpen={() => { onPanel('skin-shop'); }} />}
+            {showGuidance && <GiftChip waiting={rewardsWaiting} onOpen={() => { onPanel('rewards'); }} />}
+            {!ship && bellButton}
+          </HudTools>
           {/* Below the telescope (owner, 2026-11-09): the way out to the universe and back. */}
           {showGuidance && <UniverseChip open={universeOpen} atLimit={atUniverseLimit} available={universeAvailable} onOpen={openUniverse} onClose={closeUniverse} />}
         </div>

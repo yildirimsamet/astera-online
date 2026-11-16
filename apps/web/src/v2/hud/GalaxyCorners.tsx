@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import type { ActiveGalaxyEvent } from '../../api/schemas.js';
 import type { Focus } from '../../galaxy/FocusPanel.jsx';
@@ -45,8 +45,10 @@ const FINDABLE: Record<GalaxyTarget['kind'], { glyph: GlyphId; paint: TallyPaint
   monument: { glyph: 'star', paint: 'deut' },
 };
 
-export function GalaxyReadout({ onlineToday, counts, targets = [], onFocusTarget }: {
+export function GalaxyReadout({ onlineToday, census = true, counts, targets = [], onFocusTarget }: {
   onlineToday?: number;
+  /** Who is here, in words (worlds, fleets away). Off on the main galaxy for now (owner 2026-11-16, H1). */
+  census?: boolean;
   counts: { worlds: number; fleetsAway: number; rocks: number; pirates: number; wrecks: number; monuments?: number; ships?: number; outposts?: number };
   targets?: readonly GalaxyTarget[];
   onFocusTarget?: (focus: Focus) => void;
@@ -132,10 +134,10 @@ export function GalaxyReadout({ onlineToday, counts, targets = [], onFocusTarget
       )}
       <div data-testid="view-caption" className="flex flex-col items-end">
         {/* Who is here reads as words; what can be found is counted, each in its own colour. */}
-        <p className="gk-scene-line">
+        {census && <p className="gk-scene-line">
           {counts.ships === undefined ? t('galaxy.worlds', { count: counts.worlds }) : t('starter.readout.ships', { count: counts.ships })}
           {counts.fleetsAway > 0 && t('galaxy.fleetAway', { count: counts.fleetsAway })}
-        </p>
+        </p>}
         {tallies.length > 0 && <div className="flex flex-wrap justify-end gap-x-1 [&_button]:pointer-events-auto">{tallies}</div>}
       </div>
       {openKind !== null && listed.length > 0 && (
@@ -164,6 +166,28 @@ export function GalaxyReadout({ onlineToday, counts, targets = [], onFocusTarget
       )}
     </div>
   );
+}
+
+/**
+ * THE GALAXY'S TOOLS, TOGETHER (H1, owner 2026-11-16): the round keys stand in two columns under
+ * the finds on the right — home, the view, the shop, the bell, the gift — instead of one tall
+ * column and a scattered row. Only the keys that apply are passed in.
+ */
+export function HudTools({ label, children }: { label: string; children: ReactNode }) {
+  return <div role="group" aria-label={label} className="gk-hudtools pointer-events-none [&_button]:pointer-events-auto">{children}</div>;
+}
+
+/** Rewards ready to claim: the gift, with its count, among the galaxy's tools (H1). */
+export function GiftChip({ waiting, onOpen }: { waiting: number; onOpen: () => void }) {
+  const { t } = useTranslation();
+  if (waiting <= 0) return null;
+  return <RoundButton art={artIconSrc('gift')} label={`${t('rewards.title')} · ${t('rewards.waiting', { count: waiting })}`} count={waiting} onPress={onOpen} />;
+}
+
+/** The shop's own painted door, among the galaxy's tools where the web sells (H1). */
+export function ShopChip({ onOpen }: { onOpen: () => void }) {
+  const { t } = useTranslation();
+  return <RoundButton art={artIconSrc('menu-shop')} label={t('menu.skinsShopLabel')} onPress={onOpen} />;
 }
 
 /** Fly the camera to the active world — the disc's old Home mark; a painted pin on a world (G1-d2). */

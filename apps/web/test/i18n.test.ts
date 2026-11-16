@@ -374,6 +374,7 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'notifications.unlock',
   // Network/provider names, not prose: "USDT · TRC-20", "SOLANA" and "Shopier"
   // are the same proper nouns in every language.
+  'community.donate.eyebrow', // The game's own name over the donate sheet (S1, 2026-11-16).
   'community.donate.cryptoTrc20',
   'community.donate.cryptoSolana',
   'community.donate.cardHeading',

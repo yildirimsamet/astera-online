@@ -8,7 +8,6 @@ import {
   usePending,
   useMonuments,
   usePlanet,
-  useRewards,
   useSeason,
   useTraffic,
 } from '../../api/queries.js';
@@ -23,11 +22,9 @@ import type { FlightFocus } from '../../lib/flights.js';
 import { useProjected } from '../../lib/projection.js';
 import { useNow } from '../../lib/time.js';
 import { describe, useToast } from '../../ui/Toast.js';
-import { RoundButton, artIconSrc } from '../../game-ui/index.js';
 import { NowLine } from '../hud/NowLine.js';
 import { StatusLine } from '../hud/StatusLine.js';
 import { TopBar, type CollectionTransfer } from '../hud/TopBar.js';
-import { capabilities } from '../../platform/runtime.js';
 import { useSchoolPresentation } from '../../onboarding/flightSchool/presentation.js';
 import { gateOf } from '../../starter/gate.js';
 
@@ -44,10 +41,6 @@ export interface HudTopProps {
   commander: string;
   /** The medallion at the end of the top bar: the menu. */
   onCommander: () => void;
-  /** The shop's own painted door on the floating row, where the web sells (owner, 2026-11-14). */
-  onShop?: () => void;
-  /** The gift: open claimable rewards directly. */
-  onRewards: () => void;
   /** The world mark: the Worlds sheet. */
   onWorlds: () => void;
   /** A resource meter: the economy detail. */
@@ -68,7 +61,7 @@ export interface HudTopProps {
  * presentational pieces never fetch. The stores are projected so the meters move
  * between fetches the way the old header's did.
  */
-export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, onEconomy, nowOpen, onNow, onFocusCraft, tabs }: HudTopProps) {
+export function HudTop({ commander, onCommander, onWorlds, onEconomy, nowOpen, onNow, onFocusCraft, tabs }: HudTopProps) {
   const { t, i18n } = useTranslation();
   const now = useNow(1_000);
   const school = useSchoolPresentation();
@@ -85,23 +78,30 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
   }, [transfer]);
   const say = useToast();
   const float = useRef<HTMLDivElement>(null);
+  const badges = useRef<HTMLDivElement>(null);
   /*
-    How far the status line and the Now line float over the galaxy (`--v2-float-h`): the
-    galaxy's top corners start under them, so neither covers the other.
+    How far the Now line floats over the galaxy (`--v2-float-h`), and how tall the status
+    column hanging under it on the left is (`--v2-badges-h`, H1): the galaxy's corners start
+    under the line, its events under the column, so nothing covers anything.
   */
   useEffect(() => {
-    const node = float.current;
-    if (!node || typeof ResizeObserver === 'undefined') return undefined;
+    const line = float.current;
+    const column = badges.current;
+    if (!line || !column || typeof ResizeObserver === 'undefined') return undefined;
     const root = document.documentElement.style;
-    const observer = new ResizeObserver(() => { root.setProperty('--v2-float-h', `${String(node.offsetHeight)}px`); });
-    observer.observe(node);
+    const observer = new ResizeObserver(() => {
+      root.setProperty('--v2-float-h', `${String(line.offsetHeight)}px`);
+      root.setProperty('--v2-badges-h', `${String(column.offsetHeight)}px`);
+    });
+    observer.observe(line);
+    observer.observe(column);
     return () => {
       observer.disconnect();
       root.removeProperty('--v2-float-h');
+      root.removeProperty('--v2-badges-h');
     };
   }, []);
   const season = useSeason().data;
-  const rewards = useRewards().data?.claimable ?? 0;
   const pending = usePending().data?.pending ?? [];
   const monuments = useMonuments(hpRadiationApplies(planet.data?.rulesetVersion ?? 0)).data;
   const threads = [...pending.map(thread => school?.pausedIncoming && thread.kind === 'incoming'
@@ -194,30 +194,11 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
         onCommander={onCommander}
         {...(tabs === undefined ? {} : { tabs })}
       />
-      {/* Over the galaxy, under the bar: what holds over your worlds, then the timers. It costs the scene no row. */}
+      {/*
+        Over the galaxy, under the bar (H1, owner 2026-11-16): the timers first and full width,
+        then what holds over your worlds in a tight column on the left. It costs the scene no row.
+      */}
       <div ref={float} data-now-float="" className="pointer-events-none absolute inset-x-0 top-full z-20 pt-1">
-        <div className="flex items-start">
-          <div className="min-w-0 flex-1">
-            <StatusLine
-              now={now}
-              world={worlds.length > 1 && active ? { capital: active.planet.id === capitalPlanetId, name: active.planet.name } : null}
-              shield={shieldUntil ? { until: shieldUntil.getTime(), kind: season?.shieldKind ?? 'NEWCOMER' } : null}
-              recoveryUntil={boostUntil?.getTime() ?? null}
-              signalUntil={signalUntil?.getTime() ?? null}
-              vacationUntil={data?.vacationUntil?.getTime() ?? null}
-              rewards={rewards}
-              onWorld={onWorlds}
-              onRewards={onRewards}
-              onHint={(text) => { say(text); }}
-            />
-          </div>
-          {/* The shop's own door, where the web sells and never aboard a colony ship. */}
-          {onShop && !data?.vessel && capabilities().webCheckout && (
-            <div className="pointer-events-auto shrink-0 pr-1">
-              <RoundButton art={artIconSrc('menu-shop')} label={t('menu.skinsShopLabel')} onPress={onShop} />
-            </div>
-          )}
-        </div>
         <NowLine
           entries={entries}
           sheet={sheet}
@@ -228,6 +209,18 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
           onClose={() => { onNow(false); }}
           onFocus={onFocusCraft}
         />
+        <div ref={badges} data-hud-badges="" className="gk-hudcol absolute left-0 top-full">
+          <StatusLine
+            now={now}
+            world={worlds.length > 1 && active ? { capital: active.planet.id === capitalPlanetId, name: active.planet.name } : null}
+            shield={shieldUntil ? { until: shieldUntil.getTime(), kind: season?.shieldKind ?? 'NEWCOMER' } : null}
+            recoveryUntil={boostUntil?.getTime() ?? null}
+            signalUntil={signalUntil?.getTime() ?? null}
+            vacationUntil={data?.vacationUntil?.getTime() ?? null}
+            onWorld={onWorlds}
+            onHint={(text) => { say(text); }}
+          />
+        </div>
       </div>
     </div>
   );

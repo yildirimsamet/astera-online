@@ -258,3 +258,13 @@ describe('the view sheet', () => {
     await act(async () => { await i18n.changeLanguage('en'); });
   });
 });
+
+/** H1 (owner 2026-11-16): "28 world yazısını da kaldır, online section tamamen kalksın" — the finds alone lead the corner. */
+describe('the readout without its census', () => {
+  it('leaves out who is here and keeps what can be found', () => {
+    const view = render(<GalaxyReadout census={false} counts={{ worlds: 28, fleetsAway: 3, rocks: 9, pirates: 2, wrecks: 4, monuments: 8 }} />);
+    expect(screen.queryByText(/28 worlds/)).toBeNull();
+    expect(view.container.querySelectorAll('.gk-tally')).toHaveLength(4);
+  });
+});
+

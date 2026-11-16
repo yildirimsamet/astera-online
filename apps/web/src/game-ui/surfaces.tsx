@@ -81,15 +81,20 @@ export function SheetFrame({
   return (
     <section className={`gk gk-sheet ${className}`} aria-labelledby={titleId}>
       <div className="gk-sheet__grab" aria-hidden="true" />
-      <CutPlate tone={tone} className="gk-sheet__head">
+      {/* the one 48 px head every sheet wears (S1, owner 2026-11-16) */}
+      <header className="gk-sheet__head" {...(tone ? { 'data-tone': tone } : {})}>
         {art ? <img className="gk-sheet__art" src={art} alt="" /> : <span />}
         <div className="min-w-0">
-          {eyebrow !== undefined && <div className="gk-sheet__eyebrow">{eyebrow}</div>}
+          {(eyebrow !== undefined || meta !== undefined) && (
+            <div className="gk-sheet__line">
+              {eyebrow !== undefined && <div className="gk-sheet__eyebrow">{eyebrow}</div>}
+              {meta !== undefined && <div className="gk-sheet__meta">{meta}</div>}
+            </div>
+          )}
           <h2 id={titleId} className="gk-sheet__title gk-display gk-outlined">{title}</h2>
-          {meta !== undefined && <div className="gk-sheet__meta">{meta}</div>}
         </div>
         {onClose ? <RoundButton glyph="close" label={t('sheet.close')} onPress={onClose} /> : <span />}
-      </CutPlate>
+      </header>
       <div className="gk-sheet__body">{children}</div>
       {footer !== undefined && <div className="gk-sheet__foot">{footer}</div>}
     </section>

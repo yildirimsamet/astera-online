@@ -112,6 +112,8 @@ export const topBar = {
 
 /** El chip Vista: capas, guía de eventos y la leyenda de la galaxia. */
 export const view = {
+  /** H1 (2026-11-16): the round keys under the finds on the galaxy's right. */
+  tools: 'Herramientas de la galaxia',
   chip: 'Vista',
   title: 'Vista',
   layers: 'Capas',
@@ -201,8 +203,9 @@ export const reportScene = {
 /** K6: the switch at the top of the Base — this world, or the commander's research. */
 export const baseSwitch = {
   label: 'Base',
-  world: 'Este mundo',
+  world: 'Planeta',
   research: 'Investigación',
+  ship: 'Nave',
 } as const;
 
 /** E8 · K9: the research constellation. */

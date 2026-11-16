@@ -52,7 +52,7 @@ const choose = (dialog: HTMLElement, question: string, answer: string): void => 
 async function open() {
   const bubble = document.querySelector(`[data-chat-message="${id}"]`); if (!bubble) throw new Error('Missing fixture bubble');
   fireEvent.contextMenu(bubble); fireEvent.click(screen.getByRole('button', { name: 'Report' }));
-  return screen.findByRole('dialog', { name: 'Report content or player' });
+  return screen.findByRole('dialog', { name: 'Report' });
 }
 it.each(['general', 'clan', 'dm'] as const)('submits the exact %s message selector without client evidence and displays only a receipt', async channel => {
   const posts = show(channel); const dialog = await open();

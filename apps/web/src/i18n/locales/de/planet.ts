@@ -78,7 +78,7 @@ export const planet = {
 },
   abandon: {
     "action": "Kolonie aufgeben",
-    "title": "Diese Kolonie aufgeben?",
+    "title": "Kolonie aufgeben",
     "cancel": "Kolonie behalten",
     "confirm": "Aufgeben",
     "pending": "Wird aufgegeben…",
@@ -850,14 +850,14 @@ export const faults = {
   tab: "Aktive Störungen",
   /** One line per fault: the name a player sees on the row and the sheet. */
   name: {
-    REFINERY_OUTAGE: "Stromausfall in der Legierungsraffinerie",
-    EXTRACTOR_OUTAGE: "Ausfall des Kristallextraktors",
-    PLANT_OUTAGE: "Stromausfall in der Deuteriumraffinerie",
+    REFINERY_OUTAGE: "Legierungsausfall",
+    EXTRACTOR_OUTAGE: "Kristallausfall",
+    PLANT_OUTAGE: "Deuteriumausfall",
     VAULT_LEAK: "Speicherleck",
-    CORE_OUTAGE: "Befehlskernausfall",
+    CORE_OUTAGE: "Kernausfall",
     TELESCOPE_FAULT: "Teleskopfehler",
-    SHIPYARD_REVOLT: "Aufstand im Hof",
-    PROSPECTOR_FAULT: "Schürfgrube",
+    SHIPYARD_REVOLT: "Werftaufstand",
+    PROSPECTOR_FAULT: "Schürferausfall",
   },
   /** What it stops, in the player's terms. One sentence, no hedging. */
   stopped: {

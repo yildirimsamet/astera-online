@@ -14,7 +14,7 @@ export const moderation = {
     "accept": "Accept and continue"
 },
   "report": "Report",
-  "title": "Report content or player",
+  "title": "Report",
   "explanation": "The team reviews reports privately. Reporting does not automatically remove content or block the player.",
   "target": "What are you reporting?",
   "message": "Message",

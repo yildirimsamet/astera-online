@@ -24,8 +24,8 @@ function closet(over: Partial<Parameters<typeof SkinInventoryContent>[0]> = {}) 
   const onEquip = vi.fn();
   const onOpenShop = vi.fn();
   const view = render(<SkinInventoryContent collection={dressed('planet-lava')} onEquip={onEquip} pending={null} failure={null} onOpenShop={onOpenShop} {...over} />);
-  const planets = (): Element => {
-    const found = view.container.querySelector('.gk-closet');
+  const planets = (): HTMLElement => {
+    const found = view.container.querySelector<HTMLElement>('.gk-closet');
     if (!found) throw new Error('the closet is not on the kit');
     return found;
   };

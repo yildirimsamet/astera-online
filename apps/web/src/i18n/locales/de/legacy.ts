@@ -1,5 +1,5 @@
 export const legacy = {
-  title: 'Kommandanten-Vermächtnis',
+  title: 'Kommandantenerbe',
   permanence: 'Am Saisonende werden Welten, Flotten und Ressourcen zurückgesetzt. Dein Vermächtnis bleibt bei deinem Konto. Jedes Stück ist rein kosmetisch und bringt keinen Vorteil im Spiel.',
   tabs: { legacy: 'Vermächtnis', collection: 'Sammlung', account: 'Konto' },
   stats: {

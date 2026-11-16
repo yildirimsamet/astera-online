@@ -43,7 +43,7 @@ export function BlockPlayerSheet({ subject, onClose, onBlocked }: { subject: Blo
     catch { setProblem(true); } finally { active.current = false; }
   };
   return createPortal(<div className="[--v2-dock-h:0px]">
-    <Sheet title={t('moderation.blocks.action')} placement="dialog" detents={['full']} onClose={onClose} onBack={onClose}>
+    <Sheet title={t('moderation.blocks.action')} kit={{}} placement="dialog" detents={['full']} onClose={onClose} onBack={onClose}>
       <div className="gk grid gap-4 pb-3">
         <div className="grid gap-2">
           <p className="gk-display break-words text-figure">{subject.username}</p>
@@ -73,7 +73,7 @@ export function BlockedPlayersSheet({ onClose }: { onClose: () => void }) {
     catch { setProblem(true); } finally { active.current = false; setBusy(null); }
   };
   return createPortal(<div className="[--v2-dock-h:0px]">
-    <Sheet title={t('moderation.blocks.title')} placement="dialog" detents={['full']} onClose={onClose} onBack={onClose}>
+    <Sheet title={t('moderation.blocks.title')} kit={{}} placement="dialog" detents={['full']} onClose={onClose} onBack={onClose}>
       <div className="gk grid gap-3 pb-3">
         <p className="gk-copy">{t('moderation.blocks.scope')}</p>
         <p className="gk-note">{t('moderation.blocks.legacy')}</p>

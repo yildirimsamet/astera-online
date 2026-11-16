@@ -72,7 +72,7 @@ function PersonalChatHost({ accountId, onClose, onFocusPlanet, channel, draft, i
   return (
     <>
       <div ref={host} data-chat-host>
-      <Sheet title={t('bell.chat')} titleAction={(<>
+      <Sheet title={t('bell.chat')} kit={{ art: artIconSrc('hud-chat') }} titleAction={(<>
         <RoundButton small glyph="mute" label={t('chat.personalMutes.title')} onPress={() => { setShowMuted(true); }} />
         <RoundButton small glyph="block" label={t('moderation.blocks.title')} onPress={() => { setShowBlocked(true); }} />
       </>)} onClose={onClose} detents={['full']} contained fixedHeight>
@@ -93,7 +93,7 @@ function PersonalChatHost({ accountId, onClose, onFocusPlanet, channel, draft, i
       </div>
       {showBlocked ? <BlockedPlayersSheet onClose={() => { setShowBlocked(false); }} /> : null}
       {/* THE MUTED LIST (C4): each commander a row with their own key; an empty list says how to add one. */}
-      {showMuted && <Sheet title={t('chat.personalMutes.title')} detents={['fit']} onClose={() => { setShowMuted(false); }}>
+      {showMuted && <Sheet title={t('chat.personalMutes.title')} kit={{ art: artIconSrc('hud-chat') }} detents={['fit']} onClose={() => { setShowMuted(false); }}>
         <div className="gk grid gap-3 pb-3">
           <p className="gk-copy">{t('chat.personalMutes.hint')}</p>
           {mutedPlayers.length === 0 ? (

@@ -63,10 +63,10 @@ describe('the away sheet', () => {
     const { unmount } = render(<AwaySheet story={story()} onDoor={vi.fn()} onAll={vi.fn()} onDismiss={vi.fn()} />);
     const dialog = screen.getByRole('dialog', { name: 'While you were away' });
     expect(dialog).toHaveClass('gk-sheet');
-    expect(dialog.querySelector('.gk-sheet__head')).toHaveClass('gk-cut--hostile');
+    expect(dialog.querySelector('.gk-sheet__head')).toHaveAttribute('data-tone', 'hostile');
     unmount();
     show({ entries: [{ kind: 'accrued', params: { alloy: 900, crystal: 300 }, at: at(0) }] });
-    expect(screen.getByRole('dialog').querySelector('.gk-sheet__head')).toHaveClass('gk-cut--self');
+    expect(screen.getByRole('dialog').querySelector('.gk-sheet__head')).toHaveAttribute('data-tone', 'self');
   });
 
   /**

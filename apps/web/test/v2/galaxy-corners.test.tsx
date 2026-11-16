@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ActiveGalaxyEvent } from '../../src/api/schemas.js';
 import { Glyph } from '../../src/game-ui/index.js';
-import { ChatChip, EventChips, HomeChip, SignalBell } from '../../src/v2/hud/GalaxyCorners.js';
+import { readFileSync } from 'node:fs';
+import { ChatChip, EventChips, GiftChip, HomeChip, HudTools, ShopChip, SignalBell } from '../../src/v2/hud/GalaxyCorners.js';
 
 /**
  * THE GALAXY'S CORNERS. Owner feedback, 2026-09-24.
@@ -144,5 +145,45 @@ describe('the events running now', () => {
   it('draws nothing when nothing is running', () => {
     const { container } = render(<EventChips events={[]} now={NOW} onOpen={vi.fn()} />);
     expect(container.innerHTML).toBe('');
+  });
+});
+
+/**
+ * H1 (owner 2026-11-16): THE GALAXY'S TOOLS, TOGETHER ON THE RIGHT. "Asteroid korsan anıt … en üste
+ * çıkar, altına telescope, gezegen, market iconları gelsin, bildirim iconu da onların yanına, 2x2
+ * gibi bir düzen." The finds stay on top; under them the round keys stand in two columns.
+ */
+describe('the galaxy’s tools', () => {
+  it('stands its keys in one two-column group', () => {
+    render(<HudTools label="Galaxy tools"><HomeChip onHome={vi.fn()} /><SignalBell unseen={0} urgent={false} onOpen={vi.fn()} /></HudTools>);
+    const group = screen.getByRole('group', { name: 'Galaxy tools' });
+    expect(group).toHaveClass('gk-hudtools');
+    expect(within(group).getAllByRole('button')).toHaveLength(2);
+  });
+
+  it('offers the gift while claims wait, and opens the rewards', async () => {
+    const onOpen = vi.fn();
+    const { rerender } = render(<GiftChip waiting={0} onOpen={onOpen} />);
+    expect(screen.queryByRole('button')).toBeNull();
+    rerender(<GiftChip waiting={7} onOpen={onOpen} />);
+    await userEvent.click(screen.getByRole('button', { name: /Rewards/ }));
+    expect(onOpen).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: /Rewards/ })).toHaveTextContent('7');
+  });
+
+  it('opens the shop from its painted door', async () => {
+    const onOpen = vi.fn();
+    render(<ShopChip onOpen={onOpen} />);
+    await userEvent.click(screen.getByRole('button', { name: /shop/i }));
+    expect(onOpen).toHaveBeenCalledOnce();
+  });
+
+  it('is where the galaxy puts its tools: the finds first, then home, view, shop, bell and gift; no online count', () => {
+    const source = readFileSync('src/screens/GalaxyView.tsx', 'utf8');
+    const corner = source.slice(source.indexOf('<GalaxyReadout'), source.indexOf('</HudTools>'));
+    // owner 2026-11-16: "Telescope-Gezegen, Mağaza-Ödül, Alarm" — two to a row, the bell alone under them
+    expect(corner).toMatch(/<HudTools[\s\S]*<ViewChip[\s\S]*<HomeChip[\s\S]*<ShopChip[\s\S]*<GiftChip[\s\S]*bellButton/);
+    expect(corner).toMatch(/<GalaxyReadout census=\{Boolean\(ship\)\}/);
+    expect(source).not.toMatch(/onlineToday: season\.data\.onlineToday/);
   });
 });

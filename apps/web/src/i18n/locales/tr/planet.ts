@@ -85,7 +85,7 @@ export const planet = {
 },
   abandon: {
     "action": "Koloniyi terk et",
-    "title": "Koloniyi terk edecek misin?",
+    "title": "Koloniyi bırak",
     "cancel": "Vazgeç",
     "confirm": "Terk et",
     "pending": "Terk ediliyor…",
@@ -810,14 +810,14 @@ export const faults = {
   },
   tab: "Arızalar",
   name: {
-    REFINERY_OUTAGE: "Alaşım rafinerisinde elektrik kesintisi",
-    EXTRACTOR_OUTAGE: "Kristal Ocağı kesintisi",
-    PLANT_OUTAGE: "Döteryum rafinerisinde elektrik kesintisi",
+    REFINERY_OUTAGE: "Alaşım kesintisi",
+    EXTRACTOR_OUTAGE: "Kristal kesintisi",
+    PLANT_OUTAGE: "Döteryum kesintisi",
     VAULT_LEAK: "Depo sızıntısı",
-    CORE_OUTAGE: "Komuta Çekirdeği kesintisi",
+    CORE_OUTAGE: "Çekirdek kesintisi",
     TELESCOPE_FAULT: "Teleskop arızası",
     SHIPYARD_REVOLT: "Tersanede isyan",
-    PROSPECTOR_FAULT: "Kazıcı merkezinde arıza",
+    PROSPECTOR_FAULT: "Kazıcı arızası",
   },
   stopped: {
     REFINERY_OUTAGE: "Alaşım Rafinerisi çalışmıyor. Bu gezegen alaşım üretmiyor.",

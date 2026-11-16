@@ -115,9 +115,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
            * gap this used to leave, so a toast landed across the middle of the
            * sentence telling the player what to do next. The card publishes its own
            * height as `--toast-lift` while it is mounted; everywhere else the
-           * variable is absent and the original offset stands.
+           * variable is absent and the toast stands right under the top bar, where the Now line
+           * starts (H1, owner 2026-11-16: "toaster notificationlar da aynı yerde çıksın").
            */
-          className="gk pointer-events-none fixed inset-x-[var(--gk-gutter)] top-[calc(var(--toast-lift,100px)+env(safe-area-inset-top))] z-[90] flex justify-center"
+          className="gk pointer-events-none fixed inset-x-[var(--gk-gutter)] top-[calc(var(--toast-lift,calc(var(--v2-top-h,96px)+4px-env(safe-area-inset-top)))+env(safe-area-inset-top))] z-[90] flex justify-center"
         >
           {/*
             A REFUSAL LOOKS LIKE A REFUSAL (G1-d3, 2026-11-14: the kit's toast). The rim and the

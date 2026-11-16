@@ -7,8 +7,6 @@ import { ToastProvider } from '../../src/ui/Toast.js';
 import { SchoolPresentationContext } from '../../src/onboarding/flightSchool/presentation.js';
 import { HudTop } from '../../src/v2/shell/HudTop.js';
 import { planetView } from '../fixtures.js';
-import { vesselSchema } from '../../src/api/starterSchemas.js';
-import { wireVessel } from '../starterVesselFixture.js';
 
 /**
  * THE TOP OF THE v2 SHELL, WIRED. Spec B1, B2 (docs/ui-v2/gozlemevi.md).
@@ -56,7 +54,7 @@ vi.mock('../../src/api/world.js', () => ({
 }));
 
 const handlers = () => ({
-  onCommander: vi.fn(), onRewards: vi.fn(), onWorlds: vi.fn(), onEconomy: vi.fn(),
+  onCommander: vi.fn(), onWorlds: vi.fn(), onEconomy: vi.fn(),
   nowOpen: false, onNow: vi.fn(), onFocusCraft: vi.fn(),
 });
 
@@ -80,24 +78,27 @@ describe('the wired top of the shell', () => {
     await userEvent.click(screen.getByRole('button', { name: new RegExp(`^Signal production · ×${recovery ? '2\\.5' : '2'} · `) }));
     expect(await screen.findByText(/collect during the boost/i)).toBeInTheDocument();
   });
-  /** Owner 2026-11-14: the strip went; the shop keeps a painted door of its own, over the galaxy. */
-  it('opens the shop from a painted door on the floating row, without routing through the menu', async () => {
-    const onShop = vi.fn();
-    const on = handlers();
-    const { container } = render(<HudTop commander="Samet" {...on} onShop={onShop} />, { wrapper: ToastProvider });
-    const shop = screen.getByRole('button', { name: 'Shop' });
-    expect(shop.closest('[data-now-float]')).not.toBeNull();
-    expect(shop.querySelector('img')?.getAttribute('src')).toMatch(/menu-shop\.webp$/);
-    await userEvent.click(shop);
-    expect(onShop).toHaveBeenCalledTimes(1);
-    expect(on.onCommander).not.toHaveBeenCalled();
-    expect(container.querySelector('.brand-masthead')).toBeNull();
+  /** H1 (owner 2026-11-16): the shop's door and the gift stand with the galaxy's tools on the right now. */
+  it('carries neither the shop door nor the gift: they stand with the galaxy’s tools', () => {
+    claimable = 2;
+    render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
+    expect(screen.queryByRole('button', { name: 'Shop' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Rewards/ })).toBeNull();
   });
 
-  it('keeps the shop door shut aboard a colony ship', () => {
-    planet = { ...planet, vessel: vesselSchema.parse(wireVessel()) };
-    render(<HudTop commander="Samet" {...handlers()} onShop={vi.fn()} />, { wrapper: ToastProvider });
-    expect(screen.queryByRole('button', { name: 'Shop' })).toBeNull();
+  /**
+   * H1 (owner 2026-11-16): "geliyor, gidiyor olaylarını gösteren modal en üstte çıksın, StatusBar'ın
+   * hemen altında". The Now line leads what floats; the status chips hang under it in their own
+   * column on the left, which publishes its height so the galaxy's events stack under it.
+   */
+  it('leads with the Now line and hangs the status chips under it in a column of their own', () => {
+    shieldUntil = new Date(Date.now() + 2.5 * 3_600_000);
+    pending = [{ kind: 'incoming', targetName: 'Kestrel-12', targetPlanetId: 'p1', minutesRemaining: 9, arriveAt: new Date(Date.now() + 9 * 60_000) }];
+    const { container } = render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
+    const line = container.querySelector('[data-now-line]')!;
+    const chips = container.querySelector('[data-status-line]')!;
+    expect(line.compareDocumentPosition(chips) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(chips.closest('[data-hud-badges]')).toHaveClass('gk-hudcol');
   });
 
   it('includes native monument flights on the Now line without a planet mission', () => {
@@ -179,8 +180,10 @@ describe('the wired top of the shell', () => {
     const { unmount } = render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
     act(() => { for (const each of fire) each(); });
     expect(document.documentElement.style.getPropertyValue('--v2-float-h')).toBe('0px');
+    expect(document.documentElement.style.getPropertyValue('--v2-badges-h')).toBe('0px');
     unmount();
     expect(document.documentElement.style.getPropertyValue('--v2-float-h')).toBe('');
+    expect(document.documentElement.style.getPropertyValue('--v2-badges-h')).toBe('');
     vi.unstubAllGlobals();
   });
 
@@ -201,10 +204,8 @@ describe('the wired top of the shell', () => {
     render(<HudTop commander="Samet" {...on} />, { wrapper: ToastProvider });
     await userEvent.click(screen.getByRole('button', { name: /^Commander Samet/ }));
     await userEvent.click(screen.getByRole('button', { name: /^Alloy/ }));
-    await userEvent.click(screen.getByRole('button', { name: /^Rewards · 2/ }));
     expect(on.onCommander).toHaveBeenCalledTimes(1);
     expect(on.onEconomy).toHaveBeenCalledTimes(1);
-    expect(on.onRewards).toHaveBeenCalledTimes(1);
   });
 
   /**

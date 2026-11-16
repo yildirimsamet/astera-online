@@ -79,7 +79,7 @@ describe('the result of a practice flight on the kit', () => {
 
 describe('what a real flight brought home, on the kit', () => {
   it('heads its parts with kit labels and draws the haul as kit chips', () => {
-    const view = render(<SortieSummary c={arenaCopy()} now={Date.now()} hold={[0, 0, 0]} report={{ outcome: 'extracted', teamId: null,
+    const view = render(<SortieSummary c={arenaCopy()} now={Date.now()} hold={[0, 0, 0]} report={{ outcome: 'extracted',
       deposit: { alloy: 120, crystal: 40, deuterium: 0 }, overflow: { alloy: 0, crystal: 0, deuterium: 0 }, xp: { earned: 30, kept: 30, banked: 30 },
       readyAt: null, readyReason: null }} />);
     const root = view.container.firstElementChild!;

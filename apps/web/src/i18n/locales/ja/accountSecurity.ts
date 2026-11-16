@@ -2,7 +2,7 @@ export const accountSecurity = {
   "differentEmail": "別のメールアドレスを使う",
   "inUse": "このメールは別のアカウントに登録されています。別のアドレスを使用してください。",
   "identifierRequired": "ユーザー名またはメールを入力してください。",
-  "title": "アカウントのセキュリティ",
+  "title": "アカウント保護",
   "missing": "復旧用メール未登録",
   "pending": "メール確認待ち",
   "verified": "確認済み",

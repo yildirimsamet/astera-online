@@ -112,6 +112,8 @@ export const topBar = {
 
 /** Görünüm çipi ve sayfası: katmanlar, olay rehberi ve galaksi başlığı. */
 export const view = {
+  /** H1 (2026-11-16): the round keys under the finds on the galaxy's right. */
+  tools: 'Galaksi araçları',
   chip: 'Görünüm',
   title: 'Görünüm',
   layers: 'Katmanlar',
@@ -201,8 +203,9 @@ export const reportScene = {
 /** K6: the switch at the top of the Base — this world, or the commander's research. */
 export const baseSwitch = {
   label: 'Üs',
-  world: 'Bu dünya',
+  world: 'Gezegen',
   research: 'Araştırma',
+  ship: 'Gemi',
 } as const;
 
 /** E8 · K9: the research constellation. */

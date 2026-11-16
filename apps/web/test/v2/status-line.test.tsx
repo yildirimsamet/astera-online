@@ -21,9 +21,7 @@ const props = (over: Partial<StatusLineProps> = {}): StatusLineProps => ({
   recoveryUntil: null,
   signalUntil: null,
   vacationUntil: null,
-  rewards: 0,
   onWorld: vi.fn(),
-  onRewards: vi.fn(),
   onHint: vi.fn(),
   ...over,
 });
@@ -83,14 +81,9 @@ describe('the status line', () => {
     expect(all.onHint).toHaveBeenCalledWith(expect.stringMatching(/^Protected until /));
   });
 
-  it('offers the gift while claims wait, and opens the rewards', async () => {
-    const all = props({ rewards: 2 });
-    const { rerender } = render(<StatusLine {...all} />);
-    const gift = screen.getByRole('button', { name: 'Rewards · 2 ready to claim' });
-    expect(gift.querySelector('img')?.getAttribute('src')).toMatch(/gift/);
-    await userEvent.click(gift);
-    expect(all.onRewards).toHaveBeenCalledTimes(1);
-    rerender(<StatusLine {...props()} />);
+  /** H1 (owner 2026-11-16): the gift stands with the galaxy's tools; the chips say only what holds. */
+  it('carries no gift: it stands with the galaxy’s tools', () => {
+    render(<StatusLine {...props()} />);
     expect(screen.queryByRole('button', { name: /^Rewards/ })).toBeNull();
   });
 });

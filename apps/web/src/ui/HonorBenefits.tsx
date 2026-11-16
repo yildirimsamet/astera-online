@@ -44,7 +44,7 @@ export function HonorBenefitsSection({ value }: { value: HonorBenefitsView | nul
   };
   // A positive tier is reached AT its threshold, so the gap is exact; a penalty is left only ABOVE its line.
   const next = value.tier === 2 ? null
-    : value.tier >= 0 ? t('honorBenefits.next', { amount: honorScore(BigInt(p[value.tier]) - BigInt(value.score)), tier: tierName(value.tier === 0 ? 1 : 2) })
+    : value.tier >= 0 ? t('honorBenefits.next', { amount: honorScore(BigInt(p[value.tier === 0 ? 0 : 1]) - BigInt(value.score)), tier: tierName(value.tier === 0 ? 1 : 2) })
       : t('honorBenefits.climb', { amount: honorScore(-n[value.tier === -1 ? 0 : 1]), tier: tierName(value.tier === -1 ? 0 : -1) });
   const now = effectTones(value.tier);
   return <section data-honor-benefits className="gk gk-well gk-honorperk" data-tone={value.tier > 0 ? 'good' : value.tier < 0 ? 'hostile' : undefined}>

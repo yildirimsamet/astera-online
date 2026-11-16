@@ -892,8 +892,8 @@ describe('the focus rail’s two commitments', () => {
       </Wrapper>,
     );
     expect(screen.getByText(/what a strike does/i)).toBeInTheDocument();
-    // ...and no row is spent on a weapon this commander does not own.
-    expect(document.querySelector('[data-death-star]')).toBeNull();
+    // ...and the weapon they do not own yet stands folded, its hold refused (owner, 2026-11-16).
+    expect(document.querySelector('[data-death-star]')).toBeDisabled();
   });
 
   it('shows the whole neutral claim route and unmet founding cargo at the decision', () => {

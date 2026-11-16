@@ -797,7 +797,6 @@ export function PlanetFocus({
       : null;
 
   const deathStarReady = readyDeathStar(planet) !== undefined;
-  const hasDeathStar = deathStarsOf(planet).length > 0;
   const deathStarBlock = target.vacation
     ? t('errors.TARGET_VACATION')
     : originSilentSpace
@@ -1243,10 +1242,10 @@ export function PlanetFocus({
         İkisi de açılıp kapanabilir accordion olsun."* It replaces the grey slab on the rail and
         the sheet it opened: the price and the readings sit above a red hold, folded until wanted.
 
-        A WEAPON YOU DO NOT OWN TAKES NO SECTION: with nothing on the pad there is no gap to
-        close, only a row of type. Once one exists in any state, its block reason is actionable.
+        Owner, 2026-11-16: it stands folded even before one exists, as the radiation strike does
+        with "0 ready" — red beside the strike's yellow; opened, it says what building one takes.
       */}
-      {onDeathStar && !target.clanmate && hasDeathStar && (
+      {onDeathStar && !target.clanmate && (
         <DeathStarSection
           target={target}
           origin={planet}
@@ -1387,6 +1386,11 @@ export function DeathStarSection({ target, origin, report, disabledReason, onLau
   return (
     <StrikeFold data-strike-section="" data-weapon="death-star" glyph="target" title={t('focus.planet.deathStarSection.title')}
       target={t('planet.radiationBomb.target', { target: world })} ready={t('focus.planet.strikeReady', { ready })}>
+      {deathStarsOf(origin).length === 0 && (
+        <p data-death-star-build className="gk-inote" data-tone="warn"><Glyph id="lock" />{t('planet.deathStar.none')} · {t('planet.deathStar.needs', {
+          need: `${t('planet.deathStar.needCore', { level: DEATH_STAR.requiredCore })}, ${t('planet.deathStar.needShipyard', { level: DEATH_STAR.requiredShipyard })}`,
+        })}</p>
+      )}
       <StrikeDetails target={target} report={report} origin={origin} />
       {/* A weapon fired is gone and cannot be called back: the kit's final weight, 1.5 s. */}
       <GameHold weight="final" tone="danger" glyph="target" commitSound="impact" marks={{ 'data-death-star': '' }}
@@ -2487,7 +2491,8 @@ export function AsteroidFocus({
                     ? t('focus.asteroid.noCraft')
                     : tooLate ? t('focus.asteroid.tooLate') : null}
             onPress={() => { onSend(sending); }}>
-            {t('focus.asteroid.send', { count: sending, duration: duration(reach) })}
+            {/* with no reach the press is refused and its reason is the label */}
+            {reach === null ? null : t('focus.asteroid.send', { count: sending, duration: duration(reach) })}
           </GameButton>
         </>
       }
@@ -3762,7 +3767,8 @@ export function DebrisFocus({
                     ? t('focus.debris.measuring')
                     : tooLate ? t('focus.debris.tooLate') : null}
             onPress={() => { onSend(sending); }}>
-            {t('focus.debris.send', { count: sending, duration: duration(reach) })}
+            {/* with no reach the press is refused and its reason is the label */}
+            {reach === null ? null : t('focus.debris.send', { count: sending, duration: duration(reach) })}
           </GameButton>
         </>
       }

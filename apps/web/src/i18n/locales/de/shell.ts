@@ -605,7 +605,7 @@ export const chat = {
   send: 'Senden',
   messageActions: 'Aktionen für Nachricht von {{name}}',
   personalMutes: {
-    title: "Stummgeschaltete Spieler",
+    title: "Stummgeschaltet",
     hint: "Blendet ihre Nachrichten im allgemeinen und im Clan-Chat auf diesem Gerät aus.",
     empty: "Keine stummgeschalteten Spieler.",
     emptyHint: "Halte eine Nachricht gedrückt, um jemanden stummzuschalten.",

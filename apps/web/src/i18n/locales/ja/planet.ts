@@ -78,7 +78,7 @@ export const planet = {
 },
   abandon: {
     "action": "植民地を放棄",
-    "title": "この植民地を放棄しますか？",
+    "title": "植民地を放棄",
     "cancel": "植民地を維持",
     "confirm": "放棄する",
     "pending": "放棄中…",

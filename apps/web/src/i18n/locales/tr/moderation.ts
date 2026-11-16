@@ -14,7 +14,7 @@ export const moderation = {
     "accept": "Kabul et ve devam et"
 },
   "report": "Bildir",
-  "title": "İçerik veya oyuncu bildir",
+  "title": "Bildir",
   "explanation": "Ekip bildirimleri gizli olarak inceler. Bildirim göndermek içeriği kendiliğinden kaldırmaz veya oyuncuyu engellemez.",
   "target": "Neyi bildiriyorsun?",
   "message": "Mesaj",
