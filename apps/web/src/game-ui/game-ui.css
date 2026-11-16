@@ -15101,3 +15101,32 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
   word-break: break-all;
   color: var(--gk-ink);
 }
+
+/* ── C38 (2026-11-15): the Shopier step. Once the commander's own page is made, a gold plate
+   holds the one way on (the kit's main press as a link out) and the two facts under it. */
+.gk-shopier {
+  --edge: linear-gradient(90deg, var(--gk-gold), color-mix(in srgb, var(--gk-gold) 30%, var(--gk-metal-edge)));
+  display: grid;
+  gap: var(--gk-s2);
+  margin-top: var(--gk-s2);
+  padding: var(--gk-s3);
+}
+.gk-shopier__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gk-gold);
+}
+.gk-shopier__title .gk-glyph { width: 14px; height: 14px; }
+.gk-shopier .gk-btn { text-decoration: none; }
+.gk-shopier__line {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 6px;
+  font-size: var(--gk-t-floor);
+  line-height: 1.4;
+  color: var(--gk-ink-2);
+}
+.gk-shopier__line .gk-glyph { width: 14px; height: 14px; margin-top: 2px; }
+.gk-shopier__line--wait { color: var(--gk-ink); }
+.gk-shopier__line--wait .gk-glyph { color: var(--gk-gold); }

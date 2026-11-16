@@ -88,8 +88,7 @@ export function SkinShopContent(props: Parameters<typeof PlanetShopContent>[0]) 
     </button> : null;
     if (lira === undefined) return polar ?? <button type="button" disabled className="min-h-11 w-full rounded-control border border-v2-line-hi text-caption text-v2-ink-3">{unavailable}</button>;
     return <div className="grid gap-1.5">
-      <ShopierPayButton amount={lira} state={checkout.of(id)} onPress={() => { void checkout.start(id); }}
-        className="v2-store-shimmer min-h-11 w-full rounded-control bg-v2-premium px-3 text-caption font-semibold text-v2-void" />
+      <ShopierPayButton amount={lira} state={checkout.of(id)} onPress={() => { void checkout.start(id); }} wide />
       <ShopierProgress state={checkout.of(id)} />
       {polar}
     </div>;
@@ -302,7 +301,7 @@ function PlanetShopContent({
               {t('skins.wearIt')}
             </button>
           ) : lira !== undefined ? (
-            <ShopierPayButton amount={lira} state={checkout.of(selected)} onPress={() => { void checkout.start(selected); }} className={buyClass} />
+            <ShopierPayButton amount={lira} state={checkout.of(selected)} onPress={() => { void checkout.start(selected); }} wide />
           ) : buyReady ? (
             <button type="button" onClick={buy} disabled={pending} aria-busy={pending} className={`${buyClass} disabled:opacity-60`}>
               {pending ? t('skins.checkoutStarting') : t('skins.buy', { price: money(selected, SKIN_PRICE) })}
@@ -399,7 +398,7 @@ function PlanetShopContent({
             </div>
             <div className="mt-3 grid gap-1.5">
               {bundleLira !== undefined ? <>
-                <ShopierPayButton amount={bundleLira} state={checkout.of('bundle')} onPress={() => { void checkout.start('bundle'); }} className={`${buyClass} w-full`} />
+                <ShopierPayButton amount={bundleLira} state={checkout.of('bundle')} onPress={() => { void checkout.start('bundle'); }} wide />
                 <ShopierProgress state={checkout.of('bundle')} />
                 {bundleReady && <button type="button" onClick={bundleBuy} disabled={pending} aria-busy={pending} className={`${SECOND_PRESS} disabled:opacity-60`}>
                   {pending ? t('skins.checkoutStarting') : t('skins.bundleBuy', { price: money('bundle', BUNDLE_PRICE) })}

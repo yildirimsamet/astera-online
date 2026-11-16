@@ -77,6 +77,7 @@ import { Sheet } from '../kit/Sheet.js';
 import { ATMOSPHERE } from '../../ui/atmosphere.js';
 import { artIconSrc } from '../../game-ui/index.js';
 import { CosmeticTrialBar } from '../../screens/CosmeticTrialBar.js';
+import { ShopierPayButton, ShopierProgress } from '../../screens/ShopierCheckout.js';
 import { Api } from '../../api/client.js';
 import { ApiProvider } from '../../api/context.js';
 import { MenuPanel } from '../../shell/MenuPanel.js';
@@ -1748,6 +1749,25 @@ function Views({ view }: { view: string }) {
   return null;
 }
 
+/** C38: the Shopier step in each of its states: the press, the wait, the page made, the refusal. */
+function ShopierCheckoutGallery() {
+  const { t } = useTranslation();
+  const url = 'https://www.shopier.com/61000001';
+  return (
+    <Sheet detents={['full']} eyebrow={t('menu.asteraHeading')} title={t('menu.skinsShopLabel')} kit={{ art: artIconSrc('menu-shop') }} onClose={noop}>
+      <div className="gk grid gap-4 pb-4">
+        <ShopierPayButton amount={9900} state={null} onPress={noop} wide />
+        <ShopierPayButton amount={9900} state={{ itemId: 'planet-toxic', status: 'loading' }} onPress={noop} wide />
+        <div>
+          <ShopierPayButton amount={9900} state={{ itemId: 'planet-toxic', status: 'ready', url }} onPress={noop} wide />
+          <ShopierProgress state={{ itemId: 'planet-toxic', status: 'ready', url }} />
+        </div>
+        <ShopierProgress state={{ itemId: 'planet-toxic', status: 'error', message: t('skins.shopierCheckoutError') }} />
+      </div>
+    </Sheet>
+  );
+}
+
 export function Gallery({ view }: { view: string | null }) {
   useSoundEffects();
   if (view !== null && isKitView(view)) return <GameKitGallery view={view} />;
@@ -1764,6 +1784,7 @@ export function Gallery({ view }: { view: string | null }) {
         worlds={[{ id: 'home', name: 'Kestrel' }, { id: 'colony', name: 'Vega' }]} onSelect={noop} onCompare={noop} onEnd={noop} onShop={noop} />
     </div>;
   }
+  if (view === 'shopier-checkout') return <ShopierCheckoutGallery />;
   if (view === 'planet-selection') return <PlanetSelectionGallery />;
   if (view === 'monument-models') return <MonumentModelsGallery />;
   if (view?.startsWith('skin-card:')) {

@@ -1278,6 +1278,13 @@ Okundu: `galaxy/FocusPanel.tsx` 195–370 (ortak çerçeve `Shell`), 538–1363 
 - **Değişen:** Bölümler kitin etiketiyle; dava camda, "Geliştiriciden bir not" 44 px katlama satırı (ses + titreşim, ok döner). Dört kart resmi yine düğmenin kendisi; basınca ses, titreşim ve hafif çökme. Cüzdanlar camda, "Kopyala" kitin küçük düğmesi; kopyalanınca yeşile döner, tik gelir, adı değişir. Notlar kitin dipnotu. Sac kitin (yıldız resmi).
 - **Ölçüm** (tr; telefon, dar, masaüstü): 39 → 3 (kalan 3 arkalık); 12 px altı 15→0, kontrast 5→0. `reports/ui-audit/c41-donate-after-2026-11-15.md` (önce: `g6-shop-before`).
 
+**C38 Ödeme ✅ (2026-11-16, yardımcı oturum).** G6 #5 `ShopierCheckout`.
+- **An:** "Öde ve görünümü al." Sunucuya sorulan, sayfanın sahibe özel olması, bağlantının yeni sekmede açılması ve Polar yolu değişmedi.
+- **Değişen:** "Shopier ile öde" kitin ana düğmesi (`wide`; mağaza üç yerde aynı düğmeyi geçiriyor, `className` kalktı). Sayfa hazırlanırken döner ve sebebini yazar; hazır olunca tikli, geri çekilir. Hazır sayfa altın kenarlı kesik plaka: "Shopier'de öde" kitin ana düğmesi gibi bir bağlantı (onay sesi + titreşim), altında iki dipnot (neden not yazılmaz, ödeme bekleniyor). Hata kitin uyarı bannerı.
+- **Test:** `shopier-checkout.test.tsx` (3): kit düğmesi ve durumları, plaka + banner + eski boya yok, ses/titreşim ve bağlantı hedefi. Eski bileşende FAIL görüldü.
+- **Galeri:** yeni görünüm `shopier-checkout` (dört durum); envanterde `shop` erişimine eklendi, "ulaşılamıyor" kaydı kalktı.
+- **Ölçüm** (tr; telefon, dar, masaüstü): önce galeride yoktu, ölçülemedi. Sonra 1 (galeri arkalığı); 12 px altı 0, kontrast 0, 44 px altı 0. `reports/ui-audit/c38-shopier-after-2026-11-15.md`.
+
 ## G5. Sonuç: rapor, tekrar, kronik, dönüş
 
 Okundu: `screens/BattleReports.tsx` fonksiyon haritası + `ReportSheet` gövdesi (633–1080 iskelet); `battle-simulator/BattleReplayAction.tsx` (tam); `screens/ChronicleScreen.tsx` iskelet; `v2/hud/AwaySheet.tsx` 233–313.
