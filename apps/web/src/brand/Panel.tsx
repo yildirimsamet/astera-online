@@ -42,13 +42,14 @@ export function BrandLockup() {
   </div>;
 }
 
+/** The quiz's reward, first, on the kit's figures in each resource's colour (G13-d). */
 export function BrandRewardTray({ reward, label }: { reward: { alloy: number; crystal: number; deuterium: number }; label: string }) {
   const { t, i18n } = useTranslation();
-  return <div className="brand-reward-tray">
-    <p className="brand-panel-label">{label}</p>
-    <dl className="brand-reward-values">{(['alloy', 'crystal', 'deuterium'] as const).map(resource => <div key={resource} data-resource={resource}>
+  return <div className="gk-well gk-quizreward">
+    <p className="gk-label">{label}</p>
+    <dl>{(['alloy', 'crystal', 'deuterium'] as const).map(resource => <div key={resource} data-resource={resource}>
       <dt><img src={RESOURCE_ART[resource]} alt="" draggable={false} /><span>{t(`vocabulary.resource.${resource}`)}</span></dt>
-      <dd>+{reward[resource].toLocaleString(i18n.resolvedLanguage)}</dd>
+      <dd className="gk-num">+{reward[resource].toLocaleString(i18n.resolvedLanguage)}</dd>
     </div>)}</dl>
   </div>;
 }

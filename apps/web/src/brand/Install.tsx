@@ -6,6 +6,7 @@ import { Icon } from '../v2/icons.js';
 import { BrandLockup, useBrandPanelFocus } from './Panel.js';
 import { installProfile, isBraveBrowser, type InstallBrowser } from './installProfile.js';
 import { copyText } from '../lib/clipboard.js';
+import { GameButton } from '../game-ui/index.js';
 import { capabilities } from '../platform/runtime.js';
 import { observe } from '../lib/playerAnalytics/runtime.js';
 import { findsInstalledPwa, forgetInstalledPwa, INSTALLED_PWA_KEY, rememberInstalledPwa, remembersInstalledPwa, runningAsPwa } from './installedPwa.js';
@@ -197,7 +198,7 @@ export function InstallButton({ compact = false, variant = 'primary' }: { compac
   if (!capabilities().pwaInstall) return null;
   if (install ? install.installed || install.checking : runningAsPwa() || remembersInstalledPwa()) return null;
   if (!install) return <InstallProvider><InstallButton compact={compact} variant={variant} /></InstallProvider>;
-  return <Button size={compact ? 'sm' : 'md'} variant={variant} onClick={install.request}>{variant === 'ghost' && <Icon id="i-collect" className="size-3.5" />}{t(install.desktop ? 'brand.installDesktop' : 'brand.install')}</Button>;
+  return <GameButton size={compact ? 'sm' : 'md'} tone={variant === 'ghost' ? 'ghost' : 'action'} glyph="home" onPress={install.request}>{t(install.desktop ? 'brand.installDesktop' : 'brand.install')}</GameButton>;
 }
 
 function AsteraAddress() {

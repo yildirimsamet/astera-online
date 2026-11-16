@@ -2193,6 +2193,17 @@ Not: arena gerçek zamanlı; HUD'un dokunma ve okunma kuralları (başparmak ala
 - Galeriye `front-door` görünümü eklendi (`gallery:front-door`); ekran web'de görünmediği için denetim ancak böyle ulaşabiliyor. Galeri görünümün üstüne kaynak çubuğunu da çizdiği için puan (31) şişik. Ekranın kendi bulguları: 12 px altı yazı yok, kesilme yok; kontrast bulguları konturu saymayan ölçümden.
 - G13-b'de kaçan bir test (`onboarding`: giriş başlığının sınıfı) kit'e göre güncellendi.
 
+
+### G13-d — adres sorusu, dönüş kartı ve hızlı erişim düğmesi kit'te (2026-11-16)
+
+- Adres sorusu (`BrandQuiz`) kit levhası oldu:
+  - önce ödül: üç kaynak kit kuyusunda, kit sayılarıyla;
+  - her adres harf anahtarlı bir kit plakası; seçince dokunma sesi, yanlış seçim sarsılır ve sarı kit afişiyle doğru adresi söyler;
+  - ödül verilince onay işareti büyüyerek gelir, tek parlak düğme "oyuna devam et"; atla sessiz kit düğmesi.
+- Dönüş kartı (`RecallHost`) kit plakası; kapatma kit yuvarlak düğmesi; hızlı erişim düğmesi (`InstallButton`) artık kit düğmesi.
+- `brand/styles.css` içindeki kullanılmayan 27 kural silindi (soru, ödül, seçim, kart).
+- Bu ekranlar denetim envanterinde yok (brand klasörü listelenmiyor); `brand-preview` üzerinden telefon genişliğinde önce/sonra fotoğraflarıyla kontrol edildi. 12 px altı yazı yok, kesilme yok.
+- Kaldı: kurulum talimat sayfası (Install.tsx, eski Button/Icon) ayrı birimde.
 ## G13. Giriş, kayıt, halka açık sayfalar, hata ekranları
 
 | # | Yüzey | Dosya (satır) | Dil | Not |
