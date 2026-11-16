@@ -8,6 +8,7 @@ import { GalaxyView, type Panel } from '../../screens/GalaxyView.js';
 import { GameShell } from '../shell/GameShell.js';
 import { createCosmeticTrialClient } from './CosmeticTrialGallery.js';
 import { createStoreDiscoveryApi } from './storeDiscoveryApi.js';
+import { seedEverything } from './hudEverything.js';
 import { ProfilePage } from '../../shell/ProfilePage.js';
 import { dismissProfile, leaveProfile, useProfileRoute } from '../../shell/profileRoute.js';
 
@@ -15,10 +16,12 @@ const HOUR = 3_600_000;
 
 /**
  * Review the real HUD, menu and cosmetic screens without a login or a payment.
- * `protected`: a newcomer's shield and a signal boost on the bar; `vacation`: the vacation strip.
+ * `protected`: a newcomer's shield and a signal boost on the bar; `vacation`: the vacation strip;
+ * `everything`: every chip, count, card and map mark the galaxy can carry at once (`everything-calm`: no attack).
  */
-export function StoreDiscoveryGallery({ hud }: { hud?: 'protected' | 'vacation' }) {
+export function StoreDiscoveryGallery({ hud }: { hud?: 'protected' | 'vacation' | 'everything' | 'everything-calm' }) {
   const profileOpen = useProfileRoute();
+  const busy = hud === 'everything' || hud === 'everything-calm';
   const waiting = new URLSearchParams(window.location.search).get('menu-state') === 'waiting';
   const commander = waiting ? 'Kestrel Sable Andromeda' : 'Orion';
   const [client] = useState(() => {
@@ -31,13 +34,14 @@ export function StoreDiscoveryGallery({ hud }: { hud?: 'protected' | 'vacation' 
     }] : [] }, { updatedAt });
     next.setQueryData(keys.leaderboard, { ladder: [], you: null }, { updatedAt });
     const home = next.getQueryData<PlanetView>(keys.planetById('trial-home'));
-    if (hud && home) {
+    if ((hud === 'protected' || hud === 'vacation') && home) {
       next.setQueryData(keys.planetById('trial-home'), hud === 'vacation'
         ? { ...home, vacationUntil: new Date(Date.now() + 40 * HOUR) }
         : { ...home, planet: { ...home.planet, signalBoostUntil: new Date(Date.now() + 1.5 * HOUR) } }, { updatedAt });
     }
     const season = next.getQueryData<SeasonInfo>(keys.season);
     if (hud === 'protected' && season) next.setQueryData(keys.season, { ...season, shieldUntil: new Date(Date.now() + 7 * HOUR), shieldKind: 'NEWCOMER' }, { updatedAt });
+    if (hud === 'everything' || hud === 'everything-calm') seedEverything(next, { calm: hud === 'everything-calm' });
     return next;
   });
   const [api] = useState(() => createStoreDiscoveryApi(client));
@@ -60,7 +64,8 @@ export function StoreDiscoveryGallery({ hud }: { hud?: 'protected' | 'vacation' 
               <>
               <GalaxyView panel={profileOpen ? 'profile' : panel} onPanel={shell.onPanel} commander={commander} onSignOut={() => undefined}
                 homeRequest={shell.homeRequest} worldsRequest={shell.worldsRequest} centerRequest={shell.centerRequest}
-                onOpenChat={shell.onOpenChat} showChat={false} showGuidance={false} />
+                onOpenChat={shell.onOpenChat} showChat={busy} showGuidance={busy}
+                {...(busy ? { onOpenBell: shell.onOpenBell, clearRequest: shell.clearRequest } : {})} />
               {profileOpen && <ProfilePage name={commander} country="TR" onCountryChange={() => Promise.resolve()} onSignOut={() => undefined} onBack={leaveProfile} />}
               </>
             )}

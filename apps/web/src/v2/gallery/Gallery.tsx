@@ -1941,6 +1941,7 @@ export function Gallery({ view }: { view: string | null }) {
   if (view === 'premium-space') return <PremiumSpaceGallery />;
   if (view === 'store-discovery') return <StoreDiscoveryGallery />;
   if (view === 'hud-protected' || view === 'hud-vacation') return <StoreDiscoveryGallery hud={view === 'hud-protected' ? 'protected' : 'vacation'} />;
+  if (view === 'hud-everything' || view === 'hud-everything-calm') return <StoreDiscoveryGallery hud={view === 'hud-everything' ? 'everything' : 'everything-calm'} />;
   if (view === 'cosmetic-trial') return <CosmeticTrialGallery />;
   // C39: the trial bar itself, as it stands on the dock over a world of mine, with two worlds to choose from.
   if (view === 'cosmetic-trial-bar') {
