@@ -284,9 +284,39 @@ export function ContextStrip({ tone, glyph, eyebrow, title, label, onPress }: {
 }
 
 /**
- * A STRIKE THAT FOLDS (G4-j, 2026-11-15): a weapon on the focus panel, closed until wanted. The
- * head names the strike, what it is aimed at and how many are ready; opening it is a press with
- * its own click, and the launch inside is a hold — folding is the way back.
+ * THE KIT'S ONE FOLD (S5, 2026-11-16): what a player sets once or reads rarely, shut until
+ * wanted. The head says what it is, where it stands (`sub`) and its one figure (`value`), in
+ * its tone; opening is a press with its own click. `open` arrives open — for what is urgent.
+ */
+export function Fold({ glyph, title, sub, value, tone = 'self', open = false, children, ...data }: {
+  glyph: GlyphId;
+  title: string;
+  sub?: string;
+  value?: string;
+  tone?: 'self' | 'warn' | 'hostile';
+  open?: boolean;
+  children: ReactNode;
+} & Record<`data-${string}`, string>) {
+  return (
+    <details {...data} data-tone={tone} open={open} className="gk gk-strike">
+      <summary className="gk-strike__head" {...OWN_SOUND} onClick={() => { playSound('tap'); haptic('tap'); }}>
+        <span className="gk-strike__mark" aria-hidden="true"><Glyph id={glyph} /></span>
+        <span className="gk-strike__words">
+          <span className="gk-strike__title">{title}</span>
+          {sub !== undefined && <span className="gk-sub gk-strike__target">{sub}</span>}
+        </span>
+        {value !== undefined && <span className="gk-chip gk-num gk-strike__ready">{value}</span>}
+        <span className="gk-strike__chev" aria-hidden="true"><Glyph id="down" /></span>
+      </summary>
+      <div className="gk-strike__body">{children}</div>
+    </details>
+  );
+}
+
+/**
+ * A STRIKE THAT FOLDS (G4-j, 2026-11-15): a weapon on the focus panel, closed until wanted — the
+ * kit's fold in the weapon's colour (radiation yellow, the rest red). The head names the strike,
+ * what it is aimed at and how many are ready; the launch inside is a hold.
  */
 export function StrikeFold({ glyph, title, target, ready, children, ...data }: {
   glyph: GlyphId;
@@ -296,17 +326,8 @@ export function StrikeFold({ glyph, title, target, ready, children, ...data }: {
   children: ReactNode;
 } & Record<`data-${string}`, string>) {
   return (
-    <details {...data} className="gk gk-strike">
-      <summary className="gk-strike__head" {...OWN_SOUND} onClick={() => { playSound('tap'); haptic('tap'); }}>
-        <span className="gk-strike__mark" aria-hidden="true"><Glyph id={glyph} /></span>
-        <span className="gk-strike__words">
-          <span className="gk-strike__title">{title}</span>
-          <span className="gk-sub gk-strike__target">{target}</span>
-        </span>
-        <span className="gk-chip gk-num gk-strike__ready">{ready}</span>
-        <span className="gk-strike__chev" aria-hidden="true"><Glyph id="down" /></span>
-      </summary>
-      <div className="gk-strike__body">{children}</div>
-    </details>
+    <Fold {...data} glyph={glyph} title={title} sub={target} value={ready} tone={data['data-weapon'] === 'radiation' ? 'warn' : 'hostile'}>
+      {children}
+    </Fold>
   );
 }

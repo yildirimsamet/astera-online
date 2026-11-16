@@ -11235,19 +11235,13 @@ html:lang(ja) .gk-hold--md .gk-hold__label {
 
 /* ── G2-h3 (2026-11-15): the defence posture and the clan support bay ──────── */
 
-.gk-posture,
-.gk-sbay {
-  display: grid;
-  gap: 8px;
-  padding: 10px 12px 12px;
-}
 .gk-posture__note {
   font-size: var(--gk-t-small);
   line-height: 1.35;
   color: var(--gk-ink-2);
 }
-.gk-posture [data-tone='warn'] { color: var(--gk-warn); }
-.gk-posture [data-tone='self'] { color: var(--gk-self); }
+.gk-posture__note[data-tone='warn'] { color: var(--gk-warn); }
+.gk-posture__note[data-tone='self'] { color: var(--gk-self); }
 .gk-posture__ask {
   display: grid;
   gap: 6px;
@@ -11264,21 +11258,6 @@ html:lang(ja) .gk-hold--md .gk-hold__label {
 }
 
 /* The bay: its room as a two-part bar (standing full, flying in lighter), then who is here. */
-.gk-sbay__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--gk-s2);
-}
-.gk-sbay__figure {
-  font-family: var(--gk-font-display);
-  font-weight: var(--gk-display-weight);
-  font-stretch: var(--gk-display-stretch);
-  font-size: var(--gk-t-lead);
-  color: var(--gk-ink);
-  white-space: nowrap;
-}
-.gk-sbay__total { color: var(--gk-ink-3); }
 .gk-sbay__bar {
   display: flex;
   height: 12px;
@@ -11287,8 +11266,8 @@ html:lang(ja) .gk-hold--md .gk-hold__label {
   flex: none;
   height: 100%;
 }
-.gk-sbay [data-part='standing'] { background: linear-gradient(180deg, var(--gk-self-hi), var(--gk-self) 55%, var(--gk-self-lo)); }
-.gk-sbay [data-part='inbound'] { background: color-mix(in srgb, var(--gk-self) 42%, transparent); }
+[data-support-bay] [data-part='standing'] { background: linear-gradient(180deg, var(--gk-self-hi), var(--gk-self) 55%, var(--gk-self-lo)); }
+[data-support-bay] [data-part='inbound'] { background: color-mix(in srgb, var(--gk-self) 42%, transparent); }
 .gk-sbay__legend {
   display: flex;
   flex-wrap: wrap;
@@ -14976,7 +14955,10 @@ button.gk-fact__head:active .gk-fact__line {
     linear-gradient(130deg, color-mix(in srgb, var(--gk-strike-tone) 16%, transparent), transparent 62%),
     linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-3));
 }
-.gk-strike[data-weapon='radiation'] { --gk-strike-tone: var(--gk-warn); }
+.gk-strike[data-tone='warn'] { --gk-strike-tone: var(--gk-warn); }
+/* S5: the kit's fold is this shape — a setting or a rarely read bay folds in the player's own colour. */
+.gk-strike[data-tone='self'] { --gk-strike-tone: var(--gk-self); }
+.gk-strike[data-tone='self'] .gk-strike__title { color: var(--gk-ink); }
 .gk-strike + .gk-strike { margin-top: var(--gk-s2); }
 .gk-strike__head {
   display: flex;
@@ -17519,3 +17501,19 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
   12%, 80% { transform: translateY(0); opacity: 1; }
   100% { opacity: 0; }
 }
+
+/* ── E1 (owner review 2026-11-16, item 9): a hull card's attack, defence and speed under its name ── */
+.gk-bcard__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 0;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink);
+}
+.gk-bcard__stat { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.gk-bcard__stat .gk-glyph { width: 12px; height: 12px; }
+.gk-bcard__stat[data-tone='hostile'] .gk-glyph { color: var(--gk-hostile); }
+.gk-bcard__stat[data-tone='self'] .gk-glyph { color: var(--gk-self); }
+.gk-bcard__stat[data-tone='info'] .gk-glyph { color: var(--gk-info, var(--gk-self-hi)); }

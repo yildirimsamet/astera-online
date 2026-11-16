@@ -7,7 +7,9 @@ import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
 import { openAllBands, planetView } from './fixtures.js';
 import i18n from '../src/i18n/index.js';
-import { HULLS } from '@astera/rules';
+import { HULLS, hullTech } from '@astera/rules';
+import { compact } from '../src/lib/format.js';
+import { techOf } from '../src/lib/navigation.js';
 import { researchName } from '../src/i18n/names.js';
 import { UpgradeRow } from '../src/ui/UpgradeRow.js';
 
@@ -181,5 +183,40 @@ describe('a hull row says where its craft are', () => {
     );
     expect(view.queryByTestId('hull-tier')).toBeNull();
     expect(view.getByTestId('hull-where')).toHaveTextContent('2 in · 0 out');
+  });
+});
+
+/**
+ * HOW IT FIGHTS, ON THE CARD (owner review 2026-11-16, item 9): attack, defence and speed under
+ * the name, so ships are compared on the shelf rather than one sheet at a time. The figures are
+ * the build sheet's own — attack and defence with this world's research, speed as the hull flies.
+ */
+describe('a hull card says how it fights', () => {
+  it('prints attack, defence and speed, each named for a reader', async () => {
+    const view = await show({ DART: 3 });
+    const stats = rowFor(view, 'DART').querySelector<HTMLElement>('[data-card-stats]')!;
+    expect(stats).not.toBeNull();
+    const effects = hullTech(techOf(current), 'DART');
+    expect(stats.querySelector('[data-stat="attack"]')).toHaveTextContent(`${i18n.t('action.statAttack')}${compact(HULLS.DART.atk * effects.atk)}`);
+    expect(stats.querySelector('[data-stat="hull"]')).toHaveTextContent(`${i18n.t('action.statHull')}${compact(HULLS.DART.hp * effects.hp)}`);
+    expect(stats.querySelector('[data-stat="speed"]')).toHaveTextContent(`${i18n.t('action.statSpeed')}${compact(HULLS.DART.speed)}`);
+  });
+
+  it('says a gun does not move instead of printing nought', () => {
+    const view = render(
+      <UpgradeRow name="Thorn" role="ground gun" layout="card" summary="hull" stats={{ atk: 40, hp: 300, speed: 0, cargo: 0 }}
+        cost={{ alloy: 600, crystal: 150 }} held={{ alloy: 900, crystal: 900 }} verb="build" onAct={() => undefined} />,
+    );
+    expect(view.container.querySelector('[data-card-stats] [data-stat="speed"]')).toHaveTextContent(i18n.t('action.statSpeedFixed'));
+  });
+});
+
+/** ONE PLACE FOR ONE FACT (owner review 2026-11-16): the Hangar card already says "80 → 180 room". */
+describe('the hangar room does not repeat the hangar card', () => {
+  it('leaves the next level to the card', async () => {
+    const view = await show({ DART: 3 });
+    const room = view.container.querySelector<HTMLElement>('[data-hangar-room]')!;
+    expect(room).not.toBeNull();
+    expect(room).not.toHaveTextContent(/→/);
   });
 });

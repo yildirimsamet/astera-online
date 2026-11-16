@@ -45,6 +45,9 @@ export const clanSupport = {
   sendBackCost: 'No fuel comes back',
   more_one: 'Show {{count}} more wave',
   more_other: 'Show {{count}} more waves',
+  /** The folded bay's head (owner review 2026-11-16): how many waves stand or fly in. */
+  bayWaves_one: '{{count}} wave',
+  bayWaves_other: '{{count}} waves',
 
   /* The send sheet. */
   sendAction: 'Send support',

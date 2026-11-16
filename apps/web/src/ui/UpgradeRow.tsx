@@ -4,7 +4,8 @@ import { cardEffect, type Gain } from '../lib/gains.js';
 
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
-import { CostLine, Glyph, LevelBadge } from '../game-ui/index.js';
+import { CostLine, Glyph, LevelBadge, type GlyphId } from '../game-ui/index.js';
+import { compact } from '../lib/format.js';
 import { Rungs } from './Rungs.js';
 import { duration, roughDuration } from '../lib/time.js';
 import { ActionButton, Price, ResourceAmounts, TimeCost, useOrderDuration, type Verb } from './Action.js';
@@ -152,6 +153,7 @@ export function UpgradeRow({
   flash = false,
   layout = 'row',
   summary,
+  stats,
 }: {
   /** Hull cards keep only identity, class glyph, holdings and purchase figures. */
   summary?: 'hull';
@@ -381,6 +383,8 @@ export function UpgradeRow({
               </p>
             )}
           </div>
+          {/* HOW IT FIGHTS (owner review 2026-11-16, item 9): attack, defence, speed — ships compared on the shelf. */}
+          {summary === 'hull' && stats && <HullFigures stats={stats} />}
           {/* ONE LINE OF WHAT IT IS FOR (owner note 4): the tag, or the role where there is none. */}
           {summary !== 'hull' && (
             <div data-card-purpose className="gk-bcard__tag">
@@ -955,10 +959,34 @@ export function DecisionGroup({
     <section className="gk flex flex-col gap-2">
       <header className="gk-group__head">
         <h2 className="sr-only">{problem}</h2>
-        <p className="gk-group__what">{question}</p>
+        {/* The tab names its purpose; the line is for a reader (owner review 2026-11-16: no obvious text). */}
+        <p className="gk-group__what sr-only">{question}</p>
         {aside}
       </header>
       <div className="flex flex-col gap-2">{children}</div>
     </section>
+  );
+}
+
+const FIGURES: readonly { id: 'attack' | 'hull' | 'speed'; glyph: GlyphId; tone: string; label: 'action.statAttack' | 'action.statHull' | 'action.statSpeed' }[] = [
+  { id: 'attack', glyph: 'attack', tone: 'hostile', label: 'action.statAttack' },
+  { id: 'hull', glyph: 'hull', tone: 'self', label: 'action.statHull' },
+  { id: 'speed', glyph: 'speed', tone: 'info', label: 'action.statSpeed' },
+];
+
+/** A hull card's three fighting figures, each a glyph and a number; the word is for a reader. */
+function HullFigures({ stats }: { stats: { atk: number; hp: number; speed: number } }) {
+  const { t } = useTranslation();
+  const value = { attack: compact(stats.atk), hull: compact(stats.hp), speed: stats.speed === 0 ? t('action.statSpeedFixed') : compact(stats.speed) };
+  return (
+    <p data-card-stats className="gk-bcard__stats gk-num">
+      {FIGURES.map((figure) => (
+        <span key={figure.id} data-stat={figure.id} data-tone={figure.tone} className="gk-bcard__stat">
+          <span className="sr-only">{t(figure.label)}</span>
+          <Glyph id={figure.glyph} />
+          {value[figure.id]}
+        </span>
+      ))}
+    </p>
   );
 }

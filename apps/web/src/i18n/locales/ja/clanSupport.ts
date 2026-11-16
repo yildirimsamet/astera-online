@@ -40,6 +40,8 @@ export const clanSupport = {
   sendBackCost: '燃料は戻りません',
   more_one: 'さらに{{count}}部隊を表示',
   more_other: 'さらに{{count}}部隊を表示',
+  bayWaves_one: '{{count}}部隊',
+  bayWaves_other: '{{count}}部隊',
 
   sendAction: '支援を送る',
   sendActionHint: 'このクランメイトの惑星に艦を駐留させます。襲撃されればそこで戦います。',

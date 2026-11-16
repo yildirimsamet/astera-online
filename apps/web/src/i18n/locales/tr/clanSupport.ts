@@ -40,6 +40,8 @@ export const clanSupport = {
   sendBackCost: 'Yakıt iade edilmez',
   more_one: '{{count}} dalga daha göster',
   more_other: '{{count}} dalga daha göster',
+  bayWaves_one: '{{count}} dalga',
+  bayWaves_other: '{{count}} dalga',
 
   sendAction: 'Destek gönder',
   sendActionHint: 'Bu klan arkadaşının dünyasına gemi konuşlandır. Saldırı gelirse orada savaşırlar.',

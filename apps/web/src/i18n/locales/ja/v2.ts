@@ -235,7 +235,6 @@ export const roomBar = {
   free: "空き{{value}}",
   reading: "{{label}}：{{total}}枠中{{used}}枠を使用",
   returnFits: "飛行中の船も格納枠を使い続けるため、帰還する艦隊は必ず収まります。",
-  nextHangar: "格納庫をレベル{{level}}にすると{{from}}→{{to}}枠になります。",
   gunsStay: "地上砲は惑星間を移動できません。",
   nextCore: "司令中枢をレベル{{level}}にすると{{from}}→{{to}}枠になります。",
 };

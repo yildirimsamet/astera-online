@@ -40,6 +40,8 @@ export const clanSupport = {
   sendBackCost: 'Kein Treibstoff zurück',
   more_one: '{{count}} weitere Welle zeigen',
   more_other: '{{count}} weitere Wellen zeigen',
+  bayWaves_one: '{{count}} Welle',
+  bayWaves_other: '{{count}} Wellen',
 
   sendAction: 'Unterstützung senden',
   sendActionHint: 'Stationiere Schiffe auf der Welt dieses Clanmitglieds. Wird sie angegriffen, kämpfen sie dort.',

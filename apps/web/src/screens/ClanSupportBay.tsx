@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClanSupportActions, useSetDefencePosture } from '../api/queries.js';
 import type { ClanSupportWave, PlanetView } from '../api/schemas.js';
-import { Banner, GameButton, GameHold, Glyph, InfoPeek, SectionTag, TimerRow, Toggle } from '../game-ui/index.js';
+import { Banner, Fold, GameButton, GameHold, Glyph, InfoPeek, TimerRow, Toggle } from '../game-ui/index.js';
 import { describeError } from '../i18n/errors.js';
 import { hullName } from '../i18n/names.js';
 import { supportVerdict } from '../lib/clanAlarm.js';
@@ -68,10 +68,11 @@ function PostureCard({ planet, posture }: {
     apply(next);
   };
 
+  const stance = draft.escape && draft.support ? 'ESCAPE_SUPPORT' : draft.escape ? 'ESCAPE' : draft.support ? 'SUPPORT' : 'HOLD';
+  // Set once a season, so it folds (owner review 2026-11-16): the head says where it stands.
   return (
-    <section data-defence-posture="" className="gk-posture gk-well">
+    <Fold data-defence-posture="" glyph="shield" title={t('clanSupport.postureTitle')} sub={t(`clanSupport.postureRead.${stance}`)}>
       <HonorSoloNotice look="kit" />
-      <SectionTag>{t('clanSupport.postureTitle')}</SectionTag>
       <Toggle checked={draft.escape} label={t('clanSupport.escapeLabel')} sub={t('clanSupport.escapeOn')}
         onChange={(on) => { flip({ ...draft, escape: on }); }} />
       <Toggle checked={draft.support} locked={locked} label={t('clanSupport.supportLabel')}
@@ -91,7 +92,7 @@ function PostureCard({ planet, posture }: {
       )}
       {save.isPending && <p role="status" className="gk-posture__note">{t('clanSupport.saving')}</p>}
       {save.isError && <p role="alert" data-tone="warn" className="gk-posture__note">{describeError(save.error)}</p>}
-    </section>
+    </Fold>
   );
 }
 
@@ -118,14 +119,12 @@ export function ClanSupportBay({ planet }: { planet: PlanetView }) {
   const shown = open ? bay.waves : bay.waves.slice(0, FOLD_AFTER);
   const factor = hostFactor(planet, now);
 
+  const alarmed = (bay.alarms?.length ?? 0) > 0;
+  // Folded to its room and wave count (owner review 2026-11-16); an alarm opens it, it is urgent.
   return (
-    <section data-support-bay="" className="gk-sbay gk-well">
-      <p className="gk-sbay__head">
-        <span className="gk-label">{t('clanSupport.bayTitle')}</span>
-        <span className="gk-sbay__figure gk-num">
-          {compact(taken)}<span className="gk-sbay__total"> / {compact(bay.room.total)}</span>
-        </span>
-      </p>
+    <Fold data-support-bay="" glyph="support" title={t('clanSupport.bayTitle')} open={alarmed}
+      sub={bay.waves.length === 0 ? t('clanSupport.empty') : t('clanSupport.bayWaves', { count: bay.waves.length })}
+      value={`${compact(taken)} / ${compact(bay.room.total)}`}>
       <span role="img" aria-label={t('clanSupport.bayReading', { used: compact(taken), total: compact(bay.room.total) })}
         className="gk-bar gk-sbay__bar">
         {bay.room.used > 0 && <span data-part="standing" className="gk-sbay__part" style={{ width: share(bay.room.used) }} />}
@@ -145,9 +144,7 @@ export function ClanSupportBay({ planet }: { planet: PlanetView }) {
           about={t('clanSupport.bayFactorAbout')}
         />
       </div>
-      {bay.waves.length === 0 ? (
-        <p className="gk-sub">{t('clanSupport.empty')}</p>
-      ) : (
+      {bay.waves.length > 0 && (
         <ul className="gk-tlist">
           {shown.map((wave) => <WaveRow key={wave.id} wave={wave} />)}
         </ul>
@@ -158,7 +155,7 @@ export function ClanSupportBay({ planet }: { planet: PlanetView }) {
         </GameButton>
       )}
       <p className="gk-sub">{t(lifts ? 'clanSupport.ruleLineLift' : 'clanSupport.ruleLine')}</p>
-    </section>
+    </Fold>
   );
 }
 

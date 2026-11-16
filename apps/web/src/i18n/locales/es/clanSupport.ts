@@ -40,6 +40,8 @@ export const clanSupport = {
   sendBackCost: 'Sin devolver combustible',
   more_one: 'Mostrar {{count}} oleada más',
   more_other: 'Mostrar {{count}} oleadas más',
+  bayWaves_one: '{{count}} oleada',
+  bayWaves_other: '{{count}} oleadas',
 
   sendAction: 'Enviar apoyo',
   sendActionHint: 'Aposta naves en el mundo de este compañero de clan. Lucharán allí si lo atacan.',

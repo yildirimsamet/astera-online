@@ -40,6 +40,8 @@ export const clanSupport = {
   sendBackCost: 'Carburant non rendu',
   more_one: 'Afficher {{count}} vague de plus',
   more_other: 'Afficher {{count}} vagues de plus',
+  bayWaves_one: '{{count}} vague',
+  bayWaves_other: '{{count}} vagues',
 
   sendAction: 'Envoyer du soutien',
   sendActionHint: 'Stationne des vaisseaux sur le monde de ce membre du clan. Ils s’y battent s’il est attaqué.',

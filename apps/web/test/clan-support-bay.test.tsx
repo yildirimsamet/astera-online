@@ -70,6 +70,8 @@ const toggle = (name: RegExp) => screen.getByRole('switch', { name });
 describe('the defence posture card', () => {
   it('explains Honor before the player enables clan defence support', () => {
     show(<DefencePostureCard planet={world('HOLD')} />, vi.fn(), true);
+    // Folded since 2026-11-16: the notice stands inside, above the switches, once it is opened.
+    document.querySelector<HTMLDetailsElement>('[data-defence-posture]')!.open = true;
     expect(screen.getByText(/Shared sides cannot earn positive Honor/)).toBeVisible();
     expect(screen.getByText(/supported defenders/)).toBeVisible();
   });

@@ -21,16 +21,37 @@ Her yüzeyin ölçütü: **350×812 ve 375×667'de kaydırmadan ne görünüyor?
 | S6 | Yazım kuralı: bilineni yazma, tek cümle, kural ⓘ'de (`docs/ux-writing.md`'ye ek) | 17 | bekliyor |
 | H1 | Galaksi HUD bölgeleri: status bar altı tam genişlikte uçuş şeridi + toast; sol sütun durum rozetleri (sıkı); sağ üst bulunabilecekler; altında 2×2 araç (teleskop, dünyalar, market, zil); çevrimiçi sayısı gizli; etkinlik bitiş şeridi olduğu gibi | 2, 3, 4 | bitti |
 | H2 | Eve dön düğmesi: zaten evdeyken ne yaptığı görünür olsun ya da gizlensin | 12 | bitti (her basışta evde halka + "Buradasın"; HUD harita etiketlerinin üstünde) |
-| E1 | Filo sekmesi: Onur/duruş bloğu akordiyona, gemiler kaydırmadan görünür; gemi kartında saldırı/savunma/hız | 8, 9 | bekliyor |
+| E1 | Filo sekmesi: Onur/duruş bloğu akordiyona, gemiler kaydırmadan görünür; gemi kartında saldırı/savunma/hız | 8, 9 | bitti (kit `Fold`; duruş ve klan desteği tek satır, alarmda açık; kartta saldırı/defans/hız; sekme tanıtım cümlesi ve Hangar odasının tekrar eden cümlesi kalktı) |
 | E2 | Gemi üretim kartı baştan | 10 | bekliyor |
 | E3 | Saldırı sheet'i baştan (owner, 2026-11-16 ek): kit'in basılı tutmalı gemi kartları (`UnitCard`), hız ilerleme çubuğu gibi (solda solucan/yavaş renk, sağda roket/alev), kısa ekranda gemi alanı korunur, uyarılar tek satır + ⓘ | 16, 17, ek | bitti (kartlar, gaz kolu tüm uçuşlarda, tek satır fiyat, kısa ekranda cetvel kayar, eşleşme payları ⓘ'de) |
 | E7 | Focus: Ölüm Yıldızı akordiyonu silah yokken de görünür (kırmızı, radyasyon sarı), açınca üretim şartı | ek | bitti |
 | E4 | Klan sheet'i sekmelere (Bul / Kur / Neden); kuramayan oyuncuya form kilitli | 6 | bekliyor |
 | E5 | Ödüller: hangi ödülün açıldığı belli; parlama kutuya sıkışmaz; bir ödül alınırken diğerleri pasif, yükleniyor değil | 13, 14 | bekliyor |
 | E6 | Kalan oyun ekranlarında metin taraması (altı dil) | 17 | bekliyor |
+| O1 | Anıt: galaksideki etiket ve alt kartta radyasyon ikonu | ek-1 | bekliyor |
+| O2 | Anıt focus sheet'i: alta uzayan tek sütun yerine sekme / ⓘ / akordiyon | ek-2 | bekliyor |
+| O3 | Çökme: "useToast called outside ToastProvider" (arka plandan dönüşte) — kök neden + düzelt; bir yüzeyin hatası bütün oyunu düşürmesin (yüzey başına hata sınırı) | ek-3 | bekliyor |
+| O4 | Liderlik tablosu: sıralama ilk ekranda; ödül ve kural metni ⓘ / sekmeye (CoC, Survivor.io, Whiteout Survival incelenir) | ek-4 | bekliyor |
+| O5 | Klan sheet'i sekmelere: ara / listele / kur / klanım (E4 ile birleşik) | ek-5 | bekliyor |
+| O6 | Savaş raporu baştan: sonuç önce, kısa, soru bırakmayan | ek-6 | bekliyor |
+| O7 | Galaksi sol üst zaman rozetleri türüne göre renkli (kalkan yeşil, ticaret sarı, konvoy kırmızı…) | ek-7 | bekliyor |
+| O8 | Profil sayfasının sonu: hesabı sil sakin, çıkış en altta; kırmızı tehlike düğmeleri kibar | ek-8 | bekliyor |
+| O9 | Saldırı sheet'i: kart içi satırlar yan kartla hizalı, kargo rengi, hız çubuğunu sola sürükleme hatası, kalkan uyarısı kırmızı ve üst boşluğu az | ek-9 | bekliyor |
+| O10 | Sınıf üstünlüğü (counter) bilgi elemanları küçülür | ek-10 | bekliyor |
+| O11 | Üst bilgi şeritleri (uçuş/iş bitiyor) daha ince; altındaki rozetlerle 8 px; sol ve sağ rozetler aynı hizada | ek-11 | bekliyor |
+| O12 | Filo sekmesi toplanır (E1) | ek-12 | bitti (E1) |
+| O13 | Gezegen / Araştırma / Gemi geçişinde sekme çubuğunun genişliği ve yan boşluklar sabit (Gezegen'deki gibi) | ek-13 | bekliyor |
+| O14 | Birden fazla gezegende sol üstteki gezegen düğmesi kompakt ve kit'e uygun | ek-14 | bekliyor |
+| O15 | Mağaza kategori kutuları kompakt | ek-15 | bekliyor |
+| O16 | Komutan menüsü: "Oyuna dön" kalkar; yanındaki iki düğme düzgün | ek-16 | bekliyor |
+| O17 | Komutan gemisi: "Yarık'a gir" düğmesinin altındaki boşluk kapanır | ek-17 | bekliyor |
 | K | Kapanış: altı dil, 350/375×667/masaüstü, tam test, görsel denetim | — | bekliyor |
 
-Sıra: S1 → S2 → S3 → H1 → H2 → S4 → S5/S6 → E1 → E2 → E3 → E4 → E5 → E6 → K. Her birim: incele → test (mantık için TDD) → yap → ölç/fotoğrafla → commit → master.
+Sıra: S1 → S2 → S3 → H1 → H2 → S4 → S5/S6 → E1 → E2 → E3 → E4 → E5 → E6 → K.
+
+Owner'ın ikinci listesi (ek-1…ek-17, 2026-11-17) eklendi. Yeni sıra: O3 (çökme) → O9 → O11 → O7 → O13 → O8 → O16 → O17 → O14 → O15 → O10 → O1 → O2 → O4 → O5/E4 → O6 → E2 → E5 → E6 → K.
+
+**Genel kural (owner, ek-2):** alta doğru uzayan tek sütun section yığını yanlıştır, hiçbir yerde kullanılmaz. Bir yüzey çok uzuyorsa sekme, ⓘ ya da akordiyonla çözülür. Her birim: incele → test (mantık için TDD) → yap → ölç/fotoğrafla → commit → master.
 
 ## Kapsam: oyunun tamamı (owner, 2026-11-16)
 
@@ -86,3 +107,4 @@ Son sırada: G11 simulator / wiki-sheet / wiki-public · G13 faults / landing / 
 - 2026-11-16: E3 bitti (saldırı sheet'i: basılı tutmalı gemi kartları, solucan→roket hız çubuğu, tek satır fiyat + ⓘ); S3 bitti (alt kartlar ~%40 kısa). Sıradaki: H2, S4.
 - 2026-11-16: H2 bitti; ayrıca harita etiketleri HUD araçlarını örtüyordu (z-index), düzeltildi. Sıradaki: S4.
 - 2026-11-16: S4 bitti. Üs'ün beşli sekmesinde kelime ortadan kırılıyordu: sekme 1 px yan boşluk + 0 harf aralığı, uzun kelimeler kısaldı (Taktik, Economy, Ausbau, Fábricas, Usines; akademi metni de). Sıradaki: S5/S6, E1.
+- 2026-11-17: E1 bitti: kit'e `Fold` (S5'in ilk parçası; Ölüm Yıldızı/radyasyon katlanırları da bunu kullanıyor). Owner'ın ikinci 17 maddelik listesi plana eklendi (O1–O17). Sıradaki: O3.

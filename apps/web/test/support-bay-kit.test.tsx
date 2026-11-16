@@ -84,10 +84,10 @@ const v2Painted = (root: Element): string[] =>
   [root, ...root.querySelectorAll('[class]')].map((el) => el.getAttribute('class') ?? '').filter((name) => V2_LOOK.test(name));
 
 describe('the defence posture on the kit', () => {
-  it('is a kit well of two switches, with no form to save', () => {
+  it('is a kit fold of two switches, with no form to save', () => {
     show(<DefencePostureCard planet={world(true, false)} />);
     const card = document.querySelector('[data-defence-posture]')!;
-    expect(card).toHaveClass('gk-well');
+    expect(card).toHaveClass('gk-strike');
     expect(toggle(/tactical retreat/i)).toHaveClass('gk-toggle');
     expect(toggle(/tactical retreat/i)).toHaveAttribute('aria-checked', 'true');
     expect(toggle(/clan support/i)).toHaveAttribute('aria-checked', 'false');
@@ -172,7 +172,7 @@ describe('the clan support bay on the kit', () => {
   it('reads the bay as a kit gauge with who stands and who flies in', () => {
     show(<ClanSupportBay planet={two()} />);
     const bay = document.querySelector('[data-support-bay]')!;
-    expect(bay).toHaveClass('gk-well');
+    expect(bay).toHaveClass('gk-strike');
     expect(bay.querySelector('[data-part="standing"]')).not.toBeNull();
     expect(bay.querySelector('[data-part="inbound"]')).not.toBeNull();
     expect(screen.getByRole('img', { name: /160 of 470 support room/i })).toBeInTheDocument();

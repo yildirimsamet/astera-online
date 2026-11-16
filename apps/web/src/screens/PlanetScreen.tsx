@@ -2065,8 +2065,9 @@ function Reach({
             : { tierMark: t('planet.reach.hullTier', { tier: hullSpec.tier }) })}
           tag={hullTag(id)}
           stats={{
-            atk: hullSpec.atk,
-            hp: hullSpec.hp,
+            // The build sheet's figures: attack and defence with this world's research.
+            atk: hullSpec.atk * hullTech(tech, id).atk,
+            hp: hullSpec.hp * hullTech(tech, id).hp,
             /**
              * A PROSPECTOR DOES NOT FLY AT ITS HULL SPEED. D25.
              *
@@ -2600,18 +2601,11 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
 function HangarRoom({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
   const room = roomParts(planet, false);
-  // The rung an order placed now would buy: whatever is queued lands first.
-  const level = projectedQueueState(planet, 'CONSTRUCTION').buildings.HANGAR;
-  const next = level < HANGAR.maxLevel ? level + 1 : null;
+  // The next level's room is the Hangar card's to say (owner review 2026-11-16: one fact, one place).
   return (
     <div data-hangar-room className="gk">
       <RoomGauge label={t('roomBar.hangar')} total={room.total} home={room.home} away={room.away} queued={room.queued}>
-        <p className="gk-sub gk-room__note">
-          {t('roomBar.returnFits')}
-          {next !== null && (
-            <> {t('roomBar.nextHangar', { level: next, from: compact(hangarCapacity(level)), to: compact(hangarCapacity(next)) })}</>
-          )}
-        </p>
+        <p className="gk-sub gk-room__note">{t('roomBar.returnFits')}</p>
       </RoomGauge>
     </div>
   );
