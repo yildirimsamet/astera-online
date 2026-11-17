@@ -10,9 +10,9 @@ describe('Wiki values a new player can interpret', () => {
     const article = getWikiArticle('basics.first-week');
     for (const language of ['en', 'tr'] as const) {
       const text = JSON.stringify(article?.sections[language]);
-      expect(text).toContain(`${String(WELCOME_WEEK.gapHours)}`);
-      expect(text).toContain(`${String(WELCOME_WEEK.boxes)}`);
-      expect(text).toContain(`${String(FREE_ALERT_DAYS)}`);
+      expect(text).toContain(String(WELCOME_WEEK.gapHours));
+      expect(text).toContain(String(WELCOME_WEEK.boxes));
+      expect(text).toContain(String(FREE_ALERT_DAYS));
       expect(text).toMatch(language === 'en' ? /no streak/iu : /seri yok/iu);
       expect(text).not.toMatch(/\bbots?\b/iu);
     }
