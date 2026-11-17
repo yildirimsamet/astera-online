@@ -18,6 +18,7 @@ import { scenePlayed, startJump, useJump, fromTheLanding } from './jump.js';
 import { dismissTip, tipDismissed, tipFor, tipTriggers, type LandingTip, type TipReport } from './landingTips.js';
 import { arrivalQuery, useMarkArrivalSeen } from './queries.js';
 import { ProtectionLines } from './ProtectionLines.js';
+import { LandingRewards, useLandingRewardsDue } from './LandingRewards.js';
 import { nearestPirate } from '../lib/rewardGates.js';
 
 const CARD_LINES = ['battle', 'opened', 'alerts'] as const;
@@ -116,6 +117,11 @@ export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; 
   const pirates = usePirates().data?.pirates;
   const prey = arrival && !arrival.hunted && onFocusContact ? nearestPirate(pirates) : null;
 
+  // Held open once it starts: taking the rewards empties the count that called it.
+  const rewardsDue = useLandingRewardsDue(landedAt, now);
+  const [rewards, setRewards] = useState<'idle' | 'open' | 'done'>('idle');
+  useEffect(() => { if (rewardsDue && !arrival) setRewards(state => (state === 'idle' ? 'open' : state)); }, [rewardsDue, arrival]);
+
   if (jump) return null;
   if (arrival) {
     const pick = (go: () => void) => { playSound('tap'); haptic('tap'); seen.mutate(); go(); };
@@ -170,6 +176,8 @@ export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; 
       </Sheet>
     );
   }
+  // The landing pays first (plan 2026-11-06 §7.1 R1); the first-week note waits until it is closed.
+  if (rewards === 'open') return <LandingRewards onPanel={onPanel} onDone={() => { setRewards('done'); }} />;
   if (!tip) return null;
   return (
     <div data-testid="landing-tip" data-tip={tip} role="status" className="gk pointer-events-auto fixed inset-x-3 top-[calc(env(safe-area-inset-top)+96px)] z-[60] mx-auto max-w-[440px]">

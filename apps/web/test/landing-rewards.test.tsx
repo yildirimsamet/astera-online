@@ -1,0 +1,88 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Api } from '../src/api/client.js';
+import { ApiProvider } from '../src/api/context.js';
+import i18n from '../src/i18n/index.js';
+import type * as Sound from '../src/lib/sound.js';
+import { ArrivalHost } from '../src/starter/ArrivalHost.js';
+import { ToastProvider } from '../src/ui/Toast.js';
+import { planetView } from './fixtures.js';
+import { urlOf } from './starterVesselFixture.js';
+
+const sound = vi.hoisted(() => ({ playSound: vi.fn() }));
+const haptics = vi.hoisted(() => ({ haptic: vi.fn() }));
+vi.mock('../src/lib/sound.js', async (original) => ({ ...await original<typeof Sound>(), ...sound }));
+vi.mock('../src/lib/haptics.js', () => haptics);
+
+type State = 'locked' | 'claimable' | 'claimed';
+const chain = (id: string, states: State[]) => ({ id, metric: 'level', scope: 'season', progress: 3, tiers: states.map((state, i) => ({ id: `${id}:${String(i + 1)}`, goal: i + 1, alloy: 300, crystal: 100, state })) });
+const waiting = (count: number) => ({ chains: [chain('CORE', [...Array<State>(count).fill('claimable'), 'locked'])], claimable: count });
+
+const harness = ({ rewards, daysAgo = 0 }: { rewards: object; daysAgo?: number }) => {
+  const taken = { chains: [chain('CORE', ['claimed', 'claimed', 'claimed', 'locked'])], claimable: 0 };
+  const fetcher = vi.fn((input: RequestInfo | URL) => {
+    const url = urlOf(input);
+    const body = url.includes('/api/rewards/claim-all') ? { granted: { alloy: 900, crystal: 300, deuterium: 0 }, count: 3, rewards: taken, planet: planetView() }
+      : url.includes('/api/rewards') ? rewards
+        : url.includes('/api/reports') ? { reports: [], rivals: [] }
+          : { arrival: null, landedAt: new Date(Date.now() - daysAgo * 86_400_000).toISOString() };
+    return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } }));
+  });
+  const api = new Api({ fetch: fetcher as unknown as typeof globalThis.fetch });
+  const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const onPanel = vi.fn();
+  render(<QueryClientProvider client={queries}><ApiProvider api={api}><ToastProvider><ArrivalHost onPanel={onPanel} /></ToastProvider></ApiProvider></QueryClientProvider>);
+  return { fetcher, onPanel };
+};
+const claimedAll = (fetcher: ReturnType<typeof vi.fn>) => fetcher.mock.calls.filter(([input]) => urlOf(input as RequestInfo).includes('/api/rewards/claim-all'));
+
+beforeEach(async () => { await i18n.changeLanguage('en'); window.localStorage.clear(); sound.playSound.mockClear(); haptics.haptic.mockClear(); });
+afterEach(() => { cleanup(); });
+
+/**
+ * THE LANDING PAYS (plan 2026-11-06 §7, §7.1 R1). The first-season start earns several tiers at once and
+ * the old panel hid them behind a gift icon. After the landing card, one moment says what the ship's work
+ * is worth here, takes it all in one move, and points at the first upgrades to spend it on.
+ */
+describe('the landing reward moment', () => {
+  it('says how many rewards wait, takes them in one move, then points at the first upgrades', async () => {
+    const { fetcher, onPanel } = harness({ rewards: waiting(3) });
+    const moment = await screen.findByTestId('landing-rewards');
+    expect(moment).toHaveTextContent(/3 rewards/u);
+    expect(moment).toHaveTextContent('900');
+    fireEvent.click(within(moment).getByRole('button', { name: /Take all · 3/u }));
+    await waitFor(() => { expect(claimedAll(fetcher)).toHaveLength(1); });
+    expect(haptics.haptic).toHaveBeenCalledWith('thunk');
+    await within(moment).findByText(/In your stores/u);
+    expect(sound.playSound).toHaveBeenCalledWith('unseal');
+    fireEvent.click(await within(moment).findByRole('button', { name: /Upgrade/u }));
+    expect(onPanel).toHaveBeenCalledWith('planet', undefined, undefined, { group: 'grow' });
+    expect(screen.queryByTestId('landing-rewards')).toBeNull();
+  });
+
+  it('comes once: closed, it does not come back', async () => {
+    harness({ rewards: waiting(3) });
+    fireEvent.click(within(await screen.findByTestId('landing-rewards')).getByRole('button', { name: /Later/u }));
+    expect(screen.queryByTestId('landing-rewards')).toBeNull();
+    cleanup();
+    harness({ rewards: waiting(3) });
+    await screen.findByTestId('landing-tip');
+    expect(screen.queryByTestId('landing-rewards')).toBeNull();
+  });
+
+  it('waits for two or more rewards, and only in the first week', async () => {
+    harness({ rewards: waiting(1) });
+    await screen.findByTestId('landing-tip');
+    expect(screen.queryByTestId('landing-rewards')).toBeNull();
+    cleanup();
+    harness({ rewards: waiting(3), daysAgo: 8 });
+    await waitFor(() => { expect(screen.queryByTestId('landing-rewards')).toBeNull(); });
+  });
+
+  it('holds the first-week note back while it is up', async () => {
+    harness({ rewards: waiting(3) });
+    await screen.findByTestId('landing-rewards');
+    expect(screen.queryByTestId('landing-tip')).toBeNull();
+  });
+});

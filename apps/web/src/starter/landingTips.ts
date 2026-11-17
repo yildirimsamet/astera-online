@@ -25,7 +25,8 @@ export const tipFor = ({ landedAtMs, nowMs, met, dismissed }: {
   if (nowMs - landedAtMs >= WEEK_MS) return null;
   const needed = NEED_ORDER.find(id => met.has(id) && !dismissed(id));
   if (needed) return needed;
-  const days = (nowMs - landedAtMs) / DAY_MS;
+  // A clock a little behind the server's can put a fresh landing a moment ahead: that is just now.
+  const days = Math.max(0, nowMs - landedAtMs) / DAY_MS;
   const due = SCHEDULE.find(entry => days >= entry.from && days < entry.to)?.id ?? null;
   return due && !dismissed(due) ? due : null;
 };

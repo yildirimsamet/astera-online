@@ -55,3 +55,8 @@ describe('what the player has met since landing', () => {
     expect(tipTriggers([battle({ at: new Date(landed - HOUR) })], 3, landed)).toEqual(new Set());
   });
 });
+
+// A landing a moment ago can read as a moment ahead on a client clock a little behind the server's.
+it('reads a landing stamped slightly ahead of the clock as just now', () => {
+  expect(tipFor({ landedAtMs: landed + 2000, nowMs: landed, met: new Set(), dismissed: () => false })).toBe('core');
+});
