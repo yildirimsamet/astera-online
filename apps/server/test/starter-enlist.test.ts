@@ -1,7 +1,7 @@
 import { COMMUNITY_POLICY_VERSION, STARTER, VESSEL_HULLS, distance, vesselHull } from '@astera/rules';
 import { asc, eq, sql } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { accounts, players, starterGalaxies, vessels } from '../src/db/schema.js';
+import { accounts, players, starterGalaxies, vesselBotState, vessels } from '../src/db/schema.js';
 import { testDb } from './helpers.js';
 import { TOKENS, bearer, freshAccount, starterWorld } from './starterFixture.js';
 
@@ -127,6 +127,38 @@ describe('taking a colony ship', () => {
       const all = await galaxies();
       expect(ship!.starterGalaxyId).toBe(all[0]!.id);
       expect(all).toHaveLength(2);
+    });
+
+    /*
+      THE COHORT (plan 2026-11-06 §6, Q6). A newcomer goes where another real person came aboard in the
+      last day, so the neighbour is someone like them; with no such galaxy, the oldest with room.
+    */
+    describe('with room in two galaxies', () => {
+      const two = async () => {
+        const first = await fill();
+        const late = await freshAccount(world.f, 'Late');
+        await enlist(late.token);
+        await world.f.db.update(starterGalaxies).set({ capacity: STARTER.capacity });
+        const shipOf = async (id: string) => (await world.f.db.select().from(vessels).where(eq(vessels.accountId, id)))[0]!;
+        await world.f.db.update(vessels).set({ enlistedAt: new Date(world.f.clock.now().getTime() - 2 * 86_400_000) }).where(eq(vessels.accountId, first.id));
+        return { late: await shipOf(late.id), shipOf };
+      };
+
+      it('seats a newcomer where a person came aboard in the last day', async () => {
+        const { late, shipOf } = await two();
+        const next = await freshAccount(world.f, 'Next');
+        await enlist(next.token);
+        expect((await shipOf(next.id)).starterGalaxyId).toBe(late.starterGalaxyId);
+      });
+
+      it('counts no ship the server plays, and falls back to the oldest with room', async () => {
+        const { late, shipOf } = await two();
+        const at = world.f.clock.now();
+        await world.f.db.insert(vesselBotState).values({ vesselId: late.id, persona: 'steady', nextActionAt: at, sessionUntilAt: at, createdAt: at });
+        const next = await freshAccount(world.f, 'Next');
+        await enlist(next.token);
+        expect((await shipOf(next.id)).starterGalaxyId).toBe((await galaxies())[0]!.id);
+      });
     });
 
     it('never gives a newcomer a galaxy closed by hand', async () => {

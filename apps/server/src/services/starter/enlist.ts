@@ -1,9 +1,9 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import { STARTER, openingEconomy, openingProgress, pickVesselSlot, starterSlots, vesselHull, type PlanetSlot, type VesselHull } from '@astera/rules';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import type { Clock } from '../../clock.js';
 import type { Db, Queryable, Tx } from '../../db/client.js';
-import { accounts, shards, starterGalaxies, vessels } from '../../db/schema.js';
+import { accounts, shards, starterGalaxies, vesselBotState, vessels } from '../../db/schema.js';
 import { isAdminAccount } from '../admin.js';
 import { GameError } from '../planet.js';
 import { accountHasPlayHistory } from '../player.js';
@@ -32,6 +32,17 @@ const openGalaxy = async (q: Queryable) =>
 const peopleAboard = async (q: Queryable, galaxyId: string): Promise<number> =>
   (await q.select({ n: sql<number>`count(*)::int` }).from(vessels).where(and(eq(vessels.starterGalaxyId, galaxyId), ABOARD)))[0]?.n ?? 0;
 
+/** How far back "came aboard lately" reaches for the cohort (plan 2026-11-06 Q6). */
+const COHORT_MS = 24 * 3_600_000;
+
+/** Galaxies a person (not a ship the server plays) came aboard in the last day. */
+async function cohortGalaxies(q: Queryable, now: Date): Promise<Set<string>> {
+  const rows = await q.selectDistinct({ id: vessels.starterGalaxyId }).from(vessels)
+    .leftJoin(vesselBotState, eq(vesselBotState.vesselId, vessels.id))
+    .where(and(isNull(vesselBotState.vesselId), gt(vessels.enlistedAt, new Date(now.getTime() - COHORT_MS))));
+  return new Set(rows.map(row => row.id));
+}
+
 /** A newcomer can always have a ship, unless the door was closed by hand: a full galaxy opens the next. */
 async function hasRoom(q: Queryable): Promise<boolean> {
   if (await openGalaxy(q)) return true;
@@ -44,8 +55,9 @@ const OPENINGS = 8;
 
 /**
  * THE GALAXY THE NEXT SHIP GOES TO, created on first use and locked: places are handed out one at a
- * time. The oldest with room comes first, so a place that came free is filled before another galaxy
- * opens. All are locked in one order, so that two enlistments cannot wait on each other. Not a key
+ * time. Where a person came aboard in the last day comes first, so a newcomer's neighbours arrived when
+ * they did (the cohort, plan 2026-11-06 Q6); then the oldest with room, so a place that came free is
+ * filled before another galaxy opens. All are locked in one order, so that two enlistments cannot wait on each other. Not a key
  * lock: a command writing a row that names the galaxy has no business waiting for a berth.
  */
 export async function lockGalaxyWithRoom(tx: Tx, clock: Clock, prefer?: string) {
@@ -59,7 +71,9 @@ export async function lockGalaxyWithRoom(tx: Tx, clock: Clock, prefer?: string) 
     const galaxies = await tx.select().from(starterGalaxies).where(eq(starterGalaxies.status, 'OPEN'))
       .orderBy(asc(starterGalaxies.ordinal)).for('no key update');
     if (galaxies.length === 0) return null;
-    const ordered = [...galaxies.filter(galaxy => galaxy.id === prefer), ...galaxies.filter(galaxy => galaxy.id !== prefer)];
+    const cohort = prefer === undefined ? await cohortGalaxies(tx, clock.now()) : new Set<string>();
+    const first = (galaxy: { id: string }) => galaxy.id === prefer || cohort.has(galaxy.id);
+    const ordered = [...galaxies.filter(first), ...galaxies.filter(galaxy => !first(galaxy))];
     for (const galaxy of ordered) if (await peopleAboard(tx, galaxy.id) < galaxy.capacity) return galaxy;
     // The list above was read before the lock came through: whoever held it may have opened one already.
     const newestSeen = galaxies.at(-1)?.ordinal ?? 0;
