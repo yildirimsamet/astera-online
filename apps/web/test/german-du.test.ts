@@ -71,8 +71,6 @@ const THIRD_PERSON = new Set<string>([
   'starter.arrival.growLine',
   'starter.feature.attack.line',
   'starter.feature.research.line',
-  'starter.jump.partsLater',
-  'starter.jump.partsSeen',
   'starter.lab.premise',
   'starter.objective.underwayProbe',
   'starter.outlook.seasonClosed',
