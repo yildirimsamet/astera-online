@@ -4,11 +4,13 @@ import com.getcapacitor.BridgeActivity;
 import android.os.Bundle;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
+import space.asteraonline.app.display.AsteraDisplayPlugin;
 import space.asteraonline.app.session.AsteraSessionPlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override public void onCreate(Bundle savedInstanceState) {
         registerPlugin(AsteraSessionPlugin.class);
+        registerPlugin(AsteraDisplayPlugin.class);
         super.onCreate(savedInstanceState);
         // SystemBars owns visibility/insets; retain temporary access to Android's UI.
         WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView())

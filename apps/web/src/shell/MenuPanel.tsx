@@ -35,6 +35,7 @@ import { AnalyticsSetting } from '../lib/playerAnalytics/Notice.js';
 import { openConsentNotice, readConsent, reopenGoogleCmp } from '../lib/consent.js';
 import type { Panel } from '../screens/GalaxyView.jsx';
 import { setFpsMeterEnabled, useFpsMeterEnabled } from '../lib/fpsMeter.js';
+import { setUiScale, useUiScaleSetting, UI_SCALES } from '../lib/uiScale.js';
 import type { CountryCode } from '@astera/rules';
 import { InstallButton } from '../brand/Install.js';
 import { FullscreenButton } from '../brand/FullscreenButton.js';
@@ -356,6 +357,7 @@ export function MenuPanel({
                 <NowPlaying />
               </Plate>
               <Plate className="grid gap-1 p-1.5"><EffectsSetting /></Plate>
+              <UiScaleSetting />
               <Plate className="grid gap-1 p-1.5">
                 <QualitySetting />
                 <FpsSetting />
@@ -469,6 +471,31 @@ function QualitySetting() {
       <Choices label={t('menu.qualityLabel')} options={RENDER_QUALITIES.map((id) => ({ id, label: t(`menu.quality.${id}`) }))} value={quality} onChange={setRenderQuality} />
       <p className="gk-sub">{t(`menu.qualityHint.${quality}`)}</p>
     </div>
+  );
+}
+
+/**
+ * THE INTERFACE SIZE (owner 2026-11-17): one multiplier for the whole page, so the hierarchy
+ * holds. Lit plates, not a slider: the page rescales at once, and a thumb dragging a knob
+ * that moves under it would lose it. Only the steps this screen can hold are offered.
+ */
+function UiScaleSetting() {
+  const { t } = useTranslation();
+  const { available, value, options, fromSystem } = useUiScaleSetting();
+  if (!available) return null;
+  const largest = options[options.length - 1] ?? 100;
+  return (
+    <Plate className="grid gap-1 p-1.5">
+      <div data-ui-scale="" className="grid gap-1.5 px-1.5 pb-1 pt-1.5">
+        <p className="gk-label">{t('menu.uiScaleLabel')}</p>
+        <Choices label={t('menu.uiScaleLabel')} options={options.map((id) => ({ id: String(id), label: t('menu.uiScaleValue', { value: id }) }))}
+          value={String(value)} onChange={(next) => { const scale = UI_SCALES.find((step) => String(step) === next); if (scale !== undefined) setUiScale(scale); }} />
+        <p className="gk-sub">
+          <span>{t(fromSystem ? 'menu.uiScaleSystem' : 'menu.uiScaleHint')}</span>
+          {largest < Math.max(...UI_SCALES) && <> <span>{t('menu.uiScaleLimit', { value: largest })}</span></>}
+        </p>
+      </div>
+    </Plate>
   );
 }
 

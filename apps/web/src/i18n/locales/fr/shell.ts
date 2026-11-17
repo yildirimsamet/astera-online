@@ -277,6 +277,11 @@ export const menu = {
   fpsOn: "Activé",
   fpsOff: "Désactivé",
   fpsHint: "Nombre d’images affichées par seconde dans la galaxie. Une valeur plus élevée signifie des mouvements plus fluides.",
+  uiScaleLabel: "Taille de l’interface",
+  uiScaleValue: "{{value}} %",
+  uiScaleHint: "Texte, icônes et espacements grandissent ou rétrécissent ensemble.",
+  uiScaleSystem: "Choisie d’après la taille du texte de ton téléphone.",
+  uiScaleLimit: "Jusqu’à {{value}} % sur cet écran.",
 } as const;
 export const leaderboard = {
   honorBreakdown: {

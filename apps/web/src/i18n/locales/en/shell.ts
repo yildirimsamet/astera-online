@@ -334,6 +334,11 @@ export const menu = {
   fpsOn: 'On',
   fpsOff: 'Off',
   fpsHint: "The number of frames the galaxy draws per second. A higher number means smoother motion.",
+  uiScaleLabel: "Interface size",
+  uiScaleValue: "{{value}}%",
+  uiScaleHint: "Text, icons and spacing grow or shrink together.",
+  uiScaleSystem: "Set from your phone’s font size.",
+  uiScaleLimit: "Up to {{value}}% on this screen.",
 } as const;
 
 export const leaderboard = {

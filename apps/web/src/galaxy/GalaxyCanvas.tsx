@@ -84,6 +84,7 @@ import {
 import { useAmbientFrames, useCommittedDemandFrame } from './frames.jsx';
 import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 import { QUALITY_PRESETS, useRenderQuality } from '../lib/quality.js';
+import { useScaledDprCap } from '../lib/uiScale.js';
 import { Wrecks, wreckPosition, type WreckView } from './Wrecks.js';
 import { Asteroids } from './Asteroids.jsx';
 import { TradeShip, TRADE_SHIP_SCALE } from './TradeShip.jsx';
@@ -740,6 +741,8 @@ export function GalaxyCanvas({
    */
   const quality = useRenderQuality();
   const preset = QUALITY_PRESETS[quality];
+  // The ceiling moves with the interface size, so the disc costs and looks the same at every size.
+  const dprCap = useScaledDprCap(preset.dprCap);
 
   /**
    * SURVIVING THE PHONE TAKING THE GPU BACK. See `gpuContext.ts` for the crash
@@ -768,7 +771,7 @@ export function GalaxyCanvas({
        * render half again as many pixels as the screen has and then throw them
        * away, which would make the cheap preset the expensive one.
        */
-      dpr={[1, preset.dprCap]}
+      dpr={[1, dprCap]}
       /**
        * NO `antialias` HERE, BECAUSE THE COMPOSER BELOW ALREADY DOES IT.
        *
@@ -1102,7 +1105,7 @@ export function GalaxyCanvas({
       <GalaxyPostprocessing
         live={gpu.live}
         epoch={gpu.epoch}
-        dprCap={preset.dprCap}
+        dprCap={dprCap}
         multisampling={preset.multisampling}
         prepared={prepared}
       />

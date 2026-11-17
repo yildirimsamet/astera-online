@@ -128,7 +128,10 @@ describe('the canvas spends what the preset says', () => {
    * the cheap rung the expensive one.
    */
   it('hands the ratio over as a ceiling', () => {
-    expect(canvas).toMatch(/dpr=\{\[1, preset\.dprCap\]\}/);
+    // The ceiling moves with the interface size (owner 2026-11-17, `lib/uiScale.ts`), so the
+    // disc costs and looks the same at every size; it is still the preset's and still a ceiling.
+    expect(canvas).toMatch(/const dprCap = useScaledDprCap\(preset\.dprCap\);/);
+    expect(canvas).toMatch(/dpr=\{\[1, dprCap\]\}/);
   });
 
   it('takes its multisampling from the same preset', () => {

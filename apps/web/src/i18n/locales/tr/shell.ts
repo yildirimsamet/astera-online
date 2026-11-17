@@ -271,6 +271,11 @@ export const menu = {
   fpsOn: 'Açık',
   fpsOff: 'Kapalı',
   fpsHint: "Galaksinin saniyede çizdiği kare sayısı. Daha yüksek değer, daha akıcı görüntü anlamına gelir.",
+  uiScaleLabel: "Arayüz boyutu",
+  uiScaleValue: "%{{value}}",
+  uiScaleHint: "Yazı, simge ve boşluklar birlikte büyür ya da küçülür.",
+  uiScaleSystem: "Telefonunun yazı boyutuna göre seçildi.",
+  uiScaleLimit: "Bu ekranda en fazla %{{value}}.",
 } as const;
 
 export const leaderboard = {

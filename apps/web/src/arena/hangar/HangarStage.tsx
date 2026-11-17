@@ -20,6 +20,7 @@ import type { ShipClass } from '@astera/rules/arena';
 import { Sky } from '../../galaxy/Environment.jsx';
 import { guardBloomRef } from '../../galaxy/finiteGuard.js';
 import { QUALITY_PRESETS, useRenderQuality } from '../../lib/quality.js';
+import { useScaledDprCap } from '../../lib/uiScale.js';
 import { radial, shipDecoders, useShipModels, type ShipModel } from './shipModels.js';
 import { hangarPost } from './stageQuality.js';
 import { TURN, createTurntable, dragTurntable, releaseTurntable, restHeight, stepTurntable, zoomTurntable, type Turntable } from './turntable.js';
@@ -212,6 +213,7 @@ function Rig({ target, turn }: { target: THREE.Vector3; turn: RefObject<Turntabl
 export default function HangarStage({ ship, pulse, refs, onLost }: { ship: ShipClass; pulse: number; refs: boolean; onLost: () => void }) {
   const quality = useRenderQuality();
   const preset = QUALITY_PRESETS[quality];
+  const dprCap = useScaledDprCap(preset.dprCap);
   const [post] = useState(() => hangarPost(quality, matchMedia('(pointer: coarse)').matches));
   const turn = useRef<Turntable>(createTurntable());
   const hands = useRef(new Map<number, { x: number; y: number; at: number }>());
@@ -244,7 +246,7 @@ export default function HangarStage({ ship, pulse, refs, onLost }: { ship: ShipC
   const target = useMemo(() => new THREE.Vector3(BAY.x, (floor ?? -0.19) + LENGTH[ship] * 0.2, BAY.z), [floor, ship]);
   const model = models?.[ship];
   return <div className="hp-turn" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onWheel={wheel}>
-  <Canvas frameloop="demand" camera={{ fov: 38, near: 0.005, far: 600 }} dpr={[1, preset.dprCap]}
+  <Canvas frameloop="demand" camera={{ fov: 38, near: 0.005, far: 600 }} dpr={[1, dprCap]}
     gl={{ antialias: !post, powerPreference: 'high-performance' }}
     onCreated={({ gl }) => {
       gl.outputColorSpace = THREE.SRGBColorSpace; gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.05;

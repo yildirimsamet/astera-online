@@ -17,6 +17,7 @@ import { hullVisualScale } from './flightVisual.js';
 import { guardBloomRef } from './finiteGuard.js';
 import { FiniteSceneGuard } from './FiniteSceneGuard.js';
 import { QUALITY_PRESETS, useRenderQuality } from '../lib/quality.js';
+import { useScaledDprCap } from '../lib/uiScale.js';
 import type { Marker } from './Squadrons.js';
 
 export const INSPECTION_CRAFT = [
@@ -73,8 +74,9 @@ export function PremiumShipInspector({ craft, angle, engines, engineId, reset, o
 }) {
   const quality = useRenderQuality();
   const preset = QUALITY_PRESETS[quality];
+  const dprCap = useScaledDprCap(preset.dprCap);
   return <Canvas frameloop="demand" camera={{ position: [1.3, 0.75, -2.15], fov: 40, near: 0.01, far: 600 }}
-    dpr={[1, preset.dprCap]} gl={{ antialias: false, powerPreference: 'high-performance' }}
+    dpr={[1, dprCap]} gl={{ antialias: false, powerPreference: 'high-performance' }}
     onCreated={({ gl }) => { gl.outputColorSpace = THREE.SRGBColorSpace; gl.toneMappingExposure = 1; }}
     style={{ position: 'absolute', inset: 0, touchAction: 'none' }}>
     <color attach="background" args={['#04060c']} />
