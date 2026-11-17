@@ -77,6 +77,7 @@ export const galaxy = {
     },
     asteroid: {
       title: "Pluie d’Astéroïdes",
+      lead: "Pendant la pluie, les rochers apparaissent bien plus vite, surtout au début.",
       summary:
         "Le taux normal est de {{rate}} astéroïde par commandant actif et par heure. La pluie multiplie ce taux pendant sa durée. La moitié des astéroïdes supplémentaires apparaît sur les {{frontMinutes}} premières minutes. Les astéroïdes restent jusqu’à épuisement ou expiration. Hors des pluies, la galaxie ne compte jamais plus d’astéroïdes que de joueurs actifs ces {{window}} dernières minutes ; les flottes pirates respectent toujours cette limite.",
     },

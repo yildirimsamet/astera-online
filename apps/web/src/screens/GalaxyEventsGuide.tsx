@@ -8,7 +8,7 @@ import {
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGalaxyEvents } from '../api/queries.js';
-import { Glyph, artIconSrc, type GlyphId } from '../game-ui/index.js';
+import { Glyph, InfoPeek, artIconSrc, type GlyphId } from '../game-ui/index.js';
 import { serverNow } from '../lib/clock.js';
 import { decimal } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
@@ -203,7 +203,8 @@ export function GalaxyEventsGuide({ onClose, timeZone = deviceTimeZone() }: { on
           tone="crystal"
           glyph="asteroid"
           title={t('galaxy.eventsGuide.asteroid.title')}
-          summary={t('galaxy.eventsGuide.asteroid.summary', {
+          summary={t('galaxy.eventsGuide.asteroid.lead')}
+          rule={t('galaxy.eventsGuide.asteroid.summary', {
             rate: decimal(ASTEROID_DYNAMIC.perPlayerPerHour, 2),
             frontMinutes: ASTEROID_SHOWER_FRONT_LOAD.minutes,
             window: SPAWN_GATE.onlineWindowMinutes,
@@ -307,6 +308,7 @@ function EventCard({
   glyph,
   title,
   summary,
+  rule,
   note,
   children,
 }: {
@@ -314,6 +316,8 @@ function EventCard({
   glyph: GlyphId;
   title: string;
   summary: string;
+  /** The event's arithmetic, behind the summary's ⓘ (E6: the card says what it does in one line). */
+  rule?: string;
   note?: string;
   children: ReactNode;
 }) {
@@ -323,7 +327,9 @@ function EventCard({
         <span className="gk-event__bay" aria-hidden="true"><Glyph id={glyph} /></span>
         <div className="gk-event__words">
           <h3 className="gk-event__title">{title}</h3>
-          <p className="gk-event__summary">{summary}</p>
+          {rule === undefined
+            ? <p className="gk-event__summary">{summary}</p>
+            : <InfoPeek fact={<span className="gk-event__summary">{summary}</span>} rule={<p className="gk-event__summary">{rule}</p>} />}
         </div>
       </div>
       <div className="gk-event__days">{children}</div>

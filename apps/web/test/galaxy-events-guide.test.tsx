@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GalaxyEventsGuide } from '../src/screens/GalaxyEventsGuide.js';
 import i18n from '../src/i18n/index.js';
@@ -98,8 +98,17 @@ describe('galaxy events guide', () => {
     ]);
   });
 
+  // E6 (owner 2026-11-17): the shower's card says what it does in one line; its spawn arithmetic is behind ⓘ.
+  it('says the shower in one line and keeps its arithmetic one press away', () => {
+    render(<GalaxyEventsGuide onClose={vi.fn()} />);
+    const card = screen.getByRole('heading', { name: 'Asteroid Yağmuru' }).closest('article')!;
+    expect(card).toHaveTextContent(i18n.t('galaxy.eventsGuide.asteroid.lead'));
+    expect(card).not.toHaveTextContent(/saatte 0,75 asteroid/i);
+  });
+
   it('states the per-commander spawn rule and the convoy’s four-hour prize', () => {
     render(<GalaxyEventsGuide onClose={vi.fn()} />);
+    fireEvent.click(within(screen.getByRole('heading', { name: 'Asteroid Yağmuru' }).closest('article')!).getByRole('button', { name: 'Bu nedir?' }));
     expect(screen.getByText(/saatte 0,75 asteroid/i))
       .toBeInTheDocument();
     expect(screen.getByText(/ilk 10 dakikaya/i)).toBeInTheDocument();
@@ -108,6 +117,7 @@ describe('galaxy events guide', () => {
 
   it('states the five-minute presence cap on drifting rocks and pirate fleets', () => {
     render(<GalaxyEventsGuide onClose={vi.fn()} />);
+    fireEvent.click(within(screen.getByRole('heading', { name: 'Asteroid Yağmuru' }).closest('article')!).getByRole('button', { name: 'Bu nedir?' }));
     expect(screen.getByText(/son 5 dakikada oyunda olan oyuncu sayısından fazla/i)).toBeInTheDocument();
     expect(screen.getByText(/korsan filoları için bu sınır her zaman geçerlidir/i)).toBeInTheDocument();
   });
@@ -215,6 +225,7 @@ describe('galaxy events guide', () => {
 
   it('explains the reward and interaction rules without technical language', () => {
     render(<GalaxyEventsGuide onClose={vi.fn()} />);
+    fireEvent.click(within(screen.getByRole('heading', { name: 'Asteroid Yağmuru' }).closest('article')!).getByRole('button', { name: 'Bu nedir?' }));
 
     expect(screen.getByText(/katsayısıyla çarpar/i)).toBeInTheDocument();
     expect(screen.getByText(/32 Alaşım = 16 Kristal = 1 Döteryum/i)).toBeInTheDocument();

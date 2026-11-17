@@ -71,6 +71,7 @@ export const galaxy = {
     },
     asteroid: {
       title: "Asteroid Yağmuru",
+      lead: "Yağmur boyunca kayalar katlanarak doğar; en yoğunu ilk dakikalar.",
       summary: "Normal oluşma oranı, aktif nüfus başına saatte {{rate}} asteroiddir. Yağmur bu oranı etkinlik boyunca katsayısıyla çarpar. Ek kayaların yarısı ilk {{frontMinutes}} dakikaya dağıtılır. Kayalar tükenene veya süreleri dolana kadar kalır. Yağmur dışında galakside aynı anda son {{window}} dakikada oyunda olan oyuncu sayısından fazla kaya bulunmaz; korsan filoları için bu sınır her zaman geçerlidir.",
     },
     trade: {

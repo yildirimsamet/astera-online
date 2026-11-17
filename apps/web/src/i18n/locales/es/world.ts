@@ -67,6 +67,7 @@ export const galaxy = {
     },
     asteroid: {
       title: "Lluvia de asteroides",
+      lead: "Durante la lluvia aparecen muchas más rocas, sobre todo al principio.",
       summary: "La tasa normal es de {{rate}} asteroides por comandante activo y hora. La lluvia multiplica esta tasa mientras está activa. La mitad de los asteroides adicionales se reparte entre los primeros {{frontMinutes}} minutos. Permanecen hasta agotarse o desaparecer. Fuera de las lluvias, nunca hay más asteroides en la galaxia que jugadores activos en los últimos {{window}} minutos; las flotas piratas siguen siempre este límite.",
     },
     trade: {
