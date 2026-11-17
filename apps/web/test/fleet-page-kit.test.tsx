@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { clanSupportWaveSchema, type ClanSupportWave } from '../src/api/schemas.js';
@@ -197,6 +197,15 @@ describe('the fleet page on the kit', () => {
     await userEvent.type(screen.getByRole('textbox'), '1');
     await userEvent.click(screen.getByRole('button', { name: 'Move to workshop' }));
     expect(onDock).toHaveBeenCalledWith('p-1', [{ hull: 'DART', count: 1, damageBp: 3000, remainderBp: 0 }], expect.any(Function));
+  });
+
+  // E6 (owner 2026-11-17): the room tab says its one consequence; the full rule is behind ⓘ.
+  it('says on the room tab what a full Hangar stops, the rest one press away', () => {
+    render(<FleetPage {...props({ tab: 'room', worlds: [world()] })} />);
+    expect(screen.getByText('A full Hangar stops the yard.')).toBeInTheDocument();
+    expect(screen.queryByText(/a recalled fleet always fits/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'What is this?' }));
+    expect(screen.getByText(/a recalled fleet always fits/)).toBeInTheDocument();
   });
 
   it('reads each world’s room on a kit bar, warning when full', () => {

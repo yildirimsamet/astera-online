@@ -11,7 +11,7 @@ export const notificationCenter = {
   "pushDenied": "Android won't ask again. Allow notifications for Astera Online in the phone settings.",
   "menuCovers_one": "Pays for {{count}} attack alert",
   "menuCovers_other": "Pays for {{count}} attack alerts",
-  "lead": "When your radar sees an attack coming, the center sends an alert to your phone, even with the game closed. Each alert uses deuterium from the center's wallet.",
+  "lead": "When radar sees an attack, your phone hears of it, game closed or not. Each alert uses deuterium.",
   "loading": "Loading the Notification Center…",
   "loadError": "The Notification Center could not be loaded.",
   "retry": "Try again",

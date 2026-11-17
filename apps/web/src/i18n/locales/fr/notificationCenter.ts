@@ -11,7 +11,7 @@ export const notificationCenter = {
   "pushDenied": "Android ne redemandera pas. Autorise les notifications pour Astera Online dans les réglages du téléphone.",
   "menuCovers_one": "Paie {{count}} alerte d'attaque",
   "menuCovers_other": "Paie {{count}} alertes d'attaque",
-  "lead": "Quand ton radar voit une attaque arriver, le centre envoie une alerte sur ton téléphone, même jeu fermé. Chaque alerte prend du deutérium dans la caisse du centre.",
+  "lead": "Si le radar voit une attaque, ton téléphone est prévenu, jeu fermé ou non. Coûte du deutérium.",
   "loading": "Chargement du Centre d'alertes…",
   "loadError": "Le Centre d'alertes n'a pas pu être chargé.",
   "retry": "Réessayer",

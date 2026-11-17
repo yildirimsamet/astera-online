@@ -11,7 +11,7 @@ export const notificationCenter = {
   "pushDenied": "Androidは再度確認しません。端末の設定でAstera Onlineの通知を許可してください。",
   "menuCovers_one": "攻撃通知{{count}}件分",
   "menuCovers_other": "攻撃通知{{count}}件分",
-  "lead": "レーダーが接近中の攻撃を捉えると、ゲームを閉じていてもセンターがスマホに通知を送ります。通知1件ごとに、センターの金庫の重水素を消費します。",
+  "lead": "レーダーが攻撃を捉えると、ゲームを閉じていても通知します。通知ごとに重水素を消費。",
   "loading": "通知センターを読み込み中…",
   "loadError": "通知センターを読み込めませんでした。",
   "retry": "再試行",

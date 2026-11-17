@@ -115,7 +115,7 @@ export const skins = {
   openShop: 'Mağazayı keşfet',
   ownedSkins: 'Sahip olduğun skinler',
   noOwnedSkins: 'Envanterin boş. Tüm görünümleri Mağazada inceleyebilirsin.',
-  intro: 'Bir skin sahip olduğun bütün gezegenlerde kullanılabilir. Her gezegene farklı görünüm seçebilir, dilediğinde değiştirebilirsin.',
+  intro: 'Skini istediğin gezegene giydir, dilediğinde değiştir.',
   inspect: 'Modeli incele',
   dragHint: 'Döndürmek için sürükle',
   modelUnavailable: 'Model yüklenemedi',

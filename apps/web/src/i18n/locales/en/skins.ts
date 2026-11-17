@@ -115,7 +115,7 @@ export const skins = {
   openShop: 'Explore the shop',
   ownedSkins: 'Owned skins',
   noOwnedSkins: 'Your inventory is empty. Explore the shop to see every look.',
-  intro: 'One skin can dress every world you own. Choose a different look for each world, and change it whenever you like.',
+  intro: 'Put a skin on any world you own; change it whenever you like.',
   inspect: 'Inspect the model',
   dragHint: 'Drag to rotate',
   modelUnavailable: 'Model unavailable',

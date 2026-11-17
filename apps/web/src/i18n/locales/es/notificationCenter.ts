@@ -11,7 +11,7 @@ export const notificationCenter = {
   "pushDenied": "Android no volverá a preguntar. Permite las notificaciones de Astera Online en los ajustes del teléfono.",
   "menuCovers_one": "Paga {{count}} aviso de ataque",
   "menuCovers_other": "Paga {{count}} avisos de ataque",
-  "lead": "Cuando tu radar ve llegar un ataque, el centro envía un aviso a tu móvil, aunque el juego esté cerrado. Cada aviso gasta deuterio de la caja del centro.",
+  "lead": "Si el radar ve un ataque, tu móvil lo sabe aunque el juego esté cerrado. Cada aviso gasta deuterio.",
   "loading": "Cargando el Centro de Avisos…",
   "loadError": "No se pudo cargar el Centro de Avisos.",
   "retry": "Reintentar",

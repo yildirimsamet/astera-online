@@ -159,6 +159,7 @@ export const fleetPage = {
   noShips: "Evde gemi yok",
   capital: "Başkent",
   colony: "Koloni",
+  roomFact: "Dolu Hangar tersaneyi durdurur.",
   roomRule: "Dünyanın sahip olduğu her gemi için yer — evde, dışarıda ve tersanede. Dolu Hangar tersaneyi ve gelen transferi durdurur; geri çağrılan filo her zaman sığar.",
   ground: "Yer savunması",
   ceiling: "bu Çekirdek’le en çok {{shown}}",

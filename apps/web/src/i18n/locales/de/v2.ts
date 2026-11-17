@@ -159,6 +159,7 @@ export const fleetPage = {
   noShips: "Keine Schiffe daheim",
   capital: "Hauptwelt",
   colony: "Kolonie",
+  roomFact: "Ein voller Hangar stoppt die Werft.",
   roomRule: "Platz für jedes Schiff einer Welt – daheim, unterwegs und in der Werft. Ein voller Hangar stoppt die Werft und eingehende Transfers; eine zurückgerufene Flotte passt immer.",
   ground: "Bodenverteidigung",
   ceiling: "bis {{shown}} mit diesem Kern",

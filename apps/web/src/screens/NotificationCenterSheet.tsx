@@ -8,7 +8,7 @@ import {
 import { PAID_ALERT_KINDS, type NotificationCenter } from '../api/notificationCenterSchemas.js';
 import { useApi } from '../api/context.js';
 import { usePlanet } from '../api/queries.js';
-import { Banner, CostLine, GameButton, GameHold, Glyph, SectionTag, Toggle, type GlyphId } from '../game-ui/index.js';
+import { Banner, CostLine, GameButton, GameHold, Glyph, InfoPeek, SectionTag, Toggle, type GlyphId } from '../game-ui/index.js';
 import { LANGUAGES, type Language } from '../i18n/languages.js';
 import { full } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
@@ -162,10 +162,10 @@ function Built({ view }: { view: NotificationCenter }) {
         <span className="gk-label">{t('notificationCenter.wallet')}</span>
         <Deuterium amount={view.wallet} className="gk-wallet__sum" />
       </div>
-      <p className="gk-wallet__covers">
-        {covers > 0 ? t('notificationCenter.covers', { count: covers, timing: t(`notificationCenter.timingOption.${view.timing}`) }) : t('notificationCenter.empty')}</p>
+      <InfoPeek fact={<span className="gk-wallet__covers">
+        {covers > 0 ? t('notificationCenter.covers', { count: covers, timing: t(`notificationCenter.timingOption.${view.timing}`) }) : t('notificationCenter.empty')}</span>}
+        rule={<p className="gk-note">{t('notificationCenter.walletRule')}</p>} />
       {view.unfunded > 0 && <p className="gk-center__warn">{t('notificationCenter.unfunded', { count: view.unfunded })}</p>}
-      <p className="gk-note">{t('notificationCenter.walletRule')}</p>
       <Transfer view={view} />
     </section>
 
@@ -214,13 +214,13 @@ function Timing({ view, pending, onChoose }: { view: NotificationCenter; pending
     event.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="radio"]')[at]?.focus();
   };
   return <div className="grid gap-2">
-    <p id={question} className="gk-center__ask">{t('notificationCenter.timingTitle')}</p>
+    <InfoPeek fact={<span id={question} className="gk-center__ask">{t('notificationCenter.timingTitle')}</span>}
+      rule={<p className="gk-note">{t('notificationCenter.timingRule')}</p>} />
     <div role="radiogroup" aria-labelledby={question} className="gk-rate" {...OWN_SOUND}>
       {ALERT_TIMINGS.map(timing => <RateRow key={timing} on={timing === view.timing} label={t(`notificationCenter.timingOption.${timing}`)}
         price={<><Deuterium amount={view.prices.incoming_attack[timing]} />{t('notificationCenter.perAlert')}</>}
         onChoose={() => { choose(timing); }} onKeyDown={walk} />)}
     </div>
-    <p className="gk-note">{t('notificationCenter.timingRule')}</p>
   </div>;
 }
 

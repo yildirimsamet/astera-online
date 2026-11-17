@@ -142,9 +142,20 @@ it('asks when an attack alert should arrive, as a setting with its price per ale
   expect(settings).toHaveBeenCalledWith({ timing: 'T15' });
 });
 
-it('says the one wallet pays for every alert, whatever the timing', () => {
+// E6 (owner 2026-11-17): the wallet's and the timing's rules sit behind their own ⓘ, not open under the figures.
+it('says the one wallet pays for every alert, whatever the timing, one press away', () => {
   render(<NotificationCenterSheet onClose={vi.fn()} />);
+  expect(screen.queryByText(/One wallet pays for every alert/)).toBeNull();
+  const wallet = screen.getByRole('region', { name: 'Wallet' });
+  fireEvent.click(within(wallet).getByRole('button', { name: 'What is this?' }));
   expect(screen.getByText(/One wallet pays for every alert/)).toBeInTheDocument();
+});
+
+it('keeps why an earlier alert costs more behind the timing question’s ⓘ', () => {
+  render(<NotificationCenterSheet onClose={vi.fn()} />);
+  expect(screen.queryByText(/The earlier the alert/)).toBeNull();
+  fireEvent.click(screen.getAllByRole('button', { name: 'What is this?' }).at(-1)!);
+  expect(screen.getByText(/The earlier the alert/)).toBeInTheDocument();
 });
 
 it('turns a paid kind off and on', () => {

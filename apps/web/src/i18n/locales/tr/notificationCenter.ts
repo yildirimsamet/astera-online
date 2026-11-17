@@ -11,7 +11,7 @@ export const notificationCenter = {
   "pushDenied": "Android bir daha sormayacak. Telefon ayarlarından Astera Online için bildirimlere izin ver.",
   "menuCovers_one": "{{count}} saldırı uyarısına yeter",
   "menuCovers_other": "{{count}} saldırı uyarısına yeter",
-  "lead": "Radarın yaklaşan bir saldırıyı görünce merkez telefonuna uyarı gönderir; oyun kapalı olsa da. Her uyarı, merkezin kasasından döteryum harcar.",
+  "lead": "Radar saldırı görünce oyun kapalıyken de telefonuna haber verir; her uyarı döteryum harcar.",
   "loading": "Bildirim Merkezi yükleniyor…",
   "loadError": "Bildirim Merkezi yüklenemedi.",
   "retry": "Tekrar dene",

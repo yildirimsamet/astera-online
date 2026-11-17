@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ClanSupportWave, Monuments } from '../../api/schemas.js';
 import {
-  Chip, DOCK_ART, Emblem, GameButton, GameHold, GameTabs, Glyph, ProgressBar, SectionTag, TimerRow, artIconSrc,
+  Chip, DOCK_ART, Emblem, GameButton, GameHold, GameTabs, Glyph, InfoPeek, ProgressBar, SectionTag, TimerRow, artIconSrc,
 } from '../../game-ui/index.js';
 import { hullLabel, hullName, monumentName } from '../../i18n/names.js';
 import type { AirborneItem } from '../../lib/airborne.js';
@@ -514,7 +514,8 @@ export function FleetPage({
         )}
         {tab === 'room' && (
           <>
-            <p className="gk-sub gk-fleet__rule">{t(aboard ? 'starter.fleetPage.roomRule' : 'fleetPage.roomRule')}</p>
+            <InfoPeek fact={<span className="gk-sub">{t('fleetPage.roomFact')}</span>}
+              rule={<p className="gk-sub">{t(aboard ? 'starter.fleetPage.roomRule' : 'fleetPage.roomRule')}</p>} />
             <ul className="gk-fleet__worlds">
               {worlds.map((world) => (
                 <WorldRoom key={world.id} world={world} onFocusWorld={() => { onFocusWorld(world.id); }} />

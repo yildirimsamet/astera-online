@@ -115,7 +115,7 @@ export const skins = {
   openShop: "ショップを見る",
   ownedSkins: "所有スキン",
   noOwnedSkins: "まだスキンを持っていません。ショップで外観を確認できます。",
-  intro: "1つのスキンを保有するすべての惑星で使えます。惑星ごとに別の外観を選び、いつでも変更できます。",
+  intro: "所有する惑星にスキンを着せ、いつでも変更できます。",
   inspect: "モデルを見る",
   dragHint: "ドラッグして回転します",
   modelUnavailable: "モデルが利用できません",

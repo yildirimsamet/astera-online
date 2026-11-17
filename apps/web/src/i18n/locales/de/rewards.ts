@@ -20,7 +20,7 @@ export const rewards = {
   eyebrow: 'Dauerhafte Belohnungen',
   title: 'Belohnungen',
   intro:
-    "Diese Ziele laufen nicht ab und erfordern keine Serie. Belohnungen gelangen direkt in den Speicher, auch über dessen Kapazität. Ungeschützte Ressourcen können geplündert werden.",
+    "Kein Ablauf, keine Serie. Alles geht ins Lager; Ungeschütztes kann geplündert werden.",
 
   waiting: '{{count}} zum Abholen bereit',
   allTaken: 'Du hast alle verfügbaren Belohnungen abgeholt. Mit deinem Fortschritt kommen weitere dazu.',
@@ -43,7 +43,7 @@ export const rewards = {
 
   granted: '+{{alloy}} Legierung · +{{crystal}} Kristall',
   overCap:
-    'Damit überschreitest du deine Lagergrenze. Es geht nichts verloren. Deine Produktion kannst du aber erst wieder abholen, nachdem du Ressourcen ausgegeben hast.',
+    'Über dem Lagerlimit: nichts geht verloren, aber Abholen erst nach dem Ausgeben.',
 
   /**
    * ONE ENTRY PER CHAIN, `name` + `tag`, the same shape every card in the game

@@ -159,6 +159,7 @@ export const fleetPage = {
   noShips: "No hay naves en casa",
   capital: "Capital",
   colony: "Colonia",
+  roomFact: "Un hangar lleno detiene el astillero.",
   roomRule: "Espacio para cada nave de un mundo: en casa, fuera y en el astillero. Un Hangar lleno detiene el astillero y los traslados entrantes; una flota recuperada siempre cabe.",
   ground: "Defensa terrestre",
   ceiling: "hasta {{shown}} con este Núcleo",

@@ -21,7 +21,7 @@ export const rewards = {
   eyebrow: "Objectifs permanents",
   title: "Récompenses",
   intro:
-    "Ces objectifs n’expirent pas et ne demandent aucune série. Les récompenses vont directement au Magasin, même au-delà de sa capacité. Les ressources non protégées peuvent être pillées.",
+    "Sans expiration ni série. Tout va au Magasin ; le non protégé peut être pillé.",
   waiting: "{{count}} récompenses t’attendent",
   allTaken: "Tu as récupéré les récompenses de tous les objectifs.",
   claim: "Récupérer",
@@ -38,7 +38,7 @@ export const rewards = {
   progressDone: "Terminé",
   granted: "+{{alloy}} alliage · +{{crystal}} cristal",
   overCap:
-    "Cette récompense dépassera la capacité du Dépôt. Les ressources ne seront pas perdues ; en revanche, tu ne pourras plus collecter celles du stock de production tant que tu n’auras pas libéré de la place.",
+    "Dépôt dépassé : rien n’est perdu, mais pas de collecte avant de faire de la place.",
   /**
 
   * Nom et étiquette de chaque chaîne. Le nom dit CE QU’EST l’objectif ; l’étiquette

@@ -115,7 +115,7 @@ export const skins = {
   openShop: 'Explora la almacén',
   ownedSkins: 'Máscaras propias',
   noOwnedSkins: 'Tu inventario está vacío. Explora la almacén para ver cada look.',
-  intro: 'Una piel puede vestir todos los mundos que posees. Elige un aspecto diferente para cada mundo y cámbialo cuando quieras.',
+  intro: 'Pon un aspecto a cualquier mundo tuyo y cámbialo cuando quieras.',
   inspect: 'Inspeccionar el modelo',
   dragHint: 'Arrastrar para rotar',
   modelUnavailable: 'Modelo no disponible',

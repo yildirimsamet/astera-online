@@ -23,16 +23,23 @@ describe('Honor effects explained where a player decides', () => {
   it('shows the real lost convoy resources, net total and a red named penalty', () => {
     render(<HonorEffectQuote kind="convoy" value={value(-100_000_000)}
       base={{ alloy: 1000, crystal: 0, deuterium: 0 }} net={{ alloy: 700, crystal: 0, deuterium: 0 }} />);
-    expect(screen.getByText('Honor penalty: −30%').closest('p')).toHaveAttribute('data-tone', 'hostile');
+    expect(screen.getByText('Honor penalty: −30%').closest('[data-tone]')).toHaveAttribute('data-tone', 'hostile');
     expect(screen.getByText('−300')).toBeVisible();
     expect(screen.getByText('700')).toBeVisible();
   });
   it('uses a green commission-free benefit for positive Honor and a neutral statement at zero', () => {
     const { rerender } = render(<HonorEffectQuote kind="trade" value={value(25_000_000)}
       base={{ alloy: 1000, crystal: 0, deuterium: 0 }} net={{ alloy: 1000, crystal: 0, deuterium: 0 }} />);
-    expect(screen.getByText('Honor benefit: 0% commission').closest('p')).toHaveAttribute('data-tone', 'good');
+    expect(screen.getByText('Honor benefit: 0% commission').closest('[data-tone]')).toHaveAttribute('data-tone', 'good');
     rerender(<HonorEffectQuote kind="trade" value={value(0)} base={{ alloy: 1000, crystal: 0, deuterium: 0 }} net={{ alloy: 1000, crystal: 0, deuterium: 0 }} />);
-    expect(screen.getByText('0% commission').closest('p')).not.toHaveAttribute('data-tone');
+    expect(screen.getByText('0% commission').closest('.gk-honorquote__title')).not.toHaveAttribute('data-tone');
+  });
+  // E6 (owner 2026-11-17): the quote's fine print is one press away, beside the effect it qualifies.
+  it('keeps the trade rule behind the effect’s ⓘ', () => {
+    render(<HonorEffectQuote kind="trade" value={value(0)} base={{ alloy: 1000, crystal: 0, deuterium: 0 }} net={{ alloy: 1000, crystal: 0, deuterium: 0 }} />);
+    expect(screen.queryByText(/Commission is included in the net haul/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'What is this?' }));
+    expect(screen.getByText(/Commission is included in the net haul/)).toBeVisible();
   });
   it.each(LANGUAGES)('names the effect, source and rule in %s without raw translation keys', async language => {
     await i18n.changeLanguage(language);
@@ -107,13 +114,14 @@ describe('Honor’s privileges on the kit', () => {
     const table = screen.getByRole('table');
     expect(within(table).getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual(['', 'Base', 'Honor', 'You pay']);
     expect(within(table).getAllByRole('row')).toHaveLength(3);
-    expect(screen.getByText('Honor benefit: −5%').closest('p')).toHaveAttribute('data-tone', 'good');
+    expect(screen.getByText('Honor benefit: −5%').closest('[data-tone]')).toHaveAttribute('data-tone', 'good');
   });
 
   it('draws no empty table before anything is chosen, and keeps the rule', () => {
     const none = { alloy: 0, crystal: 0, deuterium: 0 };
     render(<HonorEffectQuote kind="trade" value={value(-30_000_000)} base={none} net={none} />);
     expect(screen.queryByRole('table')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'What is this?' }));
     expect(screen.getByText(/Commission is included in the net haul/)).toBeVisible();
   });
 });

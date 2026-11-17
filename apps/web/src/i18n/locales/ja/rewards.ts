@@ -20,7 +20,7 @@ export const rewards = {
   eyebrow: "常設の報酬",
   title: "報酬",
   intro:
-    "これらの目標には期限も連続達成の条件もありません。報酬は貯蔵庫に直接入り、容量を超える場合もあります。保護されていない資源は略奪されます。",
+    "期限も連続条件もなし。報酬は貯蔵庫へ、保護外の分は略奪されます。",
 
   waiting: "受け取れる報酬：{{count}}件",
   allTaken: "現在受け取れる報酬はありません。銀河での行動を続けると、次の報酬が開放されます。",
@@ -43,7 +43,7 @@ export const rewards = {
 
   granted: "+{{alloy}}合金・+{{crystal}}クリスタル",
   overCap:
-    "報酬を受け取ると貯蔵庫の上限を超えます。資源は失われませんが、一部を使うまで生産分を回収できません。",
+    "貯蔵上限を超えます。資源は失われませんが、使うまで回収できません。",
 
   /**
    * ONE ENTRY PER CHAIN, `name` + `tag`, the same shape every card in the game

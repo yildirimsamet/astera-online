@@ -16,6 +16,10 @@ const LOCALES = { tr, en, de, es, fr, ja };
 /** The sweep's lines: the key, and how many characters a Latin-script language may spend on it. */
 const SHORT: readonly (readonly [key: string, max: number])[] = [
   ['galaxy.commander.wipeNote', 60],
+  ['rewards.intro', 90],
+  ['rewards.overCap', 90],
+  ['notificationCenter.lead', 100],
+  ['skins.intro', 70],
 ];
 
 function at(tree: unknown, path: string): string {

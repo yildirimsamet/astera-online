@@ -121,7 +121,7 @@ export const skins = {
   noOwnedSkins:
     "Ton inventaire est vide. Tu peux découvrir toutes les apparences dans la Boutique.",
   intro:
-    "Une apparence peut être utilisée sur toutes les planètes que tu possèdes. Tu peux choisir une apparence différente pour chaque planète et la changer quand tu veux.",
+    "Habille n’importe quel monde d’un skin, change-le à volonté.",
   inspect: "Examiner le modèle",
   dragHint: "Fais glisser pour faire pivoter",
   modelUnavailable: "Impossible de charger le modèle",

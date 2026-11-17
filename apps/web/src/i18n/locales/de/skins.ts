@@ -115,7 +115,7 @@ export const skins = {
   openShop: 'Shop entdecken',
   ownedSkins: 'Eigene Skins',
   noOwnedSkins: 'Dein Inventar ist leer. Erkunde den Shop, um jeden Look zu sehen.',
-  intro: 'Ein Skin kann jede Welt kleiden, die du besitzt. Wähle für jede Welt ein anderes Aussehen und ändere es, wann immer du willst.',
+  intro: 'Gib jeder deiner Welten einen Skin und wechsle ihn jederzeit.',
   inspect: 'Modell ansehen',
   dragHint: 'Zum Drehen ziehen',
   modelUnavailable: 'Modell nicht verfügbar',

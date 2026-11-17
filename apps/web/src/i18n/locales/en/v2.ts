@@ -164,6 +164,7 @@ export const fleetPage = {
   noShips: "No ships at home",
   capital: "Capital",
   colony: "Colony",
+  roomFact: "A full Hangar stops the yard.",
   roomRule: "Room for every ship a world owns — home, away and in the yard. A full Hangar stops the yard and transfers in; a recalled fleet always fits.",
   ground: "Ground defence",
   ceiling: "up to {{shown}} at this Core",

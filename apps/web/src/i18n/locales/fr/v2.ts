@@ -159,6 +159,7 @@ export const fleetPage = {
   noShips: "Aucun vaisseau à quai",
   capital: "Capitale",
   colony: "Colonie",
+  roomFact: "Un hangar plein arrête le chantier.",
   roomRule: "Place pour chaque vaisseau d'un monde — à quai, en route et au chantier. Un Hangar plein arrête le chantier et les transferts entrants ; une flotte rappelée trouve toujours sa place.",
   ground: "Défense au sol",
   ceiling: "jusqu'à {{shown}} avec ce Noyau",

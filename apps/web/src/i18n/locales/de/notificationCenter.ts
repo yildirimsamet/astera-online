@@ -11,7 +11,7 @@ export const notificationCenter = {
   "pushDenied": "Android fragt nicht noch einmal. Erlaube Benachrichtigungen für Astera Online in den Handy-Einstellungen.",
   "menuCovers_one": "Reicht für {{count}} Angriffswarnung",
   "menuCovers_other": "Reicht für {{count}} Angriffswarnungen",
-  "lead": "Sieht dein Radar einen Angriff kommen, schickt die Zentrale eine Warnung auf dein Handy, auch wenn das Spiel geschlossen ist. Jede Warnung verbraucht Deuterium aus der Kasse der Zentrale.",
+  "lead": "Sieht das Radar einen Angriff, meldet es dein Handy, auch bei geschlossenem Spiel. Kostet Deuterium.",
   "loading": "Benachrichtigungszentrale wird geladen…",
   "loadError": "Die Benachrichtigungszentrale konnte nicht geladen werden.",
   "retry": "Erneut versuchen",

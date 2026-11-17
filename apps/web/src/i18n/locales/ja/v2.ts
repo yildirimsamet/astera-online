@@ -163,6 +163,7 @@ export const fleetPage = {
   noShips: "駐留する艦船はありません",
   capital: "首都",
   colony: "植民地",
+  roomFact: "格納庫が満杯だと造船所が止まります。",
   roomRule: "格納庫の枠は、この惑星の船が帰還中や建造中でも使います。満杯になると新しい船の建造と受け入れはできません。呼び戻した艦隊は必ず戻れます。",
   ground: "地上防衛",
   ceiling: "この司令中枢での上限は{{shown}}",

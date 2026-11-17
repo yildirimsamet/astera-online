@@ -4,7 +4,7 @@ import type { HonorBenefitsView } from '../api/schemas.js';
 import { honorScore } from '../lib/honor.js';
 import { full } from '../lib/format.js';
 import { HonorIcon } from './icons/index.js';
-import { Glyph, HonorBadge } from '../game-ui/index.js';
+import { Glyph, HonorBadge, InfoPeek } from '../game-ui/index.js';
 import { RulesRow } from './RulesRow.js';
 import { RESOURCE_ART } from './assets.js';
 
@@ -93,7 +93,10 @@ export function HonorEffectQuote({ kind, value, base, net }: { kind: 'repair' | 
     : t(beneficial ? 'honorBenefits.bonus' : adverse ? 'honorBenefits.penalty' : 'honorBenefits.noChange', { amount: signedPercent(percent) });
   const shown = goods.filter(good => base[good] > 0 || net[good] > 0);
   return <div data-honor-effect={kind} className="gk gk-well gk-honorquote" data-tone={tone(beneficial, adverse)}>
-    <p className="gk-honorquote__title" data-tone={tone(beneficial, adverse)}><HonorIcon className="gk-honorquote__icon" /><span>{title}</span></p>
+    {/* E6: the effect is the line; its fine print is one press away (owner 2026-11-17). */}
+    <InfoPeek lead={<HonorIcon className="gk-honorquote__icon" />}
+      fact={<span className="gk-honorquote__title" data-tone={tone(beneficial, adverse)}>{title}</span>}
+      rule={<p className="gk-note">{t(kind === 'repair' ? 'honorBenefits.repairRule' : kind === 'convoy' ? 'honorBenefits.convoyRule' : 'honorBenefits.tradeRule')}</p>} />
     {shown.length > 0 ? <table className="gk-honorquote__table">
       <thead><tr><th scope="col" /><th scope="col">{t('honorBenefits.base')}</th><th scope="col">{t('honorBenefits.difference')}</th>
         <th scope="col">{t(kind === 'repair' ? 'honorBenefits.youPay' : 'honorBenefits.net')}</th></tr></thead>
@@ -107,6 +110,5 @@ export function HonorEffectQuote({ kind, value, base, net }: { kind: 'repair' | 
         </tr>;
       })}</tbody>
     </table> : null}
-    <p className="gk-note">{t(kind === 'repair' ? 'honorBenefits.repairRule' : kind === 'convoy' ? 'honorBenefits.convoyRule' : 'honorBenefits.tradeRule')}</p>
   </div>;
 }
