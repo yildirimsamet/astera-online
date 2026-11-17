@@ -6,7 +6,7 @@ import { useGLTF } from '@react-three/drei';
 import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { planetArt, planetLook, planetModel } from '../ui/assets.js';
-import { LIMB_PEAK, limbTexture, softGlow } from './Environment.jsx';
+import { LIMB_PEAK, limbTexture } from './Environment.jsx';
 import { STANCE_LIGHT, rivalSlotOf, type PlanetNode, type Stance } from './scene.js';
 import type { RivalMark } from '../api/schemas.js';
 import { markHit, wasTap } from './tap.js';
@@ -1172,19 +1172,6 @@ function Ring({
 
   return (
     <group ref={ref} position={node.position}>
-      {/* The halo. Behind the world, so it reads as light coming off the limb. */}
-      <mesh position={[0, 0, -0.01]}>
-        <planeGeometry args={[node.radius * 2.2, node.radius * 2.2]} />
-        <meshBasicMaterial
-          map={softGlow()}
-          color={colour}
-          transparent
-          opacity={node.stance === 'window' ? 0.25 : 0.16}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </mesh>
-
       {/* A hairline on the silhouette itself. */}
       <mesh>
         <ringGeometry args={[edge, edge * 1.018, 64]} />
@@ -1199,17 +1186,6 @@ function Ring({
               color={CLANMATE_COLOUR}
               transparent
               opacity={0.98}
-              depthWrite={false}
-              blending={THREE.AdditiveBlending}
-            />
-          </mesh>
-          <mesh position={[0, 0, -0.015]}>
-            <planeGeometry args={[node.radius * 2.42, node.radius * 2.42]} />
-            <meshBasicMaterial
-              map={softGlow()}
-              color={CLANMATE_COLOUR}
-              transparent
-              opacity={0.2}
               depthWrite={false}
               blending={THREE.AdditiveBlending}
             />

@@ -4,7 +4,7 @@ import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { GALAXY, STARTER, generateGalaxy, mainOffsetOf, mulberry32, toWorld } from '@astera/rules';
 import { useShipModels } from '../arena/hangar/shipModels.js';
-import { BrightStars, Dust, Sky, softGlow } from '../galaxy/Environment.js';
+import { BrightStars, Dust, Sky } from '../galaxy/Environment.js';
 import { GalaxyPostprocessing } from '../galaxy/GalaxyPostprocessing.js';
 import { MainGalaxySky } from '../galaxy/MainGalaxySky.js';
 import { mainSkyNodes } from '../galaxy/mainSky.js';
@@ -38,6 +38,18 @@ function openingCamera(): [number, number, number] {
   return [SHIP[0] - (dx / length) * CAMERA_BACK, SHIP[1] - (dy / length) * CAMERA_BACK + CAMERA_LIFT, SHIP[2] - (dz / length) * CAMERA_BACK];
 }
 
+let dot: THREE.Texture | null = null;
+/** A hard round point: a far ship is a pin of light, never a soft glow (owner 2026-11-18). */
+function hardDot(): THREE.Texture {
+  if (dot) return dot;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 32;
+  const ctx = canvas.getContext('2d');
+  if (ctx) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(16, 16, 13, 0, Math.PI * 2); ctx.fill(); }
+  dot = new THREE.CanvasTexture(canvas);
+  return dot;
+}
+
 /** Neighbours as points, until the real ships are drawn. */
 function Neighbours() {
   const geometry = useMemo(() => {
@@ -52,7 +64,7 @@ function Neighbours() {
   }, []);
   useEffect(() => () => { geometry.dispose(); }, [geometry]);
   return <points geometry={geometry}>
-    <pointsMaterial map={softGlow()} color="#9fc8ff" size={0.9} sizeAttenuation transparent depthWrite={false}
+    <pointsMaterial map={hardDot()} color="#9fc8ff" size={0.35} sizeAttenuation transparent alphaTest={0.5} depthWrite={false}
       blending={THREE.AdditiveBlending} fog={false} toneMapped={false} />
   </points>;
 }

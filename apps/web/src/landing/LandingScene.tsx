@@ -13,7 +13,7 @@ import {
   MODEL_POSE,
   SATELLITE_MODEL,
 } from '../ui/assets.js';
-import { BrightStars, Sky, softGlow } from '../galaxy/Environment.jsx';
+import { BrightStars, LIMB_PEAK, Sky, limbTexture } from '../galaxy/Environment.jsx';
 import { posedCraft, unitModel } from '../galaxy/model.js';
 import { place, placeVector, sizeOf, type Framing } from './layout.js';
 import { FirstSceneFrame, SceneRenderGate, SceneWarmup } from '../galaxy/SceneWarmup.js';
@@ -207,9 +207,10 @@ function Drift({ children }: { children: ReactNode }) {
  * are finished, lit illustrations, and wrapping one onto a sphere would fight its
  * baked lighting. Same decision as `PlanetField`, for the same reason.
  *
- * The glow behind it is doing real work, not decoration: these renders are dark on
+ * The limb behind it is doing real work, not decoration: these renders are dark on
  * their unlit side, and against a near-black sky a dark limb has no edge at all. The
- * halo is what makes the silhouette exist.
+ * atmosphere's own thin edge, bright on the lit side and faint on the dark one, is what
+ * makes the silhouette exist (owner 2026-11-18: no round soft glow, here or anywhere).
  */
 function Planet({
   framing,
@@ -230,21 +231,14 @@ function Planet({
   glow: string;
 }) {
   const texture = useLoader(THREE.TextureLoader, art);
-  const halo = useMemo(() => softGlow(), []);
+  const limb = useMemo(() => limbTexture(), []);
   const position = place(framing, u, v, depth);
   const size = sizeOf(framing, fraction, depth);
 
   return (
     <group position={position}>
-      <sprite scale={[size * 1.75, size * 1.75, 1]}>
-        <spriteMaterial
-          map={halo}
-          color={glow}
-          transparent
-          opacity={0.4}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
+      <sprite scale={[size / LIMB_PEAK, size / LIMB_PEAK, 1]}>
+        <spriteMaterial map={limb} color={glow} transparent opacity={0.9} depthWrite={false} blending={THREE.AdditiveBlending} />
       </sprite>
       <sprite scale={[size, size, 1]}>
         <spriteMaterial map={texture} transparent depthWrite={false} />

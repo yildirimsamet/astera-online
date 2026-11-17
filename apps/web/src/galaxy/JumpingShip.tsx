@@ -44,28 +44,15 @@ function Flames({ hull, state, seed }: { hull: VesselHull; state: React.RefObjec
     return new ShipFlames(noise, nozzles, VESSEL_NOZZLES[hull].radius * FLAME_WIDTH, FLAME_REACH,
       quality === 'high' ? 'standard' : 'mobile', seed);
   }, [noise, nozzles, hull, quality, seed]);
-  const glows = useRef<(THREE.Sprite | null)[]>([]);
   useFrame(({ clock }) => {
     const { lever, turbo } = state.current;
     if (!flames) return;
     flames.update(lever * gain, turbo * gain, clock.elapsedTime);
     flames.mesh.visible = lever > 0.001 || turbo > 0.001;
-    // A white-hot throat in each nozzle, brightest at a catch, so the light reads before the flame grows.
-    const heat = Math.min(1, lever * 1.4 + turbo * 0.4);
-    for (const glow of glows.current) {
-      if (!glow) continue;
-      glow.material.opacity = heat;
-      glow.scale.setScalar(VESSEL_NOZZLES[hull].radius * (3.2 + 2.2 * heat));
-    }
   });
   return (
     <>
       {flames && <primitive object={flames.mesh} />}
-      {nozzles.map((nozzle, i) => (
-        <sprite key={i} ref={(sprite) => { glows.current[i] = sprite; }} position={nozzle} raycast={() => null}>
-          <spriteMaterial map={softGlow()} color="#cfe6ff" transparent opacity={0} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
-        </sprite>
-      ))}
     </>
   );
 }
