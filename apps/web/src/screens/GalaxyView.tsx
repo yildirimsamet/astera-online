@@ -1,6 +1,10 @@
 import { useStarterLesson } from '../starter/tutorial/visualGoal.js';
 import { rocksHeld, rockSheetStaysOpen, sightLesson, useTelescopeReveal } from '../starter/tutorial/sightLesson.js';
 import { setRockSheet } from '../starter/tutorial/rockSheet.js';
+import { useLaunchSheet } from '../starter/tutorial/launchSheet.js';
+import { DirectorStage } from '../starter/director/DirectorStage.js';
+import { useStarterScenes } from '../starter/director/useStarterScenes.js';
+import { weldingSystems } from '../starter/director/scenes.js';
 import { bottomSurface, selectionGone } from '../starter/bottomSurface.js';
 import { applyCosmeticTrial, type CosmeticTrial } from '../galaxy/cosmeticTrial.js';
 import { CosmeticTrialBar } from './CosmeticTrialBar.js';
@@ -768,6 +772,8 @@ export function GalaxyView({
   const [homeSignal, setHomeSignal] = useState(0);
   /** A system that just came back: the camera goes home and its bay beats (onboarding design §5.3). */
   const [awaken, setAwaken] = useState<{ system: VesselSystem; key: number } | undefined>(undefined);
+  /** The galaxy is clear for the director (plan 2026-11-18, Faz 5.1): no page, launch or trade over it. */
+  const launchingNow = useLaunchSheet();
   const onAwaken = useCallback((system: VesselSystem) => {
     setAwaken((last) => ({ system, key: (last?.key ?? 0) + 1 }));
     setHomeSignal((n) => n + 1);
@@ -1003,6 +1009,14 @@ export function GalaxyView({
   const knownPirates = useMemo(() => knownPirateContacts(contacts), [contacts]);
   // The target list's flight times move by the minute, not by the HUD's five-second clock.
   const minuteNow = season.data ? Math.floor((now - season.data.startsAt.getTime()) / 60_000) : 0;
+
+  /** THE FIRST SESSION, DIRECTED (plan 2026-11-18 §5): the ship's changes become scenes on the galaxy. */
+  const starterRock = useMemo(() => (ship && asteroids.length > 0 ? nearestRock(asteroids, activeWorldPosition, minuteNow) : null),
+    [ship, asteroids, activeWorldPosition, minuteNow]);
+  const starterReturn = useMemo(() => contacts.find(contact => contact.kind === 'unknown' && contact.effectOnly !== true)?.id ?? null, [contacts]);
+  const awakenBay = useCallback((system: VesselSystem) => { setAwaken((last) => ({ system, key: (last?.key ?? 0) + 1 })); }, []);
+  const weldingBays = useMemo(() => (ship ? weldingSystems(ship.queue, now) : []), [ship, now]);
+  const shownLook = useStarterScenes({ ship, shipOpen: panel === 'planet', onCloseShip: () => { onPanel(null); }, nearestRockId: starterRock ?? null, unknownContactId: starterReturn, onAwaken: awakenBay });
   const findableTargets = useMemo<GalaxyTarget[]>(() => [
       ...monumentFinderTargets(galaxy.data?.monuments ?? [], t),
       ...outpostFinderTargets(planets, t),
@@ -1435,7 +1449,7 @@ export function GalaxyView({
         universe={{ view: universe, open: universeOpen, onLimit: reachUniverseLimit, onOpen: openUniverse, onClose: closeUniverse }}
         watched={watched}
         {...(ship && jump?.inGame && jump.stage === 'flight' && jump.world ? { flight: { jump, world: jump.world } } : {})}
-        {...(ship ? { starter: { hull: vesselHull(ship.id), progress: { modules: ship.modules, facts: ship.facts }, galaxyOrdinal: ship.galaxy.ordinal, mainSky, landmarks: { monuments: mainSkyAnswer?.monuments ?? NO_LANDMARKS, clouds: mainSkyAnswer?.clouds ?? NO_CLOUDS }, beams, onMainGalaxy: () => { setMainRowOpen(true); }, onOpen: () => { onFocus({ kind: 'planet', id: ship.id }); }, awaken } } : {})}
+        {...(ship ? { starter: { hull: vesselHull(ship.id), progress: { modules: ship.modules, facts: ship.facts }, galaxyOrdinal: ship.galaxy.ordinal, mainSky, landmarks: { monuments: mainSkyAnswer?.monuments ?? NO_LANDMARKS, clouds: mainSkyAnswer?.clouds ?? NO_CLOUDS }, beams, onMainGalaxy: () => { setMainRowOpen(true); }, onOpen: () => { onFocus({ kind: 'planet', id: ship.id }); }, awaken, directorLive: panel === null && !launchingNow && !trading && !mainRowOpen, working: weldingBays, look: shownLook } } : {})}
         cosmeticAppearance={{ engineId: cosmetics.data?.equipment?.ENGINE,
           probeId: cosmetics.data?.equipment?.PROBE, flagId: cosmetics.data?.clanFlagId ?? undefined,
           shipSkins: cosmetics.data?.equipment?.SHIP }}
@@ -2006,6 +2020,8 @@ export function GalaxyView({
       */}
       {/* A selection that draws a card already took the foot (`bottomSurface`); the own ship draws none,
           so a tap on it must not hide the step the guide points at (prod 2026-11-13: 5 of 6 stuck guides). */}
+      {/* The director's letterbox, over everything, while the galaxy is clear (plan 2026-11-18 §4 İ3). */}
+      {ship && panel === null && !launchingNow && !trading && !mainRowOpen && <DirectorStage />}
       {ship && bottom === 'starter' && (
         <div className="pointer-events-auto absolute inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20">
           {cornerButtons && <div className="mb-2 flex justify-end">{cornerButtons}</div>}

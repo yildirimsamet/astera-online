@@ -1,0 +1,121 @@
+import { describe, expect, it } from 'vitest';
+import { SHOT_MAX_MS } from '../src/starter/director/director.js';
+import { contactScene, rockScene, sceneAnnouncing, scenesFor, weldingSystems, type ShipState } from '../src/starter/director/scenes.js';
+
+/**
+ * WHICH SCENE A CHANGE OF THE SHIP CALLS FOR (plan 2026-11-18 §5, Faz 5.2–5.6). The first look at the
+ * ship is its report; a repair of the first road is shown where it is done, when it starts and when it
+ * comes back; the hull's new look is a moment, never a swap; the dark is shown before the telescope.
+ */
+const name = (module: string): string => module.toLowerCase();
+const opening: ShipState = { modules: { REFINERY: 1 }, queue: [], look: 'WRECKED' };
+const ids = (prev: ShipState | null, next: ShipState): string[] => scenesFor(prev, next, name).map(scene => scene.id);
+
+describe('the scenes a ship calls for', () => {
+  it('opens a new ship with its report: the whole hull round, then the drive, the way out', () => {
+    const [report] = scenesFor(null, opening, name);
+    expect(report?.id).toBe('shipReport');
+    expect(report?.beats.map(beat => beat.shot.kind)).toEqual(['ship', 'bay']);
+    expect(report?.beats[0]?.tags).toEqual(['REFINERY', 'SURVEY', 'DEFENCE', 'CARGO', 'DRIVE']);
+    expect(report?.beats[1]?.shot).toEqual({ kind: 'bay', system: 'DRIVE' });
+  });
+
+  it('opens a ship met again further on with nothing: it has seen its report', () => {
+    expect(ids(null, { modules: { REFINERY: 2, EXTRACTOR: 1 }, queue: [], look: 'WRECKED' })).toEqual([]);
+  });
+
+  it('shows a repair of the road where it is done, as it starts', () => {
+    const [work] = scenesFor(opening, { ...opening, queue: [{ subject: 'REFINERY', stage: 2 }] }, name);
+    expect(work?.id).toBe('repair:REFINERY:2:work');
+    expect(work?.beats[0]?.shot).toEqual({ kind: 'bay', system: 'REFINERY' });
+    expect(work?.beats[0]?.line).toBe('starter.director.repair.work');
+    expect(work?.beats[0]?.vars).toEqual({ name: 'refinery' });
+  });
+
+  it('shows the repair come back, with what it is for, and the hull\'s new look as a moment of its own', () => {
+    const before: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }, queue: [{ subject: 'RADAR', stage: 1 }], look: 'WRECKED' };
+    const after: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, queue: [], look: 'PATCHED' };
+    const [done] = scenesFor(before, after, name);
+    expect(done?.id).toBe('repair:RADAR:1:done');
+    expect(done?.beats.map(beat => beat.line)).toEqual(['starter.director.repair.RADAR', 'starter.director.hull.PATCHED']);
+    expect(done?.beats[0]?.shot).toEqual({ kind: 'bay', system: 'DEFENCE' });
+    expect(done?.beats[1]?.shot.kind).toBe('ship');
+  });
+
+  it('shows only the return of a repair that was ordered and finished while away', () => {
+    expect(ids(opening, { modules: { REFINERY: 2 }, queue: [], look: 'WRECKED' })).toEqual(['repair:REFINERY:2:done']);
+  });
+
+  it('leaves the repairs past the road to the ship itself', () => {
+    const road: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 }, queue: [], look: 'PATCHED' };
+    expect(ids(road, { ...road, queue: [{ subject: 'VAULT', stage: 1 }] })).toEqual([]);
+    expect(ids(road, { ...road, modules: { ...road.modules, VAULT: 1 } })).toEqual([]);
+  });
+
+  it('shows the dark once the crystal furnace is back and the telescope is not', () => {
+    const before: ShipState = { modules: { REFINERY: 2 }, queue: [{ subject: 'EXTRACTOR', stage: 1 }], look: 'WRECKED' };
+    const after: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1 }, queue: [], look: 'WRECKED' };
+    expect(ids(before, after)).toEqual(['repair:EXTRACTOR:1:done', 'dark']);
+    const [, dark] = scenesFor(before, after, name);
+    expect(dark?.beats[0]?.shot).toEqual({ kind: 'wide' });
+    expect(dark?.beats[0]?.line).toBe('starter.director.dark');
+  });
+
+  it('holds every shot to three seconds at most', () => {
+    const all = [
+      ...scenesFor(null, opening, name),
+      ...scenesFor(opening, { ...opening, queue: [{ subject: 'REFINERY', stage: 2 }] }, name),
+      rockScene('rock-1'),
+      contactScene({ kind: 'contact', id: 'c-1' }),
+    ];
+    for (const scene of all) for (const beat of scene.beats) expect(beat.ms, `${scene.id}/${beat.id}`).toBeLessThanOrEqual(SHOT_MAX_MS);
+    expect(all.every(scene => scene.once)).toBe(true);
+  });
+
+  // Plan §5 A6–A7: the field the telescope opened first, then its nearest rock.
+  it('shows the telescope\'s field, then comes close to its first rock', () => {
+    const [field, approach] = rockScene('rock-1').beats;
+    expect(field?.shot).toEqual({ kind: 'wide', range: 11 });
+    expect(field?.line).toBe('starter.director.field');
+    expect(approach?.shot).toEqual({ kind: 'subject', focus: { kind: 'asteroid', id: 'rock-1' }, range: 2.4 });
+  });
+
+  it('comes close to the first rock and to the first contact without opening them', () => {
+    expect(rockScene('rock-1').beats.at(-1)?.shot).toEqual({ kind: 'subject', focus: { kind: 'asteroid', id: 'rock-1' }, range: 2.4 });
+    expect(rockScene('rock-1').id).toBe('rock');
+    expect(contactScene({ kind: 'unknownSignal', id: 's-1' }).beats[0]?.line).toBe('starter.director.contact');
+  });
+});
+
+describe('where the hull welds', () => {
+  const order = (subject: string, stage: number, seconds: number, startedAt = 0) => ({ subject, stage, queue: 'CONSTRUCTION' as const, startedAt: new Date(startedAt), readyAt: new Date(startedAt + seconds * 1000) });
+  it('welds the bay of a short repair while it runs, and no other', () => {
+    expect(weldingSystems([order('TELESCOPE', 1, 15)], 5_000)).toEqual(['DEFENCE']);
+    expect(weldingSystems([order('TELESCOPE', 1, 15)], 16_000)).toEqual([]);
+  });
+  // A repair of hours would keep the galaxy drawing every frame for hours: it shows its clock instead.
+  it('leaves a repair of more than two minutes still', () => {
+    expect(weldingSystems([order('REFINERY', 4, 3600)], 5_000)).toEqual([]);
+  });
+  it('names a system once however many of its repairs run, and ignores the yard', () => {
+    expect(weldingSystems([order('REFINERY', 2, 5), order('EXTRACTOR', 1, 5), { ...order('DART', 1, 5), queue: 'YARD' as const }], 1_000)).toEqual(['REFINERY']);
+  });
+});
+
+// Live play 2026-11-18: the telescope came back on the hull, then a card said "Defence systems online"
+// and asked to be closed before the sky would open. The scene is the announcement.
+describe('which scene announces a system', () => {
+  it('names the repair of the road that opens it', () => {
+    expect(sceneAnnouncing('telescope')).toBe('repair:TELESCOPE:1:done');
+    expect(sceneAnnouncing('radar')).toBe('repair:RADAR:1:done');
+    expect(sceneAnnouncing('intel')).toBe('repair:SURVEY:1:done');
+    expect(sceneAnnouncing('fleet')).toBe('repair:SHIPYARD:1:done');
+  });
+
+  it('names none for a system an event opens, or one open before the road', () => {
+    expect(sceneAnnouncing('salvage')).toBeNull();
+    expect(sceneAnnouncing('attack')).toBeNull();
+    expect(sceneAnnouncing('production')).toBeNull();
+    expect(sceneAnnouncing('migration')).toBeNull();
+  });
+});

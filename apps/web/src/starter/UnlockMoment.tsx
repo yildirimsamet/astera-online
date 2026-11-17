@@ -6,6 +6,8 @@ import { galaxyCover, watchGalaxyCover } from '../lib/galaxyCover.js';
 import { haptic } from '../lib/haptics.js';
 import { playSound } from '../lib/sound.js';
 import { describe, useToast } from '../ui/Toast.js';
+import { useDirector } from './director/director.js';
+import { announcedByScene } from './director/scenes.js';
 import { useMarkUnlockSeen } from './queries.js';
 import { unlockHeld, watchUnlockHold } from './tutorial/unlockHold.js';
 
@@ -18,6 +20,8 @@ export const FEATURE_SYSTEM: Record<StarterFeature, VesselSystem> = {
 
 /** Only what can be tried there and then gets a "Try it": the works, and a probe at the nearest ship. */
 const heard = new Set<string>();
+/** Systems taken as seen without a card, once each: a re-render while the answer is on its way asks nothing twice. */
+const quietly = new Set<string>();
 
 const TRY: readonly StarterFeature[] = ['production', 'intel'];
 
@@ -44,7 +48,18 @@ export function UnlockMoment({ vessel, overGalaxy = false, onAwaken, onTry }: {
   const covered = useSyncExternalStore(watchGalaxyCover, () => galaxyCover() !== null);
   const held = useSyncExternalStore(watchUnlockHold, unlockHeld);
   const feature = vessel.unlockToAnnounce;
-  const shown = feature !== null && !(overGalaxy && covered) && !held;
+  // A scene says it first (plan 2026-11-18 §4 İ7); one that has shown the system coming back said it all.
+  const directing = useDirector() !== null;
+  const told = announcedByScene(vessel.id, feature);
+  const shown = feature !== null && !(overGalaxy && covered) && !held && !directing && !told;
+  const markSeen = seen.mutate;
+  useEffect(() => {
+    if (!feature || !told || directing) return;
+    const key = `${vessel.id}:${feature}`;
+    if (quietly.has(key)) return;
+    quietly.add(key);
+    markSeen(feature, { onError: () => { quietly.delete(key); } });
+  }, [feature, told, directing, vessel.id, markSeen]);
   const system = feature ? FEATURE_SYSTEM[feature] : null;
   useEffect(() => {
     if (!shown || !system) return;

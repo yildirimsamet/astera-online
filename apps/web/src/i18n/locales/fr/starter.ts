@@ -163,6 +163,7 @@ export const starter = {
     "try": "Essayer",
     "later": "Plus tard"
   },
+  "director": {"skip": "Touche · passer", "shipReport": {"orbit": "Le vaisseau tient, mais il est à moitié mort.", "goal": "Allume le moteur et nous quittons cet endroit."}, "repair": {"work": "Réparation : {{name}}.", "REFINERY": "{{name}} tourne : l’alliage coule plus vite.", "EXTRACTOR": "{{name}} est allumé : le cristal répare les pièces fines.", "TELESCOPE": "{{name}} est ouvert : nous voyons dehors.", "RADAR": "{{name}} écoute : ce qui approche, nous l’entendons.", "SURVEY": "{{name}} est en place : nous lisons les autres vaisseaux.", "SHIPYARD": "{{name}} tourne : nous construisons nos vaisseaux."}, "hull": {"PATCHED": "La coque se reforme.", "RENEWED": "Le vaisseau brille de nouveau."}, "field": "Le télescope est ouvert. Il y a du monde autour de nous.", "dark": "Nous volons à l’aveugle. Sans télescope, nous ne voyons rien.", "rock": "Ce rocher contient du minerai. Un Prospecteur le ramène.", "contact": "Quelque chose approche. Nous ne savons pas quoi."},
   "tab": {
     "repair": "Répare {{module}} pour ouvrir ceci.",
     "mainGalaxy": "Ceci s’ouvre dans la galaxie principale.",

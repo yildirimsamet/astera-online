@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { vesselSchema } from '../src/api/starterSchemas.js';
 import { wireVessel } from './starterVesselFixture.js';
 import { useStarterTutorial } from '../src/starter/tutorial/useStarterTutorial.js';
+import { playScene, resetDirector, skipBeat } from '../src/starter/director/director.js';
 
 const empty = { alloy: 0, crystal: 0, deuterium: 0, bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0 };
 const state = vi.hoisted(() => ({
@@ -10,9 +11,10 @@ const state = vi.hoisted(() => ({
   runs: [] as { departAt: Date; arriveAt: Date; homeAt: Date | null; status?: string }[],
   planets: undefined as { id: string; firstHunt?: boolean }[] | undefined,
   held: { alloy: 0, crystal: 0, deuterium: 0, bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0 },
+  extra: {} as Record<string, unknown>,
 }));
 vi.mock('../src/api/queries.js', () => ({
-  usePlanet: () => ({ data: { vessel: vesselSchema.parse(wireVessel({ id: state.ship })) }, dataUpdatedAt: Date.now() }),
+  usePlanet: () => ({ data: { vessel: vesselSchema.parse(wireVessel({ id: state.ship, ...state.extra })) }, dataUpdatedAt: Date.now() }),
   usePending: () => ({ data: { pending: [] } }),
   useMining: () => ({ data: { runs: state.runs } }),
   useGalaxy: () => ({ data: state.planets ? { planets: state.planets } : undefined }),
@@ -20,7 +22,7 @@ vi.mock('../src/api/queries.js', () => ({
   useTraffic: () => ({ data: undefined }),
 }));
 vi.mock('../src/lib/projection.js', () => ({ useProjected: () => state.held }));
-afterEach(() => { localStorage.clear(); state.held = empty; state.ship = 'memory-1'; state.planets = undefined; state.runs = []; });
+afterEach(() => { localStorage.clear(); resetDirector(); state.held = empty; state.ship = 'memory-1'; state.planets = undefined; state.runs = []; state.extra = {}; });
 
 describe('tutorial acknowledgement memory', () => {
   it('reads once per ship, updates on acknowledgement and keeps ships separate', () => {
@@ -80,5 +82,17 @@ describe('the first hunt in the hook', () => {
     state.runs = [{ departAt: new Date('2026-11-06T12:00:00Z'), arriveAt: new Date('2026-11-06T12:01:00Z'), homeAt: new Date('2026-11-06T12:02:00Z'), status: 'done' }];
     const { result } = renderHook(() => useStarterTutorial('galaxy'));
     expect(result.current?.offers.find(offer => offer.kind === 'hunt')).toMatchObject({ mining: false });
+  });
+});
+
+// Live play 2026-11-18: the telescope came back in a scene, then the guide asked for its card to be closed.
+describe('a system the director has shown coming back', () => {
+  it('asks for no card to be closed once its scene has shown it', () => {
+    state.extra = { unlockToAnnounce: 'telescope', progress: { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }, facts: [] } };
+    const { result, rerender } = renderHook(() => useStarterTutorial('galaxy'));
+    expect(result.current?.answer).toMatchObject({ nav: 'dismissUnlock' });
+    act(() => { playScene({ id: 'repair:TELESCOPE:1:done', once: true, beats: [{ id: 'back', shot: { kind: 'wide' }, ms: 100 }] }, 'memory-1'); skipBeat(); });
+    rerender();
+    expect(result.current?.answer).not.toMatchObject({ nav: 'dismissUnlock' });
   });
 });

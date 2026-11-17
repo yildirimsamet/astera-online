@@ -24,7 +24,7 @@ const SELF_LIGHT = 0.24;
  * its own texture so it never reads dim, a thin light rim like the ships flying in the galaxy, and
  * its damage burning on it. Model space: nose along +X, about one unit long.
  */
-export function VesselBody({ file, hull, damage, rim = '#8fe8ff', rimOpacity = 0.34, rimWidth = 0.006 }: {
+export function VesselBody({ file, hull, damage, rim = '#8fe8ff', rimOpacity = 0.34, rimWidth = 0.006, clip }: {
   file: string;
   hull: VesselHull;
   /** Smoke, flame and sparks over the bays (`VesselBurn`): a few batched draws and no light. */
@@ -32,6 +32,8 @@ export function VesselBody({ file, hull, damage, rim = '#8fe8ff', rimOpacity = 0
   rim?: string;
   rimOpacity?: number;
   rimWidth?: number;
+  /** World planes that cut the hull away (the hull's new look running along it, `HullShift`); moved by their owner. */
+  clip?: readonly THREE.Plane[] | undefined;
 }) {
   const gltf = useLoader(GLTFLoader, file, meshopt);
   const { body, outline, owned } = useMemo(() => {
@@ -48,6 +50,7 @@ export function VesselBody({ file, hull, damage, rim = '#8fe8ff', rimOpacity = 0
           copy.emissive = new THREE.Color(SELF_LIGHT, SELF_LIGHT, SELF_LIGHT);
           copy.roughness = Math.max(0.35, Math.min(0.85, copy.roughness));
         }
+        if (clip) copy.clippingPlanes = [...clip];
         owned.push(copy);
         return copy;
       });
@@ -60,14 +63,17 @@ export function VesselBody({ file, hull, damage, rim = '#8fe8ff', rimOpacity = 0
       depthWrite: false,
       side: THREE.BackSide,
       blending: THREE.AdditiveBlending,
-      vertexShader: 'uniform float uWidth; void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position + normal * uWidth, 1.0); }',
-      fragmentShader: 'uniform vec3 uColour; uniform float uOpacity; void main() { gl_FragColor = vec4(uColour, uOpacity); }',
+      // The clipping chunks compile to nothing on a hull no plane cuts.
+      clipping: true,
+      vertexShader: '#include <clipping_planes_pars_vertex>\nuniform float uWidth; void main() { vec4 mvPosition = modelViewMatrix * vec4(position + normal * uWidth, 1.0); gl_Position = projectionMatrix * mvPosition;\n#include <clipping_planes_vertex>\n}',
+      fragmentShader: '#include <clipping_planes_pars_fragment>\nuniform vec3 uColour; uniform float uOpacity; void main() {\n#include <clipping_planes_fragment>\ngl_FragColor = vec4(uColour, uOpacity); }',
     });
     rimMaterial.toneMapped = false;
+    if (clip) rimMaterial.clippingPlanes = [...clip];
     owned.push(rimMaterial);
     outline.traverse((node) => { if (isMesh(node)) node.material = rimMaterial; });
     return { body, outline, owned };
-  }, [gltf.scene, rim, rimOpacity, rimWidth]);
+  }, [gltf.scene, rim, rimOpacity, rimWidth, clip]);
   useEffect(() => () => { owned.forEach((material) => { material.dispose(); }); }, [owned]);
   // A ship never hit (a jump's ship, a fresh one) loads no fire art; once hit it keeps the burn, so a
   // repaired ship's fires go out over their moment instead of vanishing.

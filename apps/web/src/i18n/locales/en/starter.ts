@@ -163,6 +163,7 @@ export const starter = {
     "try": "Try it",
     "later": "Later"
   },
+  "director": {"skip": "Tap · skip", "shipReport": {"orbit": "The ship holds, but it is half-dead.", "goal": "Light the drive and we leave this place."}, "repair": {"work": "Repairing the {{name}}.", "REFINERY": "The {{name}} runs: alloy flows faster.", "EXTRACTOR": "The {{name}} is lit: crystal mends the fine parts.", "TELESCOPE": "The {{name}} is open: now we can see out.", "RADAR": "The {{name}} listens: whatever comes, we hear it.", "SURVEY": "The {{name}} is up: we can read other ships.", "SHIPYARD": "The {{name}} works: we build our own ships."}, "hull": {"PATCHED": "The hull is coming back together.", "RENEWED": "The ship shines again."}, "field": "The telescope is open. We are not alone out here.", "dark": "We are flying blind. Without the telescope we see nothing.", "rock": "This rock holds ore. A Prospector brings it home.", "contact": "Something is coming. We cannot tell what."},
   "tab": {
     "repair": "Repair the {{module}} to open this.",
     "mainGalaxy": "This opens in the main galaxy.",

@@ -11,6 +11,8 @@ import { opportunities, opportunityKey, type Opportunity } from '../opportunitie
 import { canPayDart, timeToAfford } from '../steps.js';
 import { useAdviceMemory } from './adviceMemory.js';
 import { useRockSheet } from './rockSheet.js';
+import { scenePlayedFor, useDirector } from '../director/director.js';
+import { announcedByScene } from '../director/scenes.js';
 import { sightNow } from './sightLesson.js';
 import { repairWait, tutorialStep, type TutorialInput, type TutorialAnswer, type TutorialStepId, type TutorialView, type TutorialWait } from './script.js';
 import { holdFull } from '../hold.js';
@@ -68,6 +70,8 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   const traffic = useTraffic();
   const intel = useIntel();
   const rockOpen = useRockSheet();
+  // Read again as a scene starts or ends: a scene can stand in for a step (the rock's approach).
+  useDirector();
   const plan = useMemo(() => (vessel ? vesselToPlanetView(vessel) : null), [vessel]);
   const held = useProjected(plan?.planet, planet.dataUpdatedAt, 5_000);
   const [acked, setAcked] = useState<{ id: string; list: string[] } | null>(null);
@@ -102,7 +106,8 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     modules: vessel.modules,
     facts: vessel.facts,
     queue: vessel.queue,
-    unlockToAnnounce: vessel.unlockToAnnounce,
+    // A system seen coming back in its scene has been announced: its card is closing itself.
+    unlockToAnnounce: announcedByScene(vessel.id, vessel.unlockToAnnounce) ? null : vessel.unlockToAnnounce,
     works: held.bufferAlloy,
     canPayNext: backIn === 0,
     canBuildShip: canPayDart(held),
@@ -113,6 +118,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     view,
     rockOpen,
     noRocks: mining.fieldData?.asteroids.length === 0,
+    rockShown: scenePlayedFor(vessel.id, 'rock'),
     sight: sightNow(traffic.data?.contacts ?? [], galaxy.data?.sensors?.[0]),
     acked: list,
   };

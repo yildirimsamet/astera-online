@@ -1,13 +1,14 @@
 import { useFrame } from '@react-three/fiber';
-import { Suspense, useEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { VESSEL_SYSTEMS, vesselLook, type Vec3, type VesselHull, type VesselProgress, type VesselSystem } from '@astera/rules';
+import { VESSEL_SYSTEMS, vesselLook, type Vec3, type VesselHull, type VesselLook, type VesselProgress, type VesselSystem } from '@astera/rules';
 import { softGlow } from './Environment.js';
 import { HitboxMaterial } from './hitboxDebug.js';
-import { VESSEL_BAYS, VESSEL_NOSE_TURN, damageSpots, starterShipYaw, vesselHitBox, vesselLights, vesselModelFile } from './mainSky.js';
+import { HULL_SHIFT_SECONDS, hullSweepAt, nextLook } from './hullShift.js';
+import { VESSEL_BAYS, VESSEL_NOSE_TURN, damageSpots, starterShipYaw, vesselHitBox, vesselLights, vesselModelFile, type DamageSpot } from './mainSky.js';
 import { VESSEL_LENGTH } from './scene.js';
 import { markHit, wasTap } from './tap.js';
-import { VesselBody } from './VesselBody.js';
+import { VesselBody, preloadVessel } from './VesselBody.js';
 
 const LENGTH = VESSEL_LENGTH;
 /** Three beats of light where the system came back, then quiet (onboarding design §5.3). */
@@ -45,6 +46,84 @@ function AwakenPulse({ at, colour }: { at: readonly [number, number, number]; co
   );
 }
 
+/**
+ * A REPAIR UNDER WAY, AT ITS PLACE ON THE HULL (plan 2026-11-18 §4 İ2): a welding arc that flickers and
+ * throws its light, so the part being mended is the part that is seen being mended. Only while it runs.
+ */
+function WeldArc({ at }: { at: readonly [number, number, number] }) {
+  const arc = useRef<THREE.Sprite>(null);
+  const halo = useRef<THREE.Sprite>(null);
+  const materials = useMemo(() => {
+    const make = (colour: string) => new THREE.SpriteMaterial({ map: softGlow(), color: colour, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, toneMapped: false });
+    return { arc: make('#e8f6ff'), halo: make('#7fd2ff') };
+  }, []);
+  useEffect(() => () => { materials.arc.dispose(); materials.halo.dispose(); }, [materials]);
+  useFrame(({ clock, invalidate }) => {
+    const t = clock.elapsedTime;
+    // Two beats that never line up: the arc stutters like a torch, never like a lamp.
+    const flicker = Math.max(0, Math.sin(t * 37) * 0.6 + Math.sin(t * 23.3 + 1.7) * 0.5);
+    materials.arc.opacity = 0.25 + 0.75 * flicker;
+    materials.halo.opacity = 0.18 + 0.3 * flicker;
+    arc.current?.scale.setScalar(0.03 + 0.05 * flicker);
+    halo.current?.scale.setScalar(0.12 + 0.06 * flicker);
+    invalidate();
+  });
+  return (
+    <>
+      <sprite ref={halo} position={at} material={materials.halo} raycast={() => null} />
+      <sprite ref={arc} position={at} material={materials.arc} raycast={() => null} />
+    </>
+  );
+}
+
+const NOSEWARD = new THREE.Vector3(1, 0, 0);
+const TAILWARD = new THREE.Vector3(-1, 0, 0);
+
+/**
+ * THE HULL'S NEW LOOK, AS A MOMENT (owner 2026-11-18; `hullShift.ts`). A sheet of light runs from the
+ * tail past the nose: behind it the new hull, ahead of it the old, each cut by a plane that moves with
+ * it. Two hulls drawn for a second and a half, then the new one alone.
+ */
+function HullShift({ hull, from, to, damage, onDone }: {
+  hull: VesselHull;
+  from: VesselLook;
+  to: VesselLook;
+  damage: readonly DamageSpot[];
+  onDone: () => void;
+}) {
+  const frame = useRef<THREE.Group>(null);
+  const sheet = useRef<THREE.Mesh>(null);
+  const start = useRef<number | null>(null);
+  const ended = useRef(false);
+  const planes = useMemo(() => ({ fresh: [new THREE.Plane()], worn: [new THREE.Plane()] }), []);
+  const [, tall, wide] = vesselHitBox(hull);
+  const material = useMemo(() => new THREE.MeshBasicMaterial({ map: softGlow(), color: '#9fe8ff', transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }), []);
+  useEffect(() => () => { material.dispose(); }, [material]);
+  useFrame(({ clock, invalidate }) => {
+    const group = frame.current;
+    if (!group) return;
+    start.current ??= clock.elapsedTime;
+    const t = clock.elapsedTime - start.current;
+    const x = hullSweepAt(t, HULL_SHIFT_SECONDS);
+    group.updateWorldMatrix(true, false);
+    // The new hull where the sheet has passed (x' < x), the old one ahead of it.
+    planes.fresh[0]?.set(TAILWARD, x).applyMatrix4(group.matrixWorld);
+    planes.worn[0]?.set(NOSEWARD, -x).applyMatrix4(group.matrixWorld);
+    if (sheet.current) sheet.current.position.x = x;
+    if (t < HULL_SHIFT_SECONDS) { invalidate(); return; }
+    if (!ended.current) { ended.current = true; onDone(); }
+  });
+  return (
+    <group ref={frame}>
+      <VesselBody file={vesselModelFile(hull, from)} hull={hull} damage={[]} clip={planes.worn} />
+      <VesselBody file={vesselModelFile(hull, to)} hull={hull} damage={damage} clip={planes.fresh} />
+      <mesh ref={sheet} rotation={[0, Math.PI / 2, 0]} material={material} raycast={() => null}>
+        <planeGeometry args={[wide * 1.25, tall * 1.6]} />
+      </mesh>
+    </group>
+  );
+}
+
 const BAY_COLOUR: Record<VesselSystem, string> = {
   REFINERY: '#ffb46a',
   SURVEY: '#9fd8ff',
@@ -58,7 +137,7 @@ const BAY_COLOUR: Record<VesselSystem, string> = {
  * mended system burns as a light at its place on that hull. A sprite per bay and no real light, as
  * everything else in this scene.
  */
-export function OwnVessel({ at, offset, hull, progress, onSelect, awaken }: {
+export function OwnVessel({ at, offset, hull, progress, onSelect, awaken, working = [], look: shownLook }: {
   at: readonly [number, number, number];
   offset: Vec3;
   hull: VesselHull;
@@ -66,10 +145,22 @@ export function OwnVessel({ at, offset, hull, progress, onSelect, awaken }: {
   onSelect: () => void;
   /** A system that just came back; a new key beats again. */
   awaken?: { system: VesselSystem; key: number } | undefined;
+  /** Systems with a short repair under way: their bays weld. */
+  working?: readonly VesselSystem[];
+  /** The look to show, held back until its moment (the director's hull shot); the repairs' own look otherwise. */
+  look?: VesselLook | undefined;
 }) {
   const lights = useMemo(() => vesselLights(progress), [progress]);
   const damage = useMemo(() => damageSpots(lights), [lights]);
-  const look = vesselLook(progress);
+  const look = shownLook ?? vesselLook(progress);
+  // A change of look runs along the hull as a moment; it never swaps under the player's eyes.
+  const [drawn, setDrawn] = useState(look);
+  const [shift, setShift] = useState<{ from: VesselLook; to: VesselLook } | null>(null);
+  if (look !== drawn) { setShift({ from: drawn, to: look }); setDrawn(look); }
+  useEffect(() => {
+    const next = nextLook(look);
+    if (next) preloadVessel(vesselModelFile(hull, next));
+  }, [hull, look]);
   return (
     <group position={[at[0], at[1], at[2]]} rotation={[0, starterShipYaw([at[0], at[1], at[2]], offset), 0]} scale={LENGTH}>
       <group rotation={[0, VESSEL_NOSE_TURN, 0]}>
@@ -79,13 +170,20 @@ export function OwnVessel({ at, offset, hull, progress, onSelect, awaken }: {
         </mesh>
         {/* Its own boundary: a new state loading must not take the main galaxy's sky with it. */}
         {/* Owner 2026-11-06: lit from its own texture, a light rim, and its damage burning on it. */}
-        <Suspense fallback={null}><VesselBody file={vesselModelFile(hull, look)} hull={hull} damage={damage} /></Suspense>
+        {shift
+          ? (
+            <Suspense fallback={<VesselBody file={vesselModelFile(hull, shift.from)} hull={hull} damage={damage} />}>
+              <HullShift key={`${shift.from}>${shift.to}`} hull={hull} from={shift.from} to={shift.to} damage={damage} onDone={() => { setShift(null); }} />
+            </Suspense>
+          )
+          : <Suspense fallback={null}><VesselBody file={vesselModelFile(hull, look)} hull={hull} damage={damage} /></Suspense>}
         {VESSEL_SYSTEMS.map(system => lights[system] > 0 && (
           <sprite key={system} position={VESSEL_BAYS[hull][system]} scale={0.03 + 0.04 * lights[system]} raycast={() => null}>
             <spriteMaterial map={softGlow()} color={BAY_COLOUR[system]} opacity={0.35 + 0.6 * lights[system]} transparent depthWrite={false} toneMapped={false} />
           </sprite>
         ))}
         {awaken && <AwakenPulse key={awaken.key} at={VESSEL_BAYS[hull][awaken.system]} colour={BAY_COLOUR[awaken.system]} />}
+        {working.map(system => <WeldArc key={system} at={VESSEL_BAYS[hull][system]} />)}
       </group>
     </group>
   );

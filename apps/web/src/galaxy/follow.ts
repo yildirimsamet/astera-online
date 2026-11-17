@@ -12,6 +12,12 @@ export function cameraEaseStep(remaining: number, duration: number, delta: numbe
   return { fraction: left === 0 || before >= 1 ? 1 : (after - before) / (1 - before), remaining: left, done: left === 0 };
 }
 
+/** A glide that waits before it moves (the director's flight home, live play 2026-11-18): the wait left. */
+export function cameraHoldStep(left: number | undefined, delta: number): { waiting: boolean; left: number } {
+  if (left === undefined || left <= 0) return { waiting: false, left: 0 };
+  return { waiting: true, left: Math.max(0, left - delta) };
+}
+
 /**
  * THE WIDEST THE VIEW MAY BE ACROSS, degrees. Owner: *"Ekranı döndürürken ekranın
  * sağında ve solunda kalan nesneler uzayıp sünüyor."* A fixed 45° vertical field is

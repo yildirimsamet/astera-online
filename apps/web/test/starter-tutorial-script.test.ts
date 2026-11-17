@@ -118,6 +118,14 @@ describe('the road through the first session (N12)', () => {
     it('has the player come closer before any rock is asked for', () => {
       expect(at(open({ acked: ['telescopeLook'] }))).toMatchObject({ id: 'zoomRock', step: 'gesture', marks: [] });
     });
+    // Owner play-through 2026-11-18: the director's camera has already come close to the rock (plan §5 A7).
+    it('does not ask for a zoom once the camera has been brought to a rock', () => {
+      expect(id(open({ acked: ['telescopeLook'], rockShown: true }))).toBe('findRock');
+    });
+    // Live play 2026-11-18: the director showed the field and the rock, then the guide asked to look round.
+    it('does not ask to look round once the director has shown the field and its rock', () => {
+      expect(id(open({ rockShown: true }))).toBe('findRock');
+    });
     it('does not ask for a zoom with no rock to zoom on', () => {
       expect(id(open({ acked: ['telescopeLook'], noRocks: true }))).toBe('findRock');
     });

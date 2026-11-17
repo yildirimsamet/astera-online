@@ -8,13 +8,13 @@ import { JUMP_LAYER, type Jump } from '../starter/jump.js';
 import type { JumpWorld } from '../starter/jumpWorld.js';
 import { StarterGlow } from './StarterGlow.js';
 import type { DepartureBeam } from './mainSky.js';
-import { mainOffsetOf, motionPositionAt, type Vec3, type VesselHull, type VesselProgress, type VesselSystem } from '@astera/rules';
+import { mainOffsetOf, motionPositionAt, type Vec3, type VesselHull, type VesselLook, type VesselProgress, type VesselSystem } from '@astera/rules';
 import type { MainSky } from '../api/starterSchemas.js';
 import { MainGalaxySky } from './MainGalaxySky.js';
 import { UniverseBalls } from './UniverseBalls.js';
 import { OVERSCROLL_PER_PINCH_PIXEL, OVERSCROLL_PER_WHEEL_PIXEL, nextOverscroll, universeBalls, universeFrame, universeReturn, zoomedBackIn, type UniverseBall } from './universe.js';
 import type { UniverseView } from '../api/starterSchemas.js';
-import { STARTER_NAVIGATION_RADIUS, isMainWorld, mainSkyNodes, neighbourShips, starterCameraFar, starterOpeningPose } from './mainSky.js';
+import { STARTER_NAVIGATION_RADIUS, bayWorldPosition, isMainWorld, mainSkyNodes, neighbourShips, starterCameraFar, starterOpeningPose } from './mainSky.js';
 import { OwnVessel } from './OwnVessel.js';
 import { VesselField } from './VesselField.js';
 import { useNow } from '../lib/time.js';
@@ -47,6 +47,8 @@ import type {
   UnknownSignalView,
 } from '../api/schemas.js';
 import type { Focus } from './FocusPanel.js';
+import { useDirector, type ShotTarget } from '../starter/director/director.js';
+import { bayView, homeward, shotPose, type DirectorShot } from '../starter/director/shotPose.js';
 import { Monuments } from './Monuments.js';
 import { UnknownSignals } from './UnknownSignals.js';
 import { RadiationIndicator } from '../ui/RadiationIndicator.js';
@@ -72,6 +74,7 @@ import {
   starterSightDistance,
   planetInspectionDistance,
   cameraEaseStep,
+  cameraHoldStep,
 } from './follow.js';
 import {
   BrightStars,
@@ -225,6 +228,13 @@ const HOME_DISTANCE = 7;
  * shot. Every ordinary focus uses this same close range in both directions.
  */
 const CRAFT_DISTANCE = 7;
+/** The director's ranges (plan 2026-11-18): the whole ship, one bay on it, the ship alone in the dark, a subject out there. */
+const SHOT_SHIP_RANGE = 4.4;
+const SHOT_BAY_RANGE = 3;
+/** The flight back to the player's own view once a scene has ended. */
+const SHOT_RETURN_SECONDS = 0.9;
+const SHOT_WIDE_RANGE = 26;
+const SHOT_SUBJECT_RANGE = 3.2;
 
 /** Distance and angle of the opening whole-disc composition. */
 const WIDE_TILT = Math.hypot(1.15, 1.75);
@@ -238,7 +248,13 @@ export interface GalaxyCanvasProps {
   watched?: readonly WatchedFlight[];
   /** This ship's own jump, flown here from where it stands (owner, 2026-11-09). The view hands it the camera. */
   flight?: { jump: Jump; world: JumpWorld };
-  starter?: { hull: VesselHull; progress: VesselProgress; galaxyOrdinal: number; mainSky: readonly Vec3[]; beams: readonly DepartureBeam[]; onMainGalaxy: () => void; landmarks: Pick<MainSky, 'monuments' | 'clouds'>; onOpen: () => void; awaken?: { system: VesselSystem; key: number } | undefined };
+  starter?: { hull: VesselHull; progress: VesselProgress; galaxyOrdinal: number; mainSky: readonly Vec3[]; beams: readonly DepartureBeam[]; onMainGalaxy: () => void; landmarks: Pick<MainSky, 'monuments' | 'clouds'>; onOpen: () => void; awaken?: { system: VesselSystem; key: number } | undefined;
+    /** The galaxy is clear for the director's scenes (plan 2026-11-18, Faz 5.1): nothing is open over it. */
+    directorLive?: boolean;
+    /** The hull's look as the director shows it: held back until its own shot (plan 2026-11-18 §5). */
+    look?: VesselLook | undefined;
+    /** Systems with a short repair under way: their bays weld. */
+    working?: readonly VesselSystem[] };
   unknownSignals?: readonly UnknownSignalView[];
   /** F2 Klan Alarmı: clanmate worlds under a raid still in the air, from the reader's bell. */
   clanAlarms?: readonly ActiveClanAlarm[];
@@ -538,26 +554,24 @@ export function GalaxyCanvas({
    * the craft agree to the frame. Deriving a second position here — even a very
    * close one — would show as the subject creeping out of centre over a long leg.
    */
-  const subject = useMemo<(() => [number, number, number] | null) | null>(() => {
-    if (!focus) return null;
-
-    if (focus.kind === 'unknownSignal') {
-      const signal = unknownSignals.find(row => row.id === focus.id);
+  const resolveSubject = useCallback((target: Focus): (() => [number, number, number] | null) | null => {
+    if (target.kind === 'unknownSignal') {
+      const signal = unknownSignals.find(row => row.id === target.id);
       return signal ? () => toWorld(signal.at) : null;
     }
 
-    if (focus.kind === 'planet') {
-      const node = nodes.find((n) => n.id === focus.id);
+    if (target.kind === 'planet') {
+      const node = nodes.find((n) => n.id === target.id);
       return node ? () => node.position : null;
     }
 
-    if (focus.kind === 'monument') {
-      const monument = monuments.find((row) => row.id === focus.id);
+    if (target.kind === 'monument') {
+      const monument = monuments.find((row) => row.id === target.id);
       return monument ? () => toWorld(monument.motion?motionPositionAt(monument.motion,serverNow()):monument.position) : null;
     }
 
-    if (focus.kind === 'asteroid' && seasonStart) {
-      const rock = asteroids.find((a) => a.id === focus.id);
+    if (target.kind === 'asteroid' && seasonStart) {
+      const rock = asteroids.find((a) => a.id === target.id);
       if (!rock) return null;
       return () => asteroidWorldPosition(rock, seasonStart, serverNow());
     }
@@ -571,15 +585,15 @@ export function GalaxyCanvas({
      * own coordinates and they do not move, so the subject is a fixed point like a
      * planet's rather than a live read.
      */
-    if (focus.kind === 'debris') {
-      const wreck = wrecks.find((w) => w.id === focus.id);
+    if (target.kind === 'debris') {
+      const wreck = wrecks.find((w) => w.id === target.id);
       if (!wreck) return null;
       const at = wreckPosition(wreck);
       return () => at;
     }
 
-    if (focus.kind === 'thread') {
-      const thread = pending.find((t, i) => threadKey(t, i) === focus.key);
+    if (target.kind === 'thread') {
+      const thread = pending.find((t, i) => threadKey(t, i) === target.key);
       const path = thread?.path;
       if (!thread || !path) return null;
       /**
@@ -595,8 +609,8 @@ export function GalaxyCanvas({
       return () => threadPosition(path, serverNow(), standoff);
     }
 
-    if (focus.kind === 'run' && homePosition) {
-      const run = runs.find((r) => r.id === focus.id);
+    if (target.kind === 'run' && homePosition) {
+      const run = runs.find((r) => r.id === target.id);
       if (!run) return null;
       const origin = runHomePosition(run, nodes, homePosition);
       return () => runPosition(run, origin, serverNow(), nodes, heldReach(run.id, miningReach(run, asteroids, wrecks, nodes, scale)), miningRockAt(run, asteroids, seasonStart));
@@ -608,20 +622,20 @@ export function GalaxyCanvas({
      * the camera and the ship agree to the frame — deriving a second position here
      * would show as the subject creeping out of centre over a three-hour window.
      */
-    if (focus.kind === 'tradeShip' && seasonStart && tradeShip?.id === focus.id) {
+    if (target.kind === 'tradeShip' && seasonStart && tradeShip?.id === target.id) {
       const orbit = tradeShip.orbit;
       return () => tradeShipWorldPosition(orbit, seasonStart, serverNow());
     }
 
-    if (focus.kind === 'intergalacticConvoy'
+    if (target.kind === 'intergalacticConvoy'
       && seasonStart
-      && intergalacticConvoy?.id === focus.id) {
+      && intergalacticConvoy?.id === target.id) {
       const convoy = intergalacticConvoy;
       return () => intergalacticConvoyWorldPosition(convoy, seasonStart, serverNow());
     }
 
-    if (focus.kind === 'interception') {
-      const event = interceptions?.find((candidate) => candidate.id === focus.id);
+    if (target.kind === 'interception') {
+      const event = interceptions?.find((candidate) => candidate.id === target.id);
       if (!event) return null;
       return () => strategicInterceptionMissilePosition(
         event,
@@ -630,8 +644,8 @@ export function GalaxyCanvas({
       );
     }
 
-    if (focus.kind === 'interceptionImpact') {
-      const impact = interceptionImpacts?.find((candidate) => candidate.id === focus.id);
+    if (target.kind === 'interceptionImpact') {
+      const impact = interceptionImpacts?.find((candidate) => candidate.id === target.id);
       if (!impact) return null;
       const collision = toWorld(impact.collision);
       return () => collision;
@@ -643,8 +657,8 @@ export function GalaxyCanvas({
      * tracks it exactly as far ahead as the payload knows, and re-anchors on the
      * next poll — which is the same thing the renderer does, from the same numbers.
      */
-    if (focus.kind === 'contact') {
-      const contact = contacts.find((c) => c.id === focus.id);
+    if (target.kind === 'contact') {
+      const contact = contacts.find((c) => c.id === target.id);
       // An effect-only engagement is deliberately not a craft: it has no hit box,
       // no focus target and no authoritative orbit point for the camera to follow.
       if (!contact || contact.effectOnly === true) return null;
@@ -655,7 +669,6 @@ export function GalaxyCanvas({
 
     return null;
   }, [
-    focus,
     nodes,
     monuments,
     unknownSignals,
@@ -670,6 +683,30 @@ export function GalaxyCanvas({
     tradeShip,
     intergalacticConvoy,
   ]);
+  const subject = useMemo(() => (focus ? resolveSubject(focus) : null), [focus, resolveSubject]);
+
+  /** The director's shot, as a place (plan 2026-11-18, Faz 5.1): only aboard, and only on a clear galaxy. */
+  const directing = useDirector();
+  const directorLive = starter?.directorLive === true;
+  const shotHull = starter?.hull;
+  const directorShot = useMemo<DirectorShot | null>(() => {
+    if (!directing || !directorLive || !shotHull) return null;
+    const target: ShotTarget = directing.beat.shot;
+    const span = directing.beat.ms / 1000;
+    const ship = (): [number, number, number] => [home[0], home[1], home[2]];
+    switch (target.kind) {
+      case 'ship': return { key: directing.key, at: ship, range: SHOT_SHIP_RANGE, turn: target.turn ?? 0, seconds: span * 0.9 };
+      case 'bay': {
+        const bay = (): [number, number, number] => bayWorldPosition(shotHull, target.system, home, mainOffset ?? NO_OFFSET);
+        return { key: directing.key, at: bay, towards: () => bayView(bay(), home), range: SHOT_BAY_RANGE, seconds: Math.min(1.2, span * 0.5) };
+      }
+      case 'wide': return { key: directing.key, at: ship, range: target.range ?? SHOT_WIDE_RANGE, seconds: span * 0.85 };
+      case 'subject': {
+        const at = resolveSubject(target.focus);
+        return at ? { key: directing.key, at, range: target.range ?? SHOT_SUBJECT_RANGE, stays: true, seconds: span * 0.7 } : null;
+      }
+    }
+  }, [directing, directorLive, shotHull, home, mainOffset, resolveSubject]);
 
   /**
    * How close the camera is pulled in when it takes a new subject.
@@ -821,6 +858,9 @@ export function GalaxyCanvas({
          */
         gl.outputColorSpace = THREE.SRGBColorSpace;
         gl.toneMappingExposure = 1;
+        // The own ship's new look runs along its hull behind a moving plane (`HullShift`); a material
+        // no plane cuts compiles exactly as before.
+        gl.localClippingEnabled = true;
         /*
           A LOST CONTEXT IS ROUTINE ON A PHONE AND USED TO BE A CRASH. Nothing in
           this app listened for it; `gpuContext.ts` carries the whole account.
@@ -981,7 +1021,7 @@ export function GalaxyCanvas({
         {!starter && <StarterGlow />}
         {starter && mainOffset && <Suspense fallback={null}>
           <MainGalaxySky monuments={starter.landmarks.monuments} clouds={starter.landmarks.clouds} offset={mainOffset} onTap={starter.onMainGalaxy} />
-          {!flight && <OwnVessel at={home} offset={mainOffset} hull={starter.hull} progress={starter.progress} onSelect={starter.onOpen} awaken={starter.awaken} />}
+          {!flight && <OwnVessel at={home} offset={mainOffset} hull={starter.hull} progress={starter.progress} onSelect={starter.onOpen} awaken={starter.awaken} {...(starter.working ? { working: starter.working } : {})} look={starter.look} />}
           <VesselField ships={leftBehind} offset={mainOffset} onSelect={(id) => { onFocus({ kind: 'planet', id }); }} />
           <DepartureBeams beams={starter.beams} offset={mainOffset} />
         </Suspense>}
@@ -1149,6 +1189,7 @@ export function GalaxyCanvas({
         openingPrepared={prepared && openingDataReady && gpu.live}
         openingWork={openingWork}
         openingMark={openingMark}
+        shot={directorShot}
       />}
       {/* E11: a page docked on the right does not hide the camera's subject. */}
       <ViewOffset />
@@ -1573,6 +1614,7 @@ function Rig({
   openingPrepared,
   openingWork,
   openingMark,
+  shot = null,
 }: {
   /** Where the main galaxy stands from this ship's galaxy. Set means this is a ship. */
   mainOffset?: Vec3;
@@ -1632,6 +1674,8 @@ function Rig({
   openingPrepared: boolean;
   openingWork: OpeningPreparation;
   openingMark: RefObject<HTMLSpanElement | null>;
+  /** The director's shot (plan 2026-11-18, Faz 5.1): the camera is its own until the scene ends. */
+  shot?: DirectorShot | null;
 }) {
   const ref = useRef<ComponentRef<typeof OrbitControls>>(null);
   const preparing = useOpeningViews({ controls: ref, covered: openingCovered, ready: openingPrepared,
@@ -1655,6 +1699,8 @@ function Rig({
     towards?: THREE.Vector3;
     /** Finished whatever the hand does: see `gestureTakesCamera`. */
     held?: boolean;
+    /** Seconds the view holds before the glide moves (the director's flight home). */
+    wait?: number;
   } | null>(null);
 
   /**
@@ -1817,6 +1863,55 @@ function Rig({
     if (!universeOpen) universeRange.current = 0;
     // The opening frame is taken once. Refetched counts move a ball's size, never the camera.
   }, [universeOpen]);
+
+  /**
+   * THE DIRECTOR'S SHOT (plan 2026-11-18 §4 İ3). Each new shot flies the camera to its subject, on the
+   * universe flight's own terms: the hand is off the controls until the scene ends. The scene ends
+   * with the camera flown back to the view the player had before it (live play 2026-11-18).
+   */
+  const directed = useRef(false);
+  const beforeShots = useRef<{ target: [number, number, number]; camera: [number, number, number] } | null>(null);
+  const lastShotStays = useRef(false);
+  const shipAt = useRef(home);
+  shipAt.current = home;
+  /** The flight home, while it waits or flies: a shot that comes meanwhile keeps the view saved before. */
+  const homewardEase = useRef<typeof ease.current>(null);
+  const liveShot = useRef(shot);
+  liveShot.current = shot;
+  const shotKey = shot?.key ?? null;
+  useEffect(() => {
+    const controls = ref.current;
+    const current = liveShot.current;
+    if (!controls) return;
+    if (!current) {
+      if (!directed.current) return;
+      directed.current = false;
+      mode.current = 'released';
+      acquired.current = false;
+      // The hand is back at once: a touch during the wait or the flight takes the camera where it is.
+      controls.enabled = true;
+      const flight = homeward(beforeShots.current, lastShotStays.current, shipAt.current, HOME_DISTANCE);
+      if (!flight) { ease.current = null; return; }
+      const back = flight.pose;
+      ease.current = { to: new THREE.Vector3(...back.to), left: SHOT_RETURN_SECONDS, duration: SHOT_RETURN_SECONDS, rangeTo: back.range, exactRange: true, waitForScene: false, towards: new THREE.Vector3(...back.towards), wait: flight.hold };
+      homewardEase.current = ease.current;
+      invalidate();
+      return;
+    }
+    const at = current.at();
+    if (!at) return;
+    const goingHome = ease.current !== null && ease.current === homewardEase.current;
+    if (!directed.current && !goingHome) beforeShots.current = { target: controls.target.toArray(), camera: controls.object.position.toArray() };
+    lastShotStays.current = current.stays === true;
+    directed.current = true;
+    mode.current = 'released';
+    acquired.current = false;
+    controls.enabled = false;
+    controls.maxDistance = Math.max(controls.maxDistance, current.range);
+    const pose = shotPose({ target: controls.target.toArray(), camera: controls.object.position.toArray() }, { to: at, range: current.range, turn: current.turn, towards: current.towards?.() ?? undefined });
+    ease.current = { to: new THREE.Vector3(...pose.to), left: current.seconds, duration: current.seconds, rangeTo: pose.range, exactRange: true, waitForScene: false, towards: new THREE.Vector3(...pose.towards), held: true };
+    invalidate();
+  }, [shotKey, invalidate]);
 
   /** A selection or Home takes the camera while the view is open: it flies there, not back. */
   const leaveUniverseForward = (): void => {
@@ -2024,8 +2119,8 @@ function Rig({
 
     const move = ease.current;
     if (!move) {
-      // Also when a selection took over the flight.
-      controls.enabled = true;
+      // Also when a selection took over the flight; a director's shot keeps the hand off until it ends.
+      controls.enabled = !directed.current;
       const range = controls.getDistance();
       // Zooming well back in has left the view: nobody should have to find a button for that.
       if (universeOpen && zoomedBackIn(range, universeRange.current)) onUniverseClose?.();
@@ -2051,6 +2146,12 @@ function Rig({
     // then discard that loading frame's delta so the glide gets its full 2s.
     if (move.waitForScene) {
       if (sceneReady.current) move.waitForScene = false;
+      invalidate();
+      return;
+    }
+    const hold = cameraHoldStep(move.wait, delta);
+    if (hold.waiting) {
+      move.wait = hold.left;
       invalidate();
       return;
     }

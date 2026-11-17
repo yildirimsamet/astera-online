@@ -163,6 +163,7 @@ export const starter = {
     "try": "Dene",
     "later": "Sonra"
   },
+  "director": {"skip": "Dokun · geç", "shipReport": {"orbit": "Gemi ayakta ama yarı ölü.", "goal": "Motoru yakarsak buradan gideriz."}, "repair": {"work": "{{name}} onarılıyor.", "REFINERY": "{{name}} çalışıyor: alaşım daha hızlı akıyor.", "EXTRACTOR": "{{name}} yandı: kristal hassas parçaları onarır.", "TELESCOPE": "{{name}} açıldı: artık dışarıyı görüyoruz.", "RADAR": "{{name}} dinliyor: yaklaşan her şeyi duyarız.", "SURVEY": "{{name}} kuruldu: başka gemilerin içini okuruz.", "SHIPYARD": "{{name}} çalışıyor: kendi gemilerimizi yaparız."}, "hull": {"PATCHED": "Gövde toparlanıyor.", "RENEWED": "Gemi yeniden parlıyor."}, "field": "Teleskop açıldı. Etrafımız dolu.", "dark": "Kör uçuyoruz. Teleskop olmadan hiçbir şey göremeyiz.", "rock": "Bu kayada maden var. Kazıcı onu eve getirir.", "contact": "Bir şey yaklaşıyor. Ne olduğunu göremiyoruz."},
   "tab": {
     "repair": "Bunu açmak için {{module}} sistemini onar.",
     "mainGalaxy": "Bu, ana galakside açılır.",

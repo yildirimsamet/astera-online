@@ -5,6 +5,7 @@ import {
   fovForAspect,
   MAX_HORIZONTAL_FOV,
   cameraEaseStep,
+  cameraHoldStep,
   easedCameraRange,
   finishedCameraRange,
   focusIdentity,
@@ -530,5 +531,15 @@ describe('the field of view on a wide screen', () => {
     for (const aspect of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
       expect(fovForAspect(45, aspect)).toBe(45);
     }
+  });
+});
+
+// Live play 2026-11-18: a glide that waits first (the director's flight home) holds the view, then moves.
+describe('a glide that waits before it moves', () => {
+  it('holds while its wait lasts, at any frame rate, and moves once it is spent', () => {
+    expect(cameraHoldStep(1.5, 1 / 60)).toEqual({ waiting: true, left: 1.5 - 1 / 60 });
+    expect(cameraHoldStep(0.01, 1 / 30)).toEqual({ waiting: true, left: 0 });
+    expect(cameraHoldStep(0, 1 / 60)).toEqual({ waiting: false, left: 0 });
+    expect(cameraHoldStep(undefined, 1 / 60)).toEqual({ waiting: false, left: 0 });
   });
 });

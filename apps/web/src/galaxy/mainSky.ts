@@ -1,7 +1,7 @@
 import { STARTER, VESSEL_SYSTEMS, VIEW, starterGalaxyCentre, systemProgress, toWorld, vesselHull, type Vec3, type Vec3Tuple, type VesselHull, type VesselLook, type VesselProgress, type VesselSystem } from '@astera/rules';
 import type { MainSky } from '../api/starterSchemas.js';
 import { galaxySchema, type GalaxyPlanet, type HpRadiationSourceView, type PublicMonument } from '../api/schemas.js';
-import { planetNodes, type PlanetNode } from './scene.js';
+import { VESSEL_LENGTH, planetNodes, type PlanetNode } from './scene.js';
 
 const WORLD_ID = 'main-world-';
 
@@ -154,6 +154,19 @@ export function vesselHitBox(hull: VesselHull): Vec3Tuple {
 export function starterShipYaw(ship: Vec3Tuple, offset: Vec3): number {
   const main = toWorld(offset);
   return Math.atan2(main[0] - ship[0], main[2] - ship[2]);
+}
+
+/**
+ * WHERE A SYSTEM STANDS ON THE SHIP IN THE GALAXY (plan 2026-11-18 §4 İ2): the bay as `OwnVessel` draws
+ * it, through the same yaw, nose turn and length, so a shot of a repair looks at the part repaired.
+ */
+export function bayWorldPosition(hull: VesselHull, system: VesselSystem, ship: Vec3Tuple, offset: Vec3): Vec3Tuple {
+  const [bx, by, bz] = VESSEL_BAYS[hull][system];
+  const turn = (x: number, z: number, angle: number): [number, number] =>
+    [x * Math.cos(angle) + z * Math.sin(angle), -x * Math.sin(angle) + z * Math.cos(angle)];
+  const [nx, nz] = turn(bx, bz, VESSEL_NOSE_TURN);
+  const [wx, wz] = turn(nx, nz, starterShipYaw(ship, offset));
+  return [ship[0] + wx * VESSEL_LENGTH, ship[1] + by * VESSEL_LENGTH, ship[2] + wz * VESSEL_LENGTH];
 }
 
 /** The main galaxy's clouds in this galaxy's coordinates, in the form the haze draws. */

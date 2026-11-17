@@ -163,6 +163,7 @@ export const starter = {
     "try": "Ausprobieren",
     "later": "Später"
   },
+  "director": {"skip": "Tippen · weiter", "shipReport": {"orbit": "Das Schiff hält, aber es ist halb tot.", "goal": "Zünde den Antrieb, und wir verlassen diesen Ort."}, "repair": {"work": "{{name}} wird repariert.", "REFINERY": "{{name}} läuft: Legierung fließt schneller.", "EXTRACTOR": "{{name}} brennt: Kristall repariert die feinen Teile.", "TELESCOPE": "{{name}} ist offen: jetzt sehen wir hinaus.", "RADAR": "{{name}} lauscht: was kommt, hören wir.", "SURVEY": "{{name}} steht: wir lesen andere Schiffe.", "SHIPYARD": "{{name}} arbeitet: wir bauen eigene Schiffe."}, "hull": {"PATCHED": "Der Rumpf kommt wieder zusammen.", "RENEWED": "Das Schiff glänzt wieder."}, "field": "Das Teleskop ist offen. Um uns herum ist es voll.", "dark": "Wir fliegen blind. Ohne Teleskop sehen wir nichts.", "rock": "In diesem Felsen steckt Erz. Ein Schürfer bringt es heim.", "contact": "Etwas kommt näher. Wir sehen nicht, was."},
   "tab": {
     "repair": "Repariere {{module}}, um dies zu öffnen.",
     "mainGalaxy": "Das öffnet sich in der Hauptgalaxie.",
