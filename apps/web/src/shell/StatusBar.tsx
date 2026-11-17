@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SignalBoostNote } from '../ui/SignalBoostNote.js';
 import { collectorCap } from '@astera/rules';
-import { useCollect, usePlanet, useRewards, useSeason } from '../api/queries.js';
+import { useCollect, usePlanet, useRewardsWaiting, useSeason } from '../api/queries.js';
 import { compact, full } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { useProjected, type Projected } from '../lib/projection.js';
@@ -52,7 +52,7 @@ export function StatusBar({
   const { data, dataUpdatedAt } = usePlanet();
   const held = useProjected(data?.planet, dataUpdatedAt);
   /** READ policy: refreshes after relevant launches and player events. */
-  const waiting = useRewards().data?.claimable ?? 0;
+  const waiting = useRewardsWaiting();
   /*
     THE STRUCK WORLD WORKS DOUBLE. Owner instruction, 2026-09-16. The server nulls a
     boost that has passed, but a header left open across the instant must stop

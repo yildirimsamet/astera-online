@@ -91,7 +91,7 @@ import {
   useUnknownSignalDetail,
   useCollect,
   useNotifications,
-  useRewards,
+  useRewardsWaiting,
 } from '../api/queries.js';
 import type {
   AsteroidView,
@@ -522,7 +522,7 @@ export function GalaxyView({
   const now = useNow(5_000);
   // F2: clanmate worlds under a raid, ringed on the map from the reader's own bell.
   const bell = useNotifications();
-  const rewardsWaiting = useRewards().data?.claimable ?? 0;
+  const rewardsWaiting = useRewardsWaiting();
   const clanAlarms = useMemo(() => activeClanAlarms(bell.data?.notifications ?? [], now), [bell.data, now]);
   /**
    * THE SKY ANSWERS THE EVENT. Owner instruction, D149.

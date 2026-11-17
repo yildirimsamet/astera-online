@@ -772,6 +772,33 @@ export function useClanProfile(clanId: string | null) {
   });
 }
 
+/** New Commander 7 Days: the next box. Its readiness is read off `readyAt`, so a slow refresh is enough. */
+export function useWelcome() {
+  const api = useApi();
+  return useQuery({ queryKey: keys.welcome, queryFn: api.welcome, staleTime: 60_000 });
+}
+
+/** What the gift icon counts: the reward tiers waiting, and the welcome week's box when it is ready. */
+export function useRewardsWaiting(): number {
+  const tiers = useRewards().data?.claimable ?? 0;
+  const welcome = useWelcome().data?.welcome;
+  const box = welcome?.box != null && welcome.readyAt !== null && welcome.readyAt.getTime() <= Date.now() ? 1 : 0;
+  return tiers + box;
+}
+
+/** Opens the next box; the store it fell into (the ship's or the capital's) is read again. */
+export function useOpenWelcome() {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.openWelcome(),
+    onSuccess: (result) => {
+      client.setQueryData(keys.welcome, { welcome: result.welcome });
+      void client.invalidateQueries({ queryKey: keys.planet });
+    },
+  });
+}
+
 /** The landing day's suggested clan (Faz 4.5); it changes in hours, so a minute's staleness is fine. */
 export function useClanSuggestion(enabled = true) {
   const api = useApi();

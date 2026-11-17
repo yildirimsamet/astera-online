@@ -38,6 +38,7 @@ import { registerPlanetRoutes } from './routes/planet.js';
 import { registerVacationRoutes } from './routes/vacation.js';
 import { registerNotificationCenterRoutes } from './routes/notificationCenter.js';
 import { registerRewardRoutes } from './routes/rewards.js';
+import { registerWelcomeRoutes } from './routes/welcome.js';
 import { registerBrandRecallRoutes } from './routes/brandRecall.js';
 import { registerIntelRoutes } from './routes/intel.js';
 import { registerGalaxyRoutes } from './routes/galaxy.js';
@@ -580,6 +581,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerVacationRoutes(app);
     registerNotificationCenterRoutes(app);
     registerRewardRoutes(app);
+    registerWelcomeRoutes(app);
     registerIntelRoutes(app);
     registerGalaxyRoutes(app);
     registerMonumentRoutes(app);

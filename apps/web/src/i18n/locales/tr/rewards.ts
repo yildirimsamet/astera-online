@@ -26,6 +26,7 @@ export const rewards = {
 
   claim: 'Al',
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  welcome: { title: 'Komutan kutusu {{box}}/{{of}}', wait: '{{name}} · {{time}} sonra' },
   takeAll: "Tümünü al · {{count}}",
   go: 'Git',
   next: 'Sıradaki: {{name}} · {{count}} kaldı',

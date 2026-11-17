@@ -27,6 +27,7 @@ export const rewards = {
 
   claim: "受け取る",
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  welcome: { title: '司令官ボックス {{box}}/{{of}}', wait: '{{name}} · あと{{time}}' },
   takeAll: 'すべて受け取る · {{count}}',
   go: '行く',
   next: '次：{{name}} · あと{{count}}',

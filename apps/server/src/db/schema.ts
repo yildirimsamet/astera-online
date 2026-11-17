@@ -5950,3 +5950,13 @@ export const returnReminders = pgTable('return_reminders', {
   summaryStage: integer('summary_stage').notNull().default(0),
   nextCheckAt: timestamp('next_check_at', { withTimezone: true }),
 }, t => [index('return_reminders_due_idx').on(t.nextRepairAt), index('return_reminders_check_idx').on(t.nextCheckAt)]);
+
+/**
+ * NEW COMMANDER 7 DAYS (plan 2026-11-06 §7.2). One row an account, written on its first box: how many
+ * boxes it has opened and when the last one was. Boxes are counted, not days; there is no streak.
+ */
+export const welcomeWeek = pgTable('welcome_week', {
+  accountId: uuid('account_id').primaryKey().references(() => accounts.id, { onDelete: 'cascade' }),
+  opened: integer('opened').notNull().default(0),
+  lastOpenedAt: timestamp('last_opened_at', { withTimezone: true }).notNull(),
+});

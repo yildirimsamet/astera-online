@@ -26,6 +26,7 @@ export const rewards = {
   allTaken: "Tu as récupéré les récompenses de tous les objectifs.",
   claim: "Récupérer",
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  welcome: { title: 'Caisse du commandant {{box}}/{{of}}', wait: '{{name}} · dans {{time}}' },
   takeAll: 'Tout prendre · {{count}}',
   go: 'Y aller',
   next: 'Ensuite : {{name}} · encore {{count}}',

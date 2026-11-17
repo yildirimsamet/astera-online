@@ -59,6 +59,7 @@ export const keys = {
   clanBadge: ['clan', 'badge'],
   clanHome: ['clan', 'home'],
   clanSuggestion: ['clan', 'suggestion'],
+  welcome: ['welcome'],
   clanStrength: ['clan', 'strength'],
   clanDirectory: (search: string) => ['clan', 'directory', search.trim()] as const,
   clanLeaderboard: ['clan', 'leaderboard'],

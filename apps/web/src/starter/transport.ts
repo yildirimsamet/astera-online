@@ -13,7 +13,7 @@ export const setStarterMode = (next: boolean): void => { onShip = next; };
 export const isStarterMode = (): boolean => onShip;
 
 /** Belong to the account, not to where it is playing. */
-const ACCOUNT_PREFIXES = ['/api/auth/', '/api/starter/', '/api/announcements', '/api/community/'];
+const ACCOUNT_PREFIXES = ['/api/auth/', '/api/starter/', '/api/announcements', '/api/community/', '/api/welcome'];
 const ACCOUNT_PATHS = ['/api/onboarding/claim', '/api/feedback', '/api/maintenance', '/api/push/devices', '/api/stream', '/api/universe'];
 
 const NOTHING_HELD = { alloy: 0, crystal: 0, deuterium: 0 };

@@ -1410,6 +1410,19 @@ export const rewardClaimSchema = z.object({
   ...withPlanet,
 });
 
+/** New Commander 7 Days (plan 2026-11-06 §7.2): the next box, from when, and what it holds; null when not for this account. */
+const welcomeStateSchema = z.object({
+  welcome: z.object({
+    opened: z.number().int().nonnegative(),
+    box: z.number().int().positive().nullable(),
+    readyAt: z.coerce.date().nullable(),
+    preview: z.object({ alloy: z.number(), crystal: z.number() }).nullable(),
+  }).nullable(),
+});
+export const welcomeSchema = welcomeStateSchema;
+export const welcomeOpenSchema = welcomeStateSchema.extend({ granted: z.object({ alloy: z.number(), crystal: z.number() }) });
+export type WelcomeState = z.infer<typeof welcomeStateSchema>;
+
 /** The one clan suggested on the landing day, with how many former starter neighbours are in it. */
 export const clanSuggestionSchema = z.object({
   clan: z.object({ id: z.string(), name: z.string(), tag: z.string(), members: z.number().int().nonnegative(), neighbours: z.number().int().nonnegative() }).nullable(),

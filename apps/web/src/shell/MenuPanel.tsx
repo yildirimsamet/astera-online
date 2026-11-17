@@ -4,7 +4,7 @@ import { NotificationCenterSheet } from '../screens/NotificationCenterSheet.js';
 import { useNotificationCenter } from '../api/notificationCenter.js';
 import { useTranslation } from 'react-i18next';
 import { OWN_SOUND, playSound, setEffectsEnabled, setEffectsVolume, useEffectsEnabled, useEffectsVolume } from '../lib/sound.js';
-import { useAnnouncements, useLeaderboard, usePlanet, useRewards } from '../api/queries.js';
+import { useAnnouncements, useLeaderboard, usePlanet, useRewardsWaiting } from '../api/queries.js';
 import { gateOf } from '../starter/gate.js';
 import { ShipLog } from '../starter/ShipLog.js';
 import {
@@ -120,7 +120,7 @@ export function MenuPanel({
   })();
   const now = useNow(60_000);
   const hoursLeft = endsAt === null ? null : (endsAt.getTime() - now) / 3_600_000;
-  const waiting = useRewards().data?.claimable ?? 0;
+  const waiting = useRewardsWaiting();
   // A colony ship has no ranking, rewards or store yet; they arrive with the landing (plan §3.7).
   const vessel = usePlanet().data?.vessel;
   const gate = gateOf(vessel);

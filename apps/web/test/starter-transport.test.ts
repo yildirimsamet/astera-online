@@ -34,7 +34,7 @@ describe('the starter transport', () => {
   describe('the account paths', () => {
     it.each([
       '/api/auth/me', '/api/auth/refresh', '/api/onboarding/claim', '/api/announcements', '/api/announcements/read',
-      '/api/feedback', '/api/maintenance', '/api/community/policy', '/api/push/devices', '/api/stream', '/api/stream?trafficWake=1',
+      '/api/feedback', '/api/maintenance', '/api/community/policy', '/api/push/devices', '/api/stream', '/api/stream?trafficWake=1', '/api/welcome', '/api/welcome/open',
       '/api/starter/vessel', '/api/starter/repair', '/api/starter/enlist',
     ])('%s goes straight through', async (path) => {
       const { base, fetch } = harness(true, () => json({ ok: true }));

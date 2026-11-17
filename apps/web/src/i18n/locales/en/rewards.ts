@@ -27,6 +27,7 @@ export const rewards = {
 
   claim: 'Claim',
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  welcome: { title: 'Commander box {{box}}/{{of}}', wait: '{{name}} · in {{time}}' },
   takeAll: 'Take all · {{count}}',
   go: 'Go',
   next: 'Next: {{name}} · {{count}} to go',

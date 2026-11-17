@@ -13,6 +13,7 @@ import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { Banner, CostLine, EmptyState, GameButton, Glyph, InfoPeek, ProgressBar, RewardPod, artIconSrc, type GlyphId } from '../game-ui/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { nextRewardGoal, rewardGate, type RewardGate } from '../lib/rewardGates.js';
+import { WelcomeBox } from './WelcomeBox.js';
 
 const CHAIN_GLYPH: Record<RewardChainId, GlyphId> = {
   PROBE: 'eye', RAID: 'attack', CORE: 'home', SHIPYARD: 'rocket',
@@ -128,6 +129,7 @@ export function RewardsScreen({ commander, onGo }: { commander: string; onGo?: (
         <dd className="gk-cmdr__value gk-display gk-num">{full(taken)} / {full(tiers.length)}</dd>
       </div>
     </dl>
+    <WelcomeBox />
     {next && nextGate && onGo && <div data-testid="reward-next">
       <Banner tone="info" variant="strip" glyph={CHAIN_GLYPH[next.chain.id]}
         title={t('rewards.next', { name: t(`rewards.chains.${next.chain.id}.name`), count: next.left })}

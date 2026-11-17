@@ -27,6 +27,7 @@ export const rewards = {
 
   claim: 'Recoger',
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  welcome: { title: 'Caja de comandante {{box}}/{{of}}', wait: '{{name}} · en {{time}}' },
   takeAll: 'Tomar todo · {{count}}',
   go: 'Ir',
   next: 'Siguiente: {{name}} · faltan {{count}}',

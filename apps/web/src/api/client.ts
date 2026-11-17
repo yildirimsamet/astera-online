@@ -171,6 +171,8 @@ import {
   rewardClaimSchema,
   rewardClaimAllSchema,
   clanSuggestionSchema,
+  welcomeSchema,
+  welcomeOpenSchema,
   brandRecallSchema,
   brandRecallAnswerSchema,
   rewardsSchema,
@@ -1004,6 +1006,8 @@ export class Api {
   clan = (clanId: string) =>
     this.send(`/api/clans/${encodeURIComponent(clanId)}`, publicClanSchema);
   clanSuggestion = () => this.send('/api/clans/suggestion', clanSuggestionSchema);
+  welcome = () => this.send('/api/welcome', welcomeSchema);
+  openWelcome = () => this.send('/api/welcome/open', welcomeOpenSchema, { method: 'POST', body: {} });
   clanEvents = (before?: string) => this.send(
     `/api/clan/events?limit=30${before ? `&before=${encodeURIComponent(before)}` : ''}`,
     clanEventsPageSchema,
