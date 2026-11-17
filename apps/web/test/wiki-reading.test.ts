@@ -1,10 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { STARTER } from '@astera/rules';
+import { FREE_ALERT_DAYS, STARTER, WELCOME_WEEK } from '@astera/rules';
 import { flightSlots, satelliteSlots, groundSlots, telescopeRange, telescopeWatchRange, researchEffectAt, hullWorkMinutes, HULLS, TRAVEL, DEUTERIUM } from '@astera/rules';
 import { getWikiArticle } from '../src/wiki/catalog.js';
 import { conceptReference, number, subjectReference } from '../src/wiki/facts.js';
 
 describe('Wiki values a new player can interpret', () => {
+  // Plan 2026-11-06 §8.4 (Faz 4.10): the founding week and the welcome boxes, with the rules' own numbers.
+  it('explains the first week after the landing and the seven commander boxes in both editions', () => {
+    const article = getWikiArticle('basics.first-week');
+    for (const language of ['en', 'tr'] as const) {
+      const text = JSON.stringify(article?.sections[language]);
+      expect(text).toContain(`${String(WELCOME_WEEK.gapHours)}`);
+      expect(text).toContain(`${String(WELCOME_WEEK.boxes)}`);
+      expect(text).toContain(`${String(FREE_ALERT_DAYS)}`);
+      expect(text).toMatch(language === 'en' ? /no streak/iu : /seri yok/iu);
+      expect(text).not.toMatch(/\bbots?\b/iu);
+    }
+    const jump = JSON.stringify(getWikiArticle('basics.the-jump')?.sections.en);
+    expect(jump).toMatch(/old neighbour/iu);
+  });
+
   it('explains the first-season gift, its ready hardware and later-season limits in both editions', () => {
     const article = getWikiArticle('basics.quick-start');
     for (const language of ['en', 'tr'] as const) {

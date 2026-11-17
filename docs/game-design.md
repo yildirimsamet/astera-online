@@ -82,6 +82,26 @@ Core 1–6 commanders may raid them, and Silent Space waits for the shield's end
 starter galaxy a ship may attack only ships whose Aegis is repaired and unshielded, and only in its first 14 days. Rules and rationale:
 `docs/yeni-oyuncu-yolculugu-plani-2026-11-13.md`; code is the authority.
 
+**The founding week (plan 2026-11-06 §7, Faz 4).** A newcomer's ship goes to a starter galaxy where a
+person (not a ship the server plays) came aboard in the last 24 hours, else the oldest with room. The
+starter channel carries the galaxy's public news between messages — a ship jumped (named, as the
+departure board names it), a battle left a debris field, an outpost was emptied — never who fought or
+took it. One of the three landing addresses is the free one nearest a commander who left the same
+starter galaxy in the last seven days ("Old neighbour X is near"). After the landing card: one moment
+takes every waiting reward tier at once (two or more, first week, once); the reward panel has *Take
+all*, a next-goal line and a *Go* on each goal. For seven days after the landing every paid phone alert
+(attack, strategic, probe) is free and needs no Notification Center; a built centre's wallet is not
+touched and its mutes hold; a probe reads that world's alerts as plenty. On the landing day the clan
+directory suggests one clan with a free seat, active in the last three days, old neighbours first.
+First-week notes open on a need (first battle report, first raid, first loss, Core 9), the calendar
+only as a fallback.
+
+**New Commander 7 Days (Y3).** Once an account, from the ship's claim through the landing. Not a daily
+login reward and no streak: boxes are counted, a missed day loses nothing, the next is ready 20 hours
+after the last opening. Each holds about an hour of current output (60 % crystal, at least 150 an
+hour), the seventh about three hours; aboard it goes to the ship, landed to the capital's store, where
+it can be raided. Rules: `packages/rules/src/welcomeWeek.ts`.
+
 ## The loop
 
 ```
