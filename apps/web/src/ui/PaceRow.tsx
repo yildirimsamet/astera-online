@@ -50,20 +50,25 @@ export function PaceRow({
 } & Record<`data-${string}`, boolean>) {
   const { t } = useTranslation();
   const dragging = useRef(false);
+  // The speed a drag last landed on, ahead of the re-render that will say so.
+  const landed = useRef<MissionPace>(pace);
+  const track = useRef<HTMLDivElement>(null);
   if (paces.length <= 1 && !reset) return null;
   const legal = (rung: number): boolean => paces.includes(rung as MissionPace);
-  const pick = (rung: MissionPace): void => {
-    if (rung === pace || !legal(rung)) return;
+  const pick = (rung: MissionPace, from: MissionPace = pace): void => {
+    if (rung === from || !legal(rung)) return;
+    landed.current = rung;
     playSound('tab');
     haptic(rung === 1 ? 'thunk' : 'tap');
     onChange(rung);
   };
   const nearest = (fraction: number): MissionPace => paces.reduce((best, rung) =>
     Math.abs(at(rung) - fraction) < Math.abs(at(best) - fraction) ? rung : best, paces[0] ?? 1);
+  /** Measured along the bar wherever the finger is: on a label, past an end, off the row. */
   const follow = (event: PointerEvent<HTMLDivElement>): void => {
-    const box = event.currentTarget.getBoundingClientRect();
-    if (box.width <= 0) return;
-    pick(nearest(Math.min(1, Math.max(0, (event.clientX - box.left) / box.width))));
+    const box = track.current?.getBoundingClientRect();
+    if (!box || box.width <= 0) return;
+    pick(nearest(Math.min(1, Math.max(0, (event.clientX - box.left) / box.width))), landed.current);
   };
   const step = (event: KeyboardEvent<HTMLDivElement>): void => {
     const by = event.key === 'ArrowRight' || event.key === 'ArrowUp' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowDown' ? -1 : 0;
@@ -83,23 +88,27 @@ export function PaceRow({
         {brief && <span className="gk-sub">{brief}</span>}
       </div>
       {paces.length > 1 && (
-        <div data-pace-throttle className="gk-throttle" style={place} {...(pace === 1 ? { 'data-flat-out': '' } : {})}>
+        <div
+          data-pace-throttle
+          className="gk-throttle"
+          style={place}
+          {...(pace === 1 ? { 'data-flat-out': '' } : {})}
+          // THE WHOLE THROTTLE TAKES THE THUMB (owner 2026-11-17): a phone hands a press near the bar to
+          // the label under it, so the bar alone lost every drag that began a few pixels low.
+          onPointerDown={(event) => {
+            if (event.button !== 0) return;
+            dragging.current = true;
+            landed.current = pace;
+            if ('setPointerCapture' in event.currentTarget) event.currentTarget.setPointerCapture(event.pointerId);
+            follow(event);
+          }}
+          onPointerMove={(event) => { if (dragging.current) follow(event); }}
+          onPointerUp={() => { dragging.current = false; }}
+          onPointerCancel={() => { dragging.current = false; }}
+        >
           <span data-pace-end="slow" className="gk-throttle__end gk-throttle__end--slow" aria-hidden="true"><Glyph id="worm" /></span>
           <div className="gk-throttle__rail">
-            <div
-              data-pace-track
-              className="gk-throttle__track"
-              aria-hidden="true"
-              onPointerDown={(event) => {
-                if (event.button !== 0) return;
-                dragging.current = true;
-                event.currentTarget.setPointerCapture(event.pointerId);
-                follow(event);
-              }}
-              onPointerMove={(event) => { if (dragging.current) follow(event); }}
-              onPointerUp={() => { dragging.current = false; }}
-              onPointerCancel={() => { dragging.current = false; }}
-            >
+            <div ref={track} data-pace-track className="gk-throttle__track" aria-hidden="true">
               <span className="gk-throttle__fill" />
               <span className="gk-throttle__thumb" />
             </div>

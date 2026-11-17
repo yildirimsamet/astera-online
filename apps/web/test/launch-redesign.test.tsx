@@ -135,6 +135,31 @@ describe('the speed is a throttle from a worm to a rocket', () => {
     expect(onChange).toHaveBeenLastCalledWith(0.75);
   });
 
+  /**
+   * THE THUMB LANDS WHERE IT LANDS (owner 2026-11-17: "sürükleyerek sağa sola çekmekte zorluk çekiyorum,
+   * olmuyor veya arada oluyor"). A phone's touch adjustment hands a press near the bar to the speed label
+   * under it — a button the browser lets scroll away — so the drag died after one move. The whole throttle,
+   * labels and ends too, now takes the press and the drag, measured along the bar, and scrolls nothing.
+   */
+  it('takes the drag wherever the thumb lands on the throttle, a speed’s label too', () => {
+    const onChange = vi.fn();
+    const view = render(<PaceRow paces={[1, 0.75, 0.5]} pace={1} onChange={onChange} comparison={comparison} />);
+    const throttle = view.container.querySelector<HTMLElement>('[data-pace-throttle]')!;
+    const track = view.container.querySelector<HTMLElement>('[data-pace-track]')!;
+    track.getBoundingClientRect = () => ({ left: 20, width: 200, top: 0, height: 20, right: 220, bottom: 20, x: 20, y: 0, toJSON: () => ({}) });
+    const capture = vi.fn();
+    throttle.setPointerCapture = capture;
+    const label = screen.getByRole('radio', { name: '50%' });
+    fireEvent(label, new MouseEvent('pointerdown', { clientX: 20, button: 0, bubbles: true }));
+    expect(capture).toHaveBeenCalled();
+    expect(onChange).toHaveBeenLastCalledWith(0.5);
+    fireEvent(label, new MouseEvent('pointermove', { clientX: 170, bubbles: true }));
+    expect(onChange).toHaveBeenLastCalledWith(0.75);
+    // A press past the bar's end, on the rocket, is full speed.
+    fireEvent(throttle.querySelector('[data-pace-end="fast"]')!, new MouseEvent('pointermove', { clientX: 260, bubbles: true }));
+    expect(onChange).toHaveBeenLastCalledWith(1);
+  });
+
   it('reads the trade as two deltas under the bar, no full-speed baseline sentences', () => {
     const view = render(<PaceRow paces={MISSION_PACES} pace={0.5} onChange={vi.fn()} comparison={comparison} />);
     expect(view.container.querySelector('[data-pace-saving]')).toHaveTextContent('−250');
