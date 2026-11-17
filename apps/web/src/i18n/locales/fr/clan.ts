@@ -200,7 +200,7 @@ export const clan = {
     formerBody: "Quitter le clan n’efface pas le butin que tu as déjà gagné.",
     body: "C’est ta part personnelle et égale, pas une banque contrôlée par le chef. Elle reste en sécurité jusqu’à ce que tu la récupères.",
     waiting: "Ouverture de ton butin",
-    claim: "Envoyer vers la planète capitale",
+    claim: "Vers la capitale",
     claimHint:
       "Seule la quantité pouvant tenir dans les réserves sera transférée. Le reste restera ici.",
   },

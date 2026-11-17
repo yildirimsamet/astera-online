@@ -193,7 +193,7 @@ export const clan = {
     formerBody: 'Dejar un clan no borra el botín que ya has ganado.',
     body: 'Esta es su parte igual, no un banco controlado por un líder. Espera con seguridad hasta que lo reclames.',
     waiting: 'Abriendo tu botín',
-    claim: 'Reclamación de capital',
+    claim: 'A la capital',
     claimHint: 'Sólo lo que cabe se traslada al almacenamiento de capital. El resto se queda aquí.',
   },
   history: {

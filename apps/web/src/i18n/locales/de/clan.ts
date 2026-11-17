@@ -193,7 +193,7 @@ export const clan = {
     formerBody: 'Durch das Verlassen eines Clans wird die bereits verdiente Beute nicht gelöscht.',
     body: 'Das ist dein gleicher Anteil, keine Bank, über die die Führung verfügt. Er wartet sicher, bis du ihn abholst.',
     waiting: 'Öffne deine Beute',
-    claim: 'Anspruch auf Hauptwelt',
+    claim: 'Zur Hauptwelt',
     claimHint: 'Nur was passt, wandert in den Hauptweltspeicher. Der Rest bleibt hier.',
   },
   history: {

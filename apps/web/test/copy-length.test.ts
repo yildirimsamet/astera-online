@@ -25,6 +25,7 @@ const SHORT: readonly (readonly [key: string, max: number])[] = [
   ['research.queueGlobalHint', 100],
   ['intel.coverage.scarcity_one', 95],
   ['intel.coverage.scarcity_other', 95],
+  ['clan.depot.claim', 18],
 ];
 
 function at(tree: unknown, path: string): string {
