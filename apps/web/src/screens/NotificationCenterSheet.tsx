@@ -70,11 +70,21 @@ export function NotificationCenterSheet({ onClose }: { onClose: () => void }) {
             <p role="status" className="gk-note">{query.isError ? t('notificationCenter.loadError') : t('notificationCenter.loading')}</p>
             {query.isError && <GameButton size="sm" glyph="refresh" onPress={() => { void query.refetch(); }}>{t('notificationCenter.retry')}</GameButton>}
           </div>
-          : view.built ? <Built view={view} /> : <Unbuilt view={view} />}
+          : <>
+              {view.freeUntil && <FreeWeek until={view.freeUntil} />}
+              {view.built ? <Built view={view} /> : <Unbuilt view={view} />}
+            </>}
         <PhoneAlerts />
       </div>
     </Sheet>
   </div>, document.body);
+}
+
+/** The first week's alerts are on the house (plan 2026-11-06 Y8): how long is left, and what follows. */
+function FreeWeek({ until }: { until: string }) {
+  const { t } = useTranslation();
+  const days = Math.max(1, Math.ceil((Date.parse(until) - Date.now()) / 86_400_000));
+  return <div data-testid="alerts-free"><Banner tone="good" variant="strip" glyph="bell" title={t('notificationCenter.free', { count: days })} body={t('notificationCenter.freeThen')} /></div>;
 }
 
 /** One line of a kit ledger: a mark, what it is, and what it costs or came to. */

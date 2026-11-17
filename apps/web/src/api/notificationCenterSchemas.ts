@@ -8,6 +8,8 @@ const timedPrices = z.object({ T3: z.number(), T5: z.number(), T15: z.number(), 
 
 export const notificationCenterSchema = z.object({
   built: z.boolean(),
+  /** The first week after a landing pays every alert until here (plan 2026-11-06 Y8); null when over. */
+  freeUntil: z.string().nullable().default(null),
   wallet: z.number(),
   timing: z.enum(ALERT_TIMINGS),
   muted: z.array(z.enum(PAID_ALERT_KINDS)),

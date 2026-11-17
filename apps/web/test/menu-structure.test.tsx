@@ -263,7 +263,7 @@ describe('the compact commander menu', () => {
 
   describe('Notification Center on Android', () => {
     const prices = { T3: 20, T5: 30, T15: 60, RADAR: 100 };
-    const centerAt = (center: { built: boolean; wallet: number }) => {
+    const centerAt = (center: { built: boolean; wallet: number; freeUntil?: string }) => {
       vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
       vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('android');
       const { wrapper, queries } = harness();
@@ -287,6 +287,13 @@ describe('the compact commander menu', () => {
       expect(screen.getByRole('button', { name: new RegExp(`^${i18n.t('menu.navigation.settings')}\\.`) })).not.toHaveTextContent(i18n.t('notificationCenter.menuEmpty'));
       enter('settings');
       expect(screen.queryByRole('button', { name: new RegExp(`^${i18n.t('notificationCenter.title')}\\.`) })).toBeNull();
+    });
+
+    // Plan 2026-11-06 Y8: the first week sends every alert free, so an empty wallet warns of nothing.
+    it('says alerts are free in the first week, built or not, never "empty"', () => {
+      centerAt({ built: true, wallet: 0, freeUntil: new Date(Date.now() + 3 * 86_400_000).toISOString() });
+      expect(centerButton()).toHaveTextContent(i18n.t('notificationCenter.menuFree'));
+      expect(centerButton()).not.toHaveTextContent(i18n.t('notificationCenter.menuEmpty'));
     });
 
     it('says how many attack alerts a funded wallet still pays for', () => {

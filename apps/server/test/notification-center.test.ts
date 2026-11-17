@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CENTER_STATUSES, NOTIFICATION_CENTER, PROBE_ALERT_COOLDOWN_MINUTES, alertPrice, deuteriumRate } from '@astera/rules';
-import { missions, notificationCenters, notifications, paidAlerts, planets, probeReports, pushDevices, scheduledEvents } from '../src/db/schema.js';
+import { missions, notificationCenters, notifications, paidAlerts, planets, probeReports, pushDevices, scheduledEvents, seasons, starterDepartures, starterGalaxies } from '../src/db/schema.js';
 import { launchProbe } from '../src/services/intel.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { launchAttack } from '../src/services/mission.js';
@@ -313,6 +313,58 @@ describe('probe alerts are spaced', () => {
       }));
     }
     expect(await f.db.select().from(paidAlerts).where(eq(paidAlerts.kind, 'incoming_attack'))).toHaveLength(2);
+  });
+});
+
+/*
+  THE FIRST WEEK IS ON US (plan 2026-11-06 Y8, Faz 4.7). For seven days after a starter landing every
+  phone alert goes out free, with no centre built; a centre's wallet is not touched and a muted kind stays
+  muted. After the week the old rule holds: no centre, no alert.
+*/
+describe('alerts in the first week after a landing', () => {
+  const me = () => f.playerIds[1]!;
+  const landed = async (daysAgo: number) => {
+    const [season] = await f.db.select({ shardId: seasons.shardId }).from(seasons).where(eq(seasons.id, f.seasonId));
+    const [galaxy] = await f.db.insert(starterGalaxies).values({ shardId: season!.shardId, ordinal: 1, seed: 7, epoch: f.clock.now(), capacity: 30 }).returning();
+    await f.db.insert(starterDepartures).values({ starterGalaxyId: galaxy!.id, accountId: f.accountIds[1]!, displayName: 'Me', countryCode: 'TR', x: 0, y: 0, z: 0, at: new Date(f.clock.now().getTime() - daysAgo * 86_400_000) });
+  };
+  const probe = () => f.db.transaction(tx => armPaidAlert(tx, {
+    seasonId: f.seasonId, playerId: me(), kind: 'probe_detected', refId: randomUUID(), now: f.clock.now(),
+    payload: { targetPlanetId: f.planetIds[1]!, targetPlanetName: 'X' },
+  }));
+  const alerts = () => f.db.select().from(paidAlerts).where(eq(paidAlerts.playerId, me()));
+  beforeEach(async () => { await registerPushDevice(f.db, f.accountIds[1]!, 'phone-1', 'android', 'en', f.clock); });
+
+  it('sends one free without a centre', async () => {
+    await landed(2);
+    await probe();
+    await makeWorker(f).tick();
+    expect(sent).toHaveLength(1);
+    expect(await alerts()).toEqual([expect.objectContaining({ status: 'SENT', price: 0 })]);
+    expect((await notificationCenterView(f.db, me(), f.clock)).freeUntil).toBe(new Date(f.clock.now().getTime() + 5 * 86_400_000).toISOString());
+  });
+
+  it('leaves a built centre\'s wallet alone and keeps a muted kind quiet', async () => {
+    await landed(2);
+    await grant(f.db, f.planetIds[1]!, 10_000, 10_000);
+    await buildNotificationCenter(f.db, me(), f.planetIds[1]!, f.clock);
+    await probe();
+    await makeWorker(f).tick();
+    expect(await alerts()).toEqual([expect.objectContaining({ status: 'SENT', price: 0 })]);
+    expect(await wallet(me())).toBe(0);
+    await setNotificationCenter(f.db, me(), { muted: ['probe_detected'] });
+    f.clock.advance(PROBE_ALERT_COOLDOWN_MINUTES);
+    await probe();
+    expect(await alerts()).toHaveLength(1);
+  });
+
+  it('ends after seven days, and never comes without a landing', async () => {
+    expect((await notificationCenterView(f.db, me(), f.clock)).freeUntil).toBeNull();
+    await probe();
+    await landed(8);
+    await probe();
+    expect(await alerts()).toEqual([]);
+    expect((await notificationCenterView(f.db, me(), f.clock)).freeUntil).toBeNull();
   });
 });
 

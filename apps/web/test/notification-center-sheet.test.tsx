@@ -15,7 +15,7 @@ const prices = { T3: 20, T5: 30, T15: 60, RADAR: 100 };
 const fresh = (): NotificationCenter => ({
   built: true, wallet: 95, timing: 'T5', muted: [], buildCost: { alloy: 1510, crystal: 1133, deuterium: 0 },
   deuteriumPerHour: 12.5, prices: { incoming_attack: prices, incoming_strategic: { T3: 30, T5: 45, T15: 90, RADAR: 150 }, probe_detected: 20 },
-  unfunded: 0, recent: [],
+  unfunded: 0, recent: [], freeUntil: null,
 });
 let view: NotificationCenter | undefined = fresh();
 const build = vi.fn(); const fund = vi.fn(); const settings = vi.fn(); let queried: boolean[] = [];
@@ -53,6 +53,17 @@ const hold = (name: RegExp): void => {
   const key = screen.getByRole('button', { name });
   fireEvent.keyDown(key, { key: 'Enter' }); fireEvent.keyDown(key, { key: 'Enter' });
 };
+
+// Plan 2026-11-06 Y8 (Faz 4.7): the first week after a landing pays every alert.
+it('says the first week is free and how long is left', () => {
+  view = { ...fresh(), built: false, freeUntil: new Date(Date.now() + (4 * 24 + 3) * 3_600_000).toISOString() };
+  render(<NotificationCenterSheet onClose={vi.fn()} />);
+  expect(screen.getByTestId('alerts-free')).toHaveTextContent(/free for your first week · 5 days left/iu);
+});
+it('shows no free week when none is running', () => {
+  render(<NotificationCenterSheet onClose={vi.fn()} />);
+  expect(screen.queryByTestId('alerts-free')).toBeNull();
+});
 
 it('offers the one-time build from the selected world and says what is short', () => {
   view = { ...fresh(), built: false };

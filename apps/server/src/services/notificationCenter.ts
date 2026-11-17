@@ -1,13 +1,13 @@
 import { deferQuietPushes } from './pushDelivery.js';
 import {
-  ALERT_TIMINGS, NOTIFICATION_CENTER, PAID_ALERTS, PROBE_ALERT_COOLDOWN_MINUTES, alertPrice, alertSendAt, deuteriumRate,
+  ALERT_TIMINGS, FREE_ALERT_DAYS, NOTIFICATION_CENTER, PAID_ALERTS, PROBE_ALERT_COOLDOWN_MINUTES, alertPrice, alertSendAt, deuteriumRate,
   productionMult, type AlertTiming, type PaidAlertKind,
 } from '@astera/rules';
 import { and, desc, eq, gt, gte, inArray, sql } from 'drizzle-orm';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import {
-  buildings, missions, notificationCenters, paidAlerts, planets, players, pushDevices, radiationBombFlights, satellites,
+  buildings, missions, notificationCenters, paidAlerts, planets, players, pushDevices, radiationBombFlights, satellites, starterDepartures,
 } from '../db/schema.js';
 import { schedule } from '../worker/queue.js';
 import { GameError, assertWorldOperational, orbitFromRows, refreshWealth, saveResources, withPlanetLock } from './planet.js';
@@ -57,6 +57,19 @@ function pricesAt(rate: number) {
 }
 
 /** Everything the centre's screen shows: state, today's prices and the recent ledger. */
+/**
+ * Until when this commander's alerts are free (plan 2026-11-06 Y8): a week after their starter landing,
+ * or null when that week is over or there was no landing.
+ */
+export async function freeAlertsUntil(tx: Tx | Db, playerId: string, now: Date): Promise<Date | null> {
+  const [landing] = await tx.select({ at: starterDepartures.at })
+    .from(starterDepartures).innerJoin(players, eq(players.accountId, starterDepartures.accountId))
+    .where(eq(players.id, playerId)).orderBy(desc(starterDepartures.at)).limit(1);
+  if (!landing) return null;
+  const until = new Date(landing.at.getTime() + FREE_ALERT_DAYS * 86_400_000);
+  return until > now ? until : null;
+}
+
 export async function notificationCenterView(db: Db, playerId: string, clock: Clock) {
   const now = clock.now();
   const [center] = await db.select().from(notificationCenters).where(eq(notificationCenters.playerId, playerId));
@@ -68,8 +81,11 @@ export async function notificationCenterView(db: Db, playerId: string, clock: Cl
     eq(paidAlerts.playerId, playerId), eq(paidAlerts.status, 'UNFUNDED'),
     gte(paidAlerts.sendAt, new Date(now.getTime() - 24 * 3_600_000)),
   ));
+  const freeUntil = await freeAlertsUntil(db, playerId, now);
   return {
     built: center !== undefined,
+    /** The first week's free alerts end here; null once they have (plan 2026-11-06 Y8). */
+    freeUntil: freeUntil?.toISOString() ?? null,
     wallet: center?.wallet ?? 0,
     timing: center?.timing ?? 'T5',
     muted: center?.muted ?? [],
@@ -160,7 +176,9 @@ export async function armPaidAlert(tx: Tx, input: {
   const probe = input.kind === 'probe_detected';
   // A probe alert locks the centre so two probes landing together cannot both pass the spacing.
   const read = tx.select().from(notificationCenters).where(eq(notificationCenters.playerId, input.playerId));
-  const [center] = probe ? await read.for('update') : await read;
+  const [built] = probe ? await read.for('update') : await read;
+  // The first week sends without a centre, on the default lead; a centre's own choices still hold.
+  const center = built ?? (await freeAlertsUntil(tx, input.playerId, input.now) ? { timing: 'T5' as const, muted: [] as PaidAlertKind[] } : null);
   if (!center || center.muted.includes(input.kind)) return;
   if (probe && await probeAlertedSince(tx, input.playerId, new Date(input.now.getTime() - PROBE_ALERT_COOLDOWN_MINUTES * 60_000))) return;
   const timed = 'timed' in PAID_ALERTS[input.kind];
@@ -282,11 +300,14 @@ export async function settlePaidAlert(db: Db, clock: Clock, alertId: string): Pr
       .where(eq(players.id, alert.playerId));
     if (devices.length === 0 || !transport) { await settle('NO_DEVICE'); return null; }
 
-    const price = alertPrice(alert.kind, alert.timing ?? 'NOW', await commanderDeuteriumPerHour(tx, alert.playerId));
-    const paid = await tx.update(notificationCenters).set({ wallet: sql`${notificationCenters.wallet} - ${price}` })
-      .where(and(eq(notificationCenters.playerId, alert.playerId), gte(notificationCenters.wallet, price)))
-      .returning({ wallet: notificationCenters.wallet });
-    if (paid.length === 0) { await settle('UNFUNDED'); return null; }
+    const free = await freeAlertsUntil(tx, alert.playerId, now) !== null;
+    const price = free ? 0 : alertPrice(alert.kind, alert.timing ?? 'NOW', await commanderDeuteriumPerHour(tx, alert.playerId));
+    if (!free) {
+      const paid = await tx.update(notificationCenters).set({ wallet: sql`${notificationCenters.wallet} - ${price}` })
+        .where(and(eq(notificationCenters.playerId, alert.playerId), gte(notificationCenters.wallet, price)))
+        .returning({ wallet: notificationCenters.wallet });
+      if (paid.length === 0) { await settle('UNFUNDED'); return null; }
+    }
     await settle('SENT', price);
     return { alert, devices, now, price };
   });

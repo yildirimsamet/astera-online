@@ -44,6 +44,13 @@ export type PaidAlertKind = keyof typeof PAID_ALERTS;
  */
 export const PROBE_ALERT_COOLDOWN_MINUTES = 30;
 
+/**
+ * THE FIRST WEEK IS ON US (plan 2026-11-06 Y8). For this many days after a starter landing every phone
+ * alert goes out free, with or without a centre: a new commander learns what a warning is worth before
+ * being asked to pay for one.
+ */
+export const FREE_ALERT_DAYS = 7;
+
 export const NOTIFICATION_CENTER = {
   /** Built once, from the selected world's store: a Radar 2's price. */
   buildCost: { alloy: 1510, crystal: 1133, deuterium: 0 } satisfies Resources,
@@ -83,7 +90,9 @@ export type CenterReading = CenterStatus | 'UNKNOWN';
 /** Alerts a FEW wallet buys at most; one more is PLENTY. */
 const FEW_ALERTS = 3;
 
-export function centerStatus(built: boolean, wallet: number, cheapestAlert: number): CenterStatus {
+export function centerStatus(built: boolean, wallet: number, cheapestAlert: number, freeWeek = false): CenterStatus {
+  // A first-week commander's raid is announced for free: as sure as a full wallet.
+  if (freeWeek) return 'PLENTY';
   if (!built) return 'NONE';
   const alerts = Math.floor(wallet / cheapestAlert);
   return alerts === 0 ? 'EMPTY' : alerts <= FEW_ALERTS ? 'FEW' : 'PLENTY';

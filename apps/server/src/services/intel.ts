@@ -80,7 +80,7 @@ import { standingSupportAt } from './clanSupportView.js';
 import { activeClanMembership } from './clanCombat.js';
 import { effectivePosture } from './defencePosture.js';
 import { announceUnlocks } from './notifications.js';
-import { commanderDeuteriumPerHour } from './notificationCenter.js';
+import { commanderDeuteriumPerHour, freeAlertsUntil } from './notificationCenter.js';
 import {
   assertSeasonOpenThrough,
   assertWorldOperational,
@@ -1251,7 +1251,7 @@ export async function resolveProbe(
     built or not and how many of its cheapest alert the wallet buys, read on one ladder
     that misses as often as the probe is inaccurate. The wallet itself never leaves.
   */
-  const notificationCenter = owner === null ? undefined : await readCenterForProbe(tx, owner, accuracy, mission.id);
+  const notificationCenter = owner === null ? undefined : await readCenterForProbe(tx, owner, accuracy, mission.id, now);
   const silhouette = outside
     ? {
       ...silhouetteOf(outside),
@@ -1487,9 +1487,10 @@ export async function readProbeCooldowns(
 }
 
 /** The centre under a probe: the truth on the ladder, then the probe's noise on its own stream. */
-async function readCenterForProbe(tx: Tx, playerId: string, accuracy: number, missionId: string): Promise<CenterReading> {
+async function readCenterForProbe(tx: Tx, playerId: string, accuracy: number, missionId: string, now: Date): Promise<CenterReading> {
   const [center] = await tx.select({ wallet: notificationCenters.wallet }).from(notificationCenters)
     .where(eq(notificationCenters.playerId, playerId));
   const cheapest = alertPrice('incoming_attack', 'T3', await commanderDeuteriumPerHour(tx, playerId));
-  return centerReading(centerStatus(center !== undefined, center?.wallet ?? 0, cheapest), accuracy, seededFrom(missionId, 0xb1_1d1e));
+  const freeWeek = await freeAlertsUntil(tx, playerId, now) !== null;
+  return centerReading(centerStatus(center !== undefined, center?.wallet ?? 0, cheapest, freeWeek), accuracy, seededFrom(missionId, 0xb1_1d1e));
 }

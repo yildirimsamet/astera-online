@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ALERT_TIMINGS, NOTIFICATION_CENTER, alertPrice, alertSendAt, centerReading, centerStatus,
+  ALERT_TIMINGS, FREE_ALERT_DAYS, NOTIFICATION_CENTER, alertPrice, alertSendAt, centerReading, centerStatus,
 } from '../src/notificationCenter.js';
 
 /** Owner 2026-10-30: docs/bildirim-merkezi-plani-2026-10-30.md, decision 2. */
@@ -72,6 +72,13 @@ describe('Bildirim Merkezi under a probe (decision 8)', () => {
     expect(centerStatus(true, 20, 20)).toBe('FEW');
     expect(centerStatus(true, 79, 20)).toBe('FEW');
     expect(centerStatus(true, 80, 20)).toBe('PLENTY');
+  });
+
+  // Plan 2026-11-06 Y8: in the first week after a landing every alert goes free, so the raid is announced.
+  it('reads plenty while the first week pays the alerts', () => {
+    expect(FREE_ALERT_DAYS).toBe(7);
+    expect(centerStatus(false, 0, 20, true)).toBe('PLENTY');
+    expect(centerStatus(true, 0, 20, true)).toBe('PLENTY');
   });
 
   const seq = (...values: number[]) => { let i = 0; return () => values[i++] ?? 0; };

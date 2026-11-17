@@ -133,7 +133,9 @@ export function MenuPanel({
   const center = useNotificationCenter(platform.notificationCenter).data;
   // Built, and the next attack alert at the commander's timing would not go out.
   const centerCovers = center?.built === true ? Math.floor(center.wallet / center.prices.incoming_attack[center.timing]) : null;
-  const centerEmpty = centerCovers === 0;
+  // The first week pays every alert (plan 2026-11-06 Y8): an empty or missing wallet warns of nothing then.
+  const centerFree = Boolean(center?.freeUntil);
+  const centerEmpty = !centerFree && centerCovers === 0;
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   // Focus returns to the tile that opened the simulator.
   const simulatorOpener = useRef<HTMLElement | null>(null);
@@ -231,7 +233,7 @@ export function MenuPanel({
               {platform.notificationCenter && <MenuTile tile="center" wide glyph="bell" art={ATMOSPHERE.notificationCenter.src} artAt={ATMOSPHERE.notificationCenter.position}
                 {...(centerEmpty ? { tone: 'warn' as const, badge: t('notificationCenter.menuEmpty') } : {})}
                 label={t('notificationCenter.title')} hint={t('notificationCenter.menuHint')}
-                status={centerCovers === null ? t('notificationCenter.menuHint') : centerEmpty ? t('notificationCenter.menuEmptyHint') : t('notificationCenter.menuCovers', { count: centerCovers })}
+                status={centerFree ? t('notificationCenter.menuFree') : centerCovers === null ? t('notificationCenter.menuHint') : centerEmpty ? t('notificationCenter.menuEmptyHint') : t('notificationCenter.menuCovers', { count: centerCovers })}
                 onPress={() => { setCenterOpen(true); }} />}
             </TileGrid>
           </section>}
