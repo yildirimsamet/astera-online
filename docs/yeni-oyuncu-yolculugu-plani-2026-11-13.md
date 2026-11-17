@@ -675,12 +675,12 @@ Owner yokken karar gerektiren her şey buraya yazılır; iş durdurulmaz, varsay
 | 4.2 İlk PvE önerisi | Bitti `6ddb909e` | Sunucu `arrival.hunted` (`FIRST_BATTLE_REPORT`); avlamamış gemide ilk hamle en yakın ulaşılabilir korsan (dakikasıyla, kalkan düşmez), haritada korsanın kendi rayı (`App` → `craftFocus`) |
 | 4.3 Ödül paneli (Tümünü al, sıradaki hedef, Git) | Bitti `bc170e82`, `7086649d` | `POST /api/rewards/claim-all` (tek kilit, tek transaction, `writeClaim` ortak; yarış tek öder). Kutu toplamla açılır, `unseal` + `thunk`. Sıradaki hedef satırı + kart başına Git (`lib/rewardGates.ts`). **Sosyal kart:** owner talimatıyla en üstte sabit (test yorumu: 'PINNED ABOVE EVEN A CLAIMABLE GOAL. Owner instruction'); R5'in taşıma önerisi uygulanmadı, yalnız adımları `InfoPeek` arkasına alındı (kart kısaldı). §10.7'de soruldu |
 | 4.4 İniş ödül anı | Bitti `fcb85d62` | `LandingRewards` (kit `Dialog`, ışın, `rankup`): ilk hafta, ≥ 2 bekleyen kademe, hesap başına bir kez; Tümünü al → Üs/Büyü. Saat kayması: yeni iniş istemcide birkaç sn ileride görünürse 'şimdi' sayılır |
-| 4.5 Klan önerisi | Bekliyor | |
-| 4.6 Komşularla iniş | Bekliyor | |
-| 4.7 İlk hafta push ücretsiz | Bekliyor | |
-| 4.8 Sohbette galaksi olayları + kohort | Bekliyor | |
-| 4.9 Yeni Komutan 7 Günü | Bekliyor | |
-| 4.10 Belgeler, Wiki 6 dil | Bekliyor | `product-vision.md` (Y10/Y11), `game-design.md` (D23, bildirim yasakları) |
+| 4.5 Klan önerisi | Bitti `e9065634` | `GET /api/clans/suggestion` (`clanSuggestion`/`pickClan`): iniş günü, klansız komutana, yeri olan, son 3 günde etkin, önce eski komşu sayısı çok olan. Klan dizininde üstte şerit + Gör (profil açar) |
+| 4.6 Komşularla iniş | Bitti `df47f302` | rules `landingChoices(..., friends)`: son 7 günde aynı starter galaksisinden inen komutanın başkentine en yakın boş adres 'arada'nın yerini alır (sakin ve kalabalık kalır) ya da zaten sunulduysa adlandırılır. Kart: 'Eski komşun X yakında' |
+| 4.7 İlk hafta push ücretsiz | Bitti `cfe5b97b` | **Varsayım (owner kontrolü):** 'temel' = üç ücretli tür de (saldırı, stratejik, sonda). İnişten 7 gün merkez gerekmeden, varsayılan T5, fiyat 0; kurulu merkezin kasası düşmez, sessize alınan tür susar; sonda okuması PLENTY. Merkez sayfası 'ilk hafta ücretsiz · N gün', menü 'Bu hafta ücretsiz', iniş kartı satırı. Y9 (silinme 7 gün) uygulanmadı: `reclaimIdleSeats` hiç çağrılmıyor |
+| 4.8 Sohbette galaksi olayları + kohort | Bitti `6f0d39df`, `b75b992b` | Kohort: insanın kayıtlı olduğu (bot gemisi sayılmaz) son 24 saatteki galaksi önce, yoksa en eski yer. Sohbet: kalkış (adıyla), savaş enkazı, boşalan karakol; okuma anında üretilir (`composed`), saklanmaz, okunmamışa girmez. Dron yok (owner) |
+| 4.9 Yeni Komutan 7 Günü | Bitti `0ee9dab0` | **Migration 0252** (`welcome_week`, yalnız yeni tablo). rules `welcomeWeek.ts`: 7 kutu, 20 sa, ~1 sa üretim (%60 kristal, saatte en az 150), 7. ~3 sa. `GET /api/welcome`, `POST /api/welcome/open` (satır kilidi; çift basış tek kutu). Gemideyken gemiye, inişte başkent deposuna. Kasa jestiyle (`CrateBay`); gemi ekranında yalnız hazırken, ödül panelinde bekleme satırıyla; hediye ikonu sayar |
+| 4.10 Belgeler, Wiki | Bitti `f1bdfe01` | `game-design.md` kuruluş haftası + 7 Gün; Wiki 'İlk haftan' (Wiki modeli en/tr; diğer diller İngilizceye düşer) + göçte eski komşu adresi. Y10/Y11/D23 önceki fazlarda güncellenmişti |
 | 4.11 Tam kapı + 350 px oyun denemesi + owner kontrolü | Bekliyor | Deploy yalnız owner kontrol edip söyleyince |
 
 ## 11. Kaynaklar
