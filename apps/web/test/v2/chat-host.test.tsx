@@ -33,7 +33,7 @@ beforeEach(() => {
   clanChatUnread = 0;
   dmUnread = 0;
 });
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('the chat page', () => {
   it('tracks the visible viewport through keyboard resize and Safari pan, and releases listeners', () => {
@@ -69,6 +69,7 @@ describe('the chat page', () => {
     2026-11-10). A viewport that grows back while composing is that key.
   */
   it('lets go of the composer when the keyboard closes without a blur, and only then', () => {
+    vi.useFakeTimers();
     const viewport = Object.assign(new EventTarget(), { height: 740, offsetTop: 0 });
     vi.stubGlobal('visualViewport', viewport);
     render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
@@ -79,16 +80,59 @@ describe('the chat page', () => {
     act(() => { viewport.height = 380; viewport.dispatchEvent(new Event('resize')); });
     expect(composer).toHaveFocus();
     act(() => { viewport.height = 740; viewport.dispatchEvent(new Event('resize')); });
+    // Only once the page has settled taller: a keyboard on its way up can bounce the height.
+    expect(composer).toHaveFocus();
+    act(() => { vi.advanceTimersByTime(300); });
     expect(composer).not.toHaveFocus();
   });
 
+  /*
+    THE KEYBOARD THAT SHUT ITSELF (owner 2026-11-17): in the app the keyboard sometimes closed as
+    it opened, again on the next tap, and stayed only after a few. The shell hides the system bars
+    and resizes for the keyboard; as the keyboard rises Android can lay the window out at its full
+    height for a moment before the keyboard's inset lands again. That moment read as the hide key,
+    and the blur closed the keyboard it had mistaken for gone.
+  */
+  it('keeps the composer when the height bounces back for a moment as the keyboard opens', () => {
+    vi.useFakeTimers();
+    const viewport = Object.assign(new EventTarget(), { height: 740, offsetTop: 0 });
+    vi.stubGlobal('visualViewport', viewport);
+    render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
+    const composer = screen.getByRole('textbox', { name: 'Composer' });
+    act(() => { composer.focus(); });
+    act(() => { viewport.height = 360; viewport.dispatchEvent(new Event('resize')); });
+    act(() => { viewport.height = 740; viewport.dispatchEvent(new Event('resize')); });
+    act(() => { vi.advanceTimersByTime(40); });
+    act(() => { viewport.height = 360; viewport.dispatchEvent(new Event('resize')); });
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect(composer).toHaveFocus();
+  });
+
+  it('waits out every bounce before it decides', () => {
+    vi.useFakeTimers();
+    const viewport = Object.assign(new EventTarget(), { height: 740, offsetTop: 0 });
+    vi.stubGlobal('visualViewport', viewport);
+    render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
+    const composer = screen.getByRole('textbox', { name: 'Composer' });
+    act(() => { composer.focus(); });
+    act(() => { viewport.height = 360; viewport.dispatchEvent(new Event('resize')); });
+    for (const height of [740, 360, 740, 360]) {
+      act(() => { viewport.height = height; viewport.dispatchEvent(new Event('resize')); });
+      act(() => { vi.advanceTimersByTime(200); });
+    }
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect(composer).toHaveFocus();
+  });
+
   it('lets go of the composer on an Android window resize when VisualViewport is unavailable', () => {
+    vi.useFakeTimers();
     vi.stubGlobal('visualViewport', undefined);
     vi.stubGlobal('innerHeight', 360);
     render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
     const composer = screen.getByRole('textbox', { name: 'Composer' });
     act(() => { composer.focus(); });
     act(() => { vi.stubGlobal('innerHeight', 740); window.dispatchEvent(new Event('resize')); });
+    act(() => { vi.advanceTimersByTime(300); });
     expect(composer).not.toHaveFocus();
   });
 

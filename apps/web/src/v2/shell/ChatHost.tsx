@@ -9,6 +9,12 @@ import { Sheet } from '../kit/Sheet.js';
 
 /** A phone keyboard is far taller than this; browser bars and typing never grow the page by it. */
 const KEYBOARD_CLOSED_PX = 150;
+/**
+ * How long the page must stay taller before the keyboard counts as gone. As the keyboard rises,
+ * the app shell (system bars hidden, resized for the keyboard) can lay the window out at full
+ * height for a moment; blurring then closed the keyboard it mistook for gone (owner 2026-11-17).
+ */
+const KEYBOARD_SETTLE_MS = 300;
 
 /**
  * CHAT, A PAGE OF ITS OWN. Owner, 2026-09-24: "Signals ve Chronicle kalsın, chat'i
@@ -42,22 +48,37 @@ function PersonalChatHost({ accountId, onClose, onFocusPlanet, channel, draft, i
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const viewport = window.visualViewport;
-    let previous = viewport?.height ?? window.innerHeight;
+    const measure = (): number => viewport?.height ?? window.innerHeight;
+    let previous = measure();
+    // The height with the keyboard up, held while a taller page waits to settle.
+    let keyboardUp: number | null = null;
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    const composing = (): HTMLTextAreaElement | null => {
+      const field = document.activeElement;
+      return field instanceof HTMLTextAreaElement && host.current?.contains(field) ? field : null;
+    };
     // iOS pans the visual viewport; Android may resize the layout viewport instead.
     const sync = (): void => {
-      const height = viewport?.height ?? window.innerHeight;
+      const height = measure();
       host.current?.style.setProperty('--chat-viewport-height', `${String(height)}px`);
       host.current?.style.setProperty('--chat-viewport-top', `${String(viewport?.offsetTop ?? 0)}px`);
       // Android's keyboard-hide key keeps the composer focused; the compose layout follows focus.
-      const field = document.activeElement;
-      if (height - previous > KEYBOARD_CLOSED_PX && field instanceof HTMLTextAreaElement && host.current?.contains(field)) field.blur();
+      if (height - previous > KEYBOARD_CLOSED_PX && composing()) keyboardUp ??= previous;
       previous = height;
+      if (keyboardUp === null) return;
+      // Every further change restarts the wait: only a page that STAYS taller lets go.
+      clearTimeout(settle);
+      settle = setTimeout(() => {
+        if (keyboardUp !== null && measure() - keyboardUp > KEYBOARD_CLOSED_PX) composing()?.blur();
+        keyboardUp = null;
+      }, KEYBOARD_SETTLE_MS);
     };
     sync();
     viewport?.addEventListener('resize', sync);
     viewport?.addEventListener('scroll', sync);
     window.addEventListener('resize', sync);
     return () => {
+      clearTimeout(settle);
       viewport?.removeEventListener('resize', sync);
       viewport?.removeEventListener('scroll', sync);
       window.removeEventListener('resize', sync);
