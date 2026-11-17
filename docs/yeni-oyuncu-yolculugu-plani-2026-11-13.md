@@ -553,7 +553,7 @@ Bu bölüm, bağlam sıkıştırmaları arasında işi taşır. Burada yazan, so
 | Faz 3.0e Kod incelemesi (13 Kasım) | Bitti | Owner "şimdiye kadar yaptıklarına CR yap" dedi; 10 bulgu, hepsi doğrulandı ve testle düzeltildi (her biri önce FAIL). (1) Pencere kartı bir sayfadayken rehber önce sayfadan çıkarır. (2) 0249 göçü: deploy anında eve dönen ve kazmış seferler `dug = true` alır (geri çağrılan uçuş `depart = arrive`). (3) Onarım kuyruğu doluyken danışman sıçramayı değil beklemeyi söyler (sıçrama işleri iptal ederdi). (4) Pencere kapalı ve ortada iş yokken danışman eksik olguyu söyler (`WINDOW_FACTS` rules'tan dışa açıldı; eskiden "Invalid Date" bekleme). Yalnız gemiye sonda ipucu karakolu da anar (6 dil). (5) Vedadan sonraki ipucu altı onarım bitince pencerenin eksik olgusunu söyler. (6+10) Ambar tek toplamdan okunur: rules `jumpHold` (stok + işler + iptalde dönen iş bedeli + hazır sandıklar); panel, dönüş hatırlatıcısı, gemi ekranı ve danışman aynı sayıyı görür (danışman `holdFull`u çağırandan alır). (7) Panoda gemiye saldırı `ATTACK` (hiç olmayan `RAID_SHIP` yerine). (8) Sezon duyurusu pencerenin iki olgusunu SQL'de süzer (`facts ?& array[...]`), kural sonra karar verir. (9) `parts`/`fuel` okumaları kaldırıldı (`sweep`, `returnPlanning`). Ayrıca §10.7-6: `PVP_LOCKED`, `PVP_PROTECTED`, `TARGET_GONE`, `RAID_CAP` 6 dilde oyuncu metni aldı (eskiden "bir şeyler ters gitti"); `starter-errors` testi artık saldırı tablosunun anahtarlarını da okur. Kapı: rules, sunucu ve web tsc 0; değişen 42 dosyanın lint'i 0; rules starter 25 dosya 253 test, web starter/journey/gemi/hata grubu 84 dosya 1280 test (`vessel-screen` eski sonda metnini sabitlemişti, güncellendi), sunucu starter/bot/dönüş 72 dosya 773 test (3 parça, her biri kendi `_test` DB'si) yeşil |
 | Faz 3 Ekranlar (kitle, 13–17 Kasım) | Bitti | Owner 2026-11-17: "ui-kit komple entegre edildi ve deploy edildi, ona göre geliştir". origin/master (5cc094c7, 209 commit) dala alındı (`e1e80243`); çakışmalar: FocusPanel'de S2'nin parça/enkaz sondası silmesi korundu, de/errors "du" Almancası, GalaxyView'da master'ın `cornerButtons`'ı ama **ayak gizlenmez** (97abf597'nin canlı düzeltmesi; master'daki `hidden` eski satırdı, `starter-own-ship-tap` yakaladı). Rehber kanca tablosu kitin yeni yerlerine (`works` TopBar, dock `BottomNav`'ın `guide`'ı, mine/probe `marks`). **Karar paneli** (`MigrationPanel`): Ambarın (3 `StoreGauge` + saatlik hız, gemiler aynı ızgarada filo resmiyle) → Burada kalırsan (olgu "Gemide üretim 3 katı", dolunca "Ambar dolu: fazlası gemide kalır"; nasıl dolduğu `InfoPeek`) → İnince (sezon paketi + "Kalkan 72 sa · akın Çekirdek 1–6 · Sessiz Uzay 30 sa", üç kural `InfoPeek`) → Geride kalanlar (yalnız sıfır olmayan kayıplar, isteğe bağlı onarımlar `InfoPeek`) → Sezon → "Göçe hazırlan" (self tonu). Ölçüm aracının sayımıyla ekran başına 55 kelime (tr, 350 px, iki ekran), 6 dilde taşma yok. **Sıçrama** kitin `GameHold weight="final"` (1,5 sn). **Ambar doldu anı** `HoldFullMoment`: gemi başına bir kez, sistem kartı varken bekler, `cargo` sesi + `thunk` titreşimi, Motor panelinde değilken "Sıçramaya bak"; gemi resminde kargo kapağı kapanır ve kapalı kalır (`data-sealed`, ikaz şeritli kapak). **Pencere anı**: motor iki kez öksürüp tutar (CSS), sarsıntı tutuşta. **İniş kartı**: "Koruma" bloğu (`ProtectionLines`, panelle ortak), genel satırlar ayrı ve sakin. **Danışman listesi** kitin levhası, etiketi ve önerilen satırda kesik köşeli plaka. Testler önce FAIL: `jump-decision` (9), `hold-full-moment` (6), `starter-landing-card` +1, `starter-migration-panel` güncellendi. Kapı: web tsc 0, 263 dosya lint 0, starter/journey/gemi/danışman grubu 97 dosya 1405 test yeşil (2 bayat kanca/ayak testi düzeltildi). 350 px oyun içi deneme: pencere kartı → Göçe hazır → gemi (kapak + kart) → panel → iniş seçimi → 1,7 sn basılı tut → uçuş → iniş kartı |
 | Sentry (deploy öncesi, owner kararı §10.7-1) | Bitti (17 Kasım; canlıya deploy'la gider) | **Karar:** her yerde `@sentry/react` 11.10.0 (28 Ekim, iki haftayı geçmiş; 11.12.0 üç günlüktü). `@sentry/capacitor` yok: 4.5/4.6 React SDK'yı 10.76.2'ye kilitliyor, yerel çökme için Gradle/AAB değişikliği istiyor; uygulama bir WebView, hatalar JS'te, yerel çökmeleri Play Console veriyor. Sunucu `@sentry/node` 11.10.0, kaynak haritası `@sentry/vite-plugin` 11.10.0. Yalnız hata: tracing yok, Replay yok (owner), PII yok: `sendDefaultPii: false`, `dataCollection` kapalı, `beforeSend` kullanıcıyı, çerezleri, başlıkları, gövdeyi ve URL sorgusunu siler (JWT `Authorization` başlığında). DSN'ler herkese açık türden (pakette zaten görünür): web/app sabiti istemci kodunda, api DSN'i compose varsayılanında (`SENTRY_DSN`, kapasite testinde boş). **Adımlar → doğrulama:** S-1 istemci seçenekleri + temizleyici (birim test: yerelde/geliştirmede kapalı, platforma göre DSN, ortam host'tan, PII silinir) → S-2 `main.tsx` başlatma + React 19 kök kancaları → S-3 kaynak haritası: anahtar varsa `sourcemap: 'hidden'` + yükle + `.map` sil; Dockerfile BuildKit secret, `deploy.sh` `--secret` (analytics-rollout tarzı test) → S-4 sunucu: `env.ts`, index'te init, Fastify hata kancası, compose → S-5 yerel üretim derlemesiyle gerçek bir hatanın `web` projesine düştüğünü CLI ile gör. **Durum (17 Kasım):** S-1…S-5 bitti. S-2/S-3 `e867ab4e`: `main.tsx` ilk iş başlatır, kök kancaları yalnız raporlar açıkken; CSP'ye yalnız giriş host'u (`src/lib/crashIngest.ts`; nginx oyun belgeleri, Android paketi, `mobileBuildCli` denetimi; halka açık sayfalar dokunulmadı); `sentryBuild.ts` anahtar + commit varsa gizli harita yükler ve `.map` siler; Dockerfile `RUN --mount=type=secret`, `deploy.sh` `--secret` (boş anahtar sessizce 'yükleme yok', Docker ile denendi). S-4 `95b2605c`: `apps/server/src/crashReports.ts`; SDK 11'de `setupFastifyErrorHandler` boş çağrı, yerine `fastifyIntegration` + yalnız 5xx; `serverName` = ROLE (makine adı gitmez); compose tüm sunucu süreçlerine api DSN'i + `production`, stage `stage`, kapasite boş. S-5: yerel üretim derlemesi (anahtarsız, 0 `.map`) `asteraonline.space` adıyla sunuldu, tarayıcı hatası `WEB-1`, sunucu hatası `API-1` olarak düştü; kullanıcı 0, sürüm = commit; ikisi çözüldü işaretlendi. **Kalan:** kaynak haritası yüklemesi ilk gerçek deploy'da görülür (anahtar yalnız VPS'te); AAB `app` haritaları için yerel anahtar gerekecek (yeni AAB'de) |
-| Faz 4 | Bekliyor | Bildirim açmak owner deploy talimatı ister |
+| Faz 4 | Sürüyor (17 Kasım) | Owner 17 Kasım: bu deploy'a girer; owner kontrol etmeden deploy yok. Kapsam ve alt adımlar §10.8'de |
 | Faz 5 | Bekliyor | |
 
 **Owner yokken çalışma kararları (owner, 13 Kasım 2026, ayrılmadan önce):**
@@ -625,6 +625,13 @@ Owner yokken karar gerektiren her şey buraya yazılır; iş durdurulmaz, varsay
 - (7) Açıklamadan sonra: **zar 0–6 olsun.** Yapıldı (Faz 3.0d).
 - (10) Sıçrama `GameHold` 'final' (1,5 sn).
 
+**Owner cevapları (17 Kasım):**
+
+- "Onboarding aşamasını unutma, tamamen eksiksiz ve konuştuğumuz gibi bitir."
+- Faz 4 **bu deploy'a girer** (Faz 1 + 2 + S2 + 3 + Sentry + 4 birlikte). **Owner kontrol etmeden deploy edilmez.**
+- Codex kotası bitti: taze oyuncu testi Codex'le yapılmaz. Yerel 350 px oyun denemesi benim; S22 turu owner telefonu takınca.
+- (6)'nın ikinci yarısı yapıldı: çift `sensorToggleFrame` etkisi `b31081fc` (koruma testi eski dosyada kırmızı).
+
 1. Sentry (veya benzeri) çökme raporlama: Faz 1.1 hata ayrıntısı yerine sektör yolu. Öneri ve maliyet sohbette verildi; karar bekliyor.
 2. S22 ve taze oyuncu testi (Codex, Wiki yasak): Faz 1'in "Bitti sayılır" maddesi için.
 3. Deploy: Faz 1 düzeltmeleri (`mark_missing` kök nedeni, varış kartı, teleskop halkaları, sahiplenme kadrajı, hata ayrıntısı) ancak owner'ın deploy talimatıyla canlıya çıkar. Deploy sonrası panoda `mark_missing` ve ilk dakika kaybı yeniden okunur.
@@ -635,6 +642,45 @@ Owner yokken karar gerektiren her şey buraya yazılır; iş durdurulmaz, varsay
 8. Tasarım varsayımları, Faz 5 verisiyle ayarlanacak: bot kalma süresi payları (%30/%50/%20), gemi görünümünün `repairProgress` payına bağlı kalması.
 9. Çok küçük bir kenar durumu (kod eklenmedi): 0250 kalkıştaki (DEPARTING) gemiye dokunmaz. Deploy anında kalkışta olan, kuyruğunda motor onarımı duran ve kalkışı reddedilip geri verilen bir gemide o sipariş bitince modüllere `DRIVE_*` yeniden yazılır; web şeması bu gemiyi okuyamaz ve kuyruk etiketi ham anahtar gösterir. Kalkış saniyeler sürdüğü için olasılık sıfıra yakın. Görülürse 0251 bir kez daha çalıştırılır.
 10. **Karar verildi (owner, 13 Kasım):** sıçrama `GameHold` `weight="final"` (1,5 sn) ile onaylanır.
+
+### 10.8 Faz 4 defteri (17 Kasım)
+
+**Kapı (17 Kasım, Faz 0–3 + Sentry):** tsc rules/server/web 0; lint 0; rules 3706/3706; sunucu 532 dosya (3 parça + süreye takılan 50 dosya ayrı) hepsi yeşil; web 11.819 geçti. 5 kırmızının 3'ü bizimdi, düzeltildi (`ae550d95`); kalan 2'si master'ın: `type-scale` (`.gk.wiki-room`) ve `v2/icons` (`i-clan`), bu dalda o dosyalar değişmedi.
+
+**Kaynak:** §4.7–4.8; `docs/ilk-deneyim-elde-tutma-plani-2026-11-06.md` §6.6, §7, §7.1, §7.2, §8.2–8.3, §9 (kararlar owner'ın 2026-11-06 devriyle alındı); `docs/yeni-oyun-deneyimi-plani-2026-11-08.md` F9.
+
+**Envanter (koddan, 17 Kasım):**
+
+| Parça | Bugün | Faz 4 işi |
+| --- | --- | --- |
+| Dönüş bildirimleri (Y1 `repair_funded`, Y2 `while_away`, `repair_done`, `miner_home`), gece sessizliği (`push_devices.utc_offset_minutes`) | Var (`returnSignals.ts`, `returnCopy.ts`, `pushDelivery.ts`) | Yok |
+| Dönüş özeti | Var (`AwayHost` + `AwaySheet`, starter'da `returnStory`) | Yok |
+| İniş notları | Güne göre (`starter/landingTips.ts`: core/colony/clan/dominion/honor) | 4.1 ihtiyaçla açılır, takvim yedek |
+| İlk PvE önerisi | İniş kartında "dışarı çık" genel | 4.2 ilk av yapılmadıysa korsan hedefi |
+| Ödül paneli | Kit ekranı (`RewardsScreen`: tek kutu açılır, alınabilir zincir üstte); tek kademe alma (`POST /api/rewards/claim`) | 4.3 Tümünü al (tek istek, tek transaction), sosyal kart en alta tek satır, sıradaki hedef, Git kapıları, alma anı |
+| İniş ödül anı | Yok | 4.4 |
+| Klan önerisi | Yok | 4.5 |
+| Komşularla iniş | Yok (`addressesIn` 3 aday) | 4.6 |
+| İlk hafta push ücretsiz (Y8) | Ana galakside ücretli uyarılar (`PAID_ALERTS`) | 4.7 |
+| Silinme sınırı (Y9) | Hareketsiz koltuk silen kod (`reclaimIdleSeats`) hiçbir yerden çağrılmıyor | Kod yok; belgede not |
+| Sohbette galaksi olayları, kohort yerleşimi (F5, dron hariç) | Yok | 4.8 |
+| Yeni Komutan 7 Günü (F6) | Yok | 4.9 (F9: en sonda) |
+
+**Alt adımlar (her biri: ölçüt → kırmızı test → kod → yeşil → 350 px oyun içi bakış; ses + titreşim + görsel):**
+
+| Adım | Durum | Not |
+| --- | --- | --- |
+| 4.1 İhtiyaçla açılan notlar | Bekliyor | |
+| 4.2 İlk PvE önerisi | Bekliyor | |
+| 4.3 Ödül paneli (Tümünü al, sıradaki hedef, Git) | Bekliyor | |
+| 4.4 İniş ödül anı | Bekliyor | 4.3'e bağlı |
+| 4.5 Klan önerisi | Bekliyor | |
+| 4.6 Komşularla iniş | Bekliyor | |
+| 4.7 İlk hafta push ücretsiz | Bekliyor | |
+| 4.8 Sohbette galaksi olayları + kohort | Bekliyor | |
+| 4.9 Yeni Komutan 7 Günü | Bekliyor | |
+| 4.10 Belgeler, Wiki 6 dil | Bekliyor | `product-vision.md` (Y10/Y11), `game-design.md` (D23, bildirim yasakları) |
+| 4.11 Tam kapı + 350 px oyun denemesi + owner kontrolü | Bekliyor | Deploy yalnız owner kontrol edip söyleyince |
 
 ## 11. Kaynaklar
 
