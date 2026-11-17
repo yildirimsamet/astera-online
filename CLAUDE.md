@@ -39,7 +39,19 @@ Gerileme işaretleri: döngünün `BUILD → WAIT → COLLECT → UPGRADE` hâli
 
 Mimari, kütüphaneler, sorgular, önbellekleme, bileşenler, dahili API'ler, testler ve küçük, geri alınabilir UX ayrıntıları için kendin karar ver. **Temel döngü, risk/ödül, PvP, sahiplik, sezonlar, ilerleme, kimlik veya kilitli kısıtları değiştirmeden önce owner'a sor.**
 
-Karara bağlanmış konuları yeniden açma; dokümanları sonsuza kadar cilalama; kesinlik bekleyerek işi durdurma veya çalışan sistemleri varsayımsal ihtiyaçlar için yeniden tasarlama.
+Karara bağlanmış konuları owner'a sormadan değiştirme (aşağıdaki kurala bak); dokümanları sonsuza kadar cilalama; kesinlik bekleyerek işi durdurma veya çalışan sistemleri varsayımsal ihtiyaçlar için yeniden tasarlama.
+
+### Kilitli karar = sormadan değiştirme, "asla değişmez" değil (owner, 2026-11-13)
+
+Proje için daha iyisi neyse her konu değişebilir; şartı owner'la konuşmaktır. Plan yaparken "bu konu kilitli, plana buna bağlı kalarak yapmalıyım" diye düşünme: en iyi çözümü tasarla, kilitli bir kararı değiştiriyorsa açıkça işaretle ve owner'a sor:
+
+> "Planda şu madde(ler), şu kilitli kararı (belge/tarih) değiştiriyor. Şu faydaları sağlayacağı için öneriliyor. Değiştirelim mi?"
+
+Onay gelmeden kilitli davranışı uygulamada değiştirme; onay gelirse kararı yöneten belgeyi güncelle.
+
+### Akıl hocası ol (owner, 2026-11-11)
+
+Owner oyun yapımında acemidir; sektörün yollarını (hazır asset, mağaza, sanatçı, araç) ve terimleri (model, poly count, shader, VFX…) bilmez. Bir istek geldiğinde önce **en kaliteli yolu** öner: sektör bunu nasıl yapar, nereden alınır (somut link), yaklaşık maliyet ve lisans. Ardından alternatifleri ve bedellerini koy (ör. "almazsan şu yolla yaparız"). İşe başlamadan önce söyle; kendi yapabildiğin yola sessizce girme. Geçen her terimi bir cümleyle, oyundaki karşılığıyla açıkla.
 
 ### Kodlamadan önce düşün
 
@@ -125,6 +137,7 @@ Scroll, dokunma ve ekran değiştirme maliyettir. Karşılaştırılacak on öğ
 - Baştan savma tasarım yapma. Hedef premium AAA kalitesidir; görsellik ve premium hissiyat oyuncuyu etkileyen başlıca unsurlardandır.
 - Her zaman `ui-v2` ilkeleriyle uyumlu, kaliteli, premium ve hayranlık uyandıran tasarımlar üret.
 - Geliştirdiğin, güncellediğin veya düzelttiğin işin tasarım gereksinimlerini asla atlama.
+- **VFX briefi (owner, 2026-11-18):** Efekt yazmadan önce 3 satırlık VFX briefi yazılır ve teslimde gösterilir: o anda dünyada fiziksel olarak ne oluyor, kütüphaneden hangi asset (yol), neden bu olayı anlatıyor. Yumuşak yuvarlak parlama, büyüyen hale ve "her yere uyan" efekt yasaktır.
 - Oyun hareketleri işletim sisteminin hareket tercihinden bağımsızdır. **Yalnız public landing CSS'i**, owner'ın 2026-10-18 tarihli açık erişilebilirlik talebiyle istisnadır. Bkz. `docs/landing-premium-redesign-2026-10-18.md`.
 
 ### 6. Game feel — Biz bir OYUNUZ (owner, 2026-11-06) | Oyuncu deneyimi standardı (çok önemli)!
@@ -248,7 +261,7 @@ Ekonomi/sezon simülasyonları, snowball audit'leri ve benzeri uzun ekonomi ince
 | `docs/review-onboarding.md` | Güncel FlightSchool, gerçek başlangıç ve eski Academy ayrımında; onboarding için ilk referans |
 | `docs/glossary.md` | Terimler için |
 | `docs/komutan-gemisi/README.md` | Komutan Gemisi / Savaş Alanı'na (gerçek zamanlı pilot arenası) dokunurken |
-| `docs/baslangic-galaksisi-plani-2026-11-04.md` | Koloni gemisi, başlangıç galaksileri, prolog ve göçe dokunurken |
+| `docs/baslangic-galaksisi-plani-2026-11-04.md` | Koloni gemisi, başlangıç galaksileri, prolog ve göçe dokunurken || `~/Desktop/Coding/MyProjects/game-assets/AGENTS.md` | Hazır GUI, ikon, VFX, model veya ses ararken (repo dışı ortak kütüphane; çizmeden önce bak) |
 
 Diğer konular için `docs/` klasörüne bak.
 
