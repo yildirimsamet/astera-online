@@ -1756,13 +1756,17 @@ function InterceptorBattery({
       : recovering
         ? t('planet.deathStar.needs', { need: needOperational })
         : shortfall(short, planet);
-  const needs = (
-    <ArmNeeds needs={[
-      { ok: uplink, text: needUplink, onFix: () => { onNeed('UPLINK'); } },
-      { ok: radarLevelMet, text: needRadar, onFix: () => { onNeed('RADAR'); } },
-      ...(room && !noRadarProtection ? [{ ok: !recovering, text: needOperational }] : []),
-    ]} />
-  );
+  /*
+    ONLY WHAT IS MISSING, WHERE THE HOLD WOULD BE (owner 2026-11-17: "Stratejik savunma bataryasını
+    düzenle"). A tick for every requirement met was noise over a locked hold that named the missing one a
+    second time; what is still missing now stands alone in the hold's place, a door to its fix.
+  */
+  const missing = [
+    { ok: uplink, text: needUplink, onFix: () => { onNeed('UPLINK'); } },
+    { ok: radarLevelMet, text: needRadar, onFix: () => { onNeed('RADAR'); } },
+    ...(room && !noRadarProtection ? [{ ok: !recovering, text: needOperational }] : []),
+  ].filter((need) => !need.ok).map((need) => ({ ...need, text: t('planet.deathStar.needs', { need: need.text }) }));
+  const gate = missing.length > 0 ? <div data-gate="" className="gk-arm__gate"><ArmNeeds needs={missing} /></div> : null;
 
   return (
     <ArmCard
@@ -1807,7 +1811,7 @@ function InterceptorBattery({
         </p>
       )}
       {/*
-        THE REQUIREMENTS STAY ON SCREEN UNTIL A CHARGE EXISTS, and each is a door
+        WHAT IS STILL MISSING STAYS ON SCREEN UNTIL A CHARGE EXISTS, and each is a door
         rather than an alarm: the Uplink and the Radar both point at the row that
         would close them. A loaded charge whose ring went dark shows them again.
       */}
@@ -1818,10 +1822,9 @@ function InterceptorBattery({
       )}
       {room && !noRadarProtection && (
         <>
-          {needs}
           <CostLine cost={ANTI_STRATEGIC.cost} held={held} time={<span className="gk-cost__time"><Glyph id="clock" />
-            {t('planet.interceptor.buildTime', { duration: duration(ANTI_STRATEGIC.buildMinutes) })}</span>} />
-          <div data-act><GameHold
+            {duration(ANTI_STRATEGIC.buildMinutes)}</span>} />
+          {gate ?? <div data-act><GameHold
             label={charges.length > 0 ? t('planet.interceptor.buildSecond') : t('planet.interceptor.build')}
             weight="spends" glyph="shield" commitSound="shield"
             disabledReason={load.isPending ? t('planet.interceptor.started') : refusal}
@@ -1830,10 +1833,10 @@ function InterceptorBattery({
                 onSuccess: () => { say(t('planet.interceptor.started')); },
                 onError: (error) => { say(describe(error), 'error'); },
               });
-            }} /></div>
+            }} /></div>}
         </>
       )}
-      {charge !== null && !radarReady && needs}
+      {charge !== null && !radarReady && gate}
     </ArmCard>
   );
 }

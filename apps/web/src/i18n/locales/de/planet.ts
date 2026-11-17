@@ -121,7 +121,7 @@ export const planet = {
     capacity: "Kapazität: {{used}} / {{total}} Ladungen",
     eyebrow: "Antistrategische Batterie",
     tally: "{{used}} von {{total}} Ladungen geladen",
-    none: "Keine Gebühr geladen",
+    none: "Keine Ladung bereit",
     building: "wird geladen · {{duration}}",
     paused: "Der Ladevorgang wurde während der Wiederherstellung angehalten",
     ready: "Geladene Ladungen: {{count}}",
@@ -136,7 +136,6 @@ export const planet = {
     needRadar: "Radar L{{level}}",
     needUplink: "Uplink im Orbit",
     needOperational: "Welt betriebsbereit",
-    buildTime: "{{duration}} · eine Ladung · für das Schießen aufgewendet",
     buildSecond: "Weitere Ladung laden",
   },
 

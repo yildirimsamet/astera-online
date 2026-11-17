@@ -136,7 +136,6 @@ export const planet = {
     needRadar: "レーダー L{{level}}",
     needUplink: "軌道上のアップリンク",
     needOperational: "惑星の機能が稼働中",
-    buildTime: "{{duration}} · 迎撃弾1発 · 発射時に消費",
     buildSecond: "次の迎撃弾を装填",
   },
 

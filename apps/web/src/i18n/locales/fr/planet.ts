@@ -137,7 +137,6 @@ export const planet = {
     needRadar: "Radar niveau {{level}}",
     needUplink: "Antenne en orbite",
     needOperational: "Monde opérationnel",
-    buildTime: "{{duration}} · une munition · consommée au tir",
     buildSecond: "Charger une autre charge",
   },
   deathStar: {

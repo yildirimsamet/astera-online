@@ -4847,7 +4847,9 @@ button:active > .gk-sheet__grab {
   z-index: 1;
   display: grid;
   place-items: center;
-  min-height: var(--gk-hit);
+  /* the stop spans the track's whole height, so its label sits on the handle's centre (owner 2026-11-17) */
+  min-height: calc(var(--gk-hit) - 2px);
+  margin-block: -4px;
   padding: 0 2px;
   border: 0;
   background: transparent;
@@ -17802,3 +17804,18 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 .gk-acct__foot .gk-acct__link:first-child { padding-left: 0; }
 .gk-acct__foot .gk-acct__link + .gk-acct__link::before { content: '·'; margin-right: 8px; margin-left: -4px; color: var(--gk-ink-3); }
 .gk-acct__foot .gk-acct__quiet { padding: 0; font-size: var(--gk-t-floor); white-space: nowrap; }
+
+/* ── a bay's missing requirement in its hold's place (owner 2026-11-17): a full-width amber door, 48 px,
+   what is missing at the left and the way to it at the right — nothing else at the foot of the card ── */
+.gk-arm__gate .gk-arm__needs { display: grid; gap: 6px; }
+.gk-arm__gate .gk-need-door { display: flex; width: 100%; min-height: 48px; }
+.gk-arm__gate .gk-need-chip {
+  flex: 1;
+  min-height: 48px;
+  gap: var(--gk-s2);
+  padding: 0 var(--gk-s3);
+  font-size: var(--gk-t-small);
+  white-space: normal;
+}
+.gk-arm__gate .gk-need-chip .gk-glyph { width: 15px; height: 15px; }
+.gk-arm__gate .gk-need-chip .gk-glyph:last-child { margin-left: auto; }

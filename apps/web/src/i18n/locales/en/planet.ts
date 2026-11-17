@@ -136,7 +136,6 @@ export const planet = {
     needRadar: "Radar L{{level}}",
     needUplink: "Uplink in orbit",
     needOperational: "World operational",
-    buildTime: "{{duration}} · one charge · spent on firing",
     buildSecond: "Load another charge",
   },
 

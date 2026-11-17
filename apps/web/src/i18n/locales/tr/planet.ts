@@ -136,7 +136,6 @@ export const planet = {
     needRadar: "Radar {{level}}. seviye",
     needUplink: "Yörüngede Anten",
     needOperational: "Dünya çalışır durumda",
-    buildTime: "{{duration}} · tek mühimmat · ateşlenince biter",
     buildSecond: "Bir şarj daha yükle",
   },
 
