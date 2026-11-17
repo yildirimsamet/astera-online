@@ -498,3 +498,19 @@ describe('the sheet’s own controls', () => {
     expect(view.container.querySelector('.gk-sheet__eyebrow')).toHaveTextContent('Komutan');
   });
 });
+
+/**
+ * A PAGED SHEET KEEPS ITS HEIGHT (owner 2026-11-17, the monument sheet): its pages differ in length, and a
+ * sheet sized to what it holds jumped up and down at every tab. `fill` stands it at the room's full height.
+ */
+describe('a sheet that fills its room', () => {
+  it('stands at full height whatever its body holds', () => {
+    render(<Sheet title="Monument" detents={['full']} fill onClose={vi.fn()}>short</Sheet>);
+    expect(screen.getByRole('dialog')).toHaveClass('h-full');
+  });
+
+  it('otherwise fits what it holds', () => {
+    render(<Sheet title="Monument" detents={['full']} onClose={vi.fn()}>short</Sheet>);
+    expect(screen.getByRole('dialog')).not.toHaveClass('h-full');
+  });
+});

@@ -59,8 +59,9 @@ describe('the monument sheet on the kit (C22)', () => {
     noLegacy(facts);
   });
 
-  it('picks each hull on a kit row and prices the flight in a kit well, its consents kit switches', async () => {
+  it('picks each hull on a kit row and prices the flight in a kit well, on kit plates', async () => {
     show();
+    fireEvent.click(await screen.findByRole('tab', { name: 'Attack' }));
     const row = await screen.findByTestId('monument-hull-CITADEL');
     noLegacy(row);
     const count = within(row).getByRole('textbox', { name: /citadel.*quantity/i });
@@ -69,8 +70,8 @@ describe('the monument sheet on the kit (C22)', () => {
     const priced = await screen.findByTestId('monument-quote');
     expect(priced).toHaveClass('gk-well');
     noLegacy(priced);
-    expect(within(priced).getByRole('switch', { name: /shield/i })).toHaveAttribute('aria-checked', 'false');
-    expect(within(priced).getByRole('switch', { name: /radiation/i })).toHaveAttribute('aria-checked', 'false');
+    expect(within(priced).getByTestId('monument-plates').querySelectorAll('.gk-stat')).toHaveLength(4);
+    expect(within(priced).queryByRole('switch')).toBeNull();
   });
 
   it('commits with kit holds weighed by what they cost: the wave and the probe spend, the recall reverses', async () => {
@@ -78,11 +79,14 @@ describe('the monument sheet on the kit (C22)', () => {
     const card = await screen.findByTestId(`monument-wave-${waveId}`);
     noLegacy(card);
     expect(card.querySelector('.gk-hold')).toHaveClass('gk-hold--md');
+    fireEvent.click(card.querySelector('[data-monument-recall] summary')!);
     fireEvent.change(within(card).getByRole('textbox', { name: /argosy.*recall/i }), { target: { value: '1' } });
     await vi.waitFor(() => { expect(holdMs(within(card).getByRole('button', { name: /recall.*hold/i }))).toBe('600ms'); });
+    fireEvent.click(screen.getByRole('tab', { name: 'Target' }));
     const probe = screen.getByTestId('monument-probe');
     noLegacy(probe);
     expect(holdMs(within(probe).getByRole('button', { name: /probe.*hold/i }))).toBe('1000ms');
+    fireEvent.click(screen.getByRole('tab', { name: 'Attack' }));
     fireEvent.change(screen.getByRole('textbox', { name: /citadel.*quantity/i }), { target: { value: '1' } });
     const send = within(screen.getByTestId('monument-send')).getByRole('button');
     expect(send).toHaveClass('gk-hold', 'gk-btn--lg');
@@ -90,6 +94,7 @@ describe('the monument sheet on the kit (C22)', () => {
 
   it('keeps the last probe report in a kit well', async () => {
     show();
+    fireEvent.click(await screen.findByRole('tab', { name: 'Target' }));
     const report = await screen.findByTestId('monument-report');
     expect(report).toHaveClass('gk-well');
     noLegacy(report);

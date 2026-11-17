@@ -95,6 +95,8 @@ export interface SheetProps {
   contained?: boolean;
   /** Keep a contained conversation panel at a stable height while its log scrolls. */
   fixedHeight?: boolean;
+  /** Stand at the room's full height whatever the body holds: a paged sheet whose pages differ never jumps at a tab. */
+  fill?: boolean;
   /**
    * Wide screens only (E11): a page docks to the right, a dialog stands in the middle.
    * Default: a dialog when it only ever fits its content, a page otherwise.
@@ -146,6 +148,7 @@ export function Sheet({
   floatingHead = false,
   contained = false,
   fixedHeight = false,
+  fill = false,
   placement = detents.every((height) => height === 'fit') ? 'dialog' : 'page',
   kit,
 }: SheetProps) {
@@ -221,7 +224,7 @@ export function Sheet({
         head's quiet middle, between the back and the close (G1-g).
       */
       className={kitHead
-        // S1 (owner 2026-11-16): inside the one 48 px bar, over its quiet middle — never a row of its own.
+        // S1 (owner 2026-11-16; 54 px since 2026-11-17): inside the one head bar, over its quiet middle — never a row of its own.
         ? `gk-sheet__pull group ${placement === 'page' ? 'v2-split:invisible' : ''}`
         : `group relative z-10 mx-auto -mb-7 flex h-11 w-16 shrink-0 items-start justify-center ${placement === 'page' ? 'v2-split:invisible' : ''}`}
     >
@@ -256,7 +259,7 @@ export function Sheet({
         data-detent={detent}
         data-placement={placement}
         data-sheet-panel=""
-        className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col ${floatingHead ? 'h-full' : ''} overflow-hidden ${kit ? 'gk gk-sheet' : 'border border-b-0 border-v2-line bg-v2-panel font-v2-ui'} transition-[height,max-height] duration-300 ease-v2 ${fixedHeight ? 'h-[70dvh] max-h-full' : HEIGHT[detent]} ${FRAME[placement].panel}`}
+        className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col ${floatingHead ? 'h-full' : ''} overflow-hidden ${kit ? 'gk gk-sheet' : 'border border-b-0 border-v2-line bg-v2-panel font-v2-ui'} transition-[height,max-height] duration-300 ease-v2 ${fixedHeight ? 'h-[70dvh] max-h-full' : fill ? 'h-full max-h-full' : HEIGHT[detent]} ${FRAME[placement].panel}`}
       >
         <div data-sheet-header="" className={`${floatingHead ? 'pointer-events-none absolute inset-x-0 top-0 z-10' : 'shrink-0'} touch-none ${headerArt && !quietTitle && detent !== 'peek' ? 'sheet-art-head' : ''}`} {...(placement === 'card' ? {} : { onPointerDown: onPull })}>
           {headerArt && !quietTitle && detent !== 'peek' && <div data-sheet-art=""><AtmosphereImage art={headerArt} /></div>}

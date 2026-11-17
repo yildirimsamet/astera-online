@@ -67,6 +67,9 @@ export const stock = (value: number): string => (Math.round(value) < 100_000 ? f
  */
 export const decimal = (value: number, digits = 1): string => decimals(value, digits);
 
+/** An amount kept to its own precision: 42 stays 42, 83.75 stays 83.75 — never 42.000, which reads as forty-two thousand. */
+export const upTo = (value: number, digits: number): string => value.toLocaleString(locale(), { maximumFractionDigits: digits });
+
 const decimals = (value: number, digits: number): string =>
   value.toLocaleString(locale(), {
     minimumFractionDigits: digits,
