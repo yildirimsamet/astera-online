@@ -17,8 +17,8 @@ Her yüzeyin ölçütü: **350×812 ve 375×667'de kaydırmadan ne görünüyor?
 | S2 | Sekme çubuğu: eşit genişlik, tek satır, 40 px; menü sekmeleri Gezegen / Araştırma / Gemi | 11 | bitti |
 | S3 | Kompakt bağlam kartı (alt kart): saldırı, etkinlik, öneri; yazı ve düğme küçülür, dikeyde ~%40 kısalır | 1 | bitti (saldırı/öneri 175→108 px, olay 118→96) |
 | S4 | Görsel kart oranı: kart resminin %70–80'i görünür, kart gereksiz uzamaz | 7 | bitti (menü karosu tam genişlik, bina kartı 16:9 pencere; mağaza/envanter zaten tam) |
-| S5 | Kit'e standart `Fold` (akordiyon) ve `InfoPeek` kullanımı; uzun kural metni bunların arkasına | 2. amaç | bekliyor |
-| S6 | Yazım kuralı: bilineni yazma, tek cümle, kural ⓘ'de (`docs/ux-writing.md`'ye ek) | 17 | bekliyor |
+| S5 | Kit'e standart `Fold` (akordiyon) ve `InfoPeek` kullanımı; uzun kural metni bunların arkasına | 2. amaç | bitti |
+| S6 | Yazım kuralı: bilineni yazma, tek cümle, kural ⓘ'de (`docs/ux-writing.md`'ye ek) | 17 | bitti (§3.1) |
 | H1 | Galaksi HUD bölgeleri: status bar altı tam genişlikte uçuş şeridi + toast; sol sütun durum rozetleri (sıkı); sağ üst bulunabilecekler; altında 2×2 araç (teleskop, dünyalar, market, zil); çevrimiçi sayısı gizli; etkinlik bitiş şeridi olduğu gibi | 2, 3, 4 | bitti |
 | H2 | Eve dön düğmesi: zaten evdeyken ne yaptığı görünür olsun ya da gizlensin | 12 | bitti (her basışta evde halka + "Buradasın"; HUD harita etiketlerinin üstünde) |
 | E1 | Filo sekmesi: Onur/duruş bloğu akordiyona, gemiler kaydırmadan görünür; gemi kartında saldırı/savunma/hız | 8, 9 | bitti (kit `Fold`; duruş ve klan desteği tek satır, alarmda açık; kartta saldırı/defans/hız; sekme tanıtım cümlesi ve Hangar odasının tekrar eden cümlesi kalktı) |
@@ -27,7 +27,7 @@ Her yüzeyin ölçütü: **350×812 ve 375×667'de kaydırmadan ne görünüyor?
 | E7 | Focus: Ölüm Yıldızı akordiyonu silah yokken de görünür (kırmızı, radyasyon sarı), açınca üretim şartı | ek | bitti |
 | E4 | Klan sheet'i sekmelere (Bul / Kur / Neden); kuramayan oyuncuya form kilitli | 6 | bitti — O5 ile birlikte: kapı açılmadan form yok, yalnız eksik koşul + kilitli düğme |
 | E5 | Ödüller: hangi ödülün açıldığı belli; parlama kutuya sıkışmaz; bir ödül alınırken diğerleri pasif, yükleniyor değil | 13, 14 | bitti — kapsülün altında hangi ödül (zincir adı · hedef) ve içindeki miktar; açılınca yalnız ad kalır, miktarı ganimet söyler. Işınlar artık kapsülün kutusunda kesilmiyor (yalnız yanlardan, tam satır genişliğinde). Bir ödül alınırken yalnız o döner; diğerleri pasif, adıyla durur |
-| E6 | Kalan oyun ekranlarında metin taraması (altı dil) | 17 | bekliyor |
+| E6 | Kalan oyun ekranlarında metin taraması (altı dil) | 17 | bitti |
 | O1 | Anıt: galaksideki etiket ve alt kartta radyasyon ikonu | ek-1 | bitti (radyasyon çubuğunun başında ve anıt kartının radyasyon satırında radyasyon işareti; harita etiketi aynı çubuğu kullanıyor) |
 | O2 | Anıt focus sheet'i: alta uzayan tek sütun yerine sekme / ⓘ / akordiyon | ek-2 | bitti (kurallar bilgi kartının ⓘ'sinde, radyasyon göstergesi ve sonda+rapor akordiyonda, Honor notu gönderme bölümünün başında; 1427→1127 px. Sonraki adım adayı: Durum / Gönder sekmeleri) |
 | O3 | Çökme: "useToast called outside ToastProvider" (arka plandan dönüşte) — kök neden + düzelt; bir yüzeyin hatası bütün oyunu düşürmesin (yüzey başına hata sınırı) | ek-3 | bitti (kök neden: geliştirme sunucusunda kit düzenlemesi `Toast.tsx`'i yeniden çalıştırıp yeni context üretiyordu; context'ler artık yalnız React'e bağlı `toastContext.ts`'te. Her sheet gövdesinde `PanelBoundary`: hata o panelde kalır, \"Tekrar dene\") |
@@ -80,7 +80,7 @@ Son sırada: G11 simulator / wiki-sheet / wiki-public · G13 faults / landing / 
 | S2 sekme | `GameTabs` kullanan her yüzey; eşit genişlik ölçümü | bitti (5 dilde ölçüldü) |
 | S3 alt kart | `ContextCard` / `ContextStrip` her hâli (saldırı, etkinlik, öneri, seçili) | bitti (tr/de/ja ölçüldü) |
 | S4 görsel kart | resimli her kart (bina, gemi, menü, mağaza, araştırma) — görünen resim oranı ölçülür | bitti (ölçüldü; mağaza karosunun kare resmi %47, bilinçli) |
-| S5/S6 yazı | her yüzeyin her paragrafı: sil / kısalt / ⓘ ya da akordiyona; altı dil | bekliyor |
+| S5/S6 yazı | her yüzeyin her paragrafı: sil / kısalt / ⓘ ya da akordiyona; altı dil | bitti (88 galeri görünümü tarandı; G14/G15 ve public/Wiki hariç) |
 
 ## Not defteri
 
@@ -109,3 +109,4 @@ Son sırada: G11 simulator / wiki-sheet / wiki-public · G13 faults / landing / 
 - 2026-11-16: S4 bitti. Üs'ün beşli sekmesinde kelime ortadan kırılıyordu: sekme 1 px yan boşluk + 0 harf aralığı, uzun kelimeler kısaldı (Taktik, Economy, Ausbau, Fábricas, Usines; akademi metni de). Sıradaki: S5/S6, E1.
 - 2026-11-17: E1 bitti: kit'e `Fold` (S5'in ilk parçası; Ölüm Yıldızı/radyasyon katlanırları da bunu kullanıyor). Owner'ın ikinci 17 maddelik listesi plana eklendi (O1–O17). Sıradaki: O3.
 - 2026-11-17: O3, O9, O11, O7, O13, O8, O16, O17, O14, O15, O10, O1, O2 bitti (önceki oturumlarda). O4 (liderlik: Sıralama · Ödüller · Kurallar), O5/E4 (klansız ekran: Bul · Kur · Neden), O6 (savaş raporu: sonuç sahnesi + dört kapalı soru), E5 (ödül kapsülü) bitti. Sıradaki: E6 + S5/S6 yazı taraması, yüzey yüzey.
+- 2026-11-17: E6 + S5/S6 bitti. 88 galeri görünümünde 70+ karakterlik paragraflar tarandı; dört partide (302976b8'e kadar, son parti 597bc490) kural metinleri ⓘ'ye, uzun satırlar tek cümleye indi; `test/copy-length.test.ts` her kısaltılmış satırı altı dilde boy sınırında tutar. Karar anında gereken kurallar (koloni korunur, talep önceliği, anıt filo şartları) bilerek ekranda kaldı. Sıradaki: K.
