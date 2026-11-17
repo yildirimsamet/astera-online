@@ -79,7 +79,7 @@ collect. From then the jump is the player's own decision: the hold (2,000 alloy,
 50 deuterium, 6 ships) lands with them, staying earns 3× aboard, and an early jump is as fair as a full hold.
 The jump is a final 1.5 s hold. On landing the first-season pack and the 72 h first-game shield apply; only
 Core 1–6 commanders may raid them, and Silent Space waits for the shield's end (S5, D212 above). In the
-starter galaxy ships with an open window may attack each other for the first 14 days. Rules and rationale:
+starter galaxy a ship may attack only ships whose Aegis is repaired and unshielded, and only in its first 14 days. Rules and rationale:
 `docs/yeni-oyuncu-yolculugu-plani-2026-11-13.md`; code is the authority.
 
 ## The loop

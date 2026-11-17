@@ -32,8 +32,8 @@ Kurallar ve gerekçe: `docs/yeni-oyuncu-yolculugu-plani-2026-11-13.md` (§4–§
 5. **İniş.** `ArrivalHost` kargoyu, ilk sezon paketini ve koruma bloğunu sayısıyla gösterir: kalkan 72 sa
    (oyuncuya saldırınca düşer, korsana saldırmak düşürmez), yalnız Çekirdek 1–6 akın edebilir, kalkan bittikten
    sonra 30 sa emirsiz kalan dünya Sessiz Uzay'a çekilir (S5; kalkan sürerken çekilmez).
-6. **Kalan oyuncu.** Starter bir akran sunucusudur: pencere açık gemi ilk 14 gün içinde diğer gemilere
-   saldırabilir, 14. günde kilitlenir. Botlar kendi tohumlarından kalma süresi çeker ve insan gibi ayrılır ya da
+6. **Kalan oyuncu.** Starter bir akran sunucusudur: saldırısı açık gemi ilk 14 gün içinde yalnız Aegis'i
+   onarılmış ve kalkanı olmayan gemilere saldırabilir; 14. günde saldırısı kilitlenir (`canAttackVessel`). Botlar kendi tohumlarından kalma süresi çeker ve insan gibi ayrılır ya da
    uyur; oyuncuya bot işareti gösterilmez.
 
 Ölçüm: oyuncu yolculuğu panosu `window` aşamasını ("Sıçrama penceresi açıldı") ayrı sayar. Çökme raporları
