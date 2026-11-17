@@ -4,7 +4,7 @@
 
 Bu belge deploy, migration veya prod sorgusu izni vermez. Kararlar burada tutulur.
 
-> **Güncelleme, owner 2026-11-13:** K4 ve A17 (3–5 gün), K7 (motor parçası) ve A11 (bot kalkışı) değişti. Sıçrama artık ilk tam döngüden sonra açılan, oyuncunun seçtiği bir karardır; motor, yakıt ve parça şartı kalkar. A9'daki "göçe hazır" koşulu kalkar; 14 gün sınırı kalır. Geçerli kurallar: `docs/yeni-oyuncu-yolculugu-plani-2026-11-13.md`. Kod henüz değişmedi.
+> **Güncelleme, owner 2026-11-13:** K4 ve A17 (3–5 gün), K7 (motor parçası) ve A11 (bot kalkışı) değişti. Sıçrama artık ilk tam döngüden sonra açılan, oyuncunun seçtiği bir karardır; motor, yakıt ve parça şartı kalkar. A9'daki "göçe hazır" koşulu kalkar; 14 gün sınırı kalır. Geçerli kurallar: `docs/yeni-oyuncu-yolculugu-plani-2026-11-13.md`; bu belgedeki motor, yakıt ve parça anlatımı artık geçmiş kayıttır. Kod 17 Kasım'da `feat/new-player-journey` dalında değişti; canlıya owner'ın deploy talimatıyla çıkar.
 
 ## 1. Özet
 

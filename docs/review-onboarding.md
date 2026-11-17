@@ -1,6 +1,6 @@
 # Onboarding — güncel FlightSchool ve gerçek başlangıç
 
-Son kod karşılaştırması: 3 Kasım 2026. Bu belge onboarding için ana referanstır.
+Son kod karşılaştırması: 3 Kasım 2026; gemi yolculuğu bölümü 17 Kasım 2026 (`feat/new-player-journey`). Bu belge onboarding için ana referanstır.
 Mevcut davranışı kod ve testler belirler. İlk sezon paketi yerel kodda uygulanmıştır; bu kayıt canlıya yayın yapıldığı anlamına gelmez.
 
 ## Bayrak açıkken: Prolog
@@ -11,6 +11,33 @@ sunucu cevap vermezse eski eğitim açılır (Faz 11'e kadar). Prolog (`onboardi
 beş adımdır, sonunda `ClaimDialog` açılır. Sunucu gemiyi `STARTER.opening` sabitinden kurar, tarayıcıdan ilerleme
 kabul etmez (`prologue-claim`). Görsel yürüyüş: `node tools/visual.mjs out/starter --starter`. Menüdeki Akademi
 girişi bu durumda el kitabını açar (`prologue/Handbook.tsx`), prolog oradan yeniden oynanır.
+
+## Bayrak açıkken: Gemi yolculuğu ve sıçrama (plan 2026-11-13)
+
+Kurallar ve gerekçe: `docs/yeni-oyuncu-yolculugu-plani-2026-11-13.md` (§4–§5). Sayılar rules paketinden okunur.
+
+1. **İlk döngü.** Prologdan sonra oyuncu başlangıç galaksisinde kendi kırık gemisindedir. Rehber
+   (`starter/tutorial/script.ts`) altı zorunlu onarımı sırayla öğretir: Rafineri 2, Çıkarıcı 1, Teleskop 1,
+   Radar 1, Tarama 1, Tersane 1 (`REPAIR_LADDER` içinde `required`). Varışta "Rafineri çevrimiçi" kartı yoktur;
+   rehber doğrudan toplamayla başlar.
+2. **Pencere.** Altı onarım ve iki olgu (`FIRST_MINING_RETURN`: gerçek kazıyla dönen sefer,
+   `FIRST_PROBE_REPORT`) tamamlanınca sıçrama penceresi açılır (`jumpWindowOpen`). Motor, yakıt ve parça yoktur.
+   Açılış anı kendi sahnesini alır; rehber ve danışman o kart kapanana kadar susar.
+3. **Karar.** Motor sekmesindeki panel (`MigrationPanel`) yalnız girdileri verir: ambar (2.000 alaşım,
+   1.000 kristal, 50 döteryum, 6 gemi tavanı), kalmanın değeri (gemide üretim 3×), inişte gelen sezon paketi ve
+   koruma, geride kalanlar. Kalmak da erken gitmek de meşrudur. Ambar dolunca kapaklar kapanır ve bir kez kart
+   çıkar (`HoldFullMoment`); fazlası gemide kalır.
+4. **Sıçrama.** 1,5 sn basılı tutma (`GameHold weight="final"`). Hazır kasalar önce açılır ve ambara sayılır.
+   Uçan filo, kapanmış sezon ve dolu galaksi sıçramayı engeller.
+5. **İniş.** `ArrivalHost` kargoyu, ilk sezon paketini ve koruma bloğunu sayısıyla gösterir: kalkan 72 sa
+   (oyuncuya saldırınca düşer, korsana saldırmak düşürmez), yalnız Çekirdek 1–6 akın edebilir, kalkan bittikten
+   sonra 30 sa emirsiz kalan dünya Sessiz Uzay'a çekilir (S5; kalkan sürerken çekilmez).
+6. **Kalan oyuncu.** Starter bir akran sunucusudur: pencere açık gemi ilk 14 gün içinde diğer gemilere
+   saldırabilir, 14. günde kilitlenir. Botlar kendi tohumlarından kalma süresi çeker ve insan gibi ayrılır ya da
+   uyur; oyuncuya bot işareti gösterilmez.
+
+Ölçüm: oyuncu yolculuğu panosu `window` aşamasını ("Sıçrama penceresi açıldı") ayrı sayar. Çökme raporları
+Sentry'ye gider (`lib/crashReports.ts`, sunucu `src/crashReports.ts`; kişisel veri yok).
 
 ## Güncel uygulama hangisi?
 

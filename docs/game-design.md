@@ -70,6 +70,18 @@ legacy static fields retain their frozen 30-day budgets.
 Country is part of the public commander identity: new accounts choose an ISO-3166 alpha-2 country,
 legacy accounts are `TR`, and live/archive leaderboards display its flag.
 
+## The starter ship and the jump — owner 2026-11-13
+
+A new commander starts on a broken ship in a small starter galaxy (`STARTER_GALAXY_ENABLED`), not on a
+planet. Six required repairs (Refinery 2, Extractor 1, Telescope 1, Radar 1, Survey 1, Shipyard 1) plus a
+real mining return and a first probe report open the **jump window**; there is no engine, fuel or part to
+collect. From then the jump is the player's own decision: the hold (2,000 alloy, 1,000 crystal,
+50 deuterium, 6 ships) lands with them, staying earns 3× aboard, and an early jump is as fair as a full hold.
+The jump is a final 1.5 s hold. On landing the first-season pack and the 72 h first-game shield apply; only
+Core 1–6 commanders may raid them, and Silent Space waits for the shield's end (S5, D212 above). In the
+starter galaxy ships with an open window may attack each other for the first 14 days. Rules and rationale:
+`docs/yeni-oyuncu-yolculugu-plani-2026-11-13.md`; code is the authority.
+
 ## The loop
 
 ```
