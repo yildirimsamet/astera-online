@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { REWARD_CHAIN_IDS, type RewardChainId } from '@astera/rules';
-import { useClaimReward, usePlanet, useRewards } from '../api/queries.js';
+import { useClaimAllRewards, useClaimReward, usePlanet, useRewards } from '../api/queries.js';
 import { useWorld } from '../api/world.js';
 import type { RewardChainView, RewardTierView } from '../api/schemas.js';
 import { compact, full } from '../lib/format.js';
@@ -10,7 +10,7 @@ import { useAccordion } from '../lib/accordion.js';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
-import { Banner, CostLine, EmptyState, GameButton, Glyph, ProgressBar, RewardPod, artIconSrc, type GlyphId } from '../game-ui/index.js';
+import { Banner, CostLine, EmptyState, GameButton, Glyph, InfoPeek, ProgressBar, RewardPod, artIconSrc, type GlyphId } from '../game-ui/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 
 const CHAIN_GLYPH: Record<RewardChainId, GlyphId> = {
@@ -33,12 +33,13 @@ export function RewardsScreen({ commander }: { commander: string }) {
   const planet = usePlanet();
   const { capitalPlanetId, worlds } = useWorld();
   const claim = useClaimReward();
+  const claimAll = useClaimAllRewards();
   const say = useToast();
   const ladder = useAccordion('rewards', []);
 
   const chains = useMemo(() => {
     const rows = (data?.chains ?? []).filter(known);
-    // The community bonus remains pinned; ready goals retain server order within their group.
+    // The community bonus remains pinned (owner); ready goals retain server order within their group.
     const social = rows.filter((chain) => chain.metric === 'grant');
     const goals = rows.filter((chain) => chain.metric !== 'grant');
     return [...social, ...goals.filter((chain) => chain.tiers.some((tier) => tier.state === 'claimable')),
@@ -81,9 +82,21 @@ export function RewardsScreen({ commander }: { commander: string }) {
       onError: (error) => { say(describe(error), 'error'); },
     });
   };
+  // Every waiting tier in one move (plan 2026-11-06 §7.1 R4): the pod opens on the sum, with a sound and a knock.
+  const onClaimAll = () => {
+    haptic('thunk');
+    claimAll.mutate(undefined, {
+      onSuccess: (result) => {
+        playSound('unseal');
+        setOpened({ id: 'all', goal: 0, alloy: result.granted.alloy, crystal: result.granted.crystal, state: 'claimed' });
+        say(t('rewards.granted', { alloy: compact(result.granted.alloy), crystal: compact(result.granted.crystal) }));
+      },
+      onError: (error) => { say(describe(error), 'error'); },
+    });
+  };
   const pod = opened ?? ready[0];
   // E5: the claim being taken spins; every other claim rests until it lands, rather than spinning too.
-  const claiming = claim.isPending ? claim.variables : null;
+  const claiming = claim.isPending ? claim.variables : claimAll.isPending ? 'all' : null;
   const podChain = pod ? chains.find((chain) => chain.tiers.some((tier) => tier.id === pod.id)) : undefined;
 
   return <div data-v2-rewards className="gk-rewards">
@@ -92,6 +105,9 @@ export function RewardsScreen({ commander }: { commander: string }) {
         onOpen={() => { setOpened(pod); onClaim(pod.id); }}>
         <CostLine cost={{ alloy: pod.alloy, crystal: pod.crystal }} />
       </RewardPod>
+      {opened === null && ready.length > 1 && <GameButton tone="self" wide heavy glyph="crate" pending={claimAll.isPending}
+        disabledReason={claim.isPending ? t('rewards.takeAll', { count: ready.length }) : null}
+        onPress={onClaimAll}>{t('rewards.takeAll', { count: ready.length })}</GameButton>}
       {podChain && <div data-pod-reward className="gk-rewards__podname">
         <span className="gk-label">{t(`rewards.chains.${podChain.id}.name`)}{podChain.metric === 'grant' ? '' : ` · ${goalText(t, podChain.metric, pod.goal)}`}</span>
         {/* once the lid is off, the loot itself says what was inside */}
@@ -184,14 +200,18 @@ function SocialCard({ chain, commander, claiming, onClaim }: {
         </div>
       </div>
       <div className="gk-well gk-reward__prize"><CostLine cost={{ alloy: tier.alloy, crystal: tier.crystal }} /></div>
-      {!taken && <ol className="gk-reward__how">
-        <Step n={1}>{t('rewards.social.step1')}</Step>
-        <Step n={2}>{t('rewards.social.step2')}<span className="gk-reward__name-copy gk-num">{commander}</span></Step>
-        <Step n={3}>{t('rewards.social.step3')}</Step>
-      </ol>}
-      {!taken && <a href={t('rewards.social.url')} target="_blank" rel="noreferrer noopener" className="gk-reward__link">
-        {t('rewards.social.open')}<Glyph id="share" />
-      </a>}
+      {/* The steps are one tap away; the prize line above says what it is worth. */}
+      {!taken && <InfoPeek about={t('rewards.social.how')} fact={<span className="gk-reward__tag">{t('rewards.social.howFact')}</span>}
+        rule={<>
+          <ol className="gk-reward__how">
+            <Step n={1}>{t('rewards.social.step1')}</Step>
+            <Step n={2}>{t('rewards.social.step2')}<span className="gk-reward__name-copy gk-num">{commander}</span></Step>
+            <Step n={3}>{t('rewards.social.step3')}</Step>
+          </ol>
+          <a href={t('rewards.social.url')} target="_blank" rel="noreferrer noopener" className="gk-reward__link">
+            {t('rewards.social.open')}<Glyph id="share" />
+          </a>
+        </>} />}
       {ready ? <span data-reward-claim={tier.id}><GameButton tone="action" size="lg" wide heavy glyph="crate" pending={claiming === tier.id}
         disabledReason={resting(claiming, tier.id, t('rewards.social.ready'))} onPress={() => { onClaim(tier.id); }}>{t('rewards.social.ready')}</GameButton></span>
         : <p className="gk-reward__after" {...(taken ? { 'data-on': '' } : {})}>

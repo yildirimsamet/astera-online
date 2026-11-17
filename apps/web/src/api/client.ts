@@ -169,6 +169,7 @@ import {
   reportsSchema,
   researchCompleteSchema,
   rewardClaimSchema,
+  rewardClaimAllSchema,
   brandRecallSchema,
   brandRecallAnswerSchema,
   rewardsSchema,
@@ -1465,6 +1466,8 @@ export class Api {
 
   claimReward = (id: string) =>
     this.send('/api/rewards/claim', rewardClaimSchema, { method: 'POST', body: { id } });
+  claimAllRewards = () =>
+    this.send('/api/rewards/claim-all', rewardClaimAllSchema, { method: 'POST', body: {} });
 
   mining = (planetId?: string) => this.send(
     `/api/mining${planetId ? `?planetId=${encodeURIComponent(planetId)}` : ''}`,

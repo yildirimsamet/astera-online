@@ -647,6 +647,26 @@ export function useClaimReward() {
   });
 }
 
+/** Every waiting tier in one move (plan 2026-11-06 §7.1 R4): the same two writes as a single claim. */
+export function useClaimAllRewards() {
+  const api = useApi();
+  const client = useQueryClient();
+  const { capitalPlanetId } = useWorld();
+  const invalidate = useInvalidator();
+  const apply = useApplyPlanet();
+  const lane = usePlanetMutationLane(capitalPlanetId);
+  return useMutation({
+    mutationFn: () => api.claimAllRewards(),
+    onMutate: lane.enter,
+    onSuccess: async (result) => {
+      await Promise.all([apply(result.planet), client.cancelQueries({ queryKey: keys.rewards })]);
+      client.setQueryData(keys.rewards, result.rewards);
+      invalidate(keys.leaderboard, keys.galaxy);
+    },
+    onSettled: (_data, _error, _variables, turn) => { lane.leave(turn); },
+  });
+}
+
 export function useLeaderboard(enabled = true, ranking: 'HONOR' | 'DOMINION' = 'HONOR') {
   const api = useApi();
   return useQuery({

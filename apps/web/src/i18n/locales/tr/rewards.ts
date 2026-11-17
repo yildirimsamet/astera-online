@@ -26,6 +26,7 @@ export const rewards = {
 
   claim: 'Al',
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  takeAll: "Tümünü al · {{count}}",
   openPod: 'Kapsülü aç',
   claimed: 'Alındı',
   /** Kalanı söyler, azarlamaz. */
@@ -67,6 +68,8 @@ export const rewards = {
    * TALİMAT olarak yazıldı. Üç adım, yapılacakları sırasıyla.
    */
   social: {
+    how: "Nasıl kazanılır",
+    howFact: "X'te üç adım.",
     eyebrow: 'Topluluk ödülü',
     handle: '@JoinAstera',
     url: 'https://x.com/JoinAstera',

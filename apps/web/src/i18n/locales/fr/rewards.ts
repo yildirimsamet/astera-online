@@ -26,6 +26,7 @@ export const rewards = {
   allTaken: "Tu as récupéré les récompenses de tous les objectifs.",
   claim: "Récupérer",
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  takeAll: 'Tout prendre · {{count}}',
   openPod: 'Ouvrir la capsule',
   claimed: "Récupérée",
   /** Indique ce qu’il reste, sans réprimander. */
@@ -99,6 +100,8 @@ export const rewards = {
    * Trois étapes, dans l’ordre où elles doivent être réalisées.
    */
   social: {
+    how: 'Comment l’obtenir',
+    howFact: 'Trois étapes sur X.',
     eyebrow: "Récompense communautaire",
     handle: "@JoinAstera",
     url: "https://x.com/JoinAstera",

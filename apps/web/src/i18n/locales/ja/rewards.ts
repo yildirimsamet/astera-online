@@ -27,6 +27,7 @@ export const rewards = {
 
   claim: "受け取る",
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  takeAll: 'すべて受け取る · {{count}}',
   openPod: 'ポッドを開ける',
   claimed: "受取済み",
   /** What is still between the player and this tier. Never a scolding. */
@@ -78,6 +79,8 @@ export const rewards = {
    * enough to be read on a phone with the app already open in another tab.
    */
   social: {
+    how: '獲得方法',
+    howFact: 'Xで3ステップ。',
     eyebrow: "コミュニティボーナス",
     handle: "@JoinAstera",
     url: "https://x.com/JoinAstera",

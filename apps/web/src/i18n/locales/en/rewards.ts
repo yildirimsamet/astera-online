@@ -27,6 +27,7 @@ export const rewards = {
 
   claim: 'Claim',
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  takeAll: 'Take all · {{count}}',
   openPod: 'Open the pod',
   claimed: 'Taken',
   /** What is still between the player and this tier. Never a scolding. */
@@ -78,6 +79,8 @@ export const rewards = {
    * enough to be read on a phone with the app already open in another tab.
    */
   social: {
+    how: 'How to earn it',
+    howFact: 'Three steps on X.',
     eyebrow: 'Community bonus',
     handle: '@JoinAstera',
     url: 'https://x.com/JoinAstera',

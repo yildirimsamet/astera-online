@@ -17,7 +17,7 @@ import { buildUnits } from '../src/services/build.js';
 import { launchAttack } from '../src/services/mission.js';
 import { recallFlight } from '../src/services/movement.js';
 import { launchProbe } from '../src/services/intel.js';
-import { claimReward, grantReward, rewardsView } from '../src/services/rewards.js';
+import { claimAllRewards, claimReward, grantReward, rewardsView } from '../src/services/rewards.js';
 import { reclaimIdleSeats } from '../src/services/reclaim.js';
 import { createSeason } from '../src/services/season.js';
 import { joinSeason } from '../src/services/player.js';
@@ -676,5 +676,50 @@ describe('rewards', () => {
     await settleBuilds(f, other);
 
     expect((await chainOf('SHIPS')).progress).toBe(0);
+  });
+
+  /* ── all at once (plan 2026-11-06 §7.1 R4, Faz 4.3) ───────── */
+
+  it('takes every waiting tier in one move and pays their sum', async () => {
+    await setLevel(f.db, mine, 'CORE', 3);
+    const waiting = (await rewardsView(f.db, mine, f.clock)).chains.flatMap((chain) => chain.tiers)
+      .filter((tier) => tier.state === 'claimable');
+    expect(waiting.length).toBeGreaterThan(1);
+    const sum = waiting.reduce((total, tier) => ({ alloy: total.alloy + tier.alloy, crystal: total.crystal + tier.crystal, deuterium: total.deuterium + tier.deuterium }), { alloy: 0, crystal: 0, deuterium: 0 });
+    const [before] = await f.db.select().from(planets).where(eq(planets.id, mine));
+
+    const result = await claimAllRewards(f.db, mine, f.clock);
+
+    expect(result.granted).toEqual(sum);
+    expect(result.count).toBe(waiting.length);
+    expect(result.rewards.claimable).toBe(0);
+    const [after] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    expect(after!.alloy).toBeCloseTo(before!.alloy + sum.alloy, 4);
+    expect(after!.crystal).toBeCloseTo(before!.crystal + sum.crystal, 4);
+  });
+
+  it('refuses when nothing is waiting, and leaves storage alone', async () => {
+    await setLevel(f.db, mine, 'CORE', 3);
+    await claimAllRewards(f.db, mine, f.clock);
+    const [after] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    await expect(claimAllRewards(f.db, mine, f.clock)).rejects.toMatchObject({ code: 'REWARD_NONE' });
+    await expect(claimReward(f.db, mine, rewardId('CORE', 3), f.clock)).rejects.toMatchObject({ code: 'REWARD_TAKEN' });
+    const [still] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    expect(still!.alloy).toBeCloseTo(after!.alloy, 4);
+  });
+
+  it('pays once when two take-alls race, or race a single claim', async () => {
+    await setLevel(f.db, mine, 'CORE', 3);
+    const waiting = (await rewardsView(f.db, mine, f.clock)).chains.flatMap((chain) => chain.tiers)
+      .filter((tier) => tier.state === 'claimable');
+    const sum = waiting.reduce((total, tier) => total + tier.alloy, 0);
+    const [before] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    await Promise.allSettled([
+      claimAllRewards(f.db, mine, f.clock),
+      claimAllRewards(f.db, mine, f.clock),
+      claimReward(f.db, mine, rewardId('CORE', 3), f.clock),
+    ]);
+    const [after] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    expect(after!.alloy).toBeCloseTo(before!.alloy + sum, 4);
   });
 });

@@ -286,7 +286,9 @@ describe('the reward panel', () => {
       </Wrapper>,
     );
 
-    expect(await screen.findByText(/Vantage/)).toBeInTheDocument();
+    // The steps are one tap away (plan 2026-11-06 §7.1 R5): the card stays short on the first screen.
+    await userEvent.setup().click(await screen.findByRole('button', { name: /How to earn it/u }));
+    expect(screen.getByText(/Vantage/)).toBeInTheDocument();
     expect(screen.getByText(/waiting on your message/i)).toBeInTheDocument();
   });
 
@@ -305,7 +307,8 @@ describe('the reward panel', () => {
       </Wrapper>,
     );
 
-    const link = await screen.findByRole('link', { name: /JoinAstera/i });
+    await userEvent.setup().click(await screen.findByRole('button', { name: /How to earn it/u }));
+    const link = screen.getByRole('link', { name: /JoinAstera/i });
     expect(link).toHaveAttribute('href', expect.stringContaining('JoinAstera'));
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));

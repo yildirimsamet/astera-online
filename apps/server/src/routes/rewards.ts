@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { planets, players } from '../db/schema.js';
 import { GameError } from '../services/planet.js';
-import { claimReward, rewardsView } from '../services/rewards.js';
+import { claimAllRewards, claimReward, rewardsView } from '../services/rewards.js';
 import { requireAuth } from './auth.js';
 
 /**
@@ -39,4 +39,9 @@ export function registerRewardRoutes(app: FastifyInstance): void {
     const { id } = claimBody.parse(req.body);
     return claimReward(app.db, await myPlanet(req.accountId!), id, app.clock);
   });
+
+  /** Every waiting tier in one move (plan 2026-11-06 §7.1 R4); answers like a claim, with the count. */
+  app.post('/api/rewards/claim-all', { preHandler: requireAuth }, async (req) =>
+    claimAllRewards(app.db, await myPlanet(req.accountId!), app.clock),
+  );
 }

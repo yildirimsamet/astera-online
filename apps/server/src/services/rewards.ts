@@ -378,6 +378,65 @@ export async function rewardsView(db: Db, planetId: string, clock: Clock): Promi
  * Everything granted lands in STORAGE, above the vault floor, where a raider can
  * come and take it — which is what keeps a reward inside the PvP economy.
  */
+interface ClaimTier { alloy: number; crystal: number; deuterium: number }
+
+/**
+ * WRITE ONE TIER AS TAKEN; FALSE WHEN SOMEBODY ELSE ALREADY DID. The one write a single claim and a
+ * take-all share, so both are guarded by the same key and the same conflict clause.
+ */
+async function writeClaim(
+  tx: Tx,
+  scope: RewardScope,
+  standing: Standing,
+  planet: { now: Date; playerId: string },
+  rewardKey: string,
+  tier: ClaimTier,
+): Promise<boolean> {
+  /**
+   * ONE STATEMENT FOR BOTH SHAPES OF ROW, IN WHICHEVER LEDGER OWNS THE CHAIN.
+   *
+   * An earned tier has no row yet and this inserts it, already claimed. A
+   * SOCIAL grant has a row with `claimedAt` NULL and this stamps it — the
+   * `WHERE claimed_at IS NULL` is what makes the update a no-op on a second
+   * attempt instead of re-stamping a paid reward. Either way exactly one row
+   * ends up claimed, and the primary key means it cannot become two.
+   *
+   * THE TWO BRANCHES ARE THE SAME STATEMENT AGAINST TWO KEYS, and they are
+   * written out rather than abstracted because the key IS the guarantee: an
+   * account-scoped tier is paid once per person for ever, a season-scoped one
+   * once per commander per galaxy, and a helper that took the table as an
+   * argument would make that difference a parameter instead of a fact.
+   */
+  const claimed = { claimedAt: planet.now, alloy: tier.alloy, crystal: tier.crystal, deuterium: tier.deuterium };
+  const written = scope === 'account'
+    ? await tx
+      .insert(accountRewards)
+      .values({ accountId: standing.accountId, rewardId: rewardKey, ...claimed })
+      .onConflictDoUpdate({
+        target: [accountRewards.accountId, accountRewards.rewardId],
+        set: claimed,
+        where: isNull(accountRewards.claimedAt),
+      })
+      .returning({ id: accountRewards.rewardId })
+    : await tx
+      .insert(rewardGrants)
+      .values({ playerId: planet.playerId, rewardId: rewardKey, ...claimed })
+      .onConflictDoUpdate({
+        target: [rewardGrants.playerId, rewardGrants.rewardId],
+        set: claimed,
+        where: isNull(rewardGrants.claimedAt),
+      })
+      .returning({ id: rewardGrants.rewardId });
+
+  /**
+   * NOTHING CHANGED MEANS SOMEBODY ELSE GOT THERE FIRST. The conflict clause
+   * declined because the row was already claimed, which the read above did not
+   * see — a second tab, a retried request. Refusing here rather than paying
+   * out is the difference between an idempotency guard and a comment about one.
+   */
+  return written.length > 0;
+}
+
 export async function claimReward(
   db: Db,
   planetId: string,
@@ -425,55 +484,12 @@ export async function claimReward(
           });
     }
 
+    if (!(await writeClaim(tx, ref.chain.scope, standing, planet, rewardKey, tier))) {
+      throw new GameError('REWARD_TAKEN', 'You have already taken that reward');
+    }
     const alloy = planet.alloy + tier.alloy;
     const crystal = planet.crystal + tier.crystal;
     const deuterium = planet.deuterium + tier.deuterium;
-
-    /**
-     * ONE STATEMENT FOR BOTH SHAPES OF ROW, IN WHICHEVER LEDGER OWNS THE CHAIN.
-     *
-     * An earned tier has no row yet and this inserts it, already claimed. A
-     * SOCIAL grant has a row with `claimedAt` NULL and this stamps it — the
-     * `WHERE claimed_at IS NULL` is what makes the update a no-op on a second
-     * attempt instead of re-stamping a paid reward. Either way exactly one row
-     * ends up claimed, and the primary key means it cannot become two.
-     *
-     * THE TWO BRANCHES ARE THE SAME STATEMENT AGAINST TWO KEYS, and they are
-     * written out rather than abstracted because the key IS the guarantee: an
-     * account-scoped tier is paid once per person for ever, a season-scoped one
-     * once per commander per galaxy, and a helper that took the table as an
-     * argument would make that difference a parameter instead of a fact.
-     */
-    const claimed = { claimedAt: planet.now, alloy: tier.alloy, crystal: tier.crystal, deuterium: tier.deuterium };
-    const written = ref.chain.scope === 'account'
-      ? await tx
-        .insert(accountRewards)
-        .values({ accountId: standing.accountId, rewardId: rewardKey, ...claimed })
-        .onConflictDoUpdate({
-          target: [accountRewards.accountId, accountRewards.rewardId],
-          set: claimed,
-          where: isNull(accountRewards.claimedAt),
-        })
-        .returning({ id: accountRewards.rewardId })
-      : await tx
-        .insert(rewardGrants)
-        .values({ playerId: planet.playerId, rewardId: rewardKey, ...claimed })
-        .onConflictDoUpdate({
-          target: [rewardGrants.playerId, rewardGrants.rewardId],
-          set: claimed,
-          where: isNull(rewardGrants.claimedAt),
-        })
-        .returning({ id: rewardGrants.rewardId });
-
-    /**
-     * NOTHING CHANGED MEANS SOMEBODY ELSE GOT THERE FIRST. The conflict clause
-     * declined because the row was already claimed, which the read above did not
-     * see — a second tab, a retried request. Refusing here rather than paying
-     * out is the difference between an idempotency guard and a comment about one.
-     */
-    if (written.length === 0) {
-      throw new GameError('REWARD_TAKEN', 'You have already taken that reward');
-    }
 
     await saveResources(tx, planetId, { alloy, crystal, deuterium });
     planet.alloy = alloy;
@@ -483,6 +499,58 @@ export async function claimReward(
 
     return {
       granted: { alloy: tier.alloy, crystal: tier.crystal, deuterium: tier.deuterium },
+      rewards: await assemble(tx, standing),
+      planet: await loadPlanetViewData(tx, planetId, clock),
+    };
+  }).then(buildPlanetResult);
+}
+
+/**
+ * TAKE EVERYTHING THAT IS WAITING, IN ONE MOVE (plan 2026-11-06 §7.1 R4). A landing hands over seven or
+ * so tiers at once; eleven separate taps was the cost this removes. One planet lock, one transaction: each
+ * tier goes through the same guarded write as a single claim, and only the tiers this call actually wrote
+ * are paid, so a racing claim or a second tab can never be paid twice.
+ */
+export async function claimAllRewards(
+  db: Db,
+  planetId: string,
+  clock: Clock,
+): Promise<{
+  granted: { alloy: number; crystal: number; deuterium: number };
+  count: number;
+  rewards: RewardsView;
+  planet: Awaited<ReturnType<typeof planetView>>;
+}> {
+  return withPlanetLock(db, planetId, clock, async (tx, planet) => {
+    assertWorldOperational(planet);
+    const standing = await standingOf(tx, planet);
+    const view = await assemble(tx, standing);
+    const granted = { alloy: 0, crystal: 0, deuterium: 0 };
+    let count = 0;
+    for (const chain of view.chains) {
+      for (const tier of chain.tiers) {
+        if (tier.state !== 'claimable') continue;
+        if (!(await writeClaim(tx, chain.scope, standing, planet, tier.id, tier))) continue;
+        granted.alloy += tier.alloy;
+        granted.crystal += tier.crystal;
+        granted.deuterium += tier.deuterium;
+        count += 1;
+      }
+    }
+    if (count === 0) throw new GameError('REWARD_NONE', 'Nothing is waiting to be taken');
+
+    const alloy = planet.alloy + granted.alloy;
+    const crystal = planet.crystal + granted.crystal;
+    const deuterium = planet.deuterium + granted.deuterium;
+    await saveResources(tx, planetId, { alloy, crystal, deuterium });
+    planet.alloy = alloy;
+    planet.crystal = crystal;
+    planet.deuterium = deuterium;
+    await refreshWealth(tx, planet);
+
+    return {
+      granted,
+      count,
       rewards: await assemble(tx, standing),
       planet: await loadPlanetViewData(tx, planetId, clock),
     };

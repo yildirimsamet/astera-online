@@ -1410,6 +1410,9 @@ export const rewardClaimSchema = z.object({
   ...withPlanet,
 });
 
+/** Every waiting tier in one move: the sum, how many, and both views it moved. */
+export const rewardClaimAllSchema = rewardClaimSchema.extend({ count: z.number().int().positive() });
+
 export const brandRecallSchema = z.object({
   eligible: z.boolean(),
   completed: z.boolean(),

@@ -27,6 +27,7 @@ export const rewards = {
 
   claim: 'Recoger',
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  takeAll: 'Tomar todo · {{count}}',
   openPod: 'Abrir la cápsula',
   claimed: 'Recogida',
   /** What is still between the player and this tier. Never a scolding. */
@@ -78,6 +79,8 @@ export const rewards = {
    * enough to be read on a phone with the app already open in another tab.
    */
   social: {
+    how: 'Cómo conseguirlo',
+    howFact: 'Tres pasos en X.',
     eyebrow: 'Bonificación comunitaria',
     handle: '@JoinAstera',
     url: 'https://x.com/JoinAstera',
