@@ -107,6 +107,22 @@ describe('the account page on the kit', () => {
     expect(deletionButton).toHaveClass('gk-acct__quiet');
   });
 
+  /**
+   * THE FOOT AS ONE PIECE (owner 2026-11-17: "Menü → Profil en alt kısmı … UI/UX çok kötü"). Three
+   * things floated one under another in empty space; now the publisher links and the quiet deletion
+   * share one line, and sign out is a framed press under them — still last, deletion still just above.
+   */
+  it('gathers the links and the deletion on one line, sign out framed under them', () => {
+    show();
+    const foot = document.querySelector<HTMLElement>('[data-profile-foot]')!;
+    const line = foot.querySelector<HTMLElement>('.gk-acct__footline')!;
+    expect(line.querySelector('nav')).not.toBeNull();
+    expect(within(line).getByRole('button', { name: new RegExp(i18n.t('accountDeletion.title')) })).toBeInTheDocument();
+    const signOut = within(foot).getByRole('button', { name: i18n.t('galaxy.commander.signOut') });
+    expect(signOut).not.toHaveClass('gk-btn--ghost');
+    expect(line.compareDocumentPosition(signOut) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('gives each publisher link a thumb-sized target', () => {
     show();
     expect(screen.getByRole('link', { name: 'Privacy' })).toHaveClass('gk-acct__link');

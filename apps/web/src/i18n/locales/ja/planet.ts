@@ -263,6 +263,7 @@ export const planet = {
     escapeShort:
       "戦術的撤退には重水素{{fuel}}が必要ですが、備蓄は{{stock}}です。この防衛線（艦船と稼働中の砲）の{{ratio}}倍の戦力の襲撃から退避できません。",
     buildBand: "防衛施設",
+    lineFold: "防衛ライン",
     shieldNote:
       "イージスは船や地上砲へのダメージを先に吸収し、毎時最大値の35%を再生します。",
     /* The figures moved into `CapacityBar`; the band keeps the RULE. */

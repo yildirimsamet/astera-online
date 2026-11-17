@@ -131,6 +131,7 @@ import { useOrderDuration } from '../ui/Action.js';
 import { ItemSheet, type ItemRef } from '../ui/ItemSheet.js';
 import { DefenceReadings, PlanetHero } from '../ui/PlanetHero.js';
 import { EscapeReadout } from '../ui/EscapeReadout.js';
+import { FleetCards } from '../ui/FleetCards.js';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { CardArtwork } from '../ui/AtmosphereArt.js';
 import { Band, DecisionGroup, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
@@ -141,7 +142,7 @@ import { academyGroup, useAcademyLesson } from '../onboarding/lessonScope.js';
 import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
-import { Banner, CostLine, Emblem, GameButton, GameHold, GameTabs, Glyph, InfoPeek, RoomGauge, SectionTag, TimerRow, type GlyphId } from '../game-ui/index.js';
+import { Banner, CostLine, Emblem, Fold, GameButton, GameHold, GameTabs, Glyph, InfoPeek, RoomGauge, SectionTag, TimerRow, type GlyphId } from '../game-ui/index.js';
 import { affordWait } from '../lib/afford.js';
 import { roomParts } from '../lib/room.js';
 import { ArmCard, ArmNeeds, ArmNext, ArmSpecs, ArmStatus, ArmStock, type ArmNeed } from '../ui/ArmCard.js';
@@ -1494,17 +1495,32 @@ function Defend({
   const bastionsStanding = planet.ground.BASTION ?? 0;
   // Taktik geri çekilme: stated on this tab only in a season dealt the rule.
   const escapeRuled = fleetEscapeApplies(planet.rulesetVersion ?? 0);
+  const stationed = sumFleets(...(planet.clanSupport?.waves ?? []).filter((wave) => wave.status === 'STATIONED').map((wave) => wave.fleet));
+  const owned = fleetCount(planet.fleet) + fleetCount(planet.fleetAway) + fleetCount(planet.fleetDocked ?? {});
+  const showForce = !lesson && owned > 0;
+  // The escape line speaks of ships standing here, the clan's included; with none it has nothing to say.
+  const hasLine = fleetCount(planet.fleet) + fleetCount(stationed) > 0;
 
   return (
     <>
       {/* What stands here and what a raid could take: the tab's question, answered first (E5). */}
       {!lesson && <DefenceReadings planet={planet} />}
-      {escapeRuled && (
-        <EscapeReadout fleet={planet.fleet} ground={planet.ground} deuterium={planet.planet.deuterium}
-          rulesetVersion={planet.rulesetVersion ?? 0}
-          posture={planet.defencePosture ? planet.defencePosture.stance ?? planet.defencePosture.posture : undefined}
-          support={sumFleets(...(planet.clanSupport?.waves ?? []).filter((wave) => wave.status === 'STATIONED').map((wave) => wave.fleet))}
-          arriving={supportLandingBefore(planet.clanSupport?.waves ?? [], planet.clanSupport?.alarms, now)} />
+      {/*
+        THE FORCE AND HOW IT RUNS, ONE PRESS AWAY (owner 2026-11-17: "ilk yer topuna ulaşana kadar … bu
+        kadarlık bir content var"). The ship lists and the escape line sat between the readings and the guns;
+        they are one closed fold, its head counting the ships at home, so the guns are on the first screen.
+      */}
+      {(showForce || (escapeRuled && hasLine)) && (
+        <Fold data-defence-line="" glyph="rocket" title={t('planet.defend.lineFold')} value={compact(fleetCount(planet.fleet))}>
+          {showForce && <FleetCards fleet={planet.fleet} fleetAway={planet.fleetAway} fleetDocked={planet.fleetDocked ?? {}} />}
+          {escapeRuled && (
+            <EscapeReadout fleet={planet.fleet} ground={planet.ground} deuterium={planet.planet.deuterium}
+              rulesetVersion={planet.rulesetVersion ?? 0}
+              posture={planet.defencePosture ? planet.defencePosture.stance ?? planet.defencePosture.posture : undefined}
+              support={stationed}
+              arriving={supportLandingBefore(planet.clanSupport?.waves ?? [], planet.clanSupport?.alarms, now)} />
+          )}
+        </Fold>
       )}
 
       {/*
@@ -2612,12 +2628,10 @@ function HangarRoom({ planet }: { planet: PlanetView }) {
   );
 }
 
-/** The three guns, in the order the Defend tab sells them. */
-const GUNS = ['THORN', 'HARPOON', 'BASTION'] as const;
-
 /**
- * THE GROUND, WITH ITS GUNS NAMED AND NO GUN'S PICTURE (owner, round 2: the room is not
- * one gun's), and which Command Core grows it and by how much.
+ * THE GROUND, WITH NO GUN'S PICTURE (owner, round 2: the room is not one gun's), and which Command
+ * Core grows it and by how much. Each gun's count is on its own card right under it, so the room no
+ * longer repeats them (owner 2026-11-17: the guns on the first screen).
  */
 function GroundRoom({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
@@ -2630,16 +2644,6 @@ function GroundRoom({ planet }: { planet: PlanetView }) {
   return (
     <div data-ground-room className="gk">
       <RoomGauge label={t('roomBar.ground')} total={room.total} home={room.home} away={room.away} queued={room.queued}>
-        <p className="gk-room__guns">
-          {GUNS.map((gun) => {
-            const standing = planet.ground[gun] ?? 0;
-            return (
-              <span key={gun} className="gk-room__gun" {...(standing > 0 ? {} : { 'data-empty': '' })}>
-                {hullLabel(gun)} <span className="gk-num">{standing}</span>
-              </span>
-            );
-          })}
-        </p>
         {/* How the shield and the guns work, one press away (owner 2026-11-17); the way the room grows stays said. */}
         <div className="gk-sub gk-room__note">
           <InfoPeek

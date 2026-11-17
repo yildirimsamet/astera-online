@@ -10810,36 +10810,9 @@ button.gk-probe__head:active {
   min-width: 0;
   text-align: right;
 }
-/* the room's own words inside its well: the rule, the next rung, the guns that stand on it (G2-h) */
+/* the room's own words inside its well: the rule, the next rung (G2-h) */
 .gk-room__note {
   line-height: 1.35;
-}
-.gk-room__guns {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.gk-room__gun {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 26px;
-  padding: 2px 8px;
-  border: 1px solid color-mix(in srgb, var(--gk-self) 35%, var(--gk-glass-edge));
-  border-radius: 2px;
-  font-size: var(--gk-t-small);
-  font-weight: 700;
-  color: var(--gk-ink);
-}
-.gk-room__gun .gk-num {
-  color: var(--gk-self);
-}
-.gk-room__gun[data-empty] {
-  border-color: var(--gk-glass-edge);
-  color: var(--gk-ink-3);
-}
-.gk-room__gun[data-empty] .gk-num {
-  color: var(--gk-ink-3);
 }
 
 /* ── G2-h2 (2026-11-15): the Fleet page on the kit ─────────────────────────── */
@@ -17788,3 +17761,44 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 /* the ground room's way to grow is a note, its ⓘ the rules of the shield and the guns (owner 2026-11-17) */
 .gk-room__note .gk-peek__row { min-height: 0; }
 .gk-room__note .gk-peek__fact { font-size: var(--gk-t-floor); font-weight: 400; color: var(--gk-ink-2); }
+
+/* ── the Defence tab's readings, tight (owner 2026-11-17: the guns on the first screen) ──
+   The coin stands beside the name and the verdict instead of over them, so a plate is two
+   lines tall; a third only when it has something to add (a refill, a dock, a dead core). */
+.gk-verdicts { gap: 6px; }
+.gk-verdict {
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: var(--gk-s2);
+  row-gap: 1px;
+  padding: 6px var(--gk-s2);
+}
+.gk-verdict__head { display: contents; }
+.gk-verdict__coin { grid-row: 1 / 3; align-self: center; }
+.gk-verdict > :not(.gk-verdict__head) { grid-column: 2; }
+.gk-verdict__value { line-height: 1.15; }
+.gk-verdict .gk-bar { margin-top: 3px; }
+[data-defence-line] .gk-fleetbands { margin-top: calc(-1 * var(--gk-s1)); }
+[data-defence-line] .gk-inote { margin-top: var(--gk-s2); }
+
+/* ── the account page's foot as one piece (owner 2026-11-17): a rule, the publisher links and the quiet
+   deletion on one line, then sign out as a framed press — nothing left floating in empty space ── */
+.gk-acct__foot {
+  display: grid;
+  gap: var(--gk-s2);
+  margin-top: var(--gk-s1);
+  padding-top: var(--gk-s1);
+  border-top: 1px solid color-mix(in srgb, var(--gk-metal-edge) 70%, transparent);
+}
+.gk-acct__footline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--gk-s2);
+}
+/* the links never break among themselves; a long language moves the deletion under them, to the left */
+.gk-acct__foot .gk-acct__links { flex-wrap: nowrap; white-space: nowrap; padding-top: 0; border-top: 0; gap: 0; }
+.gk-acct__foot .gk-acct__link { padding: 0 4px; font-size: var(--gk-t-floor); text-decoration: none; color: var(--gk-ink-3); }
+.gk-acct__foot .gk-acct__link:first-child { padding-left: 0; }
+.gk-acct__foot .gk-acct__link + .gk-acct__link::before { content: '·'; margin-right: 8px; margin-left: -4px; color: var(--gk-ink-3); }
+.gk-acct__foot .gk-acct__quiet { padding: 0; font-size: var(--gk-t-floor); white-space: nowrap; }

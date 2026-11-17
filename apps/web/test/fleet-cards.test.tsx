@@ -151,8 +151,9 @@ describe('the bands fold', () => {
 });
 
 describe('where the chips sit', () => {
-  it('is under the defence and shield verdicts on the planet sheet', () => {
-    const hero = readFileSync(resolve(__dirname, '../src/ui/PlanetHero.tsx'), 'utf8');
-    expect(hero).toMatch(/FleetCards/);
+  // Owner 2026-11-17: in the Defence tab's closed "Defensive line" fold, under the readings.
+  it('is in the defence line fold of the planet sheet', () => {
+    const screen = readFileSync(resolve(__dirname, '../src/screens/PlanetScreen.tsx'), 'utf8');
+    expect(screen).toMatch(/data-defence-line[\s\S]{0,300}<FleetCards/);
   });
 });

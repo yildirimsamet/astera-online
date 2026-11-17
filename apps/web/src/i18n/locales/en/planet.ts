@@ -263,6 +263,7 @@ export const planet = {
     escapeShort:
       "Tactical retreat · your ships would run from a raid with {{ratio}}× the power of this line (ships and active guns), but the lift needs {{fuel}} Deuterium and the tank holds {{stock}}",
     buildBand: "Defences",
+    lineFold: "Defensive line",
     shieldNote:
       "Aegis absorbs damage before it reaches your units and regenerates 35% of its maximum each hour.",
     /* The figures moved into `CapacityBar`; the band keeps the RULE. */

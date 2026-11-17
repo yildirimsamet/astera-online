@@ -65,8 +65,8 @@ vi.mock('../src/api/queries.js', async () => {
 /** The forge keeps its whole rule one tap away (G2-g): the "?" beside its one line. */
 const openRule = async () => { await userEvent.click(screen.getByRole('button', { name: 'How it works' })); };
 
-const show = (focusGroup?: 'grow' | 'orbit' | 'defend' | 'reach' | 'tactical') => {
-  current = rich();
+const show = (focusGroup?: 'grow' | 'orbit' | 'defend' | 'reach' | 'tactical', world: PlanetView = rich()) => {
+  current = world;
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -390,6 +390,35 @@ describe('the Base and its Defence tab', () => {
     show('defend');
     expect(screen.getByText(i18n.t('planet.interceptor.short'))).toBeVisible();
     expect(screen.queryByText(i18n.t('planet.interceptor.hint'))).toBeNull();
+  });
+
+  /**
+   * THE GUNS ON THE FIRST SCREEN (owner 2026-11-17: "ilk yer topuna ulaşana kadar … bu kadarlık bir content
+   * var"). The ship lists and the escape line sat between the readings and the guns; they are one closed
+   * fold now, its head counting the ships at home, and the room no longer repeats the guns' counts.
+   */
+  it('folds the ship lists and the escape line into one closed fold above the guns', () => {
+    const world = planetView({ ...rich(), fleet: { DART: 6, COURIER: 1 }, fleetAway: {}, rulesetVersion: 99 }, rich().planet);
+    show('defend', world);
+    const fold = document.querySelector<HTMLDetailsElement>('details[data-defence-line]')!;
+    expect(fold.open).toBe(false);
+    expect(fold.querySelector('summary')).toHaveTextContent(i18n.t('planet.defend.lineFold'));
+    expect(fold.querySelector('summary')).toHaveTextContent('7');
+    expect(fold.querySelector('[data-testid^="fleet-band-"]')).not.toBeNull();
+    expect(fold.querySelector('[data-testid="escape-readout"]')).not.toBeNull();
+    expect(document.querySelector('[data-defence-readings] [data-testid^="fleet-band-"]')).toBeNull();
+    const first = document.getElementById('row-THORN')!;
+    expect(fold.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('draws no fold for a world with no ships', () => {
+    show('defend');
+    expect(document.querySelector('[data-defence-line]')).toBeNull();
+  });
+
+  it('keeps the guns’ counts on their cards, not repeated in the ground room', () => {
+    show('defend', planetView({ ...rich(), ground: { THORN: 2 } }, rich().planet));
+    expect(document.querySelector('[data-ground-room] .gk-room__guns')).toBeNull();
   });
 
   it('leads the Defence tab with firepower, the line, the shield and what a raid can take', () => {

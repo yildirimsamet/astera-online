@@ -263,6 +263,7 @@ export const planet = {
     escapeShort:
       "Taktischer Rückzug · deine Schiffe würden vor dem {{ratio}}-Fachen der Stärke dieser Linie (Schiffe und aktive Geschütze) fliehen, doch der Start braucht {{fuel}} Deuterium und der Tank hält {{stock}}",
     buildBand: "Verteidigungsanlagen",
+    lineFold: "Verteidigungslinie",
     shieldNote:
       "Aegis absorbiert Schaden, bevor er deine Einheiten erreicht, und regeneriert jede Stunde 35 % seines Maximums.",
     /* The figures moved into `CapacityBar`; the band keeps the RULE. */

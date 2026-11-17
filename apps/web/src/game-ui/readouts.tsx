@@ -374,7 +374,8 @@ export function RoomGauge({ label, total, home, away, queued, incoming = 0, chil
           <span key={part} data-part={part} className="gk-room__part" style={{ width: pct(Math.round((amounts[part] / scale) * 1000) / 10) }} />
         ))}
       </span>
-      <p data-room-legend="" className="gk-room__legend">
+      {/* An empty room says "0 / 30" once; a "free 30" under it would say it twice (owner 2026-11-17). */}
+      {taken + incoming > 0 && <p data-room-legend="" className="gk-room__legend">
         {shown.map((part) => (
           <span key={part} className="gk-room__key" {...(part === 'incoming' ? { 'data-order': '' } : {})}>
             <span aria-hidden="true" data-part={part} className="gk-room__swatch" />
@@ -382,7 +383,7 @@ export function RoomGauge({ label, total, home, away, queued, incoming = 0, chil
           </span>
         ))}
         <span className="gk-room__key">{t('roomBar.free', { value: compact(free) })}</span>
-      </p>
+      </p>}
       {children}
     </section>
   );

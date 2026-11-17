@@ -263,6 +263,7 @@ export const planet = {
     escapeShort:
       "Retirada táctica · tus naves huirían de un ataque con {{ratio}}× el poder de esta línea (naves y cañones activos), pero el despegue necesita {{fuel}} de Deuterio y el depósito tiene {{stock}}",
     buildBand: "Defensas",
+    lineFold: "Línea defensiva",
     shieldNote:
       "Égida absorbe el daño antes de que llegue a tus unidades y se regenera el 35% de su máximo cada hora.",
     /* The figures moved into `CapacityBar`; the band keeps the RULE. */

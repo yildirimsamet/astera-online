@@ -17,7 +17,6 @@ import { compact, full } from '../lib/format.js';
 import { projectedQueueState } from '../lib/predict.js';
 import { countdown, duration, useNow } from '../lib/time.js';
 import { SATELLITE_ART } from './assets.js';
-import { FleetCards } from './FleetCards.js';
 import { Banner, Glyph, ProgressBar, StoreGauge, type GlyphId } from '../game-ui/index.js';
 import { PlanetSigil } from './PlanetSigil.js';
 import { StarField } from '../v2/kit/StarField.js';
@@ -338,7 +337,7 @@ function Disrupted({ ms }: { ms: number }) {
  * Four readings, each one answering the tab's question from a different side:
  * FIREPOWER (the line, in the unit a probe reads it in), DEFENCE (what that line is
  * made of), SHIELD (the Aegis) and what is EXPOSED (the ore outside the Vault — why a
- * raider would come). Then the fleet itself, the one reading drawn as a picture.
+ * raider would come). The fleet itself folds under them on the tab (owner 2026-11-17), so the guns are on the first screen.
  */
 export function DefenceReadings({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
@@ -375,7 +374,8 @@ export function DefenceReadings({ planet }: { planet: PlanetView }) {
       ? (
           <>
             <ProgressBar value={shield} max={shieldMax} tone="crystal" segments={8} label={t('planetHero.shieldMeter')} />
-            <span className="gk-verdict__sub">{t('planetHero.shieldRegen', { amount: compact(planet.planet.shieldPerHour) })}</span>
+            {/* A full shield has nothing to refill (owner 2026-11-17: the guns on the first screen). */}
+            {shield < shieldMax && <span className="gk-verdict__sub">{t('planetHero.shieldRegen', { amount: compact(planet.planet.shieldPerHour) })}</span>}
           </>
         )
       : t('planetHero.shieldNoAegis');
@@ -424,15 +424,6 @@ export function DefenceReadings({ planet }: { planet: PlanetView }) {
         value={t('planetHero.atRiskValue', { amount: compact(exposed) })}
         tone={exposed > 0 ? 'gap' : 'good'}
       />
-      {/*
-        THE WHOLE FORCE, UNDER THE VERDICTS ABOUT IT. D170. It spans both columns
-        because a fleet is not another verdict — it is the answer to what the line is
-        made of, and the one thing here read as a picture rather than as a sentence.
-        `FleetCards` draws nothing when there is nothing to draw.
-      */}
-      <div className="gk-verdicts__fleet">
-        <FleetCards fleet={planet.fleet} fleetAway={planet.fleetAway} fleetDocked={planet.fleetDocked ?? {}} />
-      </div>
     </div>
   );
 }

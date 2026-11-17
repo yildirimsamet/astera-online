@@ -49,6 +49,13 @@ describe('the room gauge', () => {
     expect(document.querySelector('[data-room-legend]')).not.toHaveTextContent(/away|queued|this order/);
   });
 
+  /** Owner 2026-11-17: an empty room says "0 / 30" once — no "free 30" legend under it. */
+  it('draws no legend for an empty room, the figure already says it', () => {
+    render(<RoomGauge label="Ground room" total={30} home={0} away={0} queued={0} />);
+    expect(document.querySelector('[data-room-legend]')).toBeNull();
+    expect(document.querySelector('[data-room-figure]')).toHaveTextContent('0 / 30');
+  });
+
   it('is drawn in the kit: a glass well, no old v2 face and nothing under the type floor', () => {
     const { container } = render(<RoomGauge label="Hangar room" total={60} home={30} away={6} queued={2} incoming={4} />);
     expect(container.querySelector('[data-room-bar]')).toHaveClass('gk-well');

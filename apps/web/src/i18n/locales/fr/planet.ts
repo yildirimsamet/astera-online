@@ -263,6 +263,7 @@ export const planet = {
     escapeShort:
       "Retraite tactique · tes vaisseaux fuiraient un raid de {{ratio}}× la puissance de cette ligne (vaisseaux et canons actifs), mais le décollage demande {{fuel}} Deutérium et le réservoir en contient {{stock}}",
     buildBand: "Défenses",
+    lineFold: "Ligne de défense",
     shieldNote:
       "L’Aegis absorbe les dégâts avant qu’ils n’atteignent tes unités. Ses niveaux augmentent le bouclier maximal ; il régénère chaque heure 35 % de sa valeur maximale.",
     groundNote:

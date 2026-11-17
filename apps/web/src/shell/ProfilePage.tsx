@@ -68,14 +68,22 @@ export function ProfilePage({ name, country = 'TR', onCountryChange, onSignOut, 
           )}
         </div>
 
-        <nav aria-label={t('landing.publicLinksLabel')} className="gk-acct__links">
-          {([['privacy', 'landing.privacyLink'], ['terms', 'landing.termsLink'], ['contact', 'landing.contactLink']] as const).map(([page, label]) => (
-            <a key={page} className="gk-acct__link" href={publisherUrl(page, i18n.resolvedLanguage)}>{t(label)}</a>
-          ))}
-        </nav>
-        {/* Deletion quiet above, sign out last (owner 2026-11-17, ek-8). */}
-        <AccountDeletionEntry />
-        <GameButton tone="ghost" wide glyph="back" onPress={onSignOut}>{t('galaxy.commander.signOut')}</GameButton>
+        {/*
+          THE FOOT AS ONE PIECE (owner 2026-11-17: "en alt kısmı … UI/UX çok kötü"): the publisher links
+          and the quiet deletion share one line, sign out a framed press under them — last, deletion just
+          above it, as ek-8 set.
+        */}
+        <footer data-profile-foot className="gk-acct__foot">
+          <div className="gk-acct__footline">
+            <nav aria-label={t('landing.publicLinksLabel')} className="gk-acct__links">
+              {([['privacy', 'landing.privacyLink'], ['terms', 'landing.termsLink'], ['contact', 'landing.contactLink']] as const).map(([page, label]) => (
+                <a key={page} className="gk-acct__link" href={publisherUrl(page, i18n.resolvedLanguage)}>{t(label)}</a>
+              ))}
+            </nav>
+            <AccountDeletionEntry />
+          </div>
+          <GameButton tone="steel" wide glyph="back" onPress={onSignOut}>{t('galaxy.commander.signOut')}</GameButton>
+        </footer>
         {countryPickerOpen && onCountryChange && <CountryPicker value={country} onSelect={(next) => { setCountryPickerOpen(false); void onCountryChange(next); }} onClose={() => { setCountryPickerOpen(false); }} />}
         {vacationOpen && <VacationSheet onClose={() => { setVacationOpen(false); }} />}
         {legacyOpen && <LegacyProfileSheet source={{ kind: 'me' }} name={name} onClose={() => { setLegacyOpen(false); }} />}

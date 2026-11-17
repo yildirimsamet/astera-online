@@ -55,6 +55,16 @@ describe('the defence readings on the kit', () => {
     expect(bar).toHaveAttribute('aria-valuemax', '150');
   });
 
+  /** Owner 2026-11-17 (the guns on the first screen): a full shield has nothing to refill, so no rate. */
+  it('names the refill rate only while the shield is below its top', () => {
+    const { unmount } = render(<DefenceReadings planet={world()} />);
+    expect(screen.getByTestId('planet-shield')).toHaveTextContent(/\+50/);
+    unmount();
+    render(<DefenceReadings planet={world({}, { shield: 150 })} />);
+    expect(screen.getByTestId('planet-shield')).not.toHaveTextContent(/\+50/);
+    expect(screen.getByTestId('planet-shield').querySelector('[role="progressbar"]')).not.toBeNull();
+  });
+
   it('reads a shield under a third as a warning and a missing one as a gap', () => {
     const { unmount } = render(<DefenceReadings planet={world({}, { shield: 30 })} />);
     expect(screen.getByTestId('planet-shield')).toHaveAttribute('data-tone', 'warn');

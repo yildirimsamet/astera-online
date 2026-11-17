@@ -1257,15 +1257,16 @@ describe('the room sections', () => {
     expect(document.querySelector('[data-hangar-room]')).not.toHaveTextContent(/makes it/);
   });
 
-  /** Owner, round 2: no particular gun's picture in the ground room; the guns are named. */
-  it('draws the ground room with the guns standing named, and no gun picture', () => {
+  /**
+   * Owner, round 2: no particular gun's picture in the ground room. Owner 2026-11-17: each gun's count is
+   * on its own card right under the room, so the room no longer repeats them.
+   */
+  it('draws the ground room with what stands in it, no gun picture and no gun list', () => {
     show({ ground: { THORN: 3, HARPOON: 1 } }, 'defend');
     const section = document.querySelector<HTMLElement>('[data-ground-room]')!;
     expect(section.querySelector('[data-room-bar]')).toHaveTextContent(/ground room/i);
     expect(section.querySelector('[data-part="home"]')).not.toBeNull();
-    expect(section).toHaveTextContent('Thorn 3');
-    expect(section).toHaveTextContent('Harpoon 1');
-    expect(section).toHaveTextContent('Bastion 0');
+    expect(section).not.toHaveTextContent(/Thorn|Harpoon|Bastion/);
     expect(section.querySelector('img')).toBeNull();
   });
 
@@ -1294,13 +1295,10 @@ describe('the room sections', () => {
     expect(v2Classes(section)).toEqual([]);
   });
 
-  it('names the guns in kit chips inside the ground gauge, an empty one quiet', () => {
+  it('draws the ground gauge on the kit, nothing of the v2 type left', () => {
     show({ ground: { THORN: 3 } }, 'defend');
     const section = document.querySelector<HTMLElement>('[data-ground-room]')!;
-    const guns = [...section.querySelectorAll<HTMLElement>('[data-room-bar] .gk-room__gun')];
-    expect(guns.map((gun) => gun.textContent)).toEqual(['Thorn 3', 'Harpoon 0', 'Bastion 0']);
-    expect(guns[0]).not.toHaveAttribute('data-empty');
-    expect(guns[1]).toHaveAttribute('data-empty');
+    expect(section.querySelector('[data-room-bar]')).toHaveClass('gk-well');
     expect(v2Classes(section)).toEqual([]);
   });
 });

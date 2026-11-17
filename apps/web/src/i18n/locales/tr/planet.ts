@@ -263,6 +263,7 @@ export const planet = {
     escapeShort:
       "Taktik geri çekilme · gemilerin bu hattın (gemiler ve aktif toplar) {{ratio}} katı güçteki bir akından kaçardı ama kalkış {{fuel}} Döteryum ister, depoda {{stock}} var",
     buildBand: "Savunma yapıları",
+    lineFold: "Savunma hattı",
     shieldNote:
       "Aegis hasarı birliklerine ulaşmadan önce karşılar. Seviyeler azami kalkanı artırır; yenilenme hızı azami değerin saatte %35’idir.",
     groundNote:
