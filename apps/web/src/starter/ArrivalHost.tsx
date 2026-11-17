@@ -18,6 +18,7 @@ import { scenePlayed, startJump, useJump, fromTheLanding } from './jump.js';
 import { dismissTip, tipDismissed, tipFor, tipTriggers, type LandingTip, type TipReport } from './landingTips.js';
 import { arrivalQuery, useMarkArrivalSeen } from './queries.js';
 import { ProtectionLines } from './ProtectionLines.js';
+import { nearestPirate } from '../lib/rewardGates.js';
 
 const CARD_LINES = ['battle', 'opened', 'alerts'] as const;
 
@@ -74,16 +75,6 @@ function Move({ id, icon, title, line, onPick }: { id: string; icon: IconId; tit
  */
 /** Each note's mark: the thing it explains. */
 const TIP_GLYPH: Record<LandingTip, GlyphId> = { core: 'target', colony: 'colony', clan: 'support', dominion: 'ranking', honor: 'star' };
-
-/** The nearest pirate a launch from here can reach: the first hunt of a ship that never fought one. */
-function nearestPirate(pirates: readonly { id: string; reachMinutes: number | null }[] | undefined) {
-  let best: { id: string; minutes: number } | null = null;
-  for (const pirate of pirates ?? []) {
-    if (pirate.reachMinutes === null) continue;
-    if (!best || pirate.reachMinutes < best.minutes) best = { id: pirate.id, minutes: pirate.reachMinutes };
-  }
-  return best;
-}
 
 export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; onFocusContact?: (id: string) => void }) {
   const { t } = useTranslation();

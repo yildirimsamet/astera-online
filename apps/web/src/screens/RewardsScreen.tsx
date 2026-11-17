@@ -12,6 +12,7 @@ import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { Banner, CostLine, EmptyState, GameButton, Glyph, InfoPeek, ProgressBar, RewardPod, artIconSrc, type GlyphId } from '../game-ui/index.js';
 import { describe, useToast } from '../ui/Toast.js';
+import { nextRewardGoal, rewardGate, type RewardGate } from '../lib/rewardGates.js';
 
 const CHAIN_GLYPH: Record<RewardChainId, GlyphId> = {
   PROBE: 'eye', RAID: 'attack', CORE: 'home', SHIPYARD: 'rocket',
@@ -27,7 +28,7 @@ const known = (chain: RewardChainView): chain is KnownChain =>
   REWARD_CHAIN_IDS.some((id) => id === chain.id);
 
 /** The server owns progress and credits. This surface makes the next act and payout legible. */
-export function RewardsScreen({ commander }: { commander: string }) {
+export function RewardsScreen({ commander, onGo }: { commander: string; onGo?: (gate: RewardGate) => void }) {
   const { t } = useTranslation();
   const { data, isPending, isError, refetch } = useRewards();
   const planet = usePlanet();
@@ -94,6 +95,9 @@ export function RewardsScreen({ commander }: { commander: string }) {
       onError: (error) => { say(describe(error), 'error'); },
     });
   };
+  // R3: with nothing waiting, the panel still says what to do next, and goes there (R6).
+  const next = onGo ? nextRewardGoal(chains) : null;
+  const nextGate = next ? rewardGate(next.chain.id) : null;
   const pod = opened ?? ready[0];
   // E5: the claim being taken spins; every other claim rests until it lands, rather than spinning too.
   const claiming = claim.isPending ? claim.variables : claimAll.isPending ? 'all' : null;
@@ -124,18 +128,30 @@ export function RewardsScreen({ commander }: { commander: string }) {
         <dd className="gk-cmdr__value gk-display gk-num">{full(taken)} / {full(tiers.length)}</dd>
       </div>
     </dl>
+    {next && nextGate && onGo && <div data-testid="reward-next">
+      <Banner tone="info" variant="strip" glyph={CHAIN_GLYPH[next.chain.id]}
+        title={t('rewards.next', { name: t(`rewards.chains.${next.chain.id}.name`), count: next.left })}
+        action={<GoButton onGo={() => { onGo(nextGate); }} />} />
+    </div>}
     <p className="gk-copy">{t('rewards.intro')}</p>
     {overflowing && <Banner tone="warn" title={t('rewards.overCap')} />}
     <ul className="gk-rewards__list">
         {chains.map((chain) => chain.metric === 'grant'
           ? <SocialCard key={chain.id} chain={chain} commander={commander} claiming={claiming} onClaim={onClaim} />
-          : <GoalCard key={chain.id} chain={chain} expanded={ladder.isOpen(chain.id)} onToggle={() => { ladder.toggle(chain.id); }} claiming={claiming} onClaim={onClaim} />)}
+          : <GoalCard key={chain.id} chain={chain} expanded={ladder.isOpen(chain.id)} onToggle={() => { ladder.toggle(chain.id); }} claiming={claiming} onClaim={onClaim} onGo={onGo} />)}
     </ul>
   </div>;
 }
 
-function GoalCard({ chain, expanded, onToggle, claiming, onClaim }: {
+/** To the place a goal is played (R6): the map for an act, its row for a building. */
+function GoButton({ onGo }: { onGo: () => void }) {
+  const { t } = useTranslation();
+  return <GameButton size="sm" tone="steel" glyph="next" onPress={() => { playSound('tap'); haptic('tap'); onGo(); }}>{t('rewards.go')}</GameButton>;
+}
+
+function GoalCard({ chain, expanded, onToggle, claiming, onClaim, onGo }: {
   chain: KnownChain; expanded: boolean; onToggle: () => void; claiming: string | null; onClaim: (id: string) => void;
+  onGo?: ((gate: RewardGate) => void) | undefined;
 }) {
   const { t } = useTranslation();
   const waiting = chain.tiers.some((tier) => tier.state === 'claimable');
@@ -150,6 +166,7 @@ function GoalCard({ chain, expanded, onToggle, claiming, onClaim }: {
   const visible = expanded ? chain.tiers : chain.tiers.filter((tier) => tier.state === 'claimable' || tier === next);
   const panelId = `reward-tiers-${chain.id}`;
   const fold = useOwnPress(() => { playSound('tab'); haptic('tap'); onToggle(); });
+  const gate = rewardGate(chain.id);
 
   return <li data-reward-chain={chain.id}>
     <article className={`gk-cut gk-reward${waiting ? ' gk-cut--self' : ''}`} {...(done ? { 'data-done': '' } : {})}>
@@ -159,6 +176,7 @@ function GoalCard({ chain, expanded, onToggle, claiming, onClaim }: {
           <div className="gk-reward__titleline">
             <h3 className="gk-reward__name gk-display">{name}</h3>
             <span className="gk-reward__standing gk-num" {...(waiting ? { 'data-on': '' } : {})}>{standing}</span>
+            {gate && onGo && !done && <GoButton onGo={() => { onGo(gate); }} />}
           </div>
           <p className="gk-reward__tag">{t(`rewards.chains.${chain.id}.tag`)}</p>
           <div className="gk-reward__steps" role="img" aria-label={`${t('rewards.summaryClaimed')}: ${String(taken)} / ${String(chain.tiers.length)}`}>

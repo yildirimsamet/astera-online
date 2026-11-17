@@ -33,6 +33,7 @@ import { beamsNow } from '../galaxy/mainSky.js';
 import { rockLine, rockReachMinutes } from '../lib/rockReach.js';
 import { salvageReachMinutes } from '../lib/salvageReach.js';
 import { hasOtherShip, nearestRock, nearestShip } from '../starter/neighbour.js';
+import { freshestWreck, nearestPirate, probeTarget, type RewardGate } from '../lib/rewardGates.js';
 import { huntStage } from '../starter/hunt.js';
 import { ObjectiveLine } from '../starter/ObjectiveLine.js';
 import { OutpostOutcome, useOutpostOutcome } from '../starter/OutpostOutcome.js';
@@ -1322,6 +1323,26 @@ export function GalaxyView({
   };
 
   /** The first probe's target: the closest ship that is not yours (onboarding design §5.2). */
+  /** A reward goal's Go (plan 2026-11-06 §7.1 R6): the map for an act, the world's own row for a building. */
+  const goToReward = (gate: RewardGate): void => {
+    if (gate.kind === 'intel') { onPanel('intel'); return; }
+    if (gate.kind === 'build') { setRequestedPlanetGroup(gate.group); setRequestedItem(gate.item); onPanel('planet'); return; }
+    onPanel(null);
+    if (gate.kind === 'probe') {
+      const id = probeTarget(planets, activeWorldPosition);
+      if (id) focusPlanet(id);
+    } else if (gate.kind === 'mine') {
+      const minutes = season.data ? (now - season.data.startsAt.getTime()) / 60_000 : 0;
+      const id = nearestRock(asteroids, activeWorldPosition, minutes);
+      if (id) { setFocus({ kind: 'asteroid', id }); setDetail(true); }
+    } else if (gate.kind === 'salvage') {
+      const id = freshestWreck(wrecks);
+      if (id) { setFocus({ kind: 'debris', id }); setDetail(true); }
+    } else {
+      const prey = nearestPirate(pirateList.data?.pirates);
+      if (prey) setFocus({ kind: 'contact', id: prey.id });
+    }
+  };
   const focusNeighbour = (): void => {
     const id = nearestShip(planets, activePlanetId ?? '', activeWorldPosition);
     if (id) focusPlanet(id);
@@ -2186,7 +2207,7 @@ export function GalaxyView({
             onPanel(null);
           }}
         >
-          <RewardsScreen commander={commander} />
+          <RewardsScreen commander={commander} onGo={goToReward} />
         </V2Sheet>
       )}
 

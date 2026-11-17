@@ -28,6 +28,8 @@ export const rewards = {
   claim: 'Claim',
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
   takeAll: 'Take all · {{count}}',
+  go: 'Go',
+  next: 'Next: {{name}} · {{count}} to go',
   openPod: 'Open the pod',
   claimed: 'Taken',
   /** What is still between the player and this tier. Never a scolding. */

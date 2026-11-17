@@ -27,6 +27,8 @@ export const rewards = {
   claim: 'Al',
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
   takeAll: "Tümünü al · {{count}}",
+  go: 'Git',
+  next: 'Sıradaki: {{name}} · {{count}} kaldı',
   openPod: 'Kapsülü aç',
   claimed: 'Alındı',
   /** Kalanı söyler, azarlamaz. */

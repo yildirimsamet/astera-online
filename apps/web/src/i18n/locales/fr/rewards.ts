@@ -27,6 +27,8 @@ export const rewards = {
   claim: "Récupérer",
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
   takeAll: 'Tout prendre · {{count}}',
+  go: 'Y aller',
+  next: 'Ensuite : {{name}} · encore {{count}}',
   openPod: 'Ouvrir la capsule',
   claimed: "Récupérée",
   /** Indique ce qu’il reste, sans réprimander. */
