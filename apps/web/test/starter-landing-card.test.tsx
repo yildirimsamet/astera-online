@@ -69,6 +69,18 @@ describe('the card after the landing', () => {
     expect(i18n.exists('starter.landing.line.absence')).toBe(false);
   });
 
+  // Plan 2026-11-13 §4.7 (Faz 3): how the new world is kept, each rule with the player's own number.
+  it('says in one block how the new world is kept, with its numbers', async () => {
+    harness();
+    const guard = within(await screen.findByTestId('arrival-protection'));
+    expect(guard.getByText(/72 hours/u)).toHaveTextContent(/pirates does not/iu);
+    expect(guard.getByText(/Command Core 1–6/u)).toBeInTheDocument();
+    expect(guard.getByText(/30 hours/u)).toHaveTextContent(/Silent Space/u);
+    // The bare lines it replaces are gone, so the shield is not said twice.
+    expect(i18n.exists('starter.landing.line.shield')).toBe(false);
+    expect(i18n.exists('starter.landing.line.core')).toBe(false);
+  });
+
   it('offers a first sortie with the fleet and fuel that are ready', async () => {
     const { onPanel, fetcher } = harness();
     const move = within(await screen.findByTestId('arrival-decide'));

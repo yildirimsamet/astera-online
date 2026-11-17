@@ -16,8 +16,9 @@ import { Sheet } from '../v2/kit/Sheet.js';
 import { scenePlayed, startJump, useJump, fromTheLanding } from './jump.js';
 import { dismissTip, tipDismissed, tipFor, type LandingTip } from './landingTips.js';
 import { arrivalQuery, useMarkArrivalSeen } from './queries.js';
+import { ProtectionLines } from './ProtectionLines.js';
 
-const CARD_LINES = ['battle', 'shield', 'core', 'opened', 'alerts'] as const;
+const CARD_LINES = ['battle', 'opened', 'alerts'] as const;
 
 interface Holding { alloy: number; crystal: number; deuterium: number; fleet: Fleet }
 
@@ -135,9 +136,15 @@ export function ArrivalHost({ onPanel }: { onPanel: ShellRoute }) {
                 onPick={() => { pick(() => { onPanel('planet', undefined, undefined, { group: 'grow', itemId: 'DEUTERIUM_PLANT' }); }); }} />
             </div>
           </section>
-          <ul className="flex flex-col gap-1.5">
+          {/* How the new world is kept, in its own numbers (plan 2026-11-13 §4.7). */}
+          <section data-testid="arrival-protection" aria-label={t('starter.arrival.protection')} className="flex flex-col gap-1">
+            <h3 className="v2-legend text-v2-self">{t('starter.arrival.protection')}</h3>
+            <ProtectionLines className="flex flex-col gap-1.5 text-caption leading-snug text-v2-ink [&>li]:border-l-2 [&>li]:border-v2-self/60 [&>li]:pl-2" />
+          </section>
+          {/* What else changed down here: quieter than the protection, so the two do not read as one block. */}
+          <ul className="mt-1 flex list-disc flex-col gap-1 border-t border-v2-line pl-4 pt-2 marker:text-v2-ink-3">
             {CARD_LINES.map(line => (
-              <li key={line} className="border-l-2 border-v2-self/60 pl-2 text-caption leading-snug text-v2-ink">{t(`starter.landing.line.${line}`)}</li>
+              <li key={line} className="text-caption leading-snug text-v2-ink-2">{t(`starter.landing.line.${line}`)}</li>
             ))}
           </ul>
         </div>

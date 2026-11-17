@@ -7,7 +7,7 @@ import { hullLabel } from '../i18n/names.js';
 import { full } from '../lib/format.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { describe, useToast } from '../ui/Toast.js';
-import { HoldButton } from '../v2/kit/HoldButton.js';
+import { GameHold } from '../game-ui/index.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { pressJump, releaseJump } from './jump.js';
 import { useMigrate, useMigration } from './queries.js';
@@ -89,7 +89,10 @@ export function LandingChoice({ view: opened, onCancel, onLanded }: {
       eyebrow={t('starter.eyebrow')}
       onClose={onCancel}
       footer={
-        <HoldButton
+        // The heaviest act of the ship: the final hold, 1.5 s (owner 2026-11-13, plan §10.7-10).
+        <GameHold
+          weight="final"
+          glyph="rocket"
           label={t('starter.jump.hold')}
           disabledReason={migrate.isPending ? t('starter.jump.leaving') : null}
           onCommit={() => {

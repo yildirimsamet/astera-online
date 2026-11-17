@@ -11,6 +11,7 @@ import { useProjected } from '../lib/projection.js';
 import { playSound } from '../lib/sound.js';
 import { clockTime, duration, durationPrecise, useNow } from '../lib/time.js';
 import { RESOURCE_ART } from '../ui/assets.js';
+import { Glyph, Plate, SectionTag } from '../game-ui/index.js';
 import { Icon, type IconId } from '../v2/icons.js';
 import { vesselToPlanetView } from './adapter.js';
 import type { HuntStage } from './hunt.js';
@@ -160,7 +161,8 @@ function OfferRow({ offer, index, recommended, chosen, held, progress, now, onPi
         aria-pressed={chosen}
         onClick={onPick}
         style={{ animationDelay: `${String(index * 60)}ms` }}
-        className={`flex min-h-11 w-full items-center gap-2.5 rounded-control border px-2 py-1.5 text-left animate-[line-in_0.3s_ease-out_both] active:scale-[0.98] ${recommended || chosen ? 'border-v2-self/60 bg-v2-self/10' : 'border-v2-line bg-v2-void/40'}`}
+        // The lead offer is lit like the kit's own plates; the rest sit in the well.
+        className={`flex min-h-11 w-full items-center gap-2.5 px-2 py-1.5 text-left animate-[line-in_0.3s_ease-out_both] active:scale-[0.98] ${recommended || chosen ? 'gk-cut gk-cut--self' : 'rounded-control border border-v2-line bg-v2-void/40'}`}
       >
         <span aria-hidden="true" className={`grid size-8 shrink-0 place-items-center rounded-full border ${recommended || chosen ? 'border-v2-self/70 text-v2-self shadow-[0_0_10px_-2px_var(--color-v2-self)]' : 'border-v2-line-hi text-v2-ink-2'}`}>
           <Icon id={offerIcon(offer)} className="size-4" />
@@ -312,19 +314,20 @@ export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour,
   return (
     <>
       {showing && (
-        <section data-testid="starter-advice" aria-label={t('starter.advice.title')} className="mb-2 overflow-hidden rounded-control border border-v2-self/40 bg-v2-deep/95 font-v2-ui shadow-lg animate-[line-in_0.25s_ease-out_both]">
-          <header className="flex items-center gap-2 border-b border-v2-line py-1 pl-2.5 pr-1">
-            <span className="min-w-0 flex-1 text-caption font-medium text-v2-ink">{t('starter.advice.title')}</span>
-            <button type="button" aria-label={t('starter.advice.close')} onClick={() => { playSound('tap'); haptic('tap'); setOpen(false); }} className="grid size-9 shrink-0 place-items-center text-v2-ink-2">
-              <Icon id="i-close" className="size-4" />
-            </button>
-          </header>
-          <ul className="flex flex-col gap-1 p-1.5">
-            {rows.map((row, index) => (
-              <OfferRow key={opportunityKey(row)} offer={row} index={index} recommended={index === 0} chosen={row === picked}
-                held={purse} progress={progress} now={now} onPick={() => { choose(row); }} />
-            ))}
-          </ul>
+        <section data-testid="starter-advice" aria-label={t('starter.advice.title')} className="gk mb-2 animate-[line-in_0.25s_ease-out_both]">
+          <Plate bolts className="flex flex-col gap-1 py-1 pl-2 pr-1 shadow-lg">
+            <SectionTag aside={(
+              <button type="button" aria-label={t('starter.advice.close')} onClick={() => { playSound('tap'); haptic('tap'); setOpen(false); }} className="-my-2 grid size-11 shrink-0 place-items-center text-v2-ink-2">
+                <Glyph id="close" className="gk-glyph size-4" />
+              </button>
+            )}>{t('starter.advice.title')}</SectionTag>
+            <ul className="flex flex-col gap-1 pb-1 pr-1">
+              {rows.map((row, index) => (
+                <OfferRow key={opportunityKey(row)} offer={row} index={index} recommended={index === 0} chosen={row === picked}
+                  held={purse} progress={progress} now={now} onPick={() => { choose(row); }} />
+              ))}
+            </ul>
+          </Plate>
         </section>
       )}
       <div key={key} className={frame}>

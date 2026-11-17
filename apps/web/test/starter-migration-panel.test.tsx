@@ -11,6 +11,9 @@ import { jumpHoldsSession, releaseJump } from '../src/starter/jump.js';
 import { MigrationPanel } from '../src/starter/MigrationPanel.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { urlOf, wireVessel } from './starterVesselFixture.js';
+import { compact } from '../src/lib/format.js';
+
+const income = { alloy: 0, crystal: 0, deuterium: 0 };
 
 afterEach(cleanup);
 
@@ -59,9 +62,9 @@ const shipWith = (progress: VesselProgress = LOOP) => vesselSchema.parse(wireVes
 describe('the jump panel', () => {
   it('shows each resource of the hold against what a jump carries, and no tank or parts', async () => {
     const { wrap } = harness(view());
-    render(wrap(<MigrationPanel vessel={shipWith()} onJump={vi.fn()} />));
-    expect(await screen.findByTestId('hold-alloy')).toHaveTextContent(`2,000/${STARTER.carry.alloy.toLocaleString('en')}`);
-    expect(screen.getByTestId('hold-crystal')).toHaveTextContent(`300/${STARTER.carry.crystal.toLocaleString('en')}`);
+    render(wrap(<MigrationPanel income={income} vessel={shipWith()} onJump={vi.fn()} />));
+    expect(await screen.findByTestId('hold-alloy')).toHaveTextContent(`${compact(2000)}/${compact(STARTER.carry.alloy)}`);
+    expect(screen.getByTestId('hold-crystal')).toHaveTextContent(`300/${compact(STARTER.carry.crystal)}`);
     expect(screen.getByTestId('hold-ships')).toHaveTextContent(`6/${String(STARTER.carry.ships)}`);
     expect(screen.queryByTestId('tank-level')).toBeNull();
     expect(screen.queryByTestId('parts-count')).toBeNull();
@@ -70,14 +73,14 @@ describe('the jump panel', () => {
 
   it('says what the first loop still asks while the drive is not up, and offers no jump', async () => {
     const { wrap } = harness(view({ block: { code: 'MIGRATION_NOT_READY' } }));
-    render(wrap(<MigrationPanel vessel={shipWith({ ...LOOP, facts: ['FIRST_MINING_SENT'] })} onJump={vi.fn()} />));
+    render(wrap(<MigrationPanel income={income} vessel={shipWith({ ...LOOP, facts: ['FIRST_MINING_SENT'] })} onJump={vi.fn()} />));
     expect(await screen.findByTestId('jump-block')).toHaveTextContent(/mining run/iu);
     expect(screen.queryByRole('button', { name: /Prepare the jump/u })).toBeNull();
   });
 
   it('says when the hold is full that more is not carried', async () => {
     const { wrap } = harness(view({ full: true, fill: { alloy: 1, crystal: 1, deuterium: 0.2, ships: 0.5 } }));
-    render(wrap(<MigrationPanel vessel={shipWith()} onJump={vi.fn()} />));
+    render(wrap(<MigrationPanel income={income} vessel={shipWith()} onJump={vi.fn()} />));
     expect(await screen.findByTestId('hold-full')).toHaveTextContent(/hold is full/iu);
   });
 
@@ -87,7 +90,7 @@ describe('the jump panel', () => {
    */
   it('names what will stay behind, and that repairs stay aboard, before the jump', async () => {
     const { wrap } = harness(view());
-    render(wrap(<MigrationPanel vessel={shipWith()} onJump={vi.fn()} />));
+    render(wrap(<MigrationPanel income={income} vessel={shipWith()} onJump={vi.fn()} />));
     expect(await screen.findByTestId('jump-left')).toHaveTextContent('Stays behind and is lost: 3,000 alloy, 0 crystal, 30 Deuterium, 2 ships.');
     expect(screen.getByTestId('jump-stays')).toHaveTextContent(/repairs and research stay aboard/iu);
   });
@@ -95,27 +98,27 @@ describe('the jump panel', () => {
   it('opens the choice once nothing stands in the way', async () => {
     const onJump = vi.fn();
     const { wrap } = harness(view());
-    render(wrap(<MigrationPanel vessel={shipWith()} onJump={onJump} />));
+    render(wrap(<MigrationPanel income={income} vessel={shipWith()} onJump={onJump} />));
     fireEvent.click(await screen.findByRole('button', { name: /Prepare the jump/u }));
     expect(onJump).toHaveBeenCalledOnce();
   });
 
   it('gives the season reason and keeps the ship playing', async () => {
     const { wrap } = harness(view({ block: { code: 'MIGRATION_SEASON_WAIT', daysLeft: 3 } }));
-    render(wrap(<MigrationPanel vessel={shipWith()} onJump={vi.fn()} />));
+    render(wrap(<MigrationPanel income={income} vessel={shipWith()} onJump={vi.fn()} />));
     expect(await screen.findByTestId('jump-block')).toHaveTextContent(/3 days/u);
     expect(screen.queryByRole('button', { name: /Prepare the jump/u })).toBeNull();
   });
 
   it('says the Prospector has to come home first', async () => {
     const { wrap } = harness(view({ block: { code: 'MIGRATION_FLEET_OUT', flying: 1 } }));
-    render(wrap(<MigrationPanel vessel={shipWith()} onJump={vi.fn()} />));
+    render(wrap(<MigrationPanel income={income} vessel={shipWith()} onJump={vi.fn()} />));
     expect(await screen.findByTestId('jump-block')).toBeInTheDocument();
   });
 
   it('says at once that no galaxy has room', async () => {
     const { wrap } = harness(view({ target: null, block: { code: 'NO_FRONTIER' } }));
-    render(wrap(<MigrationPanel vessel={shipWith()} onJump={vi.fn()} />));
+    render(wrap(<MigrationPanel income={income} vessel={shipWith()} onJump={vi.fn()} />));
     expect(await screen.findByTestId('jump-outlook')).toHaveTextContent(/No galaxy has room/u);
     expect(screen.queryByTestId('jump-block')).toBeNull();
   });
@@ -123,13 +126,13 @@ describe('the jump panel', () => {
   it('says the season has stopped taking ships', async () => {
     const inHours = (hours: number) => new Date(Date.now() + hours * 3_600_000).toISOString();
     const { wrap } = harness(view({ target: { shard: 'EU-1', name: 'Vantage', seasonEndsAt: inHours(72) } }));
-    render(wrap(<MigrationPanel vessel={shipWith()} onJump={vi.fn()} />));
+    render(wrap(<MigrationPanel income={income} vessel={shipWith()} onJump={vi.fn()} />));
     expect(await screen.findByTestId('jump-outlook')).toHaveTextContent(/next season/u);
   });
 
   it('says nothing about the season when it has room', async () => {
     const { wrap } = harness(view());
-    render(wrap(<MigrationPanel vessel={shipWith()} onJump={vi.fn()} />));
+    render(wrap(<MigrationPanel income={income} vessel={shipWith()} onJump={vi.fn()} />));
     await screen.findByTestId('hold-alloy');
     expect(screen.queryByTestId('jump-outlook')).toBeNull();
   });

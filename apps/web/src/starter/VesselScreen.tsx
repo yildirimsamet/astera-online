@@ -16,7 +16,7 @@ import { vesselToPlanetView } from './adapter.js';
 import { startJump } from './jump.js';
 import { LandingChoice } from './LandingChoice.js';
 import { MigrationPanel } from './MigrationPanel.js';
-import { holdShare } from './hold.js';
+import { holdFull, holdShare } from './hold.js';
 import { CrateBay } from './CrateBay.js';
 import { useMainSky, useOpenCrates, useRepairVessel } from './queries.js';
 import { pressedWorld } from './jumpWorld.js';
@@ -31,6 +31,7 @@ import { moduleName } from './shipCopy.js';
 import { cardStep, heroArt, systemSteps } from './shipScreen.js';
 import { SystemTabs } from './SystemTabs.js';
 import { UnlockMoment } from './UnlockMoment.js';
+import { HoldFullMoment } from './HoldFullMoment.js';
 import { StarterWaitLine } from './tutorial/StarterWaitLine.js';
 import { useStarterLesson } from './tutorial/visualGoal.js';
 import { YardDeck } from './YardDeck.js';
@@ -151,7 +152,7 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
   return (
     <div className="flex min-h-full flex-col gap-1.5 bg-gradient-to-b from-v2-void to-v2-panel pb-2 font-v2-ui">
       <DeckSwitch vessel={vessel} value={deck} onChange={setDeck} />
-      <ShipHero id={vessel.id} progress={progress} selected={system} onSelect={select} compact={decks} />
+      <ShipHero id={vessel.id} progress={progress} selected={system} onSelect={select} compact={decks} sealed={holdFull(vessel)} />
       {/* Who this ship is and how far it has come: the mock's frame, with this ship's own silhouette on it. */}
       <div className="relative z-10 -mt-3 mx-3 flex items-center gap-2 rounded-control border border-v2-line bg-v2-panel/70 px-2 py-1">
         <img src={heroArt(vesselHull(vessel.id), vesselLook(progress))} alt="" draggable={false} className="h-7 w-11 shrink-0 object-cover [mask-image:radial-gradient(closest-side,#000_60%,transparent)]" />
@@ -174,12 +175,14 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
       {/* Below the ship's own strip, which tucks under the hero (owner playtest 2026-11-07: a card between
           them was overlapped), and on the screen's one inset, as every other block is. */}
       <div className="px-3 empty:hidden"><UnlockMoment vessel={vessel} /></div>
+      <div className="px-3 empty:hidden"><HoldFullMoment vessel={vessel} {...(system === 'DRIVE' ? {} : { onLook: () => { select('DRIVE'); } })} /></div>
       <QuietNotice vessel={vessel} />
       <div className="px-3 empty:hidden"><CrateBay crates={vessel.crates} onOpen={() => { openCrates.mutate(undefined, { onError: (error) => { say(describe(error), 'error'); } }); }} /></div>
       <StarterWaitLine queue={vessel.queue} />
       <SystemTabs progress={progress} ahead={ahead} selected={system} onSelect={select} />
       {shown && <RepairCard shown={shown} system={system} context={context} onShow={setPicked} />}
-      {system === 'DRIVE' && <MigrationPanel vessel={vessel} onJump={setJumping} />}
+      {system === 'DRIVE' && <MigrationPanel vessel={vessel} onJump={setJumping}
+        income={{ alloy: view.planet.alloyPerHour, crystal: view.planet.crystalPerHour, deuterium: view.planet.deuteriumPerHour ?? 0 }} />}
       {jumping && (
         <LandingChoice
           view={jumping}

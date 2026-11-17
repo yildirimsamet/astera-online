@@ -95,8 +95,10 @@ function Mark({ system, percent, selected, onSelect, bay, next }: {
  * state, swapped as repairs add up, so the player watches their own ship come back. A thin line ties
  * each mark to the machine it stands for, and a mark is a door to that system's card.
  */
-export function ShipHero({ id, progress, selected, onSelect, compact = false }: {
+export function ShipHero({ id, progress, selected, onSelect, compact = false, sealed = false }: {
   id: string; progress: VesselProgress; selected: VesselSystem; onSelect: (system: VesselSystem) => void;
+  /** The hold is full: the cargo hatches stay closed (plan 2026-11-13 §4.5). */
+  sealed?: boolean;
   /** A shorter frame when the deck switch needs the height: the painting fills the width, and the marks stay on their machines. */
   compact?: boolean;
 }) {
@@ -112,6 +114,7 @@ export function ShipHero({ id, progress, selected, onSelect, compact = false }: 
         {VESSEL_SYSTEMS.map(system => (
           <span key={system} aria-hidden="true" data-bay={system} data-condition={bayCondition(systemPercent(progress, system))}
             {...(moment?.system === system ? { 'data-just': moment.tier } : {})}
+            {...(sealed && system === 'CARGO' ? { 'data-sealed': '' } : {})}
             className="ship-bay" style={{ left: `${String(bays[system].x)}%`, top: `${String(bays[system].y)}%` }} />
         ))}
         <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-v2-void to-transparent" />

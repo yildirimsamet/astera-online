@@ -48,7 +48,7 @@
 
 /* The engines take the whole ship: a surge of light and one short shudder, then rest. */
 [data-moment='big'] .ship-hero-art { animation: ship-hero-surge 2.3s ease-out; }
-[data-moment='big'] .ship-hero-frame { animation: ship-hero-shudder 0.55s linear; }
+[data-moment='big'] .ship-hero-frame { animation: ship-hero-shudder 0.55s linear 0.62s; }
 
 @keyframes ship-bay-burn { from { opacity: 0.55; transform: translate(-50%, -50%) scale(0.92); } to { opacity: 1; transform: translate(-50%, -50%) scale(1.08); } }
 @keyframes ship-bay-spark { 0% { opacity: 0; transform: translate(0, 0); } 8% { opacity: 1; } 45% { opacity: 0; transform: translate(4px, -12px); } 100% { opacity: 0; } }
@@ -56,6 +56,37 @@
 @keyframes ship-bay-calm { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
 @keyframes ship-bay-ring { from { opacity: 1; transform: scale(0.4); } to { opacity: 0; transform: scale(1.5); } }
 @keyframes ship-bay-ring-wide { from { opacity: 1; transform: scale(0.3); } to { opacity: 0; transform: scale(2.6); } }
-@keyframes ship-bay-ignite { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); } 100% { opacity: 0.35; transform: translate(-50%, -50%) scale(1); } }
-@keyframes ship-hero-surge { 0% { filter: brightness(1.25) saturate(1.1); } 14% { filter: brightness(2.2) saturate(1.3); } 100% { filter: brightness(1.25) saturate(1.1); } }
+/* The drive coughs twice, then catches and holds (plan 2026-11-13 §4.3). */
+@keyframes ship-bay-ignite {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  5% { opacity: 0.8; transform: translate(-50%, -50%) scale(0.7); }
+  9% { opacity: 0.1; transform: translate(-50%, -50%) scale(0.5); }
+  15% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.85); }
+  19% { opacity: 0.15; transform: translate(-50%, -50%) scale(0.6); }
+  28% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  100% { opacity: 0.35; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes ship-hero-surge { 0%, 24% { filter: brightness(1.25) saturate(1.1); } 30% { filter: brightness(2.2) saturate(1.3); } 100% { filter: brightness(1.25) saturate(1.1); } }
 @keyframes ship-hero-shudder { 0%, 100% { transform: translate(0, 0); } 15% { transform: translate(-3px, 1px); } 35% { transform: translate(3px, -2px); } 55% { transform: translate(-2px, 2px); } 75% { transform: translate(2px, -1px); } }
+
+/* The hold is full (plan 2026-11-13 §4.5): two hatch leaves slide shut over the cargo bay and stay shut,
+   a seam of light between them. Game motion, not the OS setting. */
+.ship-bay[data-sealed] {
+  background: radial-gradient(closest-side, rgb(255 196 92 / 0.5), rgb(255 170 60 / 0.16) 55%, transparent);
+  animation: none;
+}
+.ship-bay[data-sealed]::after {
+  content: '';
+  position: absolute;
+  inset: 30% 24%;
+  border-radius: 2px;
+  /* A lit seam down the middle, hazard bands top and bottom, two brushed leaves. */
+  background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgb(255 205 120) 50%, transparent calc(50% + 1px)),
+    repeating-linear-gradient(135deg, rgb(240 180 60 / 0.9) 0 3px, rgb(30 30 34 / 0.9) 3px 6px) top / 100% 4px no-repeat,
+    repeating-linear-gradient(135deg, rgb(240 180 60 / 0.9) 0 3px, rgb(30 30 34 / 0.9) 3px 6px) bottom / 100% 4px no-repeat,
+    linear-gradient(180deg, #5b6372, #3a414e 55%, #2c323d);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 205 120 / 0.35), 0 0 12px rgb(255 170 60 / 0.5);
+  animation: ship-bay-seal 0.6s cubic-bezier(.5, 0, .2, 1.35) both;
+}
+@keyframes ship-bay-seal { from { clip-path: inset(0 50% 0 50%); } to { clip-path: inset(0 0 0 0); } }
