@@ -416,6 +416,8 @@ export const leaderboard = {
   honorPackageOnce: "If both rankings award resources, you receive the more valuable package once in the next season.",
   honorNext: "{{amount}} Honor to draw level with {{commander}}.",
   honorYourRank: "Your place",
+  view: { label: 'Leaderboard view', standings: 'Standings', rewards: 'Rewards', rules: 'Rules' },
+  ruleTitle: { combat: 'Earning Honor', bands: 'Fleet balance', defense: 'Defending', repeat: 'Repeats and bullying', prize: 'Sharing prizes', package: 'One package' },
   eyebrow: 'The local galaxy',
   title: 'Leaderboard',
   empty: 'No commanders have joined this galaxy yet.',

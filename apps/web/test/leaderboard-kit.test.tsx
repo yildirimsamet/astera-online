@@ -72,19 +72,20 @@ describe('the live ladder on the kit (C19)', () => {
     expect(mine?.querySelector('[data-self]')).not.toBeNull();
   });
 
-  it('puts the reader’s place and Honor on one kit plate, the prize in a well, the rules one row away', () => {
+  // Owner 2026-11-17 (item 4): the prize and the rules moved to their own pages beside the standings.
+  it('puts the reader’s place and Honor on one kit plate, the prize in a well on the Rewards page', () => {
     show();
     expect(document.querySelector('[data-honor-mine]')).toHaveClass('gk-well');
-    expect(document.querySelector('[data-honor-prize]')).toHaveClass('gk-well');
-    const rules = screen.getByText('How Honor works').closest('details');
-    expect(rules).toHaveClass('gk-rules');
     expect(screen.getByRole('searchbox')).toHaveClass('gk-field__input');
+    fireEvent.click(screen.getByRole('radio', { name: 'Rewards' }));
+    expect(document.querySelector('[data-honor-prize]')).toHaveClass('gk-well');
   });
 
   // G9 close (2026-11-16): the page sat outside the kit's root, so its copy fell back to the browser's face;
   // and the purse borrowed the report haul's row, which became a three-column grid and stacked "820 / 1,750" on the next art.
   it('speaks in the kit’s type, and sets the purse on its own row', () => {
     show();
+    fireEvent.click(screen.getByRole('radio', { name: 'Rewards' }));
     expect(document.querySelector('[data-v2-leaderboard]')).toHaveClass('gk');
     const purse = document.querySelector('[data-honor-prize] .gk-lb__purse');
     expect(purse).not.toBeNull();

@@ -27,6 +27,7 @@ beforeEach(async () => { localStorage.clear(); await i18n.changeLanguage('en'); 
 describe('season prizes at the point of competition', () => {
   it('lets a spectator inspect all ten full Honor prizes, even without a personal estimate or Dominion program', () => {
     show('HONOR', [row('leader', 1, 200_000_000)], false);
+    fireEvent.click(screen.getByRole('radio', { name: 'Rewards' }));
     expect(screen.getByText(/Full packages.*Honor.*ties/i)).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: /prize by place/i }));
     const tiers = screen.getByRole('list', { name: 'Prize by place' });
@@ -44,9 +45,10 @@ describe('season prizes at the point of competition', () => {
     show('HONOR', [], false);
     expect(screen.getByRole('tab', { name: 'Honor', selected: true })).toBeVisible();
     expect(screen.getByRole('tab', { name: 'Dominion' })).toBeVisible();
+    expect(screen.getByText('No commanders have joined this galaxy yet.')).toBeVisible();
+    fireEvent.click(screen.getByRole('radio', { name: 'Rewards' }));
     fireEvent.click(screen.getByRole('button', { name: /prize by place/i }));
     expect(screen.getByRole('list', { name: 'Prize by place' }).children).toHaveLength(10);
-    expect(screen.getByText('No commanders have joined this galaxy yet.')).toBeVisible();
     expect(screen.queryByRole('list', { name: 'Leaderboard' })).toBeNull();
   });
 

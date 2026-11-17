@@ -17632,3 +17632,36 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 .gk-hullstat > dd.gk-num > .gk-glyph { width: 13px; height: 13px; }
 .gk-hullstat--peek > dt, .gk-hullstat--peek > dd.gk-num { padding-right: 30px; }
 .gk-hullstat__peek { top: -2px; right: -4px; }
+
+/* ── O4 (owner 2026-11-17): the standings open first; the reader's place is one line ── */
+.gk-lb__mine {
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 2px var(--gk-s2);
+  padding: var(--gk-s2) var(--gk-s3);
+}
+.gk-lb__mine .gk-lb__placefig,
+.gk-lb__mine .gk-lb__honorfig { font-size: var(--gk-t-title); }
+.gk-lb__mine .gk-lb__honorfig { justify-self: end; text-align: right; white-space: nowrap; }
+.gk-lb__unit { font-size: var(--gk-t-floor); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gk-ink-2); }
+.gk-lb__mine .gk-lb__next { font-size: var(--gk-t-floor); }
+.gk-lb__rules { display: grid; gap: 6px; }
+.gk-lb__rules > .gk-strike { margin: 0; }
+/* the page switch is one quiet strip under the race tabs, not a second row of plates */
+.gk-lb > .gk-choices {
+  gap: 0;
+  border-bottom: 1px solid var(--gk-metal-edge);
+}
+.gk-lb > .gk-choices > .gk-tab {
+  min-height: 34px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-size: var(--gk-t-floor);
+  letter-spacing: 0.08em;
+}
+.gk-lb > .gk-choices > .gk-tab[aria-checked='true'] {
+  color: var(--gk-self);
+  background: linear-gradient(0deg, color-mix(in srgb, var(--gk-self) 14%, transparent), transparent 90%);
+  box-shadow: inset 0 -2px 0 var(--gk-self);
+}

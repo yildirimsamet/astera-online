@@ -416,6 +416,8 @@ export const leaderboard = {
   honorPackageOnce: "両方のランキングで資源報酬を得た場合、次のシーズンに価値が高い方を一度だけ受け取ります。",
   honorNext: "{{commander}}と同点になるまであと{{amount}} Honor。",
   honorYourRank: "自分の順位",
+  view: { label: 'ランキングの表示', standings: '順位', rewards: '報酬', rules: 'ルール' },
+  ruleTitle: { combat: 'Honorの獲得', bands: '艦隊の戦力差', defense: '防衛', repeat: '再戦といじめ', prize: '報酬の分配', package: '報酬は1つ' },
   eyebrow: "ローカル銀河",
   title: "リーダーボード",
   empty: "この銀河にはまだ指揮官が参加していません。",

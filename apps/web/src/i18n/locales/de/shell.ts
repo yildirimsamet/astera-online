@@ -415,6 +415,8 @@ export const leaderboard = {
   honorPackageOnce: "Wenn beide Ranglisten Ressourcen vergeben, erhältst du das wertvollere Paket einmal in der nächsten Saison.",
   honorNext: "Noch {{amount}} Honor bis zum Gleichstand mit {{commander}}.",
   honorYourRank: "Dein Platz",
+  view: { label: 'Ansicht der Rangliste', standings: 'Rangliste', rewards: 'Belohnungen', rules: 'Regeln' },
+  ruleTitle: { combat: 'Honor verdienen', bands: 'Flottenverhältnis', defense: 'Verteidigung', repeat: 'Wiederholung und Schikane', prize: 'Preise teilen', package: 'Ein Paket' },
   eyebrow: 'Die lokale Galaxie',
   title: 'Bestenliste',
   empty: 'Bisher sind noch keine Kommandeure dieser Galaxie beigetreten.',

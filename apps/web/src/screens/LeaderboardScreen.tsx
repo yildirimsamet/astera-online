@@ -16,13 +16,12 @@ import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { SeasonRewardReceipt } from '../ui/SeasonRewardReceipt.js';
 import { RankingScores } from '../ui/RankingScores.js';
-import { RulesRow } from '../ui/RulesRow.js';
 import { SeasonRewardBoard } from '../ui/SeasonRewardBoard.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { Flag } from '../v2/identity/Flag.js';
 import { artIconSrc } from '../game-ui/art.js';
-import { GameTabs } from '../game-ui/controls.js';
-import { EmptyState, SectionTag } from '../game-ui/surfaces.js';
+import { Choices, GameTabs } from '../game-ui/controls.js';
+import { EmptyState, Fold, SectionTag } from '../game-ui/surfaces.js';
 
 /** The current season's Honor race, with the independent Dominion ladder alongside. */
 export function LeaderboardScreen({ onFocusPlanet }: {
@@ -33,6 +32,7 @@ export function LeaderboardScreen({ onFocusPlanet }: {
   const board = useLeaderboard(true, ranking);
   const season = useSeason();
   const [query, setQuery] = useState('');
+  const [page, setPage] = useState<LeaderboardPage>('standings');
 
   if (board.isError) {
     return (
@@ -88,108 +88,134 @@ export function LeaderboardScreen({ onFocusPlanet }: {
     ? board.data.ladder.slice(Math.max(0, mineIndex - 1), mineIndex + 2)
     : [];
 
+  // The board opens on the standings (owner, 2026-11-17, item 4); what the places pay and how
+  // Honor is scored each have their own page, so nothing stands between the tabs and the ladder.
+  const pages: { id: LeaderboardPage; label: string }[] = [
+    { id: 'standings', label: t('leaderboard.view.standings') },
+    ...(showPrizes || board.data.honorEnabled ? [{ id: 'rewards' as const, label: t('leaderboard.view.rewards') }] : []),
+    ...(honor ? [{ id: 'rules' as const, label: t('leaderboard.view.rules') }] : []),
+  ];
+  const shown: LeaderboardPage = pages.some((option) => option.id === page) ? page : 'standings';
+
+  const standings = <>
+    {honor && board.data.you ? <div data-honor-mine="" className="gk-well gk-lb__mine">
+      <span className="gk-label">{t('leaderboard.honorYourRank')}</span>
+      <span className="gk-num gk-lb__placefig">#{board.data.you.rank}</span>
+      <span className="gk-num gk-lb__honorfig">{honorScore(board.data.you.score)} <span className="gk-lb__unit">{t('leaderboard.honorTitle')}</span></span>
+      {next ? <p className="gk-lb__next">{t('leaderboard.honorNext', {
+        amount: honorScore(BigInt(next.score) - BigInt(board.data.you.score)), commander: next.username,
+      })}</p> : null}
+    </div> : null}
+    <div className="gk-lb__search">
+      <input
+        type="search"
+        name="leaderboard-search"
+        autoComplete="off"
+        value={query}
+        onChange={(event) => { setQuery(event.currentTarget.value); }}
+        aria-label={t('leaderboard.searchLabel')}
+        placeholder={t('leaderboard.searchPlaceholder')}
+        className="gk-field__input"
+      />
+    </div>
+    {nearby.length === 0 ? null : (
+      <section role="region" aria-label={t('leaderboard.nearby')} className="gk-lb__nearby">
+        <SectionTag>{t('leaderboard.nearby')}</SectionTag>
+        <div className="gk-ledger">
+          {nearby.map((row) => (
+            <LadderRow key={row.playerId} row={row} honor={honor} self={row.playerId === mine} widest={widest} onFocusPlanet={onFocusPlanet} />
+          ))}
+        </div>
+      </section>
+    )}
+    {rows.length === 0 ? (
+      <EmptyState art={artIconSrc('menu-ranking')} title={t(board.data.ladder.length === 0 ? 'leaderboard.empty' : 'leaderboard.noMatch')} body="" />
+    ) : (
+      <ol className="gk-ledger gk-lb__list" aria-label={t('leaderboard.title')}>
+        {rows.map((row) => (
+          <li key={row.playerId} aria-current={row.playerId === mine ? 'true' : undefined} className="gk-lb__item">
+            <LadderRow row={row} honor={honor} self={row.playerId === mine} widest={widest} onFocusPlanet={onFocusPlanet}
+              prize={showPrizes ? <RowPrize reward={prizes.get(row.playerId)} /> : null} />
+          </li>
+        ))}
+      </ol>
+    )}
+  </>;
+
+  const rewards = <>
+    {honor && prize ? <div data-honor-prize="" className="gk-well gk-lb__prize">
+      <p className="gk-lb__prizehead">
+        <span className="gk-report__subhead">{t('leaderboard.honorPrize')}</span>
+        <span className="gk-lb__chip">{t('leaderboard.honorPrizeMultiplier', { ranking: t('leaderboard.score') })}</span>
+      </p>
+      <p className="gk-report__label">{t('leaderboard.honorPayment')}</p>
+      <p className="gk-lb__purse gk-num">
+        {(['alloy', 'crystal', 'deuterium'] as const).map(resource => <span key={resource} className="gk-lb__coin" data-res={resource}>
+          <img src={RESOURCE_ART[resource]} alt={t(`vocabulary.resource.${resource}`)} />
+          {full(prize.reward[resource])}
+          <span className="gk-lb__of">/ {full(prize.nominal[resource])}</span>
+        </span>)}
+      </p>
+      <p className="gk-report__copy">{t('leaderboard.honorThreshold', { amount: honorScore(prize.fullThreshold) })}</p>
+    </div> : null}
+    <SeasonRewardBoard season={season.data} board={board.data} />
+    {honor && board.data.honorBenefits ? <HonorBenefitsSection value={board.data.honorBenefits} /> : null}
+    {board.data.honorEnabled ? <p className="gk-report__copy">{t('leaderboard.honorPackageOnce')}</p> : null}
+    {showPrizes ? <p className="gk-report__label">{t('leaderboard.rewards.rowExplain')}</p> : null}
+  </>;
+
+  const rules = <>
+    <div className="gk-lb__lead">
+      <p className="gk-report__subhead">{t('leaderboard.honorPrimary')}</p>
+      <p className="gk-report__copy">{t('leaderboard.honorLead')}</p>
+    </div>
+    {board.data.honorSoloCredit && <HonorSoloPolicy look="kit" />}
+    {board.data.honorStartsAt ? <div data-testid="honor-opening" className="gk-report__note" data-tone="good">
+      <p>
+        {t('leaderboard.honorOpened')} <time className="gk-num" dateTime={board.data.honorStartsAt.toISOString()}>
+          {new Intl.DateTimeFormat(i18n.resolvedLanguage, { dateStyle: 'medium', timeStyle: 'short' }).format(board.data.honorStartsAt)}
+        </time>
+      </p>
+      <p>{t('leaderboard.honorOpeningRule')}</p>
+    </div> : null}
+    <div className="gk-lb__rules">
+      {HONOR_RULES.map(({ id, glyph, text }) => (
+        <Fold key={id} data-honor-rule={id} glyph={glyph} title={t(`leaderboard.ruleTitle.${id}`)}>
+          <p className="gk-report__copy">{t(`leaderboard.${text}`)}</p>
+        </Fold>
+      ))}
+    </div>
+  </>;
+
   return (
     <div data-v2-leaderboard className="gk gk-lb">
       <SeasonRewardReceipt receipt={season.data?.seasonReward} />
-      {board.data.honorEnabled ? <section className="gk-lb__race">
-        <GameTabs<'HONOR' | 'DOMINION'>
-          label={t('leaderboard.rankingChoice')}
-          value={board.data.ranking}
-          onChange={setRanking}
-          tabs={[
-            { id: 'HONOR', label: t('leaderboard.honorTitle'), glyph: { id: 'star', tone: 'self' } },
-            { id: 'DOMINION', label: t('leaderboard.score'), glyph: { id: 'colony' } },
-          ]}
-        />
-        {honor ? <>
-          <div className="gk-lb__lead">
-            <p className="gk-report__subhead">{t('leaderboard.honorPrimary')}</p>
-            <p className="gk-report__copy">{t('leaderboard.honorLead')}</p>
-          </div>
-          {board.data.honorSoloCredit && <HonorSoloPolicy look="kit" />}
-          {board.data.honorStartsAt ? <div data-testid="honor-opening" className="gk-report__note" data-tone="good">
-            <p>
-              {t('leaderboard.honorOpened')} <time className="gk-num" dateTime={board.data.honorStartsAt.toISOString()}>
-                {new Intl.DateTimeFormat(i18n.resolvedLanguage, { dateStyle: 'medium', timeStyle: 'short' }).format(board.data.honorStartsAt)}
-              </time>
-            </p>
-            <p>{t('leaderboard.honorOpeningRule')}</p>
-          </div> : null}
-          {board.data.you ? <div data-honor-mine="" className="gk-well gk-lb__mine">
-            <span className="gk-lb__place">
-              <span className="gk-label">{t('leaderboard.honorYourRank')}</span>
-              <span className="gk-display gk-num gk-lb__placefig">#{board.data.you.rank}</span>
-            </span>
-            <span className="gk-lb__honor">
-              <span className="gk-display gk-num gk-lb__honorfig">{honorScore(board.data.you.score)}</span>
-              <span className="gk-label">{t('leaderboard.honorTitle')}</span>
-            </span>
-            {next ? <p className="gk-lb__next">{t('leaderboard.honorNext', {
-              amount: honorScore(BigInt(next.score) - BigInt(board.data.you.score)), commander: next.username,
-            })}</p> : null}
-          </div> : null}
-          {board.data.honorBenefits ? <HonorBenefitsSection value={board.data.honorBenefits} /> : null}
-          {prize ? <div data-honor-prize="" className="gk-well gk-lb__prize">
-            <p className="gk-lb__prizehead">
-              <span className="gk-report__subhead">{t('leaderboard.honorPrize')}</span>
-              <span className="gk-lb__chip">{t('leaderboard.honorPrizeMultiplier', { ranking: t('leaderboard.score') })}</span>
-            </p>
-            <p className="gk-report__label">{t('leaderboard.honorPayment')}</p>
-            <p className="gk-lb__purse gk-num">
-              {(['alloy', 'crystal', 'deuterium'] as const).map(resource => <span key={resource} className="gk-lb__coin" data-res={resource}>
-                <img src={RESOURCE_ART[resource]} alt={t(`vocabulary.resource.${resource}`)} />
-                {full(prize.reward[resource])}
-                <span className="gk-lb__of">/ {full(prize.nominal[resource])}</span>
-              </span>)}
-            </p>
-            <p className="gk-report__copy">{t('leaderboard.honorThreshold', { amount: honorScore(prize.fullThreshold) })}</p>
-          </div> : null}
-          <RulesRow glyph="help" title={t('leaderboard.honorRules')}>
-            <p>{t('leaderboard.honorRuleCombat')}</p><p>{t('leaderboard.honorRuleBands')}</p><p>{t('leaderboard.honorRuleDefense')}</p>
-            <p>{t('leaderboard.honorRuleRepeat')}</p><p>{t('leaderboard.honorPrizeHint')}</p><p>{t('leaderboard.honorPackageOnce')}</p>
-          </RulesRow>
-        </> : null}
-      </section> : null}
-      <SeasonRewardBoard season={season.data} board={board.data} />
-      {board.data.honorEnabled ? <p className="gk-report__copy">{t('leaderboard.honorPackageOnce')}</p> : null}
-      {showPrizes ? <p className="gk-report__label">{t('leaderboard.rewards.rowExplain')}</p> : null}
-      <div className="gk-lb__search">
-        <input
-          type="search"
-          name="leaderboard-search"
-          autoComplete="off"
-          value={query}
-          onChange={(event) => { setQuery(event.currentTarget.value); }}
-          aria-label={t('leaderboard.searchLabel')}
-          placeholder={t('leaderboard.searchPlaceholder')}
-          className="gk-field__input"
-        />
-      </div>
-      {nearby.length === 0 ? null : (
-        <section role="region" aria-label={t('leaderboard.nearby')} className="gk-lb__nearby">
-          <SectionTag>{t('leaderboard.nearby')}</SectionTag>
-          <div className="gk-ledger">
-            {nearby.map((row) => (
-              <LadderRow key={row.playerId} row={row} honor={honor} self={row.playerId === mine} widest={widest} onFocusPlanet={onFocusPlanet} />
-            ))}
-          </div>
-        </section>
-      )}
-      {rows.length === 0 ? (
-        <EmptyState art={artIconSrc('menu-ranking')} title={t(board.data.ladder.length === 0 ? 'leaderboard.empty' : 'leaderboard.noMatch')} body="" />
-      ) : (
-        <ol className="gk-ledger gk-lb__list" aria-label={t('leaderboard.title')}>
-          {rows.map((row) => (
-            <li key={row.playerId} aria-current={row.playerId === mine ? 'true' : undefined} className="gk-lb__item">
-              <LadderRow row={row} honor={honor} self={row.playerId === mine} widest={widest} onFocusPlanet={onFocusPlanet}
-                prize={showPrizes ? <RowPrize reward={prizes.get(row.playerId)} /> : null} />
-            </li>
-          ))}
-        </ol>
-      )}
+      {board.data.honorEnabled ? <GameTabs<'HONOR' | 'DOMINION'>
+        label={t('leaderboard.rankingChoice')}
+        value={board.data.ranking}
+        onChange={setRanking}
+        tabs={[
+          { id: 'HONOR', label: t('leaderboard.honorTitle'), glyph: { id: 'star', tone: 'self' } },
+          { id: 'DOMINION', label: t('leaderboard.score'), glyph: { id: 'colony' } },
+        ]}
+      /> : null}
+      {pages.length > 1 ? <Choices<LeaderboardPage> label={t('leaderboard.view.label')} options={pages} value={shown} onChange={setPage} /> : null}
+      {shown === 'standings' ? standings : shown === 'rewards' ? rewards : rules}
     </div>
   );
 }
+
+type LeaderboardPage = 'standings' | 'rewards' | 'rules';
+
+/** Each Honor rule under its own short title, shut until asked (owner 2026-11-17: no wall of text). */
+const HONOR_RULES = [
+  { id: 'combat', glyph: 'attack', text: 'honorRuleCombat' },
+  { id: 'bands', glyph: 'target', text: 'honorRuleBands' },
+  { id: 'defense', glyph: 'shield', text: 'honorRuleDefense' },
+  { id: 'repeat', glyph: 'refresh', text: 'honorRuleRepeat' },
+  { id: 'prize', glyph: 'crate', text: 'honorPrizeHint' },
+  { id: 'package', glyph: 'star', text: 'honorPackageOnce' },
+] as const;
 
 type LeaderboardRow = NonNullable<ReturnType<typeof useLeaderboard>['data']>['ladder'][number];
 

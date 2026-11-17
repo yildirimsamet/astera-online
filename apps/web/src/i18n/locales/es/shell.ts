@@ -415,6 +415,8 @@ export const leaderboard = {
   honorPackageOnce: "Si ambas clasificaciones otorgan recursos, recibes una vez el paquete de mayor valor en la siguiente temporada.",
   honorNext: "Faltan {{amount}} Honor para empatar con {{commander}}.",
   honorYourRank: "Tu puesto",
+  view: { label: 'Vista de la clasificación', standings: 'Clasificación', rewards: 'Premios', rules: 'Reglas' },
+  ruleTitle: { combat: 'Ganar Honor', bands: 'Equilibrio de flotas', defense: 'Defensa', repeat: 'Repetición y abuso', prize: 'Reparto de premios', package: 'Un solo paquete' },
   eyebrow: 'La galaxia local',
   title: 'Tabla de clasificación',
   empty: 'Ningún comandante se ha unido a esta galaxia todavía.',
