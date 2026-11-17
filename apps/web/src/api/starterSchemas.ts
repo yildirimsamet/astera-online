@@ -120,7 +120,8 @@ export const migrationViewSchema = z.object({
   /** Alloy and crystal both at the cap: more earned here is not carried. */
   full: z.boolean(),
   left: z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number(), ships: z.number() }),
-  choices: z.array(z.object({ index: z.number(), x: z.number(), y: z.number(), z: z.number(), neighbours: z.number() })),
+  // `friend`: the old starter neighbour this address lies beside (plan 2026-11-06 §7.3-4).
+  choices: z.array(z.object({ index: z.number(), x: z.number(), y: z.number(), z: z.number(), neighbours: z.number(), friend: z.string().optional() })),
 });
 export type MigrationView = z.infer<typeof migrationViewSchema>;
 

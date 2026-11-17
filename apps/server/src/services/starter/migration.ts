@@ -92,25 +92,38 @@ export async function migrationView(db: Db, accountId: string, clock: Clock) {
       deuterium: Math.max(0, Math.floor(held.deuterium) - cargo.deuterium),
       ships: owned - carried,
     },
-    choices: block === null && frontier ? await addressesIn(db, frontier.code, clock) : [],
+    choices: block === null && frontier ? await addressesIn(db, frontier.code, clock, { galaxy: ship.galaxy.id, accountId }) : [],
   };
 }
 
-async function addressesIn(db: Db, shardCode: string, clock: Clock) {
+/** Old neighbours: who left this starter galaxy in the last week, at their capital in the target season. */
+const FRIEND_DAYS = 7;
+async function friendsFrom(db: Db, from: { galaxy: string; accountId: string }, seasonId: string, clock: Clock) {
+  const since = new Date(clock.now().getTime() - FRIEND_DAYS * 86_400_000);
+  return db.selectDistinct({ name: accounts.displayName, x: planets.x, y: planets.y, z: planets.z })
+    .from(starterDepartures)
+    .innerJoin(accounts, eq(accounts.id, starterDepartures.accountId))
+    .innerJoin(players, and(eq(players.accountId, starterDepartures.accountId), eq(players.seasonId, seasonId)))
+    .innerJoin(planets, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
+    .where(and(eq(starterDepartures.starterGalaxyId, from.galaxy), ne(starterDepartures.accountId, from.accountId), gt(starterDepartures.at, since)));
+}
+
+async function addressesIn(db: Db, shardCode: string, clock: Clock, from: { galaxy: string; accountId: string }) {
   const target = await resolveJoinTarget(db, shardCode, clock);
   const [season] = await db.select({ seed: seasons.seed, cycleId: seasons.cycleId, shardId: seasons.shardId }).from(seasons).where(eq(seasons.id, target.seasonId));
   const worlds = await db.select({ index: planets.slotIndex, x: planets.x, y: planets.y, z: planets.z }).from(planets).where(eq(planets.seasonId, target.seasonId));
   const { slots } = galaxyOf(target.seasonId, season!.seed, target.playerCap);
   // An address kept for a returning commander is not free, and offering it would be a promise the jump breaks.
   const held = await slotsHeldForReturn(db, { seasonId: target.seasonId, cycleId: season!.cycleId, shardId: season!.shardId }, clock.now());
-  return landingChoices(slots, new Set([...worlds.map(row => row.index), ...held]), worlds);
+  const friends = await friendsFrom(db, from, target.seasonId, clock);
+  return landingChoices(slots, new Set([...worlds.map(row => row.index), ...held]), worlds, friends);
 }
 
 /** Step 1. Under the ship's lock: the conditions, the refunds, the hold. A press on a ship already leaving joins it. */
 async function commitDeparture(db: Db, accountId: string, clock: Clock, { slot, force = false, season }: DepartureOptions): Promise<string> {
   const frontier = await openFrontier(db, clock);
   // The three on the panel are the whole choice: any other free address is one nobody was offered (A7).
-  const offered = slot !== undefined && !force && frontier ? await addressesIn(db, frontier.code, clock) : null;
+  const offered = slot !== undefined && !force && frontier ? await addressesIn(db, frontier.code, clock, { galaxy: (await readVessel(db, accountId, clock)).galaxy.id, accountId }) : null;
   return db.transaction(async (tx) => {
     const vessel = await lockVesselForDeparture(tx, accountId, clock);
     if (vessel.row.status === 'DEPARTING') return vessel.row.id;

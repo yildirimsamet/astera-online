@@ -134,6 +134,19 @@ describe('the jump decision panel', () => {
   });
 });
 
+// Plan 2026-11-06 §7.3-4 (Faz 4.6): the address beside an old starter neighbour says who is near.
+describe('landing beside an old neighbour', () => {
+  it('names the old neighbour on that address, and only there', () => {
+    const choices = [{ index: 1, x: 100, y: 0, z: 0, neighbours: 0 }, { index: 2, x: 900, y: 0, z: 0, neighbours: 2, friend: 'Vela' }, { index: 3, x: 2000, y: 0, z: 0, neighbours: 6 }];
+    const { wrap } = harness(view({ choices }));
+    render(wrap(<LandingChoice view={view({ choices }) as unknown as MigrationView} onCancel={vi.fn()} onLanded={vi.fn()} />));
+    const radios = screen.getAllByRole('radio');
+    expect(radios[1]).toHaveTextContent('Old neighbour Vela is near');
+    expect(radios[1]).toHaveAccessibleName(/Old neighbour Vela is near/u);
+    expect(radios[0]).not.toHaveTextContent(/Old neighbour/u);
+  });
+});
+
 /** The jump is the heaviest act of the ship: the final hold, 1.5 s (owner 2026-11-13, §10.7-10). */
 describe('the jump itself', () => {
   it('leaves only on a final hold of a second and a half', async () => {

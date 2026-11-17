@@ -85,4 +85,29 @@ describe('three places to land', () => {
     expect(between!.index).toBe(30);
     expect(between!.neighbours).toBe(2);
   });
+
+  // Plan 2026-11-06 §7.3-4 (Faz 4.5/4.6): one of the three lands beside an old starter neighbour.
+  describe('beside an old neighbour', () => {
+    const vela = { x: 3150, y: 0, z: 0, name: 'Vela' };
+    it('puts the free address nearest the neighbour in the middle one\'s place, and names who is near', () => {
+      const plain = landingChoices(slots, taken).map(choice => choice.index);
+      const choices = landingChoices(slots, taken, undefined, [vela]);
+      expect(choices.map(choice => choice.index)).toEqual([plain[0], 14, plain[2]]);
+      expect(choices.find(choice => choice.index === 14)?.friend).toBe('Vela');
+      expect(choices.filter(choice => choice.friend !== undefined)).toHaveLength(1);
+    });
+    it('only names it when the nearest address is already offered', () => {
+      const choices = landingChoices(slots, taken, undefined, [{ ...vela, x: 1550 }]);
+      expect(choices.map(choice => choice.index)).toEqual(landingChoices(slots, taken).map(choice => choice.index));
+      expect(choices.find(choice => choice.index === 12)?.friend).toBe('Vela');
+    });
+    it('takes the nearest of several neighbours', () => {
+      const choices = landingChoices(slots, taken, undefined, [{ ...vela, x: 9000, name: 'Far' }, vela]);
+      expect(choices.find(choice => choice.friend !== undefined)).toMatchObject({ index: 14, friend: 'Vela' });
+    });
+    it('names it among the few places left', () => {
+      const few = [...crowd, slot(12, 1500), slot(14, 3200)];
+      expect(landingChoices(few, taken, undefined, [vela]).map(choice => [choice.index, choice.friend])).toEqual([[12, undefined], [14, 'Vela']]);
+    });
+  });
 });

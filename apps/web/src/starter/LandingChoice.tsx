@@ -125,14 +125,17 @@ export function LandingChoice({ view: opened, onCancel, onLanded }: {
                   const on = picked === choice.index;
                   return (
                     <button key={choice.index} type="button" role="radio" aria-checked={on}
-                      aria-label={`${t(`starter.jump.tone.${tone}`)}. ${t('starter.jump.neighbours', { count: choice.neighbours })}`}
+                      aria-label={`${t(`starter.jump.tone.${tone}`)}. ${t('starter.jump.neighbours', { count: choice.neighbours })}${choice.friend ? `. ${t('starter.jump.friendNear', { name: choice.friend })}` : ''}`}
                       onClick={() => { setWanted(choice.index); }}
                       className={`min-h-10 rounded-control border px-2 py-1 text-left ${on ? 'border-v2-self bg-v2-self/10' : 'border-v2-line bg-v2-void/50'}`}>
                       <span className="flex items-baseline justify-between gap-2">
                         <span className="truncate text-caption font-medium text-v2-ink">{t(`starter.jump.tone.${tone}`)}</span>
                         <span className="shrink-0 font-v2-mono text-micro text-v2-ink-2">{t('starter.jump.neighbours', { count: choice.neighbours })}</span>
                       </span>
-                      <span className="block text-micro leading-snug text-v2-ink-3">{t(`starter.jump.toneNote.${tone}`)}</span>
+                      {/* Beside an old neighbour, who is near says more than the tone's general note. */}
+                      {choice.friend
+                        ? <span className="block truncate text-micro font-semibold leading-snug text-v2-self">{t('starter.jump.friendNear', { name: choice.friend })}</span>
+                        : <span className="block text-micro leading-snug text-v2-ink-3">{t(`starter.jump.toneNote.${tone}`)}</span>}
                     </button>
                   );
                 })}

@@ -16,7 +16,7 @@ interface MigrationView {
   full: boolean;
   cargo: { alloy: number; crystal: number; deuterium: number; fleet: Fleet };
   left: { alloy: number; crystal: number; deuterium: number; ships: number };
-  choices: { index: number; x: number; y: number; z: number; neighbours: number }[];
+  choices: { index: number; x: number; y: number; z: number; neighbours: number; friend?: string }[];
 }
 interface Landing { placement: { shard: string; shardName: string; seasonId: string; planetId: string; playerId: string; position: { x: number; y: number; z: number } }; cargo: MigrationView['cargo'] }
 
@@ -36,6 +36,19 @@ describe('the jump', () => {
 
   beforeEach(async () => { world = await starterWorld(); });
   afterEach(async () => { await world.built.close(); });
+
+  // Plan 2026-11-06 §7.3-4 (Faz 4.6): one of the three addresses lies beside an old neighbour who landed this week.
+  it('offers an address beside an old starter neighbour who landed in the last seven days', async () => {
+    const person = await ready();
+    const galaxy = (await shipOf(person.vesselId)).starterGalaxyId;
+    const [vela] = await world.f.db.select({ name: accounts.displayName }).from(accounts).where(eq(accounts.id, world.f.accountIds[0]!));
+    const left = (days: number) => world.f.db.insert(starterDepartures).values({ starterGalaxyId: galaxy, accountId: world.f.accountIds[0]!, displayName: 'then', countryCode: 'TR', x: 0, y: 0, z: 0, at: new Date(world.f.clock.now().getTime() - days * 86_400_000) });
+    const friendsOf = async () => (await get<MigrationView>(world, '/api/starter/migration', person.headers)).choices.filter(choice => choice.friend !== undefined);
+    await left(8);
+    expect(await friendsOf()).toEqual([]);
+    await left(2);
+    expect(await friendsOf()).toEqual([expect.objectContaining({ friend: vela!.name })]);
+  });
 
   // Plan 2026-11-13 §5.6 (S2): the jump burns no tank, so there is none to load and none to show.
   it('has no tank to load and shows none', async () => {
