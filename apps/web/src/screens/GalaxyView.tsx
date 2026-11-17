@@ -1986,7 +1986,7 @@ export function GalaxyView({
       {/* A selection that draws a card already took the foot (`bottomSurface`); the own ship draws none,
           so a tap on it must not hide the step the guide points at (prod 2026-11-13: 5 of 6 stuck guides). */}
       {ship && bottom === 'starter' && (
-        <div className={`pointer-events-auto absolute inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 ${focus !== null && !focusGone ? 'hidden' : ''}`}>
+        <div className="pointer-events-auto absolute inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20">
           {cornerButtons && <div className="mb-2 flex justify-end">{cornerButtons}</div>}
           {/* A raid on an outpost that ends while the player watches is told here, over the next step (F4f). */}
           {outcome.current && <OutpostOutcome outcome={outcome.current} onDone={outcome.dismiss} onOpenShip={() => { onPanel('planet'); }} onOpenReport={(reportId) => { if (reportId) onPanel('report', 'battles', reportId); else openBattleList(); }} />}

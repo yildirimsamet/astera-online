@@ -2,13 +2,13 @@ import { FIRST_SEASON_START, REPAIR_LADDER, STARTER, moduleStage, type VesselPro
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MigrationView, VesselView } from '../api/starterSchemas.js';
-import { ArtIcon, Banner, GameButton, ProgressBar, SectionTag, StoreGauge } from '../game-ui/index.js';
+import { ArtIcon, Banner, GameButton, InfoPeek, ProgressBar, SectionTag, StoreGauge } from '../game-ui/index.js';
 import { full } from '../lib/format.js';
 import { useNow } from '../lib/time.js';
 import { LeftBehind } from './LandingChoice.js';
 import { useMigration } from './queries.js';
 import { jumpOutlook, type JumpOutlook } from './departurePlan.js';
-import { ProtectionLines } from './ProtectionLines.js';
+import { LANDING_GUARD, ProtectionLines } from './ProtectionLines.js';
 import './jumpCall.css';
 
 /** What the ship makes each hour: how fast the hold fills while it stays. */
@@ -68,24 +68,32 @@ export function MigrationPanel({ vessel, income, onJump }: { vessel: VesselView;
             </li>
           </ul>
         )}
-        {view?.full && <p data-testid="hold-full" className="text-caption font-semibold leading-snug text-v2-warn">{t('starter.jump.holdFull')}</p>}
       </Part>
 
       <Part id="jump-stay" tag={t('starter.jump.stayTitle')}>
-        <p className={line}>{t('starter.jump.stayLine', { mult: STARTER.outputMult })}</p>
+        {/* What staying is worth, until the hold is full: then what staying no longer brings. */}
+        <InfoPeek about={t('starter.jump.stayAbout')}
+          fact={view?.full
+            ? <span data-testid="hold-full" className="text-caption font-semibold leading-snug text-v2-warn">{t('starter.jump.holdFull')}</span>
+            : <span className={line}>{t('starter.jump.stayFact', { mult: STARTER.outputMult })}</span>}
+          rule={<p className={line}>{t('starter.jump.stayLine', { mult: STARTER.outputMult })}</p>} />
       </Part>
 
       <Part id="jump-land" tag={t('starter.jump.landTitle')}>
         <p className={line}>{t('starter.jump.landPack', { alloy: full(PACK.alloy), crystal: full(PACK.crystal), ships: PACK_SHIPS })}</p>
-        <ProtectionLines className={`flex list-disc flex-col gap-0.5 pl-4 ${line}`} />
+        {/* The numbers on the line; what each rule means opens on the "?" (UI standard: ≤ 55 words a screen). */}
+        <InfoPeek about={t('starter.jump.guardAbout')}
+          fact={<span className={line}>{t('starter.jump.guardFact', { shield: LANDING_GUARD.shieldHours, low: LANDING_GUARD.coreLow, high: LANDING_GUARD.coreHigh, silent: LANDING_GUARD.silentHours })}</span>}
+          rule={<ProtectionLines className={`flex list-disc flex-col gap-0.5 pl-4 ${line}`} />} />
       </Part>
 
       {/* The loss is said while it can still be spent or flown home (player test, 2026-11-05). */}
       <Part id="jump-behind" tag={t('starter.jump.behindTitle')}>
         {view && <LeftBehind left={view.left} />}
-        <p data-testid="jump-stays" className={line}>
-          {t('starter.jump.staysAboard')}{optional > 0 && <> {t('starter.plan.optional', { count: optional })}</>}
-        </p>
+        {optional > 0
+          ? <InfoPeek about={t('starter.jump.behindAbout')} fact={<span data-testid="jump-stays" className={line}>{t('starter.jump.staysAboard')}</span>}
+              rule={<p className={line}>{t('starter.plan.optional', { count: optional })}</p>} />
+          : <p data-testid="jump-stays" className={line}>{t('starter.jump.staysAboard')}</p>}
       </Part>
 
       {outlook && <Outlook outlook={outlook} />}

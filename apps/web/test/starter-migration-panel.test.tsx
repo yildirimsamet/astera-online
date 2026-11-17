@@ -81,7 +81,7 @@ describe('the jump panel', () => {
   it('says when the hold is full that more is not carried', async () => {
     const { wrap } = harness(view({ full: true, fill: { alloy: 1, crystal: 1, deuterium: 0.2, ships: 0.5 } }));
     render(wrap(<MigrationPanel income={income} vessel={shipWith()} onJump={vi.fn()} />));
-    expect(await screen.findByTestId('hold-full')).toHaveTextContent(/hold is full/iu);
+    expect(await screen.findByTestId('hold-full')).toHaveTextContent(/Hold full/u);
   });
 
   /**
@@ -91,7 +91,7 @@ describe('the jump panel', () => {
   it('names what will stay behind, and that repairs stay aboard, before the jump', async () => {
     const { wrap } = harness(view());
     render(wrap(<MigrationPanel income={income} vessel={shipWith()} onJump={vi.fn()} />));
-    expect(await screen.findByTestId('jump-left')).toHaveTextContent('Stays behind and is lost: 3,000 alloy, 0 crystal, 30 Deuterium, 2 ships.');
+    expect(await screen.findByTestId('jump-left')).toHaveTextContent('Lost: 3,000 alloy, 30 Deuterium, 2 ships.');
     expect(screen.getByTestId('jump-stays')).toHaveTextContent(/repairs and research stay aboard/iu);
   });
 

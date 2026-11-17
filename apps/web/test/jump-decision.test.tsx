@@ -70,16 +70,26 @@ describe('the jump decision panel', () => {
     expect(ships).toHaveAttribute('aria-valuemax', String(STARTER.carry.ships));
   });
 
-  it('says what staying is worth, and how the hold fills', async () => {
+  it('says what staying is worth, and how the hold fills one tap away', async () => {
     const { wrap } = harness(view());
     render(wrap(<MigrationPanel vessel={ship()} income={income} onJump={vi.fn()} />));
     const stay = await screen.findByTestId('jump-stay');
     expect(stay).toHaveTextContent(`${String(STARTER.outputMult)}×`);
+    expect(stay).not.toHaveTextContent(/first hunt/iu);
+    fireEvent.click(within(stay).getByRole('button', { name: /How the hold fills/u }));
     expect(stay).toHaveTextContent(/first hunt/iu);
     expect(stay).toHaveTextContent(/mining/iu);
   });
 
-  it('says what lands with the hold, and the protection in the player\'s own numbers', async () => {
+  it('says, once the hold is full, that staying fills it no more', async () => {
+    const { wrap } = harness(view({ full: true }));
+    render(wrap(<MigrationPanel vessel={ship()} income={income} onJump={vi.fn()} />));
+    const stay = await screen.findByTestId('jump-stay');
+    await waitFor(() => { expect(within(stay).getByTestId('hold-full')).toHaveTextContent(/Hold full: new earnings stay aboard/u); });
+    expect(stay).not.toHaveTextContent(`${String(STARTER.outputMult)}×`);
+  });
+
+  it('says what lands with the hold and the protection in numbers, the rules one tap away', async () => {
     const { wrap } = harness(view());
     render(wrap(<MigrationPanel vessel={ship()} income={income} onJump={vi.fn()} />));
     const land = await screen.findByTestId('jump-land');
@@ -88,10 +98,29 @@ describe('the jump decision panel', () => {
     expect(land).toHaveTextContent(`${pack.alloy.toLocaleString('en')} alloy`);
     expect(land).toHaveTextContent(`${pack.crystal.toLocaleString('en')} crystal`);
     expect(land).toHaveTextContent(`${String(ships)} ships`);
-    expect(land).toHaveTextContent(/72 hours/u);
+    expect(land).toHaveTextContent(/Shield 72 h/u);
+    expect(land).toHaveTextContent(/Core 1–6/u);
+    expect(land).toHaveTextContent(/Silent Space 30 h/u);
+    expect(land).not.toHaveTextContent(/pirates does not/iu);
+    fireEvent.click(within(land).getByRole('button', { name: /How your world is kept/u }));
     expect(land).toHaveTextContent(/pirates does not/iu);
-    expect(land).toHaveTextContent(/Command Core 1–6/u);
-    expect(land).toHaveTextContent(/30 hours/u);
+  });
+
+  // Plan 2026-11-13 §4.4 and the UI standard (≤ 55 words a screen): the facts are read, the rules opened.
+  // The panel scrolls under the ship over about two screens and the audit counts each screen as it
+  // scrolls (checked in the browser); here the whole panel is held under its measured 62 + a little.
+  it('keeps the whole decision within its word budget', async () => {
+    const { wrap } = harness(view({ full: true, left: { alloy: 6714, crystal: 1250, deuterium: 0, ships: 0 } }));
+    render(wrap(<MigrationPanel vessel={ship()} income={income} onJump={vi.fn()} />));
+    const panel = await screen.findByTestId('migration-panel');
+    await screen.findByTestId('jump-left');
+    // Counted the way the UI audit counts: tokens of shown text that carry a letter or a digit.
+    const walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT);
+    let count = 0;
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      count += (node.textContent ?? '').split(/\s+/u).filter(token => /[\p{L}\p{N}]/u.test(token)).length;
+    }
+    expect(count).toBeLessThanOrEqual(64);
   });
 
   it('keeps what stays aboard beside what is lost', async () => {
@@ -99,6 +128,8 @@ describe('the jump decision panel', () => {
     render(wrap(<MigrationPanel vessel={ship()} income={income} onJump={vi.fn()} />));
     const behind = await screen.findByTestId('jump-behind');
     await waitFor(() => { expect(within(behind).getByTestId('jump-left')).toBeInTheDocument(); });
+    // Only what is really lost is named: no "0 crystal".
+    expect(within(behind).getByTestId('jump-left')).toHaveTextContent(/^Lost: 500 alloy, 1 ship\.$/u);
     expect(within(behind).getByTestId('jump-stays')).toHaveTextContent(/repairs and research stay aboard/iu);
   });
 });

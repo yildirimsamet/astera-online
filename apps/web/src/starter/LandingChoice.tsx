@@ -56,10 +56,15 @@ function Amount({ resource, amount }: { resource: 'alloy' | 'crystal' | 'deuteri
 /** What will not make the jump, said wherever the jump is weighed (player test: seen only at the end). */
 export function LeftBehind({ left }: { left: MigrationView['left'] }) {
   const { t } = useTranslation();
-  if (left.alloy + left.crystal + left.deuterium + left.ships <= 0) return null;
+  // Only what is really lost is named: "0 crystal" is a word the player reads for nothing.
+  const parts = [
+    ...(['alloy', 'crystal', 'deuterium'] as const).filter(key => left[key] > 0).map(key => t(`starter.jump.leftPart.${key}`, { amount: full(left[key]) })),
+    ...(left.ships > 0 ? [t('starter.jump.leftPart.ships', { count: left.ships })] : []),
+  ];
+  if (parts.length === 0) return null;
   return (
     <p data-testid="jump-left" className="text-micro leading-snug text-v2-ink-2">
-      {t('starter.jump.left', { alloy: full(left.alloy), crystal: full(left.crystal), deuterium: full(left.deuterium), ships: left.ships })}
+      {t('starter.jump.left', { list: parts.join(t('starter.jump.leftJoin')) })}
     </p>
   );
 }
