@@ -1097,7 +1097,8 @@ function GalleryFocusClosed({ own, open = false }: { own: boolean; open?: boolea
 }
 
 /** G4-b3: a neutral world in its claim window, the route open on its third step. */
-function GalleryFocusNeutral() {
+/** `focus-neutral-locked` (owner 2026-11-17): no claim yet and the colony slot shut behind the Core — the long requirement line. */
+function GalleryFocusNeutral({ locked = false }: { locked?: boolean }) {
   const client = useQueryClient();
   useState(() => {
     client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [], radiation: [] });
@@ -1105,7 +1106,8 @@ function GalleryFocusNeutral() {
     return null;
   });
   return (
-    <PlanetFocus target={claimWorld(true)} planet={{ ...launchWorld, colonies: { capitalCore: 4, colonies: 0, reservations: 0, capacity: 1 } }}
+    <PlanetFocus target={locked ? { ...claimWorld(true), neutral: { tier: 1, threat: 'UNGUARDED', reserve: 'RICH', nextReinforcementAt: null, claimUntil: null } }
+      : claimWorld(true)} planet={{ ...launchWorld, colonies: locked ? { capitalCore: 3, colonies: 0, reservations: 0, capacity: 0 } : { capitalCore: 4, colonies: 0, reservations: 0, capacity: 1 } }}
       intel={launchIntel} reports={[]} now={NOW} onSettle={noop}
       onClose={noop} onAttack={noop} onInstallTelescope={noop} onLaunched={noop} open onToggle={noop} />
   );
@@ -1454,6 +1456,7 @@ function Views({ view }: { view: string }) {
   if (view === 'focus-own') return <GalleryFocusClosed own />;
   if (view === 'focus-own-open') return <GalleryFocusClosed own open />;
   if (view === 'focus-neutral') return <GalleryFocusNeutral />;
+  if (view === 'focus-neutral-locked') return <GalleryFocusNeutral locked />;
   if (view === 'focus-monument') return <GalleryMonumentFocus />;
   if (view === 'focus-asteroid' || view === 'focus-debris') return <GalleryMining kind={view === 'focus-asteroid' ? 'asteroid' : 'debris'} />;
   // G4-h2: a pirate seen by the eye; a contact read by Radar coming at me; one in full sight; my Prospectors coming home.

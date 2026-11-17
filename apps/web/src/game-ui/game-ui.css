@@ -4528,11 +4528,12 @@ button:active > .gk-sheet__grab {
   transition: width var(--gk-quick) var(--gk-ease), background-color var(--gk-quick) var(--gk-ease);
 }
 /*
-  ONE HEAD, AT MOST 48 PX (owner 2026-11-16, S1): "headerlar fazla büyük … en fazla 50px". Every
+  ONE HEAD, 54 PX (owner 2026-11-16, S1: "headerlar fazla büyük … en fazla 50px"; 2026-11-17: 48 px read
+  too small, "hepsini 54px olmasını istiyorum"). Every
   kit sheet wears the same bar: the subject's mark, a small line over a one-line title, the close.
   No plate inside the panel — the sheet is the plate; the tone is a wash from the left and an
   underline, the pull handle sits in the bar's quiet middle, and a picture head (`sheet-art-head`)
-  paints the same 48 px.
+  paints the same 54 px.
 */
 .gk-sheet__head {
   --wash: transparent;
@@ -4542,7 +4543,7 @@ button:active > .gk-sheet__grab {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--gk-s2);
-  height: 48px;
+  height: 54px;
   padding: 4px 2px 0 var(--gk-gutter);
   isolation: isolate;
 }
@@ -17694,3 +17695,89 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
   text-align: center;
 }
 .gk-rewards__podname .gk-label { color: var(--gk-ink); }
+
+/* ── the monument sheet (owner 2026-11-17): the monument beside its facts, three pages, the flight on four plates ── */
+.gk-mon__facts {
+  grid-template-columns: 84px minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--gk-s3);
+}
+.gk-mon__facts > .gk-mon__factbody:only-child { grid-column: 1 / -1; }
+.gk-mon__portrait {
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  /* the derelict hangs in its own light, turning slowly: a place, not a row */
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--gk-self) 22%, transparent), transparent);
+  filter: drop-shadow(0 4px 10px var(--gk-outline));
+  animation: gk-mon-drift 7s ease-in-out infinite;
+}
+@keyframes gk-mon-drift {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50% { transform: translateY(-3px) rotate(1.5deg); }
+}
+.gk-mon__factbody {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.gk-mon__plates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.gk-mon__plates .gk-stat { padding: 6px var(--gk-s2); }
+.gk-mon__known {
+  display: grid;
+  gap: 4px;
+  padding: var(--gk-s2) var(--gk-s3);
+  border-left: 2px solid color-mix(in srgb, var(--gk-hostile) 70%, transparent);
+  background: color-mix(in srgb, var(--gk-hostile) 7%, transparent);
+  border-radius: 0 var(--gk-r-sm) var(--gk-r-sm) 0;
+}
+.gk-mon__knownhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gk-s2);
+}
+/* the garrison reads as a row of hulls, not a list */
+.gk-mon__known .gk-mon__seen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--gk-s3);
+  margin: 0;
+}
+.gk-mon__known .gk-mon__seen li {
+  display: inline-flex;
+  gap: 4px;
+}
+.gk-mon__risk {
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-hostile);
+  text-align: center;
+}
+
+/* A requirement never widens its card (owner 2026-11-17: the colony route scrolled sideways on a neutral
+   world — "Koloni yuvası: Komuta Çekirdeği 9 gerekli · şu an 3" held one line wider than the panel). A short
+   chip still reads on one line; a long one wraps inside the card's width. */
+.gk-req,
+.gk-need-door { max-width: 100%; min-width: 0; }
+.gk-need-chip {
+  max-width: 100%;
+  min-width: 0;
+  padding-block: 3px;
+  line-height: 1.25;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* The whole throttle is the drag's (owner 2026-11-17): no pan or text pick may take a thumb that began on a label or an end. */
+.gk-throttle {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: pointer;
+}
