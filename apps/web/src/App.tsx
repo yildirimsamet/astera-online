@@ -318,7 +318,11 @@ function SessionApp() {
             onOpenChat={onOpenChat}
             onOpenBell={onOpenBell}
           />
-          {!session.me.vessel && <ArrivalHost onPanel={onPanel} />}
+          {!session.me.vessel && <ArrivalHost onPanel={onPanel} onFocusContact={(id) => {
+            // The first hunt on the map: the pirate's own rail, with its attack (plan 2026-11-13 §4.7).
+            setPanel(null);
+            setCraftFocus((current) => ({ focus: { kind: 'contact', id }, request: (current?.request ?? 0) + 1 }));
+          }} />}
           {profileOpen && <ProfileHost name={session.me.displayName} country={session.me.country} onCountryChange={updateCountry}
             onSignOut={() => { dismissProfile(); void signOut(); }} onBack={leaveProfile} />}
           </>

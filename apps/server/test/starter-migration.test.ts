@@ -344,6 +344,18 @@ describe('the jump', () => {
       expect(after.arrival).toBeNull();
     });
 
+    // Plan 2026-11-13 §4.7: a ship that never fought its first hunt is pointed at a pirate on landing.
+    it('says whether the ship fought its first hunt', async () => {
+      const early = await ready('Early', { DART: 1 });
+      await jump(early.headers);
+      expect((await get<{ arrival: { hunted: boolean } }>(world, '/api/starter/arrival', early.headers)).arrival.hunted).toBe(false);
+      const hunter = await ready('Hunter', { DART: 1 });
+      const [row] = await world.f.db.select({ facts: vessels.facts }).from(vessels).where(eq(vessels.id, hunter.vesselId));
+      await world.f.db.update(vessels).set({ facts: [...row!.facts, 'FIRST_BATTLE_REPORT'] }).where(eq(vessels.id, hunter.vesselId));
+      await jump(hunter.headers);
+      expect((await get<{ arrival: { hunted: boolean } }>(world, '/api/starter/arrival', hunter.headers)).arrival.hunted).toBe(true);
+    });
+
     it('is owed by nobody who has not jumped', async () => {
       const person = await aboard(world);
       expect((await get<{ arrival: unknown }>(world, '/api/starter/arrival', person.headers)).arrival).toBeNull();

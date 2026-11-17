@@ -143,3 +143,46 @@ describe('the first-week note', () => {
     expect(screen.queryByTestId('landing-tip')).toBeNull();
   });
 });
+
+/**
+ * A SHIP THAT NEVER FOUGHT ITS FIRST HUNT IS POINTED AT A PIRATE (plan 2026-11-13 §4.7). The first move
+ * names the nearest one and how far it is, says a pirate fight keeps the shield, and frames it on the map.
+ */
+describe('the first move of a ship that never hunted', () => {
+  const pirates = { originPlanetId: 'p1', pirates: [
+    { id: 'far', callsign: 'K7QX', zone: 'IDENTIFIED', at: { x: 0, y: 0, z: 0 }, expiresInMinutes: 300, reachMinutes: 40, reach: [] },
+    { id: 'near', callsign: 'R2VD', zone: 'IDENTIFIED', at: { x: 1, y: 0, z: 0 }, expiresInMinutes: 300, reachMinutes: 12, reach: [] },
+    { id: 'blind', callsign: 'Z9AA', zone: 'CONTACT', at: { x: 2, y: 0, z: 0 }, expiresInMinutes: 300, reachMinutes: null, reach: [] },
+  ] };
+  const huntHarness = (hunted: boolean) => {
+    const fetcher = vi.fn((input: RequestInfo | URL) => {
+      const url = urlOf(input);
+      const body = url.includes('/api/pirates') ? pirates
+        : url.includes('/api/starter/arrival/seen') ? { ok: true } : { arrival: { ...arrival, hunted }, landedAt: new Date().toISOString() };
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } }));
+    });
+    const api = new Api({ fetch: fetcher as unknown as typeof globalThis.fetch });
+    const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const onFocusContact = vi.fn();
+    const onPanel = vi.fn();
+    render(<QueryClientProvider client={queries}><ApiProvider api={api}><ArrivalHost onPanel={onPanel} onFocusContact={onFocusContact} /></ApiProvider></QueryClientProvider>);
+    return { onFocusContact, onPanel };
+  };
+
+  it('names the nearest reachable pirate, says the shield holds, and frames it', async () => {
+    const { onFocusContact, onPanel } = huntHarness(false);
+    const move = await screen.findByRole('button', { name: /Hunt a pirate/u });
+    expect(move).toHaveTextContent(/12 min/u);
+    expect(move).toHaveTextContent(/does not drop your shield/u);
+    fireEvent.click(move);
+    expect(onFocusContact).toHaveBeenCalledWith('near');
+    expect(onPanel).not.toHaveBeenCalled();
+  });
+
+  it('keeps the sortie for a ship that has hunted', async () => {
+    huntHarness(true);
+    await screen.findByTestId('landing-card');
+    expect(screen.queryByRole('button', { name: /Hunt a pirate/u })).toBeNull();
+    expect(screen.getByRole('button', { name: /Plan a first sortie/u })).toBeInTheDocument();
+  });
+});

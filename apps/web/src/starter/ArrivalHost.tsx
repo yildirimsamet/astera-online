@@ -1,7 +1,7 @@
 import { FIRST_SEASON_START, fleetEntries, type Fleet } from '@astera/rules';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { useGalaxy, usePlanet, useReports } from '../api/queries.js';
+import { useGalaxy, usePirates, usePlanet, useReports } from '../api/queries.js';
 import { Banner, Glyph, type GlyphId } from '../game-ui/index.js';
 import { landedWorld } from './jumpWorld.js';
 import { useTranslation } from 'react-i18next';
@@ -75,7 +75,17 @@ function Move({ id, icon, title, line, onPick }: { id: string; icon: IconId; tit
 /** Each note's mark: the thing it explains. */
 const TIP_GLYPH: Record<LandingTip, GlyphId> = { core: 'target', colony: 'colony', clan: 'support', dominion: 'ranking', honor: 'star' };
 
-export function ArrivalHost({ onPanel }: { onPanel: ShellRoute }) {
+/** The nearest pirate a launch from here can reach: the first hunt of a ship that never fought one. */
+function nearestPirate(pirates: readonly { id: string; reachMinutes: number | null }[] | undefined) {
+  let best: { id: string; minutes: number } | null = null;
+  for (const pirate of pirates ?? []) {
+    if (pirate.reachMinutes === null) continue;
+    if (!best || pirate.reachMinutes < best.minutes) best = { id: pirate.id, minutes: pirate.reachMinutes };
+  }
+  return best;
+}
+
+export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; onFocusContact?: (id: string) => void }) {
   const { t } = useTranslation();
   const api = useApi();
   const jump = useJump();
@@ -111,6 +121,10 @@ export function ArrivalHost({ onPanel }: { onPanel: ShellRoute }) {
     setTip(tipFor({ landedAtMs: landedAt, nowMs: now, met, dismissed: tipDismissed }));
   }, [arrival, landedAt, now, met]);
 
+  // Plan 2026-11-13 §4.7: a ship that left before its first hunt is pointed at a pirate, which keeps the shield.
+  const pirates = usePirates().data?.pirates;
+  const prey = arrival && !arrival.hunted && onFocusContact ? nearestPirate(pirates) : null;
+
   if (jump) return null;
   if (arrival) {
     const pick = (go: () => void) => { playSound('tap'); haptic('tap'); seen.mutate(); go(); };
@@ -141,8 +155,11 @@ export function ArrivalHost({ onPanel }: { onPanel: ShellRoute }) {
           <section data-testid="arrival-decide" aria-label={t('starter.arrival.decide')} className="flex flex-col gap-1">
             <h3 className="v2-legend text-v2-self">{t('starter.arrival.decide')}</h3>
             <div className="flex gap-1.5">
-              <Move id="outward" icon="i-fleet" title={t('starter.arrival.outward')} line={t('starter.arrival.outwardLine', { deuterium: full(fuel) })}
-                onPick={() => { pick(() => { onPanel('intel'); }); }} />
+              {prey && onFocusContact
+                ? <Move id="hunt" icon="i-attack" title={t('starter.arrival.hunt')} line={t('starter.arrival.huntLine', { minutes: prey.minutes })}
+                    onPick={() => { pick(() => { onFocusContact(prey.id); }); }} />
+                : <Move id="outward" icon="i-fleet" title={t('starter.arrival.outward')} line={t('starter.arrival.outwardLine', { deuterium: full(fuel) })}
+                    onPick={() => { pick(() => { onPanel('intel'); }); }} />}
               <Move id="grow" icon="i-mine" title={t('starter.arrival.grow')} line={t('starter.arrival.growLine', { research: t('research.synthesisName'), plant: buildingName('DEUTERIUM_PLANT') })}
                 onPick={() => { pick(() => { onPanel('planet', undefined, undefined, { group: 'grow', itemId: 'DEUTERIUM_PLANT' }); }); }} />
             </div>

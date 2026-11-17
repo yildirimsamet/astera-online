@@ -132,7 +132,9 @@ export type Landing = z.infer<typeof landingSchema>;
 
 export const arrivalSchema = z.object({
   arrival: z.object({ shardName: z.string(), cargo: moved, planetId: z.string().nullable(), hull: z.enum(VESSEL_HULLS),
-    ordinal: z.number().int().positive(), berth: vec3.nullable() }).nullable(),
+    ordinal: z.number().int().positive(), berth: vec3.nullable(),
+    /** Whether the ship fought its first hunt; an older server says nothing, read as hunted (no change). */
+    hunted: z.boolean().default(true) }).nullable(),
   landedAt: z.coerce.date().nullable(),
 });
 
