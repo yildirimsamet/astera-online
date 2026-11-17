@@ -17,6 +17,8 @@ interface ImportMetaEnv {
   readonly VITE_GA_ID?: string;
   readonly VITE_ASTERA_PLAYER_ANALYTICS?: string;
   readonly VITE_ASTERA_REVISION?: string;
+  /** The commit a production build came from (`ASTERA_GIT_COMMIT`), named on its crash reports. */
+  readonly VITE_ASTERA_RELEASE?: string;
   /** Local reference archive, supplied by the development server only. */
   readonly VITE_ASTERA_REFERENCE_ART?: string;
   /** Admin prototype entry outside local development; only '1' opens it. */

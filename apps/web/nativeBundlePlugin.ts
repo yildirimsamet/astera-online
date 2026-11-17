@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import type { Plugin } from 'vite';
 import { nativeCompatibilityScript, nativeStartupHtml } from './nativeStartupPage.js';
 import { NATIVE_STARTUP_PATH } from './mobileBuild.js';
+import { CRASH_INGEST } from './src/lib/crashIngest.js';
 
 /** Controlled Vite HTML, not a general-purpose untrusted HTML sanitizer. */
 export function nativeHtml(input: string, apiUrl: string): string {
@@ -15,7 +16,7 @@ export function nativeHtml(input: string, apiUrl: string): string {
     } else hashes.push(`'sha256-${createHash('sha256').update(match[2] ?? '').digest('base64')}'`);
   }
   const csp = ["default-src 'none'", `script-src 'self' 'wasm-unsafe-eval' ${hashes.join(' ')}`,
-    "style-src 'self' 'unsafe-inline'", `connect-src 'self' blob: ${apiUrl}`, "img-src 'self' data: blob:",
+    "style-src 'self' 'unsafe-inline'", `connect-src 'self' blob: ${apiUrl} ${CRASH_INGEST}`, "img-src 'self' data: blob:",
     "font-src 'self' data:", "media-src 'self' blob:", "worker-src 'self' blob:",
     "frame-src 'none'", "object-src 'none'", "base-uri 'none'", "form-action 'none'"].join('; ');
   return input.replace(/\snonce=["']__CSP_NONCE__["']/g, '')

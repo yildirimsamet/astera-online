@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { mobileBuild, NATIVE_STARTUP_PATH } from './mobileBuild.js';
 import { NATIVE_REFERENCE_MANIFEST } from './nativeBundlePlugin.js';
 import { androidRelease } from './androidRelease.js';
+import { CRASH_INGEST } from './src/lib/crashIngest.js';
 
 const metadataSchema = z.object({ target: z.string(), apiUrl: z.string().url(), bundled: z.literal(true), storeReady: z.literal(false) });
 
@@ -26,7 +27,7 @@ export function assertNativeArtifacts(directory: string, expected: { target: str
   const policy = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(html)?.[1];
   if (!policy || !policy.includes("object-src 'none'") && !policy.includes("default-src 'none'")) throw new Error('Missing native CSP');
   const connect = policy.split(';').map(part => part.trim()).find(part => part.startsWith('connect-src '));
-  if (connect !== `connect-src 'self' blob: ${expected.apiUrl}`) throw new Error('Native CSP API mismatch');
+  if (connect !== `connect-src 'self' blob: ${expected.apiUrl} ${CRASH_INGEST}`) throw new Error('Native CSP API mismatch');
   const scripts = [...html.matchAll(/<script\b[^>]*src="([^"]+)"/g)];
   if (scripts.length === 0) throw new Error('Missing native entry script');
   for (const script of scripts) {

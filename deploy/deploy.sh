@@ -176,9 +176,13 @@ GA_ID=$(grep -E '^VITE_GA_ID=' .env | cut -d= -f2- || true)
 ARENA=$(grep -E '^VITE_ARENA=' .env | cut -d= -f2- || true)
 PLAYER_ANALYTICS=$(grep -E '^VITE_ASTERA_PLAYER_ANALYTICS=' .env | cut -d= -f2- || true)
 PLAYER_ANALYTICS_REVISION=$(git rev-parse HEAD)
+# The Sentry key uploads the client's source maps under this commit; it reaches the build as a BuildKit
+# secret and is never printed or baked into a layer. Unset, the build uploads nothing.
+SENTRY_AUTH_TOKEN=$(grep -E '^SENTRY_AUTH_TOKEN=' .env | cut -d= -f2- || true)
+export SENTRY_AUTH_TOKEN
 docker build --target web-dist --build-arg "VITE_GA_ID=${GA_ID}" --build-arg "VITE_ARENA=${ARENA}" \
   --build-arg "VITE_ASTERA_PLAYER_ANALYTICS=${PLAYER_ANALYTICS}" --build-arg "ASTERA_GIT_COMMIT=${PLAYER_ANALYTICS_REVISION}" \
-  --output "type=local,dest=$STAGE" .
+  --secret id=sentry_auth,env=SENTRY_AUTH_TOKEN --output "type=local,dest=$STAGE" .
 [[ -n "$GA_ID" ]] && echo "  analytics: $GA_ID" || echo "  analytics: not configured"
 [[ -f "$STAGE/index.html" ]] || { echo "Client build produced no index.html."; exit 1; }
 

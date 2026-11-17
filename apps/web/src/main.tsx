@@ -11,7 +11,9 @@ import { I18nextProvider } from 'react-i18next';
  */
 import i18n, { i18nReady } from './i18n/index.js';
 import { syncDocumentLanguage } from './i18n/document.js';
+import { init as startSentry } from '@sentry/react';
 import { startAnalytics } from './lib/analytics.js';
+import { crashRootHooks, startCrashReports } from './lib/crashReports.js';
 import { startPlayerAnalytics } from './lib/playerAnalytics/runtime.js';
 import { configureH5Ads } from './lib/h5.js';
 import { starterFetch } from './starter/transport.js';
@@ -30,6 +32,16 @@ import { isAppActive, watchAppActivity } from './platform/activity.js';
 import './styles.css';
 
 function start(): void {
+  /**
+   * Crash reports first, so a throw anywhere below is seen (plan 2026-11-13, owner §10.7-1). Errors
+   * only, nothing about the player, and only from a production build on the game's own hosts or app.
+   */
+  const crashes = startCrashReports({
+    native: (import.meta.env.VITE_ASTERA_PLATFORM ?? 'web') !== 'web',
+    host: window.location.host,
+    production: import.meta.env.PROD,
+    release: import.meta.env.VITE_ASTERA_RELEASE ?? '',
+  }, startSentry);
   syncDocumentLanguage();
 
   /**
@@ -120,7 +132,7 @@ function start(): void {
    * `shell/ErrorBoundary.tsx` for why the first question is answered by catching
    * rather than by guessing.
    */
-  createRoot(root).render(
+  createRoot(root, crashRootHooks(crashes)).render(
     <StrictMode>
       <I18nextProvider i18n={i18n}>
         <ErrorBoundary>

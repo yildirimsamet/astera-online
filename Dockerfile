@@ -60,7 +60,8 @@ ENV VITE_GA_ID=$VITE_GA_ID
 # Komutan Gemisi playtest door; the arena process still decides who may enter.
 ARG VITE_ARENA=""
 ENV VITE_ARENA=$VITE_ARENA
-RUN pnpm --filter @astera/web build
+# The Sentry key uploads the source maps and leaves with the step: a secret, never an ARG or a layer (S-3).
+RUN --mount=type=secret,id=sentry_auth,env=SENTRY_AUTH_TOKEN pnpm --filter @astera/web build
 
 # A filesystem, not an image. `docker build --target web-dist --output` writes it
 # straight to a directory on the host, which is where nginx serves it from — no

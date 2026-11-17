@@ -5,6 +5,8 @@ import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { analyticsRevision } from './analyticsBuild.js';
+import { sentryUpload } from './sentryBuild.js';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { adsensePlugin } from './src/lib/adsense.js';
@@ -45,15 +47,21 @@ export default defineConfig(({ command, mode }) => {
   const arenaReferences = command === 'serve' ? refAssetsPlugin(
     refsDirectory ?? (existsSync(resolve(referenceDirectory, 'manifest.json')) ? referenceDirectory : undefined),
     resolve(process.cwd(), '../..')) : null;
+  const outDir = mobile.target === 'web' ? 'dist' : mobile.webDir;
+  // Hidden maps, uploaded and then deleted, only when the build has the key and its commit (S-3).
+  const upload = command === 'build' ? sentryUpload({ token: process.env.SENTRY_AUTH_TOKEN, release: process.env.ASTERA_GIT_COMMIT, target, outDir }) : null;
   return {
   plugins: [react(), tailwindcss(), openingScreenPlugin(), target === 'web' && adsensePlugin(), target === 'web' && wikiPlugin(), target === 'web' && landingPlugin(), references, arenaReferences,
-    mobile.target !== 'web' && nativeBundlePlugin(mobile.apiUrl, target, fileURLToPath(new URL('.', import.meta.url)), refsDirectory ?? referenceDirectory)],
+    mobile.target !== 'web' && nativeBundlePlugin(mobile.apiUrl, target, fileURLToPath(new URL('.', import.meta.url)), refsDirectory ?? referenceDirectory),
+    upload && sentryVitePlugin(upload)],
   publicDir: target === 'web' ? 'public' : false,
   define: {
     'import.meta.env.VITE_ASTERA_REVISION': JSON.stringify(env.VITE_ASTERA_PLAYER_ANALYTICS === '1' ? analyticsRevision(
       () => execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }),
       () => execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { encoding: 'utf8' }), process.env.ASTERA_GIT_COMMIT) : 'unmeasured'),
     'import.meta.env.VITE_ASTERA_PLATFORM': JSON.stringify(target),
+    // The release a crash report names; empty when the build does not know its commit.
+    'import.meta.env.VITE_ASTERA_RELEASE': JSON.stringify(process.env.ASTERA_GIT_COMMIT ?? ''),
     'import.meta.env.VITE_ASTERA_REFERENCE_ART': JSON.stringify(references ? 'true' : 'false'),
     ...(mobile.target === 'web' ? {} : { 'import.meta.env.VITE_ASTERA_API_URL': JSON.stringify(mobile.apiUrl) }),
     ...(mobile.target === 'web' ? {} : { 'import.meta.env.VITE_ASTERA_NATIVE_BUILD': JSON.stringify(mobile.nativeBuild) }),
@@ -99,6 +107,6 @@ export default defineConfig(({ command, mode }) => {
   // same-origin API seam in preview makes those captures immune to an unrelated
   // source file being saved halfway through a Playwright frame sequence.
   preview: { host: true, proxy: apiProxy },
-  build: { target: 'es2022', ...(mobile.target === 'web' ? {} : { outDir: mobile.webDir }) },
+  build: { target: 'es2022', sourcemap: upload ? 'hidden' : false, ...(mobile.target === 'web' ? {} : { outDir: mobile.webDir }) },
   };
 });

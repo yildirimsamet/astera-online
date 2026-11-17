@@ -1,4 +1,8 @@
-import type { Breadcrumb, BrowserOptions, ErrorEvent } from '@sentry/react';
+import { reactErrorHandler, type Breadcrumb, type BrowserOptions, type ErrorEvent } from '@sentry/react';
+import type { RootOptions } from 'react-dom/client';
+import { CRASH_INGEST } from './crashIngest.js';
+
+export { CRASH_INGEST };
 
 /**
  * CRASH REPORTS (plan 2026-11-13, owner §10.7-1): Sentry, errors only, nothing about the player.
@@ -24,6 +28,25 @@ export interface CrashContext {
   production: boolean;
   /** The commit the build came from, or '' when it does not know. */
   release: string;
+}
+
+/** Starts Sentry (`init`) where reports are on; says whether it did. */
+export function startCrashReports(at: CrashContext, init: (options: BrowserOptions) => unknown): boolean {
+  const options = crashReportOptions(at);
+  if (!options) return false;
+  init(options);
+  return true;
+}
+
+type RootHooks = Pick<RootOptions, 'onUncaughtError' | 'onCaughtError' | 'onRecoverableError'>;
+
+/**
+ * React 19 hands a root its errors, those the error boundary caught among them. The hooks replace
+ * React's own console logging, so they are given only while reports are on (a production build).
+ */
+export function crashRootHooks(on: boolean): RootHooks {
+  if (!on) return {};
+  return { onUncaughtError: reactErrorHandler(), onCaughtError: reactErrorHandler(), onRecoverableError: reactErrorHandler() };
 }
 
 export function crashReportOptions(at: CrashContext): BrowserOptions | null {

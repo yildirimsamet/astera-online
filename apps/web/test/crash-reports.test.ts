@@ -1,6 +1,7 @@
 import type { Breadcrumb, ErrorEvent } from '@sentry/react';
 import { describe, expect, it } from 'vitest';
-import { crashReportOptions, scrubBreadcrumb, scrubEvent } from '../src/lib/crashReports.js';
+import { vi } from 'vitest';
+import { crashReportOptions, crashRootHooks, scrubBreadcrumb, scrubEvent, startCrashReports } from '../src/lib/crashReports.js';
 
 /**
  * CRASH REPORTS (plan 2026-11-13, owner §10.7-1). A crash on a player's device reaches the team with its
@@ -72,5 +73,27 @@ describe('what a crash report keeps', () => {
     const click: Breadcrumb = { category: 'ui.click', message: 'button.repair' };
     expect(scrubBreadcrumb(click)).toEqual(click);
     expect(scrubBreadcrumb({ category: 'console', message: 'signed in as pilot@example.com' })).toBeNull();
+  });
+});
+
+describe('starting crash reports', () => {
+  it('starts Sentry once with the options for this place, and nothing elsewhere', () => {
+    const init = vi.fn();
+    expect(startCrashReports(live, init)).toBe(true);
+    expect(init).toHaveBeenCalledOnce();
+    expect(init.mock.calls[0]?.[0]).toMatchObject({ environment: 'production', release: 'abc123' });
+    const quiet = vi.fn();
+    expect(startCrashReports({ ...live, production: false }, quiet)).toBe(false);
+    expect(startCrashReports({ ...live, host: 'localhost:5183' }, quiet)).toBe(false);
+    expect(quiet).not.toHaveBeenCalled();
+  });
+
+  // React 19 hands a root its errors; while reports are off the root keeps React's own console logging.
+  it('hands the React root the error hooks only while reports are on', () => {
+    expect(crashRootHooks(false)).toEqual({});
+    const hooks = crashRootHooks(true);
+    expect(typeof hooks.onUncaughtError).toBe('function');
+    expect(typeof hooks.onCaughtError).toBe('function');
+    expect(typeof hooks.onRecoverableError).toBe('function');
   });
 });

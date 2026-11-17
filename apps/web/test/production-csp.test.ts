@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { CRASH_INGEST } from '../src/lib/crashReports.js';
 
 const nginxConfig = resolve(import.meta.dirname, '../../../deploy/nginx/astera.conf');
 
@@ -140,5 +141,22 @@ describe('the game document', () => {
     expect(document).toContain("base-uri 'self'");
     expect(document).toContain("form-action 'self'");
     expect(document).toContain("frame-ancestors 'self'");
+  });
+});
+
+/**
+ * CRASH REPORTS (plan 2026-11-13, owner §10.7-1). The game documents may post an error to the game's own
+ * Sentry ingest, that host and no wider; the publisher pages and checkout stay as they were.
+ */
+describe('the crash reports', () => {
+  it('reach the game\'s own ingest from the game documents only', async () => {
+    const { origin, checkout, localized, document } = await policies();
+    expect(CRASH_INGEST).toBe('https://o4512426032431104.ingest.de.sentry.io');
+    for (const game of [localized, document]) {
+      expect(directive(game, 'connect-src').split(' ')).toContain(CRASH_INGEST);
+      expect(game).not.toContain('*.sentry.io');
+    }
+    expect(origin).not.toContain('sentry');
+    expect(checkout).not.toContain('sentry');
   });
 });
