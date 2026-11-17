@@ -67,8 +67,9 @@ export function useAirborne(): { items: AirborneItem[]; now: number } {
       return {
         key: `thread:${threadKey(thread, index)}`,
         title: flightTitle(thread),
+        // A probe flies with an empty fleet: a count of nothing is no line (owner 2026-11-17).
         detail: [incomingDetail(thread, contactFor(thread, seen)) ?? (thread.fleet
-          ? t('pendingStrip.craftCount', { count: fleetCount(thread.fleet) })
+          ? fleetCount(thread.fleet) > 0 ? t('pendingStrip.craftCount', { count: fleetCount(thread.fleet) }) : null
           : t('pendingStrip.craftUnknown')), escortLine(thread)].filter(part => part !== null).join(' '),
         arrival: arrivalOf(thread),
         leg: thread.leg,

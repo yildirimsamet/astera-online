@@ -22,6 +22,12 @@ import { PlanetFocus } from '../src/galaxy/FocusPanel.js';
 import type { GalaxyPlanet, IntelView, PlanetView } from '../src/api/schemas.js';
 import { planetView } from './fixtures.js';
 
+/** Before a race opens the colony route sits behind its ⓘ (owner 2026-11-17); a race keeps it open. */
+const openRoute = (): void => {
+  const peek = document.querySelector<HTMLElement>('[data-colony-route] .gk-peek__row button');
+  if (peek && peek.getAttribute('aria-expanded') !== 'true') fireEvent.click(peek);
+};
+
 /**
  * THE TWO CONTROLS ON THE FOCUS RAIL THAT COMMIT SOMETHING. Owner instruction.
  *
@@ -1143,6 +1149,7 @@ describe('the focus rail’s two commitments', () => {
         <PlanetFocus {...props} planet={{ ...mine, colonies: { capitalCore: 6, colonies: 0, reservations: 0, capacity: 0 } }} />
       </Wrapper>,
     );
+    openRoute();
     expect(screen.getByRole('button', { name: 'Colony slot: Command Core 9 needed · now 6' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Colony slot$/ })).toBeNull();
 
@@ -1193,6 +1200,7 @@ describe('the focus rail’s two commitments', () => {
       </Wrapper>,
     );
     expect(screen.getByText(/route to a colony/i)).toBeInTheDocument();
+    openRoute();
     expect(screen.getByRole('button', { name: /^plan an attack$/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /colony raid/i })).not.toBeInTheDocument();
     const raidStep = document.querySelector('[data-colony-step="1"]');
@@ -1244,6 +1252,7 @@ describe('the focus rail’s two commitments', () => {
         </Wrapper>,
       );
 
+      openRoute();
       fireEvent.click(screen.getByRole('button', { name: '2 Couriers' }));
       const tooltip = screen.getByRole('tooltip');
       expect(tooltip).toHaveTextContent(
@@ -1317,6 +1326,7 @@ describe('the focus rail’s two commitments', () => {
   /** The reach chip specifically — several other rows on this panel say "arrives". */
   // a requirement is the kit's need chip on a door (G4-b3): met wears data-met, unmet the warning
   const reachMet = () => {
+    openRoute();
     const chip = [...document.querySelectorAll('button.gk-need-door')]
       .find((el) => /arrives/i.test(el.textContent));
     expect(chip, 'the settlement reach requirement is not rendered at all').toBeDefined();

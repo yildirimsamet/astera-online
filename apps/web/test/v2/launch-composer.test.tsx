@@ -202,11 +202,12 @@ describe('the launch composer', () => {
     expect(pace).not.toHaveTextContent(/slower lands later/i);
   });
 
-  /* Owner correction D183: the tank travels with the force it buys, inside the sticky ruler. */
-  it('keeps the tank inside the force ruler', async () => {
+  /* Owner 2026-11-17: the tank stands over the hold that spends it, out of the sticky ruler (was D183). */
+  it('keeps the tank over the hold, not in the force ruler', async () => {
     open('world');
     await pick('2');
     const ruler = document.querySelector<HTMLElement>('[data-force-ruler]')!;
-    expect(ruler.querySelector('[data-launch-meters]')).not.toBeNull();
+    expect(ruler.querySelector('[data-launch-meters]')).toBeNull();
+    expect(document.querySelector('.gk-launch__commit [data-launch-meters]')).not.toBeNull();
   });
 });

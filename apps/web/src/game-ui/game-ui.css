@@ -17518,8 +17518,6 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 .gk-unitgrid .gk-unit__extra { color: var(--gk-good); }
 /* The shield line sits close under the price line it belongs to. */
 .gk-launch__price [data-shield-warning] { margin-top: -4px; font-weight: 700; }
-/* A thumb-sized grab around the 14 px track: a finger on the thumb's edge or past the bar's end still drags. */
-.gk-throttle__track::before { content: ''; position: absolute; inset: -12px -14px -8px; }
 
 /* ── O11 (owner 2026-11-17): the Now line over the galaxy, slimmer, with air under it ── */
 [data-now-line] .gk-tplate__plate {
@@ -17749,13 +17747,17 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
   overflow-wrap: anywhere;
 }
 
-/* The whole throttle is the drag's (owner 2026-11-17): no pan or text pick may take a thumb that began on a label or an end. */
+/* Only the knob drags (owner 2026-11-17, second pass): the row scrolls the page, a number is a tap, and
+   the knob takes the thumb through a 44 px ring around its 22 px face. */
 .gk-throttle {
-  touch-action: none;
+  touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
-  cursor: pointer;
 }
+.gk-throttle .gk-throttle__track { touch-action: pan-y; cursor: default; }
+.gk-throttle .gk-throttle__thumb { pointer-events: auto; touch-action: none; cursor: grab; }
+.gk-throttle .gk-throttle__thumb:active { cursor: grabbing; }
+.gk-throttle .gk-throttle__thumb::before { content: ''; position: absolute; inset: -11px; border-radius: 50%; }
 
 /* A strip held at the top of a sheet's body sits flush under the head (owner 2026-11-17): stuck at `top: 0`
    it stopped under the body's own top padding, and the rows scrolling past showed through that 12 px gap. */
@@ -17819,3 +17821,52 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 }
 .gk-arm__gate .gk-need-chip .gk-glyph { width: 15px; height: 15px; }
 .gk-arm__gate .gk-need-chip .gk-glyph:last-child { margin-left: auto; }
+
+/* ── the attack sheet's ship card, third pass (owner 2026-11-17): smaller controls, and what the ship brings
+   — attack, defence, speed, fuel — as a narrow column beside it, coloured as the craft sheet colours them ── */
+.gk-unitgrid .gk-unit { padding: 5px 5px 3px; }
+.gk-unitgrid .gk-unit__head { gap: 4px; }
+.gk-unitgrid .gk-unit__head .gk-emblem { width: 18px; height: 18px; }
+.gk-unitgrid .gk-unit__head .gk-emblem svg { width: 11px; height: 11px; }
+.gk-unitgrid .gk-unit__name,
+.gk-unitgrid .gk-unit__home { font-size: var(--gk-t-small); }
+.gk-unitgrid .gk-unit__count { width: 34px; min-width: 34px; height: 24px; padding: 0 4px; font-size: var(--gk-t-body); }
+.gk-unitgrid .gk-unit__minus { width: 32px; height: 32px; left: auto; top: auto; right: 36px; bottom: -4px; }
+.gk-unitgrid .gk-unit__minus .gk-round__face { width: 24px; height: 24px; font-size: 12px; }
+.gk-unitgrid .gk-unit__max .gk-chip { min-height: 22px; padding: 0 7px; letter-spacing: 0.06em; }
+.gk-unitgrid .gk-unit__foot .gk-bar { height: 6px; }
+/* The ship is centred on the whole card; the figures lie over its left edge, out of the thumb's way. */
+.gk-unit__stage--stats > .gk-unit__ship { grid-area: 1 / 1; }
+.gk-unit__stats {
+  position: relative;
+  z-index: 1;
+  grid-area: 1 / 1;
+  justify-self: start;
+  display: grid;
+  align-content: center;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+.gk-unit__stat { display: flex; align-items: center; gap: 2px; font-size: var(--gk-t-floor); line-height: 13px; }
+.gk-unit__stat dt { display: contents; }
+.gk-unit__stat .gk-glyph { width: 9px; height: 9px; flex: none; }
+.gk-unit__stat dd { margin: 0; font-weight: 600; color: var(--gk-ink-2); text-shadow: 0 1px 2px var(--gk-outline); }
+.gk-unit__stat[data-stat='attack'] .gk-glyph { color: var(--gk-hostile); }
+.gk-unit__stat[data-stat='hull'] .gk-glyph { color: var(--gk-self); }
+.gk-unit__stat[data-stat='speed'] .gk-glyph { color: var(--gk-info); }
+.gk-unit__stat[data-stat='fuel'] .gk-glyph { color: var(--gk-warn); }
+.gk-unit__stage--stats .gk-unit__art { width: 100%; max-width: 104px; height: 66px; }
+.gk-unit__stage--stats .gk-unit__mult { left: auto; bottom: auto; top: 0; right: 0; }
+
+/* ── the colony route behind its ⓘ (owner 2026-11-17): one line closed; open, the steps sit in the same
+   card, not a second frame inside it ── */
+.gk-guide[data-colony-route]:has(> div > .gk-peek__row) { padding-bottom: 0; }
+.gk-guide[data-colony-route] .gk-peek__row { min-height: var(--gk-hit); }
+.gk-guide[data-colony-route] .gk-peek__rule { margin: var(--gk-s1) 0 0; padding: 0; background: none; border: 0; box-shadow: none; }
+
+/* ── the attack sheet, fourth pass (owner 2026-11-17): the cards a little taller so the count and its minus
+   sit lower under the ship; the price line 8 px slimmer (its ⓘ 36 px tall, still 44 wide) ── */
+.gk-unitgrid .gk-unit__stage { min-height: 90px; }
+.gk-launch__price .gk-peek__row .gk-round { height: 36px; }

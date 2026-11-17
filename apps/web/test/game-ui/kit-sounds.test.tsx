@@ -3,15 +3,14 @@ import { existsSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BottomNav, Dialog, GameButton, GameHold, GameTabs, Lever, RewardPod, Slider, Toggle, UnitCard } from '../../src/game-ui/index.js';
 import { POD_OPEN_MS } from '../../src/game-ui/RewardPod.js';
-import { holdSound, playSound } from '../../src/lib/sound.js';
-import type * as Sound from '../../src/lib/sound.js';
+import { playSound } from '../../src/lib/sound.js';
+import * as Sound from '../../src/lib/sound.js';
 
-const letGo = vi.hoisted(() => vi.fn());
-vi.mock('../../src/lib/sound.js', async (original) => ({ ...await original<typeof Sound>(), playSound: vi.fn(), holdSound: vi.fn(() => letGo) }));
+vi.mock('../../src/lib/sound.js', async (original) => ({ ...await original<typeof Sound>(), playSound: vi.fn() }));
 
 /**
  * EACH KIT MOMENT HAS ITS OWN SOUND (owner's picks, 2026-11-12, out/ui-kit/sesler): the pod
- * rattles and unseals, a hold charges, a tab clicks, a lever throws, a refused press says
+ * rattles and unseals, a hold is silent until it commits, a tab clicks, a lever throws, a refused press says
  * no, a count ticks up, a new rank rings. The Kenney files ship beside the old cues.
  */
 
@@ -22,7 +21,7 @@ const press = (element: HTMLElement): void => {
 };
 const cues = (): unknown[] => vi.mocked(playSound).mock.calls.map(([cue]) => cue);
 
-beforeEach(() => { vi.mocked(playSound).mockClear(); vi.mocked(holdSound).mockClear(); letGo.mockClear(); });
+beforeEach(() => { vi.mocked(playSound).mockClear(); });
 afterEach(() => { vi.useRealTimers(); });
 
 describe('the picked sounds', () => {
@@ -49,25 +48,19 @@ describe('the kit plays them at its moments', () => {
     expect(cues()).not.toContain('tap');
   });
 
-  /** Owner 2026-11-13: the 0.47 s file ran out half way through a 1 s hold; the charge now lasts the hold. */
-  it.each([['reversible', 0.6], ['spends', 1], ['final', 1.5]] as const)('charges for the whole %s hold and stops when the finger lifts', (weight, seconds) => {
+  /** Owner 2026-11-17: "Basılı tutmada ses istemiyorum" — a hold is silent while the finger is down; the commit still sounds. */
+  it.each(['reversible', 'spends', 'final'] as const)('makes no sound through a %s hold, and sounds the commit', (weight) => {
+    vi.useFakeTimers();
     render(<GameHold weight={weight} label="Attack" detail="39 ships" onCommit={() => undefined} />);
-    const hold = screen.getByRole('button', { name: /Attack/ });
-    fireEvent.pointerDown(hold, { button: 0 });
-    expect(vi.mocked(holdSound).mock.calls).toEqual([['charge', seconds]]);
-    expect(letGo).not.toHaveBeenCalled();
-    fireEvent.pointerUp(hold);
-    expect(letGo).toHaveBeenCalledOnce();
-    expect(cues()).not.toContain('charge');
+    fireEvent.pointerDown(screen.getByRole('button', { name: /Attack/ }), { button: 0 });
+    act(() => { vi.advanceTimersByTime(300); });
+    expect(cues()).toEqual([]);
+    act(() => { vi.advanceTimersByTime(1_300); });
+    expect(cues()).toEqual(['confirm']);
   });
 
-  it('stops the charge when the hold commits', () => {
-    vi.useFakeTimers();
-    render(<GameHold weight="spends" label="Attack" detail="39 ships" onCommit={() => undefined} />);
-    fireEvent.pointerDown(screen.getByRole('button', { name: /Attack/ }), { button: 0 });
-    act(() => { vi.advanceTimersByTime(1_100); });
-    expect(letGo).toHaveBeenCalledOnce();
-    expect(cues()).toContain('confirm');
+  it('keeps no held-down sound in the mixer at all', () => {
+    expect('holdSound' in Sound).toBe(false);
   });
 
   it('clicks a tab open and says no to a locked one', () => {

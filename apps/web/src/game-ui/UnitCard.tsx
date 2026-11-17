@@ -6,7 +6,7 @@ import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { useCountField } from '../ui/QuantityStepper.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { Chip } from './buttons.js';
-import { Glyph } from './icons.js';
+import { Glyph, type GlyphId } from './icons.js';
 import { Emblem, MultiplierBadge, ProgressBar } from './readouts.js';
 import type { CssVars } from './style.js';
 import { useRepeatPress } from './useRepeatPress.js';
@@ -26,6 +26,16 @@ export interface UnitCardProps {
   onChange: (next: number) => void;
   /** One more line under the bar: what a hauler adds to the hold. */
   extra?: ReactNode;
+  /** What the ship brings, drawn as a narrow column beside it (owner 2026-11-17): a glyph and a figure each. */
+  stats?: readonly UnitStat[];
+}
+
+export interface UnitStat {
+  id: string;
+  glyph: GlyphId;
+  /** The figure's name, spoken with it; the column itself draws only the glyph and the figure. */
+  label: string;
+  value: string;
 }
 
 /**
@@ -34,7 +44,7 @@ export interface UnitCardProps {
  * in, the minus takes one back, MAX sends all that may go, and nothing goes past the ceiling.
  * Each ship added bumps the count and nudges the ship.
  */
-export function UnitCard({ name, art, mark, cls, badge, home, max = home, chosen, onChange, extra, ...data }: UnitCardProps & Record<`data-${string}`, string>) {
+export function UnitCard({ name, art, mark, cls, badge, home, max = home, chosen, onChange, extra, stats, ...data }: UnitCardProps & Record<`data-${string}`, string>) {
   const { t } = useTranslation();
   const ceiling = Math.max(0, Math.min(home, max));
   const dead = ceiling === 0;
@@ -63,7 +73,17 @@ export function UnitCard({ name, art, mark, cls, badge, home, max = home, chosen
         <span className="gk-unit__home gk-display gk-num"><Glyph id="home" /><span aria-hidden="true">{home}</span>
           <span className="sr-only">{t('launch.atHome', { count: home })}</span></span>
       </div>
-      <div className="gk-unit__stage">
+      <div className={`gk-unit__stage${stats && stats.length > 0 ? ' gk-unit__stage--stats' : ''}`}>
+        {stats && stats.length > 0 && (
+          <dl data-unit-stats="" className="gk-unit__stats">
+            {stats.map((stat) => (
+              <div key={stat.id} data-stat={stat.id} aria-label={`${stat.label} ${stat.value}`} className="gk-unit__stat">
+                <dt><Glyph id={stat.glyph} /></dt>
+                <dd className="gk-num">{stat.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
         <button type="button" className="gk-unit__ship" aria-label={t('launch.more', { name })} aria-describedby={countId} aria-disabled={full || undefined} disabled={dead} {...more}>
           {art ? <img key={chosen} className="gk-unit__art" src={art} alt="" {...(chosen > 0 ? { 'data-nudge': '' } : {})} />
             : <span className="gk-unit__art gk-unit__art--mark">{mark}</span>}

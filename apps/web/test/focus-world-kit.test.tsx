@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
@@ -8,6 +8,12 @@ import type { GalaxyPlanet, IntelView, PlanetView } from '../src/api/schemas.js'
 import { PlanetFocus } from '../src/galaxy/FocusPanel.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { planetView } from './fixtures.js';
+
+/** Before a race opens the colony route sits behind its ⓘ (owner 2026-11-17); a race keeps it open. */
+const openRoute = (): void => {
+  const peek = document.querySelector<HTMLElement>('[data-colony-route] .gk-peek__row button');
+  if (peek && peek.getAttribute('aria-expanded') !== 'true') fireEvent.click(peek);
+};
 
 /**
  * G4-b1 (2026-11-15): A FOREIGN WORLD'S COMMITMENTS ON THE KIT. "Attack, probe, settle?"
@@ -167,6 +173,7 @@ describe('a world’s route on the kit', () => {
 
   it('draws the guide and its steps with none of the old look', () => {
     neutral();
+    openRoute();
     const guide = document.querySelector<HTMLElement>('.gk-guide')!;
     expect(guide).not.toBeNull();
     expect(oldPaint(guide)).toEqual([]);
@@ -177,6 +184,7 @@ describe('a world’s route on the kit', () => {
 
   it('makes each requirement a kit need chip on a door that answers its press', () => {
     neutral();
+    openRoute();
     const door = screen.getByRole('button', { name: '2 Couriers' });
     expect(door).toHaveClass('gk-need-door');
     expect(door).toHaveAttribute('data-own-sound');

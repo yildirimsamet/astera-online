@@ -2,13 +2,14 @@ import type { ReactNode } from 'react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MISSION_PACES } from '@astera/rules';
+import { HULLS, MISSION_PACES, hullFuelRate, hullTech } from '@astera/rules';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import type { GalaxyPlanet } from '../src/api/schemas.js';
 import { UnitCard } from '../src/game-ui/index.js';
 import i18n from '../src/i18n/index.js';
+import { compact, decimal } from '../src/lib/format.js';
 import { durationPrecise } from '../src/lib/time.js';
 import { LaunchSheet } from '../src/screens/LaunchSheet.js';
 import { PaceRow } from '../src/ui/PaceRow.js';
@@ -85,6 +86,31 @@ describe('the ships are hold-press cards', () => {
   });
 });
 
+/**
+ * WHAT EACH SHIP BRINGS, ON ITS CARD (owner 2026-11-17: "atak defans ve hız özelliklerini ekleyelim …
+ * yakıtı da"). A commander choosing who flies weighs what each hull hits for, takes and costs to fly;
+ * the figures sit in a narrow column beside the ship, the same four the craft sheet names.
+ */
+describe('the card names what its ship brings', () => {
+  it('lists attack, defence, speed and fuel beside the ship, each with its name', () => {
+    open();
+    const dart = document.querySelector<HTMLElement>('[data-hull-row="DART"]')!;
+    const stats = [...dart.querySelectorAll<HTMLElement>('[data-unit-stats] [data-stat]')];
+    expect(stats.map((stat) => stat.dataset.stat)).toEqual(['attack', 'hull', 'speed', 'fuel']);
+    expect(stats[0]).toHaveTextContent(compact(HULLS.DART.atk * hullTech({}, 'DART').atk));
+    expect(stats[1]).toHaveTextContent(compact(HULLS.DART.hp * hullTech({}, 'DART').hp));
+    expect(stats[2]).toHaveTextContent(compact(HULLS.DART.speed));
+    expect(stats[3]).toHaveTextContent(decimal(hullFuelRate('DART')));
+    const names = (['action.statAttack', 'action.statHull', 'action.statSpeed', 'action.statFuelPer'] as const).map((key) => i18n.t(key));
+    expect(stats.map((stat, index) => stat.getAttribute('aria-label')?.startsWith(names[index] ?? '-'))).toEqual([true, true, true, true]);
+  });
+
+  it('draws no column when the card is given no figures', () => {
+    const view = render(<UnitCard name="Dart" art={null} cls="SKIRMISHER" home={10} chosen={0} onChange={vi.fn()} />);
+    expect(view.container.querySelector('[data-unit-stats]')).toBeNull();
+  });
+});
+
 describe('the card on its own', () => {
   it('stops at its ceiling, which may sit under what stands home', async () => {
     const onChange = vi.fn();
@@ -122,26 +148,34 @@ describe('the speed is a throttle from a worm to a rocket', () => {
     expect(screen.getByRole('radio', { name: 'Full' })).toBeChecked();
   });
 
-  it('drags to the nearest speed this flight may take', () => {
+  /**
+   * ONLY THE KNOB DRAGS, ONLY A NUMBER SETS (owner 2026-11-17: "dikeyde kaydırırken … hız bölümüne
+   * dokunduğunda kaydırma yapamıyor"). The whole throttle took the thumb, so a sheet could not be scrolled
+   * over it. Now a drag starts only on the knob and a tap on a speed's number picks it; anywhere else on
+   * the row a finger scrolls the page.
+   */
+  it('drags the knob to the nearest speed this flight may take', () => {
     const onChange = vi.fn();
     const view = render(<PaceRow paces={[1, 0.75, 0.5]} pace={1} onChange={onChange} comparison={comparison} />);
     const track = view.container.querySelector<HTMLElement>('[data-pace-track]')!;
-    track.getBoundingClientRect = () => ({ left: 0, width: 200, top: 0, height: 20, right: 200, bottom: 20, x: 0, y: 0, toJSON: () => ({}) });
-    track.setPointerCapture = vi.fn();
+    track.getBoundingClientRect = () => ({ left: 20, width: 200, top: 0, height: 20, right: 220, bottom: 20, x: 20, y: 0, toJSON: () => ({}) });
+    const knob = view.container.querySelector<HTMLElement>('[data-pace-knob]')!;
+    const capture = vi.fn();
+    knob.setPointerCapture = capture;
     // jsdom has no PointerEvent: a mouse event under the pointer's name carries the position.
-    fireEvent(track, new MouseEvent('pointerdown', { clientX: 0, button: 0, bubbles: true }));
+    fireEvent(knob, new MouseEvent('pointerdown', { clientX: 220, button: 0, bubbles: true }));
+    expect(capture).toHaveBeenCalled();
+    fireEvent(knob, new MouseEvent('pointermove', { clientX: 20, bubbles: true }));
     expect(onChange).toHaveBeenLastCalledWith(0.5);
-    fireEvent(track, new MouseEvent('pointermove', { clientX: 150, bubbles: true }));
+    fireEvent(knob, new MouseEvent('pointermove', { clientX: 170, bubbles: true }));
     expect(onChange).toHaveBeenLastCalledWith(0.75);
+    fireEvent(knob, new MouseEvent('pointerup', { bubbles: true }));
+    onChange.mockClear();
+    fireEvent(knob, new MouseEvent('pointermove', { clientX: 20, bubbles: true }));
+    expect(onChange).not.toHaveBeenCalled();
   });
 
-  /**
-   * THE THUMB LANDS WHERE IT LANDS (owner 2026-11-17: "sürükleyerek sağa sola çekmekte zorluk çekiyorum,
-   * olmuyor veya arada oluyor"). A phone's touch adjustment hands a press near the bar to the speed label
-   * under it — a button the browser lets scroll away — so the drag died after one move. The whole throttle,
-   * labels and ends too, now takes the press and the drag, measured along the bar, and scrolls nothing.
-   */
-  it('takes the drag wherever the thumb lands on the throttle, a speed’s label too', () => {
+  it('leaves a press on the bar, a label or an end to the page: nothing drags', () => {
     const onChange = vi.fn();
     const view = render(<PaceRow paces={[1, 0.75, 0.5]} pace={1} onChange={onChange} comparison={comparison} />);
     const throttle = view.container.querySelector<HTMLElement>('[data-pace-throttle]')!;
@@ -149,15 +183,21 @@ describe('the speed is a throttle from a worm to a rocket', () => {
     track.getBoundingClientRect = () => ({ left: 20, width: 200, top: 0, height: 20, right: 220, bottom: 20, x: 20, y: 0, toJSON: () => ({}) });
     const capture = vi.fn();
     throttle.setPointerCapture = capture;
-    const label = screen.getByRole('radio', { name: '50%' });
-    fireEvent(label, new MouseEvent('pointerdown', { clientX: 20, button: 0, bubbles: true }));
-    expect(capture).toHaveBeenCalled();
+    track.setPointerCapture = capture;
+    for (const from of [track, screen.getByRole('radio', { name: '50%' }), throttle.querySelector<HTMLElement>('[data-pace-end="slow"]')!]) {
+      fireEvent(from, new MouseEvent('pointerdown', { clientX: 20, button: 0, bubbles: true }));
+      fireEvent(from, new MouseEvent('pointermove', { clientX: 170, bubbles: true }));
+      fireEvent(from, new MouseEvent('pointerup', { bubbles: true }));
+    }
+    expect(capture).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('sets a speed when its number is tapped', () => {
+    const onChange = vi.fn();
+    render(<PaceRow paces={[1, 0.75, 0.5]} pace={1} onChange={onChange} comparison={comparison} />);
+    fireEvent.click(screen.getByRole('radio', { name: '50%' }));
     expect(onChange).toHaveBeenLastCalledWith(0.5);
-    fireEvent(label, new MouseEvent('pointermove', { clientX: 170, bubbles: true }));
-    expect(onChange).toHaveBeenLastCalledWith(0.75);
-    // A press past the bar's end, on the rocket, is full speed.
-    fireEvent(throttle.querySelector('[data-pace-end="fast"]')!, new MouseEvent('pointermove', { clientX: 260, bubbles: true }));
-    expect(onChange).toHaveBeenLastCalledWith(1);
   });
 
   it('reads the trade as two deltas under the bar, no full-speed baseline sentences', () => {

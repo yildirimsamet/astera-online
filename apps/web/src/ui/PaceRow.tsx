@@ -64,8 +64,8 @@ export function PaceRow({
   };
   const nearest = (fraction: number): MissionPace => paces.reduce((best, rung) =>
     Math.abs(at(rung) - fraction) < Math.abs(at(best) - fraction) ? rung : best, paces[0] ?? 1);
-  /** Measured along the bar wherever the finger is: on a label, past an end, off the row. */
-  const follow = (event: PointerEvent<HTMLDivElement>): void => {
+  /** Measured along the bar wherever the dragged finger is: on a label, past an end, off the row. */
+  const follow = (event: PointerEvent<HTMLElement>): void => {
     const box = track.current?.getBoundingClientRect();
     if (!box || box.width <= 0) return;
     pick(nearest(Math.min(1, Math.max(0, (event.clientX - box.left) / box.width))), landed.current);
@@ -93,24 +93,29 @@ export function PaceRow({
           className="gk-throttle"
           style={place}
           {...(pace === 1 ? { 'data-flat-out': '' } : {})}
-          // THE WHOLE THROTTLE TAKES THE THUMB (owner 2026-11-17): a phone hands a press near the bar to
-          // the label under it, so the bar alone lost every drag that began a few pixels low.
-          onPointerDown={(event) => {
-            if (event.button !== 0) return;
-            dragging.current = true;
-            landed.current = pace;
-            if ('setPointerCapture' in event.currentTarget) event.currentTarget.setPointerCapture(event.pointerId);
-            follow(event);
-          }}
-          onPointerMove={(event) => { if (dragging.current) follow(event); }}
-          onPointerUp={() => { dragging.current = false; }}
-          onPointerCancel={() => { dragging.current = false; }}
         >
           <span data-pace-end="slow" className="gk-throttle__end gk-throttle__end--slow" aria-hidden="true"><Glyph id="worm" /></span>
           <div className="gk-throttle__rail">
             <div ref={track} data-pace-track className="gk-throttle__track" aria-hidden="true">
               <span className="gk-throttle__fill" />
-              <span className="gk-throttle__thumb" />
+              {/*
+                ONLY THE KNOB DRAGS (owner 2026-11-17: "sadece sayılara dokunursam veya barın yuvarlağını
+                sürüklersem"). The rest of the row is the page's, so a thumb scrolling the sheet over it
+                scrolls; a number is a tap, and the knob, its touch grown to 44 px, is the one drag.
+              */}
+              <span
+                data-pace-knob
+                className="gk-throttle__thumb"
+                onPointerDown={(event) => {
+                  if (event.button !== 0) return;
+                  dragging.current = true;
+                  landed.current = pace;
+                  if ('setPointerCapture' in event.currentTarget) event.currentTarget.setPointerCapture(event.pointerId);
+                }}
+                onPointerMove={(event) => { if (dragging.current) follow(event); }}
+                onPointerUp={() => { dragging.current = false; }}
+                onPointerCancel={() => { dragging.current = false; }}
+              />
             </div>
             <div role="radiogroup" aria-label={t('launch.pace')} className="gk-throttle__rungs" onKeyDown={step} {...OWN_SOUND}>
               {RUNGS.map((rung) => {

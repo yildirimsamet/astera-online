@@ -97,7 +97,7 @@ import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { useOwnPress } from '../ui/kit/index.js';
-import { Choices, CostLine, GameButton, GameHold, Glyph, RoundButton, SectionTag, StrikeFold, type GlyphId, type TimerTone } from '../game-ui/index.js';
+import { Choices, CostLine, GameButton, GameHold, Glyph, InfoPeek, RoundButton, SectionTag, StrikeFold, type GlyphId, type TimerTone } from '../game-ui/index.js';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { TargetDossier } from '../v2/hud/TargetDossier.js';
@@ -1782,133 +1782,148 @@ function StrategicWorldGuide({
     const hauler = (planet.fleet.COURIER ?? 0) >= MULTI_WORLD.settlement.transports;
     const alloy = planet.planet.alloy >= MULTI_WORLD.settlement.charge.alloy;
     const crystal = planet.planet.crystal >= MULTI_WORLD.settlement.charge.crystal;
+    const title = t(phase === 'SETTLEMENT_IN_FLIGHT'
+      ? 'focus.planet.settlementInFlight'
+      : !claimActive
+        ? 'focus.planet.colonyRoute'
+        : priority === null
+          ? 'focus.planet.claimOpen'
+          : priority.mine ? 'focus.planet.claimPriorityMineTitle' : 'focus.planet.claimPriorityOtherTitle');
+    const steps = (
+      <ol className="gk-steps">
+        <RouteStep
+          status={phase === 'NEUTRAL_PREP' ? 'current' : 'complete'}
+          open={isOpen('colony-1', phase === 'NEUTRAL_PREP')}
+          onToggle={() => { toggleStep('colony-1'); }}
+          number="1"
+          label={t('focus.planet.routeRaid')}
+          description={t('focus.planet.routeRaidDetail')}
+          dataStep="1"
+        />
+        <RouteStep
+          status={phase === 'NEUTRAL_PREP' ? 'upcoming' : 'complete'}
+          open={isOpen('colony-2', false)}
+          onToggle={() => { toggleStep('colony-2'); }}
+          number="2"
+          label={t('focus.planet.routeClaim')}
+          description={t('focus.planet.routeClaimDetail', { minutes: SETTLEMENT_PRIORITY_MINUTES })}
+          dataStep="2"
+        />
+        <RouteStep
+          status={phase === 'NEUTRAL_PREP' ? 'upcoming' : 'current'}
+          open={isOpen('colony-3', phase !== 'NEUTRAL_PREP')}
+          onToggle={() => { toggleStep('colony-3'); }}
+          number="3"
+          label={t('focus.planet.routeSettle')}
+          description={t(phase === 'SETTLEMENT_IN_FLIGHT'
+            ? 'focus.planet.routeSettleInFlightDetail'
+            : 'focus.planet.routeSettleDetail')}
+          dataStep="3"
+        >
+          {phase === 'SETTLEMENT_IN_FLIGHT' ? (
+            <Requirement
+              ok={null}
+              label={t('focus.planet.settlementAwayBadge')}
+              explanation={t('focus.planet.settlementAwayExplain')}
+            >
+              {t('focus.planet.settlementAwayBadge')}
+            </Requirement>
+          ) : (
+            <>
+              {/*
+                THE CHIP SAYS WHICH WAY IT IS (owner report, 2026-10-07): "○ Koloni yuvası" read
+                as an open slot to a Core 6 commander. Open, the Core that opens the next one, or
+                full — never the bare name with its state left to a dot.
+              */}
+              <Requirement
+                ok={colonySlotOpen}
+                label={colonySlotLabel}
+                explanation={t('focus.planet.colonySlotExplain', { minutes: SETTLEMENT_PRIORITY_MINUTES })}
+              >
+                {colonySlotLabel}
+              </Requirement>
+              <Requirement
+                ok={flightBayOpen}
+                label={t('focus.planet.openFlightBay')}
+                explanation={t('focus.planet.flightBayExplain')}
+              >
+                {t('focus.planet.openFlightBay')}
+              </Requirement>
+              <Requirement
+                ok={hauler}
+                label={t('focus.planet.courierCount')}
+                explanation={t('focus.planet.haulerExplain')}
+              >
+                {t('focus.planet.courierCount')}
+              </Requirement>
+              <Requirement
+                ok={alloy}
+                label={t('focus.planet.foundingAlloy', {
+                  amount: compact(MULTI_WORLD.settlement.charge.alloy),
+                })}
+                explanation={t('focus.planet.foundingAlloyExplain', {
+                  amount: compact(MULTI_WORLD.settlement.charge.alloy),
+                })}
+              >
+                <img src={RESOURCE_ART.alloy} alt="" aria-hidden className="gk-req__art" />
+                {compact(MULTI_WORLD.settlement.charge.alloy)}
+              </Requirement>
+              <Requirement
+                ok={crystal}
+                label={t('focus.planet.foundingCrystal', {
+                  amount: compact(MULTI_WORLD.settlement.charge.crystal),
+                })}
+                explanation={t('focus.planet.foundingCrystalExplain', {
+                  amount: compact(MULTI_WORLD.settlement.charge.crystal),
+                })}
+              >
+                <img src={RESOURCE_ART.crystal} alt="" aria-hidden className="gk-req__art" />
+                {compact(MULTI_WORLD.settlement.charge.crystal)}
+              </Requirement>
+              <Requirement
+                ok={settlementFuelled}
+                label={t('focus.planet.settlementFuel', { amount: compact(settlementFuel) })}
+                explanation={t('focus.planet.settlementFuelExplain', {
+                  amount: compact(settlementFuel),
+                })}
+              >
+                <img src={RESOURCE_ART.deuterium} alt="" aria-hidden className="gk-req__art" />
+                {compact(settlementFuel)}
+              </Requirement>
+              <Requirement
+                ok={claimActive ? settlementCanArrive : settlementEta < SETTLEMENT_CLAIM_MINUTES}
+                label={t('focus.planet.arrivesIn', { duration: duration(settlementEta) })}
+                explanation={t('focus.planet.settlementArrivalExplain', {
+                  duration: duration(settlementEta),
+                })}
+              >
+                {t('focus.planet.arrivesIn', { duration: duration(settlementEta) })}
+              </Requirement>
+            </>
+          )}
+        </RouteStep>
+      </ol>
+    );
+    /*
+      THE ROUTE BEHIND ITS ⓘ (owner 2026-11-17: "koloni nasıl kurulur section'ı bir infobox'a wrap et"). Before
+      a race opens the steps are a lesson, not a state, so the title keeps its line and the steps open from
+      the ⓘ; once a race is open or a colony fleet flies, they are the live state and stay in sight.
+    */
+    if (phase === 'NEUTRAL_PREP') {
+      return (
+        <div className="gk-guide" data-colony-route="">
+          <InfoPeek lead={<Glyph id="colony" />} fact={<span className="gk-label gk-guide__title">{title}</span>}
+            about={t('itemSheet.howItWorks')} rule={steps} />
+        </div>
+      );
+    }
     return (
-      <div className="gk-guide" {...(claimActive ? { 'data-tone': 'self' } : {})}>
+      <div className="gk-guide" data-colony-route="" {...(claimActive ? { 'data-tone': 'self' } : {})}>
         <div className="gk-guide__head">
           <Glyph id="colony" />
-          <p className="gk-label gk-guide__title">
-            {t(phase === 'SETTLEMENT_IN_FLIGHT'
-              ? 'focus.planet.settlementInFlight'
-              : !claimActive
-                ? 'focus.planet.colonyRoute'
-                : priority === null
-                  ? 'focus.planet.claimOpen'
-                  : priority.mine ? 'focus.planet.claimPriorityMineTitle' : 'focus.planet.claimPriorityOtherTitle')}
-          </p>
+          <p className="gk-label gk-guide__title">{title}</p>
         </div>
-        <ol className="gk-steps">
-          <RouteStep
-            status={phase === 'NEUTRAL_PREP' ? 'current' : 'complete'}
-            open={isOpen('colony-1', phase === 'NEUTRAL_PREP')}
-            onToggle={() => { toggleStep('colony-1'); }}
-            number="1"
-            label={t('focus.planet.routeRaid')}
-            description={t('focus.planet.routeRaidDetail')}
-            dataStep="1"
-          />
-          <RouteStep
-            status={phase === 'NEUTRAL_PREP' ? 'upcoming' : 'complete'}
-            open={isOpen('colony-2', false)}
-            onToggle={() => { toggleStep('colony-2'); }}
-            number="2"
-            label={t('focus.planet.routeClaim')}
-            description={t('focus.planet.routeClaimDetail', { minutes: SETTLEMENT_PRIORITY_MINUTES })}
-            dataStep="2"
-          />
-          <RouteStep
-            status={phase === 'NEUTRAL_PREP' ? 'upcoming' : 'current'}
-            open={isOpen('colony-3', phase !== 'NEUTRAL_PREP')}
-            onToggle={() => { toggleStep('colony-3'); }}
-            number="3"
-            label={t('focus.planet.routeSettle')}
-            description={t(phase === 'SETTLEMENT_IN_FLIGHT'
-              ? 'focus.planet.routeSettleInFlightDetail'
-              : 'focus.planet.routeSettleDetail')}
-            dataStep="3"
-          >
-            {phase === 'SETTLEMENT_IN_FLIGHT' ? (
-              <Requirement
-                ok={null}
-                label={t('focus.planet.settlementAwayBadge')}
-                explanation={t('focus.planet.settlementAwayExplain')}
-              >
-                {t('focus.planet.settlementAwayBadge')}
-              </Requirement>
-            ) : (
-              <>
-                {/*
-                  THE CHIP SAYS WHICH WAY IT IS (owner report, 2026-10-07): "○ Koloni yuvası" read
-                  as an open slot to a Core 6 commander. Open, the Core that opens the next one, or
-                  full — never the bare name with its state left to a dot.
-                */}
-                <Requirement
-                  ok={colonySlotOpen}
-                  label={colonySlotLabel}
-                  explanation={t('focus.planet.colonySlotExplain', { minutes: SETTLEMENT_PRIORITY_MINUTES })}
-                >
-                  {colonySlotLabel}
-                </Requirement>
-                <Requirement
-                  ok={flightBayOpen}
-                  label={t('focus.planet.openFlightBay')}
-                  explanation={t('focus.planet.flightBayExplain')}
-                >
-                  {t('focus.planet.openFlightBay')}
-                </Requirement>
-                <Requirement
-                  ok={hauler}
-                  label={t('focus.planet.courierCount')}
-                  explanation={t('focus.planet.haulerExplain')}
-                >
-                  {t('focus.planet.courierCount')}
-                </Requirement>
-                <Requirement
-                  ok={alloy}
-                  label={t('focus.planet.foundingAlloy', {
-                    amount: compact(MULTI_WORLD.settlement.charge.alloy),
-                  })}
-                  explanation={t('focus.planet.foundingAlloyExplain', {
-                    amount: compact(MULTI_WORLD.settlement.charge.alloy),
-                  })}
-                >
-                  <img src={RESOURCE_ART.alloy} alt="" aria-hidden className="gk-req__art" />
-                  {compact(MULTI_WORLD.settlement.charge.alloy)}
-                </Requirement>
-                <Requirement
-                  ok={crystal}
-                  label={t('focus.planet.foundingCrystal', {
-                    amount: compact(MULTI_WORLD.settlement.charge.crystal),
-                  })}
-                  explanation={t('focus.planet.foundingCrystalExplain', {
-                    amount: compact(MULTI_WORLD.settlement.charge.crystal),
-                  })}
-                >
-                  <img src={RESOURCE_ART.crystal} alt="" aria-hidden className="gk-req__art" />
-                  {compact(MULTI_WORLD.settlement.charge.crystal)}
-                </Requirement>
-                <Requirement
-                  ok={settlementFuelled}
-                  label={t('focus.planet.settlementFuel', { amount: compact(settlementFuel) })}
-                  explanation={t('focus.planet.settlementFuelExplain', {
-                    amount: compact(settlementFuel),
-                  })}
-                >
-                  <img src={RESOURCE_ART.deuterium} alt="" aria-hidden className="gk-req__art" />
-                  {compact(settlementFuel)}
-                </Requirement>
-                <Requirement
-                  ok={claimActive ? settlementCanArrive : settlementEta < SETTLEMENT_CLAIM_MINUTES}
-                  label={t('focus.planet.arrivesIn', { duration: duration(settlementEta) })}
-                  explanation={t('focus.planet.settlementArrivalExplain', {
-                    duration: duration(settlementEta),
-                  })}
-                >
-                  {t('focus.planet.arrivesIn', { duration: duration(settlementEta) })}
-                </Requirement>
-              </>
-            )}
-          </RouteStep>
-        </ol>
+        {steps}
         {claimActive && (
           <p className="gk-guide__lead">
             {priority === null

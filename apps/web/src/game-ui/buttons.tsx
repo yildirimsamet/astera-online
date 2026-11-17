@@ -1,7 +1,7 @@
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { haptic } from '../lib/haptics.js';
-import { OWN_SOUND, holdSound, playSound, type SoundCue } from '../lib/sound.js';
+import { OWN_SOUND, playSound, type SoundCue } from '../lib/sound.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { HOLD_MS, useHoldPress } from '../v2/kit/useHoldPress.js';
 import { artIconSrc } from './art.js';
@@ -224,11 +224,7 @@ export function GameHold({
     onCommit();
   };
   const { holding, confirming, nudge, handlers } = useHoldPress(commit, disabledReason !== null, holdMs);
-  // the charge lasts the whole hold, quickening with the dial, and stops the moment the hold ends
-  useEffect(() => {
-    if (!holding) return undefined;
-    return holdSound('charge', holdMs / 1000);
-  }, [holding, holdMs]);
+  // No sound while the finger is down (owner 2026-11-17: "Basılı tutmada ses istemiyorum"); the commit sounds.
 
   useEffect(() => {
     if (committed === 0) return undefined;

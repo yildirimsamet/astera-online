@@ -4,12 +4,14 @@ import { RadiationPreview } from '../ui/RadiationPreview.js';
 import {
   HULLS,
   fleetCargo,
+  hullFuelRate,
+  hullTech,
   type MobileHullId,
 } from '@astera/rules';
 import type { GalaxyPlanet, IntelView, PirateContact, PlanetView, Report } from '../api/schemas.js';
 import { rivalColour } from '../galaxy/PlanetField.js';
 import { hullLabel } from '../i18n/names.js';
-import { compact } from '../lib/format.js';
+import { compact, decimal } from '../lib/format.js';
 import { lootEstimate } from '../lib/lootEstimate.js';
 import { clockTime, duration, durationPrecise, staleness } from '../lib/time.js';
 import { MOBILE, homePowerAfter } from '../lib/navigation.js';
@@ -55,14 +57,14 @@ export type LaunchTarget =
  * the mock draws it (M3, owner 2026-09-25).
  *
  * Head (the verb, where it flies from and how far; then whose world) · the force ruler
- * with the matchup line and the tank · the ships, one run of rows · what they carry ·
+ * with the matchup line · the ships, one run of rows · what they carry ·
  * the pace · the flight in five figures — arrival, back, cargo against the haul, the
  * bay, what stays home · and under them the price — how long the world stays thin,
- * whether it can be turned — written before the button, which is HELD (K4). There is
+ * whether it can be turned — and the fuel it burns, written before the button, which is HELD (K4). There is
  * no second screen: a price read after the decision is not decision support.
  *
- * THE TANK STAYS ON THE RULER (owner correction D183): the two figures a wing is
- * adjusted against move on the same "+", so the summary does not quote it again.
+ * THE TANK STANDS OVER THE HOLD (owner 2026-11-17; it rode the ruler under D183): it is read where
+ * the launch is held, once, so the summary does not quote it again.
  *
  * Every rule lives in `useLaunchPlan`; this file only draws it.
  */
@@ -132,6 +134,12 @@ export function LaunchSheet({
         max={roomFor(hull)}
         chosen={chosen}
         onChange={(value) => { set(hull, value); }}
+        stats={[
+          { id: 'attack', glyph: 'attack', label: t('action.statAttack'), value: compact(HULLS[hull].atk * hullTech(mods.tech, hull).atk) },
+          { id: 'hull', glyph: 'hull', label: t('action.statHull'), value: compact(HULLS[hull].hp * hullTech(mods.tech, hull).hp) },
+          { id: 'speed', glyph: 'speed', label: t('action.statSpeed'), value: compact(HULLS[hull].speed) },
+          { id: 'fuel', glyph: 'fuel', label: t('action.statFuelPer'), value: decimal(hullFuelRate(hull)) },
+        ]}
         {...(carries > 0 ? {
           extra: chosen > 0 ? t('launch.cargoAdds', { amount: compact(carries * chosen) }) : t('launch.cargoEach', { amount: compact(carries) }),
         } : {})}
@@ -252,6 +260,15 @@ export function LaunchSheet({
               <RadiationPreview radiation={radiation} combat />
             </div>
           )}
+          {/*
+            THE FUEL OVER THE HOLD THAT SPENDS IT (owner 2026-11-17: "harcanacak olan yakıtı altta uygun bir
+            yere ekle"): read where the launch is held, not in the sticky box at the top (it was there by D183).
+          */}
+          {route !== null && (
+            <div data-launch-meters>
+              <SpendBar inline stock={planet.planet.deuterium} spend={route.fuel} tone="deuterium" label={t('launch.fuel')} />
+            </div>
+          )}
           {/* A launch spends fuel and uncovers the world: the kit's spend weight, one second. */}
           <div data-launch-commit>
           <GameHold
@@ -275,10 +292,8 @@ export function LaunchSheet({
         </div>}
         {/*
           WHAT YOU ARE FLYING AT, ON THE SAME AXIS AS WHAT YOU ARE SENDING (B5), with
-          the counter cycle against what the probe read (B6) and the tank the trip
-          draws on. Sticky, and the tank inside it — owner correction D183: the two
-          figures a wing is adjusted against move on the same "+", so they travel
-          together while the ships scroll under them.
+          the counter cycle against what the probe read (B6). Sticky, so the force a "+" moves
+          stays in sight while the ships scroll under it; the tank is over the hold (owner 2026-11-17).
         */}
         {!choosing && <div className="gk-launch__ruler" {...(school ? {} : { 'data-sticky': '' })}>
           <ForceRuler
@@ -287,19 +302,13 @@ export function LaunchSheet({
             notes={notes}
             escape={escape}
             heading={t('dossier.page.power')}
-          >
-            {route !== null && (
-              <div data-launch-meters>
-                <SpendBar inline stock={planet.planet.deuterium} spend={route.fuel} tone="deuterium" label={t('launch.fuel')} />
-              </div>
-            )}
-          </ForceRuler>
+          />
         </div>}
 
         {/*
           THE COUNTER CYCLE AGAINST WHAT THE PROBE READ (B6), under the ruler as the mock
           has it — and out of the sticky header, which keeps only what a "+" moves: the
-          two strips and the tank. The ships scroll under those, not under a paragraph.
+          two strips. The ships scroll under those, not under a paragraph.
         */}
         {!choosing && classReading && <MatchupLine folded wing={sending} reading={classReading} />}
         {!choosing && <div><TempoNote aboard={planet.vessel !== undefined} beforeLaunch /></div>}

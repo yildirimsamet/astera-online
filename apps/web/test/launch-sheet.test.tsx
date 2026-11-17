@@ -500,46 +500,20 @@ describe('the fuel this launch burns', () => {
   });
 
   /**
-   * THE TANK SITS WITH THE FORCE, NOT FIVE BLOCKS BELOW IT. D183, owner
-   * instruction: *"Seçilen gemi miktarına göre harcanacak yakıt gösteren
-   * section'ı da taşı."*
-   *
-   * The two things a commander adjusts a wing against are what it is WORTH in a
-   * fight and what it COSTS to fly, and both move on the same "+" — so reading
-   * them meant scrolling past the flight figures and the pirate note. The order
-   * is asserted rather than described because it is invisible to a typecheck and
-   * this block has already been re-edited once by another pass since it moved.
+   * THE FUEL STANDS OVER THE HOLD THAT SPENDS IT (owner 2026-11-17: "harcanacak olan yakıtı altta uygun
+   * bir yere ekle, en üstteki kısımda scroll yapınca gözükmüyor"). D183 had the tank ride the sticky force
+   * box; read from the bottom, where the launch is held, it was out of sight. It now sits in the footer
+   * right above the hold, once — the force box keeps the two force bars only.
    */
-  it('draws the tank INSIDE the force box, not as a block under it', async () => {
-    await packOne(10_000);
-    const box = document.querySelector('[data-force-ruler]');
-    expect(box, 'the force comparison is not on the sheet').not.toBeNull();
-
-    /*
-      INSIDE, BECAUSE THE BOX IS STICKY. Owner correction: *"lan altında demiyorum
-      aynı kutunun içinde altında olsun. güç gösteren kutu sticky, sheet'te scroll
-      yapınca yakıt gösteren alan sayfanın üstünde kalıyor."*
-
-      As a SIBLING the fuel meter scrolled out from under a box that stays pinned,
-      so the two figures a wing is adjusted against came apart the moment the sheet
-      moved — which is the whole thing moving it was meant to fix. Containment is
-      the assertion; a sibling in the right order would pass an ordering test and
-      still be wrong.
-    */
-    expect(box!.querySelector('[data-launch-meters]')).not.toBeNull();
-    expect(box!.querySelector('[data-spend-bar]')).not.toBeNull();
-  });
-
-  /** And it is the last thing in that box, under both force bars. */
-  it('puts the tank below the two force bars', async () => {
+  it('draws the tank in the footer right above the hold, and not in the force box', async () => {
     await packOne(10_000);
     const box = document.querySelector('[data-force-ruler]')!;
-    const parts = [...box.querySelectorAll('[data-part], [data-launch-meters]')]
-      .map((node) => node.getAttribute('data-launch-meters') !== null
-        ? 'fuel'
-        : node.getAttribute('data-part'));
-    expect(parts.indexOf('fuel')).toBeGreaterThan(parts.indexOf('yours'));
-    expect(parts.indexOf('fuel')).toBeGreaterThan(parts.indexOf('theirs'));
+    expect(box.querySelector('[data-launch-meters]')).toBeNull();
+    const commit = document.querySelector<HTMLElement>('.gk-launch__commit')!;
+    const meters = commit.querySelector('[data-launch-meters]')!;
+    expect(meters.querySelector('[data-spend-bar]')).not.toBeNull();
+    expect(meters.compareDocumentPosition(commit.querySelector('[data-launch-commit]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(document.querySelectorAll('[data-launch-meters]')).toHaveLength(1);
   });
 
   /**

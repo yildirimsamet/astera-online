@@ -159,7 +159,9 @@ export function describeNow(
     case 'flight':
       return {
         title: flightTitle(entry.thread),
-        detail: entry.thread.fleet ? i18n.t('pendingStrip.craftCount', { count: fleetCount(entry.thread.fleet) }) : null,
+        // A probe flies with an empty fleet: a count of nothing is no line (owner 2026-11-17).
+        detail: entry.thread.fleet && fleetCount(entry.thread.fleet) > 0
+          ? i18n.t('pendingStrip.craftCount', { count: fleetCount(entry.thread.fleet) }) : null,
       };
     case 'run':
       return { title: runTitle(entry.run), detail: i18n.t('pendingStrip.craftCount', { count: entry.run.craft }) };
