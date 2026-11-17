@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
+import { homeKeyTarget,
   sightCameraDistance,
   planetInspectionDistance,
   fovForAspect,
@@ -530,5 +530,37 @@ describe('the field of view on a wide screen', () => {
     for (const aspect of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
       expect(fovForAspect(45, aspect)).toBe(45);
     }
+  });
+});
+
+/*
+  THE HOME KEY STEPS THROUGH YOUR WORLDS (owner 2026-11-17). The first press frames the active
+  world, as it always did; pressed again while that world is framed, it makes the next of your
+  worlds active and flies there, round and round, so a commander moves between colonies fast.
+*/
+describe('the home key', () => {
+  const worlds = ['capital', 'colony-a', 'colony-b'];
+
+  it('frames the active world when something else, or nothing, is in view', () => {
+    expect(homeKeyTarget(null, 'colony-a', worlds)).toEqual({ planetId: 'colony-a', next: false });
+    expect(homeKeyTarget({ kind: 'planet', id: 'rival' }, 'colony-a', worlds)).toEqual({ planetId: 'colony-a', next: false });
+    expect(homeKeyTarget({ kind: 'planet', id: 'colony-b' }, 'colony-a', worlds)).toEqual({ planetId: 'colony-a', next: false });
+  });
+
+  it('steps to the next of your worlds while the active one is framed, and wraps', () => {
+    expect(homeKeyTarget({ kind: 'planet', id: 'capital' }, 'capital', worlds)).toEqual({ planetId: 'colony-a', next: true });
+    expect(homeKeyTarget({ kind: 'planet', id: 'colony-b' }, 'colony-b', worlds)).toEqual({ planetId: 'capital', next: true });
+  });
+
+  it('frames the one world again when there is no other', () => {
+    expect(homeKeyTarget({ kind: 'planet', id: 'capital' }, 'capital', ['capital'])).toEqual({ planetId: 'capital', next: false });
+  });
+
+  it('starts from the first world when the active one is missing from the list', () => {
+    expect(homeKeyTarget({ kind: 'planet', id: 'lost' }, 'lost', worlds)).toEqual({ planetId: 'capital', next: true });
+  });
+
+  it('does nothing before a world is known', () => {
+    expect(homeKeyTarget(null, null, worlds)).toBeNull();
   });
 });

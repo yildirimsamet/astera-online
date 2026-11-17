@@ -193,6 +193,7 @@ import {
 import {
   focusIdentity,
   focusTapDecision,
+  homeKeyTarget,
   planetFocusRailVisible,
   planetFocusSelection,
 } from '../galaxy/follow.js';
@@ -1335,6 +1336,14 @@ export function GalaxyView({
     focusPlanet(activePlanetId);
     setHomeSignal((n) => n + 1);
   };
+  /** The Home chip (owner 2026-11-17): frames the active world; pressed again, steps to your next world. */
+  const homeKey = (): void => {
+    const target = homeKeyTarget(focus, activePlanetId, worlds.map((world) => world.planet.id).filter((id) => planets.some((planet) => planet.id === id)));
+    if (!target?.next) { flyHome(); return; }
+    close();
+    focusPlanet(target.planetId, 'select');
+    setHomeSignal((n) => n + 1);
+  };
   useRequest(homeRequest, flyHome);
   useRequest(worldsRequest, () => { setWorldsOpen(true); });
   useRequest(centerRequest, () => {
@@ -1535,7 +1544,7 @@ export function GalaxyView({
             {gate.open('telescope') && <div data-sensor-toggles className="pointer-events-none">
               <ViewChip layersOn={showTelescopeReach || (hasRadar && showRadarReach)} onOpen={() => { setViewOpen(true); }} />
             </div>}
-            {showGuidance && <HomeChip onHome={flyHome} aboard={gate.aboard} />}
+            {showGuidance && <HomeChip onHome={homeKey} aboard={gate.aboard} />}
             {!ship && showGuidance && capabilities().webCheckout && <ShopChip onOpen={() => { onPanel('skin-shop'); }} />}
             {showGuidance && <GiftChip waiting={rewardsWaiting} onOpen={() => { onPanel('rewards'); }} />}
             {!ship && bellButton}

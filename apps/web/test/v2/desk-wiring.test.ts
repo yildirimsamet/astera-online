@@ -31,6 +31,13 @@ describe('the galaxy’s right-hand stack', () => {
     expect(stack.indexOf('<ViewChip')).toBeGreaterThan(0);
     expect(stack.indexOf('<ViewChip')).toBeLessThan(stack.indexOf('<HomeChip'));
   });
+
+  /* Owner 2026-11-17: pressed again while your active world is framed, Home steps to your next world. */
+  it('gives the Home chip the key that steps through your worlds, and only the chip', () => {
+    expect(galaxy).toMatch(/<HomeChip onHome=\{homeKey\}/);
+    expect(galaxy).toMatch(/homeKeyTarget\(focus, activePlanetId,/);
+    expect(galaxy).toMatch(/useRequest\(homeRequest, flyHome\)/);
+  });
 });
 
 /** E9: "Clan chat" in the war room opens the clan channel; the room knows its crew. */

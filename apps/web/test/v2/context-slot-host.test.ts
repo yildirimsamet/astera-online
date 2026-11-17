@@ -67,9 +67,12 @@ describe('Galaxy pressed again', () => {
 });
 
 describe('the galaxy corners (owner, 2026-09-24)', () => {
-  it('flies home from the round button exactly as the dock does', () => {
+  // Owner 2026-11-17: the round button's first press flies home as the dock does; pressed again
+  // while home is framed, it steps through your worlds (`homeKeyTarget`).
+  it('flies home from the round button as the dock does, and steps through your worlds after', () => {
     expect(source).toMatch(/useRequest\(homeRequest, flyHome\)/);
-    expect(source).toMatch(/<HomeChip onHome=\{flyHome\} aboard=\{gate\.aboard\} \/>/);
+    expect(source).toMatch(/<HomeChip onHome=\{homeKey\} aboard=\{gate\.aboard\} \/>/);
+    expect(source).toMatch(/if \(!target\?\.next\) \{ flyHome\(\); return; \}/);
   });
 
   it('keeps the event chips out of the way while a selection has the screen', () => {
