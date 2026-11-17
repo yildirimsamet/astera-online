@@ -153,7 +153,7 @@ export function PodiumPlace({ rank, label }: { rank: number | null; label: strin
   const { t } = useTranslation();
   return (
     <span className="gk-legacy__place">
-      {rank !== null && isPlace(rank) ? <Medal place={rank} size={24} /> : null}
+      {rank !== null && isPlace(rank) ? <Medal place={rank} size={22} /> : null}
       <span className="gk-legacy__placewords">
         <span className="gk-label">{label}</span>
         <span className="gk-display gk-num gk-legacy__rank">{rank === null ? t('legacy.seasons.noPlace') : `#${String(rank)}`}</span>

@@ -20,7 +20,7 @@ const toneOf = (index: number, count: number): 'quiet' | 'mixed' | 'busy' =>
 function AddressMap({ choices, picked }: { choices: MigrationView['choices']; picked: number | null }) {
   const reach = GALAXY.radius * 1.1;
   return (
-    <svg aria-hidden="true" viewBox="-100 -100 200 200" className="size-[84px] shrink-0">
+    <svg aria-hidden="true" viewBox="-100 -100 200 200" className="size-[76px] shrink-0">
       <defs>
         <radialGradient id="landing-disc">
           <stop offset="0" stopColor="var(--color-v2-self)" stopOpacity=".3" />

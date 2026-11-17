@@ -139,7 +139,7 @@ export function MigrationSequence({ jump }: { jump: Jump }) {
         {t(`starter.jump.scene.${beat}`, { name: jump.shardName })}
       </p>
       {jump.replay && (
-        <button type="button" onClick={endJump} className="absolute right-3 top-[calc(env(safe-area-inset-top)+12px)] min-h-9 rounded-control border border-white/30 bg-black/40 px-3 text-caption text-white">
+        <button type="button" onClick={endJump} className="absolute right-3 top-[calc(env(safe-area-inset-top)+11px)] min-h-9 rounded-control border border-white/30 bg-black/40 px-3 text-caption text-white">
           {t('starter.jump.skip')}
         </button>
       )}

@@ -17,7 +17,7 @@ export function CardArtwork({ src, locked, unowned }: { src: string; locked: boo
   const complete = scene !== undefined && failed !== scene.src;
   return <img src={complete ? scene.src : src} alt="" aria-hidden="true" draggable={false}
     data-complete-scene={complete ? '' : undefined} data-scene-fit={complete ? scene.fit : undefined} data-art-state={locked ? 'locked' : unowned ? 'unowned' : 'owned'}
-    className={`${complete ? 'building-scene-art' : 'size-[84px] object-contain'} ${locked ? 'opacity-20' : unowned ? 'opacity-65' : ''}`}
+    className={`${complete ? 'building-scene-art' : 'size-[76px] object-contain'} ${locked ? 'opacity-20' : unowned ? 'opacity-65' : ''}`}
     loading="lazy" decoding="async"
     onError={complete ? () => { setFailed(scene.src); } : undefined} />;
 }

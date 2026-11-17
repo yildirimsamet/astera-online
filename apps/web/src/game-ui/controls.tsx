@@ -156,11 +156,11 @@ function LeverStop({ label, checked, onPress, onKeyDown }: {
 }
 
 /**
- * Half the gripped knob (30 px swelling to 34 px): its travel stops this far inside each end of
+ * Half the gripped knob (27 px swelling to ~31 px): its travel stops this far inside each end of
  * the track, so at 0 or at the top it never hangs over the − or + key beside it (owner
  * 2026-11-17: a thumb reaching for the knob there pressed the key and the drag never began).
  */
-const KNOB_INSET_PX = 17;
+const KNOB_INSET_PX = 15;
 const knobTravel = (share: number): string => `calc(${String(KNOB_INSET_PX)}px + (100% - ${String(KNOB_INSET_PX * 2)}px) * ${String(share)})`;
 /** Where a finger stands along the knob's travel, 0 at its first stop and 1 at its last. */
 const alongTravel = (event: PointerEvent<HTMLElement>): number => {

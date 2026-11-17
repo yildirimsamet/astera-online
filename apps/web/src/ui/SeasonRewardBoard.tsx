@@ -119,7 +119,7 @@ export function SeasonRewardBoard({
             {program.tiers.map((tier) => (
               <li key={tier.place} className="gk-lb__tier">
                 {isPlace(tier.place)
-                  ? <Medal place={tier.place} size={16} className="gk-lb__medal" />
+                  ? <Medal place={tier.place} size={14} className="gk-lb__medal" />
                   : <span className="gk-lb__rank gk-num">#{tier.place}</span>}
                 <span className="gk-report__label">{t('leaderboard.rewards.place', { place: tier.place })}</span>
                 <Prize alloy={tier.alloy} crystal={tier.crystal} deuterium={tier.deuterium} />
@@ -139,7 +139,7 @@ export function SeasonRewardBoard({
         ) : winning && mine ? (
           <>
             <p className="gk-lb__holding">
-              {isPlace(yours) ? <Medal place={yours} size={22} className="gk-lb__medal" /> : null}
+              {isPlace(yours) ? <Medal place={yours} size={20} className="gk-lb__medal" /> : null}
               <span>{t('leaderboard.rewards.holding', { place: yours })}</span>
             </p>
             <Prize alloy={mine.alloy} crystal={mine.crystal} deuterium={mine.deuterium} />

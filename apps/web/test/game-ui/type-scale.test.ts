@@ -4,8 +4,10 @@ import { describe, expect, it } from 'vitest';
 
 /**
  * ONE TYPE SCALE (owner 2026-11-12, standard 2.2 and stage 3.1). Every word in the kit takes
- * its size from the `--gk-t-*` steps in tokens.css — 12 / 13 / 14 / 16 / 19 / 24, numbers 18, hero 30 —
- * so a size cannot drift on one surface, and none goes under the 12 px floor. A font size that
+ * its size from the `--gk-t-*` steps in tokens.css — 11 / 12 / 13 / 14 / 17 / 22, numbers 16, hero 27,
+ * and 10 for an uppercase tracked tag — so a size cannot drift on one surface, and none goes under
+ * the 11 px floor. The steps are the former ones at 90 % (owner 2026-11-17: the 90 % interface
+ * size became the default); Japanese keeps a step more at the small end. A font size that
  * only sizes a glyph (an icon drawn 1em wide) is not text and is named below with its reason.
  */
 
@@ -46,9 +48,14 @@ const files = (dir: string): string[] =>
     entry.isDirectory() ? files(join(dir, entry.name)) : [join(dir, entry.name)]);
 
 describe('the kit type scale', () => {
-  it('holds exactly the decided steps, none under the 12 px floor', () => {
-    const steps = Object.fromEntries([...tokens.matchAll(/--gk-t-([\w-]+):\s*(\d+)px/g)].map(([, name = '', px]) => [name, Number(px)]));
-    expect(steps).toEqual({ floor: 12, small: 13, body: 14, lead: 16, title: 19, head: 24, number: 18, hero: 30 });
+  it('holds exactly the decided steps, none under the 11 px floor but the 10 px tag', () => {
+    const block = (selector: string): Record<string, number> => {
+      const start = tokens.indexOf(`${selector} {`);
+      const body = tokens.slice(start, tokens.indexOf('\n}', start));
+      return Object.fromEntries([...body.matchAll(/--gk-t-([\w-]+):\s*(\d+)px/g)].map(([, name = '', px]) => [name, Number(px)]));
+    };
+    expect(block(':root')).toEqual({ tag: 10, floor: 11, small: 12, body: 13, lead: 14, title: 17, head: 22, number: 16, hero: 27 });
+    expect(block('html:lang(ja)')).toEqual({ tag: 11, floor: 12, small: 13 });
   });
 
   it('sizes every word in the kit stylesheet from the scale', () => {

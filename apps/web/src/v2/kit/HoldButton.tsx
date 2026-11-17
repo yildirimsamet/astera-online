@@ -63,7 +63,7 @@ export function HoldButton({ label, onCommit, disabledReason = null, tone = 'sel
         disabled
         data-hold-refused=""
         {...mark}
-        className="flex h-11 w-full items-center justify-center rounded-control border border-v2-line-hi px-3 text-center font-v2-ui text-body text-v2-ink-2"
+        className="flex h-[var(--gk-hit)] w-full items-center justify-center rounded-control border border-v2-line-hi px-3 text-center font-v2-ui text-body text-v2-ink-2"
       >
         {disabledReason}
       </button>
@@ -80,7 +80,7 @@ export function HoldButton({ label, onCommit, disabledReason = null, tone = 'sel
         {...(holding ? { 'data-holding': '' } : {})}
         aria-describedby={hintId}
         {...handlers}
-        className={`relative flex h-11 w-full touch-manipulation select-none items-center justify-center overflow-hidden rounded-control border px-3 font-v2-ui text-body font-bold text-v2-ink ${tones.frame}`}
+        className={`relative flex h-[var(--gk-hit)] w-full touch-manipulation select-none items-center justify-center overflow-hidden rounded-control border px-3 font-v2-ui text-body font-bold text-v2-ink ${tones.frame}`}
       >
         <span
           aria-hidden="true"

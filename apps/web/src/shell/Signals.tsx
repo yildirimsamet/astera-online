@@ -160,7 +160,7 @@ export function Signals({
               aria-hidden
               className="pointer-events-none absolute -inset-1 rounded-chip bg-threat/20 blur-[6px] animate-pulse"
             />
-            <span className="num absolute -right-1 -top-1 min-w-[16px] rounded-full bg-threat px-1 text-center text-micro leading-4 text-bone shadow-[0_0_8px_rgba(224,138,124,0.9)]">
+            <span className="num absolute -right-1 -top-1 min-w-[14px] rounded-full bg-threat px-1 text-center text-micro leading-4 text-bone shadow-[0_0_8px_rgba(224,138,124,0.9)]">
               {unseen > 9 ? '9+' : unseen}
             </span>
           </>

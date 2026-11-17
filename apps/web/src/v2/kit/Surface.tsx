@@ -95,8 +95,8 @@ const VARIANT: Record<ButtonVariant, string> = {
 const SIZE: Record<ButtonSize, string> = {
   sm: 'min-h-8 px-2.5 text-micro',
   md: 'min-h-10 px-3 text-caption',
-  lg: 'min-h-11 px-4 text-caption',
-  hero: 'min-h-11 px-4 text-caption',
+  lg: 'min-h-[var(--gk-hit)] px-4 text-caption',
+  hero: 'min-h-[var(--gk-hit)] px-4 text-caption',
 };
 
 export function Button({

@@ -47,7 +47,7 @@ export function ShipLog({ vessel, onOpenShip }: { vessel: VesselView; onOpenShip
         <span data-testid="log-whole" className="font-v2-mono text-micro tabular-nums text-v2-ink-3">{t('starter.wholeShip', { ...wholeShipProgress(progress) })}</span>
       </h3>
       <ol className="relative flex flex-col">
-        <span aria-hidden="true" className="absolute bottom-4 left-[15px] top-4 w-px bg-gradient-to-b from-v2-self/60 via-v2-line-hi to-v2-line" />
+        <span aria-hidden="true" className="absolute bottom-4 left-[14px] top-4 w-px bg-gradient-to-b from-v2-self/60 via-v2-line-hi to-v2-line" />
         {chapters.map(chapter => (
           <li key={chapter.id} data-testid="log-chapter" data-chapter={chapter.id} data-state={chapter.state}
             className={`relative flex items-start gap-3 rounded-control py-1.5 pr-1 ${chapter.state === 'now' ? 'bg-v2-warn/5' : ''}`}>

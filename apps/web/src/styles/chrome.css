@@ -386,7 +386,7 @@
     justify-content: center;
     gap: 0.75rem;
     width: 100%;
-    min-height: 68px;
+    min-height: 61px;
     padding: 0 1.5rem;
     border: 0;
     border-radius: 0;
@@ -522,10 +522,10 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 7px;
     border: 0;
     border-radius: var(--radius-control);
-    padding: 11px 16px;
+    padding: 10px 14px;
     min-height: 44px;
     font-family: var(--font-display);
     font-weight: 700;
@@ -563,8 +563,8 @@
    */
   .slab-compact {
     min-height: 44px;
-    gap: 6px;
-    padding: 8px 12px;
+    gap: 5px;
+    padding: 7px 11px;
     font-size: var(--text-label);
   }
 
@@ -726,8 +726,8 @@
    */
   .field {
     width: 100%;
-    min-height: 48px;
-    padding: 12px 14px;
+    min-height: 43px;
+    padding: 11px 13px;
     border-radius: var(--radius-control);
     color: var(--color-bone);
     font-family: var(--font-sans);
@@ -803,7 +803,7 @@
     align-items: center;
     gap: 5px;
     border-radius: var(--radius-chip);
-    padding: 3px 8px;
+    padding: 3px 7px;
     font-family: var(--font-display);
     font-weight: 700;
     font-stretch: 88%;
@@ -853,8 +853,8 @@
   /** An unread mark. Small, bright, and the only thing shaped like it. */
   .pip {
     display: block;
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     border-radius: var(--radius-pill);
     background: var(--color-crystal-glow);
     box-shadow: 0 0 8px 1px rgb(var(--ch-crystal) / 80%);
@@ -894,7 +894,7 @@
     position: relative;
     overflow: hidden;
     border-radius: var(--radius-plate);
-    padding: 14px;
+    padding: 13px;
     box-shadow:
       inset 0 0 0 1px rgb(var(--ch-edge) / 15%),
       0 10px 24px -12px rgb(0 0 0 / 80%);
@@ -972,10 +972,10 @@
 .works {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   flex: 1;
   min-width: 0;
-  padding: 4px 10px 4px 7px;
+  padding: 4px 9px 4px 6px;
   border: 1px solid var(--color-line-soft);
   border-radius: var(--radius-chip);
   background: color-mix(in srgb, var(--color-raised) 55%, transparent);
@@ -1012,8 +1012,8 @@
    the whole point. */
 .works-vessel {
   position: relative;
-  width: 9px;
-  height: 22px;
+  width: 8px;
+  height: 20px;
   border: 1px solid color-mix(in srgb, var(--color-line) 90%, transparent);
   border-radius: var(--radius-cell);
   background: rgb(0 0 0 / 40%);
@@ -1109,7 +1109,7 @@
 
   100% {
     opacity: 0;
-    translate: 0 16px;
+    translate: 0 14px;
   }
 }
 
@@ -1117,7 +1117,7 @@
   0% { opacity: 0; transform: translate3d(0, 4px, 0) scale(0.6); }
   20% { opacity: 1; }
   85% { opacity: 1; }
-  100% { opacity: 0; transform: translate3d(0, -26px, 0) scale(1); }
+  100% { opacity: 0; transform: translate3d(0, -23px, 0) scale(1); }
 }
 
 /* ── recovery boost · the struck world works double ─────────────
@@ -1134,8 +1134,8 @@
 }
 
 .boost-mark-glyph {
-  width: 8px;
-  height: 10px;
+  width: 7px;
+  height: 9px;
   animation: boost-rise 1.2s ease-in-out infinite;
 }
 
@@ -1173,7 +1173,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
   /* IT MAY SHRINK, AND IT MUST NEVER OVERFLOW.
      This was `flex-shrink: 0` beside `white-space: nowrap`, on a control whose
      width depends on its CONTENT — a shortfall in two resources is three times the
@@ -1185,7 +1185,7 @@
   min-width: 0;
   max-width: 100%;
   min-height: 44px;
-  padding: 0 11px;
+  padding: 0 10px;
   border: 1px solid transparent;
   border-radius: var(--radius-chip);
   font-family: var(--font-display, inherit);
@@ -1237,7 +1237,7 @@
      wider than a phone can give it beside two art wells. Stacking the label over
      the figures costs 12px of height and takes about 45% off the width, which is
      what keeps it on the row instead of off the edge of the card. */
-  padding: 4px 9px;
+  padding: 4px 8px;
   line-height: 1.15;
 }
 
@@ -1253,7 +1253,7 @@
 .act-need-figs {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
 }
 
 /* The word that stops a shortfall being read as a price. Quieter than the
@@ -1285,11 +1285,11 @@
    as a stacked block across 340px. It opts back out. */
 .act-short.w-full .act-need {
   flex-direction: row;
-  gap: 8px;
+  gap: 7px;
 }
 
 .act-short.w-full {
-  padding: 0 11px;
+  padding: 0 10px;
 }
 
 /* LOCKED — a door, not a disabled control. */
@@ -1330,7 +1330,7 @@
 .stats {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 11px;
   flex-wrap: wrap;
 }
 
@@ -1344,7 +1344,7 @@
 .stats-card {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px !important;
+  gap: 9px !important;
   align-items: start;
 }
 
@@ -1417,7 +1417,7 @@
 .price {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
 }
 
 .price-part {
@@ -1462,15 +1462,15 @@
 }
 
 .chat-type [data-chat-author] {
-  font-size: 13px;
+  font-size: 12px;
 }
 
 /* The composer is the kit's glass slot; it grows with no handle, and the send key sits beside it. */
 .chat-type .chat-composer {
   min-height: var(--gk-hit);
-  max-height: 120px;
-  padding: 11px var(--gk-s3);
-  line-height: 20px;
+  max-height: 108px;
+  padding: 10px var(--gk-s3);
+  line-height: 18px;
 }
 /* The room's own tint is darker than the glass the kit's hint was measured on. */
 .chat-type .chat-composer::placeholder {
@@ -1551,5 +1551,5 @@
 /* The desktop Outline owns the left column under the top bar; the Now line floats over
    the galaxy beside it, as it does on a phone. 260px is the Outline's own width. */
 .v2-shell:has([data-outline]) [data-now-float] {
-  left: 260px;
+  left: 234px;
 }

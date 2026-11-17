@@ -257,9 +257,9 @@ function LadderRow({ row, self, honor, widest, onFocusPlanet, prize = null }: {
     <div className="gk-lb__row" {...(self ? { 'data-self': '' } : {})}>
       {/* The podium is an object; everybody else is a numeral. */}
       {isPlace(row.rank) && (!honor || row.score > 0)
-        ? <Medal place={row.rank} size={26} className="gk-lb__medal" />
+        ? <Medal place={row.rank} size={23} className="gk-lb__medal" />
         : <span className="gk-lb__rank gk-num">{row.rank}</span>}
-      <PlanetSigil seed={row.planetId ?? row.playerId} skinId={row.skinId} size={36} />
+      <PlanetSigil seed={row.planetId ?? row.playerId} skinId={row.skinId} size={32} />
       {self || planetId === undefined ? (
         <span className="gk-lb__who" aria-label={commanderLabel(row.username, row.clan?.tag)}>
           {who}

@@ -117,7 +117,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
            * variable is absent and the toast stands right under the top bar, where the Now line
            * starts (H1, owner 2026-11-16: "toaster notificationlar da aynı yerde çıksın").
            */
-          className="gk pointer-events-none fixed inset-x-[var(--gk-gutter)] top-[calc(var(--toast-lift,calc(var(--v2-top-h,96px)+4px-env(safe-area-inset-top)))+env(safe-area-inset-top))] z-[90] flex justify-center"
+          className="gk pointer-events-none fixed inset-x-[var(--gk-gutter)] top-[calc(var(--toast-lift,calc(var(--v2-top-h,86px)+4px-env(safe-area-inset-top)))+env(safe-area-inset-top))] z-[90] flex justify-center"
         >
           {/*
             A REFUSAL LOOKS LIKE A REFUSAL (G1-d3, 2026-11-14: the kit's toast). The rim and the

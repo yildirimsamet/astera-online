@@ -232,13 +232,13 @@ function ArchivedRow({ row, onOpen }: {
       {...(row.self ? { 'data-self': '' } : {})}
     >
       {isPlace(row.rank) && (row.honorScore == null || row.honorScore > 0)
-        ? <Medal place={row.rank} size={26} className="gk-lb__medal" />
+        ? <Medal place={row.rank} size={23} className="gk-lb__medal" />
         : <span className="gk-lb__rank gk-num">{row.rank}</span>}
       {/*
         A FACE FOR A NAME, seeded from the result id — stable for that commander in that
         season for ever.
       */}
-      <PlanetSigil seed={row.resultId} size={36} />
+      <PlanetSigil seed={row.resultId} size={32} />
       <span className="gk-lb__words">
         <span className="gk-lb__flagline">
           <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
@@ -262,7 +262,7 @@ function GalaxyRecordPanel({
   return (
     <section role="region" aria-label={t('leaderboard.archive.galaxyRecord.title')} className="gk-well gk-arch__record">
       <header className="gk-arch__recordhead">
-        <Trophy won size={28} />
+        <Trophy won size={25} />
         <span>
           <h3 className="gk-report__subhead">{t('leaderboard.archive.galaxyRecord.title')}</h3>
           <p className="gk-report__label">{t('leaderboard.archive.galaxyRecord.subtitle')}</p>
@@ -373,8 +373,8 @@ function CommanderProfile({
         <span className="gk-prof__sky" aria-hidden="true" />
         <span className="gk-prof__crest">
           {podium ? <span className="gk-rays" aria-hidden="true" /> : null}
-          <PlanetSigil seed={selected.seasonId + selected.commanderName} size={64} />
-          {podium && isPlace(selected.rank) ? <Medal place={selected.rank} size={30} className="gk-prof__medal" /> : null}
+          <PlanetSigil seed={selected.seasonId + selected.commanderName} size={58} />
+          {podium && isPlace(selected.rank) ? <Medal place={selected.rank} size={27} className="gk-prof__medal" /> : null}
         </span>
         <p className="gk-label gk-prof__eyebrow">
           {t('leaderboard.archive.seasonHeading', { ordinal: selected.ordinal, galaxy: selected.shard })}
@@ -798,7 +798,7 @@ function CareerStats({
           tone={career.championships > 0 ? 'gold' : 'quiet'}
         />
         <ShelfFigure
-          mark={<span className="gk-prof__podium"><Medal place={1} size={13} plain /><Medal place={2} size={13} plain /><Medal place={3} size={13} plain /></span>}
+          mark={<span className="gk-prof__podium"><Medal place={1} size={12} plain /><Medal place={2} size={12} plain /><Medal place={3} size={12} plain /></span>}
           label={t('leaderboard.archive.career.podiums')}
           value={full(career.podiums)}
           tone={career.podiums > 0 ? 'crystal' : 'quiet'}
@@ -885,7 +885,7 @@ function CareerSeasonRow({ season, onOpen }: {
       className="gk-lb__row gk-lb__door gk-arch__row gk-prof__season"
     >
       {isPlace(season.rank) && (season.honorScore == null || season.honorScore > 0)
-        ? <Medal place={season.rank} size={26} className="gk-lb__medal" />
+        ? <Medal place={season.rank} size={23} className="gk-lb__medal" />
         : <span className="gk-lb__rank gk-num">#{full(season.rank)}</span>}
       <span className="gk-lb__words">
         <span className="gk-lb__name">{t('leaderboard.archive.seasonNumber', { ordinal: season.ordinal })}</span>

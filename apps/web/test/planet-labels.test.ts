@@ -44,9 +44,10 @@ describe('nearby planet names without a tap', () => {
   });
   it('allows twice the former name width before truncating a long commander', () => {
     const long = node('long', { owner: 'Commander'.repeat(12) });
-    expect(planetLabelWidth(long, false)).toBe(300);
-    expect(planetLabelWidth(long, true)).toBe(360);
-    expect(planetLabelWidth({ ...long, intel: 'REMEMBERED' }, false)).toBe(300);
+    // ×0.9 with the interface's type (owner 2026-11-17).
+    expect(planetLabelWidth(long, false)).toBe(270);
+    expect(planetLabelWidth(long, true)).toBe(324);
+    expect(planetLabelWidth({ ...long, intel: 'REMEMBERED' }, false)).toBe(270);
   });
   it('labels an ordinary known planet automatically at a readable nearby zoom', () => {
     expect(layout([node('near')]).map((label) => label.id)).toEqual(['near']);
@@ -106,10 +107,10 @@ describe('nearby planet names without a tap', () => {
   });
   it('keeps label boxes inside a narrow viewport', () => {
     for (const label of layout([node('edge', { position: [-3.5, 0, 0] })])) {
-      expect(label.left).toBeGreaterThanOrEqual(8);
-      expect(label.left + label.width).toBeLessThanOrEqual(342);
-      expect(label.top).toBeGreaterThanOrEqual(8);
-      expect(label.top + label.height).toBeLessThanOrEqual(632);
+      expect(label.left).toBeGreaterThanOrEqual(7);
+      expect(label.left + label.width).toBeLessThanOrEqual(343);
+      expect(label.top).toBeGreaterThanOrEqual(7);
+      expect(label.top + label.height).toBeLessThanOrEqual(633);
     }
     expect(layout([node('edge', { position: [-3.5, 0, 0] })])).toHaveLength(1);
   });

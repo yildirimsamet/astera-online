@@ -621,7 +621,7 @@ function ProbeReport({ report, minutes, yours, aboard, hunt, onOpenDossier }: {
   const face = (
     <>
       {/* An outpost is drawn as a world on the map, and here as there. */}
-      <AgedThumb src={targetArt(report.targetPlanetId, aboard && report.outpost !== true)} alt="" ageMinutes={minutes} className="size-11" />
+      <AgedThumb src={targetArt(report.targetPlanetId, aboard && report.outpost !== true)} alt="" ageMinutes={minutes} className="size-[var(--gk-hit)]" />
       <span className="gk-probe__who">
         <span className="gk-probe__name">
           {report.targetUsername}

@@ -32,7 +32,7 @@ export function CosmeticPreview({ id, still = false, inspectionView, productCard
   const [readyId, setReadyId] = useState<string | null>(null);
   const markReady = useCallback(() => { setReadyId(id); }, [id]);
   if (!item) return null;
-  return <div data-cosmetic-stage={id} data-cosmetic-ready={String(readyId === id)} className="relative h-[260px] w-full [&_*]:touch-pan-y! sm:h-[340px]" style={{ touchAction: 'pan-y' }}>
+  return <div data-cosmetic-stage={id} data-cosmetic-ready={String(readyId === id)} className="relative h-[234px] w-full [&_*]:touch-pan-y! sm:h-[306px]" style={{ touchAction: 'pan-y' }}>
     <Canvas camera={{ position: inspectionView === 'top' ? [0, 7, .001] : inspectionView === 'side' ? [7, 0, 0] : inspectionView === 'right' ? [-7, 0, 0] : inspectionView === 'rear' ? [0, 0, -7] : item.category === 'RING' ? [0, 2.2, 4.6] : shipId ? [0, 3.8, 4] : [0, 1.2, 4.8], fov: 40 }} dpr={[1, 1.5]} gl={{ alpha: true, antialias: true }}>
       <ambientLight intensity={1.1} />
       <directionalLight position={[3, 4, 5]} intensity={3.5} color="#e2eaff" />

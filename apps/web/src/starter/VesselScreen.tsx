@@ -152,7 +152,7 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
       <ShipHero id={vessel.id} progress={progress} selected={system} onSelect={select} compact={decks} />
       {/* Who this ship is and how far it has come: the mock's frame, with this ship's own silhouette on it. */}
       <div className="relative z-10 -mt-3 mx-3 flex items-center gap-2 rounded-control border border-v2-line bg-v2-panel/70 px-2 py-1">
-        <img src={heroArt(vesselHull(vessel.id), vesselLook(progress))} alt="" draggable={false} className="h-7 w-11 shrink-0 object-cover [mask-image:radial-gradient(closest-side,#000_60%,transparent)]" />
+        <img src={heroArt(vesselHull(vessel.id), vesselLook(progress))} alt="" draggable={false} className="h-7 w-[var(--gk-hit)] shrink-0 object-cover [mask-image:radial-gradient(closest-side,#000_60%,transparent)]" />
         <div className="min-w-0 flex-1">
           <p className="flex items-baseline justify-between gap-2 leading-tight">
             <span data-testid="ship-name" className="min-w-0 truncate text-caption font-semibold text-v2-ink">{vessel.name}</span>

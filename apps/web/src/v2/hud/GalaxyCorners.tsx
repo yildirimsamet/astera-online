@@ -123,7 +123,7 @@ export function GalaxyReadout({ onlineToday, census = true, counts, targets = []
       ref={root}
       data-galaxy-readout
       data-native-back-layer={openKind !== null && listed.length > 0 ? 'popover' : undefined}
-      className="pointer-events-none relative flex max-w-[min(82vw,320px)] flex-col items-end text-right"
+      className="pointer-events-none relative flex max-w-[min(82vw,288px)] flex-col items-end text-right"
     >
       {/* Owner, 2026-10-11: daily activity only; live counts reveal quiet attack windows. */}
       {onlineToday !== undefined && (

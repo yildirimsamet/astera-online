@@ -94,7 +94,7 @@ export function QueueStrip({
         )}
       </div>
 
-      <div className="flex h-11 w-full items-stretch gap-1">
+      <div className="flex h-[var(--gk-hit)] w-full items-stretch gap-1">
         {timed.map((entry, index) => {
           const { order, startedAt, finishesAt, minutes } = entry;
           /*

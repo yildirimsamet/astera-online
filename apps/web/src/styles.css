@@ -344,6 +344,10 @@ select {
  * A surface that glows is a surface that is doing something.
  */
 @theme {
+  /* The spacing unit every p-/m-/gap-/w-/h- class multiplies (Tailwind 0.25rem), ×0.9 with the rest
+     of the interface (owner 2026-11-17). Touch heights do not follow it: they name `--gk-hit`. */
+  --spacing: 0.225rem;
+
   /* ── GROUND ─────────────────────────────────────────────────
      Deepest first. The canvas sits at void; plates rise off it. */
   --color-void: #04060c;
@@ -479,21 +483,21 @@ select {
    *
    * There is no ninth step. If something does not fit, it is the wrong role.
    */
-  --text-hero: 46px;
+  --text-hero: 41px;
   --text-hero--line-height: 0.92;
-  --text-readout: 27px;
+  --text-readout: 24px;
   --text-readout--line-height: 1;
-  --text-figure: 18px;
+  --text-figure: 16px;
   --text-figure--line-height: 1.05;
-  --text-title: 16px;
+  --text-title: 14px;
   --text-title--line-height: 1.2;
   --text-body: 12px;
   --text-body--line-height: 1.5;
-  --text-caption: 10px;
+  --text-caption: 11px;
   --text-caption--line-height: 1.45;
-  --text-label: 11px;
+  --text-label: 10px;
   --text-label--line-height: 1.2;
-  --text-micro: 9px;
+  --text-micro: 11px;
   --text-micro--line-height: 1.2;
 
   /**
@@ -606,7 +610,7 @@ html:lang(ja) {
   }
 
   35% {
-    transform: translateY(-6px);
+    transform: translateY(-5px);
   }
 
   100% {
@@ -637,7 +641,7 @@ html:lang(ja) {
 /** The return overlay's lines arrive one after another, like a log printing. */
 @keyframes line-in {
   from {
-    transform: translateY(6px);
+    transform: translateY(5px);
     opacity: 0;
   }
 }

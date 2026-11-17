@@ -59,24 +59,26 @@ describe('the viewport a scale writes', () => {
 describe('the sizes a screen allows', () => {
   it('keeps the layout at least 318 px wide on the narrow side', async () => {
     const { scalesFor } = await load();
-    expect(scalesFor(350)).toEqual([90, 100, 110]);
-    expect(scalesFor(360)).toEqual([90, 100, 110]);
-    expect(scalesFor(412)).toEqual([90, 100, 110, 120]);
-    expect(scalesFor(430)).toEqual([90, 100, 110, 120, 130]);
+    expect(scalesFor(350)).toEqual([80, 90, 100, 110]);
+    expect(scalesFor(360)).toEqual([80, 90, 100, 110]);
+    expect(scalesFor(412)).toEqual([80, 90, 100, 110, 120]);
+    expect(scalesFor(430)).toEqual([80, 90, 100, 110, 120, 130]);
   });
 
-  it('always offers 90 and 100 %, even on a screen narrower than the floor', async () => {
+  it('always offers 80, 90 and 100 %, even on a screen narrower than the floor', async () => {
     const { scalesFor } = await load();
-    expect(scalesFor(300)).toEqual([90, 100]);
+    expect(scalesFor(300)).toEqual([80, 90, 100]);
   });
 });
 
 describe('the size the phone’s own font size suggests', () => {
   it('takes the nearest allowed step, the smaller on a tie', async () => {
     const { scaleFromFontScale } = await load();
-    const all = [90, 100, 110, 120, 130] as const;
+    const all = [80, 90, 100, 110, 120, 130] as const;
     expect(scaleFromFontScale(1, all)).toBe(100);
-    expect(scaleFromFontScale(0.85, all)).toBe(90);
+    expect(scaleFromFontScale(0.85, all)).toBe(80);
+    expect(scaleFromFontScale(0.9, all)).toBe(90);
+    expect(scaleFromFontScale(0.7, all)).toBe(80);
     expect(scaleFromFontScale(1.15, all)).toBe(110);
     expect(scaleFromFontScale(1.3, all)).toBe(130);
   });
@@ -97,7 +99,7 @@ describe('choosing a size on a touch screen', () => {
     device({ width: 350 });
     const ui = await load();
     const stop = ui.startUiScale();
-    expect(ui.uiScaleSetting()).toMatchObject({ available: true, value: 100, options: [90, 100, 110] });
+    expect(ui.uiScaleSetting()).toMatchObject({ available: true, value: 100, options: [80, 90, 100, 110] });
     ui.setUiScale(110);
     expect(meta()).toBe('width=318, initial-scale=1.1, viewport-fit=cover, interactive-widget=resizes-content');
     expect(localStorage.getItem('astera.uiScale')).toBe('110');

@@ -125,12 +125,12 @@ describe('the slider', () => {
     track.getBoundingClientRect = () => ({ left: 20, width: 200, top: 0, height: 44, right: 220, bottom: 44, x: 20, y: 0, toJSON: () => ({}) });
   };
 
-  it('maps a finger onto the knob’s travel, which stops 17 px inside each end', () => {
+  it('maps a finger onto the knob’s travel, which stops 15 px inside each end', () => {
     const onChange = vi.fn();
     render(<Slider label="Dart" value={24} max={40} onChange={onChange} />);
     const slider = screen.getByRole('slider');
     rect(slider);
-    for (const [x, value] of [[37, 0], [203, 40], [120, 20], [20, 0], [220, 40]] as const) {
+    for (const [x, value] of [[35, 0], [205, 40], [120, 20], [20, 0], [220, 40]] as const) {
       // jsdom has no PointerEvent: a mouse event under the pointer's name carries the position.
       fireEvent(slider, new MouseEvent('pointerdown', { clientX: x, button: 0, bubbles: true }));
       fireEvent(slider, new MouseEvent('pointerup', { clientX: x, bubbles: true }));
@@ -143,9 +143,9 @@ describe('the slider', () => {
     const knob = (): HTMLElement => view.container.querySelector<HTMLElement>('.gk-slider__knob')!;
     // Compared as the browser writes it back, which reorders a calc's terms.
     const as = (left: string): string => { const probe = document.createElement('span'); probe.style.left = left; return probe.style.left; };
-    expect(knob().style.left).toBe(as('calc(17px + (100% - 34px) * 0)'));
+    expect(knob().style.left).toBe(as('calc(15px + (100% - 30px) * 0)'));
     view.rerender(<Slider label="Dart" value={40} max={40} onChange={vi.fn()} />);
-    expect(knob().style.left).toBe(as('calc(17px + (100% - 34px) * 1)'));
+    expect(knob().style.left).toBe(as('calc(15px + (100% - 30px) * 1)'));
   });
 
   it('does not report a move past the end', () => {

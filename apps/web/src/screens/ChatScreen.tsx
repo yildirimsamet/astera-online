@@ -1000,7 +1000,7 @@ function ChannelPanel({
                           onClick={(event) => { if (message.previousSeasonRank !== undefined) explainRecognition(event.currentTarget, message.id, message.previousSeasonRank, message.previousSeasonRanking); }}
                           onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); }}
                           className="gk-bubble__badge" data-tone={METAL[message.previousSeasonRank]}>
-                          <Trophy won size={14} />
+                          <Trophy won size={13} />
                           {message.previousSeasonRanking === 'HONOR' ? <HonorIcon className="ml-0.5 size-3" /> : null}
                         </button>
                       )}
@@ -1056,7 +1056,7 @@ function ChannelPanel({
                   ) : null}
                   {canReact && policyAccepted && pickerMessageId === message.id && !disabledReason ? (
                     <div data-chat-reaction-picker role="group" aria-label={t('chat.chooseReaction')}
-                      className={`gk-keystrip absolute z-30 ${message.self ? 'right-0' : 'left-0'} ${pickerBelow ? 'top-full mt-[52px]' : 'bottom-full mb-1'}`}>
+                      className={`gk-keystrip absolute z-30 ${message.self ? 'right-0' : 'left-0'} ${pickerBelow ? 'top-full mt-[47px]' : 'bottom-full mb-1'}`}>
                       {REACTION_EMOJIS.map((emoji) => {
                         const chosen = message.reactions?.some(item => item.emoji === emoji && item.mine) ?? false;
                         return (

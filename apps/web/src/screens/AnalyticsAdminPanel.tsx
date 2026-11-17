@@ -44,7 +44,7 @@ export function AnalyticsAdminPanel() {
       <Button onClick={() => { setInactiveHours(72); setAfter(undefined); }}>72 saattir görülmeyenler</Button>
       <Button onClick={() => { setInactiveHours(0); setAfter(undefined); }}>Tüm hesaplar</Button>
       <Button onClick={() => { void report.refetch(); }}>Yenile</Button></div>
-    <details className="rounded-control border border-v2-line p-3"><summary className="min-h-11 cursor-pointer text-caption">Ölçüm filtreleri</summary>
+    <details className="rounded-control border border-v2-line p-3"><summary className="min-h-[var(--gk-hit)] cursor-pointer text-caption">Ölçüm filtreleri</summary>
       <form className="grid grid-cols-2 gap-2" onSubmit={event => {
         event.preventDefault();
         const parsed = analyticsAdminQuerySchema.safeParse(Object.fromEntries(Object.entries(draft).filter(([, value]) => value !== '')));
@@ -56,9 +56,9 @@ export function AnalyticsAdminPanel() {
       }}>
         {([['build', 'İstemci sürümü'], ['trainingVersion', 'Eğitim sürümü'], ['source', 'Kampanya kaynağı'],
           ['locale', 'Dil kodu'], ['username', 'Hesap adı']] as const).map(([key, label]) => <label key={key} className="min-w-0 text-micro text-v2-ink-2">{label}
-          <input className="mt-1 min-h-11 w-full rounded-control border border-v2-line bg-v2-deep px-2 text-label" maxLength={128} value={draft[key]}
+          <input className="mt-1 min-h-[var(--gk-hit)] w-full rounded-control border border-v2-line bg-v2-deep px-2 text-label" maxLength={128} value={draft[key]}
             onChange={event => { setDraft(previous => ({ ...previous, [key]: event.target.value })); }} /></label>)}
-        <label className="min-w-0 text-micro text-v2-ink-2">Platform<select className="mt-1 min-h-11 w-full rounded-control border border-v2-line bg-v2-deep px-2 text-label" value={draft.platform}
+        <label className="min-w-0 text-micro text-v2-ink-2">Platform<select className="mt-1 min-h-[var(--gk-hit)] w-full rounded-control border border-v2-line bg-v2-deep px-2 text-label" value={draft.platform}
           onChange={event => { setDraft(previous => ({ ...previous, platform: event.target.value })); }}><option value="">Tümü</option><option value="web">Web</option><option value="android">Android</option><option value="ios">iOS</option></select></label>
         <Button type="submit">Filtrele</Button><Button onClick={() => { setDraft({ build: '', source: '', platform: '', locale: '', trainingVersion: '', username: '' }); setFilters({}); setAfter(undefined); setSelected(null); setFilterError(false); }}>Temizle</Button>
         {filterError && <p role="alert" className="col-span-2 text-label text-v2-warn">Sürüm ve dil için yalnız harf, sayı, nokta, tire veya alt çizgi kullan.</p>}
@@ -75,7 +75,7 @@ export function AnalyticsAdminPanel() {
       </ol><p className="mt-1 text-micro text-v2-ink-3">Her satır o adımı gören farklı eğitim denemeleridir. Alt sahneler kayıtsız ziyaret zaman çizelgesinde görünür.</p></Section>
       <Section label="Yeni hesap dönüşü"><p className="text-label text-v2-ink-2">Pencerede açılan {report.data.signups.accounts} hesabın {report.data.signups.measured} tanesinde ölçüm var. D1 / D3 / D7: {[report.data.signups.d1, report.data.signups.d3, report.data.signups.d7].map(window => `${window.returned}/${window.mature} değerlendirilebilir, ${window.pending} bekliyor`).join(' · ')}</p>
         <p className="mt-1 text-micro text-v2-ink-3">Hesabın açıldığı andan: D1 24–48, D3 72–96, D7 168–192 saat. Hazır sahneye hiç ulaşmayanlar da sayılır; ölçülmeyen hesap dönmedi sayılmaz.</p></Section>
-      <details className="rounded-control border border-v2-line p-3"><summary className="min-h-11 cursor-pointer text-caption">Sürüm, kaynak ve platform kesitleri</summary>
+      <details className="rounded-control border border-v2-line p-3"><summary className="min-h-[var(--gk-hit)] cursor-pointer text-caption">Sürüm, kaynak ve platform kesitleri</summary>
         <p className="text-micro text-v2-ink-3">Kesitler ziyaret tabanlıdır. Aynı hesap farklı kesitlerde bulunabilir. İlk gözlenen açılışa göre D1: 24–48, D3: 72–96, D7: 168–192 saat.</p>
         {report.data.cohorts.map((cohort, index) => <div key={index} className="break-words border-t border-v2-line py-2 text-label">
           {cohort.platform} · {cohort.locale} · {cohort.source ?? 'Kaynak bilinmiyor'} · {cohort.visits} ziyaret / {cohort.accounts} hesap
@@ -94,7 +94,7 @@ export function AnalyticsAdminPanel() {
         </details>
       </div></Section>}
       <Section label="Oyuncular"><div className="space-y-2">{report.data.players.map(player => <article key={player.accountId} className="rounded-control border border-v2-line bg-v2-panel p-3">
-        <button type="button" className="min-h-11 w-full text-left text-caption font-semibold text-v2-self" aria-expanded={selected === player.accountId}
+        <button type="button" className="min-h-[var(--gk-hit)] w-full text-left text-caption font-semibold text-v2-self" aria-expanded={selected === player.accountId}
           onClick={() => { setSelected(selected === player.accountId ? null : player.accountId); }}>{player.username}</button>
         <p className="text-label text-v2-ink-2">{player.galaxy ?? 'Yerleşim yok'} · Son sunucu etkinliği: {date(player.lastActiveAt)}</p>
         <p className="text-micro text-v2-ink-3">Saklanan hesaplı ziyaretlerde ilk kaynak: {player.firstVisit?.campaign.utm_source ?? 'Bilinmiyor'} · Son kaynak: {player.currentVisit?.campaign.utm_source ?? 'Bilinmiyor'}. Kayıt öncesi ziyaret dahil değildir.</p>
@@ -111,7 +111,7 @@ export function AnalyticsAdminPanel() {
           <p className="text-micro text-v2-ink-3">İlk 24 saatte ayrı oturum: {returned(player.summary.return24h)}<br />
             D1 / D3 / D7: {[player.summary.retention.d1, player.summary.retention.d3, player.summary.retention.d7].map(returned).join(' / ')}<br />
             Manuel işlemle D1 / D3 / D7: {[player.summary.manualRetention.d1, player.summary.manualRetention.d3, player.summary.manualRetention.d7].map(returned).join(' / ')}</p>
-          <details className="mt-2 text-micro text-v2-ink-2"><summary className="min-h-11 cursor-pointer">Oturum aralıkları</summary><ol>{player.summary.sessions.map((session, index) => <li key={index} className="py-1">
+          <details className="mt-2 text-micro text-v2-ink-2"><summary className="min-h-[var(--gk-hit)] cursor-pointer">Oturum aralıkları</summary><ol>{player.summary.sessions.map((session, index) => <li key={index} className="py-1">
             {date(new Date(session.start))} → Son gözlem: {date(new Date(session.end))} · {session.ending === 'observed_background' ? 'Arka plana geçiş gözlendi' : session.ending === 'open' ? 'Açık' : 'Kapanış gözlenmedi'}
           </li>)}</ol></details>
         </> : <p className="mt-1 text-label text-v2-warn">{player.truncated ? 'Olay sınırı aşıldı; toplam süre ve dönüş hesaplanmadı.' : 'Davranış ölçümü yok'}</p>}
@@ -134,7 +134,7 @@ export function AnalyticsAdminPanel() {
       {anonymousOpen && <><p className="text-micro text-v2-ink-3">Geçici ziyaret kimliği kişiyi veya hesabı tanımlamaz. Yenilenen sayfa yeni ziyarettir. Oyuncu dönüş oranıyla birleştirilmez.</p>
         {anonymous.isPending && <p role="status">Ziyaretler yükleniyor…</p>}{anonymous.isError && <p role="alert">Ziyaretler alınamadı.</p>}
         {anonymous.data?.visits.map(visit => <div key={visit.id} className="border-t border-v2-line py-2">
-          <button className="min-h-11 text-left text-label text-v2-self" onClick={() => { setAnonymousSelected(anonymousSelected === visit.id ? null : visit.id); }}>{date(visit.createdAt)} · {visit.metadata.platform} · {visit.metadata.campaign.utm_source ?? 'Kaynak bilinmiyor'}</button>
+          <button className="min-h-[var(--gk-hit)] text-left text-label text-v2-self" onClick={() => { setAnonymousSelected(anonymousSelected === visit.id ? null : visit.id); }}>{date(visit.createdAt)} · {visit.metadata.platform} · {visit.metadata.campaign.utm_source ?? 'Kaynak bilinmiyor'}</button>
           {anonymousSelected === visit.id && <>{anonymousTimeline.isError && <p role="alert">Olaylar alınamadı.</p>}
             <ol className="break-words text-micro">{anonymousTimeline.data?.pages.flatMap(page => page.events).map(event => <li key={event.id}>{date(event.occurredAt)} · {event.name}{event.properties.step ? ` · Adım ${event.properties.step}` : ''}</li>)}</ol>
             {anonymousTimeline.hasNextPage && <Button disabled={anonymousTimeline.isFetchingNextPage} onClick={() => { void anonymousTimeline.fetchNextPage(); }}>Önceki ziyaret olayları</Button>}</>}

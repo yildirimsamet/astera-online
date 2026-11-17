@@ -116,17 +116,17 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
         {/* The world on the galaxy, as the mock draws it: the sky is this section's alone. */}
         <StarField className="absolute inset-0 -z-10" />
         <div data-planet-portrait className="flex flex-col items-center">
-          <div className="relative grid size-[156px] place-items-center">
+          <div className="relative grid size-[140px] place-items-center">
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-[-10px]"
+              className="pointer-events-none absolute inset-[-9px]"
               style={{ background: 'radial-gradient(55% 50% at 50% 48%, rgba(46,230,200,0.10) 0%, transparent 70%)' }}
             />
-            <div aria-hidden className="absolute size-[140px] rounded-full border border-v2-line-hi/60" />
+            <div aria-hidden className="absolute size-[126px] rounded-full border border-v2-line-hi/60" />
             <PlanetSigil
               seed={planet.planet.id}
               skinId={planet.planet.skinId}
-              size={104}
+              size={94}
               shielded={coreOnline && planet.planet.shield > 0}
             />
             <OrbitSockets planet={planet} />

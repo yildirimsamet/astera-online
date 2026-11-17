@@ -16,7 +16,7 @@ import type { ReachRing } from './SensorRings.js';
 /** Over the scene's labels, under the focus panel (`z-20`) that a tap on the mark opens. */
 const MARK_LAYER: [number, number] = [15, 15];
 /** Owner 2026-11-08: it draws nothing. What is flying, or the red question mark, is the thing to look at. */
-const FACE = 'block size-11';
+const FACE = 'block size-[var(--gk-hit)]';
 const HALO = 'block size-9 rounded-full border border-white/45 shadow-[0_0_12px_rgba(255,255,255,.3)] animate-[ember_1.8s_ease-in-out_infinite]';
 const minutesInto = (start: Date): number => (serverNow() - start.getTime()) / 60_000;
 const markOf = (contact: Contact) => contact.kind==='unknown'?'sight-unknown':'sight-craft';

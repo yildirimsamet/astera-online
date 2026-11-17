@@ -41,7 +41,7 @@ function ReportRow({ report, onSaved }: { report: Report; onSaved: (id: string) 
     {report.details ? <p className="whitespace-pre-wrap break-words text-caption text-v2-ink-2">{report.details}</p> : null}
     <p className="break-all select-all font-v2-mono text-micro text-v2-ink-3">{report.id}</p>
     {report.kind === 'player' ? <Note>{t('moderation.admin.profile')}</Note> : null}
-    <label className="flex min-h-11 items-start gap-2 text-caption text-v2-ink-2"><input type="checkbox" className="mt-1 size-5 shrink-0 accent-v2-self" disabled={busy} checked={confirmed} onChange={event => { setConfirmed(event.target.checked); }} />{t('moderation.admin.confirm')}</label>
+    <label className="flex min-h-[var(--gk-hit)] items-start gap-2 text-caption text-v2-ink-2"><input type="checkbox" className="mt-1 size-5 shrink-0 accent-v2-self" disabled={busy} checked={confirmed} onChange={event => { setConfirmed(event.target.checked); }} />{t('moderation.admin.confirm')}</label>
     {problem ? <p role="alert" className="text-caption text-v2-warn">{t('moderation.admin.failed')}</p> : null}
     <div className="flex flex-wrap gap-2">
       {report.kind === 'message' ? <Button disabled={!confirmed || busy} onClick={() => { void decide('MASK'); }}>{t('moderation.admin.mask')}</Button> : null}

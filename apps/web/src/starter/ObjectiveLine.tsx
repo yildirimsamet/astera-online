@@ -165,7 +165,7 @@ function OfferRow({ offer, index, recommended, chosen, held, progress, now, onPi
         aria-pressed={chosen}
         onClick={onPick}
         style={{ animationDelay: `${String(index * 60)}ms` }}
-        className={`flex min-h-11 w-full items-center gap-2.5 rounded-control border px-2 py-1.5 text-left animate-[line-in_0.3s_ease-out_both] active:scale-[0.98] ${recommended || chosen ? 'border-v2-self/60 bg-v2-self/10' : 'border-v2-line bg-v2-void/40'}`}
+        className={`flex min-h-[var(--gk-hit)] w-full items-center gap-2.5 rounded-control border px-2 py-1.5 text-left animate-[line-in_0.3s_ease-out_both] active:scale-[0.98] ${recommended || chosen ? 'border-v2-self/60 bg-v2-self/10' : 'border-v2-line bg-v2-void/40'}`}
       >
         <span aria-hidden="true" className={`grid size-8 shrink-0 place-items-center rounded-full border ${recommended || chosen ? 'border-v2-self/70 text-v2-self shadow-[0_0_10px_-2px_var(--color-v2-self)]' : 'border-v2-line-hi text-v2-ink-2'}`}>
           <Icon id={offerIcon(offer)} className="size-4" />

@@ -96,7 +96,7 @@ describe('the settings, on the kit', () => {
       show();
       const sizes = screen.getByRole('radiogroup', { name: i18n.t('menu.uiScaleLabel') });
       expect(sizes).toHaveClass('gk-choices');
-      expect(within(sizes).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['90%', '100%', '110%']);
+      expect(within(sizes).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['80%', '90%', '100%', '110%']);
       expect(screen.getByText(i18n.t('menu.uiScaleLimit', { value: 110 }))).toBeInTheDocument();
       press(within(sizes).getByRole('radio', { name: '110%' }));
       expect(document.querySelector('meta[name="viewport"]')?.getAttribute('content')).toContain('initial-scale=1.1');

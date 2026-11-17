@@ -106,7 +106,7 @@ export function ShipHero({ id, progress, selected, onSelect, compact = false }: 
   return (
     <div data-testid="ship-hero" {...(moment ? { 'data-moment': moment.tier } : {})} className="shrink-0 overflow-hidden">
       {/* Everything here is percent of the painting, so the frame keeps its shape on any screen. */}
-      <div className={`ship-hero-frame relative mx-auto w-full max-w-[440px] ${compact ? 'aspect-[7/4]' : 'aspect-[3/2]'}`}>
+      <div className={`ship-hero-frame relative mx-auto w-full max-w-[396px] ${compact ? 'aspect-[7/4]' : 'aspect-[3/2]'}`}>
         <img src={heroArt(hull, vesselLook(progress))} alt="" draggable={false} className={`ship-hero-art absolute inset-0 size-full object-cover brightness-125 saturate-110 ${compact ? '[mask-image:linear-gradient(to_right,transparent,#000_10%,#000_90%,transparent)]' : 'v2-split:[mask-image:linear-gradient(to_right,transparent,#000_12%,#000_88%,transparent)]'}`} />
         {VESSEL_SYSTEMS.map(system => (
           <span key={system} aria-hidden="true" data-bay={system} data-condition={bayCondition(systemPercent(progress, system))}

@@ -74,7 +74,7 @@ function LayoutChecks() {
     <>
       <section>
         <SectionHead label="Sheet · sticky child" aside="must not cover the header" />
-        <div className="relative h-[300px] overflow-hidden rounded-chip border border-line-soft">
+        <div className="relative h-[270px] overflow-hidden rounded-chip border border-line-soft">
           <div className="absolute inset-0">
             <Sheet title="Marrow-81" eyebrow="Your planet" onClose={() => undefined}>
               <div className="sticky top-0 -mx-4 grid grid-cols-4 gap-1 border-y border-line-soft bg-deep/95 px-2 py-2">
@@ -130,7 +130,7 @@ function LayoutChecks() {
 
 function Preview() {
   return (
-    <div className="mx-auto max-w-[390px] space-y-8 px-2 py-6">
+    <div className="mx-auto max-w-[351px] space-y-8 px-2 py-6">
       <LayoutChecks />
 
       <section>
@@ -164,7 +164,7 @@ function Preview() {
           {(['DART', 'PIKE', 'RAMPART', 'COURIER', 'BASTION'] as const).map((h) => (
             <div key={h} className="flex flex-col items-center gap-2">
               <span className="text-bone">
-                <HullMark hull={h} className="size-11" />
+                <HullMark hull={h} className="size-[var(--gk-hit)]" />
               </span>
               <span className="text-micro text-faint">{h}</span>
             </div>
@@ -273,7 +273,7 @@ function Preview() {
             a planet&apos;s fleet status silently.
           </EmptyState>
           <Plate className="flex gap-2 p-3">
-            <Skeleton className="size-[74px]" />
+            <Skeleton className="size-[67px]" />
             <div className="flex-1 space-y-2 py-2">
               <Skeleton className="h-3 w-1/2" />
               <Skeleton className="h-3 w-3/4" />

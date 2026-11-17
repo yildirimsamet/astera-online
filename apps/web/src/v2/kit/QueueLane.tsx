@@ -113,7 +113,7 @@ export function QueueLane({ label, orders, now, onOpen, slots = BUILD.queueDepth
               type="button"
               onClick={() => { onOpen(order); }}
               aria-label={t('planet.queue.segment', { name: buildOrderLabel(order), duration: left })}
-              className="flex h-11 min-w-0 items-center gap-1.5 rounded-control border border-v2-line bg-v2-panel px-1.5 text-left"
+              className="flex h-[var(--gk-hit)] min-w-0 items-center gap-1.5 rounded-control border border-v2-line bg-v2-panel px-1.5 text-left"
             >
               <OrderRing order={order} now={now} />
               <span className="grid min-w-0">
@@ -127,7 +127,7 @@ export function QueueLane({ label, orders, now, onOpen, slots = BUILD.queueDepth
           <span
             key={`free-${String(slot)}`}
             data-free-slot=""
-            className="flex h-11 items-center justify-center rounded-control border border-dashed border-v2-line font-v2-ui text-caption text-v2-ink-3"
+            className="flex h-[var(--gk-hit)] items-center justify-center rounded-control border border-dashed border-v2-line font-v2-ui text-caption text-v2-ink-3"
           >
             {t('lane.free')}
           </span>

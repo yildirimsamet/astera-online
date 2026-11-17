@@ -360,8 +360,8 @@ describe('season archive surface', () => {
     expect(prizeList).toHaveClass('gk-lb__tierlist');
     for (const row of Array.from(prizeList.children).slice(0, 3)) {
       const medal = row.querySelector('svg');
-      expect(medal).toHaveAttribute('width', '16');
-      expect(medal).toHaveAttribute('height', '16');
+      expect(medal).toHaveAttribute('width', '14');
+      expect(medal).toHaveAttribute('height', '14');
     }
     // The reader's own prize, in full, on their standing card.
     expect(screen.getAllByText('1,750').length).toBeGreaterThan(0);

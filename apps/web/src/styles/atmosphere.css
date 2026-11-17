@@ -113,14 +113,14 @@
 }
 .scene-panel [class~='text-v2-ink-3'] { color: var(--color-v2-ink-2); }
 .repair-scene::before { background: linear-gradient(0deg, rgb(8 13 24 / 94%), rgb(8 13 24 / 70%) 45%, rgb(8 13 24 / 12%) 85%); }
-.tactical-scene { min-height: 260px; justify-content: flex-end; }
+.tactical-scene { min-height: 234px; justify-content: flex-end; }
 .tactical-scene::before { background: linear-gradient(0deg, rgb(8 13 24 / 94%), rgb(8 13 24 / 72%) 42%, rgb(8 13 24 / 16%) 85%); }
 
 /* The Base's cards wear the kit's own metal and edge (.gk-bcard, .gk-scard), and its tabs the kit's plates (.gk-tab): no per-section tint. */
 
 /* The v2 lanes only; the kit's lanes (.gk-lane) stand on their own slots. */
 [data-queue-lane]:not(.gk-lane) {
-  padding-inline: 6px;
+  padding-inline: 5px;
   border: 1px solid var(--color-v2-line);
   border-radius: var(--radius-control);
   background-image: linear-gradient(100deg, color-mix(in srgb, var(--color-v2-line-hi) 10%, transparent), transparent);
@@ -138,7 +138,7 @@
 
 /* The card's top inset belongs inside the painted header, so no empty strip remains. */
 [data-sheet-panel][data-placement='card']:has(> .sheet-art-head) { padding-top: 0; }
-[data-sheet-panel][data-placement='card'] > .sheet-art-head { padding-top: 8px; }
+[data-sheet-panel][data-placement='card'] > .sheet-art-head { padding-top: 7px; }
 
 
 /* A ship's complete silhouette wins over a full-card crop. Match its source ratio. */
@@ -154,9 +154,9 @@
   object-position: center;
 }
 [data-layout='card'] [data-art]:has([data-scene-fit='contain']) [data-art-lock] { height: 100%; }
-[data-hull-family-group] > button { padding-block: 12px; }
+[data-hull-family-group] > button { padding-block: 11px; }
 [data-hull-family-group] > button h3 {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--color-v2-ink);
 }

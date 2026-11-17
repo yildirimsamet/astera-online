@@ -5,9 +5,9 @@ import { commanderLabel } from '../lib/identity.js';
 import { planetMarkerLayout } from './planetMarkerLayout.js';
 
 export const PLANET_LABEL_RANGE = 80;
-export const PLANET_LABEL_MAX_WIDTH = 300;
-export const PLANET_LABEL_DETAIL_MAX_WIDTH = 360;
-const PAD = 8;
+export const PLANET_LABEL_MAX_WIDTH = 270;
+export const PLANET_LABEL_DETAIL_MAX_WIDTH = 324;
+const PAD = 7;
 const GAP = 2;
 const MAX_LABELS = 32;
 const anchor = new Vector3();
@@ -66,6 +66,7 @@ export interface PlanetLabelSize {
 
 // Conservative text budgets, capped for long names. No font measurement or
 // layout reads in the frame loop. Wider glyphs (e.g. Japanese) use two cells.
+// Every budget is ×0.9 with the interface's type (owner 2026-11-17).
 const textCells = (value: string): number => {
   let cells = 0;
   for (const character of value) cells += character.codePointAt(0)! > 0x2ff ? 2 : 1;
@@ -73,12 +74,12 @@ const textCells = (value: string): number => {
 };
 export function planetLabelWidth(node: PlanetNode, detail: boolean): number {
   const ownerWidth = node.kind === 'NEUTRAL' ? 0
-    : textCells(commanderLabel(node.owner, node.clan?.tag)) * 5.5 + (node.country ? 16 : 0)
-      + (node.honorRanking && node.honorRank ? 30 : 0) + (node.dominionRank ? 30 : 0);
-  const textWidth = Math.max(textCells(node.name) * 6 + 12, ownerWidth + 12);
-  if (detail) return Math.min(PLANET_LABEL_DETAIL_MAX_WIDTH, Math.max(180, textWidth));
-  if (node.intel === 'REMEMBERED') return Math.min(PLANET_LABEL_MAX_WIDTH, Math.max(150, textWidth));
-  return Math.min(PLANET_LABEL_MAX_WIDTH, Math.max(64, textWidth));
+    : textCells(commanderLabel(node.owner, node.clan?.tag)) * 5 + (node.country ? 14 : 0)
+      + (node.honorRanking && node.honorRank ? 27 : 0) + (node.dominionRank ? 27 : 0);
+  const textWidth = Math.max(textCells(node.name) * 5.4 + 11, ownerWidth + 11);
+  if (detail) return Math.min(PLANET_LABEL_DETAIL_MAX_WIDTH, Math.max(162, textWidth));
+  if (node.intel === 'REMEMBERED') return Math.min(PLANET_LABEL_MAX_WIDTH, Math.max(135, textWidth));
+  return Math.min(PLANET_LABEL_MAX_WIDTH, Math.max(58, textWidth));
 }
 
 /** Priority also decides who keeps a name when two worlds share screen space. */
@@ -127,7 +128,7 @@ export function layoutPlanetLabels({ nodes, camera, width, height, selectedId, r
     const currentSize = measured?.detail === detail && measured.intel === node.intel ? measured : undefined;
     const boxWidth = Math.min(currentSize?.width ?? planetLabelWidth(node, detail), width - PAD * 2);
     const boxHeight = currentSize?.height
-      ?? (node.intel === 'UNKNOWN' ? 12 : (detail ? 37 : 25) + (node.intel === 'REMEMBERED' ? 12 : 0));
+      ?? (node.intel === 'UNKNOWN' ? 11 : (detail ? 33 : 23) + (node.intel === 'REMEMBERED' ? 11 : 0));
     // Html stays on the planet centre. Only the screen-space column moves up,
     // using the same camera-up axis and zoom scale as the pin and closed eye.
     const depth = viewDepth(node, camera);

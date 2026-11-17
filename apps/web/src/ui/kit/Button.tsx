@@ -37,9 +37,9 @@ const VARIANT: Record<ButtonVariant, string> = {
 
 const SIZE: Record<ButtonSize, string> = {
   sm: 'min-h-9 max-h-9 px-2 py-2 text-label',
-  md: 'min-h-[42px] max-h-[42px] px-2 py-3 text-body',
-  lg: 'min-h-[52px] max-h-[52px] px-6 py-3 text-body',
-  hero: 'min-h-[60px] max-h-[60px] px-6 py-2 text-title tracking-label',
+  md: 'min-h-[38px] max-h-[38px] px-2 py-3 text-body',
+  lg: 'min-h-[47px] max-h-[47px] px-6 py-3 text-body',
+  hero: 'min-h-[54px] max-h-[54px] px-6 py-2 text-title tracking-label',
 };
 
 export function Button({
@@ -139,7 +139,7 @@ export function IconButton({
         onClick?.();
       }}
       className={`slab ${VARIANT[tone]} relative shrink-0 p-0 ${
-        size === 'sm' ? 'size-9 min-h-0' : 'size-11 min-h-0'
+        size === 'sm' ? 'size-9 min-h-0' : 'size-[var(--gk-hit)] min-h-0'
       } ${className}`}
     >
       {children}

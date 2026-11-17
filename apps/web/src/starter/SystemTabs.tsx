@@ -26,7 +26,7 @@ export function SystemTabs({ progress, ahead, selected, onSelect }: {
             aria-selected={on}
             aria-label={`${t(`starter.system.${system}`)}, ${String(percent)}%${open ? '' : `, ${t('starter.locked')}`}`}
             onClick={() => { onSelect(system); }}
-            className={`relative h-[74px] overflow-hidden rounded-control border bg-v2-void text-center ${on ? 'border-v2-self shadow-[0_0_12px_-1px_var(--color-v2-self)]' : 'border-v2-line'}`}
+            className={`relative h-[67px] overflow-hidden rounded-control border bg-v2-void text-center ${on ? 'border-v2-self shadow-[0_0_12px_-1px_var(--color-v2-self)]' : 'border-v2-line'}`}
           >
             <img src={moduleArt(SYSTEM_ART[system], 1)} alt="" draggable={false}
               className={`absolute inset-0 size-full object-cover ${open ? '' : 'opacity-60 saturate-[.6]'}`} />

@@ -62,7 +62,7 @@ export function LockMark() {
  * because it appears in three places at three weights: faint in a row's corner, at full
  * strength on the repair sheet, and inheriting the tab's own state on the category bar.
  */
-export function FaultMark({ className = 'size-[14px]' }: { className?: string }) {
+export function FaultMark({ className = 'size-[13px]' }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"

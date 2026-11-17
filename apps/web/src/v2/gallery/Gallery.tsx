@@ -1871,7 +1871,7 @@ function Views({ view }: { view: string }) {
         pool: { combatHulls: 22, waves: 1, participants: 1 },
       },
     });
-    return <div className="mx-auto max-w-[420px] p-3"><ClanWarPanel war={war} role={critical ? "LEADER" : "MEMBER"} mature worlds={[launchWorld]} selfPlayerId={critical ? "p1" : undefined} /></div>;
+    return <div className="mx-auto max-w-[378px] p-3"><ClanWarPanel war={war} role={critical ? "LEADER" : "MEMBER"} mature worlds={[launchWorld]} selfPlayerId={critical ? "p1" : undefined} /></div>;
   }
   if (view === 'trade') {
     return (
@@ -1964,9 +1964,9 @@ export function Gallery({ view }: { view: string | null }) {
     if (!PLANET_SKIN_IDS.includes(skinId as PlanetSkinId)) return null;
     const look = PLANET_SKIN_CATALOG[skinId as PlanetSkinId];
     return (
-      <div data-skin-card className="relative h-[320px] w-[400px] overflow-hidden bg-v2-deep" style={{ '--look': look.accent, '--look-glow': look.glow } as CSSProperties}>
+      <div data-skin-card className="relative h-[288px] w-[360px] overflow-hidden bg-v2-deep" style={{ '--look': look.accent, '--look-glow': look.glow } as CSSProperties}>
         <div aria-hidden className="v2-store-aura absolute inset-[3%] rounded-full" />
-        <SkinPreview skinId={skinId} status="NORMAL" className="h-[320px]" still
+        <SkinPreview skinId={skinId} status="NORMAL" className="h-[288px]" still
           {...(new URLSearchParams(window.location.search).has('offset')
             ? { phaseOffset: Number(new URLSearchParams(window.location.search).get('offset')) }
             : {})} />

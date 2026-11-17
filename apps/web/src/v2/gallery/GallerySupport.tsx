@@ -85,7 +85,7 @@ function hangarWorld(posture: Stance, locked: boolean, alarm = false): PlanetVie
 function Hangar({ posture, locked = false, alarm = false }: { posture: Stance; locked?: boolean; alarm?: boolean }) {
   const world = hangarWorld(posture, locked, alarm);
   return (
-    <div className="mx-auto flex max-w-[440px] flex-col gap-3 p-3">
+    <div className="mx-auto flex max-w-[396px] flex-col gap-3 p-3">
       <DefencePostureCard planet={world} />
       <ClanSupportBay planet={world} />
       <EscapeReadout fleet={world.fleet} ground={world.ground} deuterium={world.planet.deuterium}
@@ -235,7 +235,7 @@ function Banner({ gold }: { gold: boolean }) {
   return (
     <QueryClientProvider client={client}>
       <ApiProvider api={api}>
-        <div className="mx-auto max-w-[440px] p-3">
+        <div className="mx-auto max-w-[396px] p-3">
           <ClanBanner war={war} role="LEADER" selfPlayerId="me" canGive onDonate={noop} />
         </div>
       </ApiProvider>
@@ -273,7 +273,7 @@ function ClanRoom() {
   return (
     <QueryClientProvider client={client}>
       <ApiProvider api={api}>
-        <div className="h-[812px]"><ChatScreen initialChannel="clan" onFocusPlanet={noop} /></div>
+        <div className="h-[731px]"><ChatScreen initialChannel="clan" onFocusPlanet={noop} /></div>
       </ApiProvider>
     </QueryClientProvider>
   );

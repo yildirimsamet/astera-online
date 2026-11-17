@@ -21,9 +21,10 @@ import { useSyncExternalStore } from 'react';
  * moment later and put back, and the setting withdrawn.
  *
  * Remembered per device, like the image quality: a phone and a desktop want different sizes.
+ * Steps 80–130 % (owner 2026-11-17): 80 is offered knowing the smallest words fall under 9 px.
  */
 
-export const UI_SCALES = [90, 100, 110, 120, 130] as const;
+export const UI_SCALES = [80, 90, 100, 110, 120, 130] as const;
 export type UiScale = (typeof UI_SCALES)[number];
 
 /** The page's own line in `index.html`; 100 % writes it back unchanged. */
@@ -93,7 +94,7 @@ export interface UiScaleHost {
 let available = false;
 let chosen: UiScale | null = null;
 let suggested: UiScale | null = null;
-let options: readonly UiScale[] = [90, 100];
+let options: readonly UiScale[] = [80, 90, 100];
 let applied: UiScale = 100;
 let check: ReturnType<typeof setTimeout> | undefined;
 const listeners = new Set<() => void>();

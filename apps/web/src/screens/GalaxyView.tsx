@@ -1593,7 +1593,7 @@ export function GalaxyView({
             } } : {})} />
       )}
       {bottom === 'destination' && mainRowOpen && mainSkyAnswer && (
-        <div className="pointer-events-none absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-20">
+        <div className="pointer-events-none absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+76px)] z-20">
           <MainGalaxyRow sky={mainSkyAnswer} now={beamClock} jumpReady={ship?.features.includes('migration') ?? false}
             road={{ repair: ship?.progress.share ?? 0, fuel: ship?.fuel ?? 0 }}
             onOpenShip={() => { setMainRowOpen(false); onPanel('planet'); }} onClose={() => { setMainRowOpen(false); }} />
@@ -1921,7 +1921,7 @@ export function GalaxyView({
         })()}
 
       {season.data?.status === 'frozen' && panel === null && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] z-30 mx-auto flex w-full max-w-sm flex-col gap-2 px-2">
+        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(var(--v2-dock-h,86px)+0.5rem)] z-30 mx-auto flex w-full max-w-sm flex-col gap-2 px-2">
           {cornerButtons && <div className="flex justify-end">{cornerButtons}</div>}
           <NextSeason endsAt={season.data.endsAt} />
         </div>
@@ -1929,7 +1929,7 @@ export function GalaxyView({
 
       {/* The bell and the chat still in reach on a galaxy with no slot and no next-season card. */}
       {cornerButtons && !ship && panel === null && !slotShown && season.data?.status !== 'frozen' && (
-        <div className="pointer-events-none absolute bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] right-[var(--gk-gutter)] z-20">{cornerButtons}</div>
+        <div className="pointer-events-none absolute bottom-[calc(var(--v2-dock-h,86px)+0.5rem)] right-[var(--gk-gutter)] z-20">{cornerButtons}</div>
       )}
 
       {/* ── full surfaces, over the live galaxy ─────────────── */}

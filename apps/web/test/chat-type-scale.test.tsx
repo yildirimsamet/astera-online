@@ -33,7 +33,8 @@ describe('the chat type scale', () => {
   it('leaves the global scale where it was', () => {
     const styles = readFileSync(resolve(__dirname, '../src/styles.css'), 'utf8');
     expect(styles).toMatch(/--text-body:\s*12px/);
-    expect(styles).toMatch(/--text-micro:\s*9px/);
+    // The 90 % default (owner 2026-11-17) lifted micro to the 11 px floor.
+    expect(styles).toMatch(/--text-micro:\s*11px/);
   });
 
   it('is worn by the chat screen itself', () => {

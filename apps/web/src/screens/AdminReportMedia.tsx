@@ -8,7 +8,7 @@ import { Button } from '../v2/kit/Surface.js';
 export function AdminReportMedia({ reportId, media }: { reportId: string; media: ChatMedia }) {
   const { t } = useTranslation();
   if (media.kind === 'youtube') return <a
-    className="flex min-h-11 items-center text-caption text-v2-self underline underline-offset-4"
+    className="flex min-h-[var(--gk-hit)] items-center text-caption text-v2-self underline underline-offset-4"
     href={`https://www.youtube.com/watch?v=${media.videoId}`} target="_blank" rel="noopener noreferrer"
   >{t('moderation.admin.mediaYouTube')}</a>;
   return <ReviewFile key={`${reportId}:${media.assetId}`} reportId={reportId} media={media} />;

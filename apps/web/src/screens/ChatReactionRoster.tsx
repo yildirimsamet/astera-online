@@ -55,13 +55,13 @@ export function ChatReactionRoster({ channel, messageId, anchor, onClose }: {
   return createPortal(
     /* WHO REACTED (C3): the kit's small panel beside the chip, its close key the kit's. */
     <div ref={panel} role="dialog" aria-modal="true" aria-label={t('chat.reactions')} tabIndex={-1}
-      className="gk gk-pop fixed z-[110] w-[272px] max-w-[calc(100vw-16px)] overflow-hidden outline-none"
+      className="gk gk-pop fixed z-[110] w-[245px] max-w-[calc(100vw-14px)] overflow-hidden outline-none"
       style={position}>
       <div className="flex items-center justify-between border-b border-v2-line pl-3">
         <span className="gk-display tracking-wide">{t('chat.reactions')}</span>
         <RoundButton small glyph="close" label={t('sheet.close')} onPress={onClose} />
       </div>
-      <div data-reaction-roster style={{ height: 120, overflowY: 'auto', overscrollBehavior: 'contain' }} tabIndex={0}>
+      <div data-reaction-roster style={{ height: 108, overflowY: 'auto', overscrollBehavior: 'contain' }} tabIndex={0}>
         {details.isError ? <div role="alert" className="flex flex-wrap items-center gap-2 px-3 py-2 text-v2-warn">{describeError(details.error)}
           <GameButton size="sm" glyph="refresh" onPress={() => { void details.refetch(); }}>{t('surface.retry')}</GameButton></div>
           : !details.data ? <p role="status" className="gk-copy px-3 py-2">{t('surface.waitingChat')}</p>

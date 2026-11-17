@@ -62,9 +62,9 @@ export function StatusBar({
   const boostUntil = data?.planet.productionBoostUntil ?? null;
   const boosted = boostUntil !== null && boostUntil.getTime() > now;
 
-  if (!data) return <div className="h-[70px]" />;
+  if (!data) return <div className="h-[63px]" />;
   return (
-    <header className="relative shrink-0 border-b border-line bg-gradient-to-b from-[#0b1120] to-void px-2 pb-2 pt-[calc(10px+env(safe-area-inset-top))]">
+    <header className="relative shrink-0 border-b border-line bg-gradient-to-b from-[#0b1120] to-void px-2 pb-2 pt-[calc(9px+env(safe-area-inset-top))]">
       {/*
         THE SELECTOR APPEARS WHEN THERE IS SOMETHING TO SELECT.
 
@@ -102,7 +102,7 @@ export function StatusBar({
         </label>
       )}
       <div className="flex items-end gap-2 max-h-[44px]">
-        <div className="flex min-w-0 flex-1 items-end gap-2 max-w-[275px]" data-resource-strip>
+        <div className="flex min-w-0 flex-1 items-end gap-2 max-w-[248px]" data-resource-strip>
           <Stock
             label={t('statusBar.alloyLabel')}
             value={held.alloy}
@@ -291,7 +291,7 @@ function Works({
   const blocked = something && movable < 1;
 
   return (
-    <div className="mt-3 flex items-stretch gap-2 max-h-[32px]">
+    <div className="mt-3 flex items-stretch gap-2 max-h-[29px]">
       <AttackShield />
       <button
         type="button"

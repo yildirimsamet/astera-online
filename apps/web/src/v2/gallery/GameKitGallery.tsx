@@ -414,7 +414,7 @@ function FinderParts() {
         <Tally glyph="colony" paint="warn" value="2" label="2 karakol" onPress={noop} />
         <Tally glyph="star" paint="deut" value="8" label="8 anıt" expanded={open} onPress={() => { setOpen((now) => !now); }} />
       </div>
-      <div className="relative h-[260px] w-full">
+      <div className="relative h-[234px] w-full">
         {/* A zero-high anchor: the panel drops from the counts' foot, as it does in the game. */}
         <div className="absolute inset-x-0 top-0 h-0">
         {open && (
@@ -501,7 +501,7 @@ function DeskParts() {
     startedAt: new Date(now + from * min), finishesAt: new Date(now + to * min), cost: { alloy: 300, crystal: 100, deuterium: 0 },
   });
   return (
-    <div className="h-[760px]">
+    <div className="h-[684px]">
       <Outline
         now={now}
         worlds={[

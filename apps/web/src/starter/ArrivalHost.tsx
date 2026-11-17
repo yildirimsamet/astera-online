@@ -110,12 +110,12 @@ export function ArrivalHost({ onPanel }: { onPanel: ShellRoute }) {
         footer={
           <div className="flex items-center gap-2">
             {/* Watched again only through the map it crosses: without it the scene had nothing to fly in. */}
-            <button type="button" disabled={!world} className="min-h-11 shrink-0 rounded-control border border-v2-line-hi px-3 text-caption text-v2-ink-2 disabled:opacity-40"
+            <button type="button" disabled={!world} className="min-h-[var(--gk-hit)] shrink-0 rounded-control border border-v2-line-hi px-3 text-caption text-v2-ink-2 disabled:opacity-40"
               onClick={() => { if (world) startJump({ shardName: arrival.shardName, hull: arrival.hull, look: 'RENEWED', world, landing: null, start: 0, replay: true }); }}>
               {t('starter.jump.replay')}
             </button>
             <button type="button" onClick={() => { seen.mutate(); }}
-              className="min-h-11 flex-1 rounded-control border border-v2-self bg-gradient-to-b from-v2-self to-v2-self/55 text-body font-bold uppercase tracking-wide text-v2-void">
+              className="min-h-[var(--gk-hit)] flex-1 rounded-control border border-v2-self bg-gradient-to-b from-v2-self to-v2-self/55 text-body font-bold uppercase tracking-wide text-v2-void">
               {t('starter.landing.go')}
             </button>
           </div>
@@ -146,7 +146,7 @@ export function ArrivalHost({ onPanel }: { onPanel: ShellRoute }) {
   }
   if (!tip) return null;
   return (
-    <div data-testid="landing-tip" role="status" className="pointer-events-auto fixed inset-x-3 top-[calc(env(safe-area-inset-top)+96px)] z-[60] mx-auto flex max-w-[440px] items-start gap-2 rounded-control border border-v2-self/40 bg-v2-panel/95 px-2.5 py-2 font-v2-ui shadow-lg">
+    <div data-testid="landing-tip" role="status" className="pointer-events-auto fixed inset-x-3 top-[calc(env(safe-area-inset-top)+86px)] z-[60] mx-auto flex max-w-[396px] items-start gap-2 rounded-control border border-v2-self/40 bg-v2-panel/95 px-2.5 py-2 font-v2-ui shadow-lg">
       <p className="min-w-0 flex-1 text-caption leading-snug text-v2-ink">{t(`starter.landing.tip.${tip}`)}</p>
       <button type="button" aria-label={t('starter.landing.dismiss')} onClick={() => { dismissTip(tip); setTip(null); }}
         className="-m-1 min-h-8 min-w-8 text-v2-ink-2">×</button>

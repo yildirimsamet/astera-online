@@ -116,8 +116,8 @@ export function BeatCard({
       ref={box}
       className={`pointer-events-none fixed inset-x-0 z-50 flex justify-center px-2 ${
         place === 'top'
-          ? 'top-0 pt-[calc(8px+env(safe-area-inset-top))]'
-          : 'bottom-0 pb-[calc(46px+env(safe-area-inset-bottom))]'
+          ? 'top-0 pt-[calc(7px+env(safe-area-inset-top))]'
+          : 'bottom-0 pb-[calc(41px+env(safe-area-inset-bottom))]'
       }`}
       role="status"
       aria-live="polite"

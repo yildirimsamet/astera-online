@@ -960,7 +960,7 @@ export function PlanetFocus({
     <Shell
       art={target.body === 'VESSEL'
         ? <img src={heroArt(vesselHull(target.id), target.look ?? 'WRECKED')} alt="" draggable={false} className="size-10 rounded-control object-cover" />
-        : <PlanetSigil seed={target.id} skinId={target.skin?.id} size={40} dark={known.kind === 'none'} />}
+        : <PlanetSigil seed={target.id} skinId={target.skin?.id} size={36} dark={known.kind === 'none'} />}
       eyebrow={target.body === 'VESSEL'
         ? t('starter.eyebrow')
         // The kind and the code that tells two alike apart; the name leads (player test).
@@ -1481,7 +1481,7 @@ function OwnedPlanetFocus({
   return (
     <Shell
       tone="self"
-      art={<PlanetSigil seed={target.id} skinId={target.skin?.id} size={40} />}
+      art={<PlanetSigil seed={target.id} skinId={target.skin?.id} size={36} />}
       eyebrow={t(target.kind === 'CAPITAL'
         ? 'focus.planet.yourCapital'
         : 'focus.planet.yourColony')}

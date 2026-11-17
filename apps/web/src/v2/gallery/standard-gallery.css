@@ -18,14 +18,14 @@
 .gk-std__ground {
   display: grid;
   justify-items: start;
-  gap: 8px;
-  padding: 16px 12px;
+  gap: 7px;
+  padding: 14px 11px;
   border-radius: var(--gk-r-md);
   background-size: 170% auto;
   background-position: 40% 45%;
 }
 .gk-std__plate {
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: var(--gk-r-sm);
   background: var(--gk-scrim);
 }
@@ -37,17 +37,17 @@
   background: transparent;
   color: var(--gk-ink-2);
   font: inherit;
-  font-size: 12px;
+  font-size: 11px;
 }
 .gk-std__stage {
   display: grid;
   justify-items: start;
-  gap: 8px;
-  min-height: 112px;
+  gap: 7px;
+  min-height: 101px;
 }
 .gk-std__drawer {
   width: 100%;
-  transform: translateY(18px);
+  transform: translateY(16px);
   opacity: 0;
   pointer-events: none;
   transition: transform var(--std-ms) var(--gk-ease), opacity var(--std-ms) var(--gk-ease);

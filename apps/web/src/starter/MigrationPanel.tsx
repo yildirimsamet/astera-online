@@ -165,7 +165,7 @@ export function MigrationPanel({ vessel, onJump }: { vessel: VesselView; onJump:
       {tankBlock && <p data-testid="jump-block" className="text-micro leading-snug text-v2-warn">{tankBlock.code === 'MIGRATION_SEASON_WAIT' ? t('errors.MIGRATION_SEASON_WAIT', { daysLeft: tankBlock.daysLeft }) : t(`errors.${tankBlock.code}`)}</p>}
       {view && !view.block && (
         <button type="button" onClick={() => { onJump(view); }}
-          className="jump-call relative min-h-11 overflow-hidden rounded-control border border-v2-self bg-gradient-to-b from-v2-self to-v2-self/55 text-body font-bold uppercase tracking-wide text-v2-void shadow-[0_0_18px_-2px_var(--color-v2-self)]">
+          className="jump-call relative min-h-[var(--gk-hit)] overflow-hidden rounded-control border border-v2-self bg-gradient-to-b from-v2-self to-v2-self/55 text-body font-bold uppercase tracking-wide text-v2-void shadow-[0_0_18px_-2px_var(--color-v2-self)]">
           {t('starter.jump.go')}
         </button>
       )}

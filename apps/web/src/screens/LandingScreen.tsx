@@ -154,7 +154,7 @@ export function CompactLandingScreen({
        * picture first and the sentence second, and the sentence was crowding the
        * picture out.
        */}
-      <div className="relative z-10 flex min-h-dvh flex-col justify-between bg-[linear-gradient(180deg,rgb(4_6_11/0.92)_0%,rgb(4_6_11/0.72)_16%,rgb(4_6_11/0.10)_34%,rgb(4_6_11/0.06)_58%,rgb(4_6_11/0.78)_82%,rgb(4_6_11/0.97)_100%)] px-4 pb-[calc(20px+env(safe-area-inset-bottom))] pt-[calc(22px+env(safe-area-inset-top))] sm:px-6">
+      <div className="relative z-10 flex min-h-dvh flex-col justify-between bg-[linear-gradient(180deg,rgb(4_6_11/0.92)_0%,rgb(4_6_11/0.72)_16%,rgb(4_6_11/0.10)_34%,rgb(4_6_11/0.06)_58%,rgb(4_6_11/0.78)_82%,rgb(4_6_11/0.97)_100%)] px-4 pb-[calc(18px+env(safe-area-inset-bottom))] pt-[calc(20px+env(safe-area-inset-top))] sm:px-6">
         {/*
           THE SWITCHER IS ON THE FRONT DOOR, not only in the commander sheet: a
           visitor who has landed in the wrong language has no account yet, so the
@@ -181,7 +181,7 @@ export function CompactLandingScreen({
                 sees of this game, and with the middle cleared it sits high and
                 lets the sky underneath do the talking. */}
             <h1>
-              <Wordmark width={160} className="mx-auto mt-2" />
+              <Wordmark width={144} className="mx-auto mt-2" />
             </h1>
           </header>
         </div>
