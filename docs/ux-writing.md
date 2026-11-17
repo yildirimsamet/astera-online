@@ -51,6 +51,17 @@ Her butona bütün açıklamayı yerleştirme. Oyuncunun o anda kararını deği
 11. **Oyuncunun dilini kullan.** API adı, hata kodu, karar numarası, sürüm adı, veritabanı terimi ve geliştirici kısaltması işlevsel oyuncu metnine taşınmaz.
 12. **Açıklık için gereken bilgiyi kısaltma uğruna silme.** Metin sığmıyorsa yerleşimi veya bilgi katmanını düzelt. Önemli koşulu kesme veya erişilemeyen hover metnine taşıma.
 
+### 3.1 Ekranda ne kalır (owner, 2026-11-16/17)
+
+Owner'ın iki amacı: oyuncu ferahlasın; bilgi yağmuru olmasın. "Tüm verileri oyuncunun önüne yığmak, sonucu iyi sunmak değildir." Her yüzeyde her paragraf için sırayla:
+
+1. **Bilineni yazma.** Ekranın, simgenin veya düğmenin zaten söylediğini tekrar etme ("bu filo uzaktayken savunamaz" gibi). Aynı bilgi ekranda tek yerde durur.
+2. **Kısalt.** Kalan metin tek cümle; ekranın satırı olgu ve sayıyı söyler.
+3. **Kuralı ⓘ'ye koy.** Karar için gereken ama her seferinde okunmayan kural `InfoPeek`'in (olgu + ⓘ + kural) arkasına girer; birkaç kural varsa her biri başlıklı bir `Fold`'dur.
+4. **Uzun yüzeyi böl.** Aşağı doğru uzayan tek sütun bölümler yasaktır; sekmeye (`GameTabs`), sayfa şeridine veya kapalı `Fold`'lara ayrılır. Oyuncunun geldiği şey (sıralama, gemi, sonuç) ilk ekranda görünür.
+
+Bu kurallar §3.12'yi esnetmez: karar için gereken koşul silinmez, bir dokunuşla ulaşılır kalır.
+
 ## 4. Ses, dil ve uzunluk
 
 - Sakin, açık ve saygılı yaz. Hata veya kayıpta oyuncuyu suçlama; mizah, abartı ve slogan kullanma.

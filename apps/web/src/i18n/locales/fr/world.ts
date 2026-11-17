@@ -122,8 +122,7 @@ export const galaxy = {
     galaxyUnknown: "—",
     endsLabel: "Fin de la saison dans",
     endsUnknown: "—",
-    wipeNote:
-      "À la réinitialisation, toutes les galaxies sont recréées depuis zéro et tout le monde recommence.",
+    wipeNote: "À la fin de la saison, chaque galaxie repart de zéro.",
     signOut: "Se déconnecter",
   },
 } as const;

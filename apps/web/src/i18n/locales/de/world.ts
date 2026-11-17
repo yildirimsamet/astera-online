@@ -114,7 +114,7 @@ export const galaxy = {
     galaxyUnknown: "—",
     endsLabel: "Saison endet in",
     endsUnknown: "—",
-    wipeNote: "Beim Saisonwechsel werden alle Galaxien zurückgesetzt und jeder beginnt von vorn.",
+    wipeNote: "Am Saisonende beginnt jede Galaxie von vorn.",
     signOut: "Abmelden",
   },
 } as const;

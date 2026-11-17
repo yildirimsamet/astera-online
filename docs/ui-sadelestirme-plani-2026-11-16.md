@@ -108,3 +108,4 @@ Son sırada: G11 simulator / wiki-sheet / wiki-public · G13 faults / landing / 
 - 2026-11-16: H2 bitti; ayrıca harita etiketleri HUD araçlarını örtüyordu (z-index), düzeltildi. Sıradaki: S4.
 - 2026-11-16: S4 bitti. Üs'ün beşli sekmesinde kelime ortadan kırılıyordu: sekme 1 px yan boşluk + 0 harf aralığı, uzun kelimeler kısaldı (Taktik, Economy, Ausbau, Fábricas, Usines; akademi metni de). Sıradaki: S5/S6, E1.
 - 2026-11-17: E1 bitti: kit'e `Fold` (S5'in ilk parçası; Ölüm Yıldızı/radyasyon katlanırları da bunu kullanıyor). Owner'ın ikinci 17 maddelik listesi plana eklendi (O1–O17). Sıradaki: O3.
+- 2026-11-17: O3, O9, O11, O7, O13, O8, O16, O17, O14, O15, O10, O1, O2 bitti (önceki oturumlarda). O4 (liderlik: Sıralama · Ödüller · Kurallar), O5/E4 (klansız ekran: Bul · Kur · Neden), O6 (savaş raporu: sonuç sahnesi + dört kapalı soru), E5 (ödül kapsülü) bitti. Sıradaki: E6 + S5/S6 yazı taraması, yüzey yüzey.

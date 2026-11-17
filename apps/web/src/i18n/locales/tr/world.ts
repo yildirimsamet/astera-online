@@ -116,8 +116,7 @@ export const galaxy = {
     galaxyUnknown: "—",
     endsLabel: "Sezonun bitmesine",
     endsUnknown: "—",
-    wipeNote:
-      "Sıfırlamada bütün galaksiler baştan kuruluyor ve herkes yeniden başlıyor.",
+    wipeNote: "Sezon bitince her galaksi baştan başlar.",
     signOut: "Çıkış yap",
   },
 } as const;

@@ -115,7 +115,7 @@ export const galaxy = {
     galaxyUnknown: "—",
     endsLabel: "Season ends in",
     endsUnknown: "—",
-    wipeNote: "At the wipe every galaxy resets and everyone starts again.",
+    wipeNote: "When the season ends, every galaxy starts over.",
     signOut: "Sign out",
   },
 } as const;

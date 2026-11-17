@@ -114,7 +114,7 @@ export const galaxy = {
     galaxyUnknown: "—",
     endsLabel: "シーズン終了まで",
     endsUnknown: "—",
-    wipeNote: "ワイプではすべての銀河がリセットされ、全員が再びスタートします。",
+    wipeNote: "シーズン終了で全銀河が最初から始まります。",
     signOut: "サインアウト",
   },
 } as const;
