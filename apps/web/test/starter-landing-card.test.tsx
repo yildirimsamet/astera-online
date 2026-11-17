@@ -98,3 +98,48 @@ describe('the card after the landing', () => {
     expect(onPanel).toHaveBeenCalledWith('planet', undefined, undefined, { group: 'grow', itemId: 'DEUTERIUM_PLANT' });
   });
 });
+
+/** A defender's report of a raid: what was taken is written below zero (`reports.ts`). */
+const raid = {
+  id: 'b1', missionId: 'm1', at: new Date().toISOString(), grade: 'DECISIVE', attacking: false,
+  opponentName: 'Sable', opponentPlanet: 'Grimhold', opponentPlanetId: 'p2', neutral: false, yourPlanet: 'Vantage-3',
+  rounds: [], yourLosses: {}, theirLosses: {}, yourFleet: {}, theirFleet: { DART: 4 },
+  lootAlloy: -400, lootCrystal: -120, lootDeuterium: 0, dominion: 0, shieldAbsorbed: 0, cargoLimited: false,
+  defenceSalvage: {}, yourDamage: [], disruptedMinutes: 0, wreckValue: 0,
+};
+const tipHarness = (reports: object[], daysAgo: number) => {
+  const fetcher = vi.fn((input: RequestInfo | URL) => {
+    const url = urlOf(input);
+    const body = url.includes('/api/reports') ? { reports, rivals: [] } : { arrival: null, landedAt: new Date(Date.now() - daysAgo * 86_400_000).toISOString() };
+    return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } }));
+  });
+  const api = new Api({ fetch: fetcher as unknown as typeof globalThis.fetch });
+  const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={queries}><ApiProvider api={api}><ArrivalHost onPanel={vi.fn()} /></ApiProvider></QueryClientProvider>);
+};
+
+/** The first week's note comes with the need (plan 2026-11-13 §4.8); the calendar is the fallback. */
+describe('the first-week note', () => {
+  beforeEach(() => { window.localStorage.clear(); });
+
+  it('says the calendar line while nothing has happened', async () => {
+    tipHarness([], 4);
+    expect(await screen.findByTestId('landing-tip')).toHaveTextContent(/Dominion/u);
+  });
+
+  it('says the clan line once the player has been raided', async () => {
+    tipHarness([raid], 4);
+    await waitFor(() => { expect(screen.getByTestId('landing-tip')).toHaveTextContent(/clan/iu); });
+  });
+
+  it('closes on a thumb-sized button and stays closed', async () => {
+    tipHarness([], 4);
+    const close = within(await screen.findByTestId('landing-tip')).getByRole('button', { name: 'Dismiss' });
+    fireEvent.click(close);
+    expect(screen.queryByTestId('landing-tip')).toBeNull();
+    cleanup();
+    tipHarness([], 4);
+    await screen.findByTestId('landing-card').catch(() => undefined);
+    expect(screen.queryByTestId('landing-tip')).toBeNull();
+  });
+});

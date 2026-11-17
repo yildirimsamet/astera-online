@@ -1,7 +1,8 @@
 import { FIRST_SEASON_START, fleetEntries, type Fleet } from '@astera/rules';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { useGalaxy } from '../api/queries.js';
+import { useGalaxy, usePlanet, useReports } from '../api/queries.js';
+import { Banner, Glyph, type GlyphId } from '../game-ui/index.js';
 import { landedWorld } from './jumpWorld.js';
 import { useTranslation } from 'react-i18next';
 import { useApi } from '../api/context.js';
@@ -14,7 +15,7 @@ import type { ShellRoute } from '../v2/shell/GameShell.js';
 import { Icon, type IconId } from '../v2/icons.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { scenePlayed, startJump, useJump, fromTheLanding } from './jump.js';
-import { dismissTip, tipDismissed, tipFor, type LandingTip } from './landingTips.js';
+import { dismissTip, tipDismissed, tipFor, tipTriggers, type LandingTip, type TipReport } from './landingTips.js';
 import { arrivalQuery, useMarkArrivalSeen } from './queries.js';
 import { ProtectionLines } from './ProtectionLines.js';
 
@@ -71,6 +72,9 @@ function Move({ id, icon, title, line, onPick }: { id: string; icon: IconId; tit
  * THE ONE CARD AFTER THE LANDING, and the week of short notes behind it. Reads from the main game's
  * side, since the account no longer has a ship. A scene cut short plays its ending first, once.
  */
+/** Each note's mark: the thing it explains. */
+const TIP_GLYPH: Record<LandingTip, GlyphId> = { core: 'target', colony: 'colony', clan: 'support', dominion: 'ranking', honor: 'star' };
+
 export function ArrivalHost({ onPanel }: { onPanel: ShellRoute }) {
   const { t } = useTranslation();
   const api = useApi();
@@ -94,11 +98,18 @@ export function ArrivalHost({ onPanel }: { onPanel: ShellRoute }) {
   }, [hull, shardName, world, jump]);
 
   const landedAt = data?.landedAt?.getTime();
+  // What the first week has brought so far: a note opens with the need it explains (plan 2026-11-13 §4.8).
+  const reports = useReports().data?.reports;
+  const core = usePlanet().data?.buildings.CORE ?? 0;
+  const met = useMemo(() => {
+    const battles = (reports ?? []).filter((report): report is Extract<typeof report, TipReport> =>
+      'neutral' in report && 'lootAlloy' in report && 'yourLosses' in report);
+    return landedAt === undefined ? new Set<LandingTip>() : tipTriggers(battles, core, landedAt);
+  }, [reports, core, landedAt]);
   useEffect(() => {
     if (arrival || landedAt === undefined) { setTip(null); return; }
-    const next = tipFor(landedAt, now);
-    setTip(next && !tipDismissed(next) ? next : null);
-  }, [arrival, landedAt, now]);
+    setTip(tipFor({ landedAtMs: landedAt, nowMs: now, met, dismissed: tipDismissed }));
+  }, [arrival, landedAt, now, met]);
 
   if (jump) return null;
   if (arrival) {
@@ -153,10 +164,14 @@ export function ArrivalHost({ onPanel }: { onPanel: ShellRoute }) {
   }
   if (!tip) return null;
   return (
-    <div data-testid="landing-tip" role="status" className="pointer-events-auto fixed inset-x-3 top-[calc(env(safe-area-inset-top)+96px)] z-[60] mx-auto flex max-w-[440px] items-start gap-2 rounded-control border border-v2-self/40 bg-v2-panel/95 px-2.5 py-2 font-v2-ui shadow-lg">
-      <p className="min-w-0 flex-1 text-caption leading-snug text-v2-ink">{t(`starter.landing.tip.${tip}`)}</p>
-      <button type="button" aria-label={t('starter.landing.dismiss')} onClick={() => { dismissTip(tip); setTip(null); }}
-        className="-m-1 min-h-8 min-w-8 text-v2-ink-2">×</button>
+    <div data-testid="landing-tip" data-tip={tip} role="status" className="gk pointer-events-auto fixed inset-x-3 top-[calc(env(safe-area-inset-top)+96px)] z-[60] mx-auto max-w-[440px]">
+      <Banner tone="info" variant="strip" glyph={TIP_GLYPH[tip]} title={t(`starter.landing.tip.${tip}`)}
+        action={(
+          <button type="button" aria-label={t('starter.landing.dismiss')} onClick={() => { playSound('tap'); haptic('tap'); dismissTip(tip); setTip(null); }}
+            className="-my-2 -mr-1 grid size-11 shrink-0 place-items-center text-v2-ink-2">
+            <Glyph id="close" className="gk-glyph size-4" />
+          </button>
+        )} />
     </div>
   );
 }
