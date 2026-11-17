@@ -439,34 +439,6 @@ export function Sky() {
 }
 
 /**
- * A soft radial falloff, built once and shared.
- *
- * `circleGeometry` with additive blending gives a disc with a HARD edge — which is
- * what made the marker behind the player's planet read as a grey plate rather than
- * as light. A glow needs a gradient, and a gradient needs a texture.
- */
-let glowTexture: THREE.Texture | null = null;
-
-export function softGlow(): THREE.Texture {
-  if (glowTexture) return glowTexture;
-  const size = 128;
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-    g.addColorStop(0, 'rgba(255,255,255,1)');
-    g.addColorStop(0.32, 'rgba(255,255,255,0.55)');
-    g.addColorStop(0.62, 'rgba(255,255,255,0.16)');
-    g.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, size, size);
-  }
-  glowTexture = new THREE.CanvasTexture(canvas);
-  return glowTexture;
-}
-
-/**
  * THE LIGHT A WORLD SCATTERS AT ITS OWN EDGE. D53a.
  *
  * The planet renders are lit, shaded and finished, and they end at a hard alpha

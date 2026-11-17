@@ -10,10 +10,7 @@ import { describe, expect, it } from 'vitest';
  */
 const SRC = join(import.meta.dirname, '../src');
 const STILL_TO_REPLACE: Readonly<Record<string, { softGlow?: number; radial?: number }>> = {
-  'galaxy/Environment.tsx': { softGlow: 1, radial: 2 },
-  'galaxy/JumpingShip.tsx': { softGlow: 1 },
-  'galaxy/JumpWatch.tsx': { softGlow: 1 },
-  'galaxy/StarterGlow.tsx': { softGlow: 1 },
+  'galaxy/Environment.tsx': { radial: 1 },
   'arena/hangar/shipModels.ts': { radial: 1 },
   'galaxy/PlanetEmbers.tsx': { radial: 1 },
   'galaxy/SpaceLighting.tsx': { radial: 2 },
