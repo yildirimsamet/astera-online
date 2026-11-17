@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { REWARD_CHAIN_IDS, type RewardChainId } from '@astera/rules';
 import { useClaimReward, usePlanet, useRewards } from '../api/queries.js';
 import { useWorld } from '../api/world.js';
@@ -81,6 +82,9 @@ export function RewardsScreen({ commander }: { commander: string }) {
     });
   };
   const pod = opened ?? ready[0];
+  // E5: the claim being taken spins; every other claim rests until it lands, rather than spinning too.
+  const claiming = claim.isPending ? claim.variables : null;
+  const podChain = pod ? chains.find((chain) => chain.tiers.some((tier) => tier.id === pod.id)) : undefined;
 
   return <div data-v2-rewards className="gk-rewards">
     {pod && <div className="gk-rewards__pod">
@@ -88,6 +92,11 @@ export function RewardsScreen({ commander }: { commander: string }) {
         onOpen={() => { setOpened(pod); onClaim(pod.id); }}>
         <CostLine cost={{ alloy: pod.alloy, crystal: pod.crystal }} />
       </RewardPod>
+      {podChain && <div data-pod-reward className="gk-rewards__podname">
+        <span className="gk-label">{t(`rewards.chains.${podChain.id}.name`)}{podChain.metric === 'grant' ? '' : ` · ${goalText(t, podChain.metric, pod.goal)}`}</span>
+        {/* once the lid is off, the loot itself says what was inside */}
+        {opened === null && <CostLine cost={{ alloy: pod.alloy, crystal: pod.crystal }} />}
+      </div>}
     </div>}
     <dl className="gk-cmdr__cells gk-well gk-rewards__sum">
       <div className="gk-cmdr__cell" {...(ready.length > 0 ? { 'data-on': '' } : {})}>
@@ -103,14 +112,14 @@ export function RewardsScreen({ commander }: { commander: string }) {
     {overflowing && <Banner tone="warn" title={t('rewards.overCap')} />}
     <ul className="gk-rewards__list">
         {chains.map((chain) => chain.metric === 'grant'
-          ? <SocialCard key={chain.id} chain={chain} commander={commander} busy={claim.isPending} onClaim={onClaim} />
-          : <GoalCard key={chain.id} chain={chain} expanded={ladder.isOpen(chain.id)} onToggle={() => { ladder.toggle(chain.id); }} busy={claim.isPending} onClaim={onClaim} />)}
+          ? <SocialCard key={chain.id} chain={chain} commander={commander} claiming={claiming} onClaim={onClaim} />
+          : <GoalCard key={chain.id} chain={chain} expanded={ladder.isOpen(chain.id)} onToggle={() => { ladder.toggle(chain.id); }} claiming={claiming} onClaim={onClaim} />)}
     </ul>
   </div>;
 }
 
-function GoalCard({ chain, expanded, onToggle, busy, onClaim }: {
-  chain: KnownChain; expanded: boolean; onToggle: () => void; busy: boolean; onClaim: (id: string) => void;
+function GoalCard({ chain, expanded, onToggle, claiming, onClaim }: {
+  chain: KnownChain; expanded: boolean; onToggle: () => void; claiming: string | null; onClaim: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const waiting = chain.tiers.some((tier) => tier.state === 'claimable');
@@ -142,7 +151,7 @@ function GoalCard({ chain, expanded, onToggle, busy, onClaim }: {
         </div>
       </div>
       <ul id={panelId} className="gk-well gk-reward__tiers">
-        {visible.map((tier) => <TierRow key={tier.id} tier={tier} metric={chain.metric} progress={chain.progress} busy={busy} onClaim={onClaim} />)}
+        {visible.map((tier) => <TierRow key={tier.id} tier={tier} metric={chain.metric} progress={chain.progress} claiming={claiming} onClaim={onClaim} />)}
       </ul>
       {visible.length < chain.tiers.length || expanded ? <button type="button" {...OWN_SOUND} onPointerDown={fold.onPointerDown} onClick={fold.onClick}
         aria-expanded={expanded} aria-controls={panelId} aria-label={`${t('rewards.allMilestones')} · ${name}`}
@@ -154,8 +163,8 @@ function GoalCard({ chain, expanded, onToggle, busy, onClaim }: {
   </li>;
 }
 
-function SocialCard({ chain, commander, busy, onClaim }: {
-  chain: KnownChain; commander: string; busy: boolean; onClaim: (id: string) => void;
+function SocialCard({ chain, commander, claiming, onClaim }: {
+  chain: KnownChain; commander: string; claiming: string | null; onClaim: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const tier = chain.tiers[0];
@@ -183,7 +192,8 @@ function SocialCard({ chain, commander, busy, onClaim }: {
       {!taken && <a href={t('rewards.social.url')} target="_blank" rel="noreferrer noopener" className="gk-reward__link">
         {t('rewards.social.open')}<Glyph id="share" />
       </a>}
-      {ready ? <span data-reward-claim={tier.id}><GameButton tone="action" size="lg" wide heavy glyph="crate" pending={busy} onPress={() => { onClaim(tier.id); }}>{t('rewards.social.ready')}</GameButton></span>
+      {ready ? <span data-reward-claim={tier.id}><GameButton tone="action" size="lg" wide heavy glyph="crate" pending={claiming === tier.id}
+        disabledReason={resting(claiming, tier.id, t('rewards.social.ready'))} onPress={() => { onClaim(tier.id); }}>{t('rewards.social.ready')}</GameButton></span>
         : <p className="gk-reward__after" {...(taken ? { 'data-on': '' } : {})}>
           <Glyph id={taken ? 'check' : 'clock'} />
           <span>{forever ? t('rewards.social.forever') : taken ? t('rewards.claimed') : t('rewards.social.pending')}</span>
@@ -199,13 +209,13 @@ function Step({ n, children }: { n: number; children: ReactNode }) {
   </li>;
 }
 
-function TierRow({ tier, metric, progress, busy, onClaim }: {
-  tier: RewardTierView; metric: string; progress: number; busy: boolean; onClaim: (id: string) => void;
+function TierRow({ tier, metric, progress, claiming, onClaim }: {
+  tier: RewardTierView; metric: string; progress: number; claiming: string | null; onClaim: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const claimed = tier.state === 'claimed';
   const ready = tier.state === 'claimable';
-  const target = metric === 'level' ? t('rewards.goalLevel', { n: tier.goal }) : t('rewards.goalCount', { n: tier.goal });
+  const target = goalText(t, metric, tier.goal);
   const reach = tier.goal > 0 ? Math.max(0, Math.min(1, progress / tier.goal)) : 1;
 
   return <li data-reward-tier={tier.id} data-state={tier.state} className="gk-reward__tier">
@@ -217,8 +227,19 @@ function TierRow({ tier, metric, progress, busy, onClaim }: {
     </div>
     <div className="gk-reward__tierline">
       <CostLine cost={{ alloy: tier.alloy, crystal: tier.crystal }} />
-      {ready && <span data-reward-claim={tier.id}><GameButton size="sm" tone="action" heavy glyph="crate" pending={busy} onPress={() => { onClaim(tier.id); }}>{t('rewards.claim')}</GameButton></span>}
+      {ready && <span data-reward-claim={tier.id}><GameButton size="sm" tone="action" heavy glyph="crate" pending={claiming === tier.id}
+        disabledReason={resting(claiming, tier.id, t('rewards.claim'))} onPress={() => { onClaim(tier.id); }}>{t('rewards.claim')}</GameButton></span>}
     </div>
     {!claimed && !ready && <span data-tier-reach className="gk-reward__reach"><ProgressBar value={reach} max={1} tone="crystal" /></span>}
   </li>;
+}
+
+/** A goal in its chain's own unit: a level, or a count. */
+function goalText(t: TFunction, metric: string, goal: number): string {
+  return metric === 'level' ? t('rewards.goalLevel', { n: goal }) : t('rewards.goalCount', { n: goal });
+}
+
+/** While another claim is being taken, this one rests under its own name: pressable again once that lands. */
+function resting(claiming: string | null, id: string, label: string): string | null {
+  return claiming !== null && claiming !== id ? label : null;
 }

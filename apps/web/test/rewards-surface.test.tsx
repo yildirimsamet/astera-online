@@ -241,7 +241,7 @@ describe('the reward panel', () => {
       </Wrapper>,
     );
 
-    expect(await screen.findByText(/probes sent/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /probes sent/i })).toBeInTheDocument();
     expect(screen.queryByText(/TIME_TRAVEL/)).not.toBeInTheDocument();
   });
 
@@ -333,7 +333,7 @@ describe('the reward panel', () => {
     // three numbered steps are list items too, so counting `listitem` roles would
     // be counting the wrong things.
     const bonus = await screen.findByText(/community bonus/i);
-    const goal = screen.getByText(/probes sent/i);
+    const goal = screen.getByRole('heading', { name: /probes sent/i });
     expect(bonus.compareDocumentPosition(goal) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -517,6 +517,31 @@ describe('the reward panel on the kit', () => {
     await userEvent.setup().click(pod);
     await waitFor(() => { expect(claim).toHaveBeenCalledWith('PROBE:1'); });
     expect(claim).toHaveBeenCalledTimes(1);
+  });
+
+  // E5 (owner review 2026-11-16, items 13–14): the pod said only "Open the pod" — not which reward it
+  // held — and a claim set every other Claim spinning as if they were all being taken.
+  it('names on the pod which reward it holds and what is inside, before it opens', async () => {
+    const { wrapper: Wrapper, queries } = harness();
+    queries.setQueryData(['rewards'], rewards([probeChain(3, ['claimable', 'claimable', 'locked'])], 2));
+    render(<Wrapper><RewardsScreen commander="Vantage" /></Wrapper>);
+    await screen.findByRole('button', { name: 'Open the pod' });
+    const caption = document.querySelector<HTMLElement>('[data-pod-reward]')!;
+    expect(caption).toHaveTextContent('Probes sent');
+    expect(caption).toHaveTextContent('200');
+    expect(caption).toHaveTextContent('70');
+  });
+
+  it('spins only the claim being taken; the others rest, not loading', async () => {
+    const { wrapper: Wrapper, queries, api } = harness();
+    queries.setQueryData(['rewards'], rewards([probeChain(3, ['claimable', 'claimable', 'locked'])], 2));
+    vi.spyOn(api, 'claimReward').mockImplementation(() => new Promise(() => undefined));
+    render(<Wrapper><RewardsScreen commander="Vantage" /></Wrapper>);
+    const [first, second] = await screen.findAllByRole('button', { name: /^claim$/i });
+    await userEvent.setup().click(first!);
+    expect(first).toHaveAttribute('aria-busy', 'true');
+    expect(second).not.toHaveAttribute('aria-busy');
+    expect(second).toBeDisabled();
   });
 
   it('draws no pod when nothing is ready', async () => {

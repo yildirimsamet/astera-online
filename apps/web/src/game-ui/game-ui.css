@@ -17679,3 +17679,18 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 .gk-haul__res { overflow-wrap: normal; white-space: nowrap; }
 /* the scene's haul is a flowing row; a later `.gk-haul__row` (the hold bands) made it a 40 px grid that crushed "+3,1K" */
 .gk-debrief__loot .gk-haul__row { display: flex; flex-wrap: wrap; gap: var(--gk-s3); }
+
+/* ── E5 (owner review 2026-11-16, items 13–14): the pod's light is not boxed in, and it says what it holds ── */
+/* the pod clipped on both axes, so the turning burst stopped at a square edge; it now spills upward
+   and clips only sideways, at the full row's width rather than the pod's own */
+.gk-pod { overflow: visible; overflow-x: clip; }
+.gk-rewards__pod .gk-pod { justify-self: stretch; }
+.gk-rewards__podname {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 4px var(--gk-s3);
+  text-align: center;
+}
+.gk-rewards__podname .gk-label { color: var(--gk-ink); }
