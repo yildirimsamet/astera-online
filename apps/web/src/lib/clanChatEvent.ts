@@ -18,6 +18,8 @@ const defence = z.object({
   hostPlanetName: z.string(), grade: z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']),
   supporters: z.number().int().nonnegative(), attackerLost: z.number().int().nonnegative(), heroName: z.string().nullable().optional(),
 });
+const departed = z.object({ name: z.string() });
+const outpost = z.object({ level: z.number().int().positive() });
 const levelUp = z.object({ level: z.number().int().min(1).max(CLAN_PERK_LADDER.length) });
 
 export function describeClanEvent(event: ClanChatEvent): string | null {
@@ -51,6 +53,17 @@ export function describeClanEvent(event: ClanChatEvent): string | null {
       if (!rung) return null;
       const values = { value: rung.value, pct: Math.round(rung.value * 100) };
       return i18n.t('clanSupport.feedLevelUp', { level: rung.level, perk: i18n.t(`clanWar.perk.${rung.perk}.title`, values) });
+    }
+    // A ship galaxy's own news (plan 2026-11-06 F5): who left is named, who fought or took nothing never.
+    case 'GALAXY_DEPARTED': {
+      const parsed = departed.safeParse(event.params);
+      return parsed.success ? i18n.t('starter.galaxyLine.departed', { name: parsed.data.name }) : null;
+    }
+    case 'GALAXY_WRECK':
+      return i18n.t('starter.galaxyLine.wreck');
+    case 'GALAXY_OUTPOST_EMPTY': {
+      const parsed = outpost.safeParse(event.params);
+      return parsed.success ? i18n.t('starter.galaxyLine.outpost', { level: parsed.data.level }) : null;
     }
     default:
       return null;

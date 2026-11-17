@@ -1,8 +1,8 @@
-import { CHAT } from '@astera/rules';
+import { CHAT, STARTER } from '@astera/rules';
 import { eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { chatPageSchema, chatPostSchema } from '../../web/src/api/schemas.js';
-import { communityBlocks, contentReports, starterChatMessages, starterGalaxies, vessels } from '../src/db/schema.js';
+import { communityBlocks, contentReports, starterChatMessages, starterDepartures, starterGalaxies, starterSites, vessels } from '../src/db/schema.js';
 import { resolveContentReport } from '../src/services/contentReports.js';
 import { setChatMute } from '../src/services/chatModeration.js';
 import { testDb } from './helpers.js';
@@ -25,6 +25,30 @@ describe('the channel of a ship galaxy', () => {
     const answer = await say(me, 'hello');
     expect(answer.statusCode).toBe(403);
     expect(answer.json<{ error: string }>().error).toBe('FEATURE_LOCKED');
+  });
+
+  /*
+    THE GALAXY SPEAKS IN THE CHANNEL (plan 2026-11-06 §6, F5). What anyone could see happen comes as a line
+    between the messages: a ship left, a debris field appeared, an outpost was emptied. Who fought, dug or
+    took it is never said; the one who left is named, as the departure board names them.
+  */
+  it('puts what happened in the galaxy between the messages, in time order, naming nobody who fought', async () => {
+    const me = await aboard(world, 'Me', TALK);
+    const galaxy = (await world.f.db.select({ id: vessels.starterGalaxyId }).from(vessels).where(eq(vessels.id, me.vesselId)))[0]!.id;
+    const ago = (minutes: number) => new Date(world.f.clock.now().getTime() - minutes * 60_000);
+    await world.f.db.insert(starterDepartures).values({ starterGalaxyId: galaxy, accountId: world.f.accountIds[0]!, displayName: 'Vela', countryCode: 'TR', x: 0, y: 0, z: 0, at: ago(30) });
+    await world.f.db.insert(starterSites).values({ starterGalaxyId: galaxy, kind: 'BATTLE_WRECK', x: 1, y: 0, z: 0, createdAt: ago(20) });
+    await world.f.db.insert(starterSites).values({ starterGalaxyId: galaxy, kind: 'OUTPOST', level: 2, x: 2, y: 0, z: 0, createdAt: ago(9000), respawnAt: new Date(ago(10).getTime() + STARTER.sites.outposts.respawnMinutes * 60_000) });
+    // Older than the channel's two days: not said.
+    await world.f.db.insert(starterSites).values({ starterGalaxyId: galaxy, kind: 'BATTLE_WRECK', x: 3, y: 0, z: 0, createdAt: ago(3 * 24 * 60) });
+    await say(me, 'hello');
+    const { messages } = await read(me);
+    expect(messages.map(row => row.event?.kind ?? row.content)).toEqual(['GALAXY_DEPARTED', 'GALAXY_WRECK', 'GALAXY_OUTPOST_EMPTY', 'hello']);
+    expect(messages[0]!.event?.params).toEqual({ name: 'Vela' });
+    expect(messages[2]!.event?.params).toEqual({ level: 2 });
+    expect(messages.slice(0, 3).every(row => row.composed === true)).toBe(true);
+    // Lines are not messages: nothing unread, nobody to answer.
+    expect((await get<{ count: number }>(world, '/api/starter/chat/unread?language=en', me.headers)).count).toBe(0);
   });
 
   it('carries a message to a neighbour, in the shape the chat screen reads', async () => {

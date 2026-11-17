@@ -2330,6 +2330,10 @@ const chatMessageSchema = z.object({
    * an older server simply marks nobody.
    */
   admin: z.boolean().optional(),
+  /** A line nobody typed: the galaxy's own news in a ship galaxy's channel (plan 2026-11-06 F5). */
+  event: z.object({ kind: z.string(), params: z.record(z.string(), z.unknown()) }).nullable().optional(),
+  /** Made by the server for this read and never stored: never the message a read marks. */
+  composed: z.literal(true).optional(),
 });
 
 export const chatPageSchema = z.object({

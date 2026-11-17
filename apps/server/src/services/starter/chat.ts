@@ -1,10 +1,10 @@
 import { blockAccount } from '../communityBlocks.js';
-import { CHAT, type ChatLanguage } from '@astera/rules';
-import { and, count, desc, eq, gt, lt, ne, notExists, sql } from 'drizzle-orm';
+import { CHAT, STARTER, type ChatLanguage } from '@astera/rules';
+import { and, count, desc, eq, gt, isNotNull, lt, ne, notExists, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Clock } from '../../clock.js';
 import type { Db, Queryable } from '../../db/client.js';
-import { accounts, communityBlocks, contentReports, starterChatMessages, vessels } from '../../db/schema.js';
+import { accounts, communityBlocks, contentReports, starterChatMessages, starterDepartures, starterSites, vessels } from '../../db/schema.js';
 import { publishShard } from '../../stream/bus.js';
 import { contentReportBody } from '../contentReports.js';
 import { assertChatAllowed, assertCleanMessage } from '../chatModeration.js';
@@ -49,7 +49,47 @@ const view = (row: Row, accountId: string) => ({
 
 const room = (row: VesselRow, language: ChatLanguage) => and(eq(starterChatMessages.starterGalaxyId, row.starterGalaxyId), eq(starterChatMessages.language, language));
 
-export async function readStarterChat(db: Db, accountId: string, limit: number, language: ChatLanguage, before?: string) {
+/** How far back the galaxy's own lines reach on a page with nothing older: about one sitting and the next. */
+const EVENT_WINDOW_MS = 48 * 3_600_000;
+const EVENTS_A_PAGE = 20;
+const OUTPOST_RESPAWN_MS = STARTER.sites.outposts.respawnMinutes * 60_000;
+type GalaxyEventKind = 'GALAXY_DEPARTED' | 'GALAXY_WRECK' | 'GALAXY_OUTPOST_EMPTY';
+
+/** A line nobody typed, in the chat's own shape: the screen draws it between the bubbles. */
+const eventLine = (kind: GalaxyEventKind, id: string, at: Date, params: Record<string, string | number>, language: ChatLanguage) => ({
+  id: `${kind}:${id}`, authorPlayerId: '', username: '', content: '', media: null, language, createdAt: at,
+  self: false, replyTo: null, reactions: [], admin: false, event: { kind, params },
+  /** Made for this read and never stored: there is nothing to mark read. */
+  composed: true as const,
+});
+
+/**
+ * WHAT ANYONE COULD SEE HAPPEN (plan 2026-11-06 §6, F5), between `from` and `to`: a ship left (named, as
+ * the departure board names it), a battle left a debris field, an outpost was emptied. Never who fought,
+ * dug or took it — the main game's Chronicle rule.
+ */
+async function galaxyLines(db: Db, galaxyId: string, from: Date, to: Date, language: ChatLanguage) {
+  const [left, wrecks, emptied] = await Promise.all([
+    db.select({ id: starterDepartures.id, name: starterDepartures.displayName, at: starterDepartures.at }).from(starterDepartures)
+      .where(and(eq(starterDepartures.starterGalaxyId, galaxyId), gt(starterDepartures.at, from), lt(starterDepartures.at, to))),
+    db.select({ id: starterSites.id, at: starterSites.createdAt }).from(starterSites)
+      .where(and(eq(starterSites.starterGalaxyId, galaxyId), eq(starterSites.kind, 'BATTLE_WRECK'), gt(starterSites.createdAt, from), lt(starterSites.createdAt, to))),
+    db.select({ id: starterSites.id, level: starterSites.level, respawnAt: starterSites.respawnAt }).from(starterSites)
+      .where(and(eq(starterSites.starterGalaxyId, galaxyId), eq(starterSites.kind, 'OUTPOST'), isNotNull(starterSites.respawnAt))),
+  ]);
+  const lines = [
+    ...left.map(row => eventLine('GALAXY_DEPARTED', row.id, row.at, { name: row.name }, language)),
+    ...wrecks.map(row => eventLine('GALAXY_WRECK', row.id, row.at, {}, language)),
+    ...emptied.flatMap((row) => {
+      // The emptying is the respawn's start: the stand-down is fixed, so the moment is read back from it.
+      const at = new Date((row.respawnAt?.getTime() ?? 0) - OUTPOST_RESPAWN_MS);
+      return at > from && at < to ? [eventLine('GALAXY_OUTPOST_EMPTY', `${row.id}:${String(at.getTime())}`, at, { level: row.level }, language)] : [];
+    }),
+  ];
+  return lines.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, EVENTS_A_PAGE);
+}
+
+export async function readStarterChat(db: Db, accountId: string, limit: number, language: ChatLanguage, clock: Clock, before?: string) {
   const ship = await shipOf(db, accountId);
   const [cursor] = before ? await db.select({ at: starterChatMessages.createdAt }).from(starterChatMessages).where(eq(starterChatMessages.id, before)) : [];
   const rows = await db.select().from(starterChatMessages).where(and(
@@ -57,7 +97,14 @@ export async function readStarterChat(db: Db, accountId: string, limit: number, 
     cursor ? lt(starterChatMessages.createdAt, cursor.at) : undefined,
   )).orderBy(desc(starterChatMessages.createdAt)).limit(limit + 1);
   const page = rows.slice(0, limit);
-  return { messages: [...page].reverse().map(row => view(row, accountId)), nextBefore: rows.length > limit ? (page.at(-1)?.id ?? null) : null };
+  const more = rows.length > limit;
+  // The galaxy's lines for the span this page covers: from its oldest message when there is an older page.
+  const to = cursor?.at ?? clock.now();
+  const from = more ? page.at(-1)!.createdAt : new Date(to.getTime() - EVENT_WINDOW_MS);
+  const lines = await galaxyLines(db, ship.starterGalaxyId, from, to, language);
+  const messages = [...page.map(row => view(row, accountId)), ...lines]
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  return { messages, nextBefore: more ? (page.at(-1)?.id ?? null) : null };
 }
 
 /** Same words refused, same mute, same flood limit as the main channel: only the room is different. */

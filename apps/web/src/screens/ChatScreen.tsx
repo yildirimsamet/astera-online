@@ -96,8 +96,10 @@ interface MessageRow {
   previousSeasonRanking?: 'HONOR' | 'DOMINION';
   replyTo?: { id: string; username: string; content: string; media?: ChatMedia | null } | null;
   reactions?: { emoji: ReactionEmoji; count: number; mine: boolean }[];
-  /** F2 E2: a line the server posted to the clan's room. */
+  /** F2 E2: a line the server posted to the clan's room; in a ship galaxy, the galaxy's own news. */
   event?: ClanChatEvent | null;
+  /** Made by the server for this read and never stored (a ship galaxy's news): nothing to mark read. */
+  composed?: true;
 }
 
 /**
@@ -788,7 +790,8 @@ function ChannelPanel({
     return () => { document.removeEventListener('pointerdown', closeOnOutsidePress, true); };
   }, [actionMessageId, pickerMessageId]);
   const oldestId = messages[0]?.id;
-  const latestId = messages.at(-1)?.id;
+  // The read mark goes on the newest stored row: a composed line has no row to mark.
+  const latestId = messages.findLast(message => !message.composed)?.id;
 
   useEffect(() => {
     if (!followingLatest.current || !latestId || marked.current === latestId) return;

@@ -565,6 +565,25 @@ describe('galaxy chat surface', () => {
     expect(await screen.findByText('Klan hazır')).toBeInTheDocument();
   });
 
+  // Plan 2026-11-06 F5: a ship galaxy's channel carries the galaxy's own lines between the messages.
+  it('draws the galaxy\'s lines between the bubbles and marks read only a typed message', async () => {
+    const line = (id: string, kind: string, params: Record<string, unknown>, ms: number) => ({
+      id, authorPlayerId: '', username: '', content: '', language: 'en', createdAt: new Date(at.getTime() + ms), self: false, event: { kind, params }, composed: true,
+    });
+    const withLines = { ...initial, pages: [{ ...initial.pages[0]!, messages: [
+      ...initial.pages[0]!.messages,
+      line('GALAXY_DEPARTED:a', 'GALAXY_DEPARTED', { name: 'Vela' }, 1500),
+      line('GALAXY_WRECK:b', 'GALAXY_WRECK', {}, 1600),
+      line('GALAXY_OUTPOST_EMPTY:c', 'GALAXY_OUTPOST_EMPTY', { level: 2 }, 1700),
+    ] }] };
+    const { api } = show(vi.fn(), 'general', withLines);
+    expect(document.querySelector('[data-chat-event="GALAXY_DEPARTED"]')).toHaveTextContent('Vela jumped to the main galaxy');
+    expect(document.querySelector('[data-chat-event="GALAXY_WRECK"]')).toHaveTextContent('A battle left a debris field');
+    expect(document.querySelector('[data-chat-event="GALAXY_OUTPOST_EMPTY"]')).toHaveTextContent('A level 2 outpost was emptied');
+    await waitFor(() => { expect(api.markChatRead).toHaveBeenCalledWith('en', 'two'); });
+    expect(api.markChatRead).not.toHaveBeenCalledWith('en', expect.stringMatching(/^GALAXY_/u));
+  });
+
   it('shows commander usernames and messages, never planet identity', async () => {
     const { api } = show();
     expect(screen.getByText('İzci')).toBeInTheDocument();

@@ -175,7 +175,7 @@ export function registerStarterRoutes(app: FastifyInstance): void {
 
   app.get('/api/starter/chat/messages', { preHandler: requireAuth }, (req) => {
     const { limit, language, before } = chatListQuery.parse(req.query);
-    return readStarterChat(app.db, req.accountId!, limit, language, before);
+    return readStarterChat(app.db, req.accountId!, limit, language, app.clock, before);
   });
 
   app.post('/api/starter/chat/messages', { preHandler: requireAuth }, async (req) => {
