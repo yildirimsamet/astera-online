@@ -793,6 +793,7 @@ export const transfer = {
   sending: "派遣中",
   launched: "移送艦隊が出航しました・到着まで{{duration}}",
   /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
+  recallOnce: "飛行中に一度だけ呼び戻せます。",
   rules: "飛行中に一度だけ呼び戻せます。戻るまでの時間は、すでに飛んだ時間と同じです。地上防衛設備は移送できません。積載量のある艦船は資源を運べます。",
   hullNone: "この惑星にいません",
   holdReady: "選んだ艦船が資源を運びます。積載量：{{capacity}}。",

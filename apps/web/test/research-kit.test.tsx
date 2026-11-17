@@ -254,6 +254,9 @@ describe('the project sheet on the kit', () => {
     expect(hero).toHaveClass('gk-ihero');
     expect(hero.querySelector('.gk-rhero__index')).toHaveTextContent('02');
     expect(hero.querySelector('[data-research-gain]')).not.toBeNull();
+    // E6 (owner 2026-11-17): as on the building and ship sheets, the long detail is one tap deeper.
+    expect(sheet.querySelector('[data-item-detail]')).toBeNull();
+    fireEvent.click(within(sheet).getByRole('button', { name: /how it works/i }));
     expect(sheet.querySelector('[data-item-detail]')).toHaveClass('gk-well');
     expect(sheet).toHaveTextContent(/Level 3 of 5/);
     expect(sheet.querySelector('.gk-cost')).not.toBeNull();

@@ -793,6 +793,7 @@ export const transfer = {
   sending: "Dispatching",
   launched: "Transfer launched · {{duration}}",
   /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
+  recallOnce: "Recall it once while in flight.",
   rules: "Can be recalled once while in flight — it returns in the time already flown. Ground defence cannot move; every ship with a hold can carry resources.",
   hullNone: "None at this world",
   holdReady: "Selected ships carry resources. Hold: {{capacity}}.",

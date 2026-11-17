@@ -42,6 +42,14 @@ describe('the unknown signal on the kit', () => {
     expect(oldPaint(dialog)).toEqual([]);
   });
 
+  // E6 (owner 2026-11-17): the radar line is the fact; what upgrading it changes is behind its ⓘ.
+  it('keeps the radar’s upgrade note behind the radar line’s ⓘ', () => {
+    render(<UnknownSignalSheet {...props()} />);
+    expect(screen.queryByText(/Upgrade your Radar/)).toBeNull();
+    fireEvent.click(within(document.querySelector<HTMLElement>('.gk-signal__radar')!).getByRole('button', { name: 'What is this?' }));
+    expect(screen.getByText(/Upgrade your Radar/)).toBeInTheDocument();
+  });
+
   it('picks the departure world on the kit’s plates', () => {
     const p = props();
     const onOrigin = vi.fn();

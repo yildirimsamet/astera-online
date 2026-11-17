@@ -757,6 +757,7 @@ export const transfer = {
   sending: "Yola çıkıyor",
   launched: "Transfer yola çıktı · {{duration}}",
   /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
+  recallOnce: "Yolda bir kez geri çağrılabilir.",
   rules: "Yoldayken bir kez geri çağrılabilir; uçtuğu süre kadar sürede döner. Yer savunması taşınamaz; ambarı olan tüm gemiler kaynak taşıyabilir.",
   hullNone: "Bu dünyada yok",
   holdReady: "Seçilen gemiler kaynak taşır. Ambar: {{capacity}}.",

@@ -78,6 +78,7 @@ export const intel = {
     accuracyHome: '{{percent}} doğruluk · filo evdeydi',
     accuracyOut: '{{percent}} doğruluk · filo dışarıdaydı',
     scaleNote: 'Her çubuk sıfırdan başlar: bant onların tahmini, turkuaz çizgi senin dünyan.',
+    estimateFact: "Sayılar tahmin aralığıdır.",
     estimateNote: 'Sayılar tahmin aralığıdır. Silahlı birlik değeri, kalkanı ve silahsız gemileri içermez.',
     caught: 'sondayı yakaladılar',
     /* Sinyal çubuklarının yanındaki iki kelime; isabeti çubuklar taşıyor. */

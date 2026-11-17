@@ -49,6 +49,7 @@ it('offers Ship Shields with its cumulative gain, radiation bypass and four-leve
   expect(card).toHaveTextContent('25%');
   const sheet = await open(view, 'SHIP_SHIELDS');
   expect(sheet).toHaveTextContent(/100%/);
+  fireEvent.click(within(sheet).getByRole('button', { name: /how it works/i }));
   expect(sheet).toHaveTextContent(/radiation.*hull/i);
   expect(sheet).toHaveTextContent(/do not recharge during battle/i);
 });
@@ -283,6 +284,7 @@ describe('every project is reachable', () => {
     for (const id of ALL) {
       const view = show();
       const sheet = await open(view, id);
+      fireEvent.click(within(sheet).getByRole('button', { name: /how it works/i }));
       const detail = sheet.querySelector<HTMLElement>('[data-item-detail]')?.textContent.trim();
       expect(detail?.length, id).toBeGreaterThan(60);
       explanations.add(detail ?? '');

@@ -83,6 +83,7 @@ export const intel = {
     accuracyHome: '{{percent}} precisión · la flota estaba en casa',
     accuracyOut: '{{percent}} precisión · la flota estaba fuera',
     scaleNote: 'Cada barra parte de cero: la banda es su estimación, la línea turquesa es tu mundo.',
+    estimateFact: "Las cifras son rangos estimados.",
     estimateNote: 'Estos números son rangos estimados. El valor de la unidad armada excluye el escudo y los naves desarmados.',
     caught: 'lo pillaron\nLa flota',
     /* Two words beside the signal bars, which carry the accuracy themselves. */

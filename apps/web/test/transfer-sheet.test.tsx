@@ -954,6 +954,10 @@ describe('what the sheet promises about the flight', () => {
       </ToastProvider>,
     );
     expect(screen.queryByText(/no recall|one way/i)).toBeNull();
+    // E6 (owner 2026-11-17): the foot says the one fact; the full rule is behind its ⓘ.
+    expect(screen.getByText('Recall it once while in flight.')).toBeInTheDocument();
+    expect(screen.queryByText(/Ground defence cannot move/)).toBeNull();
+    fireEvent.click(within(document.querySelector<HTMLElement>('[data-transfer-rule]')!).getByRole('button', { name: 'What is this?' }));
     expect(screen.getByText(/recalled once while in flight/i)).toBeInTheDocument();
   });
 });

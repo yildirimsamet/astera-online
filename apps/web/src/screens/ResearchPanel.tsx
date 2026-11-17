@@ -746,6 +746,7 @@ function ProjectSheet({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const [explained, setExplained] = useState(false);
   const short = spec.cost.alloy > held.alloy || spec.cost.crystal > held.crystal || spec.cost.deuterium > held.deuterium;
   const settled = spec.completed ?? spec.queued;
   const door = settled === undefined ? spec.blocked : undefined;
@@ -843,8 +844,27 @@ function ProjectSheet({
               {spec.gain.unlocks !== undefined && <p className="gk-ihero__line">{spec.gain.unlocks}</p>}
             </div>
           </section>
-          <p className="gk-iabout__role">{spec.role}</p>
-          <p data-item-detail className="gk-well gk-iabout__detail">{spec.detail}</p>
+          {/* E6: what it does is the line; how it works is one tap deeper, as on the building and ship sheets. */}
+          <div className="grid gap-1.5">
+            <div className="gk-iabout">
+              <p className="gk-iabout__role">{spec.role}</p>
+              <button
+                type="button"
+                aria-expanded={explained}
+                onClick={() => {
+                  playSound('tap');
+                  setExplained((open) => !open);
+                }}
+                className="gk-hit gk-iabout__how"
+              >
+                <span className="gk-chip">
+                  <Glyph id="help" />
+                  {t('itemSheet.howItWorks')}
+                </span>
+              </button>
+            </div>
+            {explained && <p data-item-detail className="gk-well gk-iabout__detail">{spec.detail}</p>}
+          </div>
         </div>
       </KitSheet>
     </div>

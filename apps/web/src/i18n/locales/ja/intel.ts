@@ -83,6 +83,7 @@ export const intel = {
     accuracyHome: "{{percent}} 精度 · 艦隊は帰国しました",
     accuracyOut: "{{percent}} 精度・艦隊が出ました",
     scaleNote: "各バーはゼロから始まります。帯は推定値、青緑色の線はあなたの世界を表します。",
+    estimateFact: "数値は推定範囲です。",
     estimateNote: "これらの数値は推定範囲です。武装ユニットの値には、シールドと非武装の船は含まれません。",
     caught: "彼らはそれを捕まえました",
     /* Two words beside the signal bars, which carry the accuracy themselves. */

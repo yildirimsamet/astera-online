@@ -1,6 +1,6 @@
 export const silentSpace = {
   title: "Du bist in den Stillen Raum umgezogen",
-  body: "Du hast 30 Stunden lang keinen Angriff, keinen Gebäudeausbau, keine Forschung und keinen Schiffs- oder Verteidigungsauftrag gestartet. Deshalb haben wir deine Planeten in den Stillen Raum verlegt. Deine Planeten und dein Fortschritt bleiben erhalten.",
+  body: "30 Stunden ohne Angriff, Ausbau, Forschung oder Auftrag: deine Planeten sind im Stillen Raum. Alles bleibt.",
   closed: "Hier sind Angriffe, Asteroiden- und Trümmerabbau, Piratenangriffe, Händlerfahrten und Konvoiangriffe geschlossen.",
   production: "Die Rohstoffproduktion läuft mit 50 %. Gebäude, Forschung und Schiffsaufträge bleiben offen.",
   returnTo: 'Bewirb dich hier, um zu {{galaxy}} zurückzukehren.',
@@ -12,7 +12,7 @@ export const silentSpace = {
   reminder: 'Du kannst dich später über Menü → Silent Space bewerben.',
   queued: 'Dein Rückkehrantrag ist in der Warteschlange',
   position: '{{galaxy}} · Position {{position}}',
-  queueHint: 'Wenn Platz frei wird, wird die älteste berechtigte Bewerbung berücksichtigt. Flüge oder zu wenig Platz auf dem Planeten können deine Rückkehr verzögern, aber du behältst deine Priorität.',
+  queueHint: 'Wird Platz frei, kommt die älteste Bewerbung zuerst; bei Verzögerung bleibt dein Platz.',
   expiry: 'Deine Bewerbung läuft nach 48 Stunden Inaktivität ab.',
   unavailable: 'Deine ehemalige Galaxie nimmt derzeit keine Rückkehranträge an.',
 };

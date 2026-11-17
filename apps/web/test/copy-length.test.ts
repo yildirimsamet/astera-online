@@ -20,6 +20,8 @@ const SHORT: readonly (readonly [key: string, max: number])[] = [
   ['rewards.overCap', 90],
   ['notificationCenter.lead', 100],
   ['skins.intro', 70],
+  ['silentSpace.body', 125],
+  ['silentSpace.queueHint', 90],
 ];
 
 function at(tree: unknown, path: string): string {

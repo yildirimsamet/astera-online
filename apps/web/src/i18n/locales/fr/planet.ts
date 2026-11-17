@@ -757,6 +757,7 @@ export const transfer = {
   sending: "Départ en cours",
   launched: "Transfert lancé · {{duration}}",
   /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
+  recallOnce: "Rappelable une fois en vol.",
   rules: "Rappelable une fois en vol. Les défenses terrestres ne bougent pas ; tout vaisseau doté d’une soute peut transporter des ressources.",
   hullNone: "Aucun sur ce monde",
   holdReady: "Les vaisseaux choisis transportent les ressources. Soute : {{capacity}}.",

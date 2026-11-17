@@ -41,7 +41,7 @@ import { HullMark } from '../ui/icons/hulls.js';
 import { flightModifiers } from '../lib/navigation.js';
 import { launchFault } from '../lib/faults.js';
 import { serverNow } from '../lib/clock.js';
-import { Choices, GameHold, Glyph, RoomGauge, SectionTag, Slider } from '../game-ui/index.js';
+import { Choices, GameHold, Glyph, InfoPeek, RoomGauge, SectionTag, Slider } from '../game-ui/index.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { sumFleets } from '../lib/fleetPage.js';
@@ -345,8 +345,6 @@ export function TransferSheet({
       onClose={onClose}
       footer={(
         <div data-transfer-commit className="gk gk-launch__commit">
-          {/* THE RULE, BEFORE THE BUTTON: it turns once; what the origin keeps heads the sheet. */}
-          <p className="gk-sub">{t('transfer.rules')}</p>
           <RadiationPreview radiation={radiation} />
           {/* A transfer spends fuel: the kit's spend weight, one second. */}
           <GameHold
@@ -546,6 +544,10 @@ export function TransferSheet({
             )}
           </div>
         )}
+        {/* THE RULE, LAST IN THE BODY (E6): the one fact on its line, the rest behind its ⓘ; the commit box keeps its one button. */}
+        <div data-transfer-rule>
+          <InfoPeek fact={<span className="gk-sub">{t('transfer.recallOnce')}</span>} rule={<p className="gk-sub">{t('transfer.rules')}</p>} />
+        </div>
       </div>
     </Sheet>
   );

@@ -1,6 +1,6 @@
 export const silentSpace = {
   title: 'You moved to Silent Space',
-  body: "You started no attack, building upgrade, research, or ship or defence order in 30 hours, so we moved your planets to Silent Space. Your planets and progress are preserved.",
+  body: "No attack, upgrade, research or order in 30 hours: your planets moved to Silent Space. All is kept.",
   closed: "Here, attacks, asteroid and wreck gathering, pirate raids, merchant runs and convoy strikes are closed.",
   production: "Resource production runs at 50%. Buildings, research and ship orders stay open.",
   returnTo: 'Apply here to return to {{galaxy}}.',
@@ -12,7 +12,7 @@ export const silentSpace = {
   reminder: 'You can apply later from Menu → Silent Space.',
   queued: 'Your return application is queued',
   position: '{{galaxy}} · Position {{position}}',
-  queueHint: 'When space opens, the oldest eligible application is considered. Flights or insufficient planet space may delay your return, but you keep your priority.',
+  queueHint: 'When space opens, the oldest application goes first; a delay keeps your place.',
   expiry: 'Your application expires after 48 hours of inactivity.',
   unavailable: 'Your former galaxy is not accepting return applications right now.',
 };

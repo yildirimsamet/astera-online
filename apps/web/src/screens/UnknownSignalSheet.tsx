@@ -10,7 +10,7 @@ import { HULL_ART } from '../ui/assets.js';
 import { cosmeticCard, cosmeticCopy } from '../ui/cosmeticCopy.js';
 import { RulesRow } from '../ui/RulesRow.js';
 import { Sheet } from '../v2/kit/Sheet.js';
-import { Choices, CostLine, GameButton, GameHold, Glyph, type GlyphId } from '../game-ui/index.js';
+import { Choices, CostLine, GameButton, GameHold, Glyph, InfoPeek, type GlyphId } from '../game-ui/index.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { haptic } from '../lib/haptics.js';
 
@@ -139,9 +139,10 @@ export function UnknownSignalSheet({ signal, planet, radar, tier, now, busy = fa
       </> : <p className="gk-signal__lead">{t(signal.status === 'lost' ? 'unknownSignal.lostBeforeArrival' : signal.status === 'done' ? 'unknownSignal.delivered'
         : signal.status === 'outbound' ? 'unknownSignal.outbound' : 'unknownSignal.returning')}</p>}
       <div className="gk-signal__radar">
-        <p className="gk-signal__radarlevel"><Glyph id="eye" />{t('unknownSignal.radarLevel', { level: radar.level, range: full(radar.range) })}</p>
+        {/* E6 (owner 2026-11-17): the radar line is the fact; what an upgrade changes is behind its ⓘ. */}
+        <InfoPeek lead={<Glyph id="eye" />} fact={<span className="gk-signal__radarlevel">{t('unknownSignal.radarLevel', { level: radar.level, range: full(radar.range) })}</span>}
+          rule={<p className="gk-sub">{t('unknownSignal.radarHelp')}</p>} />
         {radar.level === 0 && <p className="gk-sub">{t('unknownSignal.zeroRadar')}</p>}
-        <p className="gk-sub">{t('unknownSignal.radarHelp')}</p>
       </div>
       {open && expired && <p className="gk-inote" data-tone="warn">{t('unknownSignal.expired')}</p>}
     </div>

@@ -83,6 +83,7 @@ export const intel = {
     accuracyHome: '{{percent}} Genauigkeit · Flotte war zu Hause',
     accuracyOut: '{{percent}} Genauigkeit · Flotte war unterwegs',
     scaleNote: 'Jeder Balken beginnt bei null: das Band ist ihre Schätzung, die türkise Linie deine Welt.',
+    estimateFact: "Die Zahlen sind geschätzte Spannen.",
     estimateNote: 'Bei diesen Zahlen handelt es sich um geschätzte Bereiche. Der Wert der bewaffneten Einheit schließt den Schild und unbewaffnete Schiffe aus.',
     caught: 'Die Sonde wurde entdeckt',
     /* Two words beside the signal bars, which carry the accuracy themselves. */

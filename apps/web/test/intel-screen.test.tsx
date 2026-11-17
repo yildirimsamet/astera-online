@@ -731,6 +731,10 @@ describe('what a probe brought back', () => {
     expect(marks).toHaveLength(3);
     for (const mark of marks) expect(mark).toHaveClass('bg-v2-self');
     expect(screen.getByRole('img', { name: 'Ships: somewhere between 100 and 400 · yours 10' })).toBeInTheDocument();
+    // E6 (owner 2026-11-17): the key is one line; how to read the bars is behind its ⓘ.
+    expect(screen.getByText('These figures are estimated ranges.')).toBeVisible();
+    expect(screen.queryByText(/the teal line is your world/)).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'What is this?' }));
     expect(screen.getByText(/the teal line is your world/)).toBeVisible();
   });
 
@@ -748,6 +752,7 @@ describe('what a probe brought back', () => {
     await shelf('Probe reports');
     expect(screen.getByRole('img', { name: /80%.*accuracy/i })).toBeInTheDocument();
     expect(screen.getByText('80% accuracy · fleet was home')).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'What is this?' }));
     expect(screen.getByText(/These numbers are estimated ranges/)).toBeVisible();
   });
 

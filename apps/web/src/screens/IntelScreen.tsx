@@ -28,7 +28,7 @@ import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { OutpostReading, sealedVictoryCrate } from '../starter/OutpostReading.js';
 import { heroArt } from '../starter/shipScreen.js';
-import { GameButton, GameTabs, Glyph, SectionTag, type TabItem } from '../game-ui/index.js';
+import { GameButton, GameTabs, Glyph, InfoPeek, SectionTag, type TabItem } from '../game-ui/index.js';
 import { instrumentArt, planetArt } from '../ui/assets.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
@@ -575,10 +575,12 @@ function ProbeShelf({ probes, now, yours, aboard, hunt, onOpenDossier }: {
   return (
     <div className="gk-intel__part">
       {/* The key to every row below: a range is theirs, the teal line is you. */}
-      <p className="gk-probes__key">
-        {yours !== null && <span aria-hidden="true" className="gk-probes__you" />}
-        <span>{t('intel.probes.estimateNote')} {yours !== null && t(aboard ? 'starter.intel.scaleNote' : 'intel.probes.scaleNote')}</span>
-      </p>
+      {/* E6 (owner 2026-11-17): the key is one line; how to read a bar is behind its ⓘ. */}
+      <div className="gk-probes__key">
+        <InfoPeek lead={yours !== null ? <span aria-hidden="true" className="gk-probes__you" /> : undefined}
+          fact={t('intel.probes.estimateFact')}
+          rule={<p>{t('intel.probes.estimateNote')} {yours !== null && t(aboard ? 'starter.intel.scaleNote' : 'intel.probes.scaleNote')}</p>} />
+      </div>
       {hunt?.crate && probes.some(report => report.outpost === true) && <HuntHowTo />}
       {probes.map((report) => (
         <ProbeReport

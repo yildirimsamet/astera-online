@@ -789,6 +789,7 @@ export const transfer = {
   sending: "Versand",
   launched: "Übertragung gestartet · {{duration}}",
   /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
+  recallOnce: "Im Flug einmal zurückrufbar.",
   rules: "Im Flug einmal rückrufbar. Bodenverteidigung kann nicht fliegen; jedes Schiff mit Laderaum kann Ressourcen transportieren.",
   hullNone: "Keine auf dieser Welt",
   holdReady: "Ausgewählte Schiffe transportieren Ressourcen. Laderaum: {{capacity}}.",

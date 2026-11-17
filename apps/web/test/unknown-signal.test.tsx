@@ -1,4 +1,4 @@
-import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApiProvider } from '../src/api/context.js';
@@ -99,6 +99,7 @@ describe('unknown signal commitment sheet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Build Courier' }));
     expect(p.onBuild).toHaveBeenCalledWith('COURIER');
     expect(screen.queryByRole('button', { name: 'Open Radar' })).not.toBeInTheDocument();
+    fireEvent.click(within(document.querySelector<HTMLElement>('.gk-signal__radar')!).getByRole('button', { name: 'What is this?' }));
     expect(screen.getByText(/incoming attack fleets/)).toBeInTheDocument();
   });
 
@@ -107,6 +108,7 @@ describe('unknown signal commitment sheet', () => {
     render(<UnknownSignalSheet {...p} />);
     expect(screen.queryByRole('button', { name: 'Recall fleet' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Open Radar' })).not.toBeInTheDocument();
+    fireEvent.click(within(document.querySelector<HTMLElement>('.gk-signal__radar')!).getByRole('button', { name: 'What is this?' }));
     expect(screen.getByText(/incoming attack fleets/)).toBeInTheDocument();
   });
 

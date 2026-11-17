@@ -789,6 +789,7 @@ export const transfer = {
   sending: "Despacho",
   launched: "Transferencia iniciada · {{duration}}",
   /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
+  recallOnce: "Puedes llamarla de vuelta una vez en vuelo.",
   rules: "Se puede recuperar una vez en vuelo. La defensa terrestre no se mueve; cualquier nave con bodega puede llevar recursos.",
   hullNone: "Ninguno en este mundo",
   holdReady: "Las naves seleccionadas llevan recursos. Bodega: {{capacity}}.",
