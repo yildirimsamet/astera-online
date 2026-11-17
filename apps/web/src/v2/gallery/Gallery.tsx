@@ -34,7 +34,7 @@ import { LateAlerts, NotificationCenterSheet } from '../../screens/NotificationC
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
 import { ClanDonateSheet } from '../../screens/ClanDonateSheet.js';
 import { AsteroidFocus, ContactFocus, DebrisFocus, IntergalacticConvoyFocus, MonumentFocus, PirateFocus, PlanetFocus, RunFocus, StrikeSheet, ThreadFocus, TradeFocus } from '../../galaxy/FocusPanel.js';
-import { StrategicReportSheet } from '../../screens/BattleReports.js';
+import { BattleReportDoor, StrategicReportSheet } from '../../screens/BattleReports.js';
 import i18n from '../../i18n/index.js';
 import { ReportScene } from '../hud/ReportScene.js';
 import { AwaySheet } from '../hud/AwaySheet.js';
@@ -49,7 +49,7 @@ import { GalleryCommunity } from './GalleryCommunity.js';
 import { GalleryReplay } from './GalleryReplay.js';
 import { ProfileGallery, isProfileView } from './ProfileGallery.js';
 import { WorldProvider } from '../../api/world.js';
-import { clanWarSchema } from '../../api/schemas.js';
+import { clanWarSchema, reportsSchema } from '../../api/schemas.js';
 import { COMMUNITY_POLICY_VERSION, HONOR_BENEFIT_THRESHOLDS_V1, PIRATE, TRADE, honorBenefits } from '@astera/rules';
 // Development only: the same world the tests draw, so the gallery needs no server.
 import { planetView } from '../../../test/fixtures.js';
@@ -1763,6 +1763,7 @@ function Views({ view }: { view: string }) {
       />
     );
   }
+  if (view === 'report-full' || view === 'report-full-defend') return <GalleryReportDoor defending={view === 'report-full-defend'} />;
   if (view === 'report' || view === 'report-defend') {
     const defending = view === 'report-defend';
     const word = i18n.t(defending ? 'reports.verdict.title.defending.PARTIAL' : 'reports.verdict.title.attacking.PARTIAL');
@@ -2121,5 +2122,35 @@ export function Gallery({ view }: { view: string | null }) {
         <Dock active="fleet" badges={{ base: true, fleet: { airborne: 3, progress: 0.4 }, intel: 2, clan: 12 }} onSelect={noop} />
       </Section>
     </div>
+  );
+}
+
+/** The whole battle report as a reader opens it (O6): the scene, then everything under it. */
+function GalleryReportDoor({ defending }: { defending: boolean }) {
+  const [client] = useState(() => {
+    const next = new QueryClient();
+    const round = (n: number, over: Record<string, unknown> = {}) => ({
+      round: n, attackerDamage: 800, defenderDamage: 300, shieldAbsorbed: 0, shieldBreakerDamage: 0,
+      attackerLosses: { DART: 3 }, defenderLosses: { PIKE: 6 }, ...over,
+    });
+    next.setQueryData(keys.reports, reportsSchema.parse({ rivals: [], reports: [{
+      kind: 'BATTLE', id: 'r-raid', missionId: 'm-raid', at: new Date(NOW - 20 * MIN).toISOString(),
+      grade: 'PARTIAL', attacking: !defending, opponentName: 'VEX', opponentPlanet: 'Kestrel', opponentPlanetId: 'p-kestrel',
+      yourPlanet: 'Bellwether', yourPlanetId: 'p-1', neutral: false, rounds: [round(1), round(2), round(3, { attackerLosses: {}, defenderLosses: { BASTION: 2 } })],
+      yourFleet: { DART: 23, TALON: 19, RAMPART: 10, COURIER: 8 }, yourLosses: { DART: 6, TALON: 1 },
+      theirFleet: defending ? { VIPER: 22 } : {}, theirLosses: { PIKE: 12, BASTION: 2 },
+      lootAlloy: 3_100, lootCrystal: 1_000, lootDeuterium: 240, dominion: 120,
+      dominionBreakdown: { ruleVersion: 7, lootValue: 4_580, enemyPermanentLossValue: 9_200, ownPermanentLossValue: 4_100, rawExchange: 9_680 },
+      shieldAbsorbed: 0, cargoLimited: true, defenceSalvage: {}, disruptedMinutes: 0, wreckValue: 5_200, fuelPaid: 320,
+      yourDamage: [{ hull: 'TALON', count: 1, damageBp: 3400 }],
+      salvage: { alloy: 600, crystal: 240, deuterium: 0 },
+      attackerClan: { id: 'c-1', name: 'Halo Watch', tag: 'HALO' }, defenderClan: { id: 'c-2', name: 'Nova Pact', tag: 'NOVA' },
+    }] }));
+    return next;
+  });
+  return (
+    <QueryClientProvider client={client}>
+      <BattleReportDoor missionId="m-raid" onClose={noop} onUnavailable={noop} onAttackAgain={noop} onFocusPlanet={noop} />
+    </QueryClientProvider>
   );
 }

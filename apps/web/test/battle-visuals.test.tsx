@@ -1,11 +1,14 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
+import { render, unfoldReportsOnArrival } from './report-unfold.js';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { BattleReport } from '../src/api/schemas.js';
 import type { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { BattleReports } from '../src/screens/BattleReports.js';
+
+unfoldReportsOnArrival();
 
 const report: BattleReport = {
   id: 'battle-1',

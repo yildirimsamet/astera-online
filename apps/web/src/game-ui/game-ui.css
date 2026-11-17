@@ -17671,3 +17671,11 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 .gk-clan__owed > .gk-inote { grid-column: 1 / -1; }
 .gk-clan__owedwords { display: grid; gap: 2px; min-width: 0; }
 .gk-clan__owed .gk-lb__purse img { width: 16px; height: 16px; }
+
+/* ── O6 (owner 2026-11-17): the report is the scene and four shut questions, set close as one list ── */
+.gk-report > .gk-strike + .gk-strike { margin-top: calc(var(--gk-s2) - var(--gk-s5)); }
+.gk-report .gk-strike__body > .gk-report__part { padding-top: var(--gk-s2); }
+/* a figure never breaks inside itself ("+3,1K" stood on three lines under the report's anywhere-wrap) */
+.gk-haul__res { overflow-wrap: normal; white-space: nowrap; }
+/* the scene's haul is a flowing row; a later `.gk-haul__row` (the hold bands) made it a 40 px grid that crushed "+3,1K" */
+.gk-debrief__loot .gk-haul__row { display: flex; flex-wrap: wrap; gap: var(--gk-s3); }

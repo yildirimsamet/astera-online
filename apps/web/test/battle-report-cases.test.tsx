@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { render, unfoldReportsOnArrival } from './report-unfold.js';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Api } from '../src/api/client.js';
@@ -7,6 +8,8 @@ import type { BattleReport } from '../src/api/schemas.js';
 import { ApiProvider } from '../src/api/context.js';
 import { BattleReports } from '../src/screens/BattleReports.js';
 import i18n from '../src/i18n/index.js';
+
+unfoldReportsOnArrival();
 
 /**
  * THE CASES A BATTLE IS ACTUALLY IN, AND WHAT THE REPORT OWES EACH ONE.
@@ -281,8 +284,8 @@ describe('the order a reader asks their questions in', () => {
   it('keeps critical facts outside optional calculation details', async () => {
     const view = await openSheet(report());
     expect(view.container.querySelectorAll('[aria-expanded]')).toHaveLength(0);
-    expect(view.container.querySelector('[data-battle-verdict]')?.closest('details')).toBeNull();
-    expect(view.container.querySelector('[data-round-losses]')?.closest('details')).toBeNull();
+    expect(view.container.querySelector('[data-battle-verdict]')?.closest('details:not([data-report-section])')).toBeNull();
+    expect(view.container.querySelector('[data-round-losses]')?.closest('details:not([data-report-section])')).toBeNull();
     expect(view.container.querySelector('[data-combat-formula]')?.closest('details')).not.toHaveAttribute('open');
     expect(order).toHaveLength(4);
   });

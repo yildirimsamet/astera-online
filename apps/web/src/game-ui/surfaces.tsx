@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound, type SoundCue } from '../lib/sound.js';
@@ -288,7 +288,7 @@ export function ContextStrip({ tone, glyph, eyebrow, title, label, onPress }: {
  * wanted. The head says what it is, where it stands (`sub`) and its one figure (`value`), in
  * its tone; opening is a press with its own click. `open` arrives open — for what is urgent.
  */
-export function Fold({ glyph, title, sub, value, tone = 'self', open = false, children, ...data }: {
+export function Fold({ glyph, title, sub, value, tone = 'self', open = false, children, ref, ...data }: {
   glyph: GlyphId;
   title: string;
   sub?: string;
@@ -296,9 +296,11 @@ export function Fold({ glyph, title, sub, value, tone = 'self', open = false, ch
   tone?: 'self' | 'warn' | 'hostile';
   open?: boolean;
   children: ReactNode;
+  /** The fold itself, for a caller that opens it from elsewhere (a report's Watch). */
+  ref?: Ref<HTMLDetailsElement>;
 } & Record<`data-${string}`, string>) {
   return (
-    <details {...data} data-tone={tone} open={open} className="gk gk-strike">
+    <details {...data} ref={ref} data-tone={tone} open={open} className="gk gk-strike">
       <summary className="gk-strike__head" {...OWN_SOUND} onClick={() => { playSound('tap'); haptic('tap'); }}>
         <span className="gk-strike__mark" aria-hidden="true"><Glyph id={glyph} /></span>
         <span className="gk-strike__words">

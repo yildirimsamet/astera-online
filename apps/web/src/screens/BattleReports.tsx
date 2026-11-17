@@ -23,7 +23,7 @@ import { HullMark } from '../ui/icons/hulls.js';
 import { SurvivorBar } from '../ui/SurvivorBar.js';
 import { Unreachable } from '../ui/kit/index.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
-import { EmptyState, Glyph, SectionTag, artIconSrc, type GlyphId } from '../game-ui/index.js';
+import { EmptyState, Fold, Glyph, SectionTag, artIconSrc, type GlyphId } from '../game-ui/index.js';
 import { DominionIcon, HonorIcon } from '../ui/icons/index.js';
 import { honorScore } from '../lib/honor.js';
 import { haptic } from '../lib/haptics.js';
@@ -725,7 +725,7 @@ function ReportSheet({
   const vessel = usePlanet().data?.vessel;
   const told = vessel ? outpostReportLines(report, t, vesselToPlanetView(vessel)) : [];
   /** "Watch" (the mock's İzle): the round by round, further down this sheet. */
-  const rounds = useRef<HTMLElement>(null);
+  const rounds = useRef<HTMLDetailsElement>(null);
   const target = report.attacking ? report.opponentPlanetId ?? null : null;
   const perspective = report.attacking ? 'attacking' : 'defending';
   const whyGrade = report.grade === 'DECISIVE' && report.rounds.length === 0
@@ -777,7 +777,12 @@ function ReportSheet({
         word={verdictTitle(report)}
         colonyTarget={target !== null && (colonyOf?.(target) ?? false)}
         rivalSlot={report.opponentPlanetId ? rivalOf?.(report.opponentPlanetId) ?? null : null}
-        onWatch={() => { rounds.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+        onWatch={() => {
+          const fold = rounds.current;
+          if (!fold) return;
+          fold.open = true;
+          if ('scrollIntoView' in fold) fold.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
         {...(onShare ? { onShare } : {})}
         told={told}
         {...(target !== null && onAttackAgain ? { onAttackAgain: () => { onAttackAgain(target); } } : {})}
@@ -808,8 +813,12 @@ function ReportSheet({
         Outcomes, losses and remaining forces never fold. Calculation recipes are
         optional details: understand the battle first, inspect the arithmetic next.
       */}
-      <section data-report-section="happened" className="gk-report__part">
-        <SectionTag as="h2">{t('reports.q.happened')}</SectionTag>
+      {/*
+        O6 (owner 2026-11-17, item 6): "Tüm verileri oyuncunun önüne yığmak =! oyuncuya sonucu iyi
+        bir şekilde sunduk." The scene above IS the result; each question below is one shut fold
+        whose head sums it, so the sheet reads as the result and four doors, not a 4,000 px column.
+      */}
+      <Fold data-report-section="happened" glyph="target" title={t('reports.q.happened')}><div className="gk-report__part">
         <BattleVerdict report={report} />
         {/* The date and time are the hero's (the scene above); the route stays, pointing in or out. */}
         {/*
@@ -873,18 +882,15 @@ function ReportSheet({
           </p>
           <CombatTurningPoint report={report} />
         </section>
-      </section>
+      </div></Fold>
 
-      <section data-report-section="there" className="gk-report__part">
-        <SectionTag as="h2">
-          {t(
-            report.attacking
-              ? (report.enemyFleetVisibility === 'FULL' || (report.enemyFleetVisibility === undefined && report.grade === 'DECISIVE'))
-                ? 'reports.q.enemyForce'
-                : 'reports.q.enemyLosses'
-              : 'reports.q.incomingForce',
-          )}
-        </SectionTag>
+      <Fold data-report-section="there" glyph="eye" title={t(
+        report.attacking
+          ? (report.enemyFleetVisibility === 'FULL' || (report.enemyFleetVisibility === undefined && report.grade === 'DECISIVE'))
+            ? 'reports.q.enemyForce'
+            : 'reports.q.enemyLosses'
+          : 'reports.q.incomingForce',
+      )}><div className="gk-report__part">
         {/* The frozen intelligence permission decides the roster; legacy payloads retain their older rendering. */}
         <TheirBoard report={report} />
         {/*
@@ -896,10 +902,10 @@ function ReportSheet({
           side" would tell a defender their attacker brought a planet shield.
         */}
         {report.attacking && <ShieldImpact report={report} />}
-      </section>
+      </div></Fold>
 
-      <section ref={rounds} data-report-section="who" className="gk-report__part">
-        <SectionTag as="h2">{t('reports.q.who')}</SectionTag>
+      <Fold ref={rounds} data-report-section="who" glyph="attack" title={t('reports.q.who')}
+        {...(report.rounds.length > 0 ? { value: t('reports.rounds', { count: report.rounds.length }) } : {})}><div className="gk-report__part">
         {report.jointWar && <JointWarForces report={report} />}
         {report.defenseLine && <DefenseLineForces report={report} />}
         {/* Defending, the Aegis is part of the reader's own board — see above. */}
@@ -961,10 +967,10 @@ function ReportSheet({
           </RulesRow>
         </div>
         )}
-      </section>
+      </div></Fold>
 
-      <section data-report-section="changed" className="gk-report__part">
-        <SectionTag as="h2">{t('reports.q.changed')}</SectionTag>
+      <Fold data-report-section="changed" glyph="crate" title={t('reports.q.changed')}
+        {...(report.dominion !== null && report.dominion !== 0 ? { value: signed(report.dominion) } : {})}><div className="gk-report__part">
         {/* The opening verdict already states losses, loot and Dominion. This section
             expands only the figures that have more to explain. */}
         {report.dominion !== null ? (
@@ -1048,8 +1054,8 @@ function ReportSheet({
             <ClanAtLaunch label={t('reports.theirClan')} clan={theirClan} />
           </div>
         ) : null}
-      </section>
-      <NextMoves report={report} {...(onFocusPlanet ? { onFocusPlanet } : {})} {...(onAttackAgain ? { onAttackAgain } : {})} />
+      </div></Fold>
+      <NextMoves report={report} {...(onFocusPlanet ? { onFocusPlanet } : {})} />
       </div>
     </V2Sheet>
   );
@@ -1112,7 +1118,7 @@ function HaulLine({ alloy, crystal, deuterium, testId }: { alloy: number; crysta
   );
 }
 
-interface NextMove { kind: 'again' | 'source' | 'wreck'; glyph: GlyphId; tone?: 'alloy' | 'hostile'; title: string; sub: string; go: () => void }
+interface NextMove { kind: 'source' | 'wreck'; glyph: GlyphId; tone?: 'alloy' | 'hostile'; title: string; sub: string; go: () => void }
 
 /**
  * WHAT NOW (C15). A report produces intel, and intel is only worth something as the next
@@ -1120,14 +1126,10 @@ interface NextMove { kind: 'again' | 'source' | 'wreck'; glyph: GlyphId; tone?: 
  * open: the raided world's dossier, which this fight just wrote to; the world a raid came
  * from; the wreck the fight left, over a world (a pirate's orbits nothing).
  */
-function NextMoves({ report, onAttackAgain, onFocusPlanet }: { report: OrdinaryReport } & Pick<ReportDoors, 'onAttackAgain' | 'onFocusPlanet'>) {
+function NextMoves({ report, onFocusPlanet }: { report: OrdinaryReport } & Pick<ReportDoors, 'onFocusPlanet'>) {
   const { t } = useTranslation();
   const moves: NextMove[] = [];
-  const target = report.attacking ? report.opponentPlanetId : null;
-  if (target && onAttackAgain) {
-    moves.push({ kind: 'again', glyph: 'attack', title: t('reports.next.again', { planet: report.opponentPlanet }),
-      sub: t('reports.next.againNote'), go: () => { onAttackAgain(target); } });
-  }
+  // The scene above carries Attack again (O6: one door to one move); these are the moves it lacks.
   const source = !report.attacking && !report.pirate && report.opponentPlanet !== '' ? report.opponentPlanetId : null;
   if (source && onFocusPlanet) {
     moves.push({ kind: 'source', glyph: 'target', tone: 'hostile', title: t('reports.next.source', { planet: report.opponentPlanet }),

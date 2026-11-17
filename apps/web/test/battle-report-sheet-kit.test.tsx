@@ -81,18 +81,36 @@ beforeEach(async () => { await i18n.changeLanguage('en'); });
 afterEach(cleanup);
 
 describe('the battle report on the kit', () => {
-  it('asks each question as its own section under the kit section tag, then the next move', () => {
+  // O6 (owner 2026-11-17, item 6): "Tüm verileri oyuncunun önüne yığmak =! oyuncuya sonucu iyi bir şekilde
+  // sunduk." The scene says the result; each question under it is one shut fold, the next move stays open.
+  it('asks each question as its own shut fold under the scene, then the next move', () => {
     open(raid, { onFocusPlanet: vi.fn(), onAttackAgain: vi.fn() });
     const keys = [...document.querySelectorAll('[data-report-section]')].map((el) => el.getAttribute('data-report-section'));
     expect(keys).toEqual(['happened', 'there', 'who', 'changed', 'now']);
-    for (const key of keys) {
-      const el = section(key ?? '');
-      expect(el.tagName).toBe('SECTION');
-      const heading = el.querySelector('h2');
-      expect(heading).toHaveClass('gk-tag');
-      expect(heading?.querySelector('.gk-tag__name')).not.toBeNull();
+    for (const key of ['happened', 'there', 'who', 'changed']) {
+      const fold = section(key) as HTMLDetailsElement;
+      expect(fold.tagName).toBe('DETAILS');
+      expect(fold.open).toBe(false);
+      expect(fold.querySelector('summary')?.textContent).not.toBe('');
     }
+    expect(section('now').tagName).toBe('SECTION');
     expect(within(section('now')).getByRole('heading', { level: 2 })).toHaveTextContent('Your next move');
+  });
+
+  it('sums each fold on its head: the rounds fought, the Dominion it moved', () => {
+    open(raid);
+    expect(section('who').querySelector('summary')).toHaveTextContent('2 rounds');
+    expect(section('changed').querySelector('summary')).toHaveTextContent('+120');
+  });
+
+  it('opens the rounds when Watch is pressed', async () => {
+    open(raid);
+    const scroll = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: scroll });
+    await userEvent.click(screen.getByRole('button', { name: /watch/i }));
+    expect((section('who') as HTMLDetailsElement).open).toBe(true);
+    expect(scroll).toHaveBeenCalled();
+    Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
   });
 
   it('names both ends of the fight as world doors a thumb can press', async () => {
@@ -128,18 +146,19 @@ describe('the battle report on the kit', () => {
     expect(document.querySelector('[data-walkover]')).toHaveClass('gk-well');
   });
 
-  it('hands the raider the dossier this fight wrote to, and the wreck it left', async () => {
+  // O6: the scene's own Attack again is the one door to it; the next moves keep what the scene lacks.
+  it('hands the raider the wreck it left, the attack once and only on the scene', async () => {
     const focus = vi.fn();
     const again = vi.fn();
     open(raid, { onFocusPlanet: focus, onAttackAgain: again });
     const moves = within(section('now')).getAllByRole('button');
-    expect(moves.map((move) => move.getAttribute('data-next-move'))).toEqual(['again', 'wreck']);
-    expect(moves[0]).toHaveAccessibleName(/Attack again: Kestrel/);
-    expect(moves[1]).toHaveAccessibleName(/Go to the wreck: Kestrel/);
-    expect(moves[1]).toHaveTextContent('5.2K');
-    await userEvent.click(moves[0]!);
+    expect(moves.map((move) => move.getAttribute('data-next-move'))).toEqual(['wreck']);
+    expect(moves[0]).toHaveAccessibleName(/Go to the wreck: Kestrel/);
+    expect(moves[0]).toHaveTextContent('5.2K');
+    expect(screen.getAllByRole('button', { name: /attack again/i })).toHaveLength(1);
+    await userEvent.click(screen.getByRole('button', { name: /attack again/i }));
     expect(again).toHaveBeenCalledWith('p-kestrel');
-    await userEvent.click(moves[1]!);
+    await userEvent.click(moves[0]!);
     expect(focus).toHaveBeenCalledWith('p-kestrel');
   });
 

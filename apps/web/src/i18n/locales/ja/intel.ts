@@ -319,8 +319,6 @@ export const reports = {
   /** C15: the doors a fight opened, closing its report. */
   next: {
     title: "次の一手",
-    again: "もう一度攻撃：{{planet}}",
-    againNote: "見えた防衛は記録済み",
     source: "襲撃者の惑星：{{planet}}",
     sourceNote: "襲撃はここから",
     wreck: "残骸へ：{{planet}}",

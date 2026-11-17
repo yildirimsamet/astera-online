@@ -319,8 +319,6 @@ export const reports = {
   /** C15: the doors a fight opened, closing its report. */
   next: {
     title: "Tu siguiente jugada",
-    again: "Atacar de nuevo: {{planet}}",
-    againNote: "La defensa vista está en su expediente",
     source: "Mundo del atacante: {{planet}}",
     sourceNote: "El asalto vino de aquí",
     wreck: "Ir a los restos: {{planet}}",

@@ -1,6 +1,7 @@
 import { pvpBalanceForTier } from '@astera/rules';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
+import { render, unfoldReportsOnArrival } from './report-unfold.js';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Api } from '../src/api/client.js';
@@ -8,6 +9,8 @@ import type { BattleReport, StrategicBattleReport } from '../src/api/schemas.js'
 import { reportsSchema } from '../src/api/schemas.js';
 import { ApiProvider } from '../src/api/context.js';
 import { BattleReports } from '../src/screens/BattleReports.js';
+
+unfoldReportsOnArrival();
 
 /**
  * "THE REPORTS ARE NOT EXPLANATORY ENOUGH" — player complaints, D121.

@@ -290,8 +290,6 @@ export const reports = {
   /** C15: the doors a fight opened, closing its report. */
   next: {
     title: "Sıradaki hamlen",
-    again: "Yeniden saldır: {{planet}}",
-    againNote: "Bu savaşta görülen savunma dosyada",
     source: "Saldıranın dünyası: {{planet}}",
     sourceNote: "Baskın buradan geldi",
     wreck: "Enkaza git: {{planet}}",
