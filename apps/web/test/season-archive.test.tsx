@@ -260,6 +260,11 @@ async function show({
   return { onFocusPlanet };
 }
 
+/** The live board opens on its standings (owner 2026-11-17, item 4); what the places pay is on its Rewards page. */
+async function rewardsPage() {
+  await userEvent.setup().click(screen.getByRole('radio', { name: i18n.t('leaderboard.view.rewards') }));
+}
+
 afterEach(async () => {
   window.localStorage.clear();
   await i18n.changeLanguage('en');
@@ -340,6 +345,7 @@ describe('season archive surface', () => {
   it('shows what the season is being played for, and where the reader stands', async () => {
     await show({ liveScore: 1 });
     const user = userEvent.setup();
+    await rewardsPage();
 
     expect(screen.getByText('End of season prize')).toBeVisible();
     const table = screen.getByRole('button', { name: /prize by place/i });
@@ -367,6 +373,7 @@ describe('season archive surface', () => {
 
   it('does not promise a prize to a top-ten commander below minimum Dominion', async () => {
     await show({ liveScore: 0 });
+    await rewardsPage();
 
     expect(screen.queryByText('Rank 2 · you are winning this')).toBeNull();
     expect(screen.getByText('Rank 2')).toBeVisible();
@@ -375,6 +382,7 @@ describe('season archive surface', () => {
 
   it.each(['tr', 'en', 'de', 'fr', 'es', 'ja'])('keeps account classifications private in the %s prize board', async (language) => {
     await show({ liveScore: 10, language });
+    await rewardsPage();
     const board = screen.getByRole('region', { name: i18n.t('leaderboard.rewards.title') });
     expect(board).not.toHaveTextContent(/\bbots?\b|botlar|ボット/iu);
     expect(board).toHaveTextContent(i18n.t('leaderboard.rewards.explain', { places: 10, minimum: '1' }));
@@ -383,6 +391,7 @@ describe('season archive surface', () => {
 
   it('does not promise a prize to a bot account with a winning score', async () => {
     await show({ liveScore: 10, isBot: true });
+    await rewardsPage();
 
     expect(screen.queryByText('Rank 2 · you are winning this')).toBeNull();
     expect(screen.getByText('You cannot receive a season prize this season.')).toBeVisible();

@@ -45,7 +45,7 @@ Her yüzeyin ölçütü: **350×812 ve 375×667'de kaydırmadan ne görünüyor?
 | O15 | Mağaza kategori kutuları kompakt | ek-15 | bitti (iki satır kutu yerine tek satır kaydırılabilir çip şeridi, ~150→36 px; açık olan görünür alana kayar) |
 | O16 | Komutan menüsü: "Oyuna dön" kalkar; yanındaki iki düğme düzgün | ek-16 | bitti (\"Oyuna dön\" ve metni kalktı; ana ekran ve tam ekran iki eşit çerçeveli düğme, uzun dilde iki satıra sarar) |
 | O17 | Komutan gemisi: "Yarık'a gir" düğmesinin altındaki boşluk kapanır | ek-17 | bitti (dock sheet'in tabanına iniyor; düğme kenardan 8 px yukarıda, altında içerik görünmüyor) |
-| K | Kapanış: altı dil, 350/375×667/masaüstü, tam test, görsel denetim | — | bekliyor |
+| K | Kapanış: altı dil, 350/375×667/masaüstü, tam test, görsel denetim | — | bitti |
 
 Sıra: S1 → S2 → S3 → H1 → H2 → S4 → S5/S6 → E1 → E2 → E3 → E4 → E5 → E6 → K.
 
@@ -110,3 +110,4 @@ Son sırada: G11 simulator / wiki-sheet / wiki-public · G13 faults / landing / 
 - 2026-11-17: E1 bitti: kit'e `Fold` (S5'in ilk parçası; Ölüm Yıldızı/radyasyon katlanırları da bunu kullanıyor). Owner'ın ikinci 17 maddelik listesi plana eklendi (O1–O17). Sıradaki: O3.
 - 2026-11-17: O3, O9, O11, O7, O13, O8, O16, O17, O14, O15, O10, O1, O2 bitti (önceki oturumlarda). O4 (liderlik: Sıralama · Ödüller · Kurallar), O5/E4 (klansız ekran: Bul · Kur · Neden), O6 (savaş raporu: sonuç sahnesi + dört kapalı soru), E5 (ödül kapsülü) bitti. Sıradaki: E6 + S5/S6 yazı taraması, yüzey yüzey.
 - 2026-11-17: E6 + S5/S6 bitti. 88 galeri görünümünde 70+ karakterlik paragraflar tarandı; dört partide (302976b8'e kadar, son parti 597bc490) kural metinleri ⓘ'ye, uzun satırlar tek cümleye indi; `test/copy-length.test.ts` her kısaltılmış satırı altı dilde boy sınırında tutar. Karar anında gereken kurallar (koloni korunur, talep önceliği, anıt filo şartları) bilerek ekranda kaldı. Sıradaki: K.
+- 2026-11-17: K bitti. Tam web paketi: 1007 dosya, 11.720 test; benim değişikliklerimin bozduğu 14 test (sezon arşivi ödül sayfası, sekme ve akademi "Economy" adı) düzeltildi; kalan kırmızı yalnız bilinen üçlü (type-scale wiki-room, icons i-clan ×2). Typecheck 0. Görsel denetim: DE/JA 350×812, TR 375×667, EN masaüstü; klan ganimet düğmesi DE/ES/FR'de kısaldı. Aday (yapılmadı): anıt sayfası ~1,6 ekran, Filoların/Gönder sekmeleri düşünülebilir.
