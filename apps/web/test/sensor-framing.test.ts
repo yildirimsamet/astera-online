@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { Frustum, Matrix4, PerspectiveCamera, Vector3 } from 'three';
 import { VIEW, toWorld } from '@astera/rules';
@@ -76,4 +78,15 @@ describe('opening a sensor volume', () => {
     expect(frame?.distance).toBe(100);
     expect(frame?.centre.toArray()).toEqual(toWorld(far[0]!.at));
   });
+});
+
+/**
+ * ONE FRAMING PER TOGGLE (owner 2026-11-13, §10.7-6). The galaxy camera read the toggle in two copies of
+ * the same effect; the first marks the toggle seen, so the second never framed anything. One copy stays:
+ * the one that leaves the camera alone while the universe view is open.
+ */
+it('frames a sensor toggle from one place in the galaxy camera', () => {
+  const source = readFileSync(resolve(import.meta.dirname, '../src/galaxy/GalaxyCanvas.tsx'), 'utf8');
+  expect(source.match(/sensorToggleFrame\(\{/gu)).toHaveLength(1);
+  expect(source).toMatch(/if \(!controls \|\| universeOpen \|\| !\(controls\.object instanceof THREE\.PerspectiveCamera\)\) return;\n\s+const camera = controls\.object;\n\s+const frame = sensorToggleFrame/u);
 });

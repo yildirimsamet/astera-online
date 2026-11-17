@@ -1951,22 +1951,6 @@ function Rig({
     goTo(frame.centre.x, frame.centre.y, frame.centre.z, frame.distance, true);
   }, [showTelescopeReach, showRadarReach, sensors, activePlanetId]);
 
-  useEffect(() => {
-    const previous = previousSensors.current;
-    const current = { telescope: showTelescopeReach, radar: showRadarReach };
-    previousSensors.current = current;
-    const controls = ref.current;
-    if (!controls || !(controls.object instanceof THREE.PerspectiveCamera)) return;
-    const camera = controls.object;
-    const frame = sensorToggleFrame({ previous, current, posts: sensors ?? [], activePlanetId, camera, target: controls.target });
-    if (!frame) return;
-    // High-level Radar can exceed the ordinary whole-galaxy camera limit on a phone.
-    // Keep the expanded limit on close so hiding a sensor cannot pull the camera in.
-    mode.current = 'manual';
-    acquired.current = false;
-    goTo(frame.centre.x, frame.centre.y, frame.centre.z, frame.distance, true);
-  }, [showTelescopeReach, showRadarReach, sensors, activePlanetId]);
-
   useFrame((_, delta) => {
     const controls = ref.current;
     if (!controls || preparing.current) return;
