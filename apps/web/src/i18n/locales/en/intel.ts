@@ -36,9 +36,9 @@ export const intel = {
     idleHint_one: '{{count}} slot is idle. Pick a world in the galaxy and point one at it.',
     idleHint_other: '{{count}} slots are idle. Pick a world in the galaxy and point one at it.',
     scarcity_one:
-      '{{neighbours}} worlds out there and {{count}} eye to spend. Moving one costs a cooldown, so choose who.',
+      '{{neighbours}} worlds out there, {{count}} eye. Moving it costs a cooldown: choose well.',
     scarcity_other:
-      '{{neighbours}} worlds out there and {{count}} eyes to spend. Moving one costs a cooldown, so choose who.',
+      '{{neighbours}} worlds out there, {{count}} eyes. Moving one costs a cooldown: choose well.',
     oneMore: 'Telescope L{{level}} would watch one more.',
     noRadar: 'And with no Radar, you cannot distinguish a threat aimed at you from other movement.',
   },

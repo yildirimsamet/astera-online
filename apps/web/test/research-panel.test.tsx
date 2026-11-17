@@ -781,7 +781,7 @@ describe('the commander research queue', () => {
         researchOrder('YARD_AUTOMATION', new Date('2026-08-28T11:30:00.000Z')),
       ],
     });
-    expect(view.getByText(/Construction and Yard.*keep running separately/i))
+    expect(view.getByText(/Building and Yard run apart/i))
       .toBeInTheDocument();
   });
 

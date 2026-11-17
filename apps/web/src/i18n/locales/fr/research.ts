@@ -33,7 +33,7 @@ export const research = {
   queueCapacity: "{{count}} emplacements",
   queueLane: "Recherche du commandant",
   queueGlobalHint:
-    "Cette file appartient à ton commandant et une recherche commencée ne peut pas être annulée. Les files de Construction et de Chantier spatial de chaque planète fonctionnent séparément.",
+    "Une file par commandant ; une recherche lancée ne s'annule pas. Construction et Chantier à part.",
   runningLabel: "En cours",
   runningFinishes: "se termine à {{time}}",
   idleLabel: "Aucune recherche en cours",

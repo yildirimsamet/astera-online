@@ -220,7 +220,7 @@ describe('the watch shelf', () => {
   it('names the size of the galaxy as the reason to choose, once every slot is spent', () => {
     show({ telescope: 3, watching: 2, worlds: 47 });
     expect(screen.getByText(/every slot you have is watching someone/i)).toBeInTheDocument();
-    expect(screen.getByText(/47 worlds out there and 2 eyes to spend/i)).toBeInTheDocument();
+    expect(screen.getByText(/47 worlds out there, 2 eyes. Moving one costs a cooldown/i)).toBeInTheDocument();
   });
 
   it('says which slots are idle rather than how much of the disc is dark', () => {

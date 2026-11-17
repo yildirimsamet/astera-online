@@ -42,7 +42,7 @@ export const research = {
   queueCapacity: "{{count}} Steckplätze",
   queueLane: "Commander-Forschung",
   queueGlobalHint:
-    "Diese Warteschlange gehört deinem Kommandanten, und begonnene Forschung lässt sich nicht abbrechen. Bau und Werft laufen auf jeder Welt getrennt weiter.",
+    "Eine Schlange pro Kommandant; Begonnenes lässt sich nicht abbrechen. Bau und Werft laufen extra.",
   runningLabel: "Läuft",
   runningFinishes: "endet {{time}}",
   idleLabel: "Nichts läuft",

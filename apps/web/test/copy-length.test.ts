@@ -22,6 +22,9 @@ const SHORT: readonly (readonly [key: string, max: number])[] = [
   ['skins.intro', 70],
   ['silentSpace.body', 125],
   ['silentSpace.queueHint', 90],
+  ['research.queueGlobalHint', 100],
+  ['intel.coverage.scarcity_one', 95],
+  ['intel.coverage.scarcity_other', 95],
 ];
 
 function at(tree: unknown, path: string): string {

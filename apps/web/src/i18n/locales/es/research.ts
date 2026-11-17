@@ -42,7 +42,7 @@ export const research = {
   queueCapacity: "{{count}} ranuras",
   queueLane: "Investigación del comandante",
   queueGlobalHint:
-    "Esta cola pertenece a tu comandante y la investigación iniciada no se puede cancelar. La construcción y el astillero de cada mundo siguen funcionando por separado.",
+    "Una cola por comandante; lo iniciado no se cancela. Construcción y astillero van aparte.",
   runningLabel: "En marcha",
   runningFinishes: "finaliza {{time}}",
   idleLabel: "No hay nada en marcha",

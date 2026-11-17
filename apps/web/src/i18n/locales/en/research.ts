@@ -42,7 +42,7 @@ export const research = {
   queueCapacity: "{{count}} slots",
   queueLane: "Commander research",
   queueGlobalHint:
-    "This queue belongs to your commander, and started research cannot be cancelled. Construction and Yard on every world keep running separately.",
+    "One queue for your commander; started research can't be cancelled. Building and Yard run apart.",
   runningLabel: "Under way",
   runningFinishes: "finishes {{time}}",
   idleLabel: "Nothing under way",

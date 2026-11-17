@@ -40,9 +40,9 @@ export const intel = {
     idleHint_one: '{{count}} yuvan boşta duruyor. Galaksiden bir gezegen seç, oraya çevir.',
     idleHint_other: '{{count}} yuvan boşta duruyor. Galaksiden bir gezegen seç, birini oraya çevir.',
     scarcity_one:
-      'Dışarıda {{neighbours}} gezegen var, elinde {{count}} göz. Bir yuvayı kaydırmak bekleme süresine mal oluyor; kimi izleyeceğine iyi karar ver.',
+      "Dışarıda {{neighbours}} gezegen, elinde {{count}} göz. Yuva kaydırmak bekleme süresi başlatır.",
     scarcity_other:
-      'Dışarıda {{neighbours}} gezegen var, elinde {{count}} göz. Bir yuvayı kaydırmak bekleme süresine mal oluyor; kimi izleyeceğine iyi karar ver.',
+      "Dışarıda {{neighbours}} gezegen, elinde {{count}} göz. Yuva kaydırmak bekleme süresi başlatır.",
     oneMore: '{{level}}. seviye Teleskop bir gezegen daha izleyebilir.',
     noRadar: 'Radarın da yok; sana yönelen tehdidi diğer hareketlerden ayıramazsın.',
   },

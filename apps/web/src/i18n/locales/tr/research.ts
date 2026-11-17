@@ -33,7 +33,7 @@ export const research = {
   queueCapacity: "{{count}} yuva",
   queueLane: "Komutan araştırması",
   queueGlobalHint:
-    "Bu sıra komutanına aittir ve başlayan araştırma iptal edilemez. Her gezegendeki İnşaat ve Tersane sıraları ayrı çalışır.",
+    "Komutan sırası: başlayan araştırma iptal edilemez. İnşaat ve Tersane ayrı işler.",
   runningLabel: "Sürüyor",
   runningFinishes: "{{time}}’de biter",
   idleLabel: "Sürmekte olan araştırma yok",

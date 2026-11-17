@@ -36,9 +36,9 @@ export const intel = {
     idleHint_one: '{{count}} está inactiva. Elige un mundo en la galaxia y apúntalo.\nLas ranuras',
     idleHint_other: '{{count}} están inactivas. Elige un mundo en la galaxia y apúntalo.',
     scarcity_one:
-      '{{neighbours}} mundos por ahí y {{count}} ojo para gastar. Mover uno cuesta un tiempo de reutilización, así que elige quién.',
+      "{{neighbours}} mundos fuera y {{count}} ojo. Moverlo cuesta una espera: elige bien.",
     scarcity_other:
-      '{{neighbours}} mundos ahí fuera y {{count}} ojos para gastar. Mover uno cuesta un tiempo de reutilización, así que elige quién.',
+      "{{neighbours}} mundos fuera y {{count}} ojos. Mover uno cuesta una espera: elige bien.",
     oneMore: 'Telescopio L{{level}} observaría uno más.',
     noRadar: 'Y sin radar, no puedes distinguir una amenaza dirigida a ti de otro movimiento.',
   },

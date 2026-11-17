@@ -44,9 +44,9 @@ export const intel = {
     idleHint_other:
       "{{count}} emplacements sont libres. Choisis une planète dans la galaxie et oriente l’un d’eux vers elle.",
     scarcity_one:
-      "Il y a {{neighbours}} planètes autour de toi, mais seulement {{count}} œil à ta disposition. Déplacer un emplacement impose un délai ; choisis bien qui surveiller.",
+      "{{neighbours}} planètes autour, {{count}} œil. Le déplacer impose un délai : choisis bien.",
     scarcity_other:
-      "Il y a {{neighbours}} planètes autour de toi, mais seulement {{count}} yeux à ta disposition. Déplacer un emplacement impose un délai ; choisis bien qui surveiller.",
+      "{{neighbours}} planètes autour, {{count}} yeux. En déplacer un impose un délai : choisis bien.",
     oneMore:
       "Un Télescope de niveau {{level}} peut surveiller une planète supplémentaire.",
     noRadar:

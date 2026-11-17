@@ -36,9 +36,9 @@ export const intel = {
     idleHint_one: '{{count}} Slot ist frei. Wähle eine Welt in der Galaxie und richte ihn auf sie.',
     idleHint_other: '{{count}} Slots sind frei. Wähle eine Welt in der Galaxie und richte einen auf sie.',
     scarcity_one:
-      '{{neighbours}} Welten da draußen und {{count}} Auge zu vergeben. Ein Wechsel kostet eine Abklingzeit, also wähle, wen.',
+      '{{neighbours}} Welten draußen, {{count}} Auge. Ein Wechsel kostet Abklingzeit: wähle gut.',
     scarcity_other:
-      '{{neighbours}} Welten da draußen und {{count}} Augen zu vergeben. Ein Wechsel kostet eine Abklingzeit, also wähle, wen.',
+      '{{neighbours}} Welten draußen, {{count}} Augen. Ein Wechsel kostet Abklingzeit: wähle gut.',
     oneMore: 'Telescope L{{level}} würde sich noch einen ansehen.',
     noRadar: 'Und ohne Radar kannst du eine Bedrohung, die auf dich zielt, nicht von anderen Bewegungen unterscheiden.',
   },
