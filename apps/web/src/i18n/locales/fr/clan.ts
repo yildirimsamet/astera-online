@@ -56,6 +56,7 @@ export const clan = {
     requirements: "Fonder exige un Noyau de commandement de niveau {{level}} et ces ressources sur ta capitale. Rejoindre ne coûte aucun frais de fondation.",
     joinAction: "Trouver mon équipe",
     foundAction: "Fonder mon clan",
+    tabs: { label: 'Options de clan', find: 'Trouver', found: 'Fonder', why: 'Pourquoi ?' },
   },
   benefits: {
     heading: "Pourquoi rejoindre un clan ?",

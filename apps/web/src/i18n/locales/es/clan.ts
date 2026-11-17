@@ -54,6 +54,7 @@ export const clan = {
     requirements: "Fundar requiere Núcleo de Mando {{level}} y estos recursos en tu capital. Unirse no tiene coste de fundación.",
     joinAction: "Encontrar mi equipo",
     foundAction: "Fundar mi propio clan",
+    tabs: { label: 'Opciones de clan', find: 'Buscar', found: 'Fundar', why: '¿Por qué?' },
   },
   benefits: {
     heading: '¿Por qué unirse?',

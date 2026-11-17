@@ -17665,3 +17665,9 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
   background: linear-gradient(0deg, color-mix(in srgb, var(--gk-self) 14%, transparent), transparent 90%);
   box-shadow: inset 0 -2px 0 var(--gk-self);
 }
+
+/* ── O5 (owner 2026-11-17): the clanless screen is three pages; the old clan's loot is one line above them ── */
+.gk-clan__owed { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--gk-s2) var(--gk-s3); padding: var(--gk-s2) var(--gk-s3); }
+.gk-clan__owed > .gk-inote { grid-column: 1 / -1; }
+.gk-clan__owedwords { display: grid; gap: 2px; min-width: 0; }
+.gk-clan__owed .gk-lb__purse img { width: 16px; height: 16px; }

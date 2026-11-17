@@ -54,6 +54,7 @@ export const clan = {
     requirements: "Kurmak için ana gezegende Komuta Çekirdeği {{level}} ve bu kaynaklar gerekir. Katılırken kuruluş bedeli ödemezsin.",
     joinAction: "Ekibini bul",
     foundAction: "Klanını kur",
+    tabs: { label: 'Klan seçenekleri', find: 'Bul', found: 'Kur', why: 'Neden?' },
   },
   benefits: {
     heading: 'Neden katılayım?',

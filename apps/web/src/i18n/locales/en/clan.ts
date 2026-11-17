@@ -54,6 +54,7 @@ export const clan = {
     requirements: "Founding needs Command Core {{level}} and these resources on your capital. Joining has no founding fee.",
     joinAction: "Find my crew",
     foundAction: "Start my own clan",
+    tabs: { label: 'Clan options', find: 'Find', found: 'Found', why: 'Why join' },
   },
   benefits: {
     heading: 'Why join?',

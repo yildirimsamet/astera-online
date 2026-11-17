@@ -54,6 +54,7 @@ export const clan = {
     requirements: "Zur Gründung brauchst du Kommandokern {{level}} und diese Ressourcen auf deiner Hauptstadt. Beim Beitritt fällt keine Gründungsgebühr an.",
     joinAction: "Mein Team finden",
     foundAction: "Eigenen Clan gründen",
+    tabs: { label: 'Clan-Optionen', find: 'Finden', found: 'Gründen', why: 'Warum?' },
   },
   benefits: {
     heading: 'Warum beitreten?',

@@ -219,34 +219,36 @@ describe('clan command surface', () => {
     expect(screen.queryByRole('button', { name: 'Launch together' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Ready' })).toBeNull();
   });
-  it('answers why a clan matters and shows the exact founding gate', () => {
+  it('answers why a clan matters and shows the exact founding gate', async () => {
     show(outside);
+    await userEvent.setup().click(screen.getByRole('tab', { name: 'Why join' }));
 
     expect(screen.getByText('Five commanders. Go further together.')).toBeInTheDocument();
     expect(screen.getByText(/Clanmates cannot attack each other/)).toBeInTheDocument();
     expect(screen.getByText(/10% of returned raid loot/)).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('tab', { name: 'Found' }));
     expect(screen.getByText('Command Core 6 / 7')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Found a clan' })).toBeDisabled();
     expect(screen.getAllByText('2,000').length).toBeGreaterThan(0);
     expect(screen.getAllByText('1,000').length).toBeGreaterThan(0);
   });
 
-  it('offers direct discovery and founding routes without submitting either action', async () => {
+  // O5 (owner 2026-11-17): the two route links became the Find and Found pages; moving between them submits nothing.
+  it('moves between finding and founding without submitting either action', async () => {
     const { api } = show(outside);
     const create = vi.spyOn(api, 'createClan');
     const apply = vi.spyOn(api, 'applyToClan');
-    for (const name of ['Find my crew', 'Start my own clan']) {
-      const link = screen.getByRole('link', { name });
-      const target = document.querySelector(link.getAttribute('href')!);
-      expect(target).toBeInstanceOf(HTMLInputElement);
-      await userEvent.setup().click(link);
-    }
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('tab', { name: 'Found' }));
+    await user.click(screen.getByRole('tab', { name: /Find/ }));
+    expect(screen.getByRole('searchbox')).toBeInTheDocument();
     expect(create).not.toHaveBeenCalled();
     expect(apply).not.toHaveBeenCalled();
   });
 
-  it.each([outside, member])('explains shared combat, monuments and communication before choosing an action ($state)', (home) => {
+  it.each([outside, member])('explains shared combat, monuments and communication before choosing an action ($state)', async (home) => {
     show(home);
+    if (home.state === 'OUTSIDE') await userEvent.setup().click(screen.getByRole('tab', { name: 'Why join' }));
     expect(screen.getByRole('heading', { name: 'Defend each other' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Strike as one fleet' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Hold monuments together' })).toBeInTheDocument();
@@ -482,6 +484,7 @@ describe('clan command surface', () => {
       () => new Promise<never>(() => undefined),
     );
     const user = userEvent.setup();
+    await user.click(screen.getByRole('tab', { name: 'Found' }));
 
     const submit = screen.getByRole('button', { name: 'Found a clan' });
     expect(submit).toBeDisabled();
@@ -505,16 +508,18 @@ describe('clan command surface', () => {
     show(outside);
 
     expect(screen.getByText('Beş komutan. Birlikte daha ileri.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Klan kur' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Orbit Wardens klanına başvur' })).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('tab', { name: 'Kur' }));
+    expect(screen.getByRole('button', { name: 'Klan kur' })).toBeDisabled();
   });
 });
 
 it('offers community agreement before creating public clan text while keeping clan discovery available', async () => {
-  show(outside, false);
+  show({ ...outside, creation: { ...outside.creation, coreLevel: 7, affordable: true } }, false);
+  expect(screen.getByText('Orbit Wardens')).toBeInTheDocument();
+  await userEvent.setup().click(screen.getByRole('tab', { name: 'Found' }));
   expect(await screen.findByRole('checkbox', { name: 'I agree to the community guidelines and terms of use.' })).not.toBeChecked();
   expect(screen.queryByLabelText('Clan name')).toBeNull();
-  expect(screen.getByText('Orbit Wardens')).toBeInTheDocument();
 });
 it('offers community agreement for leader text edits while retaining membership controls', async () => {
   show(member, false);
@@ -536,13 +541,15 @@ const oldPaint = (root: Element): string[] =>
 
 describe('the clan’s outside on the kit', () => {
   it('draws the pitch, the requests, the directory and the founding with none of the old look', async () => {
-    show(outside);
+    show({ ...outside, creation: { ...outside.creation, coreLevel: 7, affordable: true } });
     await screen.findByRole('button', { name: /inspect orbit wardens/i });
     const root = screen.getByTestId('clan-outside');
     expect(oldPaint(root)).toEqual([]);
+    expect(screen.getByRole('button', { name: 'Apply to Orbit Wardens' })).toHaveClass('gk-btn');
+    await userEvent.setup().click(screen.getByRole('tab', { name: 'Found' }));
+    expect(oldPaint(root)).toEqual([]);
     expect(root.querySelector('input[type="checkbox"]')).toBeNull();
     expect(screen.getByRole('switch', { name: /Accept applications/ })).toHaveClass('gk-toggle');
-    expect(screen.getByRole('button', { name: 'Apply to Orbit Wardens' })).toHaveClass('gk-btn');
   });
 
   it('opens a clan’s profile on a kit sheet', async () => {
@@ -560,9 +567,10 @@ describe('the clan’s outside on the kit', () => {
 
   it('says on the founding button what is still missing', async () => {
     show({ ...outside, requests: [], creation: { ...outside.creation, coreLevel: 7, affordable: true } });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('tab', { name: 'Found' }));
     const submit = screen.getByRole('button', { name: 'Found a clan' });
     expect(submit).toHaveTextContent('Name it and tag it');
-    const user = userEvent.setup();
     await user.type(screen.getByLabelText('Clan name'), 'Nova Guard');
     await user.type(screen.getByLabelText('Short tag'), 'nvg');
     expect(submit).toHaveTextContent('Found a clan');
@@ -571,9 +579,66 @@ describe('the clan’s outside on the kit', () => {
 
 /** G8 close (2026-11-15): the room's rules, asked before public clan text, stand on the kit too. */
 it('asks for the community agreement on the kit', async () => {
-  show(outside, false);
+  show({ ...outside, creation: { ...outside.creation, coreLevel: 7, affordable: true } }, false);
+  await userEvent.setup().click(screen.getByRole('tab', { name: 'Found' }));
   const agree = await screen.findByRole('checkbox', { name: 'I agree to the community guidelines and terms of use.' });
   const gate = agree.closest('section')!;
   expect(gate).toHaveClass('gk-well');
   expect(oldPaint(gate)).toEqual([]);
+});
+
+/**
+ * O5 / E4 (owner, 2026-11-17, item 5): "Klan sheet güncellenmeli. Her şey iç içe … tablara veya
+ * sayfalara ayrılmalı (klan arama, klan listing, klan kurma …)". A clanless commander's screen was
+ * one column — pitch, nine benefits, the old depot, the requests, the directory and the founding
+ * form. It is now three pages under one bar: Find (the requests and the directory, where it opens),
+ * Found (the gate, and the form only once the gate is met), Why (the benefits).
+ */
+describe('the clanless clan screen is three pages', () => {
+  const eligible = { ...outside, requests: [], creation: { ...outside.creation, coreLevel: 7, affordable: true } };
+  const tabs = () => within(screen.getByRole('tablist', { name: 'Clan options' }));
+
+  it('opens on Find: the invitation and the directory, nothing of the pitch or the form', async () => {
+    show(outside);
+    expect(tabs().getByRole('tab', { name: /Find/, selected: true })).toBeInTheDocument();
+    await screen.findByRole('button', { name: /inspect orbit wardens/i });
+    expect(screen.getByText('[ORB] Orbit Wardens')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Defend each other' })).toBeNull();
+    expect(screen.queryByLabelText('Clan name')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Find my crew' })).toBeNull();
+  });
+
+  it('counts the pending invitations on the Find tab', () => {
+    show(outside);
+    expect(tabs().getByRole('tab', { name: /Find/ })).toHaveTextContent('1');
+  });
+
+  it('keeps the old clan’s depot above the pages, where any page shows it', async () => {
+    show(outside);
+    await userEvent.setup().click(tabs().getByRole('tab', { name: 'Why join' }));
+    expect(screen.getByRole('button', { name: 'Claim to capital' })).toBeInTheDocument();
+  });
+
+  it('locks the founding form until the gate is met, saying what is missing', async () => {
+    show(outside);
+    await userEvent.setup().click(tabs().getByRole('tab', { name: 'Found' }));
+    expect(screen.getByText('Command Core 6 / 7')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Found a clan' })).toBeDisabled();
+    expect(screen.queryByLabelText('Clan name')).toBeNull();
+    expect(screen.queryByRole('switch', { name: /Accept applications/ })).toBeNull();
+  });
+
+  it('opens the form once the gate is met', async () => {
+    show(eligible);
+    await userEvent.setup().click(tabs().getByRole('tab', { name: 'Found' }));
+    expect(screen.getByLabelText('Clan name')).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: /Accept applications/ })).toBeInTheDocument();
+  });
+
+  it('keeps the reasons on Why', async () => {
+    show(outside);
+    await userEvent.setup().click(tabs().getByRole('tab', { name: 'Why join' }));
+    expect(screen.getByRole('heading', { name: 'Defend each other' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /inspect orbit wardens/i })).toBeNull();
+  });
 });

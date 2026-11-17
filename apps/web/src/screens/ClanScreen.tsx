@@ -284,6 +284,9 @@ function ClanHeader({ home }: { home: ClanMemberHome }) {
 const recruitmentLocked = (home: ClanOutsideHome, now: number): boolean =>
   home.creation.unlockedAt !== null && home.creation.unlockedAt.getTime() > now;
 
+/** A clanless commander's three pages (owner 2026-11-17, item 5): find a clan, found one, why. */
+type OutsidePage = 'find' | 'found' | 'why';
+
 function ClanOutside({
   home,
   actions,
@@ -300,6 +303,7 @@ function ClanOutside({
   /** Which clan's public profile is open. D183 — null is the directory itself. */
   const [inspecting, setInspecting] = useState<string | null>(null);
   const [hostileRequest, setHostileRequest] = useState<string | null>(null);
+  const [page, setPage] = useState<OutsidePage>('find');
   const now = useNow(30_000);
   const locked = recruitmentLocked(home, now);
   const lockedFor = duration(minutesUntil(home.creation.unlockedAt ?? new Date(now), now));
@@ -310,6 +314,7 @@ function ClanOutside({
     .filter((request) => request.kind === 'APPLICATION' && request.status === 'PENDING')
     .map((request) => request.clanId));
   const hasDepot = resourceTotal(depot) > 0;
+  const invitations = home.requests.filter((request) => request.kind === 'INVITATION' && request.status === 'PENDING').length;
 
   const accept = (requestId: string, acknowledgeHostile: boolean): void => {
     actions.accept.mutate({ requestId, acknowledgeHostile }, {
@@ -341,36 +346,41 @@ function ClanOutside({
         <AtmosphereImage art={ATMOSPHERE.clan} />
         <h3 className="gk-guild__title">{t('clan.outside.title')}</h3>
         <p className="gk-sub">{t('clan.outside.body')}</p>
-        <FoundingPrice cost={home.creation.cost} />
-        <p className="gk-sub gk-guild__gate">{t('clan.outside.requirements', { level: home.creation.requiredCoreLevel })}</p>
-        <div className="gk-guild__routes">
-          <a href="#clan-directory-search" className="gk-btn gk-btn--action gk-btn--sm" onClick={() => { haptic('tap'); }}>
-            <span className="gk-btn__glyph"><Glyph id="zoom" /></span><span>{t('clan.outside.joinAction')}</span>
-          </a>
-          <a href="#clan-found-name" className="gk-btn gk-btn--sm" onClick={() => { haptic('tap'); }}>
-            <span className="gk-btn__glyph"><Glyph id="banner" /></span><span>{t('clan.outside.foundAction')}</span>
-          </a>
-        </div>
       </header>
 
       <div className="gk-clan__panel gk-clan__parts">
-        <ClanBenefits />
-
         {hasDepot ? (
-          <section className="gk-clan__part">
-            <SectionTag as="h3">{t('clan.depot.formerHeading')}</SectionTag>
-            <div className="gk-well gk-clan__depot">
-              <p className="gk-sub">{t('clan.depot.formerBody')}</p>
-              <ResourceFigures resources={depot} />
-              <GameButton tone="action" wide glyph="crate" pending={actions.claimDepot.isPending}
-                onPress={() => { actions.claimDepot.mutate(); }}>
-                {t('clan.depot.claim')}
-              </GameButton>
-              <MutationError mutation={actions.claimDepot} />
-            </div>
+          <section data-former-depot className="gk-well gk-clan__depot gk-clan__owed" aria-label={t('clan.depot.formerHeading')}>
+            <span className="gk-clan__owedwords">
+              <span className="gk-label">{t('clan.depot.formerHeading')}</span>
+              <span className="gk-lb__purse gk-num">
+                {(['alloy', 'crystal', 'deuterium'] as const).filter((of) => depot[of] > 0).map((of) => (
+                  <span key={of} className="gk-lb__coin" data-res={of}>
+                    <img src={RESOURCE_ART[of]} alt={t(`clan.resources.${of}`)} />{full(depot[of])}
+                  </span>
+                ))}
+              </span>
+            </span>
+            <GameButton size="sm" tone="action" glyph="crate" pending={actions.claimDepot.isPending}
+              onPress={() => { actions.claimDepot.mutate(); }}>
+              {t('clan.depot.claim')}
+            </GameButton>
+            <MutationError mutation={actions.claimDepot} />
           </section>
         ) : null}
 
+        <GameTabs<OutsidePage>
+          label={t('clan.outside.tabs.label')}
+          value={page}
+          onChange={setPage}
+          tabs={[
+            { id: 'find', label: t('clan.outside.tabs.find'), glyph: { id: 'zoom' }, badge: invitations },
+            { id: 'found', label: t('clan.outside.tabs.found'), glyph: { id: 'banner' } },
+            { id: 'why', label: t('clan.outside.tabs.why'), glyph: { id: 'help' } },
+          ]}
+        />
+
+        {page === 'why' ? <ClanBenefits /> : page === 'found' ? <FoundClan home={home} actions={actions} /> : <>
         {home.requests.length > 0 ? (
           <section className="gk-clan__part">
             <SectionTag as="h3">{t('clan.requests.heading')}</SectionTag>
@@ -512,8 +522,7 @@ function ClanOutside({
           {notice ? <p role="status" className="gk-inote" data-tone="good"><Glyph id="check" />{notice}</p> : null}
           <MutationError mutation={actions.apply} />
         </section>
-
-        <FoundClan home={home} actions={actions} />
+        </>}
       </div>
 
       {inspecting !== null && (
@@ -656,10 +665,10 @@ function ClanBenefits({ member = false }: { member?: boolean }) {
       <p className="gk-sub">{t('clan.benefits.waitingNote', { hours: CLAN.adaptationMinutes / 60 })}</p>
     </div>
   );
-  // A member already has these; they wait one press away. Outside, they are the pitch, so they stand open.
+  // A member already has these; they wait one press away. Outside, they are the Why page, named by its tab.
   return member
     ? <RulesRow glyph="help" title={t('clan.benefits.activeHeading')}>{list}</RulesRow>
-    : <section className="gk-clan__part"><SectionTag as="h3">{t('clan.benefits.heading')}</SectionTag>{list}</section>;
+    : <section className="gk-clan__part">{list}</section>;
 }
 
 function Benefit({ glyph, title, body, featured = false }: { glyph: GlyphId; title: string; body: string; featured?: boolean }) {
@@ -686,6 +695,8 @@ function FoundClan({ home, actions }: { home: ClanOutsideHome; actions: Actions 
   const locked = recruitmentLocked(home, now);
   const coreReady = home.creation.coreLevel >= home.creation.requiredCoreLevel;
   const identityReady = clanNameIsValid(name) && clanTagIsValid(tag);
+  // E4: the form opens once the gate is met; until then the page says only what is missing.
+  const gateOpen = coreReady && home.creation.affordable && !locked;
   // The button says what is still missing: the gate above first, then the identity below.
   const refusal = !coreReady || !home.creation.affordable || locked ? t('clan.found.needGate')
     : !identityReady ? t('clan.found.needIdentity')
@@ -701,8 +712,7 @@ function FoundClan({ home, actions }: { home: ClanOutsideHome; actions: Actions 
 
   return (
     <section className="gk-clan__part">
-      <SectionTag as="h3">{t('clan.found.heading')}</SectionTag>
-      <div className="gk-well gk-guild__found">
+      <div className="gk-well gk-guild__found" {...(gateOpen ? {} : { 'data-locked': '' })}>
         <div className="gk-guild__gates">
           <span className="gk-chip gk-crewlist__chip" data-tone={coreReady ? 'self' : 'warn'}>
             <Glyph id={coreReady ? 'check' : 'lock'} />
@@ -715,6 +725,13 @@ function FoundClan({ home, actions }: { home: ClanOutsideHome; actions: Actions 
             {t('clan.found.locked', { duration: duration(minutesUntil(home.creation.unlockedAt!, now)) })}
           </p>
         ) : null}
+        {gateOpen ? null : <>
+          <p className="gk-sub">{t('clan.outside.requirements', { level: home.creation.requiredCoreLevel })}</p>
+          <GameButton tone="action" wide glyph="lock" spoken={t('clan.found.submit')} disabledReason={refusal} onPress={() => undefined}>
+            {t('clan.found.submit')}
+          </GameButton>
+        </>}
+        {gateOpen ? <>
         <p className="gk-inote" data-tone="warn"><Glyph id="warn" />{t('clan.found.identityNote')}</p>
 
         <CommunityPolicyGate policy={policy}><form onSubmit={submit} className="gk-clan__part">
@@ -765,6 +782,7 @@ function FoundClan({ home, actions }: { home: ClanOutsideHome; actions: Actions 
             {t('clan.found.submit')}
           </GameButton>
         </form></CommunityPolicyGate>
+        </> : null}
         {created ? <p role="status" className="gk-inote" data-tone="good"><Glyph id="check" />{t('clan.found.created')}</p> : null}
         <MutationError mutation={actions.create} />
       </div>

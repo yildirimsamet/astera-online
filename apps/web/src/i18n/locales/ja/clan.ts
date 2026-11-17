@@ -54,6 +54,7 @@ export const clan = {
     requirements: "設立には首都に司令コアのレベル{{level}}とこの資源が必要です。加入時に設立費用はかかりません。",
     joinAction: "仲間を探す",
     foundAction: "自分のクランを設立",
+    tabs: { label: 'クランの選択', find: '探す', found: '設立', why: 'メリット' },
   },
   benefits: {
     heading: "なぜ参加するのですか?",
