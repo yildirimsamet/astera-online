@@ -631,6 +631,7 @@ Owner yokken karar gerektiren her şey buraya yazılır; iş durdurulmaz, varsay
 - Faz 4 **bu deploy'a girer** (Faz 1 + 2 + S2 + 3 + Sentry + 4 birlikte). **Owner kontrol etmeden deploy edilmez.**
 - Codex kotası bitti: taze oyuncu testi Codex'le yapılmaz. Yerel 350 px oyun denemesi benim; S22 turu owner telefonu takınca.
 - (6)'nın ikinci yarısı yapıldı: çift `sensorToggleFrame` etkisi `b31081fc` (koruma testi eski dosyada kırmızı).
+- **Soru (Faz 4.3):** Ödül panelindeki X/topluluk kartı owner talimatıyla en üstte sabit. 11-06 planı R5 onu (alınabilir değilken) listenin en altına indirmeyi öneriyordu: oyun içi hedefler ilk ekranda kalır. Şimdilik yerinde ve kısaltıldı. Alta inelim mi?
 
 1. Sentry (veya benzeri) çökme raporlama: Faz 1.1 hata ayrıntısı yerine sektör yolu. Öneri ve maliyet sohbette verildi; karar bekliyor.
 2. S22 ve taze oyuncu testi (Codex, Wiki yasak): Faz 1'in "Bitti sayılır" maddesi için.
@@ -670,10 +671,10 @@ Owner yokken karar gerektiren her şey buraya yazılır; iş durdurulmaz, varsay
 
 | Adım | Durum | Not |
 | --- | --- | --- |
-| 4.1 İhtiyaçla açılan notlar | Bekliyor | |
-| 4.2 İlk PvE önerisi | Bekliyor | |
-| 4.3 Ödül paneli (Tümünü al, sıradaki hedef, Git) | Bekliyor | |
-| 4.4 İniş ödül anı | Bekliyor | 4.3'e bağlı |
+| 4.1 İhtiyaçla açılan notlar | Bitti `d2a293a7` | `landingTips.tipTriggers`: komutanla ilk savaş → Çekirdek, oyuncuya ilk saldırı → Honor, ilk kayıp (savunmada yağma ya da gemi) → klan, Çekirdek 9 → koloni; Dominion yalnız takvim. Önce olay, sonra takvim; 7 gün. Not şeridi kit `Banner`, 44 px kapatma |
+| 4.2 İlk PvE önerisi | Bitti `6ddb909e` | Sunucu `arrival.hunted` (`FIRST_BATTLE_REPORT`); avlamamış gemide ilk hamle en yakın ulaşılabilir korsan (dakikasıyla, kalkan düşmez), haritada korsanın kendi rayı (`App` → `craftFocus`) |
+| 4.3 Ödül paneli (Tümünü al, sıradaki hedef, Git) | Bitti `bc170e82`, `7086649d` | `POST /api/rewards/claim-all` (tek kilit, tek transaction, `writeClaim` ortak; yarış tek öder). Kutu toplamla açılır, `unseal` + `thunk`. Sıradaki hedef satırı + kart başına Git (`lib/rewardGates.ts`). **Sosyal kart:** owner talimatıyla en üstte sabit (test yorumu: 'PINNED ABOVE EVEN A CLAIMABLE GOAL. Owner instruction'); R5'in taşıma önerisi uygulanmadı, yalnız adımları `InfoPeek` arkasına alındı (kart kısaldı). §10.7'de soruldu |
+| 4.4 İniş ödül anı | Bitti `fcb85d62` | `LandingRewards` (kit `Dialog`, ışın, `rankup`): ilk hafta, ≥ 2 bekleyen kademe, hesap başına bir kez; Tümünü al → Üs/Büyü. Saat kayması: yeni iniş istemcide birkaç sn ileride görünürse 'şimdi' sayılır |
 | 4.5 Klan önerisi | Bekliyor | |
 | 4.6 Komşularla iniş | Bekliyor | |
 | 4.7 İlk hafta push ücretsiz | Bekliyor | |
