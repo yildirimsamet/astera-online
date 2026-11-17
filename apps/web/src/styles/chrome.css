@@ -1522,8 +1522,9 @@
   (G1-g1), and its keys were under the thumb's 44 px. The frame is the kit's, as on every sheet.
 */
 @media (width < 700px) {
-  /* Only composing borrows the HUD space. Blur restores the normal sheet frame. */
-  [data-chat-host]:has(textarea:focus) > [data-sheet-holder] {
+  /* Only composing above a keyboard borrows the HUD space (`data-keyboard`, ChatHost); the
+     keyboard going down restores the normal sheet frame, and the composer keeps its focus. */
+  [data-chat-host][data-keyboard] > [data-sheet-holder] {
     top: var(--chat-viewport-top, 0px);
     bottom: auto !important;
     height: var(--chat-viewport-height, 100dvh);
@@ -1531,7 +1532,7 @@
     padding-top: env(safe-area-inset-top, 0px);
   }
 
-  [data-chat-host]:has(textarea:focus) > [data-sheet-holder] > [data-sheet-panel] {
+  [data-chat-host][data-keyboard] > [data-sheet-holder] > [data-sheet-panel] {
     height: 100%;
     max-height: 100%;
     transition: none;
@@ -1540,8 +1541,8 @@
   /* Above a phone keyboard the conversation needs the room. The handle and private tabs
      wait for blur; the close, the room row and a private chat's peer stay, so a clan
      line is never typed into the galaxy by mistake. */
-  [data-chat-host]:has(textarea:focus) [data-sheet-header] > button,
-  [data-chat-host]:has(textarea:focus) [data-chat-dm-tabs] {
+  [data-chat-host][data-keyboard] [data-sheet-header] > button,
+  [data-chat-host][data-keyboard] [data-chat-dm-tabs] {
     display: none;
   }
 }

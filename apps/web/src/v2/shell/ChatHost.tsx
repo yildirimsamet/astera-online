@@ -7,12 +7,12 @@ import { useChatUnread, useClanBadge, useDmUnread } from '../../api/queries.js';
 import { ChatScreen, type ChatChannel } from '../../screens/ChatScreen.js';
 import { Sheet } from '../kit/Sheet.js';
 
-/** A phone keyboard is far taller than this; browser bars and typing never grow the page by it. */
-const KEYBOARD_CLOSED_PX = 150;
+/** A phone keyboard is far taller than this; browser bars and typing never move the page by it. */
+const KEYBOARD_PX = 150;
 /**
- * How long the page must stay taller before the keyboard counts as gone. As the keyboard rises,
- * the app shell (system bars hidden, resized for the keyboard) can lay the window out at full
- * height for a moment; blurring then closed the keyboard it mistook for gone (owner 2026-11-17).
+ * How long the page must stay tall again before the compose layout lets go. As the keyboard rises,
+ * the app shell (system bars hidden, resized for the keyboard) can lay the window out at full height
+ * for a moment; the layout waits that out rather than flicker.
  */
 const KEYBOARD_SETTLE_MS = 300;
 
@@ -47,31 +47,39 @@ function PersonalChatHost({ accountId, onClose, onFocusPlanet, channel, draft, i
   const [showBlocked, setShowBlocked] = useState(false);
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    /*
+      THE CHAT NEVER CLOSES ITS OWN KEYBOARD (owner 2026-11-17). The compose layout follows the
+      keyboard, not the composer's focus: `data-keyboard` stands while the viewport is well short of
+      its tallest and a field in the chat has focus. The keyboard-hide key (which keeps focus) only
+      lowers the layout, and nothing here blurs — a blur on a brief full-height layout while the
+      keyboard rose was what shut it as it opened.
+    */
     const viewport = window.visualViewport;
     const measure = (): number => viewport?.height ?? window.innerHeight;
-    let previous = measure();
-    // The height with the keyboard up, held while a taller page waits to settle.
-    let keyboardUp: number | null = null;
+    let tallest = measure();
+    let width = window.innerWidth;
     let settle: ReturnType<typeof setTimeout> | undefined;
-    const composing = (): HTMLTextAreaElement | null => {
+    const typingHere = (): boolean => {
       const field = document.activeElement;
-      return field instanceof HTMLTextAreaElement && host.current?.contains(field) ? field : null;
+      return (field instanceof HTMLTextAreaElement || field instanceof HTMLInputElement) && host.current?.contains(field) === true;
+    };
+    const mark = (up: boolean): void => {
+      if (up) host.current?.setAttribute('data-keyboard', '');
+      else host.current?.removeAttribute('data-keyboard');
     };
     // iOS pans the visual viewport; Android may resize the layout viewport instead.
     const sync = (): void => {
       const height = measure();
       host.current?.style.setProperty('--chat-viewport-height', `${String(height)}px`);
       host.current?.style.setProperty('--chat-viewport-top', `${String(viewport?.offsetTop ?? 0)}px`);
-      // Android's keyboard-hide key keeps the composer focused; the compose layout follows focus.
-      if (height - previous > KEYBOARD_CLOSED_PX && composing()) keyboardUp ??= previous;
-      previous = height;
-      if (keyboardUp === null) return;
-      // Every further change restarts the wait: only a page that STAYS taller lets go.
+      // A turned screen is a new screen: measure the keyboard against it.
+      if (window.innerWidth !== width) { width = window.innerWidth; tallest = height; }
+      tallest = Math.max(tallest, height);
+      const up = typingHere() && tallest - height > KEYBOARD_PX;
       clearTimeout(settle);
-      settle = setTimeout(() => {
-        if (keyboardUp !== null && measure() - keyboardUp > KEYBOARD_CLOSED_PX) composing()?.blur();
-        keyboardUp = null;
-      }, KEYBOARD_SETTLE_MS);
+      if (up) { mark(true); return; }
+      // Down only once the page stays tall: a bounce while the keyboard rises is not the hide key.
+      settle = setTimeout(() => { if (!(typingHere() && tallest - measure() > KEYBOARD_PX)) mark(false); }, KEYBOARD_SETTLE_MS);
     };
     sync();
     viewport?.addEventListener('resize', sync);

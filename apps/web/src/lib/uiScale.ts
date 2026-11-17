@@ -15,8 +15,8 @@ import { useSyncExternalStore } from 'react';
  * scale without a width at 980 px. Naming both is read the same everywhere; the width is
  * measured again when the phone turns.
  *
- * WHERE: a touch screen (desktop browsers ignore the viewport line; their own Ctrl + already
- * does this), and the Android app once its shell opens the WebView's wide viewport and reports
+ * WHERE: a touch screen other than an iPhone or iPad (desktop browsers ignore the viewport line;
+ * their own Ctrl + already does this; WebKit draws a scaled page badly — see `appleTouch`), and the Android app once its shell opens the WebView's wide viewport and reports
  * the phone's font size (`AsteraDisplayPlugin`). A browser that does not follow is caught a
  * moment later and put back, and the setting withdrawn.
  *
@@ -126,13 +126,19 @@ const write = (content: string): void => {
   if (tag && tag.getAttribute('content') !== content) tag.setAttribute('content', content);
 };
 
-function apply(): void {
+/** The device width the line was last written for; a turned phone changes it by far more than this. */
+let writtenFor = 0;
+const TURN_PX = 40;
+
+/** Writes the line; `verify` checks a CHOSEN size took (never a resize, which a keyboard also fires). */
+function apply(verify = true): void {
   const scale = snapshot.value;
   const width = deviceWidth();
   clearTimeout(check);
   write(viewportFor(scale, width));
   applied = scale;
-  if (scale === 100) return;
+  writtenFor = width;
+  if (scale === 100 || !verify) return;
   const expected = Math.round((width * 100) / scale);
   check = setTimeout(() => {
     const visual = globalThis.visualViewport;
@@ -146,12 +152,26 @@ function apply(): void {
   }, CHECK_MS);
 }
 
-const onResize = (): void => { if (applied !== 100) apply(); };
+/** Only a turned phone rewrites the line; a keyboard's resize, and its odd readings, change nothing. */
+const onResize = (): void => {
+  if (applied === 100 || Math.abs(deviceWidth() - writtenFor) < TURN_PX) return;
+  apply(false);
+};
+
+/**
+ * iPhone and iPad, in every browser (all are WebKit): a page shown at a scale other than 1 drew
+ * blurry, left a band under the dock, and zoomed into each 16 px field (owner 2026-11-17). An
+ * iPad may call itself a Mac; its touch points give it away.
+ */
+const appleTouch = (): boolean => {
+  const agent = globalThis.navigator.userAgent;
+  return /iPhone|iPad|iPod/.test(agent) || (agent.includes('Macintosh') && globalThis.navigator.maxTouchPoints > 1);
+};
 
 export function startUiScale(host: UiScaleHost = {}): () => void {
   // Older engines and test hosts may lack `matchMedia`; they are no touch screen to scale.
   const touch = 'matchMedia' in globalThis && globalThis.matchMedia('(hover: none) and (pointer: coarse)').matches;
-  available = host.supported ?? (host.systemFontScale !== undefined || touch);
+  available = !appleTouch() && (host.supported ?? (host.systemFontScale !== undefined || touch));
   options = scalesFor(Math.min(window.screen.width, window.screen.height));
   chosen = remembered();
   suggested = null;

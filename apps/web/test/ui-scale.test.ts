@@ -30,7 +30,7 @@ beforeEach(() => {
   localStorage.clear();
   vi.useFakeTimers();
 });
-afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe('the viewport a scale writes', () => {
   it('reads the page’s own viewport line', () => {
@@ -193,6 +193,68 @@ describe('where the size cannot be set', () => {
     device({ width: 350 });
     const ui = await load();
     expect(ui.uiScaleSetting().available).toBe(false);
+  });
+});
+
+/*
+  NOT ON iOS (owner 2026-11-17, players' reports from iPhones, Safari and Chrome alike — both are
+  WebKit). A page laid out narrower and shown at a scale other than 1 was drawn blurry at the top,
+  left a band under the dock, and every 16 px field fell under 16 on screen, so iOS zoomed in on
+  focus and stayed zoomed. On iOS the setting is not offered and a remembered size is not applied:
+  the next load puts the page's own line back.
+*/
+describe('on an iPhone or iPad', () => {
+  const ua = (value: string, touchPoints = 5) => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(value);
+    // jsdom's navigator has no touch points to spy on: give it one.
+    Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, get: () => touchPoints });
+  };
+
+  it('is not offered, and a remembered size is not applied', async () => {
+    device({ width: 390 });
+    ua('Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/131.0 Mobile/15E148 Safari/604.1');
+    localStorage.setItem('astera.uiScale', '90');
+    const ui = await load();
+    const stop = ui.startUiScale();
+    expect(ui.uiScaleSetting().available).toBe(false);
+    expect(meta()).toBe(BASE);
+    stop();
+  });
+
+  it('knows an iPad that reports itself as a Mac', async () => {
+    device({ width: 820, height: 1180 });
+    ua('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15');
+    const ui = await load();
+    const stop = ui.startUiScale();
+    expect(ui.uiScaleSetting().available).toBe(false);
+    stop();
+  });
+
+  it('is still offered on an Android phone', async () => {
+    device({ width: 360 });
+    ua('Mozilla/5.0 (Linux; Android 14; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Mobile Safari/537.36');
+    const ui = await load();
+    const stop = ui.startUiScale();
+    expect(ui.uiScaleSetting().available).toBe(true);
+    stop();
+  });
+});
+
+describe('a keyboard under a scaled page', () => {
+  it('is never taken for a browser that did not follow: only a chosen size is checked', async () => {
+    device({ width: 350 });
+    const ui = await load();
+    const stop = ui.startUiScale();
+    ui.setUiScale(110);
+    honour(318);
+    vi.advanceTimersByTime(400);
+    // The keyboard rises: the window resizes, and for a moment the viewport reads oddly.
+    vi.stubGlobal('visualViewport', { width: 318, scale: 1 });
+    window.dispatchEvent(new Event('resize'));
+    vi.advanceTimersByTime(400);
+    expect(ui.uiScaleSetting()).toMatchObject({ available: true, value: 110 });
+    expect(meta()).toBe('width=318, initial-scale=1.1, viewport-fit=cover, interactive-widget=resizes-content');
+    stop();
   });
 });
 
