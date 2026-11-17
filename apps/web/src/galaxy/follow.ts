@@ -12,6 +12,13 @@ export function cameraEaseStep(remaining: number, duration: number, delta: numbe
   return { fraction: left === 0 || before >= 1 ? 1 : (after - before) / (1 - before), remaining: left, done: left === 0 };
 }
 
+/**
+ * Whether the telescope's ring waits to be framed (live play 2026-11-18): while a director's shot holds
+ * the camera (the bay coming back is shown first) and while the universe view is open.
+ */
+export const sightFramingWaits = (state: { directed: boolean; universeOpen: boolean; universeRoom: number }): boolean =>
+  state.directed || state.universeOpen || state.universeRoom !== 0;
+
 /** A glide that waits before it moves (the director's flight home, live play 2026-11-18): the wait left. */
 export function cameraHoldStep(left: number | undefined, delta: number): { waiting: boolean; left: number } {
   if (left === undefined || left <= 0) return { waiting: false, left: 0 };

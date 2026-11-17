@@ -75,6 +75,7 @@ import {
   planetInspectionDistance,
   cameraEaseStep,
   cameraHoldStep,
+  sightFramingWaits,
 } from './follow.js';
 import {
   BrightStars,
@@ -2035,7 +2036,8 @@ function Rig({
     const current = { telescope: showTelescopeReach, radar: showRadarReach };
     previousSensors.current = current;
     const controls = ref.current;
-    if (!controls || universeOpen || !(controls.object instanceof THREE.PerspectiveCamera)) return;
+    // A director's shot holds the camera: the ring is framed by the telescope's lesson once it ends.
+    if (!controls || sightFramingWaits({ directed: directed.current, universeOpen, universeRoom }) || !(controls.object instanceof THREE.PerspectiveCamera)) return;
     const camera = controls.object;
     const frame = sensorToggleFrame({ previous, current, posts: sensors ?? [], activePlanetId, camera, target: controls.target });
     if (!frame) return;
@@ -2050,7 +2052,7 @@ function Rig({
     const controls = ref.current;
     if (!controls || preparing.current) return;
 
-    if (pendingSight.current && !universeOpen && universeRoom === 0 && controls.object instanceof THREE.PerspectiveCamera) {
+    if (pendingSight.current && !sightFramingWaits({ directed: directed.current, universeOpen, universeRoom }) && controls.object instanceof THREE.PerspectiveCamera) {
       const distance = starterSightDistance({radius:pendingSight.current,fov:controls.object.fov,aspect:controls.object.aspect,sceneReady:sceneReady.current,openingReady:openingSettled.current,covered:openingCovered});
       if (distance !== null) {
         mode.current = 'manual';

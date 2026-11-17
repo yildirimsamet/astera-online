@@ -6,6 +6,7 @@ import {
   MAX_HORIZONTAL_FOV,
   cameraEaseStep,
   cameraHoldStep,
+  sightFramingWaits,
   easedCameraRange,
   finishedCameraRange,
   focusIdentity,
@@ -541,5 +542,15 @@ describe('a glide that waits before it moves', () => {
     expect(cameraHoldStep(0.01, 1 / 30)).toEqual({ waiting: true, left: 0 });
     expect(cameraHoldStep(0, 1 / 60)).toEqual({ waiting: false, left: 0 });
     expect(cameraHoldStep(undefined, 1 / 60)).toEqual({ waiting: false, left: 0 });
+  });
+});
+
+// Live play 2026-11-18: the telescope's ring pulled the camera out while the director showed its bay.
+describe('framing the telescope\'s ring', () => {
+  it('waits while a director\'s shot holds the camera, and while the universe is open', () => {
+    expect(sightFramingWaits({ directed: true, universeOpen: false, universeRoom: 0 })).toBe(true);
+    expect(sightFramingWaits({ directed: false, universeOpen: true, universeRoom: 0 })).toBe(true);
+    expect(sightFramingWaits({ directed: false, universeOpen: false, universeRoom: 1 })).toBe(true);
+    expect(sightFramingWaits({ directed: false, universeOpen: false, universeRoom: 0 })).toBe(false);
   });
 });
