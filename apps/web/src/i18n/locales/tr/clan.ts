@@ -119,6 +119,21 @@ export const clan = {
     leader: 'Lider',
   },
 
+  suggestion: {
+
+    title: '{{clan}} içinde sana yer var',
+
+    neighbours_one: 'Eski komşularından {{count}} kişi burada.',
+
+    neighbours_other: 'Eski komşularından {{count}} kişi burada.',
+
+    active: 'Son 3 günde etkin · {{members}}/{{seats}} komutan.',
+
+    see: 'Gör',
+
+  },
+
+
   directory: {
     heading: 'Klan bul',
     count: '{{count}} klan',

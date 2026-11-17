@@ -46,6 +46,7 @@ import {
   sendClanSupport,
 } from '../services/clanSupport.js';
 import { readMySupport } from '../services/clanSupportView.js';
+import { clanSuggestion } from '../services/clanSuggestion.js';
 import { requireAuth } from './auth.js';
 import { mobileFleetSchema } from '../schemas/fleet.js';
 
@@ -278,6 +279,10 @@ export function registerClanRoutes(app: FastifyInstance): void {
 
   app.get('/api/clans/leaderboard', { preHandler: requireAuth }, async (req) =>
     clanLeaderboard(app.db, req.accountId!));
+
+  /** The one clan suggested on the landing day (plan 2026-11-06 §7.3), or none. */
+  app.get('/api/clans/suggestion', { preHandler: requireAuth }, async (req) =>
+    ({ clan: await clanSuggestion(app.db, req.accountId!, app.clock.now()) }));
 
   app.get('/api/clans/:clanId', { preHandler: requireAuth }, async (req) => {
     const { clanId } = uuidParam.parse(req.params);

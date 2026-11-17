@@ -123,6 +123,14 @@ export const clan = {
     roster_other: "{{count}} commandants",
     leader: "Chef",
   },
+  suggestion: {
+    title: 'Une place pour toi dans {{clan}}',
+    neighbours_one: '{{count}} de tes anciens voisins est ici.',
+    neighbours_other: '{{count}} de tes anciens voisins sont ici.',
+    active: 'Actif ces 3 derniers jours · {{members}}/{{seats}} commandants.',
+    see: 'Voir',
+  },
+
   directory: {
     heading: "Trouver un clan",
     count: "{{count}} clans",

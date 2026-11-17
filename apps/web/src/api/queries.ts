@@ -772,6 +772,12 @@ export function useClanProfile(clanId: string | null) {
   });
 }
 
+/** The landing day's suggested clan (Faz 4.5); it changes in hours, so a minute's staleness is fine. */
+export function useClanSuggestion(enabled = true) {
+  const api = useApi();
+  return useQuery({ queryKey: keys.clanSuggestion, queryFn: api.clanSuggestion, enabled, staleTime: 60_000 });
+}
+
 export function useClanLeaderboard(enabled = true) {
   const api = useApi();
   return useQuery({

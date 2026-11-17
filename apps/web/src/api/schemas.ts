@@ -1410,6 +1410,11 @@ export const rewardClaimSchema = z.object({
   ...withPlanet,
 });
 
+/** The one clan suggested on the landing day, with how many former starter neighbours are in it. */
+export const clanSuggestionSchema = z.object({
+  clan: z.object({ id: z.string(), name: z.string(), tag: z.string(), members: z.number().int().nonnegative(), neighbours: z.number().int().nonnegative() }).nullable(),
+});
+
 /** Every waiting tier in one move: the sum, how many, and both views it moved. */
 export const rewardClaimAllSchema = rewardClaimSchema.extend({ count: z.number().int().positive() });
 

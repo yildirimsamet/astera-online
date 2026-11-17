@@ -123,6 +123,20 @@ export const clan = {
     leader: "リーダー",
   },
 
+  suggestion: {
+
+    title: '{{clan}}に席がある',
+
+    neighbours_one: '昔の隣人{{count}}人がここにいる。',
+    neighbours_other: '昔の隣人{{count}}人がここにいる。',
+
+    active: '直近3日に活動 · {{members}}/{{seats}}人の司令官。',
+
+    see: '見る',
+
+  },
+
+
   directory: {
     heading: "クランを探す",
     count: "{{count}} クラン",

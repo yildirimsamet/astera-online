@@ -123,6 +123,21 @@ export const clan = {
     leader: 'Leader',
   },
 
+  suggestion: {
+
+    title: 'A seat for you in {{clan}}',
+
+    neighbours_one: '{{count}} of your old neighbours is here.',
+
+    neighbours_other: '{{count}} of your old neighbours are here.',
+
+    active: 'Active in the last 3 days · {{members}}/{{seats}} commanders.',
+
+    see: 'See',
+
+  },
+
+
   directory: {
     heading: 'Find a clan',
     count: '{{count}} clans',

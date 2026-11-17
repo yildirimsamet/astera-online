@@ -170,6 +170,7 @@ import {
   researchCompleteSchema,
   rewardClaimSchema,
   rewardClaimAllSchema,
+  clanSuggestionSchema,
   brandRecallSchema,
   brandRecallAnswerSchema,
   rewardsSchema,
@@ -1002,6 +1003,7 @@ export class Api {
   /** One clan's public profile, roster included. D183. */
   clan = (clanId: string) =>
     this.send(`/api/clans/${encodeURIComponent(clanId)}`, publicClanSchema);
+  clanSuggestion = () => this.send('/api/clans/suggestion', clanSuggestionSchema);
   clanEvents = (before?: string) => this.send(
     `/api/clan/events?limit=30${before ? `&before=${encodeURIComponent(before)}` : ''}`,
     clanEventsPageSchema,

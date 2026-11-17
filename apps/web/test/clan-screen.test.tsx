@@ -83,8 +83,10 @@ const directory = {
   total: 2,
 };
 
-function show(home: ClanHome, accepted = true, arena?: { credential: () => Promise<string | null>; onEnter: () => void }) {
+function show(home: ClanHome, accepted = true, arena?: { credential: () => Promise<string | null>; onEnter: () => void },
+  suggestion: { id: string; name: string; tag: string; members: number; neighbours: number } | null = null) {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
+  vi.spyOn(api, 'clanSuggestion').mockResolvedValue({ clan: suggestion });
   vi.spyOn(api, 'clanHome').mockResolvedValue(home);
   vi.spyOn(api, 'clans').mockResolvedValue(directory);
   vi.spyOn(api, 'clanDepot').mockResolvedValue({
@@ -297,6 +299,23 @@ describe('clan command surface', () => {
     expect(screen.getAllByText('Clan level 3').length).toBeGreaterThanOrEqual(1);
     // No world, no position: a roster is not an address book.
     expect(screen.queryByText(/Kestrel|Orrery/)).toBeNull();
+  });
+
+  // Plan 2026-11-06 §7.3 (Faz 4.5): on the landing day one clan is suggested, first where old neighbours are.
+  it('suggests a clan with a seat on the landing day, and opens it', async () => {
+    const { api } = show({ ...outside, requests: [] }, true, undefined, { id: 'clan-orbit', name: 'Orbit Wardens', tag: 'ORB', members: 2, neighbours: 1 });
+    const profile = vi.spyOn(api, 'clan').mockResolvedValue({ ...directory.clans[0]!, members: [] });
+    const card = await screen.findByTestId('clan-suggestion');
+    expect(card).toHaveTextContent(/Orbit Wardens/u);
+    expect(card).toHaveTextContent(/1 of your old neighbours/u);
+    await userEvent.setup().click(within(card).getByRole('button', { name: /See/u }));
+    await waitFor(() => { expect(profile).toHaveBeenCalledWith('clan-orbit'); });
+  });
+
+  it('suggests nothing when the server has nothing to suggest', async () => {
+    show({ ...outside, requests: [] });
+    await screen.findByRole('button', { name: /inspect orbit wardens/i });
+    expect(screen.queryByTestId('clan-suggestion')).toBeNull();
   });
 
   it('offers Apply from inside the profile, so the decision and the reason are together', async () => {

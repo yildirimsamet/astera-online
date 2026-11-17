@@ -33,6 +33,7 @@ import {
   useClanAid,
   useClanDepot,
   useClanDirectory,
+  useClanSuggestion,
   useClanEvents,
   useClanHome,
   useClanLeaderboard,
@@ -69,7 +70,7 @@ import { SpendBar } from '../ui/SpendBar.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { Cells, type Cell } from '../ui/ArmCard.js';
-import { artIconSrc, CostLine, GameButton, GameHold, GameTabs, Glyph, Picker, SectionTag, Slider, Toggle, type GlyphId } from '../game-ui/index.js';
+import { artIconSrc, Banner, CostLine, GameButton, GameHold, GameTabs, Glyph, Picker, SectionTag, Slider, Toggle, type GlyphId } from '../game-ui/index.js';
 import { RulesRow } from '../ui/RulesRow.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { Sheet } from '../v2/kit/Sheet.js';
@@ -308,6 +309,7 @@ function ClanOutside({
   const locked = recruitmentLocked(home, now);
   const lockedFor = duration(minutesUntil(home.creation.unlockedAt ?? new Date(now), now));
   const directory = useClanDirectory(search);
+  const suggested = useClanSuggestion().data?.clan ?? null;
   const listedClans = directory.data?.pages.flatMap((page) => page.clans) ?? [];
   const directoryTotal = directory.data?.pages[0]?.total ?? 0;
   const pendingApplications = new Set(home.requests
@@ -430,6 +432,18 @@ function ClanOutside({
             <MutationError mutation={actions.reject} />
             <MutationError mutation={actions.withdraw} />
           </section>
+        ) : null}
+
+        {/* The landing day's one suggestion (plan 2026-11-06 §7.3): old neighbours first, then any live clan with a seat. */}
+        {suggested && !pendingApplications.has(suggested.id) ? (
+          <div data-testid="clan-suggestion">
+            <Banner tone="info" variant="strip" glyph="support"
+              title={t('clan.suggestion.title', { clan: `[${suggested.tag}] ${suggested.name}` })}
+              body={suggested.neighbours > 0
+                ? t('clan.suggestion.neighbours', { count: suggested.neighbours })
+                : t('clan.suggestion.active', { members: suggested.members, seats: CLAN.maxMembers })}
+              action={<GameButton size="sm" tone="self" glyph="next" onPress={() => { playSound('tap'); haptic('tap'); setInspecting(suggested.id); }}>{t('clan.suggestion.see')}</GameButton>} />
+          </div>
         ) : null}
 
         <section className="gk-clan__part">
