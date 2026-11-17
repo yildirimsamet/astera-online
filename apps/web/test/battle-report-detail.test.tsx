@@ -1,6 +1,7 @@
 import { pvpBalanceForTier } from '@astera/rules';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
+import { render, unfoldReportsOnArrival } from './report-unfold.js';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Api } from '../src/api/client.js';
@@ -8,6 +9,8 @@ import type { BattleReport, StrategicBattleReport } from '../src/api/schemas.js'
 import { reportsSchema } from '../src/api/schemas.js';
 import { ApiProvider } from '../src/api/context.js';
 import { BattleReports } from '../src/screens/BattleReports.js';
+
+unfoldReportsOnArrival();
 
 /**
  * "THE REPORTS ARE NOT EXPLANATORY ENOUGH" — player complaints, D121.
@@ -295,9 +298,9 @@ describe('what a battle report explains', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /Sable/ }));
     expect(screen.getByText('Destroyed resources')).toBeVisible();
-    expect(screen.getByText('CORE')).toBeVisible();
+    expect(screen.getByText('Command Core')).toBeVisible();
     expect(screen.getByText('L6 → L5')).toBeVisible();
-    expect(screen.getByText('REFINERY ×1')).toBeVisible();
+    expect(screen.getByText('Alloy Refinery ×1')).toBeVisible();
     expect(screen.getByText('Shield destroyed')).toBeVisible();
     expect(screen.getByText('Bastion')).toBeVisible();
   });
@@ -425,19 +428,20 @@ describe('what a battle report explains', () => {
   it('names the world an attacker launched from, pointing out', async () => {
     await openSheet(report({ yourPlanet: 'Quillon-116' }));
     expect(screen.getByText('Quillon-116')).toBeVisible();
-    expect(screen.getByText('→')).toBeVisible();
+    // the arrow is drawn (C15): it points out of the reader's world on a raid
+    expect(document.querySelector('[data-route-arrow]')).toHaveAttribute('data-dir', 'out');
   });
 
   it('names the world a defender was hit at, pointing in', async () => {
     await openSheet(report({ attacking: false, yourPlanet: 'Neutral T1-29' }));
     expect(within(screen.getByRole('dialog')).getByText('Neutral T1-29')).toBeVisible();
-    expect(screen.getByText('←')).toBeVisible();
+    expect(document.querySelector('[data-route-arrow]')).toHaveAttribute('data-dir', 'in');
   });
 
   /** A world that has since ceased to exist leaves the line out rather than blank. */
   it('omits the route when the world is gone', async () => {
     await openSheet(report({ yourPlanet: '' }));
-    expect(screen.queryByText('→')).not.toBeInTheDocument();
+    expect(document.querySelector('[data-report-route]')).toBeNull();
   });
 
   it('does not repeat the opening loss and loot summary in the bookkeeping section', async () => {
@@ -1106,7 +1110,7 @@ describe('savaşın bozduğu koloni sistemleri', () => {
     }));
     const line = screen.getByText(/Vantage-3/, { selector: '[data-colony-faults]' });
     expect(line).toHaveTextContent('Store leak');
-    expect(line).toHaveTextContent('Revolt in the yard');
+    expect(line).toHaveTextContent('Yard revolt');
   });
 
   it('hiçbir şey bozulmadıysa satır yoktur', async () => {
@@ -1200,7 +1204,7 @@ it('shows actual colony loyalty in a radiation report without using Death Star s
   expect(parsed.radiation).toHaveProperty('faults', ['CORE_OUTAGE']);
   render(<StrategicReportSheet onClose={() => undefined} report={parsed} />);
   expect(screen.getByText('Colony loyalty 80% → 65%.')).toBeVisible();
-  expect(screen.getByText(/New faults: Command core blackout/)).toBeVisible();
+  expect(screen.getByText(/New faults: Core blackout/)).toBeVisible();
   expect(screen.queryByText(/Death Star/i)).not.toBeInTheDocument();
 });
 

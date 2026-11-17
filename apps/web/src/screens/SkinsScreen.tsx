@@ -20,7 +20,11 @@ import {
   skinEditionTotal,
   type SkinCollectionId,
 } from '../ui/skinCatalog.js';
-import { Icon } from '../v2/icons.js';
+import { Banner, Choices, GameButton, GameTabs, Glyph, SectionTag } from '../game-ui/index.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
+import { Waiting } from '../ui/kit/index.js';
 import { navigateToPolarCheckout } from '../lib/polarCheckout.js';
 import { SkinPreview } from './SkinPreview.jsx';
 import { CosmeticNavigation } from './CosmeticNavigation.js';
@@ -81,27 +85,25 @@ export function SkinShopContent(props: Parameters<typeof PlanetShopContent>[0]) 
   const purchase = (id: CosmeticId) => {
     const lira = props.countryCode === 'TR' ? props.shopier?.prices[id] : undefined;
     const quote = props.prices?.[id];
-    const polar = props.enabled && pricingReady && props.onPurchase && quote ? <button type="button" disabled={props.pending} aria-busy={props.pending}
-      onClick={() => { void props.onPurchase?.(id); }}
-      className={lira === undefined ? 'v2-store-shimmer min-h-11 w-full rounded-control bg-v2-premium px-3 text-caption font-semibold text-v2-void disabled:opacity-50' : `${SECOND_PRESS} disabled:opacity-50`}>
-      {props.pending ? t('skins.checkoutStarting') : t('skins.buy', { price: quote.formatted })}
-    </button> : null;
-    if (lira === undefined) return polar ?? <button type="button" disabled className="min-h-11 w-full rounded-control border border-v2-line-hi text-caption text-v2-ink-3">{unavailable}</button>;
-    return <div className="grid gap-1.5">
-      <ShopierPayButton amount={lira} state={checkout.of(id)} onPress={() => { void checkout.start(id); }}
-        className="v2-store-shimmer min-h-11 w-full rounded-control bg-v2-premium px-3 text-caption font-semibold text-v2-void" />
+    const polar = props.enabled && pricingReady && props.onPurchase && quote ? <GameButton tone={lira === undefined ? 'action' : 'ghost'} wide heavy={lira === undefined}
+      pending={props.pending} disabledReason={props.pending ? t('skins.checkoutStarting') : null} onPress={() => { void props.onPurchase?.(id); }}>
+      {t('skins.buy', { price: quote.formatted })}
+    </GameButton> : null;
+    if (lira === undefined) return polar ?? <GameButton wide disabledReason={unavailable} onPress={() => undefined}>{unavailable}</GameButton>;
+    return <div className="grid gap-2">
+      <ShopierPayButton amount={lira} state={checkout.of(id)} onPress={() => { void checkout.start(id); }} wide />
       <ShopierProgress state={checkout.of(id)} />
       {polar}
     </div>;
   };
-  return <div className="min-h-full bg-v2-void font-v2-ui text-v2-ink">
+  const pricingFailed = props.pricingState === 'error';
+  return <div className="gk gk-shopfront">
     <CosmeticNavigation active="shop" onShop={() => undefined} onInventory={props.onOpenInventory} />
     <CosmeticCategories active={category} onChange={setCategory} owned={owned} inventory={false} />
-    {props.enabled && !pricingReady && <div role={props.pricingState === 'error' ? 'alert' : 'status'}
-      className="mx-auto mb-3 flex max-w-2xl items-center gap-3 px-3">
-      <p className="min-w-0 flex-1 text-caption text-v2-ink-2">{t(props.pricingState === 'error' ? 'skins.pricingError' : 'skins.priceLoading')}</p>
-      {props.pricingState === 'error' && props.onRetryPricing && <button type="button" onClick={props.onRetryPricing}
-        className="min-h-11 shrink-0 rounded-control border border-v2-premium/40 px-3 text-caption font-semibold text-v2-premium">{t('skins.retryPrices')}</button>}
+    {props.enabled && !pricingReady && <div className="gk-shopfront__status">
+      <Banner tone={pricingFailed ? 'warn' : 'info'} role={pricingFailed ? 'alert' : 'status'}
+        title={t(pricingFailed ? 'skins.pricingError' : 'skins.priceLoading')}
+        action={pricingFailed && props.onRetryPricing ? <GameButton size="sm" glyph="refresh" onPress={props.onRetryPricing}>{t('skins.retryPrices')}</GameButton> : undefined} />
     </div>}
     {category === 'PLANET' ? <PlanetShopContent {...props} /> : <CosmeticCollection key={category}
       category={category} inventory={false} owned={owned} onTry={props.onTry} initialId={props.initialId} equipment={props.collection.equipment ?? {}} onOpenOther={props.onOpenInventory}
@@ -183,22 +185,27 @@ function PlanetShopContent({
   const unavailable = enabled && pricingState !== 'ready'
     ? t(pricingState === 'loading' ? 'skins.priceLoading' : 'skins.priceUnavailable')
     : t('skins.onSaleSoon');
-  const buy = (): void => { void onPurchase(selected); };
-  const bundleBuy = (): void => { void onPurchase('bundle'); };
   const offerSet = activeCollection === 'elemental' && SKIN_COLLECTIONS.elemental.ids.every((id) => !owned.has(id));
   const lira = mine ? undefined : shopierAmount(selected);
   const bundleLira = shopierAmount('bundle');
   const canPay = buyReady || bundleReady || lira !== undefined || (offerSet && bundleLira !== undefined);
 
   const stageStyle = { '--look': look.accent, '--look-glow': look.glow } as CSSProperties;
-  const buyClass = 'v2-store-shimmer flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-control bg-v2-premium px-3 text-caption font-bold text-v2-void';
+  const owning = collectionIds.filter((id) => owned.has(id)).length;
+  const polarPress = (itemId: ItemId, label: string, tone: 'action' | 'ghost') => (
+    <GameButton tone={tone} wide heavy={tone === 'action'} pending={pending} disabledReason={pending ? t('skins.checkoutStarting') : null}
+      onPress={() => { void onPurchase(itemId); }}>
+      {label}
+    </GameButton>
+  );
+  const closed = <GameButton wide disabledReason={unavailable} onPress={() => undefined}>{unavailable}</GameButton>;
 
   return (
-    <div className="v2-store relative min-h-full overflow-hidden bg-v2-void pb-[calc(24px+env(safe-area-inset-bottom))] font-v2-ui text-v2-ink" style={stageStyle}>
-      {/* The living backdrop: a drifting nebula lit by the chosen look. */}
-      <div aria-hidden className="v2-store-nebula pointer-events-none absolute inset-x-0 top-0 h-[34rem]" />
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] bg-gradient-to-b from-transparent via-v2-void/30 to-v2-void" />
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[26rem]">
+    <div className="gk-shop" style={stageStyle}>
+      {/* The living backdrop: a drifting nebula lit by the chosen look, stars twinkling over it. */}
+      <div aria-hidden className="v2-store-nebula gk-shop__sky" />
+      <div aria-hidden className="gk-shop__sky gk-shop__fade" />
+      <div aria-hidden className="gk-shop__stars">
         {STARS.map(([x, y, size, dur, delay], index) => (
           <span
             key={index}
@@ -208,233 +215,121 @@ function PlanetShopContent({
         ))}
       </div>
 
-      <div className="relative mx-auto w-full max-w-xl px-3 pt-2">
-        <header className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-1.5 rounded-full border border-v2-premium/50 bg-v2-premium/10 px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-v2-premium">
-            <Icon id="i-spark" className="size-3" />
-            {t('skins.premium')} · {look.edition}/{skinEditionTotal(activeCollection)}
-          </span>
-        </header>
+      <div className="gk-shop__body">
+        <GameTabs
+          label={t('skins.collections')}
+          tabs={SKIN_COLLECTION_IDS.map((id) => ({ id, label: t(SKIN_COLLECTIONS[id].nameKey) }))}
+          value={activeCollection}
+          onChange={selectCollection}
+          ids={{ tab: (id) => `skin-tab-${id}`, panel: () => 'skin-collection-panel' }}
+        />
+        <p className="gk-note">{t(SKIN_COLLECTIONS[activeCollection].descriptionKey)}</p>
 
-        <div role="tablist" aria-label={t('skins.collections')} className="mt-3 grid grid-cols-2 gap-2">
-          {SKIN_COLLECTION_IDS.map((id) => {
-            const category = SKIN_COLLECTIONS[id];
-            const active = activeCollection === id;
-            const count = category.ids.filter((skinId) => owned.has(skinId)).length;
-            return (
-              <button
-                key={id}
-                id={`skin-tab-${id}`}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                aria-controls="skin-collection-panel"
-                tabIndex={active ? 0 : -1}
-                onClick={() => { selectCollection(id); }}
-                onKeyDown={(event) => {
-                  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-                  event.preventDefault();
-                  const next = id === 'elemental' ? 'country' : 'elemental';
-                  selectCollection(next);
-                  document.getElementById(`skin-tab-${next}`)?.focus();
-                }}
-                className={`relative min-h-16 overflow-hidden rounded-control border px-3 py-2 text-left transition-colors ${active
-                  ? 'border-v2-premium/70 bg-v2-premium/15 text-v2-ink'
-                  : 'border-v2-line bg-v2-panel/90 text-v2-ink-2 hover:border-v2-line-hi'}`}
-              >
-                {active && <span aria-hidden className="absolute inset-x-0 top-0 h-0.5 bg-v2-premium" />}
-                <span className="block text-caption font-semibold leading-tight">{t(category.nameKey)}</span>
-                <span className="mt-1 block font-v2-mono text-micro text-v2-ink-3">{count}/{category.ids.length} {t('skins.collected')}</span>
-              </button>
-            );
-          })}
-        </div>
-        <p className="mt-2 px-0.5 text-micro leading-snug text-v2-ink-3">{t(SKIN_COLLECTIONS[activeCollection].descriptionKey)}</p>
-
-        <div id="skin-collection-panel" role="tabpanel" aria-labelledby={`skin-tab-${activeCollection}`}>
+        <div id="skin-collection-panel" role="tabpanel" aria-labelledby={`skin-tab-${activeCollection}`} className="gk-shop__panel">
 
         {/* THE STAGE: the look turning in its own light, an orbit round it, embers rising. */}
-        <section aria-label={t('skins.inspect')} className="relative">
-          <div aria-hidden className="v2-store-aura pointer-events-none absolute inset-x-[12%] top-[8%] h-[80%] rounded-full" />
-          <div aria-hidden className="v2-store-orbit pointer-events-none absolute left-1/2 top-1/2 h-[34%] w-[88%] -translate-x-1/2 -translate-y-1/2" />
-          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <section aria-label={t('skins.inspect')} className="gk-shop__stage">
+          <div aria-hidden className="v2-store-aura gk-shop__aura" />
+          <div aria-hidden className="v2-store-orbit gk-shop__orbit" />
+          <div aria-hidden className="gk-shop__embers">
             {EMBERS.map(([x, delay, dur]) => (
               <span key={x} className="v2-store-ember" style={{ '--x': x, '--delay': delay, '--dur': dur } as CSSProperties} />
             ))}
           </div>
           <SkinPreview skinId={selected} status={status} className="h-[15rem] md:h-[21rem]" />
-          <p className="pointer-events-none absolute bottom-1 right-0 flex items-center gap-1 text-micro text-v2-ink-3">
-            <Icon id="i-rotate" className="size-3" />
-            {t('skins.dragHint')}
-          </p>
+          <p className="gk-note gk-shop__drag"><Glyph id="refresh" />{t('skins.dragHint')}</p>
         </section>
 
-        <div className="relative -mt-1">
-          <h3 className="text-figure font-semibold tracking-wide" style={{ color: look.accent }}>{name}</h3>
-          <p className="mt-1 text-caption leading-snug text-v2-ink-2">{t(look.storyKey)}</p>
-          <div role="group" aria-label={t('skins.inspect')} className="mt-2 inline-flex rounded-control border border-v2-line bg-v2-deep/70 p-0.5">
-            {(['NORMAL', 'RECOVERY_SHIELD'] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={status === value}
-                onClick={() => { setStatus(value); }}
-                className={`rounded-cell px-2.5 py-1 text-micro font-semibold ${status === value ? 'bg-v2-raise text-v2-ink' : 'text-v2-ink-3'}`}
-              >
-                {t(value === 'NORMAL' ? 'skins.normal' : 'skins.recovery')}
-              </button>
-            ))}
-          </div>
+        <div className="gk-shop__name">
+          <span className="gk-label gk-shop__edition"><Glyph id="star" />{t('skins.premium')} · <span className="gk-num">{look.edition}/{skinEditionTotal(activeCollection)}</span></span>
+          <h3 className="gk-display gk-outlined gk-shop__title" style={{ color: look.accent }}>{name}</h3>
+          <p className="gk-copy">{t(look.storyKey)}</p>
+          <Choices
+            label={t('skins.inspect')}
+            options={[{ id: 'NORMAL', label: t('skins.normal') }, { id: 'RECOVERY_SHIELD', label: t('skins.recovery') }]}
+            value={status}
+            onChange={setStatus}
+          />
         </div>
 
-        {onTry && <button type="button" onClick={() => { onTry(selected); }}
-          className="mt-3 min-h-11 w-full rounded-control border border-v2-premium/60 bg-v2-premium/10 px-3 text-caption font-semibold text-v2-premium">{t('skins.tryOnWorld')}</button>}
-        {/* THE ONE PRESS THAT BUYS IT, with its price; a look already owned goes to be worn. */}
-        <div className="mt-3 flex items-center gap-3 rounded-control border border-v2-premium/35 bg-v2-panel/95 p-2.5">
-          <div className="min-w-0">
-            <p className="font-v2-mono text-figure font-semibold text-v2-premium">
-              {mine ? t('skins.owned') : money(selected, SKIN_PRICE)}
-            </p>
-            <p className="text-micro text-v2-ink-3">{t(mine ? 'skins.ownedNote' : 'skins.oneTime')}</p>
+        {onTry && <GameButton wide glyph="eye" onPress={() => { onTry(selected); }}>{t('skins.tryOnWorld')}</GameButton>}
+        {/* THE ONE PRESS THAT BUYS IT, under its price; a look already owned goes to be worn. */}
+        <section aria-label={t('skins.priceTitle')} className="gk-cut gk-shop__price">
+          <div className="gk-shop__pricehead">
+            <span className="gk-display gk-num gk-shop__amount">{mine ? t('skins.owned') : money(selected, SKIN_PRICE)}</span>
+            <span className="gk-note">{t(mine ? 'skins.ownedNote' : 'skins.oneTime')}</span>
           </div>
           {mine ? (
-            <button type="button" onClick={onOpenInventory} className="flex h-11 flex-1 items-center justify-center rounded-control border border-v2-self/60 bg-v2-self/15 px-3 text-caption font-bold text-v2-ink">
-              {t('skins.wearIt')}
-            </button>
+            <GameButton tone="self" wide glyph="check" onPress={onOpenInventory}>{t('skins.wearIt')}</GameButton>
           ) : lira !== undefined ? (
-            <ShopierPayButton amount={lira} state={checkout.of(selected)} onPress={() => { void checkout.start(selected); }} className={buyClass} />
-          ) : buyReady ? (
-            <button type="button" onClick={buy} disabled={pending} aria-busy={pending} className={`${buyClass} disabled:opacity-60`}>
-              {pending ? t('skins.checkoutStarting') : t('skins.buy', { price: money(selected, SKIN_PRICE) })}
-            </button>
-          ) : (
-            <button type="button" disabled className="flex h-11 flex-1 items-center justify-center rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-ink-2">
-              {unavailable}
-            </button>
-          )}
-        </div>
-        {purchaseError?.itemId === selected && <p role="alert" className="mt-2 rounded-control border border-v2-warn/30 bg-v2-warn/5 px-3 py-2 text-caption text-v2-warn">
-          {purchaseError.message}
-        </p>}
-        {/* After the Shopier press: the commander's own page. Polar stays below as the second way. */}
-        {lira !== undefined && <ShopierProgress state={checkout.of(selected)} />}
-        {lira !== undefined && buyReady && (
-          <button type="button" onClick={buy} disabled={pending} aria-busy={pending} className={`mt-2 ${SECOND_PRESS} disabled:opacity-60`}>
-            {pending ? t('skins.checkoutStarting') : t('skins.buy', { price: money(selected, SKIN_PRICE) })}
-          </button>
-        )}
+            <ShopierPayButton amount={lira} state={checkout.of(selected)} onPress={() => { void checkout.start(selected); }} wide />
+          ) : buyReady ? polarPress(selected, t('skins.buy', { price: money(selected, SKIN_PRICE) }), 'action') : closed}
+          {purchaseError?.itemId === selected && <Banner tone="warn" role="alert" title={purchaseError.message} />}
+          {/* After the Shopier press: the commander's own page. Polar stays below as the second way. */}
+          {lira !== undefined && <ShopierProgress state={checkout.of(selected)} />}
+          {lira !== undefined && buyReady && polarPress(selected, t('skins.buy', { price: money(selected, SKIN_PRICE) }), 'ghost')}
+        </section>
 
         {/* The collection is visible together so players can compare looks and ownership. */}
-        <section aria-label={t('skins.collection')} className="mt-5">
-          <p className="mb-2 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('skins.collection')}</p>
-          <div className={`grid grid-cols-2 gap-2 ${activeCollection === 'country' ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
-            {collectionIds.map((id) => {
-              const item = PLANET_SKIN_CATALOG[id];
-              const chosen = selected === id;
-              const itemName = t(item.nameKey);
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={chosen}
-                  aria-label={`${itemName} · ${owned.has(id) ? t('skins.owned') : money(id, SKIN_PRICE)}`}
-                  onClick={() => { setSelected(id); }}
-                  className={`group relative overflow-hidden rounded-control border bg-v2-panel text-left transition-transform duration-300 active:scale-[0.98] ${
-                    chosen ? 'v2-store-chosen border-transparent' : 'border-v2-line'
-                  }`}
-                  style={{ '--card': item.accent } as CSSProperties}
-                >
-                  <span className="relative block aspect-[1.25] overflow-hidden bg-v2-deep">
-                    <img src={item.image} alt={itemName} loading="lazy" decoding="async"
-                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                    <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-v2-void/70 to-transparent" />
-                    <span className="absolute left-1.5 top-1.5 font-v2-mono text-micro text-v2-ink/80">{item.edition}</span>
-                    {owned.has(id) && (
-                      <span className="absolute right-1.5 top-1.5 flex items-center gap-0.5 rounded-full bg-v2-self/90 px-1.5 text-micro font-semibold text-v2-void">
-                        <Icon id="i-check" className="size-2.5" />
-                        {t('skins.owned')}
-                      </span>
-                    )}
-                  </span>
-                  <span className="flex items-baseline justify-between gap-1 px-2 py-1.5">
-                    <span className="truncate text-caption font-semibold" style={{ color: item.accent }}>{itemName}</span>
-                    <span className="shrink-0 font-v2-mono text-micro text-v2-premium">
-                      {owned.has(id) ? '' : money(id, SKIN_PRICE)}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
+        <section aria-label={t('skins.collection')} className="gk-shop__collection">
+          <SectionTag aside={<span className="gk-num">{owning}/{collectionIds.length} {t('skins.collected')}</span>}>{t('skins.collection')}</SectionTag>
+          <div className="gk-shop__cards" data-many={activeCollection === 'country' ? '' : undefined}>
+            {collectionIds.map((id) => (
+              <SkinCard key={id} id={id} chosen={selected === id} owned={owned.has(id)}
+                price={owned.has(id) ? '' : money(id, SKIN_PRICE)} onPick={() => { setSelected(id); }} />
+            ))}
           </div>
         </section>
 
         {/* THE FOUR TOGETHER, set against the four apart — only to a player who owns none. */}
         {offerSet && (
-          <section aria-label={t('skins.bundleTitle')} className="relative mt-4 overflow-hidden rounded-control border border-v2-premium/50 bg-gradient-to-br from-v2-premium/15 via-v2-panel to-v2-panel p-3">
-            <span className="absolute right-2 top-2 rounded-full bg-v2-premium px-2 py-0.5 text-micro font-bold text-v2-void">
-              {t('skins.bundleSave', { pct: bundleSaving(currency) })}
-            </span>
-            <div className="flex items-center gap-3">
-              <span aria-hidden className="relative h-14 w-24 shrink-0">
+          <section aria-label={t('skins.bundleTitle')} className="gk-cut gk-shop__bundle">
+            <div className="gk-shop__bundlehead">
+              <span aria-hidden className="gk-shop__fan">
                 {SKIN_COLLECTIONS.elemental.ids.map((id, index) => (
                   <img
                     key={id}
                     src={PLANET_SKIN_CATALOG[id].image}
                     alt=""
-                    className="absolute top-0 size-14 rounded-control border border-v2-line object-cover shadow-lg"
                     style={{ left: index * 13, transform: `rotate(${String((index - 1.5) * 7)}deg)`, zIndex: index }}
                   />
                 ))}
               </span>
               <div className="min-w-0">
-                <p className="text-micro font-semibold uppercase tracking-wide text-v2-premium">{t('skins.bundleKicker')}</p>
-                <p className="text-caption font-semibold text-v2-ink">{t('skins.bundleTitle')}</p>
-                <p className="mt-0.5 flex items-baseline gap-2 font-v2-mono">
-                  <s className="text-micro text-v2-ink-3" aria-label={t('skins.bundleWas', { price: priceText(SKIN_PRICE[currency] * 4, currency, locale) })}>
+                <p className="gk-label gk-shop__kicker">{t('skins.bundleKicker')}</p>
+                <p className="gk-shop__bundletitle">{t('skins.bundleTitle')}</p>
+                <p className="gk-shop__bundleprice">
+                  <s className="gk-num" aria-label={t('skins.bundleWas', { price: priceText(SKIN_PRICE[currency] * 4, currency, locale) })}>
                     {priceText(SKIN_PRICE[currency] * 4, currency, locale)}
                   </s>
-                  <span className="text-body font-semibold text-v2-premium">{money('bundle', BUNDLE_PRICE)}</span>
+                  <span className="gk-display gk-num">{money('bundle', BUNDLE_PRICE)}</span>
+                  <span className="gk-shop__save gk-num">{t('skins.bundleSave', { pct: bundleSaving(currency) })}</span>
                 </p>
               </div>
             </div>
-            <div className="mt-3 grid gap-1.5">
-              {bundleLira !== undefined ? <>
-                <ShopierPayButton amount={bundleLira} state={checkout.of('bundle')} onPress={() => { void checkout.start('bundle'); }} className={`${buyClass} w-full`} />
-                <ShopierProgress state={checkout.of('bundle')} />
-                {bundleReady && <button type="button" onClick={bundleBuy} disabled={pending} aria-busy={pending} className={`${SECOND_PRESS} disabled:opacity-60`}>
-                  {pending ? t('skins.checkoutStarting') : t('skins.bundleBuy', { price: money('bundle', BUNDLE_PRICE) })}
-                </button>}
-              </> : bundleReady ? (
-                <button type="button" onClick={bundleBuy} disabled={pending} aria-busy={pending} className={`${buyClass} w-full disabled:opacity-60`}>
-                  {pending ? t('skins.checkoutStarting') : t('skins.bundleBuy', { price: money('bundle', BUNDLE_PRICE) })}
-                </button>
-              ) : (
-                <button type="button" disabled className="flex h-11 w-full items-center justify-center rounded-control border border-v2-line-hi text-caption font-semibold text-v2-ink-2">
-                  {unavailable}
-                </button>
-              )}
-              {purchaseError?.itemId === 'bundle' && <p role="alert" className="text-caption text-v2-warn">{purchaseError.message}</p>}
-            </div>
+            {bundleLira !== undefined ? <>
+              <ShopierPayButton amount={bundleLira} state={checkout.of('bundle')} onPress={() => { void checkout.start('bundle'); }} wide />
+              <ShopierProgress state={checkout.of('bundle')} />
+              {bundleReady && polarPress('bundle', t('skins.bundleBuy', { price: money('bundle', BUNDLE_PRICE) }), 'ghost')}
+            </> : bundleReady ? polarPress('bundle', t('skins.bundleBuy', { price: money('bundle', BUNDLE_PRICE) }), 'action') : closed}
+            {purchaseError?.itemId === 'bundle' && <Banner tone="warn" role="alert" title={purchaseError.message} />}
           </section>
         )}
         </div>
 
         {/* WHAT A LOOK GIVES — each line true of the game. */}
-        <ul className="mt-4 grid gap-2">
+        <ul className="gk-shop__values">
           {([
-            ['i-intel', 'skins.valueSeen'],
-            ['i-infinity', 'skins.valueYours'],
-            ['i-shield', 'skins.valueLooks'],
-          ] as const).map(([icon, key]) => (
-            <li key={key} className="flex items-start gap-2 text-caption leading-snug text-v2-ink-2">
-              <Icon id={icon} className="mt-0.5 size-3.5 shrink-0 text-v2-premium" />
-              <span>{t(key)}</span>
-            </li>
+            ['eye', 'skins.valueSeen'],
+            ['star', 'skins.valueYours'],
+            ['shield', 'skins.valueLooks'],
+          ] as const).map(([glyph, key]) => (
+            <li key={key}><Glyph id={glyph} /><span>{t(key)}</span></li>
           ))}
         </ul>
 
-        {(canPay || !enabled || pricingState === 'ready') && <p className="mt-4 flex items-start gap-2 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2 text-micro leading-snug text-v2-ink-3">
-          <Icon id="i-lock" className="mt-0.5 size-3 shrink-0" />
+        {(canPay || !enabled || pricingState === 'ready') && <p className="gk-well gk-shop__trust">
+          <Glyph id="lock" />
           <span>{t(canPay ? 'skins.trust' : 'skins.trustSoon', { commander })}</span>
         </p>}
       </div>
@@ -442,8 +337,39 @@ function PlanetShopContent({
   );
 }
 
-/** The quieter second way to pay, under the first. */
-const SECOND_PRESS = 'flex h-10 w-full items-center justify-center gap-1.5 rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-ink-2 transition-colors hover:bg-v2-raise hover:text-v2-ink';
+/**
+ * ONE LOOK ON THE SHELF: its picture, its number in the collection, its name in its own colour
+ * and what it costs, or a tick if it is yours. The chosen one glows in its colour; a press
+ * answers at once with a tap and sinks, and the stage above turns to it.
+ */
+function SkinCard({ id, chosen, owned, price, onPick }: { id: PlanetSkinId; chosen: boolean; owned: boolean; price: string; onPick: () => void }) {
+  const { t } = useTranslation();
+  const item = PLANET_SKIN_CATALOG[id];
+  const itemName = t(item.nameKey);
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPick(); });
+  return (
+    <button
+      type="button"
+      {...OWN_SOUND}
+      aria-pressed={chosen}
+      aria-label={`${itemName} · ${owned ? t('skins.owned') : price}`}
+      className="gk-shop__card"
+      style={{ '--card': item.accent } as CSSProperties}
+      onPointerDown={own.onPointerDown}
+      onClick={own.onClick}
+    >
+      <span className="gk-shop__art">
+        <img src={item.image} alt={itemName} loading="lazy" decoding="async" />
+        <span className="gk-num gk-shop__ed">{item.edition}</span>
+        {owned && <span className="gk-shop__owned"><Glyph id="check" />{t('skins.owned')}</span>}
+      </span>
+      <span className="gk-shop__cardfoot">
+        <span className="gk-shop__cardname" style={{ color: item.accent }}>{itemName}</span>
+        {price !== '' && <span className="gk-num gk-shop__cardprice">{price}</span>}
+      </span>
+    </button>
+  );
+}
 
 export default function SkinsScreen({ commander, onOpenInventory, onTry, initialId }: { commander: string; onOpenInventory: () => void; onTry?: (id: CosmeticId) => void; initialId?: CosmeticId }) {
   // Do not mount web pricing/checkout hooks in an app, including a stale shop route.
@@ -469,8 +395,8 @@ function WebSkinsScreen({ commander, onOpenInventory, onTry, initialId }: { comm
       navigateToPolarCheckout(created.url);
     } catch (reason) { setCheckoutFailure({ itemId, reason }); }
   };
-  if (collection.isPending) return <p className="p-4 text-body text-dim">{t('skins.collection')}…</p>;
-  if (!collection.data) return <p className="p-4 text-body text-dim">{t('skins.loadError')}</p>;
+  if (collection.isPending) return <Waiting>{t('skins.collection')}</Waiting>;
+  if (!collection.data) return <div className="gk gk-shopfront__status"><Banner tone="warn" role="alert" title={t('skins.loadError')} /></div>;
   return <SkinShopContent collection={collection.data} commander={commander} onOpenInventory={onOpenInventory} onTry={onTry} initialId={initialId}
     prices={pricing.data?.prices} countryCode={pricing.data?.countryCode ?? 'ZZ'}
     enabled={Boolean(shop.data?.enabled)} pending={purchase.isPending}

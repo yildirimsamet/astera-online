@@ -52,8 +52,8 @@ export const trade = {
     "Maximum {{amount}} — vaut exactement {{worth}} {{good}}. Ajoute des vaisseaux au convoi pour augmenter cette limite.",
   splitLabel: "Ce que tu recevras",
   splitToward: "davantage de {{resource}}",
-  legOut: "Aller",
-  legHome: "Retour",
+  legOut: "Fret aller",
+  legHome: "Fret retour",
   legHold: "Convoi",
   legReturnDecides:
     "Ce que tu reçois prend plus de place que ce que tu donnes. Au retour, le convoi ne pourra transporter que cette quantité — c’est ce qui fixe la limite ci-dessus. Ajoute des vaisseaux au convoi pour pouvoir donner davantage.",

@@ -10,7 +10,6 @@ import { forgetFresh, gateOf, nextFresh, pressFresh, rememberFresh } from '../sr
 import { tabLockLine } from '../src/starter/shipCopy.js';
 import { Dock } from '../src/v2/hud/Dock.js';
 import { TopBar } from '../src/v2/hud/TopBar.js';
-import { WorksLine } from '../src/v2/hud/WorksLine.js';
 import type { CollectState } from '../src/lib/collect.js';
 import { wireVessel } from './starterVesselFixture.js';
 
@@ -59,8 +58,7 @@ describe('the gate', () => {
 describe('the top bar on a ship', () => {
   const stock = { alloy: { value: 1, cap: 9, safe: 0 }, crystal: { value: 1, cap: 9, safe: 0 }, deuterium: { value: 1, cap: 9, safe: 0 } };
   const bar = (hidden?: readonly ('alloy' | 'crystal' | 'deuterium')[]) => render(<TopBar
-    commander="x" shield={null} now={0} world={null} stock={stock} bell={{ unseen: 0, urgent: false }} rewards={0} boosted={false}
-    onCommander={vi.fn()} onRewards={vi.fn()} onWorld={vi.fn()} onResource={vi.fn()} onBell={vi.fn()} {...(hidden ? { hidden } : {})} />);
+    stock={stock} commander={{ initials: 'NE', name: 'Newcomer' }} onResource={vi.fn()} onCommander={vi.fn()} {...(hidden ? { hidden } : {})} />);
 
   it('leaves out a resource nothing aboard can use yet', () => {
     bar(['deuterium']);
@@ -74,15 +72,16 @@ describe('the top bar on a ship', () => {
   });
 });
 
-describe('the works line on a ship', () => {
-  it('leaves out the vessel of a hidden resource', () => {
+describe('the works on a ship', () => {
+  it('leave out what waits for a hidden resource', () => {
     const state: CollectState = { waiting: 0, ripe: false, full: false, movable: 0, blocked: false, each: { alloy: 0, crystal: 0, deuterium: 0 }, noRoom: [], stopped: [] };
-    const line = (hidden?: readonly ('alloy' | 'crystal' | 'deuterium')[]) => render(<WorksLine
-      state={state} fill={{ alloy: 0, crystal: 0, deuterium: 0 }} fullInMinutes={null} pending={false}
-      onCollect={vi.fn()} onOpenBase={vi.fn()} {...(hidden ? { hidden } : {})} />);
-    const all = line().container.querySelectorAll('img').length;
+    const stock = { alloy: { value: 1, cap: 9 }, crystal: { value: 1, cap: 9 }, deuterium: { value: 1, cap: 9 } };
+    const bar = (hidden?: readonly ('alloy' | 'crystal' | 'deuterium')[]) => render(<TopBar
+      stock={stock} commander={{ initials: 'NE', name: 'Newcomer' }} onResource={vi.fn()} onCommander={vi.fn()}
+      works={{ state, pending: false, onCollect: vi.fn() }} {...(hidden ? { hidden } : {})} />);
+    const all = bar().container.querySelectorAll('[data-pool]').length;
     cleanup();
-    expect(line(['deuterium']).container.querySelectorAll('img').length).toBe(all - 1);
+    expect(bar(['deuterium']).container.querySelectorAll('[data-pool]').length).toBe(all - 1);
   });
 });
 
@@ -146,23 +145,26 @@ describe('which tabs are new', () => {
 });
 
 describe('a locked tab on the dock', () => {
-  it('still answers a press, so that it can say why it is shut', () => {
+  /** G1-a (2026-11-14): the kit's bottom bar says why in place, over the dock, with the refusal's sound. */
+  it('still answers a press, and says why it is shut without opening', () => {
     const onSelect = vi.fn();
-    render(<Dock active="galaxy" badges={badges} onSelect={onSelect} locked={['clan']} />);
+    render(<Dock active="galaxy" badges={badges} onSelect={onSelect} locked={{ clan: tabLockLine({ kind: 'mainGalaxy' }) }} />);
     const tab = screen.getByRole('button', { name: /clan/i });
     expect(tab).not.toBeDisabled();
     expect(tab).toHaveAttribute('data-locked');
-    fireEvent.click(tab);
-    expect(onSelect).toHaveBeenCalledWith('clan');
+    fireEvent.pointerDown(tab, { button: 0 });
+    fireEvent.click(tab, { detail: 1 });
+    expect(screen.getByRole('status')).toHaveTextContent(tabLockLine({ kind: 'mainGalaxy' }));
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
-  // Owner 2026-11-06: the padlock comes back. The tab still opens and says why; the lock says "not yet".
+  // Owner 2026-11-06: the padlock comes back. The tab still answers and says why; the lock says "not yet".
   it('wears a padlock, and says so aloud', () => {
-    render(<Dock active="galaxy" badges={badges} onSelect={vi.fn()} locked={['clan']} />);
+    render(<Dock active="galaxy" badges={badges} onSelect={vi.fn()} locked={{ clan: 'Shipyard 2' }} />);
     const tab = screen.getByRole('button', { name: /clan/i });
-    expect(tab.querySelector('[data-padlock]')).not.toBeNull();
+    expect(tab.querySelector('.gk-nav__lock')).not.toBeNull();
     expect(tab.getAttribute('aria-label')).toMatch(/locked/i);
-    expect(screen.getByRole('button', { name: /base/i }).querySelector('[data-padlock]')).toBeNull();
+    expect(screen.getByRole('button', { name: /base/i }).querySelector('.gk-nav__lock')).toBeNull();
   });
 
   it('lights a tab that has just opened, with a "New" mark', () => {
@@ -174,7 +176,7 @@ describe('a locked tab on the dock', () => {
   });
 
   it('marks only the locked ones', () => {
-    render(<Dock active="galaxy" badges={badges} onSelect={vi.fn()} locked={['clan']} />);
+    render(<Dock active="galaxy" badges={badges} onSelect={vi.fn()} locked={{ clan: 'Shipyard 2' }} />);
     expect(screen.getByRole('button', { name: /base/i })).not.toHaveAttribute('data-locked');
   });
 

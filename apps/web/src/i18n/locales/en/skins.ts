@@ -1,5 +1,4 @@
 export const skins = {
-  showcaseDescription: 'Planet looks, ship skins and effects.',
   priceLoading: 'Loading prices…',
   pricingError: 'Prices could not be loaded. Retry to see the current prices.',
   priceUnavailable: 'Price unavailable',
@@ -88,6 +87,7 @@ export const skins = {
   buy: 'Buy with Polar · {{price}}',
   onSaleSoon: 'On sale very soon',
   wearIt: 'Put it on a world',
+  priceTitle: 'Price',
   oneTime: 'One payment · while Astera Online operates',
   ownedNote: 'In your collection',
   bundleKicker: 'Full collection',
@@ -115,7 +115,7 @@ export const skins = {
   openShop: 'Explore the shop',
   ownedSkins: 'Owned skins',
   noOwnedSkins: 'Your inventory is empty. Explore the shop to see every look.',
-  intro: 'One skin can dress every world you own. Choose a different look for each world, and change it whenever you like.',
+  intro: 'Put a skin on any world you own; change it whenever you like.',
   inspect: 'Inspect the model',
   dragHint: 'Drag to rotate',
   modelUnavailable: 'Model unavailable',

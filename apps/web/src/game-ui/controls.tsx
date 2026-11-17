@@ -22,21 +22,32 @@ const along = (event: PointerEvent<HTMLElement>): number => {
  * lamp that lights teal when it is on; it clacks and thunks.
  */
 export function Toggle({
-  checked, onChange, label, sub, art,
+  checked, onChange, label, sub, art, locked = false, spoken,
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
   label: ReactNode;
   sub?: ReactNode;
   art?: string;
+  /** The name a reader hears, where the face carries more than the name (the escort's ship and bonus). */
+  spoken?: string;
+  /** It cannot move yet (G2-h3): a press answers with a refusal, and `sub` says why. */
+  locked?: boolean;
 }) {
   const own = useOwnPress(() => {
+    if (locked) {
+      playSound('refuse');
+      haptic('warn');
+      return;
+    }
     playSound('lever');
     haptic('thunk');
     onChange(!checked);
   });
   return (
-    <button type="button" role="switch" aria-checked={checked} className="gk-toggle" {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+    <button type="button" role="switch" aria-checked={checked} className="gk-toggle" {...OWN_SOUND}
+      {...(spoken === undefined ? {} : { 'aria-label': spoken })}
+      {...(locked ? { 'aria-disabled': true, 'data-locked': '' } : {})} onPointerDown={own.onPointerDown} onClick={own.onClick}>
       {art && <img className="gk-toggle__art" src={art} alt="" />}
       <span className="gk-toggle__words">
         <span className="gk-toggle__label">{label}</span>
@@ -146,33 +157,47 @@ function LeverStop({ label, checked, onPress, onKeyDown }: {
 
 /**
  * A SLIDER FOR A COUNT: drag the knob, nudge with − and + (hold to run), or send
- * everything with MAX. Ticks as it moves.
+ * everything with MAX. Ticks as it moves. It may start above zero and move in lots
+ * (G4-i1: a trade offers whole lots, and its split has a floor): every way of moving it
+ * lands on a step between `min` and the last step that fits under `max`.
  */
-export function Slider({ label, value, max, onChange }: { label: string; value: number; max: number; onChange: (next: number) => void }) {
+export function Slider({ label, value, max, onChange, readout, min = 0, step = 1 }: {
+  label: string;
+  value: number;
+  max: number;
+  onChange: (next: number) => void;
+  /** A level (a volume) says where it stands in place of the max button: "all of it" means nothing there. */
+  readout?: string;
+  min?: number;
+  step?: number;
+}) {
   const { t } = useTranslation();
   const dragging = useRef(false);
   const start = useRef<number | null>(null);
+  const top = min + Math.max(0, Math.floor((max - min) / step)) * step;
   const set = (next: number): void => {
-    const clamped = Math.min(max, Math.max(0, next));
+    const clamped = Math.min(top, Math.max(min, min + Math.round((next - min) / step) * step));
     if (clamped === value) return;
     playSound('tick');
-    if (clamped === 0 || clamped === max) haptic('thunk');
+    if (clamped === min || clamped === top) haptic('thunk');
     onChange(clamped);
   };
-  const fewer = useRepeatPress((n) => { set(value - n); }, value > 0, max);
-  const more = useRepeatPress((n) => { set(value + n); }, value < max, max);
+  const lots = Math.max(1, Math.floor((top - min) / step));
+  const fewer = useRepeatPress((n) => { set(value - n * step); }, value > min, lots);
+  const more = useRepeatPress((n) => { set(value + n * step); }, value < top, lots);
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    const page = Math.max(1, Math.round(max / 10));
+    const page = Math.max(1, Math.round(lots / 10)) * step;
     const moves: Record<string, number> = {
-      ArrowRight: value + 1, ArrowUp: value + 1, ArrowLeft: value - 1, ArrowDown: value - 1,
-      PageUp: value + page, PageDown: value - page, Home: 0, End: max,
+      ArrowRight: value + step, ArrowUp: value + step, ArrowLeft: value - step, ArrowDown: value - step,
+      PageUp: value + page, PageDown: value - page, Home: min, End: top,
     };
     const next = moves[event.key];
     if (next === undefined) return;
     event.preventDefault();
     set(next);
   };
-  const share = max <= 0 ? 0 : (value / max) * 100;
+  const fromTrack = (fraction: number): number => min + sliderValue(fraction, top - min);
+  const share = top <= min ? 0 : ((value - min) / (top - min)) * 100;
   return (
     <div className="gk-slider" {...OWN_SOUND}>
       <button type="button" className="gk-round gk-round--small" aria-label={t('launch.fewer', { name: label })} {...fewer}>
@@ -182,8 +207,8 @@ export function Slider({ label, value, max, onChange }: { label: string; value: 
         role="slider"
         tabIndex={0}
         aria-label={label}
-        aria-valuemin={0}
-        aria-valuemax={max}
+        aria-valuemin={min}
+        aria-valuemax={top}
         aria-valuenow={value}
         className="gk-slider__track"
         onKeyDown={onKeyDown}
@@ -194,10 +219,10 @@ export function Slider({ label, value, max, onChange }: { label: string; value: 
           if (start.current === null) return;
           if (!dragging.current && Math.abs(event.clientX - start.current) < 6) return;
           if (!dragging.current) { dragging.current = true; event.currentTarget.setPointerCapture(event.pointerId); }
-          set(sliderValue(along(event), max));
+          set(fromTrack(along(event)));
         }}
         onPointerUp={(event) => {
-          if (start.current !== null && !dragging.current) set(sliderValue(along(event), max));
+          if (start.current !== null && !dragging.current) set(fromTrack(along(event)));
           start.current = null;
           dragging.current = false;
         }}
@@ -209,8 +234,121 @@ export function Slider({ label, value, max, onChange }: { label: string; value: 
       <button type="button" className="gk-round gk-round--small" aria-label={t('launch.more', { name: label })} {...more}>
         <span className="gk-round__face"><Glyph id="plus" /></span>
       </button>
-      <Chip label={t('launch.max', { name: label })} onPress={() => { set(max); }} disabled={value === max}>{t('launch.maxShort')}</Chip>
+      {readout === undefined
+        ? <Chip label={t('launch.max', { name: label })} onPress={() => { set(top); }} disabled={value === top}>{t('launch.maxShort')}</Chip>
+        : <output className="gk-slider__level gk-num">{readout}</output>}
     </div>
+  );
+}
+
+/**
+ * A SETTING'S CHOICES (G1-f, 2026-11-14): a few named positions on metal plates, the chosen one
+ * lit as an open tab is. A radio group, since choosing one is the whole act: it takes effect on
+ * the press, and the arrows walk it with one stop for the Tab key.
+ */
+export function Choices<T extends string>({ label, options, value, onChange, columns }: {
+  label: string;
+  /** `spoken`: the plate's full name for a reader, where its face is a short word under a heading ("Haulers stay"). */
+  options: readonly { id: T; label: string; spoken?: string }[];
+  value: T;
+  onChange: (next: T) => void;
+  /** Many answers (a report's seven reasons, C3) sit two to a row instead of one long row. */
+  columns?: 2;
+}) {
+  const choose = (id: T): void => {
+    if (id === value) return;
+    playSound('tab');
+    haptic('tap');
+    onChange(id);
+  };
+  const walk = (event: KeyboardEvent<HTMLButtonElement>): void => {
+    const at = stepTo(event.key, options.findIndex((option) => option.id === value), options.length);
+    const next = options[at];
+    if (next === undefined || next.id === value) return;
+    event.preventDefault();
+    choose(next.id);
+    event.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="radio"]')[at]?.focus();
+  };
+  // A question not yet answered keeps its Tab stop on the first answer.
+  const unanswered = !options.some((option) => option.id === value);
+  return (
+    <div role="radiogroup" aria-label={label} className={`gk-tabs gk-choices${columns === 2 ? ' gk-choices--grid' : ''}`} {...OWN_SOUND}>
+      {options.map((option, index) => (
+        <ChoicePlate key={option.id} label={option.label} spoken={option.spoken} chosen={option.id === value} tabbable={option.id === value || (unanswered && index === 0)}
+          onChoose={() => { choose(option.id); }} onKeyDown={walk} />
+      ))}
+    </div>
+  );
+}
+
+function ChoicePlate({ label, spoken, chosen, tabbable, onChoose, onKeyDown }: {
+  label: string;
+  spoken: string | undefined;
+  chosen: boolean;
+  tabbable: boolean;
+  onChoose: () => void;
+  onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
+}) {
+  const own = useOwnPress(onChoose);
+  return (
+    <button type="button" role="radio" aria-checked={chosen} tabIndex={tabbable ? 0 : -1} className="gk-tab"
+      {...(spoken === undefined ? {} : { 'aria-label': spoken })}
+      onPointerDown={own.onPointerDown} onClick={own.onClick} onKeyDown={onKeyDown}>
+      {label}
+    </button>
+  );
+}
+
+/** A setting that opens somewhere else, saying on its line where it stands (G1-f). */
+export function SettingLink({ label, name, value, onPress }: {
+  label: string;
+  /** A fuller name for a reader than the line's short one ("Privacy & cookie settings"). */
+  name?: string;
+  value: string;
+  onPress: () => void;
+}) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress(); });
+  return (
+    <button type="button" {...OWN_SOUND} className="gk-setlink" {...(name === undefined ? {} : { 'aria-label': `${name}. ${value}` })}
+      onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-label gk-setlink__label">{label}</span>
+      <span className="gk-setlink__value">{value}</span>
+      <span className="gk-setlink__go" aria-hidden="true"><Glyph id="next" /></span>
+    </button>
+  );
+}
+
+/**
+ * A WAY IN (C23, 2026-11-15): a page of its own — vacation, the recovery email, the country —
+ * as one row. Its mark, what it is, where it stands in its tone (`warn` a gap you can close),
+ * and the arrow that says the press opens somewhere.
+ */
+export function DoorRow({ glyph, lead, title, sub, value, tone, spoken, onPress }: {
+  glyph?: GlyphId;
+  /** A picture of its own in place of the glyph (a flag). */
+  lead?: ReactNode;
+  title: ReactNode;
+  /** Where it stands or what it does, under the name. */
+  sub?: ReactNode;
+  /** A short reading at the end of the row ("Türkiye"). */
+  value?: ReactNode;
+  tone?: 'self' | 'warn' | 'hostile' | 'gold';
+  /** The whole name for a reader, when the row's words are not enough. */
+  spoken?: string;
+  onPress: () => void;
+}) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress(); });
+  return (
+    <button type="button" {...OWN_SOUND} className="gk-door" {...(tone === undefined ? {} : { 'data-tone': tone })}
+      {...(spoken === undefined ? {} : { 'aria-label': spoken })} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-door__mark" aria-hidden="true">{lead ?? (glyph === undefined ? null : <Glyph id={glyph} />)}</span>
+      <span className="gk-door__words">
+        <span className="gk-door__title">{title}</span>
+        {sub !== undefined && <span className="gk-door__sub">{sub}</span>}
+      </span>
+      {value !== undefined && <span className="gk-door__value">{value}</span>}
+      <span className="gk-door__go" aria-hidden="true"><Glyph id="next" /></span>
+    </button>
   );
 }
 
@@ -220,10 +358,17 @@ export interface TabItem<T extends string = string> {
   /** What opens it; a locked tab says this instead of opening. */
   locked?: string | null;
   badge?: number;
+  /** The tab's whole name as a reader hears it, with what its count means ("Clan — 2 unread"); the eye reads the count (C2). */
+  spoken?: string;
   /** A fact about what is under the tab (something stopped): its glyph, and what it means to a reader. */
   mark?: { glyph: GlyphId; hint: string };
-  /** A picture of the place beside its name, in its own tone (the word stays the name). */
-  glyph?: { id: GlyphId; tone: 'alloy' | 'crystal' | 'deut' | 'self' | 'good' | 'warn' | 'hostile' | 'info' };
+  /**
+   * A picture of the place beside its name (the word stays the name): in its own tone, or with no
+   * tone lit with the tab itself, as a stacked bar draws it.
+   */
+  glyph?: { id: GlyphId; tone?: 'alloy' | 'crystal' | 'deut' | 'self' | 'good' | 'warn' | 'hostile' | 'info' };
+  /** A drawing of its own where the glyph set has no word (a ship class's signature), in its own colour. */
+  art?: ReactNode;
 }
 
 /** The keys that walk a tablist: arrows wrap round the ends, Home and End jump. */
@@ -240,7 +385,7 @@ const stepTo = (key: string, index: number, count: number): number =>
  * switching costs nothing. `lessonMarks` puts `data-tab` on each, which is how a lesson
  * points at one (and lets one be pressed); only the tabs a lesson may use ask for it.
  */
-export function GameTabs<T extends string>({ label, tabs, value, onChange, ids, lessonMarks = false }: {
+export function GameTabs<T extends string>({ label, tabs, value, onChange, ids, lessonMarks = false, stacked = false }: {
   label: string;
   tabs: readonly TabItem<T>[];
   value: T;
@@ -248,6 +393,8 @@ export function GameTabs<T extends string>({ label, tabs, value, onChange, ids, 
   /** The tab's own id and the panel it opens, for a reader to follow from one to the other. */
   ids?: { tab: (id: T) => string; panel: (id: T) => string };
   lessonMarks?: boolean;
+  /** Two storeys: each tab's mark over its name (owner note 3, 2026-11-14: the Base's five tabs). */
+  stacked?: boolean;
 }) {
   const [refused, setRefused] = useState<string | null>(null);
   const buttons = useRef(new Map<T, HTMLButtonElement>());
@@ -261,7 +408,7 @@ export function GameTabs<T extends string>({ label, tabs, value, onChange, ids, 
   };
   return (
     <div>
-      <div role="tablist" aria-label={label} className="gk-tabs" {...OWN_SOUND} onKeyDown={walk}>
+      <div role="tablist" aria-label={label} className={stacked ? 'gk-tabs gk-tabs--stacked' : 'gk-tabs'} {...OWN_SOUND} onKeyDown={walk}>
         {tabs.map((tab) => (
           <GameTab
             key={tab.id}
@@ -307,15 +454,16 @@ function GameTab<T extends string>({ tab, selected, marked, tabId, panelId, onMo
       {...(marked ? { 'data-tab': tab.id } : {})}
       {...(tabId === undefined ? {} : { id: tabId })}
       {...(panelId === undefined ? {} : { 'aria-controls': panelId })}
-      {...(tab.mark ? { 'aria-label': tab.mark.hint } : {})}
+      {...(tab.mark ? { 'aria-label': tab.mark.hint } : tab.spoken === undefined ? {} : { 'aria-label': tab.spoken })}
       {...(tab.locked ? { 'data-locked': '' } : {})}
       onPointerDown={own.onPointerDown}
       onClick={own.onClick}
     >
       {tab.locked && <Glyph id="lock" />}
       {tab.glyph && (
-        <span className="gk-tab__glyph" aria-hidden="true" style={{ color: `var(--gk-${tab.glyph.tone})` }}><Glyph id={tab.glyph.id} /></span>
+        <span className="gk-tab__glyph" aria-hidden="true" data-glyph={tab.glyph.id} {...(tab.glyph.tone === undefined ? {} : { style: { color: `var(--gk-${tab.glyph.tone})` } })}><Glyph id={tab.glyph.id} /></span>
       )}
+      {tab.art !== undefined && <span className="gk-tab__glyph" aria-hidden="true">{tab.art}</span>}
       {tab.label}
       {tab.mark && <span className="gk-tab__mark"><Glyph id={tab.mark.glyph} /></span>}
       {tab.badge !== undefined && tab.badge > 0 && <Dot count={tab.badge} />}
@@ -325,6 +473,22 @@ function GameTab<T extends string>({ tab, selected, marked, tabId, panelId, onMo
 
 export interface NavItem extends TabItem {
   art?: string;
+  /** What waits behind the place, said to a reader after its name. */
+  said?: string;
+  /** A count that is a state, not news (craft in the air): quiet, never the red of news. */
+  tally?: number;
+  /** A gap to close behind the place (a fault to repair): a warning dot with no number. */
+  warn?: boolean;
+  /** 0…1 toward the next thing there (the next landing): a ring round the art. */
+  progress?: number | null;
+  /** Just opened: the place shines and wears this word until pressed. */
+  fresh?: string;
+  /** Keeps its place but does nothing (a season with no clan layer): the order never moves. */
+  disabled?: boolean;
+  /** The key that opens it; the desk bar shows it. */
+  shortcut?: string;
+  /** A lesson's handle on the place. */
+  guide?: string;
 }
 
 /** How long the bottom bar's "locked" word stays over the game. */
@@ -332,9 +496,24 @@ const REFUSED_MS = 2_500;
 
 /**
  * THE BOTTOM BAR: painted art for each place; the current one rises and glows.
- * A locked place shows its padlock and, pressed, says what opens it.
+ * A locked place shows its padlock and, pressed, says what opens it. Each place says
+ * what waits behind it without being opened: news in red, a state in a quiet count,
+ * a gap to close in a warning dot, the next landing in a ring.
+ *
+ * `clear` lets the galaxy through (owner, 2026-09-24: no ground while the scene is
+ * the page); `bar` sits the same places in a desk's top bar, each with its key.
+ * A press on the open place goes to `onReselect` (the galaxy's: fly home).
  */
-export function BottomNav({ label, items, value, onChange }: { label: string; items: readonly NavItem[]; value: string; onChange: (id: string) => void }) {
+export function BottomNav({ label, items, value, onChange, onReselect, clear = false, bar = false }: {
+  label: string;
+  items: readonly NavItem[];
+  /** The open place; null while a page from elsewhere is (the bell, the commander). */
+  value: string | null;
+  onChange: (id: string) => void;
+  onReselect?: (id: string) => void;
+  clear?: boolean;
+  bar?: boolean;
+}) {
   const [refused, setRefused] = useState<string | null>(null);
   // The word floats over the game: it says its piece and goes.
   useEffect(() => {
@@ -343,7 +522,12 @@ export function BottomNav({ label, items, value, onChange }: { label: string; it
     return () => { window.clearTimeout(gone); };
   }, [refused]);
   return (
-    <nav aria-label={label} className="gk gk-nav relative" {...OWN_SOUND}>
+    <nav
+      aria-label={label}
+      className={`gk gk-nav relative${bar ? ' gk-nav--bar' : ''}`}
+      {...(bar ? { 'data-bar': '' } : clear ? { 'data-clear': '' } : {})}
+      {...OWN_SOUND}
+    >
       {refused !== null && (
         <p role="status" className="gk-nav__status gk-banner gk-banner--warn gk-banner--toast">
           <span className="gk-banner__icon"><Glyph id="lock" /></span>
@@ -356,10 +540,14 @@ export function BottomNav({ label, items, value, onChange }: { label: string; it
           key={item.id}
           item={item}
           current={item.id === value}
+          bar={bar}
           onPress={() => {
             if (item.locked) { playSound('refuse'); haptic('warn'); setRefused(item.locked); return; }
             setRefused(null);
-            if (item.id !== value) { playSound('tab'); haptic('tap'); onChange(item.id); }
+            playSound('tab');
+            haptic('tap');
+            if (item.id === value) onReselect?.(item.id);
+            else onChange(item.id);
           }}
         />
       ))}
@@ -367,21 +555,43 @@ export function BottomNav({ label, items, value, onChange }: { label: string; it
   );
 }
 
-function NavButton({ item, current, onPress }: { item: NavItem; current: boolean; onPress: () => void }) {
+function NavButton({ item, current, bar, onPress }: { item: NavItem; current: boolean; bar: boolean; onPress: () => void }) {
   const own = useOwnPress(onPress);
+  const ring = item.progress ?? null;
+  const turn: CssVars = { '--turn': `${String(ring ?? 0)}turn` };
   return (
     <button
       type="button"
       className="gk-nav__item"
+      aria-label={item.said === undefined ? item.label : `${item.label} · ${item.said}`}
+      disabled={item.disabled}
+      {...(item.shortcut === undefined ? {} : { 'aria-keyshortcuts': item.shortcut })}
+      {...(item.guide === undefined ? {} : { 'data-guide': item.guide })}
       {...(current ? { 'aria-current': 'page' } : {})}
       {...(item.locked ? { 'data-locked': '' } : {})}
+      {...(item.fresh === undefined ? {} : { 'data-fresh': '' })}
       onPointerDown={own.onPointerDown}
       onClick={own.onClick}
     >
-      {item.art && <img className="gk-nav__art" src={item.art} alt="" />}
-      {item.locked && <span className="gk-nav__lock"><Glyph id="lock" /></span>}
-      {item.badge !== undefined && item.badge > 0 && <span className="gk-nav__badge"><Dot count={item.badge} /></span>}
+      <span className="gk-nav__pic">
+        {ring !== null && (
+          <span
+            data-ring=""
+            data-progress={String(Math.round(ring * 100) / 100)}
+            aria-hidden="true"
+            className="gk-nav__ring"
+            style={turn}
+          />
+        )}
+        {item.art && <img className="gk-nav__art" src={item.art} alt="" />}
+        {item.locked && <span className="gk-nav__lock"><Glyph id="lock" /></span>}
+        {item.badge !== undefined && item.badge > 0 && <span className="gk-nav__badge"><Dot count={item.badge} /></span>}
+        {item.tally !== undefined && item.tally > 0 && <span data-tally="" aria-hidden="true" className="gk-nav__tally gk-num">{item.tally > 99 ? '99+' : item.tally}</span>}
+        {item.warn && <span data-warn="" aria-hidden="true" className="gk-nav__warn" />}
+        {item.fresh !== undefined && <span aria-hidden="true" className="gk-nav__fresh">{item.fresh}</span>}
+      </span>
       <span className="gk-nav__label">{item.label}</span>
+      {bar && item.shortcut !== undefined && <kbd className="gk-nav__key gk-num">{item.shortcut}</kbd>}
     </button>
   );
 }
@@ -394,7 +604,7 @@ export function InfoPeek({ fact, rule, lead, about }: { fact: ReactNode; rule: R
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const ruleId = useId();
-  const own = useOwnPress(() => { playSound('tap'); setOpen((was) => !was); });
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); setOpen((was) => !was); });
   return (
     <div>
       <div className="gk-peek__row">
@@ -402,6 +612,7 @@ export function InfoPeek({ fact, rule, lead, about }: { fact: ReactNode; rule: R
         <span className="gk-peek__fact">{fact}</span>
         <button
           type="button"
+          {...OWN_SOUND}
           className="gk-round gk-round--small"
           aria-label={about ?? t('counter.compareRuleToggle')}
           aria-expanded={open}
@@ -412,7 +623,7 @@ export function InfoPeek({ fact, rule, lead, about }: { fact: ReactNode; rule: R
           <span className="gk-round__face"><Glyph id="help" /></span>
         </button>
       </div>
-      {open && <p id={ruleId} className="gk-peek__rule gk-well">{rule}</p>}
+      {open && <div id={ruleId} className="gk-peek__rule gk-well">{rule}</div>}
     </div>
   );
 }
@@ -490,6 +701,62 @@ function LanguageOption({ language, chosen, onChoose, onKeyDown }: {
       <img className="gk-lang__flag" src={LANGUAGE_FLAG[language]} alt="" width={40} height={41} draggable={false} />
       <span className="gk-lang__name">{LANGUAGE_LABEL[language]}</span>
       {chosen && <span className="gk-lang__tick"><Glyph id="check" /></span>}
+    </button>
+  );
+}
+
+/**
+ * A PICK FROM A LIST THAT CAN BE LONG (G7-a): a clanmate among thirty, a world among four. The face
+ * names the field and what is picked; a press drops the kit list below it; a pick closes it, and so
+ * does Escape. A lone answer is a fact on a dashed face, with nothing to press.
+ */
+export function Picker<T extends string>({ label, value, options, onChange }: {
+  label: string;
+  value: T;
+  options: readonly { id: T; label: string; sub?: string }[];
+  onChange: (id: T) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+  const current = options.find((option) => option.id === value) ?? options[0];
+  const toggle = useOwnPress(() => { playSound('tap'); haptic('tap'); setOpen((was) => !was); });
+  if (options.length <= 1) {
+    return (
+      <div className="gk-picker gk-picker--fact">
+        <span className="gk-label">{label}</span>
+        <span className="gk-picker__box"><span className="gk-picker__value">{current?.label ?? '—'}</span></span>
+      </div>
+    );
+  }
+  return (
+    <div className="gk-picker">
+      <button type="button" {...OWN_SOUND} className="gk-picker__face" aria-label={`${label}: ${current?.label ?? ''}`}
+        aria-haspopup="listbox" aria-expanded={open} {...(open ? { 'aria-controls': listId } : {})}
+        onPointerDown={toggle.onPointerDown} onClick={toggle.onClick}>
+        <span className="gk-label">{label}</span>
+        <span className="gk-picker__box"><span className="gk-picker__value">{current?.label}</span><Glyph id="down" /></span>
+      </button>
+      {open && (
+        <div id={listId} role="listbox" aria-label={label} className="gk-picker__list"
+          onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); setOpen(false); } }}>
+          {options.map((option) => (
+            <PickerOption key={option.id} label={option.label} sub={option.sub} chosen={option.id === value}
+              onPick={() => { setOpen(false); if (option.id !== value) onChange(option.id); }} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PickerOption({ label, sub, chosen, onPick }: { label: string; sub: string | undefined; chosen: boolean; onPick: () => void }) {
+  const own = useOwnPress(() => { playSound('tab'); haptic('tap'); onPick(); });
+  return (
+    <button type="button" role="option" aria-selected={chosen} {...OWN_SOUND} className="gk-picker__pick"
+      onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-picker__name">{label}</span>
+      {sub !== undefined && <span className="gk-sub">{sub}</span>}
+      {chosen && <Glyph id="check" />}
     </button>
   );
 }

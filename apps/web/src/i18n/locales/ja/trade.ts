@@ -55,8 +55,8 @@ export const trade = {
   /** `aria-label` on the split slider. */
   splitLabel: "受け取る資源",
   splitToward: "{{resource}}を増やす",
-  legOut: "往路",
-  legHome: "帰路",
+  legOut: "往路の積荷",
+  legHome: "帰路の積荷",
   legHold: "積載量",
   legReturnDecides:
     "受け取る資源は、渡す資源より積載量を多く使います。帰路に運べる量が取引の上限です。輸送艦を増やすと、さらに多くの資源を交換できます。",

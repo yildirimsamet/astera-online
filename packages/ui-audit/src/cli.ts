@@ -212,7 +212,7 @@ async function staticScan(): Promise<void> {
   const md = resolve(ROOT, mdPath.replace(/baseline-(\d{4}-\d{2}-\d{2})\.md$/, 'static-$1.md'));
   const scan = await scanSource(ROOT);
   await mkdir(dirname(md), { recursive: true });
-  await writeFile(md, renderStatic(scan, { date: today }));
+  await writeFile(md, renderStatic(scan, { date: today, surfaces: SURFACES }));
   await writeFile(md.replace(/\.md$/, '.json'), JSON.stringify(scan));
   console.log(`${String(scan.fontSizes.length)} yazı boyutu, ${String(scan.animations.length)} animasyon, ${String(scan.notifications.length)} bildirim metni → ${md}`);
 }

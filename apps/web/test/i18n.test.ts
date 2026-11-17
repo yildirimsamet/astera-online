@@ -345,8 +345,6 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'action.statFuelNone',
   'planetHero.shieldValue',
   'units.rangeJoin',
-  // The dash between the two ends of a probe's range. Punctuation.
-  'rangeBand.join',
   // The dot between the two firepower lines and between the notes under them.
   // Punctuation; the lines and notes it separates are translated. D199.
   'counter.lineJoin',
@@ -376,6 +374,7 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'notifications.unlock',
   // Network/provider names, not prose: "USDT · TRC-20", "SOLANA" and "Shopier"
   // are the same proper nouns in every language.
+  'community.donate.eyebrow', // The game's own name over the donate sheet (S1, 2026-11-16).
   'community.donate.cryptoTrc20',
   'community.donate.cryptoSolana',
   'community.donate.cardHeading',
@@ -1065,5 +1064,16 @@ describe('every key the tree holds actually resolves', () => {
       (key) => !i18n.exists(key, { lng: language, fallbackLng: false }),
     );
     expect(unresolved).toEqual([]);
+  });
+});
+
+/**
+ * A LABEL THAT STANDS BEFORE ITS VALUE. The season clock reads "Season ends in · 1d 0h": the
+ * label, then the time beside it. Japanese runs words together, so a space inside a Japanese
+ * label is the hole a value was meant to fill ("シーズンは に終了します 1日0時間").
+ */
+describe('the season clock label in Japanese', () => {
+  it('leaves no hole for the time it stands before', () => {
+    expect(ja.galaxy.commander.endsLabel).not.toMatch(/\s/);
   });
 });

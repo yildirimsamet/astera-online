@@ -5,7 +5,7 @@ import { useClanSupportActions, useMaintenance, useMySupport, useMonuments, useP
 import { createIdempotencyKey } from '../../api/client.js';
 import { useWorld } from '../../api/world.js';
 import { roomOf } from '../../lib/fleetPage.js';
-import { useAirborne, type AirborneItem, type StripFocus } from '../../shell/PendingStrip.js';
+import { useAirborne, type AirborneItem, type StripFocus } from '../../lib/airborne.js';
 import { describe, useToast } from '../../ui/Toast.js';
 import { FleetPage, type FleetTab } from '../hud/FleetPage.js';
 

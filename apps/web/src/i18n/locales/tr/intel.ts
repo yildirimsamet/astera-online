@@ -11,7 +11,8 @@ export const intel = {
   shelf: {
     label: 'İstihbarat',
     watch: 'Gözlem',
-    reports: 'Raporlar',
+    probes: 'Sondalar',
+    battles: 'Savaşlar',
     radar: 'Radar',
   },
   rivals: {
@@ -29,9 +30,6 @@ export const intel = {
     empty: 'Henüz bir şey bilmiyorsun: teleskop canlı izler, sonda tek bir okuma getirir.',
   },
   openOrbit: 'Yörüngeyi aç',
-  tabs: {
-    label: 'İstihbarat raporları',
-  },
   coverage: {
     label: 'Kapsama',
     blind: 'Tek bir gezegenin bile içini göremiyorsun',
@@ -42,9 +40,9 @@ export const intel = {
     idleHint_one: '{{count}} yuvan boşta duruyor. Galaksiden bir gezegen seç, oraya çevir.',
     idleHint_other: '{{count}} yuvan boşta duruyor. Galaksiden bir gezegen seç, birini oraya çevir.',
     scarcity_one:
-      'Dışarıda {{neighbours}} gezegen var, elinde {{count}} göz. Bir yuvayı kaydırmak bekleme süresine mal oluyor; kimi izleyeceğine iyi karar ver.',
+      "Dışarıda {{neighbours}} gezegen, elinde {{count}} göz. Yuva kaydırmak bekleme süresi başlatır.",
     scarcity_other:
-      'Dışarıda {{neighbours}} gezegen var, elinde {{count}} göz. Bir yuvayı kaydırmak bekleme süresine mal oluyor; kimi izleyeceğine iyi karar ver.',
+      "Dışarıda {{neighbours}} gezegen, elinde {{count}} göz. Yuva kaydırmak bekleme süresi başlatır.",
     oneMore: '{{level}}. seviye Teleskop bir gezegen daha izleyebilir.',
     noRadar: 'Radarın da yok; sana yönelen tehdidi diğer hareketlerden ayıramazsın.',
   },
@@ -80,6 +78,7 @@ export const intel = {
     accuracyHome: '{{percent}} doğruluk · filo evdeydi',
     accuracyOut: '{{percent}} doğruluk · filo dışarıdaydı',
     scaleNote: 'Her çubuk sıfırdan başlar: bant onların tahmini, turkuaz çizgi senin dünyan.',
+    estimateFact: "Sayılar tahmin aralığıdır.",
     estimateNote: 'Sayılar tahmin aralığıdır. Silahlı birlik değeri, kalkanı ve silahsız gemileri içermez.',
     caught: 'sondayı yakaladılar',
     /* Sinyal çubuklarının yanındaki iki kelime; isabeti çubuklar taşıyor. */
@@ -102,15 +101,19 @@ export const intel = {
     cost: "Radar olmadan bu gezegene gönderilen sondaların çoğu fark edilmeden geçer.",
     quiet: "Tespit edilen tarama yok. {{level}}. seviye Radar dinlemede.",
     scan: 'Tarama yakalandı',
-    bearing: ' · galaktik {{bearing}} yönünden',
+    bearing: 'galaktik {{bearing}} yönünden',
     origin: ' · {{planet}}',
     /** Taramanın hangi dünyaya geldiği. */
     onWorld: ' · {{planet}}',
+    hitWorld: 'Taranan dünyan',
     /* Captions beside the two drawn rings; the picture carries the rest. */
     ringSense: 'Hareket algılandı',
     ringWarn: 'Zamanlı uyarı',
     /** İki çember tek olduğu sürece tek başlık, çemberin ne yaptığını söyler. */
     ringOne: 'Tespit ve zamanlı uyarı',
+    /** C9: the dashed rim the rings are drawn against, and a ring's reach with its unit. */
+    rim: 'Galaksinin kenarı',
+    reach: '{{value}} birim',
     /** Halkaları göremeyen için aynı okuma; iki çember bu bilgiyi zaten taşıyor. */
     noteFleets:
       '{{level}}. seviye Radar, {{sense}} birimde sana yönelen tehdidi ayırt eder ancak varış süresini {{warn}} birime girdiğinde gösterir.',
@@ -140,7 +143,7 @@ export const reports = {
   enemyRetreated: "Düşmanın {{count}} gemisi kaçarak sağ kaldı.",
   turningPointRetreated: "{{round}}. tur sonunda savaşmaya devam eden savaş gemin kalmadı. Bazı gemiler sağ kaçtı.",
   heading: 'Savaş raporları',
-  newest: 'en yeni önce',
+  emptyTitle: "Henüz savaş yok",
   empty:
     'Galakside henüz çatışma kaydı yok. Savaş raporu, karşı tarafın gerçek kuvvetini ve çatışma sonucunu doğrudan gösterir.',
   youRaided: 'Akın ettiğin: ',
@@ -285,6 +288,14 @@ export const reports = {
     who: 'Filona ne oldu?',
     changed: 'Ganimet ve puan değişimi',
   },
+  /** C15: the doors a fight opened, closing its report. */
+  next: {
+    title: "Sıradaki hamlen",
+    source: "Saldıranın dünyası: {{planet}}",
+    sourceNote: "Baskın buradan geldi",
+    wreck: "Enkaza git: {{planet}}",
+    wreckNote: "{{amount}} değerinde; ilk gelen alır",
+  },
   walkoverHeading: 'Burada savunabilecek birlik yoktu',
   walkoverBody:
     'Savaşabilecek filo veya yer savunması yoktu. Gemilerin geldi, yükledi ve gitti. Rapor edilecek bir çarpışma olmadı.',
@@ -367,6 +378,7 @@ export const reports = {
   strategicSecededAttacker: "Koloni koptu ve tarafsız oldu; artık kimsenin değil.",
   strategicSecededDefender: "Kolonin koptu ve tarafsız oldu.",
   strategicSecededShort: "koloni koptu",
+  strategicDamageShort: "{{amount}} hasar",
   strategicCaptured: 'ELE GEÇİRİLDİ',
   strategicIneffective: 'ETKİSİZ',
   strategicIntercepted: 'HAVADA VURULDU',
@@ -387,6 +399,8 @@ export const reports = {
   strategicNoLevelLoss: 'Bina veya enstrüman seviyesi düşmedi.',
   strategicDestroyedOrders: 'Yok edilen inşaatlar',
   strategicNoOrdersLost: 'Aktif inşaat emri yok edilmedi.',
+  strategicFleetLost: "Yok edilen gemi ve savunma",
+  strategicBombRules: "Bomba nasıl işler",
 
   neutralHolder: 'sahipsiz bir dünya',
 
@@ -506,8 +520,6 @@ export const clarity = {
   unreadable: 'OKUNAMIYOR',
   fleetHome: 'FİLO EVDE',
   fleetAway: 'FİLO DIŞARIDA',
-  backIn: ' · {{minutes}} dk sonra döner',
-  unwatched: 'izlemeye alınmadı',
 } as const;
 
 export const dossier = {

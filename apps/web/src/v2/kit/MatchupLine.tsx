@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { matchupsAgainst, type ClassReading, type CombatClass, type Fleet } from '@astera/rules';
 import { combatClassLabel } from '../../i18n/names.js';
 import { matchupHint } from '../../lib/matchup.js';
+import { InfoPeek } from '../../game-ui/index.js';
 import { ClassEmblem } from './ClassEmblem.js';
 
 /**
@@ -13,10 +14,10 @@ import { ClassEmblem } from './ClassEmblem.js';
  * read as full stops (seen on the gallery). An inline emblem aligned to the middle
  * leaves the text on the line's own baseline.
  */
-function Named({ cls, tone, children }: { cls: CombatClass; tone: string; children: ReactNode }) {
+function Named({ cls, tone, children }: { cls: CombatClass; tone?: 'self' | 'quiet'; children: ReactNode }) {
   return (
-    <span data-class={cls} className={`whitespace-nowrap ${tone}`}>
-      <ClassEmblem cls={cls} decorative className="mr-1 inline-block size-3 align-middle" />
+    <span data-class={cls} className="gk-mline__class" {...(tone ? { 'data-tone': tone } : {})}>
+      <ClassEmblem cls={cls} decorative className="gk-mline__emblem" />
       {children}
     </span>
   );
@@ -44,7 +45,12 @@ function Joined({ parts, join }: { parts: readonly ReactNode[]; join: string }) 
  * does not have. A full split names every class it measured and drops none; a
  * combat v3 reading names each class as the range it read (owner 2026-10-25).
  */
-export function MatchupLine({ wing, reading }: { wing: Fleet; reading: ClassReading | undefined }) {
+export function MatchupLine({ wing, reading, folded = false }: {
+  wing: Fleet;
+  reading: ClassReading | undefined;
+  /** The wing's shares behind an ⓘ (the attack sheet, whose cards wear each hull's factor). */
+  folded?: boolean;
+}) {
   const { t } = useTranslation();
   const matchups = useMemo(() => matchupsAgainst(wing, reading), [wing, reading]);
   const join = t('counter.lineJoin');
@@ -56,7 +62,7 @@ export function MatchupLine({ wing, reading }: { wing: Fleet; reading: ClassRead
 
   if (reading?.kind === 'UNREAD') {
     return (
-      <p data-matchup-wall="" className="font-v2-ui text-caption leading-snug text-v2-ink-2">
+      <p data-matchup-wall="" className="gk-mline gk-mline__wall">
         <Joined parts={[t('counter.noteShapeUnread'), t('dossier.shapeUnreadNote')]} join={join} />
       </p>
     );
@@ -68,7 +74,7 @@ export function MatchupLine({ wing, reading }: { wing: Fleet; reading: ClassRead
   // `wall` to name, and it is still a full split: every class it measured is printed.
   if (matchups.kind === 'MAJORITY' && matchups.wall !== null) {
     parts.push(
-      <Named cls={matchups.wall} tone="text-v2-ink">
+      <Named cls={matchups.wall}>
         {t('counter.matchupMajority', { class: combatClassLabel(matchups.wall) })}
       </Named>,
     );
@@ -78,7 +84,7 @@ export function MatchupLine({ wing, reading }: { wing: Fleet; reading: ClassRead
     parts.push(t('counter.matchupSplit'));
     for (const row of matchups.wallShares) {
       parts.push(
-        <Named cls={row.cls} tone="text-v2-ink">
+        <Named cls={row.cls}>
           {combatClassLabel(row.cls)} {t('units.percent', { value: share(row.share, row.high) })}
         </Named>,
       );
@@ -88,37 +94,36 @@ export function MatchupLine({ wing, reading }: { wing: Fleet; reading: ClassRead
   const hint = matchupHint(matchups);
   if (hint?.kind === 'BRING') {
     parts.push(
-      <Named cls={hint.cls} tone="text-v2-self">
+      <Named cls={hint.cls} tone="self">
         {t('counter.matchupBring', { class: combatClassLabel(hint.cls) })}
       </Named>,
     );
   } else if (hint) {
-    parts.push(<span className="text-v2-warn">{t(hint.kind === 'SINGLE' ? 'counter.matchupSingle' : 'counter.matchupProbe')}</span>);
+    parts.push(<span data-tone="warn">{t(hint.kind === 'SINGLE' ? 'counter.matchupSingle' : 'counter.matchupProbe')}</span>);
   }
   // A range reading states its open part in the ranges themselves; only a majority leaves a remainder unread.
   if (matchups.unknownShare > 0 && matchups.kind === 'MAJORITY') parts.push(t('counter.matchupRemainder'));
 
-  return (
-    <div className="flex flex-col gap-0.5 font-v2-ui text-caption leading-snug">
-      <p data-matchup-wall="" className="text-v2-ink-2">
-        <Joined parts={parts} join={join} />
-      </p>
-      {matchups.rows.length > 0 && (
-        <p data-matchup-wing="" className="font-v2-mono text-micro text-v2-ink-3">
-          <Joined
-            join={join}
-            parts={matchups.rows.map((row) => (
-              <Named cls={row.cls} tone="text-v2-ink-2">
-                {t('counter.matchupExposure', {
-                  class: combatClassLabel(row.cls),
-                  strong: share(row.strongShare, row.strongHigh),
-                  weak: share(row.weakShare, row.weakHigh),
-                })}
-              </Named>
-            ))}
-          />
-        </p>
-      )}
-    </div>
+  // Inside the ⓘ row the line sits in a phrase, so it is a span there.
+  const Line = folded ? 'span' : 'p';
+  const wallLine = <Line data-matchup-wall="" className="gk-mline__wall"><Joined parts={parts} join={join} /></Line>;
+  const wingList = matchups.rows.length > 0 && (
+    <ul data-matchup-wing="" className="gk-mline__wing">
+      {matchups.rows.map((row) => (
+        <li key={row.cls}>
+          <Named cls={row.cls} tone="quiet">
+            {t('counter.matchupExposure', {
+              class: combatClassLabel(row.cls),
+              strong: share(row.strongShare, row.strongHigh),
+              weak: share(row.weakShare, row.weakHigh),
+            })}
+          </Named>
+        </li>
+      ))}
+    </ul>
   );
+  if (folded && wingList) {
+    return <div className="gk-mline gk-mline--folded"><InfoPeek about={t('counter.compareRuleToggle')} fact={wallLine} rule={wingList} /></div>;
+  }
+  return <div className="gk-mline">{wallLine}{wingList}</div>;
 }

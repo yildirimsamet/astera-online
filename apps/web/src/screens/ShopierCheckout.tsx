@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next';
 import type { CosmeticId } from '@astera/rules';
 import { ApiError } from '../api/client.js';
 import { describeError } from '../i18n/errors.js';
-import { Icon } from '../v2/icons.js';
+import { Banner, GameButton, Glyph } from '../game-ui/index.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 
 type ItemId = CosmeticId | 'bundle';
 export interface ShopierPage { url: string }
@@ -44,51 +46,38 @@ export const shopierPrice = (amount: number, locale: string): string => new Intl
 }).format(amount / 100);
 
 /** The press itself: Shopier, in lira. It waits visibly while the page is being opened. */
-export function ShopierPayButton({ amount, state, onPress, className }: {
-  amount: number; state: ShopierState | null; onPress: () => void; className: string;
+export function ShopierPayButton({ amount, state, onPress, wide = false }: {
+  amount: number; state: ShopierState | null; onPress: () => void; wide?: boolean;
 }) {
   const { t } = useTranslation();
   const busy = state?.status === 'loading';
   // Once the page is open, the panel's link is the way forward; this one steps back.
   const ready = state?.status === 'ready';
-  return <button type="button" onClick={onPress} disabled={busy || ready} aria-busy={busy} className={`${className} disabled:opacity-60`}>
-    <span className="inline-flex items-center justify-center gap-1">
-      {ready && <Icon id="i-check" className="size-3.5" />}
-      {busy ? t('skins.shopierPreparing') : ready ? t('skins.shopierReady')
-        : t('skins.shopierBuy', { price: shopierPrice(amount, t('units.numberLocale')) })}
-    </span>
-  </button>;
+  return <GameButton tone="action" wide={wide} heavy glyph={ready ? 'check' : undefined} pending={busy} onPress={onPress}
+    disabledReason={busy ? t('skins.shopierPreparing') : ready ? t('skins.shopierReady') : null}>
+    {t('skins.shopierBuy', { price: shopierPrice(amount, t('units.numberLocale')) })}
+  </GameButton>;
 }
 
 /** What follows the press: the commander's own page — or why it could not be opened. */
 export function ShopierProgress({ state }: { state: ShopierState | null }) {
-  if (state?.status === 'error') {
-    return <p role="alert" className="mt-2 rounded-control border border-v2-warn/30 bg-v2-warn/5 px-3 py-2 text-caption text-v2-warn">{state.message}</p>;
-  }
+  if (state?.status === 'error') return <Banner tone="warn" role="alert" title={state.message} />;
   return state?.status === 'ready' ? <ShopierPagePanel url={state.url} /> : null;
 }
 
 function ShopierPagePanel({ url }: ShopierPage) {
   const { t } = useTranslation();
   return (
-    <section aria-label={t('skins.shopierPanelTitle')} className="mt-2 grid gap-2 rounded-control border border-v2-premium/45 bg-v2-deep/85 p-2.5">
-      <p className="flex items-center gap-1.5 text-micro font-semibold uppercase tracking-wide text-v2-premium">
-        <Icon id="i-check" className="size-3 shrink-0" />
-        {t('skins.shopierPanelTitle')}
-      </p>
-      <a href={url} target="_blank" rel="noreferrer noopener"
-        className="v2-store-shimmer flex h-11 items-center justify-center gap-1.5 rounded-control bg-v2-premium px-3 text-caption font-bold text-v2-void">
-        {t('skins.shopierGo')}
-        <Icon id="i-share" className="size-3.5" />
+    <section aria-label={t('skins.shopierPanelTitle')} className="gk-cut gk-shopier">
+      <p className="gk-label gk-shopier__title"><Glyph id="check" />{t('skins.shopierPanelTitle')}</p>
+      <a href={url} target="_blank" rel="noreferrer noopener" {...OWN_SOUND}
+        onClick={() => { playSound('confirm'); haptic('commit'); }}
+        className="gk-btn gk-btn--action gk-btn--wide">
+        <span>{t('skins.shopierGo')}</span>
+        <span className="gk-btn__glyph"><Glyph id="share" /></span>
       </a>
-      <p className="flex items-start gap-1.5 text-micro leading-snug text-v2-ink-3">
-        <Icon id="i-info" className="mt-0.5 size-3 shrink-0" />
-        <span>{t('skins.shopierWhy')}</span>
-      </p>
-      <p role="status" className="flex items-center gap-1.5 text-micro text-v2-ink-2">
-        <Icon id="i-hourglass" className="size-3 shrink-0 text-v2-premium" />
-        <span>{t('skins.shopierWaiting')}</span>
-      </p>
+      <p className="gk-shopier__line"><Glyph id="help" /><span>{t('skins.shopierWhy')}</span></p>
+      <p role="status" className="gk-shopier__line gk-shopier__line--wait"><Glyph id="clock" /><span>{t('skins.shopierWaiting')}</span></p>
     </section>
   );
 }

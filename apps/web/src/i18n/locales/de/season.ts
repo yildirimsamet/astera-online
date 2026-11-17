@@ -2,7 +2,7 @@ export const seasonRecap = {
   eyebrow: 'Saison abgeschlossen',
   finalRecord: 'Endgültiger Datensatz · {{galaxy}}',
   rank: 'Rang {{rank}} von {{players}}',
-  rankAlone: 'Endgültiger Rang {{rank}}',
+  place: 'Platz',
   dominion: 'Dominion',
   planet: '{{commander}} von {{planet}}',
   titles: {
@@ -31,7 +31,7 @@ export const seasonRecap = {
   biggestRaid: '{{value}} übernommen von {{name}}',
   quietHeading: 'Eine ruhige Grenze',
   quietBody: 'Keine Schlacht hat deinen Namen in dieser Saison an einen anderen Kommandanten gebunden.',
-  explore: 'Erkunde die letzte Galaxie',
+  explore: 'Letzte Galaxie ansehen',
   close: 'Schließen',
   nextIn: 'Neue Galaxie öffnet sich in {{duration}}',
   nextNow: 'Die neue Galaxie öffnet sich jetzt',
@@ -39,7 +39,7 @@ export const seasonRecap = {
   menuLabel: 'Saisonrekord',
   menuHint: 'Dein endgültiger Rang, Rivalen und Schlachten',
   latestLabel: 'Rekord der letzten Saison',
-  latestHint: 'Sehen Sie, wie Ihre letzte Galaxie endete',
+  latestHint: 'Sieh dir an, wie deine letzte Galaxie endete',
   ended: 'Abgeschlossen',
   seasonLabel: 'Saison',
 } as const;

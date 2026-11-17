@@ -50,23 +50,6 @@
   background: rgb(2 5 12 / 76%);
 }
 
-.legacy-hero {
-  background:
-    linear-gradient(180deg, transparent 30%, var(--color-v2-deep) 100%),
-    var(--legacy-hero-art) center 35% / cover no-repeat;
-}
-
-.legacy-season-card {
-  background:
-    linear-gradient(100deg, var(--color-v2-deep) 38%, color-mix(in srgb, var(--color-v2-deep) 55%, transparent) 75%, transparent),
-    var(--legacy-season-art) right 30% / cover no-repeat;
-}
-
-.legacy-monogram {
-  background: radial-gradient(circle at 35% 30%, var(--color-v2-raise), var(--color-v2-void));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-v2-premium) 70%, transparent), 0 0 0 5px color-mix(in srgb, var(--color-v2-void) 70%, transparent), 0 0 18px color-mix(in srgb, var(--color-v2-premium) 30%, transparent);
-}
-
 /* The commander's name itself opens the showcase. */
 .galaxy-commander-link { transition: background-color 160ms ease, box-shadow 160ms ease; }
 .galaxy-commander-link:hover, .galaxy-commander-link:focus-visible {
@@ -202,10 +185,3 @@
 @keyframes legacy-reveal-name { from { opacity: 0; letter-spacing: 0.3em; } }
 @keyframes legacy-reveal-pop { from { opacity: 0; scale: 0.5; } }
 
-.legacy-entry {
-  background:
-    linear-gradient(100deg, var(--color-v2-deep) 35%, color-mix(in srgb, var(--color-v2-deep) 70%, transparent) 70%, transparent),
-    var(--legacy-entry-art) 70% 40% / cover no-repeat;
-  box-shadow: 0 0 22px color-mix(in srgb, var(--color-v2-premium) 10%, transparent);
-}
-.legacy-entry:hover { border-color: color-mix(in srgb, var(--color-v2-premium) 60%, transparent); }

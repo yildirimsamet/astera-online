@@ -100,7 +100,7 @@ describe('the Dominion leaderboard', () => {
   it('routes another commander name to the existing Galaxy focus', async () => {
     const onFocusPlanet = await show();
     const commander = screen.getByRole('button', { name: '[WAR] Commander 0' });
-    expect(commander).toHaveClass('name', 'underline');
+    expect(commander).toHaveClass('gk-lb__door');
     await userEvent.setup().click(commander);
     expect(onFocusPlanet).toHaveBeenCalledWith('planet-0');
     expect(screen.queryByRole('button', { name: 'İzci' })).not.toBeInTheDocument();
@@ -121,17 +121,14 @@ describe('the Dominion leaderboard', () => {
     const identity = screen.getByRole('button', { name: '[WAR] Commander 0' });
     const row = identity.closest('li');
     const flag = row?.querySelector('img[role="img"], span[role="img"]');
+    const name = identity.querySelector('.gk-lb__name');
     expect(flag).toBeInTheDocument();
-    expect(flag && flag.compareDocumentPosition(identity) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(flag?.parentElement).toHaveClass('block');
+    expect(flag && name && flag.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(identity).toHaveTextContent('[WAR] Commander 0');
-    expect(identity).toHaveClass('w-full');
-    expect(identity).toHaveClass('line-clamp-2', 'break-words');
-    expect(identity).not.toHaveClass('truncate');
+    expect(identity.querySelector('.gk-lb__name')).toHaveTextContent('[WAR] Commander 0');
     expect(row?.querySelector('[data-leaderboard-meta]')).toHaveTextContent('World 0');
     expect(row?.querySelector('[data-leaderboard-score]')).toHaveTextContent('+50');
     expect(row?.querySelector('[data-leaderboard-score]')).toHaveTextContent('Dominion');
-    expect(row?.querySelector('[data-leaderboard-score]')).toHaveClass('min-w-24');
   });
 
   it('keeps the nearby rival flag above the name', async () => {

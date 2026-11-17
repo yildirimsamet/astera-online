@@ -5,17 +5,21 @@ import {
   type GalaxyEventDays,
   type GalaxyEventKind,
 } from '@astera/rules';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGalaxyEvents } from '../api/queries.js';
+import { Glyph, InfoPeek, artIconSrc, type GlyphId } from '../game-ui/index.js';
 import { serverNow } from '../lib/clock.js';
 import { decimal } from '../lib/format.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { duration, useNow } from '../lib/time.js';
-import { CargoIcon, CrystalIcon, GalaxyIcon } from '../ui/icons/index.js';
-import { Sheet } from '../ui/kit/Sheet.js';
+import { Sheet } from '../v2/kit/Sheet.js';
 
 const twoDigits = (value: number): string => String(value).padStart(2, '0');
 const MINUTE_MS = 60_000;
 const DAY_MINUTES = 24 * 60;
+const DAY_MS = DAY_MINUTES * MINUTE_MS;
 
 interface GuideWindow {
   kind: GalaxyEventKind;
@@ -45,21 +49,60 @@ function nextOccurrence(window: GuideWindow, now: Date) {
   for (let day = localDay; day <= localDay + 7; day += 1) {
     if (!runsOn(window.days, day)) continue;
     const item = occurrence(window, day);
-    if (item.endsAt.getTime() > now.getTime()) return item;
+    if (item.endsAt.getTime() > now.getTime()) return { ...item, day };
   }
   return null;
 }
 
-const deviceClock = (date: Date): string => new Intl.DateTimeFormat(undefined, {
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-}).format(date);
+/** The device's own zone: the guide prints every time on the player's clock (owner 2026-11-14). */
+const deviceTimeZone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-/** Fixed event windows are authored in Türkiye minutes; this only turns them into clock text. */
-export function eventWindow(startsAtLocalMinute: number, endsAtLocalMinute: number): string {
-  const clock = (minute: number): string => `${twoDigits(Math.floor(minute / 60))}:${twoDigits(minute % 60)}`;
-  return `${clock(startsAtLocalMinute)}–${clock(endsAtLocalMinute)}`;
+/** The zone as the player knows it on a clock: "GMT+9", "UTC−4". */
+const zoneName = (timeZone: string, language: string, at: Date): string =>
+  new Intl.DateTimeFormat(language, { timeZone, timeZoneName: 'shortOffset' })
+    .formatToParts(at).find((part) => part.type === 'timeZoneName')?.value ?? timeZone;
+
+/** A moment on a zone's wall clock: its calendar day (days since 1970-01-01) and minute of the day. */
+function wallClock(date: Date, timeZone: string): { day: number; minute: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone, year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', hourCycle: 'h23',
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes): number => Number(parts.find((item) => item.type === type)?.value ?? 0);
+  return {
+    day: Date.UTC(part('year'), part('month') - 1, part('day')) / DAY_MS,
+    minute: (part('hour') % 24) * 60 + part('minute'),
+  };
+}
+
+const clock = (minute: number): string => `${twoDigits(Math.floor(minute / 60))}:${twoDigits(minute % 60)}`;
+
+/** Where a window sits in a reading day: the small hours read last, as the night's tail. */
+const readingKey = (minute: number): number =>
+  minute < READING_DAY_STARTS_AT_LOCAL_MINUTE ? minute + DAY_MINUTES : minute;
+
+/**
+ * ONE WINDOW ON THE PLAYER'S OWN CLOCK. Owner instruction, 2026-11-14.
+ *
+ * The rules author every window in Türkiye minutes, on Türkiye's weekdays and weekend. A
+ * player in Tokyo or New York used to read those and a second "local" line under each;
+ * now the device's zone is the only clock printed. The window's next run is read off that
+ * zone, so summer time is whatever the zone says on that day.
+ *
+ * The kind of day stays the galaxy's: a weekday shower at 20:00 in Türkiye starts at 02:00
+ * the NEXT day in Tokyo. `shift` says so (+1, −1). A window that runs every day has no
+ * other day to land on, so it never shifts.
+ */
+function localWindow(window: GuideWindow, now: Date, timeZone: string): { time: string; shift: number; key: number } {
+  const next = nextOccurrence(window, now);
+  if (next === null) {
+    return { time: `${clock(window.startsAtLocalMinute)}–${clock(window.endsAtLocalMinute)}`, shift: 0, key: readingKey(window.startsAtLocalMinute) };
+  }
+  const start = wallClock(next.startsAt, timeZone);
+  const end = wallClock(next.endsAt, timeZone);
+  const shift = window.days === undefined ? 0 : start.day - next.day;
+  // a window that closes at midnight closes at 24:00 of its own day, as the calendar writes it
+  const closes = end.minute === 0 && end.day > start.day ? DAY_MINUTES : end.minute;
+  return { time: `${clock(start.minute)}–${clock(closes)}`, shift, key: readingKey(shift * DAY_MINUTES + start.minute) };
 }
 
 /**
@@ -82,22 +125,6 @@ export function eventWindow(startsAtLocalMinute: number, endsAtLocalMinute: numb
  */
 const READING_DAY_STARTS_AT_LOCAL_MINUTE = 6 * 60;
 
-/**
- * Order a lane for reading, without touching the authored array.
- *
- * `packages/rules` decides sequence numbers from its own window order, and a
- * shower's sequence fixes the index every asteroid id is an HMAC of — so this
- * sorts a COPY and nothing here may ever be pushed back into the rules.
- */
-function readingOrder<T extends { readonly startsAtLocalMinute: number }>(
-  windows: readonly T[],
-): T[] {
-  const key = (minute: number): number =>
-    minute < READING_DAY_STARTS_AT_LOCAL_MINUTE ? minute + 24 * 60 : minute;
-  return [...windows].sort((left, right) =>
-    key(left.startsAtLocalMinute) - key(right.startsAtLocalMinute));
-}
-
 type DayGroup = GalaxyEventDays | 'EVERY_DAY';
 
 /**
@@ -108,24 +135,53 @@ type DayGroup = GalaxyEventDays | 'EVERY_DAY';
  * is the calendar a player meets five days out of seven; a window with no `days`
  * runs every day and is its own row.
  */
-function byDays<T extends { readonly days?: GalaxyEventDays; readonly startsAtLocalMinute: number }>(
+function byDays<T extends { readonly days?: GalaxyEventDays; readonly key: number }>(
   windows: readonly T[],
 ): { days: DayGroup; windows: T[] }[] {
   const order: DayGroup[] = ['WEEKDAY', 'WEEKEND', 'EVERY_DAY'];
   return order
     .map((days) => ({
       days,
-      windows: readingOrder(windows.filter((window) => (window.days ?? 'EVERY_DAY') === days)),
+      // a sorted COPY: the rules' own window order fixes each shower's sequence and asteroid ids
+      windows: windows.filter((window) => (window.days ?? 'EVERY_DAY') === days).sort((left, right) => left.key - right.key),
     }))
     .filter((group) => group.windows.length > 0);
 }
 
-export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation();
+interface Authored {
+  readonly startsAtLocalMinute: number;
+  readonly endsAtLocalMinute: number;
+  readonly days?: GalaxyEventDays;
+}
+
+/** Each authored window beside its reading on the player's clock. */
+function place<W extends Authored>(kind: GalaxyEventKind, windows: readonly W[], now: Date, timeZone: string) {
+  return windows.map((window) => ({
+    window,
+    ...(window.days === undefined ? {} : { days: window.days }),
+    ...localWindow({
+      kind,
+      startsAtLocalMinute: window.startsAtLocalMinute,
+      endsAtLocalMinute: window.endsAtLocalMinute,
+      ...(window.days === undefined ? {} : { days: window.days }),
+    }, now, timeZone),
+  }));
+}
+
+/**
+ * THE GALAXY EVENTS GUIDE (C10, on the kit). It answers "when is the next one, and what
+ * does it give me?": a lit countdown to the next event, then one plate per event with its
+ * rule and its windows, each kind of day on its own row. The unknown signal is a personal
+ * event, not a calendar one, so its rules fold under their name at the foot.
+ */
+export function GalaxyEventsGuide({ onClose, timeZone = deviceTimeZone() }: { onClose: () => void; timeZone?: string }) {
+  const { t, i18n } = useTranslation();
   const events = useGalaxyEvents();
-  const asteroidGroups = byDays(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.windows);
-  const tradeGroups = byDays(GALAXY_EVENTS.definitions.TRADE_SHIP.windows);
-  const convoyGroups = byDays(GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.windows);
+  const now = new Date(serverNow());
+  const asteroids = place('ASTEROID_SHOWER', GALAXY_EVENTS.definitions.ASTEROID_SHOWER.windows, now, timeZone);
+  const trades = place('TRADE_SHIP', GALAXY_EVENTS.definitions.TRADE_SHIP.windows, now, timeZone);
+  const convoys = place('INTERGALACTIC_CONVOY', GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.windows, now, timeZone);
+  const shifted = [...asteroids, ...trades, ...convoys].some((item) => item.shift !== 0);
   const dayLabel = (days: DayGroup): string => t(`galaxy.eventsGuide.days.${days}`);
 
   return (
@@ -133,103 +189,82 @@ export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
       eyebrow={t('galaxy.eventsGuide.eyebrow')}
       title={t('galaxy.eventsGuide.title')}
       onClose={onClose}
+      kit={{ art: artIconSrc('hud-timers'), tone: 'self' }}
     >
-      <div className="pb-2">
+      <div className="gk gk-guide">
         <NextEventSummary event={events.data?.next ?? null} />
-        <div className="plate plate-inset flex items-center justify-between gap-3 rounded-chip px-3 py-2">
-          <p className="text-caption leading-snug text-dim">{t('galaxy.eventsGuide.intro')}</p>
-          <span className="legend shrink-0 rounded-full border border-crystal/25 bg-crystal/10 px-2 py-1 text-micro text-crystal">
-            {t('galaxy.eventsGuide.timeZone')}
-          </span>
-        </div>
-
-        <div className="mt-3 space-y-3">
-          <section className="rounded-chip border border-v2-crystal/20 bg-v2-crystal/5 p-3">
-            <h3 className="text-caption font-semibold text-v2-crystal">{t('unknownSignal.title')}</h3>
-            <p className="mt-2 text-caption leading-relaxed text-dim">{t('unknownSignal.wiki')}</p>
-            <p className="mt-2 text-caption leading-relaxed text-dim">{t('unknownSignal.collector')}</p>
-          </section>
-          <EventCard
-            tone="crystal"
-            icon={<CrystalIcon className="size-5" />}
-            title={t('galaxy.eventsGuide.asteroid.title')}
-            summary={t('galaxy.eventsGuide.asteroid.summary', {
-              rate: decimal(ASTEROID_DYNAMIC.perPlayerPerHour, 2),
-              frontMinutes: ASTEROID_SHOWER_FRONT_LOAD.minutes,
-              window: SPAWN_GATE.onlineWindowMinutes,
-            })}
-          >
-            {asteroidGroups.map((group) => (
-              <DayRow key={group.days} label={dayLabel(group.days)}>
-                {group.windows.map((window) => (
-                  <TimePill
-                    key={window.startsAtLocalMinute}
-                    kind="ASTEROID_SHOWER"
-                    startsAtLocalMinute={window.startsAtLocalMinute}
-                    endsAtLocalMinute={window.endsAtLocalMinute}
-                    days={'days' in window ? window.days : undefined}
-                    time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
-                    detail={`×${String(window.effect.asteroidSpawnMultiplier)}`}
-                  />
-                ))}
-              </DayRow>
-            ))}
-          </EventCard>
-
-          <EventCard
-            tone="alloy"
-            icon={<CargoIcon className="size-5" />}
-            title={t('galaxy.eventsGuide.trade.title')}
-            summary={t('galaxy.eventsGuide.trade.summary')}
-            note={t('galaxy.eventsGuide.trade.rate')}
-          >
-            {tradeGroups.map((group) => (
-              <DayRow key={group.days} label={dayLabel(group.days)}>
-                {group.windows.map((window) => (
-                  <TimePill
-                    key={window.startsAtLocalMinute}
-                    kind="TRADE_SHIP"
-                    startsAtLocalMinute={window.startsAtLocalMinute}
-                    endsAtLocalMinute={window.endsAtLocalMinute}
-                    time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
-                  />
-                ))}
-              </DayRow>
-            ))}
-          </EventCard>
-
-          <EventCard
-            tone="threat"
-            icon={<GalaxyIcon className="size-5" />}
-            title={t('galaxy.eventsGuide.convoy.title')}
-            summary={t('galaxy.eventsGuide.convoy.summary')}
-            note={t('galaxy.eventsGuide.convoy.note')}
-          >
-            {convoyGroups.map((group) => (
-              <DayRow key={group.days} label={dayLabel(group.days)}>
-                {group.windows.map((window) => (
-                  <TimePill
-                    key={window.startsAtLocalMinute}
-                    kind="INTERGALACTIC_CONVOY"
-                    startsAtLocalMinute={window.startsAtLocalMinute}
-                    endsAtLocalMinute={window.endsAtLocalMinute}
-                    days={window.days}
-                    time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
-                  />
-                ))}
-              </DayRow>
-            ))}
-          </EventCard>
-        </div>
-
-        <p className="mt-3 text-center text-micro leading-relaxed text-faint">
-          {t('galaxy.eventsGuide.dailyNote')}
+        <p className="gk-guide__intro">
+          <span>{t('galaxy.eventsGuide.intro')}</span>
+          <span className="gk-guide__zone"><Glyph id="clock" />{t('galaxy.eventsGuide.timeZone', { zone: zoneName(timeZone, i18n.language, now) })}</span>
         </p>
+        {shifted ? <p className="gk-note">{t('galaxy.eventsGuide.dayShift')}</p> : null}
+
+        <EventCard
+          tone="crystal"
+          glyph="asteroid"
+          title={t('galaxy.eventsGuide.asteroid.title')}
+          summary={t('galaxy.eventsGuide.asteroid.lead')}
+          rule={t('galaxy.eventsGuide.asteroid.summary', {
+            rate: decimal(ASTEROID_DYNAMIC.perPlayerPerHour, 2),
+            frontMinutes: ASTEROID_SHOWER_FRONT_LOAD.minutes,
+            window: SPAWN_GATE.onlineWindowMinutes,
+          })}
+        >
+          {byDays(asteroids).map((group) => (
+            <DayRow key={group.days} label={dayLabel(group.days)}>
+              {group.windows.map((item) => (
+                <TimePill
+                  key={item.window.startsAtLocalMinute}
+                  time={item.time}
+                  shift={item.shift}
+                  detail={`×${String(item.window.effect.asteroidSpawnMultiplier)}`}
+                />
+              ))}
+            </DayRow>
+          ))}
+        </EventCard>
+
+        <EventCard
+          tone="alloy"
+          glyph="crate"
+          title={t('galaxy.eventsGuide.trade.title')}
+          summary={t('galaxy.eventsGuide.trade.summary')}
+          note={t('galaxy.eventsGuide.trade.rate')}
+        >
+          {byDays(trades).map((group) => (
+            <DayRow key={group.days} label={dayLabel(group.days)}>
+              {group.windows.map((item) => (
+                <TimePill key={item.window.startsAtLocalMinute} time={item.time} shift={item.shift} />
+              ))}
+            </DayRow>
+          ))}
+        </EventCard>
+
+        <EventCard
+          tone="hostile"
+          glyph="rocket"
+          title={t('galaxy.eventsGuide.convoy.title')}
+          summary={t('galaxy.eventsGuide.convoy.summary')}
+          note={t('galaxy.eventsGuide.convoy.note')}
+        >
+          {byDays(convoys).map((group) => (
+            <DayRow key={group.days} label={dayLabel(group.days)}>
+              {group.windows.map((item) => (
+                <TimePill key={item.window.startsAtLocalMinute} time={item.time} shift={item.shift} />
+              ))}
+            </DayRow>
+          ))}
+        </EventCard>
+
+        <SignalRules />
+
+        <p className="gk-note gk-guide__daily">{t('galaxy.eventsGuide.dailyNote')}</p>
       </div>
     </Sheet>
   );
 }
 
+/** The next public event, lit: what it is and how long until it starts. */
 function NextEventSummary({ event }: { event: { kind: GalaxyEventKind; startsAt: Date } | null }) {
   const { t } = useTranslation();
   const now = useNow(30_000);
@@ -237,93 +272,96 @@ function NextEventSummary({ event }: { event: { kind: GalaxyEventKind; startsAt:
   const eventName = t(`galaxy.eventsGuide.event.${event.kind}`);
   const left = duration((event.startsAt.getTime() - now) / MINUTE_MS);
   return (
-    <div
-      role="status"
-      aria-label={t('galaxy.eventsGuide.nextLabel')}
-      className="plate plate-cut mb-3 border border-opportunity/30 bg-opportunity/8 px-3 py-3"
-    >
-      <span className="legend text-opportunity">{t('galaxy.eventsGuide.nextLabel')}</span>
-      <p className="name mt-1 text-bone">
-        {t('galaxy.eventsGuide.nextUpcoming', {
-          event: eventName,
-          duration: left,
-        })}
-      </p>
+    <div role="status" aria-label={t('galaxy.eventsGuide.nextLabel')} className="gk-nextevent">
+      <span className="gk-nextevent__mark" aria-hidden="true"><Glyph id="timed" /></span>
+      <span className="gk-nextevent__words">
+        <span className="gk-nextevent__label">{t('galaxy.eventsGuide.nextLabel')}</span>
+        <span className="gk-nextevent__line">
+          {t('galaxy.eventsGuide.nextUpcoming', { event: eventName, duration: left })}
+        </span>
+      </span>
     </div>
   );
 }
 
+/** The personal signal's rules, one press away under their name. */
+function SignalRules() {
+  const { t } = useTranslation();
+  return (
+    <details className="gk-rules">
+      <summary className="gk-rules__head" {...OWN_SOUND} onClick={() => { playSound('tap'); haptic('tap'); }}>
+        <Glyph id="siren" />
+        <span className="flex-1">{t('unknownSignal.title')}</span>
+        <span className="gk-rules__chev"><Glyph id="down" /></span>
+      </summary>
+      <div className="gk-rules__body">
+        <p>{t('unknownSignal.wiki')}</p>
+        <p>{t('unknownSignal.collector')}</p>
+      </div>
+    </details>
+  );
+}
+
+/** One event as a kit plate: its mark in its colour, its rule, then its windows by kind of day. */
 function EventCard({
   tone,
-  icon,
+  glyph,
   title,
   summary,
+  rule,
   note,
   children,
 }: {
-  tone: 'crystal' | 'alloy' | 'threat';
-  icon: React.ReactNode;
+  tone: 'crystal' | 'alloy' | 'hostile';
+  glyph: GlyphId;
   title: string;
   summary: string;
+  /** The event's arithmetic, behind the summary's ⓘ (E6: the card says what it does in one line). */
+  rule?: string;
   note?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
-  const toneClass = {
-    crystal: 'border-crystal/25 text-crystal',
-    alloy: 'border-alloy/25 text-alloy',
-    threat: 'border-threat/25 text-threat',
-  }[tone];
-
   return (
-    <article className={`plate plate-inset rounded-plate border px-3 py-3 ${toneClass}`}>
-      <div className="flex items-start gap-3">
-        <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-chip border border-current/25 bg-current/5">
-          {icon}
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="name text-bone">{title}</h3>
-          <p className="mt-1 text-caption leading-snug text-dim">{summary}</p>
+    <article className="gk-event" data-tone={tone}>
+      <div className="gk-event__head">
+        <span className="gk-event__bay" aria-hidden="true"><Glyph id={glyph} /></span>
+        <div className="gk-event__words">
+          <h3 className="gk-event__title">{title}</h3>
+          {rule === undefined
+            ? <p className="gk-event__summary">{summary}</p>
+            : <InfoPeek fact={<span className="gk-event__summary">{summary}</span>} rule={<p className="gk-event__summary">{rule}</p>} />}
         </div>
       </div>
-      <div className="mt-3 space-y-1.5">{children}</div>
-      {note === undefined ? null : (
-        <p className="mt-3 border-t border-line-soft pt-2 text-caption leading-snug text-bone">{note}</p>
-      )}
+      <div className="gk-event__days">{children}</div>
+      {note === undefined ? null : <p className="gk-event__note">{note}</p>}
     </article>
   );
 }
 
 /** One kind of day: its name on the left, its windows beside it. */
-function DayRow({ label, children }: { label: string; children: React.ReactNode }) {
+function DayRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div data-event-days className="flex items-center gap-2">
-      <span className="legend w-[62px] shrink-0 text-dim">{label}</span>
-      <div className="flex min-w-0 flex-wrap gap-1.5">{children}</div>
+    <div data-event-days className="gk-event__day">
+      <span data-day-name className="gk-event__dayname">{label}</span>
+      <div className="gk-event__windows">{children}</div>
     </div>
   );
 }
 
-function TimePill({
-  kind,
-  startsAtLocalMinute,
-  endsAtLocalMinute,
-  days,
-  time,
-  detail,
-}: GuideWindow & { time: string; detail?: string }) {
+/** One window on the player's clock; a start that lands on another day than the galaxy's says which. */
+function TimePill({ time, shift, detail }: { time: string; shift: number; detail?: string }) {
   const { t } = useTranslation();
-  const next = nextOccurrence({ kind, startsAtLocalMinute, endsAtLocalMinute, days }, new Date(serverNow()));
-  const local = next === null
-    ? null
-    : `${deviceClock(next.startsAt)}–${deviceClock(next.endsAt)}`;
   return (
-    <span className="plate plate-inset inline-flex flex-col rounded-chip px-2 py-1 text-bone">
-      <span className="num inline-flex items-center gap-1 text-label">
+    <span className="gk-window" {...(shift === 0 ? {} : { 'data-shift': String(shift) })}>
+      <span data-window-time className="gk-window__time gk-num">
         <span>{time}</span>
-        {detail === undefined ? null : <span className="text-crystal">{detail}</span>}
+        {detail === undefined ? null : <span className="gk-window__boost">{detail}</span>}
       </span>
-      {local === null ? null : (
-        <span className="text-micro text-faint">{t('galaxy.eventsGuide.localTime', { time: local })}</span>
+      {shift === 0 ? null : (
+        <span className="gk-window__shift">
+          <span aria-hidden="true">{`${shift > 0 ? '+' : '−'}${String(Math.abs(shift))}`}</span>
+          <span className="sr-only">{t(shift > 0 ? 'galaxy.eventsGuide.nextDay' : 'galaxy.eventsGuide.previousDay')}</span>
+        </span>
       )}
     </span>
   );

@@ -26,14 +26,17 @@ describe('the selected pirate raid', () => {
   it('offers the recall while the raid is still turnable', () => {
     const onRecall = vi.fn();
     render(<ThreadFocus thread={thread()} minutesRemaining={10} onClose={vi.fn()} onToggle={vi.fn()} open onRecall={onRecall} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Recall fleet' }));
+    const hold = screen.getByRole('button', { name: /^recall fleet/i });
+    // a kit hold since G4-h2 (0.6 s): the keyboard's press and release stand in for the finger
+    fireEvent.keyDown(hold, { key: 'Enter' });
+    fireEvent.keyDown(hold, { key: 'Enter' });
     expect(onRecall).toHaveBeenCalledOnce();
     expect(screen.getByText(i18n.t('focus.thread.recallable'))).toBeInTheDocument();
   });
 
   it('says the engagement has begun once it can no longer turn', () => {
     render(<ThreadFocus thread={thread({ recallable: undefined })} minutesRemaining={0} onClose={vi.fn()} onToggle={vi.fn()} open onRecall={vi.fn()} />);
-    expect(screen.queryByRole('button', { name: 'Recall fleet' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^recall fleet/i })).not.toBeInTheDocument();
     expect(screen.getByText(i18n.t('focus.thread.outboundPirate'))).toBeInTheDocument();
     expect(i18n.t('focus.thread.outboundPirate')).not.toMatch(/cannot be recalled/i);
   });
@@ -51,7 +54,7 @@ describe('the words around a pirate raid', () => {
     const noRecall = /cannot be recalled|geri çağrılamaz|nicht zurückgerufen|no se puede (retirar|recuperar|llamar)|ne peut pas être rappel|呼び戻せません/i;
     for (const language of ['en', 'tr', 'de', 'es', 'fr', 'ja']) {
       await i18n.changeLanguage(language);
-      for (const key of ['pirate.outbound', 'launch.warningPirate', 'launch.warningPirateOpen', 'academy.steps.pirate'] as const) {
+      for (const key of ['pirate.outbound', 'launch.pirateRecall', 'launch.awayFor', 'launch.awayOpen', 'academy.steps.pirate'] as const) {
         if (!i18n.exists(key)) continue;
         expect(i18n.t(key, { world: 'Kestrel', duration: '1h' })).not.toMatch(noRecall);
       }

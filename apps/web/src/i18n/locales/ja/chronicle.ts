@@ -18,7 +18,9 @@ export const chronicle = {
   launcherTradeShipEnded: "貿易船が去りました",
   list: "この銀河の公開イベント",
   repeatCount: "{{count}}回",
-  empty: "銀河は今のところ静かです。次の出撃で変わるかもしれません。",
+  /** C10: the kit empty state's title; `empty` is its body. */
+  emptyTitle: "銀河は今のところ静かです",
+  empty: "次の出撃で変わるかもしれません。",
   older: "以前の出来事を表示",
   loadingOlder: "以前の出来事を読み込み中",
   bombardment: "{{planet}}が砲撃を受けました",

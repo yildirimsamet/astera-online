@@ -31,12 +31,16 @@ export const statusBar = {
   menuWaiting: '{{count}} Belohnungen warten',
   clanWaiting: '{{count}} Clan-Updates warten',
   newcomerShield: {
+    name: "Neulingsschutz",
     hint: 'Du bist noch {{duration}} vor Überfällen geschützt',
   },
   recoveryShield: {
+    name: "Schutzschild",
     hint: 'Schutzschild: Noch {{duration}} lang kann dich niemand überfallen',
   },
   recoveryBoost: {
+    name: "Erholungsproduktion",
+    value: "+50 %",
     mark: 'Produktion +50 %',
     note: 'Während des Schutzes produziert deine Welt 50 % mehr',
   },
@@ -49,7 +53,8 @@ export const statusBar = {
     label: 'Produktionslager',
     labelFull: 'Produktionslager voll',
     collect: 'Abholen',
-    firstTip: "Hole Ressourcen aus dem Produktionslager in den Speicher, um sie auszugeben.",
+    inPool: "{{amount}} im Produktionslager",
+    firstTip: "Tippe auf eine Ressource, um sie abzuholen",
     fullStopped: 'Voll — Produktion gestoppt',
     fillsIn: 'voll in {{time}}',
     gathers: 'Die Produktion sammelt sich hier, bis du sie abholst',
@@ -79,7 +84,7 @@ export const pendingStrip = {
    */
   incomingAt: 'Eingehend → {{world}}',
   incomingFromAt: 'Eingehend → {{world}} · von {{origin}}',
-  probe: 'Ihre Sonde → {{target}}',
+  probe: 'Deine Sonde → {{target}}',
   deathStar: 'Dein Todesstern → {{target}}',
   settlement: 'Besiedlung → {{target}}',
   transfer: 'Übertragung → {{target}}',
@@ -97,7 +102,7 @@ export const pendingStrip = {
   intergalacticConvoyOut: 'Angriff → Intergalaktischer Konvoi',
   intergalacticConvoyHome: 'Der Angriff kehrt zurück · Intergalaktischer Konvoi',
   fleetHome: 'Deine Flotte kehrt von {{target}} zurück',
-  fleetOut: 'Ihre Flotte → {{target}}',
+  fleetOut: 'Deine Flotte → {{target}}',
   engaging: 'Im Gefecht',
   more: '+{{count}}',
   drillOut: 'Deine Prospector → Asteroid',
@@ -121,7 +126,7 @@ export const pendingStrip = {
    * "hidden by fog" over a fleet the commander can watch crossing their own circle
    * reads as the interface disagreeing with the picture.
    */
-  incomingVisible: 'Eingehende Warnung · auf Ihren Sensoren – tippen Sie, um nachzuschauen',
+  incomingVisible: 'Warnung im Anflug · auf deinen Sensoren – tippe, um nachzusehen',
   /**
    * THE RADAR LADDER, FINALLY WORTH CLIMBING. D123.
    *
@@ -141,14 +146,17 @@ export const signals = {
   beaconUnread: 'Signale – {{count}} ungelesen',
   title: 'Signale',
   eyebrowUnread: '{{count}} neu',
-  eyebrowRead: 'Alles was Ihnen gesagt wurde',
+  eyebrowRead: 'Alles, was dir gesagt wurde',
   statusHeading: 'Im Moment',
   eventsHeading: 'Was ist passiert?',
   openEvent: 'Zugehöriger Bericht öffnen',
   /** The eyebrow on a galaxy-wide row, so it is never mistaken for personal news. */
   worldEvent: 'Galaxie-Ereignis',
-  empty:
-    "Noch keine Benachrichtigungen. Flottenwarnungen, erkannte Sonden und zurückkehrende Schiffe erscheinen hier.",
+  emptyTitle: "Alles ruhig",
+  emptyBody:
+    "Flottenwarnungen, erkannte Sonden und zurückkehrende Schiffe erscheinen hier.",
+  /** The round press at a row's end that flies to whoever the news names (G1-e). */
+  showOnMap: "Auf der Karte zeigen: {{name}}",
   repeat: '×{{count}}',
 
   /** The states that are true right now, rather than things that happened. */
@@ -156,7 +164,7 @@ export const signals = {
     disruptedLine: 'Deine Werke sind offline',
     disruptedDetail: 'Überfallen. Die Produktion wird in {{duration}} wieder aufgenommen.',
     worksStoppedLine: 'Die Arbeiten wurden eingestellt',
-    worksStoppedDetail: 'Die Arbeiten sind voll. Die Produktion wird bei {{amount}} pro Stunde pausiert, bis Sie die Ware abholen.',
+    worksStoppedDetail: 'Die Werke sind voll. Die Produktion steht bei {{amount}} pro Stunde still, bis du abholst.',
     alloyStoreLine: 'Legierungslager ist voll',
     crystalStoreLine: 'Kristallspeicher ist voll',
     storeDetail: "{{amount}} Ressourcen warten in dem Produktionslager. Gib gelagerte Ressourcen aus oder erhöhe die Kapazität, um Platz zu schaffen.",
@@ -221,9 +229,6 @@ export const menu = {
     settingsHint: "Ton, Grafik und Sprache",
     account: "Kommandantenprofil",
     back: "Zurück zum Menü",
-    resume: "Zurück zum Spiel",
-    shopHint: "Deinen Look finden",
-    inventoryHint: "Sammlung ausrüsten",
     rewardsReady_one: "{{count}} Belohnung bereit",
     rewardsReady_other: "{{count}} Belohnungen bereit",
   },
@@ -248,6 +253,8 @@ export const menu = {
   helpHeading: 'Hilfe',
   deviceHeading: 'Dieses Gerät',
   marksHeading: 'Deine Noten',
+  /** The menu's last group: the Academy, the community, support, settings (G1-f2). */
+  gameHeading: 'Spiel',
   intelLabel: 'Intel',
   intelHint: 'Teleskop, Sonden, Radar und Kampfberichte',
   rewardsLabel: 'Belohnungen',
@@ -285,7 +292,7 @@ export const menu = {
   rivalLostLabel: 'Rivalensignal verloren',
   /** The chip's own face. The sentence above is still its accessible name. */
   rivalLostShort: 'Markierung verloren',
-  rivalLostHint: 'Diese Welt ist verschwunden. Löschen Sie die Markierung.',
+  rivalLostHint: 'Diese Welt ist verschwunden. Entferne die Markierung.',
   rivalCleared: 'Der verlorene Rival-Marker wurde gelöscht.',
   accountHeading: 'Konto',
   soundLabel: 'Musik',
@@ -302,7 +309,7 @@ export const menu = {
    * alone is a number, "3 / 9" is a position — it says how far the arrows reach
    * and that there is something on the other side of them.
    */
-  trackLabel: 'Verfolgen Sie {{index}} / {{total}}',
+  trackLabel: 'Titel {{index}} / {{total}}',
   trackPrev: 'Vorheriger Titel',
   trackNext: 'Nächster Titel',
   trackClock: '{{position}} / {{duration}}',
@@ -408,6 +415,8 @@ export const leaderboard = {
   honorPackageOnce: "Wenn beide Ranglisten Ressourcen vergeben, erhältst du das wertvollere Paket einmal in der nächsten Saison.",
   honorNext: "Noch {{amount}} Honor bis zum Gleichstand mit {{commander}}.",
   honorYourRank: "Dein Platz",
+  view: { label: 'Ansicht der Rangliste', standings: 'Rangliste', rewards: 'Belohnungen', rules: 'Regeln' },
+  ruleTitle: { combat: 'Honor verdienen', bands: 'Flottenverhältnis', defense: 'Verteidigung', repeat: 'Wiederholung und Schikane', prize: 'Preise teilen', package: 'Ein Paket' },
   eyebrow: 'Die lokale Galaxie',
   title: 'Bestenliste',
   empty: 'Bisher sind noch keine Kommandeure dieser Galaxie beigetreten.',
@@ -418,7 +427,7 @@ export const leaderboard = {
   searchLabel: 'Suche nach Kommandanten, Planeten oder Clans',
   searchPlaceholder: 'Kommandant, Planet oder Clan',
   noMatch: 'Kein Kommandant, Planet oder Clan entspricht dieser Suche.',
-  locationUnknown: "Sie haben den Standort dieses Kommandanten noch nicht ermittelt.",
+  locationUnknown: "Du hast den Standort dieses Kommandanten noch nicht entdeckt.",
   /*
     THE IN-SEASON PRIZE — the answer to "what am I playing for".
     It sits directly above the standings, because that is where the decision is.
@@ -434,14 +443,14 @@ export const leaderboard = {
     table: 'Preis nach Ort',
     tableCount: 'Top {{places}} Orte · zur Inspektion geöffnet',
     place: 'Rang {{place}}',
-    holding: 'Rang {{place}} · Sie gewinnen hier',
-    paidWhen: 'Es landet in dem Moment, in dem Sie Ihre Welt in der neuen Saison gefunden haben.',
+    holding: 'Rang {{place}} · du gewinnst das gerade',
+    paidWhen: 'Die Belohnung landet in dem Moment, in dem du deine Welt in der neuen Saison gründest.',
     standing: 'Rang {{place}}',
     behind: '{{score}} mehr Dominion, um die Spitze zu erreichen {{places}}.',
     minimum: '{{score}} mehr Dominion für einen Preis erforderlich.',
     botIneligible: "Du kannst in dieser Saison keinen Saisonpreis erhalten.",
     climb: 'Erreiche die Spitze {{places}} und nimm es.',
-    unranked: 'Treten Sie dieser Galaxie bei, um an der Rangliste teilzunehmen.',
+    unranked: 'Tritt dieser Galaxie bei, um in die Rangliste zu kommen.',
   },
   archive: {
     selectorLabel: 'Saisonrekorde',
@@ -455,18 +464,18 @@ export const leaderboard = {
     percentile: 'Top {{share}} % · {{rank}} der {{commanders}} Kommandeure',
     fieldSize: '{{count}} Kommandeure',
     medals: 'Trophäen',
-    signature: 'Ihr Signaturschiff',
+    signature: 'Dein Signaturschiff',
     leadWorks: 'Produktion',
     leadProduced: 'Gesamtproduktion',
     leadRuns: 'von {{count}} Asteroidenläufen',
-    signatureCount: 'Sie haben {{count}} erstellt',
+    signatureCount: 'Du hast {{count}} gebaut',
     multiple: '×{{value}}',
     share: '{{value}}%',
     loadingOlder: 'Ältere Staffeln werden geladen',
     completedBoard: 'Saison-Rangliste abgeschlossen',
     waitingBoard: 'Öffnen der fertigen Bestenliste',
     emptyBoard: 'Für diese Galaxie wurden keine Commander-Ergebnisse aufgezeichnet.',
-    searchLabel: 'Durchsuchen Sie die abgeschlossene Staffel nach Kommandant',
+    searchLabel: 'Durchsuche die abgeschlossene Saison nach Kommandant',
     searchPlaceholder: 'Kommandant',
     noMatch: 'Kein Kommandant entspricht dieser Suche.',
     galaxyRecord: {
@@ -491,7 +500,7 @@ export const leaderboard = {
     /** The three-column breakdown truncates; the long sentence is said once above. */
     averageShort: 'Andere: {{value}}',
     statsUnavailable: 'Für diese Saison wurden keine detaillierten Aufzeichnungen geführt.',
-    statsUnavailableHint: 'Ihr Rang und Titel bleiben erhalten. Was nie gemessen wurde, wird nicht als Null angezeigt.',
+    statsUnavailableHint: 'Dein Rang und Titel bleiben erhalten. Was nie gemessen wurde, wird nicht als Null angezeigt.',
     legacyStats: {
       title: 'Konservierter Saisonrekord',
       hint: 'Aufgezeichnete Kampffiguren werden angezeigt. Wirtschaftlichkeit, Flottenproduktion und Exploration wurden nicht gemessen und werden weggelassen.',
@@ -571,13 +580,14 @@ export const chat = {
   launcherBothUnread: 'Chat öffnen – {{general}} ungelesen in Allgemein, {{clan}} im Clan',
   channelsLabel: 'Chat-Kanäle',
   languageLabel: 'Chatsprache',
+  languageChip: "Chatsprache: {{language}}",
   general: 'Allgemein',
   clan: 'Clan',
   dm: {
     title: 'DM', loading: 'Direktnachrichten werden geöffnet', conversations: 'Direktnachrichten',
     start: 'Neue Direktnachricht', closeTab: 'Tab {{name}} schließen', searchLabel: 'Kommandanten suchen',
     searchPlaceholder: 'Kommandanten suchen', cancel: 'Abbrechen', contacts: 'Kommandanten',
-    noContacts: 'Kein verfügbarer Kommandant gefunden.', empty: 'Wähle einen Kommandanten für ein privates Gespräch.',
+    noContacts: 'Kein verfügbarer Kommandant gefunden.', emptyTitle: 'Noch keine privaten Nachrichten', empty: 'Wähle einen Kommandanten für ein privates Gespräch.',
     emptyConversation: 'Sag {{name}} Hallo.', list: 'Nachrichten mit {{name}}',
     placeholder: 'Nachricht an {{name}}', waitingHint: 'Dieser Kommandant ist in Silent Space. Nach der Rückkehr könnt ihr weiterschreiben.',
     seasonEndedHint: 'Diese Saison ist beendet. Direktnachrichten beginnen in der nächsten Saison neu.',
@@ -588,16 +598,18 @@ export const chat = {
   clanLocked: 'Der Clan-Chat ist für eine Crew privat.',
   clanLockedHint: 'Tritt einem Clan bei oder gründe einen, dann öffnet sich dieser Kanal sofort.',
   list: 'Nachrichten der Galaxie',
-  empty: 'Hier hat noch niemand etwas geschrieben. Sei die erste Stimme in der Galaxie.',
+  emptyTitle: "Hier hat noch niemand geschrieben",
+  emptyBody: "Sei die erste Stimme in der Galaxie.",
   older: 'Ältere Nachrichten laden',
   loadingOlder: 'Ältere Nachrichten werden geladen',
   placeholder: 'Nachricht an die Galaxie',
   send: 'Senden',
   messageActions: 'Aktionen für Nachricht von {{name}}',
   personalMutes: {
-    title: "Stummgeschaltete Spieler",
+    title: "Stummgeschaltet",
     hint: "Blendet ihre Nachrichten im allgemeinen und im Clan-Chat auf diesem Gerät aus.",
     empty: "Keine stummgeschalteten Spieler.",
+    emptyHint: "Halte eine Nachricht gedrückt, um jemanden stummzuschalten.",
     mute: "{{name}} stummschalten",
     unmute: "Stummschaltung von {{name}} aufheben",
     unmuteShort: "Aufheben",
@@ -658,6 +670,9 @@ export const chat = {
  * pasted into a message to the person who will fix it. See `shell/crashReport.ts`.
  */
 export const crash = {
+  /** A sheet whose body threw (ek-3): the game keeps running behind it. */
+  panelTitle: 'Dieses Fenster ließ sich nicht öffnen.',
+  retry: 'Erneut versuchen',
   title: "Die Spieloberfläche funktioniert nicht mehr",
   body: "Lade die Seite neu. Die letzte Aktion ist möglicherweise unbestätigt; prüfe danach den aktuellen Stand.",
   reload: 'Neu laden',
@@ -665,6 +680,6 @@ export const crash = {
   detailHide: 'Details ausblenden',
   /** What the developer needs, in the one gesture a phone can make. */
   copy: 'Bericht kopieren',
-  copied: 'Kopiert – senden Sie es uns',
-  copyFailed: 'Konnte nicht kopiert werden. Machen Sie stattdessen einen Screenshot des Details.',
+  copied: 'Kopiert – schick es uns',
+  copyFailed: 'Kopieren hat nicht geklappt. Mach stattdessen einen Screenshot der Details.',
 } as const;

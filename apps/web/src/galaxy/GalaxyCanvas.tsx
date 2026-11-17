@@ -96,6 +96,7 @@ import { AimMark, RendezvousMarks } from './Rendezvous.jsx';
 import { OwnFleets, Traffic, ownFlightFocusRadius, contactFocusRadius } from './Fleets.jsx';
 import { threadKey } from './threadKey.js';
 import { DeathStarImpacts } from './DeathStarImpact.jsx';
+import { HomeBeacon } from './HomeBeacon.js';
 import {
   StrategicInterceptions,
   strategicInterceptionMissilePosition,
@@ -1115,6 +1116,8 @@ export function GalaxyCanvas({
 
       {universe?.open && <UniverseBalls balls={balls} main={toWorld(mainOffset ?? NO_OFFSET)} mineIsMain={universeView?.mine === null} />}
       <DevBridge />
+      {/* Every press of the home button lights this over the home world (owner review 2026-11-16). */}
+      <HomeBeacon at={home} signal={homeSignal} />
       {openingHome && <Html position={home} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
         <span ref={openingMark} data-academy-home data-academy-home-ready="false" className="pointer-events-none block size-px" />
       </Html>}

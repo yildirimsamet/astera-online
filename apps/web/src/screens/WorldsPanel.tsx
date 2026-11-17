@@ -1,49 +1,25 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fleetCount } from '@astera/rules';
 import type { PlanetView } from '../api/schemas.js';
 import { compact } from '../lib/format.js';
-import { Tally } from '../ui/Tally.js';
-import { RESOURCE_ART } from '../ui/assets.js';
-import { Chip, Meter, Sheet } from '../ui/kit/index.js';
+import { GameButton, Glyph, RoundButton, SectionTag, StoreGauge } from '../game-ui/index.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
+import { Cells, type Cell } from '../ui/ArmCard.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
+import { Sheet } from '../v2/kit/Sheet.js';
 
-/**
- * THE THREE STORES, IN ONE ORDER, READ OFF THE VIEW RATHER THAN RETYPED.
- *
- * Declared once so a row's three meters cannot drift apart and a fourth resource
- * cannot be added to the header without this list refusing to compile.
- */
-const RESOURCES = [
-  {
-    tone: 'alloy',
-    held: (world: PlanetView) => world.planet.alloy,
-    cap: (world: PlanetView) => world.planet.alloyCap,
-  },
-  {
-    tone: 'crystal',
-    held: (world: PlanetView) => world.planet.crystal,
-    cap: (world: PlanetView) => world.planet.crystalCap,
-  },
-  {
-    tone: 'deuterium',
-    held: (world: PlanetView) => world.planet.deuterium,
-    cap: (world: PlanetView) => world.planet.deuteriumCap,
-  },
-] as const satisfies readonly {
-  tone: 'alloy' | 'crystal' | 'deuterium';
-  held: (world: PlanetView) => number;
-  cap: (world: PlanetView) => number;
-}[];
+const RESOURCES = ['alloy', 'crystal', 'deuterium'] as const;
 
-/**
- * Written out rather than interpolated. Tailwind scans source text for class
- * names, so `text-${tone}` produces a class that is never generated and a figure
- * that renders with no colour at all.
- */
-const INK: Record<'alloy' | 'crystal' | 'deuterium', string> = {
-  alloy: 'text-alloy',
-  crystal: 'text-crystal',
-  deuterium: 'text-deuterium',
+/** A store as the Base's gauge reads it: what it holds, of what, the Vault's safe part, the rate. */
+const store = (world: PlanetView, resource: (typeof RESOURCES)[number]) => {
+  const p = world.planet;
+  return resource === 'alloy'
+    ? { held: p.alloy, cap: p.alloyCap, safe: p.vaultProtected.alloy, rate: p.alloyPerHour }
+    : resource === 'crystal'
+      ? { held: p.crystal, cap: p.crystalCap, safe: p.vaultProtected.crystal, rate: p.crystalPerHour }
+      : { held: p.deuterium, cap: p.deuteriumCap, safe: p.vaultProtected.deuterium, rate: p.deuteriumPerHour ?? 0 };
 };
 
 /**
@@ -64,7 +40,10 @@ const INK: Record<'alloy' | 'crystal' | 'deuterium', string> = {
  * Aktarım", the easy transfer) was the thing being contradicted.
  *
  * Two dropdowns and one button: both ends visible at once, the arrow between them
- * doing the explaining, and exactly one control that commits. A destination that
+ * doing the explaining, and exactly one control that commits. On the kit (G2-j) each
+ * end is a plate that drops a list of the worlds — never the browser's `<select>` — and
+ * the arrow between them turns the route around. The press only OPENS the transfer;
+ * what it carries is decided, and committed, on the transfer sheet. A destination that
  * cannot be committed is not offered — the target list is every world except the
  * source, because the server refuses `SELF_TRANSFER` and an option that always
  * fails is a rule the interface is teaching wrongly.
@@ -104,6 +83,8 @@ export function WorldsPanel({
    */
   const [sourceId, setSourceId] = useState<string | null>(activePlanetId);
   const [targetId, setTargetId] = useState<string | null>(null);
+  const [dropped, setDropped] = useState<'from' | 'to' | null>(null);
+  const listId = useId();
   const canTransfer = worlds.length > 1;
   const source = worlds.some((world) => world.planet.id === sourceId)
     ? sourceId
@@ -122,154 +103,215 @@ export function WorldsPanel({
   const target = targets.some((world) => world.planet.id === targetId)
     ? targetId
     : targets[0]?.planet.id ?? null;
+  const named = (id: string): PlanetView | undefined => worlds.find((world) => world.planet.id === id);
+  const kind = (id: string): string => t(id === capitalPlanetId ? 'worlds.kindCapital' : 'worlds.kindColony');
 
   return (
-    <Sheet eyebrow={t('worlds.eyebrow')} title={t('worlds.title')} onClose={onClose}>
-      {canTransfer && source !== null && target !== null && (
-        <section className="plate mb-3 px-3 py-3">
-          <h2 className="legend mb-2">{t('worlds.sendTitle')}</h2>
-          {/*
-            ONE LINE, TWO ENDS, AN ARROW BETWEEN THEM. At 350px two selects and a
-            glyph fit across the sheet with room to spare, and the arrow is the
-            whole explanation — a labelled pair stacked in a column would spend
-            four rows saying what one row draws.
-          */}
-          <div className="flex items-center gap-2">
-            <label className="min-w-0 flex-1">
-              <span className="sr-only">{t('worlds.sendFrom')}</span>
-              <select
-                aria-label={t('worlds.sendFrom')}
-                value={source}
-                onChange={(event) => { setSourceId(event.currentTarget.value); }}
-                className="field min-h-9 w-full py-1"
-              >
-                {worlds.map((world) => (
-                  <option key={world.planet.id} value={world.planet.id}>
-                    {world.planet.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <span aria-hidden className="shrink-0 text-dim">→</span>
-            <label className="min-w-0 flex-1">
-              <span className="sr-only">{t('worlds.sendTo')}</span>
-              <select
-                aria-label={t('worlds.sendTo')}
-                value={target}
-                onChange={(event) => { setTargetId(event.currentTarget.value); }}
-                className="field min-h-9 w-full py-1"
-              >
-                {targets.map((world) => (
-                  <option key={world.planet.id} value={world.planet.id}>
-                    {world.planet.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <button
-            type="button"
-            className="slab slab-primary mt-2 w-full max-h-10 min-h-10"
-            onClick={() => { onTransfer(source, target); }}
-          >
-            {t('worlds.send')}
-          </button>
-        </section>
-      )}
-
-      <ul aria-label={t('worlds.list')} className="mt-2 flex flex-col gap-2">
-        {worlds.map((world) => {
-          const id = world.planet.id;
-          const standing = fleetCount(world.fleet) + fleetCount(world.ground);
-          return (
-            <li key={id} className="plate flex items-center gap-2 px-3 py-3">
-              <button
-                type="button"
-                onClick={() => {
-                  onSelect(id);
-                  onClose();
+    <Sheet kit={{ tone: 'self' }} eyebrow={t('worlds.eyebrow')} title={t('worlds.title')} onClose={onClose}>
+      <div className="gk gk-worlds">
+        {canTransfer && source !== null && target !== null && (
+          <section aria-label={t('worlds.sendTitle')} className="gk-route gk-well">
+            <SectionTag>{t('worlds.sendTitle')}</SectionTag>
+            {/*
+              ONE LINE, TWO ENDS, THE TURN BETWEEN THEM. At 350px two plates and a round
+              button fit across the sheet, and the arrow is the whole explanation.
+            */}
+            <div className="gk-route__line">
+              <RouteEnd
+                label={t('worlds.sendFrom')}
+                name={named(source)?.planet.name ?? ''}
+                capital={source === capitalPlanetId}
+                open={dropped === 'from'}
+                controls={listId}
+                onToggle={() => { setDropped(dropped === 'from' ? null : 'from'); }}
+              />
+              <RoundButton
+                small
+                face="⇄"
+                label={t('worlds.swap')}
+                onPress={() => {
+                  setSourceId(target);
+                  setTargetId(source);
+                  setDropped(null);
                 }}
-                className="min-w-0 flex-1 text-left"
-              >
-                <span className="flex flex-wrap items-center gap-2">
-                  {/* `.name` already sets the size and the ink — see the token block in styles.css. */}
-                  <span className="name">{world.planet.name}</span>
-                  <Chip tone={id === capitalPlanetId ? 'alloy' : 'neutral'}>
-                    {t(id === capitalPlanetId ? 'worlds.kindCapital' : 'worlds.kindColony')}
-                  </Chip>
-                  {id === activePlanetId && (
-                    <Chip tone="crystal">{t('worlds.active')}</Chip>
-                  )}
-                </span>
-                {/*
-                  "WHICH OF MINE HAS THE ALLOY" — ANSWERED BY EYE. Owner
-                  instruction, and this panel's own stated reason for existing.
-
-                  It answered it with three bare figures per row, so a commander
-                  with three worlds had nine numbers to compare across rows to
-                  find one thing. A store is a quantity against a CEILING, which
-                  is the meter the header has drawn since the first session, and
-                  three meters stacked in a column compare down the list without
-                  a digit being read: the longest bar is the world with the alloy,
-                  and a bar that has closed is a world losing production.
-
-                  The figures stay beside their own meter, small, for the moment a
-                  player wants to check rather than scan.
-                */}
-                <span className="mt-2 flex flex-col gap-1.5">
-                  {RESOURCES.map(({ tone, held, cap }) => (
-                    <span key={tone} className="flex items-center gap-2">
-                      <img
-                        src={RESOURCE_ART[tone]}
-                        alt=""
-                        aria-hidden
-                        className="size-3.5 shrink-0 object-contain"
-                      />
-                      <span className="min-w-0 flex-1">
-                        <Meter
-                          value={held(world)}
-                          cap={cap(world)}
-                          tone={tone}
-                          cells={10}
-                          label={t('worlds.store', {
-                            resource: t(`worlds.${tone}`),
-                            amount: compact(held(world)),
-                            cap: compact(cap(world)),
-                          })}
-                        />
-                      </span>
-                      <span className={`num w-12 shrink-0 text-right text-micro ${INK[tone]}`}>
-                        {compact(held(world))}
-                      </span>
-                    </span>
-                  ))}
-                </span>
-                <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption">
-                  <span className="text-dim">{t('worlds.craft', { count: standing })}</span>
-                  {/*
-                    THE BAYS ARE A RACK, and the same rack the header draws. "1 / 3"
-                    was the one figure on this row a player reads to decide whether
-                    they can launch at all, and three marks answer it without being
-                    parsed.
-                  */}
-                  <span className="ml-auto flex items-center gap-2">
-                    <span className="legend">{t('worlds.bays')}</span>
-                    <Tally
-                      used={world.flight.used}
-                      total={world.flight.total}
-                      size="sm"
-                      label={t('worlds.baysReading', {
-                        used: world.flight.used,
-                        total: world.flight.total,
-                      })}
+              />
+              <RouteEnd
+                label={t('worlds.sendTo')}
+                name={named(target)?.planet.name ?? ''}
+                capital={target === capitalPlanetId}
+                open={dropped === 'to'}
+                controls={listId}
+                onToggle={() => { setDropped(dropped === 'to' ? null : 'to'); }}
+              />
+            </div>
+            {dropped !== null && (
+              <div id={listId} role="listbox" aria-label={dropped === 'from' ? t('worlds.sendFrom') : t('worlds.sendTo')} className="gk-route__list gk-cut">
+                {(dropped === 'from' ? worlds : targets).map((world) => {
+                  const id = world.planet.id;
+                  return (
+                    <RoutePick
+                      key={id}
+                      id={id}
+                      name={world.planet.name}
+                      kind={kind(id)}
+                      capital={id === capitalPlanetId}
+                      chosen={id === (dropped === 'from' ? source : target)}
+                      onPick={() => {
+                        if (dropped === 'from') setSourceId(id);
+                        else setTargetId(id);
+                        setDropped(null);
+                      }}
                     />
-                  </span>
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+                  );
+                })}
+              </div>
+            )}
+            <GameButton tone="action" wide glyph="next" onPress={() => { onTransfer(source, target); }}>
+              {t('worlds.send')}
+            </GameButton>
+          </section>
+        )}
+
+        <ul aria-label={t('worlds.list')} className="gk-worlds__list">
+          {worlds.map((world) => (
+            <WorldCard
+              key={world.planet.id}
+              world={world}
+              kind={kind(world.planet.id)}
+              capital={world.planet.id === capitalPlanetId}
+              active={world.planet.id === activePlanetId}
+              onGo={() => {
+                onSelect(world.planet.id);
+                onClose();
+              }}
+            />
+          ))}
+        </ul>
+      </div>
     </Sheet>
+  );
+}
+
+/** One end of the route: which end, the world on it, and the mark that it drops a list. */
+function RouteEnd({ label, name, capital, open, controls, onToggle }: {
+  label: string;
+  name: string;
+  capital: boolean;
+  open: boolean;
+  controls: string;
+  onToggle: () => void;
+}) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onToggle(); });
+  return (
+    <button
+      type="button"
+      {...OWN_SOUND}
+      aria-label={`${label}: ${name}`}
+      aria-haspopup="listbox"
+      aria-expanded={open}
+      {...(open ? { 'aria-controls': controls } : {})}
+      className="gk-route__end"
+      onPointerDown={own.onPointerDown}
+      onClick={own.onClick}
+    >
+      <span className="gk-route__label"><span className="gk-label">{label}</span><Glyph id="down" /></span>
+      <span className="gk-route__world">
+        <span className="gk-route__coin" data-capital={capital ? '' : undefined} aria-hidden="true"><Glyph id={capital ? 'home' : 'colony'} /></span>
+        <span className="gk-route__name">{name}</span>
+      </span>
+    </button>
+  );
+}
+
+/** A world in a route end's list: its name and kind, the chosen one ticked. */
+function RoutePick({ id, name, kind, capital, chosen, onPick }: {
+  id: string;
+  name: string;
+  kind: string;
+  capital: boolean;
+  chosen: boolean;
+  onPick: () => void;
+}) {
+  const own = useOwnPress(() => { playSound('tab'); haptic('tap'); onPick(); });
+  return (
+    <button
+      type="button"
+      role="option"
+      aria-selected={chosen}
+      data-world={id}
+      {...OWN_SOUND}
+      className="gk-route__pick"
+      onPointerDown={own.onPointerDown}
+      onClick={own.onClick}
+    >
+      <span className="gk-route__coin" data-capital={capital ? '' : undefined} aria-hidden="true"><Glyph id={capital ? 'home' : 'colony'} /></span>
+      <span className="gk-route__name">{name}</span>
+      <span className="gk-sub">{kind}</span>
+      {chosen && <Glyph id="check" />}
+    </button>
+  );
+}
+
+/**
+ * A WORLD, AS A CARD THAT GOES THERE. Its name and kind, the three stores as the Base's own
+ * gauges — the longest bar is the world with the alloy, a closed one a world losing production
+ * — what stands there, and the flight bays as cells: lit are free to launch.
+ */
+function WorldCard({ world, kind, capital, active, onGo }: {
+  world: PlanetView;
+  kind: string;
+  capital: boolean;
+  active: boolean;
+  onGo: () => void;
+}) {
+  const { t } = useTranslation();
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onGo(); });
+  const standing = fleetCount(world.fleet) + fleetCount(world.ground);
+  const { used, total } = world.flight;
+  const bays: Cell[] = Array.from({ length: total }, (_unused, index): Cell => (index < total - used ? 'ready' : 'flight'));
+  return (
+    <li>
+      <button
+        type="button"
+        {...OWN_SOUND}
+        className="gk-wcard"
+        {...(active ? { 'data-active': '' } : {})}
+        onPointerDown={own.onPointerDown}
+        onClick={own.onClick}
+      >
+        <span className="gk-wcard__head">
+          <span className="gk-wcard__name">{world.planet.name}</span>
+          <span className="gk-chip" {...(capital ? { 'data-tone': 'gold' } : {})}>
+            <Glyph id={capital ? 'home' : 'colony'} />
+            {kind}
+          </span>
+          {active && <span className="gk-chip" data-on="">{t('worlds.active')}</span>}
+          <span className="gk-wcard__go" aria-hidden="true"><Glyph id="next" /></span>
+        </span>
+        <span className="gk-stores">
+          {RESOURCES.map((resource) => {
+            const { held, cap, safe, rate } = store(world, resource);
+            return (
+              <StoreGauge
+                key={resource}
+                resource={resource}
+                held={held}
+                cap={cap}
+                safe={safe}
+                rate={rate}
+                label={t('worlds.store', { resource: t(`worlds.${resource}`), amount: compact(held), cap: compact(cap) })}
+              />
+            );
+          })}
+        </span>
+        <span className="gk-wcard__foot">
+          <span className="gk-sub gk-num">{t('worlds.craft', { count: standing })}</span>
+          <span className="gk-wcard__bays">
+            <span className="gk-label">{t('worlds.bays')}</span>
+            <Cells cells={bays} label={t('worlds.baysReading', { used, total })} />
+          </span>
+        </span>
+      </button>
+    </li>
   );
 }

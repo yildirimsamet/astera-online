@@ -5,6 +5,7 @@ import type { BuildOrderView } from '../../api/schemas.js';
 import i18n from '../../i18n/index.js';
 import { buildOrderArt, buildOrderLabel, orderProgress, orderWaiting } from '../../lib/orders.js';
 import { countdown } from '../../lib/time.js';
+import type { SlotState } from '../../game-ui/index.js';
 import { Icon } from '../icons.js';
 
 /** Time until an order is done — or, behind the head, that it waits; or why it has no clock yet. */
@@ -14,6 +15,13 @@ export function orderLeft(order: BuildOrderView, now: number): string {
   if (order.finishesAt) return countdown(order.finishesAt.getTime() - now);
   return i18n.t('optimistic' in order ? 'planet.queue.committing' : 'planet.queue.staged');
 }
+
+/** Where an order stands, for its slot: a vacation stops it, only the head runs. */
+export const slotState = (order: BuildOrderView, now: number): SlotState => {
+  if ('pausedAt' in order && order.pausedAt) return 'paused';
+  if (orderWaiting(order, now)) return 'waiting';
+  return order.finishesAt ? 'running' : 'staged';
+};
 
 /**
  * `orderLeft` drawn: an order behind the head wears a yellow hourglass and "Queued"

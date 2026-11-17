@@ -38,8 +38,6 @@ export const vacation = {
   "end": "Tatili bitir",
   "endTitle": "Gezegenlerine dönmek istiyor musun?",
   "endBody": "Bütün gezegenlerinin koruması hemen kalkar. Üretim ve duraklatılan kuyruklar devam eder. Kalan sürenin ücreti iade edilmez.",
-  "endConfirm": "Tatili bitir",
-  "back": "Tatilde kal",
   "until": "Koruma bitişi: {{time}}",
   "paused": "Duraklatıldı — tatil modu",
   "loading": "Tatil bilgileri yükleniyor…",

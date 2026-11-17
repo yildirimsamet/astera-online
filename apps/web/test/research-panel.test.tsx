@@ -49,6 +49,7 @@ it('offers Ship Shields with its cumulative gain, radiation bypass and four-leve
   expect(card).toHaveTextContent('25%');
   const sheet = await open(view, 'SHIP_SHIELDS');
   expect(sheet).toHaveTextContent(/100%/);
+  fireEvent.click(within(sheet).getByRole('button', { name: /how it works/i }));
   expect(sheet).toHaveTextContent(/radiation.*hull/i);
   expect(sheet).toHaveTextContent(/do not recharge during battle/i);
 });
@@ -182,9 +183,7 @@ const reason = (view: View, id: ResearchProjectId): string =>
 
 /** Open one project's sheet — the card is the decision, the sheet the whole picture. */
 const open = async (view: View, id: ResearchProjectId): Promise<HTMLElement> => {
-  const opener = pick(view, id).querySelector<HTMLElement>('[data-open-item]');
-  expect(opener, `${id} does not open`).not.toBeNull();
-  await userEvent.click(opener!);
+  await userEvent.click(within(pick(view, id)).getByRole('button', { name: /^details$/i }));
   const sheet = view.baseElement.querySelector<HTMLElement>('[data-item-sheet]');
   expect(sheet, `${id} opened no sheet`).not.toBeNull();
   return sheet!;
@@ -285,6 +284,7 @@ describe('every project is reachable', () => {
     for (const id of ALL) {
       const view = show();
       const sheet = await open(view, id);
+      fireEvent.click(within(sheet).getByRole('button', { name: /how it works/i }));
       const detail = sheet.querySelector<HTMLElement>('[data-item-detail]')?.textContent.trim();
       expect(detail?.length, id).toBeGreaterThan(60);
       explanations.add(detail ?? '');
@@ -781,7 +781,7 @@ describe('the commander research queue', () => {
         researchOrder('YARD_AUTOMATION', new Date('2026-08-28T11:30:00.000Z')),
       ],
     });
-    expect(view.getByText(/Construction and Yard.*keep running separately/i))
+    expect(view.getByText(/Building and Yard run apart/i))
       .toBeInTheDocument();
   });
 
@@ -1049,14 +1049,14 @@ describe('the sheet portrait', () => {
   it('draws the rung held on a ladder', async () => {
     const view = show({ research: allOpen({ CARGO_HOLDS: { level: 2 } }) });
     const sheet = await open(view, 'CARGO_HOLDS');
-    expect(sheet.querySelector('.item-portrait-index')?.textContent).toBe('02');
+    expect(sheet.querySelector('.gk-rhero__index')?.textContent).toBe('02');
   });
 
   /** A permission has no rung to report, so it shows no index. */
   it('draws no rung on a permission', async () => {
     const view = show({ research: allOpen({ GRAVITIC_CHARGES: { level: 1, completed: true } }) });
     const sheet = await open(view, 'GRAVITIC_CHARGES');
-    expect(sheet.querySelector('.item-portrait-index')).toBeNull();
+    expect(sheet.querySelector('.gk-rhero__index')).toBeNull();
   });
 });
 

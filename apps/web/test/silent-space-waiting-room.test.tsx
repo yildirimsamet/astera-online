@@ -160,7 +160,7 @@ describe('an outage inside Silent Space', () => {
       </QueryClientProvider>
     );
     render(<Wrapper><FaultSheet fault={fault} planet={{ ...world, silentSpace: true, faults: [fault] }} onClose={vi.fn()} /></Wrapper>);
-    expect(screen.getByText(i18n.t('faults.toll.alloy', { amount: full(500) }))).toBeInTheDocument();
+    expect(document.querySelector('[data-fault-toll]')?.textContent).toContain(i18n.t('faults.toll.rate', { amount: full(500) }));
   });
 });
 

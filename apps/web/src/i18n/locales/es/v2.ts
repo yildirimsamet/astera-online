@@ -13,6 +13,7 @@ export const hold = {
 export const lane = {
   /** Un hueco vacío en la cola. */
   free: '+ Hueco libre',
+  paused: 'Pausa',
 };
 
 /** B1: un medidor de recurso en la barra superior. */
@@ -70,6 +71,8 @@ export const now = {
   label: 'Temporizador más urgente',
   /** The sheet one tap under it: every timer. */
   sheet: 'Temporizadores',
+  /** Under the sheet's name: the order the timers are listed in (G1-c). */
+  order: 'Primero los enemigos, luego lo más próximo',
   work: 'Obra a punto de terminar',
   research: 'Investigación a punto de terminar',
   /** An order behind the head of its lane: no clock yet (2026-10-06). */
@@ -109,6 +112,8 @@ export const topBar = {
 
 /** El chip Vista: capas, guía de eventos y la leyenda de la galaxia. */
 export const view = {
+  /** H1 (2026-11-16): the round keys under the finds on the galaxy's right. */
+  tools: 'Herramientas de la galaxia',
   chip: 'Vista',
   title: 'Vista',
   layers: 'Capas',
@@ -119,6 +124,7 @@ export const view = {
   events: 'Guía de eventos galácticos',
   /** The round button under the View chip: the disc's old Home mark. */
   home: 'Volar a tu mundo',
+  youAreHere: 'Estás aquí',
 };
 
 /** B3: el espacio de contexto, una tarjeta cada vez. */
@@ -143,7 +149,7 @@ export const fleetPage = {
   hangar: "Hangar",
   pace: "velocidad {{pct}} %",
   recall: "Recuperar",
-  recallHome: "Si la llamas, en casa en {{time}}",
+  recallHome: "En casa en {{time}}",
   recalling: "Volviendo…",
   emptyAir: "Nada en vuelo. Toca un mundo, una roca o un pirata en la galaxia para enviar naves.",
   focusWorld: "Mostrar {{world}} en la galaxia",
@@ -153,6 +159,7 @@ export const fleetPage = {
   noShips: "No hay naves en casa",
   capital: "Capital",
   colony: "Colonia",
+  roomFact: "Un hangar lleno detiene el astillero.",
   roomRule: "Espacio para cada nave de un mundo: en casa, fuera y en el astillero. Un Hangar lleno detiene el astillero y los traslados entrantes; una flota recuperada siempre cabe.",
   ground: "Defensa terrestre",
   ceiling: "hasta {{shown}} con este Núcleo",
@@ -170,6 +177,8 @@ export const reportScene = {
   rounds_one: "{{count}} ronda",
   rounds_other: "{{count}} rondas",
   you: "Tú",
+  /** C16a: who stood on a neutral world, as the scene names a side. */
+  neutralSide: "Guarnición neutral",
   destroyed: "{{count}} destruidos",
   hidden: "Lo que les queda y el resto del campo siguen ocultos; un informe solo dice lo que destruiste.",
   whyDecisive: "De dónde vienen las pérdidas",
@@ -196,8 +205,9 @@ export const reportScene = {
 /** K6: the switch at the top of the Base — this world, or the commander's research. */
 export const baseSwitch = {
   label: 'Base',
-  world: 'Este mundo',
+  world: 'Planeta',
   research: 'Investigación',
+  ship: 'Nave',
 } as const;
 
 /** E8 · K9: the research constellation. */
@@ -221,7 +231,6 @@ export const roomBar = {
   free: 'libre {{value}}',
   reading: '{{label}}: {{used}} de {{total}} ocupado',
   returnFits: 'Una flota que vuelve siempre cabe: las naves fuera conservan su espacio.',
-  nextHangar: 'El hangar {{level}} lo lleva de {{from}} → {{to}}.',
   gunsStay: 'Los cañones nunca dejan el mundo.',
   nextCore: 'El Núcleo de comando {{level}} lo lleva de {{from}} → {{to}}.',
 };
@@ -250,12 +259,12 @@ export const away = {
     orbit: 'Instalar',
     signals: 'Abrir señales',
     dossier: 'Abrir el expediente',
-    repair: 'reparar',
+    repair: 'Reparar',
   },
   sighting: 'La flota de {{planet}} está fuera',
   sightingBack: 'Vuelve ~{{time}} · vista por tu telescopio',
   sightingSeen: 'Vista por tu telescopio',
-  careLoyalty: '{{world}} lealtad {{loyalty}} %',
+  careLoyalty: 'Lealtad {{loyalty}} %',
   careFaults_one: '{{count}} avería pendiente',
   careFaults_other: '{{count}} averías pendientes',
 };
@@ -281,6 +290,7 @@ export const repairStation = {
     workshop: "Taller",
     repair: "Reparación",
     scrap: "Desguace",
+    order: "Orden de trabajo",
     healthy: "Casco completo",
     ready: "Puede combatir",
     critical: "No puede combatir",
@@ -296,7 +306,9 @@ export const repairStation = {
     reserved: "Reservadas para reparar",
     move: "Enviar al taller",
     return: "Devolver al hangar",
-    scrapAction: "Desguazar naves",
+    back: "Devolver",
+    scrapSelected_one: "Desguazar {{count}} nave",
+    scrapSelected_other: "Desguazar {{count}} naves",
     moved: "Naves enviadas al taller.",
     returned: "Naves devueltas al hangar.",
     scrapped: "Naves desguazadas.",
@@ -306,10 +318,9 @@ export const repairStation = {
     rule: "El daño permanece hasta una reparación pagada. Las naves con un 5% de PV o menos no pueden combatir.",
     dockRule: "El traslado es gratuito. Las naves en el taller no pueden volar ni defender.",
     scrapRule: "Inmediato e irreversible. Recuperas la mitad de los recursos de producción correspondientes al casco restante.",
-    scrapConfirm: "¿Desguazar {{count}} naves?",
-    keep: "Conservar naves",
     returnedResources: "Recursos recuperados",
     radiation: "La radiación impide el ingreso, la reparación y el desguace. Devuelve las naves al hangar para evacuarlas.",
+    radiationShort: "Cerrado por radiación",
     homeHint: "Elige las naves dañadas que enviarás al taller de este planeta.",
     selected: "{{count}} seleccionadas",
     empty: "No hay naves en este grupo.",
@@ -318,16 +329,14 @@ export const repairStation = {
   all: "naves mixtas",
   title: "Estación de Reparación",
   role: "Elige naves para reparar o desguazar.",
-  tagline: "Devuelve las naves dañadas a la flota.",
   idle: "Taller vacío. Elige naves del hangar.",
   waitingShips_one: "{{count}} nave en espera",
   waitingShips_other: "{{count}} naves en espera",
   repairingShips_one: "{{count}} en reparación",
   repairingShips_other: "{{count}} en reparación",
+  damagedShips_one: "{{count}} nave dañada",
+  damagedShips_other: "{{count}} naves dañadas",
   queueFill: "Cola {{used}}/{{total}}",
-  statWaiting: "En espera",
-  statRepairing: "En reparación",
-  statQueue: "Cola",
   outOfAction: "Las naves del taller no pueden volar ni defender. Devuelve las que esperan al hangar para trasladarlas.",
   howItWorks: "Cómo funciona",
   ruleFree: "No hay reparación gratuita. Los daños permanecen hasta una reparación pagada.",
@@ -337,28 +346,21 @@ export const repairStation = {
   youPay: "Ahora pagas el {{pct}} %.",
   ruleQueue: "Los trabajos van uno tras otro, hasta {{depth}} en cola, aparte de la cola del Astillero.",
   ruleCancel: "Cancelar devuelve la mitad del precio; las naves vuelven a esperar.",
-  industrialChip: "{{industrial}} −{{off}} %",
   damagedHeading: "Naves dañadas",
   selectBatch: "Elegir los primeros {{max}} grupos de salud",
   selectAll: "Elegir todas",
-  selectNone: "Vaciar",
-  choose: "Reparar {{name}} ×{{count}}",
-  noneWaiting: "Ninguna nave espera reparación.",
   damaged: "{{pct}} % dañada",
-  share: "{{pct}} % de una nave nueva",
-  queueHeading: "Cola de reparación",
   queueEmpty: "Nada en reparación.",
   finishing: "Terminando…",
   startsIn: "empieza en {{time}}",
   ends: "lista en {{time}}",
-  selected_one: "{{count}} nave elegida",
-  selected_other: "{{count}} naves elegidas",
   afterQueue: "Empieza tras la cola, en {{time}}",
   repairSelected_one: "Reparar {{count}} nave",
   repairSelected_other: "Reparar {{count}} naves",
   pick: "Elige naves para reparar",
   queueFullShort: "Cola llena · {{used}}/{{total}}",
   tooMany: "Elige como máximo {{max}} grupos de integridad por acción.",
+  tooManyShort: "Demasiados grupos",
   starting: "Iniciando…",
   cancel: "Cancelar",
   docked_one: "{{count}} en reparación",

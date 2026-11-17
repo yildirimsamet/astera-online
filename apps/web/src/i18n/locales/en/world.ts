@@ -48,10 +48,13 @@ export const galaxy = {
     eyebrow: "Weekly calendar",
     title: "Galaxy events",
     intro: "The windows that repeat through the working week and at the weekend.",
-    timeZone: "Türkiye time (UTC+3)",
+    timeZone: "Your time ({{zone}})",
     nextLabel: "Next event",
     nextUpcoming: "{{event}} · in {{duration}}",
-    localTime: "Local · {{time}}",
+    /** Under the intro, only when a window starts on another day for the player than for the galaxy. */
+    dayShift: "Days follow the galaxy's calendar (Türkiye). +1 is the next day for you, −1 the day before.",
+    nextDay: "next day",
+    previousDay: "previous day",
     event: {
       ASTEROID_SHOWER: "Asteroid Shower",
       TRADE_SHIP: "Trade Ship",
@@ -65,6 +68,7 @@ export const galaxy = {
     },
     asteroid: {
       title: "Asteroid Shower",
+      lead: "During a shower rocks spawn many times faster, thickest at the start.",
       summary: "The normal spawn rate is {{rate}} asteroids per active commander per hour. A shower multiplies this rate during its window. Half the bonus rocks are spread over the first {{frontMinutes}} minutes. Rocks remain until depleted or expired. Outside showers, the galaxy never holds more drifting rocks than people who played in the last {{window}} minutes; pirate fleets always follow this cap.",
     },
     trade: {
@@ -112,7 +116,7 @@ export const galaxy = {
     galaxyUnknown: "—",
     endsLabel: "Season ends in",
     endsUnknown: "—",
-    wipeNote: "At the wipe every galaxy resets and everyone starts again.",
+    wipeNote: "When the season ends, every galaxy starts over.",
     signOut: "Sign out",
   },
 } as const;
@@ -146,6 +150,8 @@ export const worlds = {
    */
   sendFrom: "From",
   sendTo: "To",
+  /** The round button between the route's two ends: from becomes to (G2-j). */
+  swap: "Swap ends",
   send: "Transfer",
   /** Screen-reader readings for the two pictures on a row. */
   store: "{{resource}}: {{amount}} of {{cap}}",
@@ -189,16 +195,21 @@ export const focus = {
     },
     settlementConfirm: {
       eyebrow: "Colony race",
-      title: "Found {{world}}",
       unsurveyedTitle: "Found this world",
       race: "The first valid two-Courier fleet to arrive takes the world.",
       priorityMineFirst: "Your priority: your Couriers land before it ends — nobody can land ahead of you.",
       priorityMineLate: "Your Couriers land after your priority ends; from then the first valid arrival wins.",
-      noRecall:
-        "Colony ships cannot be recalled. If you found the colony, the founding cost is spent and the world opens on its tier's stock. If another commander wins first, your Couriers and founding cost return; spent fuel does not.",
+      noRecall: "Colony ships cannot be recalled.",
+      ifWin: "If you win",
+      winSpent: "The founding cost is spent; the colony opens with:",
+      winUnread: "The founding cost is spent; the colony opens on its tier's stock.",
+      ifLose: "If you lose",
+      loseBack: "Your Couriers and the founding cost return; spent fuel does not.",
+      priorityEnds: "Your priority ends",
+      line: "Arrives in {{arrives}} · race closes in {{closes}}",
+      linePriority: "Arrives in {{arrives}} · your priority ends in {{priority}} · race closes in {{closes}}",
       transports: "Colony ships",
       foundingCost: "Founding cost",
-      opensWith: "Colony opens with",
       cargoValue: "{{alloy}} Alloy · {{crystal}} Crystal",
       stockValue: "{{alloy}} Alloy · {{crystal}} Crystal · {{deuterium}} Deuterium",
       fuel: "Flight fuel",
@@ -395,6 +406,7 @@ export const focus = {
     probeCoolingShort: "Probe in {{duration}}",
     attack: "Plan an attack",
     attackNeutralAgain: "Raid again · claim unchanged",
+    attackNeutralAgainShort: "Raid again",
     attackOriginRecovering: "Attack · origin recovering",
     attackSilentSpace: "Cannot attack · closed in Silent Space",
     attackSilentSpaceShort: "Silent Space",

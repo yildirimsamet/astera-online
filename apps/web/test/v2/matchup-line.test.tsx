@@ -1,4 +1,5 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { matchupsAgainst, type ClassReading, type Fleet } from '@astera/rules';
 import { matchupHint } from '../../src/lib/matchup.js';
@@ -88,5 +89,25 @@ describe('the matchup line', () => {
     // Whose ships are strong is said, not left to the order of words (player test B-02).
     expect(container.querySelector('[data-matchup-wing]')?.textContent).toBe('Your Bulwark: strong vs 50% of their wall · weak vs 0%');
     expect(wall(container)).toContain('Your wing is single-class — its counter may be in the unread part');
+  });
+
+  // G4-d (2026-11-15): one class a line, so a phone never runs three into one paragraph.
+  it('gives each class the wing carries its own line', () => {
+    const { container } = render(<MatchupLine wing={{ RAMPART: 10, DART: 10 }} reading={split} />);
+    const rows = [...container.querySelectorAll('[data-matchup-wing] > li')];
+    expect(rows).toHaveLength(2);
+    expect(rows.every((row) => !row.textContent.includes(' · Your'))).toBe(true);
+  });
+
+  /**
+   * FOLDED ON THE ATTACK SHEET (owner, 2026-11-16: less text on the face). Each ship card already
+   * wears how it meets the wall, so the wing's shares wait behind an ⓘ beside the wall line.
+   */
+  it('folds the wing’s shares behind an ⓘ when asked, the wall line still on the face', async () => {
+    const { container } = render(<MatchupLine folded wing={{ RAMPART: 10 }} reading={lanceMajority} />);
+    expect(container.querySelector('[data-matchup-wall]')).not.toBeNull();
+    expect(container.querySelector('[data-matchup-wing]')).toBeNull();
+    await userEvent.setup().click(screen.getByRole('button'));
+    expect(container.querySelector('[data-matchup-wing]')?.textContent).toBe('Your Bulwark: strong vs 50% of their wall · weak vs 0%');
   });
 });

@@ -56,6 +56,7 @@ export const clan = {
     requirements: "Fonder exige un Noyau de commandement de niveau {{level}} et ces ressources sur ta capitale. Rejoindre ne coûte aucun frais de fondation.",
     joinAction: "Trouver mon équipe",
     foundAction: "Fonder mon clan",
+    tabs: { label: 'Options de clan', find: 'Trouver', found: 'Fonder', why: 'Pourquoi ?' },
   },
   benefits: {
     heading: "Pourquoi rejoindre un clan ?",
@@ -158,6 +159,8 @@ export const clan = {
     recruiting: "Accepter les candidatures",
     recruitingHint: "Les joueurs peuvent trouver ce clan et y postuler.",
     submit: "Créer le clan",
+    needIdentity: 'Nom et tag requis',
+    needGate: 'Remplis d’abord les conditions',
     created: "Clan créé. Tu en es désormais le chef.",
   },
   adaptation: {
@@ -197,7 +200,7 @@ export const clan = {
     formerBody: "Quitter le clan n’efface pas le butin que tu as déjà gagné.",
     body: "C’est ta part personnelle et égale, pas une banque contrôlée par le chef. Elle reste en sécurité jusqu’à ce que tu la récupères.",
     waiting: "Ouverture de ton butin",
-    claim: "Envoyer vers la planète capitale",
+    claim: "Vers la capitale",
     claimHint:
       "Seule la quantité pouvant tenir dans les réserves sera transférée. Le reste restera ici.",
   },
@@ -312,6 +315,7 @@ export const clan = {
     ships: "Vaisseaux offerts",
     transportShips: "Flotte de transport qui reviendra",
     available: "{{count}} disponibles",
+    noShips: "Aucun vaisseau à quai sur ce monde.",
     fewer: "Envoyer moins de {{name}}",
     more: "Envoyer plus de {{name}}",
     shipCount: "Nombre de {{name}}",
@@ -343,8 +347,6 @@ export const clan = {
     remainingLimit: "Limite restante du destinataire avant ce vol",
     nextLimit:
       "La limite du destinataire commencera à se rétablir dans {{duration}}.",
-    launch: "Envoyer — aucun rappel possible",
-    launchDelivery: "Envoyer les ressources — la flotte de transport reviendra",
     launched: "L’aide est en route.",
     transfersHeading: "Vols d’aide",
     transfersWaiting: "Chargement des vols d’aide",
@@ -363,8 +365,8 @@ export const clan = {
     heading: "Chat du clan",
     waiting: "Ouverture du chat du clan",
     list: "Messages du clan",
-    empty:
-      "Ton équipe n’a encore rien dit. Que le premier message prépare le prochain mouvement.",
+    emptyTitle: "Ton équipe n’a encore rien dit",
+    emptyBody: "Que le premier message prépare le prochain mouvement.",
     older: "Charger les anciens messages",
     loadingOlder: "Chargement des anciens messages",
     placeholder: "Écrire un message à ton clan",

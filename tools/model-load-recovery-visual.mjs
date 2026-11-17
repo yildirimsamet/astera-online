@@ -114,7 +114,7 @@ export async function verifyModelLoadRecovery(output) {
         await rail.locator('[data-flight-escort]').waitFor();
         assert.match(await rail.innerText(), /Vega/, 'the tap must select the fixture fleet, not a nearby planet');
         await page.screenshot({ path: join(output, `${width}-model-404-fleet-selected.png`) });
-        await page.locator('[data-menu-button]').click();
+        await page.locator('button.gk-medal').click();
         await page.locator('[data-v2-commander-menu]').waitFor();
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         await page.screenshot({ path: join(output, `${width}-model-404-menu-usable.png`) });

@@ -4,30 +4,35 @@ import { useStarterGate } from '../starter/gate.js';
 import { TempoNote } from '../starter/TempoNote.js';
 import { DistributedFireRules } from '../ui/DistributedFireRules.js';
 import { BattleRetreatNote } from '../ui/BattleRetreatNote.js';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STANDARD_PVP_BALANCE, type PvpBalance, COMBAT, DEATH_STAR, HULLS, fleetCount, fleetEntries, type Fleet, type Grade, type HullId } from '@astera/rules';
 import { useReadReportSignals } from '../session/useReadReportSignals.js';
-import { battleOutcome, battleTone, monumentControlKey, monumentGradeKey, ordinaryBattleOutcome } from '../lib/battleOutcome.js';
+import { battleOutcome, monumentControlKey, monumentGradeKey, ordinaryBattleOutcome, type BattleOutcome } from '../lib/battleOutcome.js';
 import { usePlanet, useReports } from '../api/queries.js';
 import { outpostReportLines } from '../starter/outpostReport.js';
 import { vesselToPlanetView } from '../starter/adapter.js';
 import type { BattleReport, Report, StrategicBattleReport } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
-import { hullLabel, monumentName } from '../i18n/names.js';
+import { buildingNameOf, hullLabel, hullName, instrumentName, monumentName, satelliteNameOf } from '../i18n/names.js';
 import { compact, decimal, full, signed } from '../lib/format.js';
 import { factorLabel } from '../lib/supportFactor.js';
 import { duration, staleness, useNow } from '../lib/time.js';
 import { HULL_ART, RESOURCE_ART, instrumentArt } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { SurvivorBar } from '../ui/SurvivorBar.js';
-import { EmptyState, Section, Unreachable } from '../ui/kit/index.js';
+import { Unreachable } from '../ui/kit/index.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
+import { EmptyState, Fold, Glyph, SectionTag, artIconSrc, type GlyphId } from '../game-ui/index.js';
+import { DominionIcon, HonorIcon } from '../ui/icons/index.js';
+import { honorScore } from '../lib/honor.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { ReportScene } from '../v2/hud/ReportScene.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
-import './battle-report.css';
 import { MonumentReportSheet } from './MonumentReportSheet.js';
 import { HonorBattleSummary } from '../ui/HonorBattleSummary.js';
-import { RankingScores } from '../ui/RankingScores.js';
+import { RulesRow } from '../ui/RulesRow.js';
 import { ADMIRAL_WAIT } from '@astera/rules/arena/ui';
 import { arenaCopy } from '../arena/copy.js';
 
@@ -272,13 +277,10 @@ export function BattleReports({
   }, [reports, requestedMissionId, requestedSequence, closedRequest]);
 
   return (
-    <Section
-      label={t('reports.heading')}
-      aside={reports.length > 0 ? t('reports.newest') : undefined}
-    >
+    <div className="gk-intel__part">
       {/*
         AN EMPTY LIST AND A FAILED ONE ARE NOT THE SAME SENTENCE.
-        
+
         Both left `reports` empty, so a request that never arrived was reported as
         "nothing has been fought over yet" — the interface stating a fact about the
         season on the strength of a network error.
@@ -291,74 +293,19 @@ export function BattleReports({
           }}
         />
       ) : isPending ? null : reports.length === 0 ? (
-        <EmptyState title={t('reports.empty')} />
+        <EmptyState art={artIconSrc('menu-reports')} title={t('reports.emptyTitle')} body={t('reports.empty')} />
       ) : (
-        <div className="rounded-control border border-v2-line bg-v2-deep/40">
-          {reports.map((report) => {
-            if (report.kind === 'MONUMENT') return <button type="button" key={report.id} data-report-row=""
-              data-battle-outcome={battleOutcome({ ...report, survivors: fleetCount(report.yourSurvivors), losses: fleetCount(report.yourLosses) })}
-              onClick={() => { setOpen(report); }} className="grid w-full gap-1 border-b border-v2-line/60 px-3 py-3 text-left text-caption last:border-b-0">
-              <span className="font-semibold text-v2-ink">{monumentName(report.monument.ordinal)} · {t(monumentControlKey(report))}</span>
-              <span className={`w-fit rounded-cell border px-2 py-1 text-micro ${battleTone[battleOutcome({ ...report, survivors: fleetCount(report.yourSurvivors), losses: fleetCount(report.yourLosses) })]}`}>{t(monumentGradeKey(report))}</span>
-              <span className="text-micro text-v2-ink-2">{t('monument.reportOwn', { sent: fleetCount(report.yourFleet), left: fleetCount(report.yourSurvivors), lost: fleetCount(report.yourLosses) })}</span>
-              <span className="flex items-end justify-between gap-2"><span className="font-v2-mono text-micro text-v2-ink-3">{staleness((now - report.at.getTime()) / 60_000)}</span><RankingScores honor={report.honor?.delta} dominion={report.dominion} change /></span>
-            </button>;
-            if (report.kind === 'STRATEGIC') {
-              return (
-                <StrategicReportRow
-                  key={report.id}
-                  report={report}
-                  now={now}
-                  onOpen={() => { setOpen(report); }}
-                  onFocusPlanet={doors.onFocusPlanet}
-                />
-              );
-            }
-            const opponentClan = report.attacking ? report.defenderClan : report.attackerClan;
-            // A supporter's row names the clanmate's world their ships stood at.
-            const listedPlanetId = report.supportedAt?.planetId ?? (report.pirate
-              ? report.yourPlanetId
-              : report.attacking ? report.opponentPlanetId : report.yourPlanetId);
-            const listedPlanet = report.supportedAt?.planetName ?? (report.pirate
-              ? report.yourPlanet
-              : report.attacking ? report.opponentPlanet : report.yourPlanet);
-            return (
-              <div key={report.id} className="border-b border-v2-line/60 last:border-b-0">
-                <button
-                  type="button"
-                  data-report-row=""
-                  onClick={() => { setOpen(report); }}
-                  className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-2 px-3 pb-1 pt-3 text-left hover:bg-v2-self/5 focus-visible:outline-2 focus-visible:outline-v2-self"
-                >
-                  <GradeMark report={report} />
-                  <div className="col-span-2 min-w-0">
-                    <p className="break-words text-caption text-v2-ink">
-                      {report.supportedAt
-                        ? t('clanSupport.rowRaidedBy', { host: report.supportedAt.hostName })
-                        : t(report.attacking ? 'reports.youRaided' : 'reports.raidedBy')}
-                      {opponentClan ? (
-                        <span className="mr-1 text-v2-crystal" title={opponentClan.name}>[{opponentClan.tag}]</span>
-                      ) : null}
-                      <span className="text-v2-ink-2">{opponentOf(report)}</span>
-                    </p>
-                  </div>
-                  {/* A swing of zero moves nobody's score, so it has no figure. */}
-                  {report.honor || (report.dominion !== null && report.dominion !== 0) ? <span className="col-start-2 row-start-1 max-w-40"><RankingScores honor={report.honor?.delta} dominion={report.dominion} change /></span> : null}
-                </button>
-                <p className="flex flex-wrap items-center gap-x-1 px-3 pb-2 font-v2-mono tabular-nums text-micro text-v2-ink-3">
-                {listedPlanet !== '' && (listedPlanetId && doors.onFocusPlanet ? (
-                  <button type="button" data-report-planet onClick={() => { doors.onFocusPlanet?.(listedPlanetId); }} className="font-v2-ui font-semibold text-v2-self underline decoration-v2-self/40 underline-offset-2 focus-visible:outline-2 focus-visible:outline-v2-self">
-                    {listedPlanet}
-                  </button>
-                ) : <span>{listedPlanet}</span>)}
-                {listedPlanet !== '' && <span aria-hidden>·</span>}
-                <span>{staleness((now - report.at.getTime()) / 60_000)}</span>
-                {report.rounds.length > 0 && <span>· {t('reports.rounds', { count: report.rounds.length })}</span>}
-                </p>
-              </div>
-            );
-          })}
-        </div>
+        // C14: newest first, one ledger row a fight, each row the door to its report.
+        <ol className="gk-ledger gk-battles" aria-label={t('reports.heading')}>
+          {reports.map((report) => (
+            <li key={report.id}>
+              {report.kind === 'MONUMENT' ? <MonumentRow report={report} now={now} onOpen={() => { setOpen(report); }} />
+                : report.kind === 'STRATEGIC'
+                  ? <StrategicReportRow report={report} now={now} onOpen={() => { setOpen(report); }} {...(doors.onFocusPlanet ? { onFocusPlanet: doors.onFocusPlanet } : {})} />
+                  : <BattleRow report={report} now={now} onOpen={() => { setOpen(report); }} {...(doors.onFocusPlanet ? { onFocusPlanet: doors.onFocusPlanet } : {})} />}
+            </li>
+          ))}
+        </ol>
       )}
 
       {open && (
@@ -368,7 +315,7 @@ export function BattleReports({
           <ReportSheet report={open} onClose={closeReport} {...doors} />
         )
       )}
-    </Section>
+    </div>
   );
 }
 
@@ -379,56 +326,161 @@ const STRATEGIC_OUTCOME = {
   INTERCEPTED: 'reports.strategicIntercepted',
 } as const;
 
-function StrategicReportRow({
-  report,
-  now,
-  onOpen,
-  onFocusPlanet,
-}: {
-  report: StrategicReport;
-  now: number;
-  onOpen: () => void;
-  onFocusPlanet?: (planetId: string) => void;
+/** A strike read from your side: yours landed or was stopped, theirs hit you or was stopped. */
+function strategicOutcome(report: StrategicReport): BattleOutcome {
+  if (report.outcome === 'INEFFECTIVE') return 'partial';
+  const landed = report.outcome !== 'INTERCEPTED';
+  return landed === report.attacking ? 'win' : 'loss';
+}
+
+const BATTLE_GLYPH = (report: OrdinaryReport): GlyphId =>
+  report.pirate ? 'pirate' : report.supportedAt ? 'support' : report.attacking ? 'attack' : 'shield';
+
+/**
+ * ONE FIGHT AS A KIT LEDGER ROW (C14). The mark carries the outcome in its colour, so the
+ * list reads before a word does; then who it was against, the verdict in that colour, and
+ * how long ago, where and what it moved on the ladder. The whole row is the report's door;
+ * the world the fight was at keeps its own door, a seam under the row (`WorldSeam`).
+ */
+function LedgerDoor({ outcome, glyph, onOpen, title, verdict, meta, ladder, age }: {
+  outcome: BattleOutcome; glyph: GlyphId; onOpen: () => void;
+  title: ReactNode; verdict: ReactNode; meta: readonly ReactNode[]; ladder?: ReactNode; age: string;
+}) {
+  // how long ago, then whatever else the row knows, dot-separated; an empty part says nothing
+  const parts = [<span key="age" className="gk-num">{age}</span>, ...meta.filter((part) => part !== null && part !== '')];
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onOpen(); });
+  return (
+    <button type="button" data-report-row="" data-battle-outcome={outcome} className="gk-ledger__row gk-battle" {...OWN_SOUND}
+      onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-battle__mark" data-tone={outcome} aria-hidden="true"><Glyph id={glyph} /></span>
+      <span className="gk-ledger__words">
+        <span className="gk-ledger__title">{title}</span>
+        <span className="gk-battle__verdict" data-tone={outcome}>{verdict}</span>
+        <span className="gk-ledger__sub">{parts.map((part, index) => <Fragment key={index}>{index > 0 ? ' · ' : null}{typeof part === 'string' ? <span>{part}</span> : part}</Fragment>)}</span>
+        {ladder}
+      </span>
+      <span className="gk-ledger__mark gk-battle__next" aria-hidden="true"><Glyph id="next" /></span>
+    </button>
+  );
+}
+
+/** What a fight moved on the ladder, in one line: Honor, then Dominion; a zero moves nothing. */
+function LadderLine({ honor, dominion }: { honor?: number | null; dominion?: number | null }) {
+  const { t } = useTranslation();
+  if ((honor === undefined || honor === null) && (dominion === undefined || dominion === null || dominion === 0)) return null;
+  return (
+    <span className="gk-battle__ladder">
+      {honor !== undefined && honor !== null && (
+        <span data-battle-honor="" className="gk-battle__honor gk-num">
+          <HonorIcon className="gk-battle__icon" /><span className="sr-only">{t('leaderboard.honorTitle')}</span>{honor > 0 ? '+' : ''}{honorScore(honor)}
+        </span>
+      )}
+      {dominion !== undefined && dominion !== null && dominion !== 0 && (
+        <span data-battle-dominion="" className="gk-battle__dominion gk-num">
+          <DominionIcon className="gk-battle__icon" /><span className="sr-only">{t('leaderboard.score')}</span>{signed(dominion)}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** The world a fight was at, its own door under the row: flies there, opens nothing else. */
+function WorldSeam({ planetId, name, onFocusPlanet }: { planetId: string; name: string; onFocusPlanet: (planetId: string) => void }) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onFocusPlanet(planetId); });
+  return (
+    <button type="button" data-report-planet="" className="gk-ledger__row gk-ledger__seam" {...OWN_SOUND}
+      onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <Glyph id="target" />
+      <span className="gk-ledger__seamname">{name}</span>
+      <span className="gk-ledger__mark" aria-hidden="true"><Glyph id="next" /></span>
+    </button>
+  );
+}
+
+/** A lead-in and the name after it: some languages' lead-ins end without a space. */
+const leadIn = (text: string): string => (/\s$/u.test(text) ? text : `${text} `);
+
+function BattleRow({ report, now, onOpen, onFocusPlanet }: {
+  report: OrdinaryReport; now: number; onOpen: () => void; onFocusPlanet?: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
-  const stopped = report.outcome === 'INTERCEPTED';
+  const opponentClan = report.attacking ? report.defenderClan : report.attackerClan;
+  // A supporter's row names the clanmate's world their ships stood at.
+  const listedPlanetId = report.supportedAt?.planetId ?? (report.pirate
+    ? report.yourPlanetId
+    : report.attacking ? report.opponentPlanetId : report.yourPlanetId);
+  const listedPlanet = report.supportedAt?.planetName ?? (report.pirate
+    ? report.yourPlanet
+    : report.attacking ? report.opponentPlanet : report.yourPlanet);
+  const seam = listedPlanetId && listedPlanet !== '' && onFocusPlanet ? { id: listedPlanetId, open: onFocusPlanet } : null;
+  return (
+    <>
+    <LedgerDoor
+      outcome={ordinaryBattleOutcome(report)}
+      glyph={BATTLE_GLYPH(report)}
+      onOpen={onOpen}
+      title={<>
+        {leadIn(report.supportedAt
+          ? t('clanSupport.rowRaidedBy', { host: report.supportedAt.hostName })
+          : t(report.attacking ? 'reports.youRaided' : 'reports.raidedBy'))}
+        {opponentClan ? <><span className="gk-battle__clan" title={opponentClan.name}>[{opponentClan.tag}]</span>{' '}</> : null}
+        <span>{opponentOf(report)}</span>
+      </>}
+      verdict={verdictTitle(report)}
+      // the world is named once: on its own door when there is one, else here
+      meta={[seam ? null : listedPlanet, report.rounds.length > 0 ? t('reports.rounds', { count: report.rounds.length }) : null]}
+      ladder={<LadderLine honor={report.honor?.delta} dominion={report.dominion} />}
+      age={staleness((now - report.at.getTime()) / 60_000)}
+    />
+    {seam && <WorldSeam planetId={seam.id} name={listedPlanet} onFocusPlanet={seam.open} />}
+    </>
+  );
+}
+
+function MonumentRow({ report, now, onOpen }: { report: Extract<Report, { kind: 'MONUMENT' }>; now: number; onOpen: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <LedgerDoor
+      outcome={battleOutcome({ ...report, survivors: fleetCount(report.yourSurvivors), losses: fleetCount(report.yourLosses) })}
+      glyph="flag"
+      onOpen={onOpen}
+      title={monumentName(report.monument.ordinal)}
+      verdict={`${t(monumentGradeKey(report))} ${t(monumentControlKey(report))}`}
+      meta={[t('monument.reportOwn', { sent: fleetCount(report.yourFleet), left: fleetCount(report.yourSurvivors), lost: fleetCount(report.yourLosses) })]}
+      ladder={<LadderLine honor={report.honor?.delta} dominion={report.dominion} />}
+      age={staleness((now - report.at.getTime()) / 60_000)}
+    />
+  );
+}
+
+function StrategicReportRow({ report, now, onOpen, onFocusPlanet }: {
+  report: StrategicReport; now: number; onOpen: () => void; onFocusPlanet?: (planetId: string) => void;
+}) {
+  const { t } = useTranslation();
   const targetName = report.radiation?.monumentOrdinal && report.attacking
     ? monumentName(report.radiation.monumentOrdinal) : report.opponentPlanet;
+  const seam = report.opponentPlanetId && onFocusPlanet ? { id: report.opponentPlanetId, open: onFocusPlanet } : null;
   return (
-    <div className="border-b border-v2-line/60 last:border-b-0">
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex w-full items-center gap-2 px-3 pb-1 pt-3 text-left hover:bg-v2-self/5 focus-visible:outline-2 focus-visible:outline-v2-self"
-      >
-        <span className={`inline-flex items-center rounded-chip border px-1.5 py-0.5 text-micro font-semibold shrink-0 ${stopped ? 'border-v2-self/50 text-v2-self' : 'border-v2-hostile/50 text-v2-hostile'}`}>
-          {t(report.radiation && report.outcome === 'FIRST_STRIKE' ? 'planet.radiationBomb.impact' : STRATEGIC_OUTCOME[report.outcome])}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-caption text-v2-ink">
-            {t(report.radiation ? report.attacking ? 'reports.radiationYouAttacked' : 'reports.radiationAttackedBy' : report.attacking ? 'reports.strategicYouAttacked' : 'reports.strategicAttackedBy')}
-            <span className="text-v2-ink-2">{report.opponentName}</span>
-          </p>
-        </div>
-        {report.honor ? <RankingScores honor={report.honor.delta} change /> : null}
-        {report.damage > 0 ? <span className="font-v2-mono tabular-nums text-caption text-v2-hostile">{compact(report.damage)}</span> : null}
-      </button>
-      <p className="flex flex-wrap items-center gap-x-1 px-3 pb-2 font-v2-mono tabular-nums text-micro text-v2-ink-3">
-        {report.opponentPlanetId && onFocusPlanet ? (
-          <button type="button" data-report-planet onClick={() => { if (report.opponentPlanetId) onFocusPlanet(report.opponentPlanetId); }} className="font-v2-ui font-semibold text-v2-self underline decoration-v2-self/40 underline-offset-2 focus-visible:outline-2 focus-visible:outline-v2-self">
-            {targetName}
-          </button>
-        ) : <span>{targetName}</span>}
-        <span aria-hidden>·</span>
-        <span>{staleness((now - report.at.getTime()) / 60_000)}</span>
-        {report.loyalty?.after === 0 && (
-          <>
-            <span aria-hidden>·</span>
-            <span className="font-v2-ui text-v2-hostile">{t('reports.strategicSecededShort')}</span>
-          </>
-        )}
-      </p>
-    </div>
+    <>
+    <LedgerDoor
+      outcome={strategicOutcome(report)}
+      glyph={report.radiation ? 'radiation' : 'target'}
+      onOpen={onOpen}
+      title={<>
+        {leadIn(t(report.radiation ? report.attacking ? 'reports.radiationYouAttacked' : 'reports.radiationAttackedBy' : report.attacking ? 'reports.strategicYouAttacked' : 'reports.strategicAttackedBy'))}
+        <span>{report.opponentName}</span>
+      </>}
+      verdict={t(report.radiation && report.outcome === 'FIRST_STRIKE' ? 'planet.radiationBomb.impact' : STRATEGIC_OUTCOME[report.outcome])}
+      meta={[
+        seam ? null : targetName,
+        report.damage > 0 ? <span className="gk-battle__damage gk-num">{t('reports.strategicDamageShort', { amount: compact(report.damage) })}</span> : null,
+        report.loyalty?.after === 0 ? <span className="gk-battle__seceded">{t('reports.strategicSecededShort')}</span> : null,
+      ]}
+      ladder={<LadderLine honor={report.honor?.delta} />}
+      age={staleness((now - report.at.getTime()) / 60_000)}
+    />
+    {seam && <WorldSeam planetId={seam.id} name={targetName} onFocusPlanet={seam.open} />}
+    </>
   );
 }
 
@@ -446,17 +498,17 @@ function LoyaltyHit({ loyalty, attacking }: {
   const { t } = useTranslation();
   const seceded = loyalty.after <= 0;
   return (
-    <div data-report-loyalty className="mt-2 rounded-control border border-v2-line bg-v2-deep/40 p-3">
-      <p className="flex items-baseline justify-between gap-2 text-caption">
-        <span className="text-v2-ink-2">{t('reports.strategicLoyalty')}</span>
-        <span className="font-v2-mono tabular-nums text-v2-hostile">
+    <div data-report-loyalty className="gk-well gk-report__why">
+      <p className="gk-report__tallyrow">
+        <span className="gk-report__label">{t('reports.strategicLoyalty')}</span>
+        <span className="gk-num" data-tone="threat">
           {t('reports.strategicLoyaltyChange', {
             before: Math.ceil(loyalty.before),
             after: Math.ceil(Math.max(0, loyalty.after)),
           })}
         </span>
       </p>
-      <p className={`mt-1 text-micro leading-snug ${seceded ? 'font-semibold text-v2-hostile' : 'text-v2-ink-3'}`}>
+      <p className="gk-report__copy" {...(seceded ? { 'data-tone': 'threat', 'data-strong': '' } : {})}>
         {seceded
           ? t(attacking ? 'reports.strategicSecededAttacker' : 'reports.strategicSecededDefender')
           : t('reports.strategicLoyaltyNext', { count: Math.max(1, Math.ceil(loyalty.after / DEATH_STAR.colonyLoyaltyLoss)) })}
@@ -465,7 +517,33 @@ function LoyaltyHit({ loyalty, attacking }: {
   );
 }
 
-/** Exported for the v2 gallery's camera, as `StrikeSheet` is. */
+/** A building, instrument, hull or satellite id off the wire, in the player's words; the id only for one this build does not know. */
+const strategicSubject = (kind: StrategicReport['destroyedOrders'][number]['kind'], id: string): string =>
+  (kind === 'BUILDING' ? buildingNameOf(id) : kind === 'INSTRUMENT' ? instrumentName(id) : kind === 'HULL' ? hullName(id) : satelliteNameOf(id))
+  ?? id.replaceAll('_', ' ');
+
+/**
+ * WHOSE GOOD NEWS IT IS (C17). A weapon that landed is a gain for the one who sent it and a
+ * loss for the world it hit; one stopped in flight, the other way round; one that did nothing,
+ * a shrug for both.
+ */
+const strategicTone = (report: StrategicReport): 'good' | 'partial' | 'threat' => {
+  if (report.outcome === 'INEFFECTIVE') return 'partial';
+  const landed = report.outcome !== 'INTERCEPTED';
+  return landed === report.attacking ? 'good' : 'threat';
+};
+
+/**
+ * THE DEATH STAR'S AND THE RADIATION BOMB'S RESULT, ON THE KIT (C17, G5 #4).
+ *
+ * The moment: a weapon you sent, or one sent at you, has landed — what did it break, and is
+ * the colony still mine? The route first (both worlds are doors), then one plate in the
+ * colour of whose news it is with the figures that answer it, the Honor it moved, and below,
+ * each kind of loss under its own tag. How a bomb works is one rules row away, closed: the
+ * report states what happened, the rules wait for the reader who asks why.
+ *
+ * Exported for the v2 gallery's camera, as `StrikeSheet` is.
+ */
 export function StrategicReportSheet({
   report,
   onClose,
@@ -488,126 +566,138 @@ export function StrategicReportSheet({
     0,
   );
   const emp = !report.radiation && report.outcome === 'FIRST_STRIKE' && report.damage === 0;
+  const tone = strategicTone(report);
+  // What it destroyed is the defender's loss and the attacker's gain: the figures wear that colour.
+  const figureTone = report.attacking ? 'good' : 'threat';
+  const struck = report.radiation && report.outcome === 'FIRST_STRIKE';
 
   return (
     <V2Sheet
       detents={['full']}
       eyebrow={`${actorLabel}${report.opponentName}`}
       title={t(report.radiation && report.outcome === 'FIRST_STRIKE' ? 'planet.radiationBomb.impact' : STRATEGIC_OUTCOME[report.outcome])}
+      kit={{ tone: tone === 'threat' ? 'hostile' : 'self', ...(report.radiation ? {} : { art: artIconSrc('deathstar') }) }}
       onClose={onClose}
     >
-      {ownName ? (
-        <p className="font-v2-mono tabular-nums mb-3 flex items-center gap-2 text-micro text-v2-ink-3">
-          {report.yourPlanetId && onFocusPlanet ? (
-            <button type="button" onClick={() => { if (report.yourPlanetId) onFocusPlanet(report.yourPlanetId); }} className="text-v2-self underline decoration-v2-self/50 underline-offset-2">
-              {ownName}
-            </button>
-          ) : <span className="text-v2-ink">{ownName}</span>}
-          <span aria-hidden>{report.attacking ? '→' : '←'}</span>
-          {report.opponentPlanetId && onFocusPlanet ? (
-            <button type="button" onClick={() => { if (report.opponentPlanetId) onFocusPlanet(report.opponentPlanetId); }} className="text-v2-self underline decoration-v2-self/50 underline-offset-2">
-              {targetName}
-            </button>
-          ) : <span>{targetName}</span>}
-        </p>
-      ) : null}
-
-      {report.honor && <div className="mb-3"><HonorBattleSummary receipt={report.honor} /></div>}
-      {report.outcome === 'INTERCEPTED' ? (
-        <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3">
-          <p className="text-caption font-semibold text-v2-self">{t('reports.strategicDestroyedInFlight')}</p>
-          <p className="mt-2 text-caption text-v2-ink-2">
-            {t(report.trigger === 'TELESCOPE'
-              ? 'reports.strategicTelescopeTrigger'
-              : 'reports.strategicRadarTrigger')}
-          </p>
-        </div>
-      ) : report.radiation ? (
-        <div className="space-y-2 rounded-control border border-v2-line bg-v2-deep/40 p-3 text-caption text-v2-ink-2">
-          <p className="font-semibold text-v2-ink">{t('planet.radiationBomb.title')} · {t('planet.radiationBomb.level', { level: report.radiation.level })}</p>
-          {report.outcome === 'FIRST_STRIKE' ? <><p>{t('planet.radiationBomb.effect')}</p><p>{t('planet.radiationBomb.workshop')}</p></> : <p>{t('reports.strategicIneffective')}</p>}
-          {report.outcome === 'FIRST_STRIKE' && report.loyalty && <div data-report-loyalty className="rounded-control border border-v2-line p-3">
-            <p className="font-v2-mono text-v2-hostile">{t('planet.radiationBomb.colonyResult', {
-              before: Math.ceil(report.loyalty.before), after: Math.ceil(Math.max(0, report.loyalty.after)),
-            })}</p>
-            {report.loyalty.after <= 0 && <p>{t('planet.radiationBomb.colonySeceded')}</p>}
-          </div>}
-          {report.outcome === 'FIRST_STRIKE' && (report.radiation.faults?.length ?? 0) > 0 && <p>{t('planet.radiationBomb.faultResult', {
-            faults: report.radiation.faults?.map(fault => t(`faults.name.${fault}`)).join(', '),
-          })}</p>}
-          {report.honor && <p>{t('planet.radiationBomb.honor')}</p>}
-        </div>
-      ) : emp ? (
-        <>
-          <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3 text-caption text-v2-ink">
-            {t('reports.strategicEmpEffect')}
+      <div data-strategic-report className="gk-report gk-strike">
+        {ownName ? (
+          <div data-report-route="" className="gk-route">
+            <RouteEnd id={report.yourPlanetId ?? null} name={ownName} onFocusPlanet={onFocusPlanet} />
+            <span data-route-arrow="" data-dir={report.attacking ? 'out' : 'in'} className="gk-route__arrow" aria-hidden="true">
+              <Glyph id="next" />
+            </span>
+            <RouteEnd id={report.opponentPlanetId} name={targetName} onFocusPlanet={onFocusPlanet} />
           </div>
-          {report.loyalty && <LoyaltyHit loyalty={report.loyalty} attacking={report.attacking} />}
-        </>
-      ) : (
-        <div className="space-y-3">
-          <div className="rounded-control border border-v2-line bg-v2-deep/40 grid grid-cols-2 gap-2 p-3">
-            <StrategicMetric label={t('reports.strategicTotalDamage')} value={full(report.damage)} />
-            <StrategicMetric label={t('reports.strategicShieldLost')} value={full(report.shieldDestroyed)} />
-            <StrategicMetric label={t('reports.strategicResourcesLost')} value={full(resourcesLost)} />
-            <StrategicMetric label={t('reports.strategicOrdersLost')} value={full(ordersLost)} />
-          </div>
+        ) : null}
 
-          <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3">
-            <p className="text-caption font-semibold text-v2-ink">{t('reports.strategicResourceBreakdown')}</p>
-            <div className="mt-2 grid grid-cols-3 gap-2 text-micro text-v2-ink-2">
-              <span>{t('vocabulary.resource.alloy')} <b className="font-v2-mono tabular-nums text-v2-ink">{full(report.destroyedResources.alloy)}</b></span>
-              <span>{t('vocabulary.resource.crystal')} <b className="font-v2-mono tabular-nums text-v2-ink">{full(report.destroyedResources.crystal)}</b></span>
-              <span>{t('vocabulary.resource.deuterium')} <b className="font-v2-mono tabular-nums text-v2-ink">{full(report.destroyedResources.deuterium)}</b></span>
-            </div>
-          </div>
-
-          <Losses
-            fleet={report.destroyedFleet}
-            tone="text-v2-hostile"
-            empty={t('reports.strategicNoFleetLost')}
-          />
-
-          <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3">
-            <p className="text-caption font-semibold text-v2-ink">{t('reports.strategicLevelLosses')}</p>
-            {report.levelChanges.length === 0 ? (
-              <p className="mt-2 text-caption text-v2-ink-3">{t('reports.strategicNoLevelLoss')}</p>
-            ) : (
-              <div className="mt-2 space-y-1">
-                {report.levelChanges.map((change, index) => (
-                  <p key={`${change.kind}-${change.id}-${index}`} className="flex justify-between text-caption text-v2-ink-2">
-                    <span>{change.id.replaceAll('_', ' ')}</span>
-                    <span className="font-v2-mono tabular-nums text-v2-hostile">L{change.before} → L{change.after}</span>
-                  </p>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3">
-            <p className="text-caption font-semibold text-v2-ink">{t('reports.strategicDestroyedOrders')}</p>
-            {report.destroyedOrders.length === 0 ? (
-              <p className="mt-2 text-caption text-v2-ink-3">{t('reports.strategicNoOrdersLost')}</p>
-            ) : report.destroyedOrders.map((order, index) => (
-              <p key={`${order.subject}-${index}`} className="mt-2 flex justify-between text-caption text-v2-ink-2">
-                <span>{order.subject.replaceAll('_', ' ')} ×{order.count}</span>
-                <span className="font-v2-mono tabular-nums text-v2-hostile">
-                  {full(order.cost.alloy + order.cost.crystal + order.cost.deuterium)}
-                </span>
+        <section data-strategic-verdict="" data-tone={tone} className="gk-well gk-report__verdict">
+          {report.outcome === 'INTERCEPTED' ? (
+            <>
+              <h3 className="gk-report__subhead">{t('reports.strategicDestroyedInFlight')}</h3>
+              <p className="gk-report__copy">
+                {t(report.trigger === 'TELESCOPE' ? 'reports.strategicTelescopeTrigger' : 'reports.strategicRadarTrigger')}
               </p>
-            ))}
-          </div>
-        </div>
-      )}
+            </>
+          ) : report.radiation ? (
+            <>
+              <h3 className="gk-report__subhead">{t('planet.radiationBomb.title')} · {t('planet.radiationBomb.level', { level: report.radiation.level })}</h3>
+              {!struck && <p className="gk-report__copy">{t('reports.strategicIneffective')}</p>}
+              {struck && report.loyalty && (
+                <p data-report-loyalty="" className="gk-report__note" data-tone="threat">
+                  {t('planet.radiationBomb.colonyResult', {
+                    before: Math.ceil(report.loyalty.before), after: Math.ceil(Math.max(0, report.loyalty.after)),
+                  })}
+                  {report.loyalty.after <= 0 && <> {t('planet.radiationBomb.colonySeceded')}</>}
+                </p>
+              )}
+              {struck && (report.radiation.faults?.length ?? 0) > 0 && (
+                <p className="gk-report__note" data-tone="threat">{t('planet.radiationBomb.faultResult', {
+                  faults: report.radiation.faults?.map(fault => t(`faults.name.${fault}`)).join(', '),
+                })}</p>
+              )}
+            </>
+          ) : emp ? (
+            <p className="gk-report__copy" data-strong="">{t('reports.strategicEmpEffect')}</p>
+          ) : (
+            <div className="gk-report__metrics" data-cols="2">
+              <StrategicFigure label={t('reports.strategicTotalDamage')} value={report.damage} tone={figureTone} />
+              <StrategicFigure label={t('reports.strategicShieldLost')} value={report.shieldDestroyed} tone={figureTone} />
+              <StrategicFigure label={t('reports.strategicResourcesLost')} value={resourcesLost} tone={figureTone} />
+              <StrategicFigure label={t('reports.strategicOrdersLost')} value={ordersLost} tone={figureTone} />
+            </div>
+          )}
+        </section>
+
+        {emp && report.loyalty && <LoyaltyHit loyalty={report.loyalty} attacking={report.attacking} />}
+        {report.honor && <HonorBattleSummary receipt={report.honor} />}
+
+        {report.radiation && struck && (
+          <RulesRow glyph="help" title={t('reports.strategicBombRules')}>
+            <p>{t('planet.radiationBomb.effect')}</p>
+            <p>{t('planet.radiationBomb.workshop')}</p>
+            {report.honor && <p>{t('planet.radiationBomb.honor')}</p>}
+          </RulesRow>
+        )}
+
+        {!report.radiation && !emp && report.outcome !== 'INTERCEPTED' && (
+          <>
+            <section className="gk-report__part">
+              <SectionTag as="h2">{t('reports.strategicResourceBreakdown')}</SectionTag>
+              <p className="gk-haul__row gk-num">
+                {(['alloy', 'crystal', 'deuterium'] as const).map((res) => (
+                  <span key={res} className="gk-haul__res" data-res={res}>
+                    <img src={RESOURCE_ART[res]} alt={t(`vocabulary.resource.${res}`)} />
+                    {full(report.destroyedResources[res])}
+                  </span>
+                ))}
+              </p>
+            </section>
+            <section className="gk-report__part">
+              <SectionTag as="h2">{t('reports.strategicFleetLost')}</SectionTag>
+              <Losses fleet={report.destroyedFleet} tone="threat" empty={t('reports.strategicNoFleetLost')} />
+            </section>
+            <section className="gk-report__part">
+              <SectionTag as="h2">{t('reports.strategicLevelLosses')}</SectionTag>
+              {report.levelChanges.length === 0 ? (
+                <p className="gk-report__copy">{t('reports.strategicNoLevelLoss')}</p>
+              ) : (
+                <dl className="gk-well gk-report__sum">
+                  {report.levelChanges.map((change, index) => (
+                    <Fragment key={`${change.kind}-${change.id}-${String(index)}`}>
+                      <dt>{strategicSubject(change.kind, change.id)}</dt>
+                      <dd className="gk-num" data-tone="threat">L{change.before} → L{change.after}</dd>
+                    </Fragment>
+                  ))}
+                </dl>
+              )}
+            </section>
+            <section className="gk-report__part">
+              <SectionTag as="h2">{t('reports.strategicDestroyedOrders')}</SectionTag>
+              {report.destroyedOrders.length === 0 ? (
+                <p className="gk-report__copy">{t('reports.strategicNoOrdersLost')}</p>
+              ) : (
+                <dl className="gk-well gk-report__sum">
+                  {report.destroyedOrders.map((order, index) => (
+                    <Fragment key={`${order.subject}-${String(index)}`}>
+                      <dt>{strategicSubject(order.kind, order.subject)} ×{order.count}</dt>
+                      <dd className="gk-num" data-tone="threat">{full(order.cost.alloy + order.cost.crystal + order.cost.deuterium)}</dd>
+                    </Fragment>
+                  ))}
+                </dl>
+              )}
+            </section>
+          </>
+        )}
+      </div>
     </V2Sheet>
   );
 }
 
-function StrategicMetric({ label, value }: { label: string; value: string }) {
+function StrategicFigure({ label, value, tone }: { label: string; value: number; tone: 'good' | 'threat' }) {
   return (
-    <div>
-      <p className="v2-legend text-v2-ink-3">{label}</p>
-      <p className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-ink">{value}</p>
+    <div className="gk-report__metric">
+      <p className="gk-report__label">{label}</p>
+      <p className="gk-report__figure gk-num" {...(value > 0 ? { 'data-tone': tone } : {})}>{full(value)}</p>
     </div>
   );
 }
@@ -618,18 +708,6 @@ function StrategicMetric({ label, value }: { label: string; value: string }) {
  * DECISIVE, PARTIAL and REPELLED are the three outcomes the whole combat model
  * produces, and which one you got is the first thing a player looks for.
  */
-function GradeMark({ report }: { report: OrdinaryReport }) {
-  const outcome = ordinaryBattleOutcome(report);
-  return (
-    <span
-      className={`w-fit max-w-full rounded-cell border px-2 py-1 text-caption font-semibold ${battleTone[outcome]}`}
-      title={verdictTitle(report)}
-    >
-      {verdictTitle(report)}
-    </span>
-  );
-}
-
 function ReportSheet({
   report,
   onClose,
@@ -647,7 +725,7 @@ function ReportSheet({
   const vessel = usePlanet().data?.vessel;
   const told = vessel ? outpostReportLines(report, t, vesselToPlanetView(vessel)) : [];
   /** "Watch" (the mock's İzle): the round by round, further down this sheet. */
-  const rounds = useRef<HTMLHeadingElement>(null);
+  const rounds = useRef<HTMLDetailsElement>(null);
   const target = report.attacking ? report.opponentPlanetId ?? null : null;
   const perspective = report.attacking ? 'attacking' : 'defending';
   const whyGrade = report.grade === 'DECISIVE' && report.rounds.length === 0
@@ -685,28 +763,30 @@ function ReportSheet({
       title={verdictTitle(report)}
       onClose={onClose}
     >
-      <div data-battle-report className="battle-report">
-      <div className="mb-3"><TempoNote aboard={aboard} /></div>
-      <div className="mb-3"><BattleReplayAction kind="BATTLE" id={report.id} status={report.replayStatus} {...(report.pirate ? { pirateLevel: report.pirate.level } : {})} /></div>
+      <div data-battle-report className="gk-report">
+      <TempoNote aboard={aboard} />
+      <BattleReplayAction kind="BATTLE" id={report.id} status={report.replayStatus} {...(report.pirate ? { pirateLevel: report.pirate.level } : {})} />
       {/*
         THE SCENE FIRST (B15, the mock's "KISMİ ZAFER"): the world, the haul, both sides, one
         sentence of why and the balance. The sheet's title already carries the verdict and is
         its accessible name, so the scene stands a dot in the verdict's colour in for the word.
         The four questions below are the scene's detail.
       */}
-      <div className="mb-4">
-        <ReportScene
-          report={report}
-          word={verdictTitle(report)}
-          colonyTarget={target !== null && (colonyOf?.(target) ?? false)}
-          rivalSlot={report.opponentPlanetId ? rivalOf?.(report.opponentPlanetId) ?? null : null}
-          onWatch={() => { rounds.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
-          {...(onShare ? { onShare } : {})}
-          told={told}
-          {...(onFocusPlanet ? { onFocusPlanet } : {})}
-          {...(target !== null && onAttackAgain ? { onAttackAgain: () => { onAttackAgain(target); } } : {})}
-        />
-      </div>
+      <ReportScene
+        report={report}
+        word={verdictTitle(report)}
+        colonyTarget={target !== null && (colonyOf?.(target) ?? false)}
+        rivalSlot={report.opponentPlanetId ? rivalOf?.(report.opponentPlanetId) ?? null : null}
+        onWatch={() => {
+          const fold = rounds.current;
+          if (!fold) return;
+          fold.open = true;
+          if ('scrollIntoView' in fold) fold.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
+        {...(onShare ? { onShare } : {})}
+        told={told}
+        {...(target !== null && onAttackAgain ? { onAttackAgain: () => { onAttackAgain(target); } } : {})}
+      />
       {/*
         THE FOUR QUESTIONS A READER ARRIVES WITH, IN THE ORDER THEY ASK THEM.
         Owner report · `docs/battle-reports.md`.
@@ -720,361 +800,373 @@ function ReportSheet({
         twelfth and fourteenth, under a bookkeeping block about Dominion and clans
         that only matters once the fight is understood.
 
-        So the sheet is four headed sections and nothing else:
+        So the sheet is four headed sections, each under the kit's section tag:
 
           1 · WHAT HAPPENED      the verdict, where, and why that word
           2 · WHAT WAS THERE     their board, their wall, their shield
           3 · WHO DIED, AND WHEN your survivors and the round-by-round
           4 · WHAT IT CHANGED    haul, Dominion, wreck, consequences
 
+        and then the move the fight opened (C15): a report produces intel, and intel is
+        only worth something as the next decision.
+
         Outcomes, losses and remaining forces never fold. Calculation recipes are
         optional details: understand the battle first, inspect the arithmetic next.
       */}
-      <h2
-        data-report-section="happened"
-        className="mt-4 border-t border-v2-line pt-3 text-micro font-semibold text-v2-ink"
-      >
-        {t('reports.q.happened')}
-      </h2>
-      <BattleVerdict report={report} />
-      {/* The date and time are the hero's (the scene above); the route stays, pointing in or out. */}
       {/*
-        WHERE IT HAPPENED, IN ONE LINE, BEFORE ANYTHING ELSE.
-
-        A commander may hold four worlds since D97, and "Raided by Sable" stopped
-        saying WHICH of theirs was hit — the most actionable fact there is, absent
-        from the record of it. Said as a route rather than as two facts, because a
-        battle has two ends and the reader is always at one of them.
-
-        A ROUTE NEEDS TWO ENDS. A pirate battle has one: the far end is a
-        rendezvous in open space, so the server sends an empty `opponentPlanet` and
-        this drew an arrow pointing at nothing. The launching world alone is still
-        the actionable half and is still named.
+        O6 (owner 2026-11-17, item 6): "Tüm verileri oyuncunun önüne yığmak =! oyuncuya sonucu iyi
+        bir şekilde sunduk." The scene above IS the result; each question below is one shut fold
+        whose head sums it, so the sheet reads as the result and four doors, not a 4,000 px column.
       */}
-      {report.yourPlanet && (
-        <p className="font-v2-mono tabular-nums mb-3 flex items-center gap-2 text-micro text-v2-ink-3">
-          {report.yourPlanetId && onFocusPlanet ? (
-            <button type="button" onClick={() => { if (report.yourPlanetId) onFocusPlanet(report.yourPlanetId); }} className="text-v2-self underline decoration-v2-self/50 underline-offset-2">
-              {report.yourPlanet}
-            </button>
-          ) : <span className="text-v2-ink">{report.yourPlanet}</span>}
-          {report.opponentPlanet !== '' && (
-            <>
-              <span aria-hidden>{report.attacking ? '→' : '←'}</span>
-              {report.opponentPlanetId && onFocusPlanet ? (
-                <button type="button" onClick={() => { if (report.opponentPlanetId) onFocusPlanet(report.opponentPlanetId); }} className="text-v2-self underline decoration-v2-self/50 underline-offset-2">
-                  {report.opponentPlanet}
-                </button>
-              ) : <span>{report.opponentPlanet}</span>}
-            </>
-          )}
-        </p>
-      )}
-      {/*
-        THE HANDICAP THAT PRODUCED EVERY DAMAGE FIGURE BELOW. D124 · D150.
-
-        A pirate's entire difference from a player fleet of the same roster is a
-        per-level cut to its ATTACK, and nothing on this surface said so — the
-        reader was being asked to check the arithmetic against a rule the interface
-        never states. The same sentence the launch rail shows before committing, so
-        what a commander priced the fight with is what the report explains it with.
-      */}
-      {report.pirate && (
-        <p className="mt-2 border-l border-v2-line-hi pl-3 text-micro leading-snug text-v2-crystal">
-          {t('pirate.damagePenalty', {
-            percent: Math.round((1 - report.pirate.damageMult) * 100),
-          })}
-        </p>
-      )}
-      {/*
-        WHY THIS WORD, AND NOT THE OTHER TWO.
-
-        DECISIVE, PARTIAL and REPELLED are printed in caps at the top of every
-        report and nothing in the game had ever said what separates them. A player
-        who reads "PARTIAL" twice and cannot tell whether they were close has been
-        given a stamp, not a report — and the grade is what sets the loot share and
-        how long the works stay down, so it is the single most consequential word
-        on the surface.
-      */}
-      <section data-battle-reason className="rounded-control border border-v2-line bg-v2-deep/40 mt-3 p-3">
-      <h3 className="text-caption font-semibold font-semibold text-v2-ink">{t('reports.reasonHeading')}</h3>
-      <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">
+      <Fold data-report-section="happened" glyph="target" title={t('reports.q.happened')}><div className="gk-report__part">
+        <BattleVerdict report={report} />
+        {/* The date and time are the hero's (the scene above); the route stays, pointing in or out. */}
         {/*
-          ONE LINE IN THIRTEEN QUOTES THE THRESHOLD, AND THE TYPES SAY SO.
+          WHERE IT HAPPENED, IN ONE LINE, BEFORE ANYTHING ELSE.
 
-          A repelled attacker is the only reading that has to name the bar it
-          missed; the other twelve describe what happened without a number in
-          them. Handing the whole key union an interpolation value none of them
-          declare is what the compiler refuses, and it is right to — the option
-          would be silently dropped on twelve of the thirteen.
+          A commander may hold four worlds since D97, and "Raided by Sable" stopped
+          saying WHICH of theirs was hit — the most actionable fact there is, absent
+          from the record of it. Said as a route rather than as two facts, because a
+          battle has two ends and the reader is always at one of them.
+
+          A ROUTE NEEDS TWO ENDS. A pirate battle has one: the far end is a
+          rendezvous in open space, so the server sends an empty `opponentPlanet` and
+          this drew an arrow pointing at nothing. The launching world alone is still
+          the actionable half and is still named.
         */}
-        {perspective === 'attacking' && whyGrade === 'REPELLED'
-          ? t('reports.why.attacking.REPELLED',
-              { threshold: full(COMBAT.partialThreshold * 100) })
-          : report.opponentKind && perspective === 'defending' && whyGrade === 'WALKOVER'
-            ? t('starter.reports.walkover')
-            : t(`reports.why.${perspective}.${whyGrade}`)}
-      </p>
-      <CombatTurningPoint report={report} />
-      </section>
+        {report.yourPlanet && <ReportRoute report={report} {...(onFocusPlanet ? { onFocusPlanet } : {})} />}
+        {/*
+          THE HANDICAP THAT PRODUCED EVERY DAMAGE FIGURE BELOW. D124 · D150.
 
-      <h2
-        data-report-section="there"
-        className="mt-4 border-t border-v2-line pt-3 text-micro font-semibold text-v2-ink"
-      >
-        {t(
-          report.attacking
-            ? (report.enemyFleetVisibility === 'FULL' || (report.enemyFleetVisibility === undefined && report.grade === 'DECISIVE'))
-              ? 'reports.q.enemyForce'
-              : 'reports.q.enemyLosses'
-            : 'reports.q.incomingForce',
-        )}
-      </h2>
-      {/* The frozen intelligence permission decides the roster; legacy payloads retain their older rendering. */}
-      <TheirBoard report={report} />
-      {/*
-        THE AEGIS IS ALWAYS THE DEFENDER'S, so which section it belongs to depends
-        on which end of the battle the reader is standing at.
-        
-        Raiding, it is part of the wall they flew into and belongs here. Being
-        raided, it is their OWN board — filing it under "what was on the other
-        side" would tell a defender their attacker brought a planet shield.
-      */}
-      {report.attacking && <ShieldImpact report={report} />}
-
-      <h2
-        ref={rounds}
-        data-report-section="who"
-        className="mt-4 border-t border-v2-line pt-3 text-micro font-semibold text-v2-ink scroll-mt-12"
-      >
-        {t('reports.q.who')}
-      </h2>
-      {report.jointWar && <JointWarForces report={report} />}
-      {report.defenseLine && <DefenseLineForces report={report} />}
-      {/* Defending, the Aegis is part of the reader's own board — see above. */}
-      {!report.attacking && <ShieldImpact report={report} />}
-
-      {/*
-        AND THE PART THAT GIVES YOUR OWN LOSSES A DENOMINATOR.
-
-        "You lost 12 Wasp" is a disaster out of fifteen and a rounding error out
-        of eighty, and until D121 the report could not tell those two apart. The
-        roster is the caller's own board, so it discloses nothing: this is the one
-        force in the fight the reader already commanded.
-      */}
-      <h3 className="mt-4 text-caption font-semibold text-v2-ink">
-        {t(fleetEntries(report.yourFleet).length > 0 ? 'reports.yourForce' : 'reports.yours')}
-      </h3>
-      {fleetEntries(report.yourFleet).length > 0 ? (
-        <YourForce report={report} />
-      ) : (
-        <Losses fleet={report.yourLosses} tone="text-v2-hostile" empty={t('reports.yoursEmpty')} />
-      )}
-      {/*
-        THE WALKOVER, WHICH IS THE MOST COMMON RAID IN THE GAME AND THE ONE THE
-        SHEET SAID LEAST ABOUT. Owner report · `docs/battle-reports.md`.
-
-        `resolveCombat` breaks before round one when no defending units stand,
-        even with an idle Aegis, so the report arrives with `rounds: []`. That drew a
-        "How it went" heading over an EMPTY PLATE — a reader who flew a real fleet
-        at a real world and came home to a box with nothing in it, on the surface
-        that is supposed to be the whole product of the trip.
-
-        There was no fight, so the honest report is a sentence rather than a table.
-        Everything that DID happen — the haul, the wreck, the Dominion — is above
-        this and unaffected.
-      */}
-      {report.rounds.length === 0 ? (
-        <section data-walkover className="rounded-control border border-v2-line bg-v2-deep/40 mt-3 px-3 py-2">
-          <p className="text-caption font-semibold text-v2-ink">{t('reports.walkoverHeading')}</p>
-          <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">
-            {t(report.attacking ? 'reports.walkoverBody' : report.opponentKind ? 'starter.reports.walkoverBody' : 'reports.walkoverDefendingBody')}
+          A pirate's entire difference from a player fleet of the same roster is a
+          per-level cut to its ATTACK, and nothing on this surface said so — the
+          reader was being asked to check the arithmetic against a rule the interface
+          never states. The same sentence the launch rail shows before committing, so
+          what a commander priced the fight with is what the report explains it with.
+        */}
+        {report.pirate && (
+          <p className="gk-report__note">
+            {t('pirate.damagePenalty', {
+              percent: Math.round((1 - report.pirate.damageMult) * 100),
+            })}
           </p>
-        </section>
-      ) : (
-      <>
-      <h3 className="mt-4 text-caption font-semibold text-v2-ink">{t('reports.howItWent')}</h3>
-      <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">{t('reports.calculation.fireNote')}</p>
-      {report.rounds.some(round => round.distributedFire === true) ? <DistributedFireRules targetLimit={report.rounds.find(round => round.targetLimit !== undefined)?.targetLimit} /> : null}
-      {!report.pirate ? <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">{t('reports.roundDamageNote')}</p> : null}
-      <div className="rounded-control border border-v2-line bg-v2-deep/40 mt-2">
-        {report.rounds.map((round) => (
-          <BattleRound key={round.round} report={report} round={round} />
-        ))}
-      </div>
-      {report.pirate && <HoldsTaken report={report} />}
-      <details className="mt-3">
-        <summary className="cursor-pointer py-3 text-caption font-semibold text-v2-crystal focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self">
-          {t('reports.rulesToggle')}
-        </summary>
-        <CombatFormula grade={report.grade} pirate={report.pirate != null} balance={report.pvpBalance ?? STANDARD_PVP_BALANCE} />
-      </details>
-      </>
-      )}
+        )}
+        {/*
+          WHY THIS WORD, AND NOT THE OTHER TWO.
 
-      <h2
-        data-report-section="changed"
-        className="mt-4 border-t border-v2-line pt-3 text-micro font-semibold text-v2-ink"
-      >
-        {t('reports.q.changed')}
-      </h2>
-      {/* The opening verdict already states losses, loot and Dominion. This section
-          expands only the figures that have more to explain. */}
-      {report.dominion !== null ? (
-        <p className="mt-3 text-caption leading-relaxed text-v2-ink-2">{t('reports.dominionReason')}</p>
-      ) : null}
-      {report.dominion !== null && report.dominion !== 0 ? (
-        <p
-          data-dominion-summary
-          className="mt-3 border-l border-v2-line pl-3 text-caption font-normal leading-relaxed text-v2-ink-2"
-        >
-          {t(
-            report.dominion >= 0
-              ? 'reports.dominionSummaryGained'
-              : 'reports.dominionSummaryLost',
-            { amount: full(Math.abs(report.dominion)) },
+          DECISIVE, PARTIAL and REPELLED are printed in caps at the top of every
+          report and nothing in the game had ever said what separates them. A player
+          who reads "PARTIAL" twice and cannot tell whether they were close has been
+          given a stamp, not a report — and the grade is what sets the loot share and
+          how long the works stay down, so it is the single most consequential word
+          on the surface.
+        */}
+        <section data-battle-reason className="gk-well gk-report__why">
+          <h3 className="gk-report__subhead">{t('reports.reasonHeading')}</h3>
+          <p className="gk-report__copy">
+            {/*
+              ONE LINE IN THIRTEEN QUOTES THE THRESHOLD, AND THE TYPES SAY SO.
+
+              A repelled attacker is the only reading that has to name the bar it
+              missed; the other twelve describe what happened without a number in
+              them. Handing the whole key union an interpolation value none of them
+              declare is what the compiler refuses, and it is right to — the option
+              would be silently dropped on twelve of the thirteen.
+            */}
+            {perspective === 'attacking' && whyGrade === 'REPELLED'
+              ? t('reports.why.attacking.REPELLED',
+                  { threshold: full(COMBAT.partialThreshold * 100) })
+              : report.opponentKind && perspective === 'defending' && whyGrade === 'WALKOVER'
+                ? t('starter.reports.walkover')
+                : t(`reports.why.${perspective}.${whyGrade}`)}
+          </p>
+          <CombatTurningPoint report={report} />
+        </section>
+      </div></Fold>
+
+      <Fold data-report-section="there" glyph="eye" title={t(
+        report.attacking
+          ? (report.enemyFleetVisibility === 'FULL' || (report.enemyFleetVisibility === undefined && report.grade === 'DECISIVE'))
+            ? 'reports.q.enemyForce'
+            : 'reports.q.enemyLosses'
+          : 'reports.q.incomingForce',
+      )}><div className="gk-report__part">
+        {/* The frozen intelligence permission decides the roster; legacy payloads retain their older rendering. */}
+        <TheirBoard report={report} />
+        {/*
+          THE AEGIS IS ALWAYS THE DEFENDER'S, so which section it belongs to depends
+          on which end of the battle the reader is standing at.
+
+          Raiding, it is part of the wall they flew into and belongs here. Being
+          raided, it is their OWN board — filing it under "what was on the other
+          side" would tell a defender their attacker brought a planet shield.
+        */}
+        {report.attacking && <ShieldImpact report={report} />}
+      </div></Fold>
+
+      <Fold ref={rounds} data-report-section="who" glyph="attack" title={t('reports.q.who')}
+        {...(report.rounds.length > 0 ? { value: t('reports.rounds', { count: report.rounds.length }) } : {})}><div className="gk-report__part">
+        {report.jointWar && <JointWarForces report={report} />}
+        {report.defenseLine && <DefenseLineForces report={report} />}
+        {/* Defending, the Aegis is part of the reader's own board — see above. */}
+        {!report.attacking && <ShieldImpact report={report} />}
+
+        {/*
+          AND THE PART THAT GIVES YOUR OWN LOSSES A DENOMINATOR.
+
+          "You lost 12 Wasp" is a disaster out of fifteen and a rounding error out
+          of eighty, and until D121 the report could not tell those two apart. The
+          roster is the caller's own board, so it discloses nothing: this is the one
+          force in the fight the reader already commanded.
+        */}
+        <div className="gk-report__block">
+          <h3 className="gk-report__subhead">
+            {t(fleetEntries(report.yourFleet).length > 0 ? 'reports.yourForce' : 'reports.yours')}
+          </h3>
+          {fleetEntries(report.yourFleet).length > 0 ? (
+            <YourForce report={report} />
+          ) : (
+            <Losses fleet={report.yourLosses} tone="threat" empty={t('reports.yoursEmpty')} />
           )}
-        </p>
-      ) : null}
-      {report.dominionBreakdown && (
-        <section
-          className="rounded-control border border-v2-line bg-v2-deep/40 mt-3 p-3"
-          data-dominion-ruleset={report.dominionBreakdown.ruleVersion}
-        >
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-caption font-semibold text-v2-ink">{t('reports.dominionBreakdown.title')}</h3>
-            <span className="font-v2-mono tabular-nums text-micro text-v2-ink-3">
-              v{report.dominionBreakdown.ruleVersion}
-            </span>
+        </div>
+        {/*
+          THE WALKOVER, WHICH IS THE MOST COMMON RAID IN THE GAME AND THE ONE THE
+          SHEET SAID LEAST ABOUT. Owner report · `docs/battle-reports.md`.
+
+          `resolveCombat` breaks before round one when no defending units stand,
+          even with an idle Aegis, so the report arrives with `rounds: []`. That drew a
+          "How it went" heading over an EMPTY PLATE — a reader who flew a real fleet
+          at a real world and came home to a box with nothing in it, on the surface
+          that is supposed to be the whole product of the trip.
+
+          There was no fight, so the honest report is a sentence rather than a table.
+          Everything that DID happen — the haul, the wreck, the Dominion — is above
+          this and unaffected.
+        */}
+        {report.rounds.length === 0 ? (
+          <section data-walkover className="gk-well gk-report__why">
+            <h3 className="gk-report__subhead">{t('reports.walkoverHeading')}</h3>
+            <p className="gk-report__copy">
+              {t(report.attacking ? 'reports.walkoverBody' : report.opponentKind ? 'starter.reports.walkoverBody' : 'reports.walkoverDefendingBody')}
+            </p>
+          </section>
+        ) : (
+        <div className="gk-report__block">
+          <h3 className="gk-report__subhead">{t('reports.howItWent')}</h3>
+          <p className="gk-report__copy">{t('reports.calculation.fireNote')}</p>
+          {!report.pirate ? <p className="gk-report__copy">{t('reports.roundDamageNote')}</p> : null}
+          {report.rounds.some(round => round.distributedFire === true) ? <DistributedFireRules targetLimit={report.rounds.find(round => round.targetLimit !== undefined)?.targetLimit} /> : null}
+          <div className="gk-ledger gk-rounds">
+            {report.rounds.map((round) => (
+              <BattleRound key={round.round} report={report} round={round} />
+            ))}
           </div>
-          <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-micro">
-            <dt className="text-v2-ink-2">
-              {t(report.dominionBreakdown.lootValue >= 0
-                ? 'reports.dominionBreakdown.lootGained'
-                : 'reports.dominionBreakdown.lootLost')}
-            </dt>
-            <dd className={report.dominionBreakdown.lootValue >= 0
-              ? 'font-v2-mono tabular-nums text-v2-alloy'
-              : 'font-v2-mono tabular-nums text-v2-hostile'}>
-              {signed(report.dominionBreakdown.lootValue)}
-            </dd>
-            <dt className="text-v2-ink-2">{t('reports.dominionBreakdown.enemyLosses')}</dt>
-            <dd className="font-v2-mono tabular-nums text-v2-self">
-              {signed(report.dominionBreakdown.enemyPermanentLossValue)}
-            </dd>
-            <dt className="text-v2-ink-2">{t('reports.dominionBreakdown.ownLosses')}</dt>
-            <dd className="font-v2-mono tabular-nums text-v2-hostile">
-              {signed(-report.dominionBreakdown.ownPermanentLossValue)}
-            </dd>
-            <dt className="mt-1 border-t border-v2-line/60 pt-2 text-v2-ink">
-              {t('reports.dominionBreakdown.total')}
-            </dt>
-            <dd className={`font-v2-mono tabular-nums mt-1 border-t border-v2-line/60 pt-2 ${
-              report.dominionBreakdown.rawExchange >= 0
-                ? 'text-v2-self'
-                : 'text-v2-hostile'
-            }`}>
-              {signed(report.dominionBreakdown.rawExchange)}
-            </dd>
-          </dl>
-        </section>
-      )}
-      {looted !== 0 && (
-        <p className="v2-legend mt-2">{t(looted >= 0 ? 'reports.haul' : 'reports.haulLost')}</p>
-      )}
-      {looted !== 0 && (
-        <p className="font-v2-mono tabular-nums mt-1 flex items-center gap-2 text-micro">
-          <span className="flex items-center gap-1 text-v2-alloy">
-            <img
-              src={RESOURCE_ART.alloy}
-              alt={t('vocabulary.resource.alloy')}
-              className="size-4 object-contain"
-            />
-            {signed(report.lootAlloy)}
-          </span>
-          <span className="flex items-center gap-1 text-v2-crystal">
-            <img
-              src={RESOURCE_ART.crystal}
-              alt={t('vocabulary.resource.crystal')}
-              className="size-4 object-contain"
-            />
-            {signed(report.lootCrystal)}
-          </span>
-          {report.lootDeuterium !== 0 && (
-            <span className="flex items-center gap-1 text-v2-self">
-              <img
-                src={RESOURCE_ART.deuterium}
-                alt={t('vocabulary.resource.deuterium')}
-                className="size-4 object-contain"
-              />
-              {signed(report.lootDeuterium)}
-            </span>
-          )}
-        </p>
-      )}
-      {/*
-        WHAT THE COLLECTORS LIFTED, UNDER THE HAUL AND NEVER INSIDE IT. D200.
+          {report.pirate && <HoldsTaken report={report} />}
+          <RulesRow glyph="help" title={t('reports.rulesToggle')}>
+            <CombatFormula grade={report.grade} pirate={report.pirate != null} balance={report.pvpBalance ?? STANDARD_PVP_BALANCE} />
+          </RulesRow>
+        </div>
+        )}
+      </div></Fold>
 
-        It came home with the fleet, so it belongs beside "what came home" — but it
-        is not loot: it was never the defender's and it moved no Dominion, and a sum
-        that folded the two together would print a haul the equation above cannot
-        account for. Attacker's copy only; the defender reads it as a consequence.
-      */}
-      {report.attacking && lifted > 0 && salvage && (
-        <>
-          <p className="v2-legend mt-2">{t('reports.salvageHaul')}</p>
-          <p data-testid="report-salvage" className="font-v2-mono tabular-nums mt-1 flex items-center gap-2 text-micro">
-            <span className="flex items-center gap-1 text-v2-alloy">
-              <img
-                src={RESOURCE_ART.alloy}
-                alt={t('vocabulary.resource.alloy')}
-                className="size-4 object-contain"
-              />
-              {signed(salvage.alloy)}
-            </span>
-            <span className="flex items-center gap-1 text-v2-crystal">
-              <img
-                src={RESOURCE_ART.crystal}
-                alt={t('vocabulary.resource.crystal')}
-                className="size-4 object-contain"
-              />
-              {signed(salvage.crystal)}
-            </span>
-            {salvage.deuterium !== 0 && (
-              <span className="flex items-center gap-1 text-v2-self">
-                <img
-                  src={RESOURCE_ART.deuterium}
-                  alt={t('vocabulary.resource.deuterium')}
-                  className="size-4 object-contain"
-                />
-                {signed(salvage.deuterium)}
-              </span>
+      <Fold data-report-section="changed" glyph="crate" title={t('reports.q.changed')}
+        {...(report.dominion !== null && report.dominion !== 0 ? { value: signed(report.dominion) } : {})}><div className="gk-report__part">
+        {/* The opening verdict already states losses, loot and Dominion. This section
+            expands only the figures that have more to explain. */}
+        {report.dominion !== null ? (
+          <p className="gk-report__copy">{t('reports.dominionReason')}</p>
+        ) : null}
+        {report.dominion !== null && report.dominion !== 0 ? (
+          <p data-dominion-summary className="gk-report__note" data-tone={report.dominion >= 0 ? 'good' : 'threat'}>
+            {t(
+              report.dominion >= 0
+                ? 'reports.dominionSummaryGained'
+                : 'reports.dominionSummaryLost',
+              { amount: full(Math.abs(report.dominion)) },
             )}
           </p>
-        </>
-      )}
-      <Consequences report={report} />
-      {/*
-        AND THE PRIZE, WHICH IS WHY ANYONE FLIES AT ONE OF THESE AT ALL.
+        ) : null}
+        {report.dominionBreakdown && (
+          <section className="gk-well" data-dominion-ruleset={report.dominionBreakdown.ruleVersion}>
+            <dl className="gk-report__sum">
+              <div className="gk-report__sumhead">
+                <h3 className="gk-report__subhead">{t('reports.dominionBreakdown.title')}</h3>
+                <span className="gk-num">v{report.dominionBreakdown.ruleVersion}</span>
+              </div>
+              <dt>
+                {t(report.dominionBreakdown.lootValue >= 0
+                  ? 'reports.dominionBreakdown.lootGained'
+                  : 'reports.dominionBreakdown.lootLost')}
+              </dt>
+              <dd className="gk-num" data-tone={report.dominionBreakdown.lootValue >= 0 ? 'alloy' : 'threat'}>
+                {signed(report.dominionBreakdown.lootValue)}
+              </dd>
+              <dt>{t('reports.dominionBreakdown.enemyLosses')}</dt>
+              <dd className="gk-num" data-tone="good">
+                {signed(report.dominionBreakdown.enemyPermanentLossValue)}
+              </dd>
+              <dt>{t('reports.dominionBreakdown.ownLosses')}</dt>
+              <dd className="gk-num" data-tone="threat">
+                {signed(-report.dominionBreakdown.ownPermanentLossValue)}
+              </dd>
+              <dt data-total="">{t('reports.dominionBreakdown.total')}</dt>
+              <dd data-total="" className="gk-num" data-tone={report.dominionBreakdown.rawExchange >= 0 ? 'good' : 'threat'}>
+                {signed(report.dominionBreakdown.rawExchange)}
+              </dd>
+            </dl>
+          </section>
+        )}
+        {looted !== 0 && (
+          <div className="gk-haul">
+            <p className="gk-report__label">{t(looted >= 0 ? 'reports.haul' : 'reports.haulLost')}</p>
+            <HaulLine alloy={report.lootAlloy} crystal={report.lootCrystal} deuterium={report.lootDeuterium} />
+          </div>
+        )}
+        {/*
+          WHAT THE COLLECTORS LIFTED, UNDER THE HAUL AND NEVER INSIDE IT. D200.
 
-        A DECISIVE win may hand over one of the pirate's own hulls — the only door
-        in the game into a ship you did not build. It reached the player as a toast
-        and as a line in a return notification, both long gone by the time they open
-        the report. Drawn as the ship rather than written as a name, for the reason
-        the launch sheet draws its pickers: this is a hull, and a hull is a picture.
-      */}
-      {report.pirate?.capturedHull && <CapturedHull hull={report.pirate.capturedHull} />}
-      {yourClan || theirClan ? (
-        <div className="rounded-control border border-v2-line bg-v2-deep/40 mb-2 px-3 py-2">
-          <p className="text-caption font-semibold text-v2-ink">{t('reports.clansAtLaunch')}</p>
-          <div className="mt-2 grid grid-cols-2 gap-2">
+          It came home with the fleet, so it belongs beside "what came home" — but it
+          is not loot: it was never the defender's and it moved no Dominion, and a sum
+          that folded the two together would print a haul the equation above cannot
+          account for. Attacker's copy only; the defender reads it as a consequence.
+        */}
+        {report.attacking && lifted > 0 && salvage && (
+          <div className="gk-haul">
+            <p className="gk-report__label">{t('reports.salvageHaul')}</p>
+            <HaulLine testId="report-salvage" alloy={salvage.alloy} crystal={salvage.crystal} deuterium={salvage.deuterium} />
+          </div>
+        )}
+        <Consequences report={report} />
+        {/*
+          AND THE PRIZE, WHICH IS WHY ANYONE FLIES AT ONE OF THESE AT ALL.
+
+          A DECISIVE win may hand over one of the pirate's own hulls — the only door
+          in the game into a ship you did not build. It reached the player as a toast
+          and as a line in a return notification, both long gone by the time they open
+          the report. Drawn as the ship rather than written as a name, for the reason
+          the launch sheet draws its pickers: this is a hull, and a hull is a picture.
+        */}
+        {report.pirate?.capturedHull && <CapturedHull hull={report.pirate.capturedHull} />}
+        {yourClan || theirClan ? (
+          <div className="gk-well gk-clans">
+            <h3 className="gk-report__subhead gk-clans__head">{t('reports.clansAtLaunch')}</h3>
             <ClanAtLaunch label={t('reports.yourClan')} clan={yourClan} />
             <ClanAtLaunch label={t('reports.theirClan')} clan={theirClan} />
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div></Fold>
+      <NextMoves report={report} {...(onFocusPlanet ? { onFocusPlanet } : {})} />
       </div>
     </V2Sheet>
+  );
+}
+
+/**
+ * BOTH ENDS OF THE FIGHT, EACH A DOOR TO ITS WORLD (C15). The reader's own world first, the
+ * arrow pointing out on a raid and in on a defence. A world with nowhere to fly to — no id,
+ * or no galaxy behind the sheet — is a name.
+ */
+function ReportRoute({ report, onFocusPlanet }: { report: OrdinaryReport; onFocusPlanet?: (planetId: string) => void }) {
+  return (
+    <div data-report-route="" className="gk-route">
+      <RouteEnd id={report.yourPlanetId ?? null} name={report.yourPlanet} onFocusPlanet={onFocusPlanet} />
+      {report.opponentPlanet !== '' && (
+        <>
+          <span data-route-arrow="" data-dir={report.attacking ? 'out' : 'in'} className="gk-route__arrow" aria-hidden="true">
+            <Glyph id="next" />
+          </span>
+          <RouteEnd id={report.opponentPlanetId} name={report.opponentPlanet} onFocusPlanet={onFocusPlanet} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function RouteEnd({ id, name, onFocusPlanet }: { id: string | null; name: string; onFocusPlanet: ((planetId: string) => void) | undefined }) {
+  const own = useOwnPress(() => {
+    if (!id || !onFocusPlanet) return;
+    playSound('tap');
+    haptic('tap');
+    onFocusPlanet(id);
+  });
+  if (!id || !onFocusPlanet) return <span className="gk-route__name">{name}</span>;
+  return (
+    <button type="button" className="gk-route__door" {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <Glyph id="target" />
+      <span>{name}</span>
+    </button>
+  );
+}
+
+/** Three materials as the game draws them, signed: what came home, or what was taken. */
+function HaulLine({ alloy, crystal, deuterium, testId }: { alloy: number; crystal: number; deuterium: number; testId?: string }) {
+  const { t } = useTranslation();
+  const parts: { res: 'alloy' | 'crystal' | 'deuterium'; value: number }[] = [
+    { res: 'alloy', value: alloy },
+    { res: 'crystal', value: crystal },
+    ...(deuterium !== 0 ? [{ res: 'deuterium' as const, value: deuterium }] : []),
+  ];
+  return (
+    <p className="gk-haul__row gk-num" {...(testId ? { 'data-testid': testId } : {})}>
+      {parts.map((part) => (
+        <span key={part.res} className="gk-haul__res" data-res={part.res}>
+          <img src={RESOURCE_ART[part.res]} alt={t(`vocabulary.resource.${part.res}`)} />
+          {signed(part.value)}
+        </span>
+      ))}
+    </p>
+  );
+}
+
+interface NextMove { kind: 'source' | 'wreck'; glyph: GlyphId; tone?: 'alloy' | 'hostile'; title: string; sub: string; go: () => void }
+
+/**
+ * WHAT NOW (C15). A report produces intel, and intel is only worth something as the next
+ * decision, so the sheet closes on the doors this fight opened — each one only when it can
+ * open: the raided world's dossier, which this fight just wrote to; the world a raid came
+ * from; the wreck the fight left, over a world (a pirate's orbits nothing).
+ */
+function NextMoves({ report, onFocusPlanet }: { report: OrdinaryReport } & Pick<ReportDoors, 'onFocusPlanet'>) {
+  const { t } = useTranslation();
+  const moves: NextMove[] = [];
+  // The scene above carries Attack again (O6: one door to one move); these are the moves it lacks.
+  const source = !report.attacking && !report.pirate && report.opponentPlanet !== '' ? report.opponentPlanetId : null;
+  if (source && onFocusPlanet) {
+    moves.push({ kind: 'source', glyph: 'target', tone: 'hostile', title: t('reports.next.source', { planet: report.opponentPlanet }),
+      sub: t('reports.next.sourceNote'), go: () => { onFocusPlanet(source); } });
+  }
+  // The wreck drifts over the world that was attacked: theirs on a raid, yours (or the clanmate's you stood at) on a defence.
+  const wreck = report.pirate ? null : report.attacking
+    ? { id: report.opponentPlanetId, name: report.opponentPlanet }
+    : { id: report.supportedAt?.planetId ?? report.yourPlanetId ?? null, name: report.supportedAt?.planetName ?? report.yourPlanet };
+  const wreckId = wreck?.id;
+  if (report.wreckValue >= 1 && wreck && wreckId && wreck.name !== '' && onFocusPlanet) {
+    moves.push({ kind: 'wreck', glyph: 'debris', tone: 'alloy', title: t('reports.next.wreck', { planet: wreck.name }),
+      sub: t('reports.next.wreckNote', { amount: compact(report.wreckValue) }), go: () => { onFocusPlanet(wreckId); } });
+  }
+  if (moves.length === 0) return null;
+  return (
+    <section data-report-section="now" className="gk-report__part">
+      <SectionTag as="h2">{t('reports.next.title')}</SectionTag>
+      <div className="gk-ledger gk-next">
+        {moves.map((move) => <NextMoveDoor key={move.kind} move={move} />)}
+      </div>
+    </section>
+  );
+}
+
+function NextMoveDoor({ move }: { move: NextMove }) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); move.go(); });
+  return (
+    <button type="button" data-next-move={move.kind} className="gk-ledger__row" {...OWN_SOUND}
+      onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-next__mark" {...(move.tone ? { 'data-tone': move.tone } : {})} aria-hidden="true"><Glyph id={move.glyph} /></span>
+      <span className="gk-ledger__words">
+        <span className="gk-ledger__title">{move.title}</span>
+        <span className="gk-ledger__sub">{move.sub}</span>
+      </span>
+      <span className="gk-ledger__mark" aria-hidden="true"><Glyph id="next" /></span>
+    </button>
   );
 }
 
@@ -1082,11 +1174,11 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
   const { t } = useTranslation();
   const joint = report.jointWar;
   if (!joint) return null;
-  return <section data-joint-war className="rounded-control border border-v2-line bg-v2-deep/40 mt-3 p-3">
-    <h3 className="text-caption font-semibold font-semibold text-v2-ink">
+  return <section data-joint-war className="gk-well gk-report__why">
+    <h3 className="gk-report__subhead">
       {t('clanWar.report.title', { tag: joint.clan.tag })}
     </h3>
-    <p className="mt-1 text-micro text-v2-ink-2">
+    <p className="gk-report__copy">
       {t('clanWar.report.summary', {
         count: joint.attackerCount,
         sent: unitCount(joint.sent),
@@ -1094,7 +1186,7 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
         returned: unitCount(joint.survivors),
       })}
     </p>
-    <p className="mt-1 text-micro text-v2-ink-3">
+    <p className="gk-report__copy" data-tone="quiet">
       {t('clanWar.report.ratio', {
         attackers: joint.attackerCount,
         // Only the host's Dominion moves against a supported line (owner, 2026-10-02): the
@@ -1103,17 +1195,16 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
       })}
     </p>
     {joint.baseExchange !== null && joint.adjustedTransfer !== null && (
-      <p className="mt-1 text-micro text-v2-crystal">
+      <p className="gk-report__copy" data-tone="crystal">
         {t('clanWar.report.audit', {
           base: signed(joint.baseExchange),
           adjusted: signed(joint.adjustedTransfer),
         })}
       </p>
     )}
-    {joint.participants.map((participant) => <div key={participant.playerId}
-      className="mt-3 border-t border-v2-line pt-3">
-      <p className="font-semibold text-v2-ink">{participant.name}</p>
-      <p className="mt-1 text-micro text-v2-ink-2">
+    {joint.participants.map((participant) => <div key={participant.playerId} className="gk-report__member">
+      <p className="gk-report__subhead">{participant.name}</p>
+      <p className="gk-report__copy">
         {t('clanWar.report.participant', {
           sent: unitCount(participant.sent),
           lost: unitCount(participant.losses),
@@ -1124,19 +1215,19 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
           dominion: signed(participant.dominion),
         })}
       </p>
-      <ul className="mt-2 space-y-1">
-        {participant.waves.map((wave) => <li key={wave.id} className="text-micro text-v2-ink-3">
-          {t('clanWar.report.wave', {
+      <ul className="gk-report__waves">
+        {participant.waves.map((wave) => <li key={wave.id}>
+          <span className="gk-report__copy" data-tone="quiet">{t('clanWar.report.wave', {
             world: wave.originPlanetName,
             sent: unitCount(wave.sent),
             lost: unitCount(wave.losses),
             returned: unitCount(wave.survivors),
-          })}
-          <span className="block text-v2-ink-2">{t('clanWar.report.waveRewards', {
+          })}</span>
+          <span className="gk-report__copy">{t('clanWar.report.waveRewards', {
             loot: full(wave.loot.alloy + wave.loot.crystal + wave.loot.deuterium),
             salvage: full(wave.salvage.alloy + wave.salvage.crystal + wave.salvage.deuterium),
           })}</span>
-          <span className="block text-v2-ink-2">
+          <span className="gk-report__copy">
             {wave.destinationPlanetName
               ? t('clanWar.report.waveState', {
                   status: t(`clanWar.status.${wave.status}`),
@@ -1144,7 +1235,7 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
                 })
               : t(`clanWar.status.${wave.status}`)}
           </span>
-          {wave.returnAt && <span className="block text-v2-ink-2">
+          {wave.returnAt && <span className="gk-report__copy">
             {t('clanWar.report.returnAt', {
               time: new Intl.DateTimeFormat(t('units.numberLocale'), {
                 dateStyle: 'short', timeStyle: 'short',
@@ -1191,52 +1282,53 @@ function DefenseLineForces({ report }: { report: OrdinaryReport }) {
       .sort((a, b) => b.ships - a.ships || a.member.name.localeCompare(b.member.name))[0] ?? null
     : null;
   return (
-    <section data-defense-line aria-label={t('clanSupport.lineTitle')}
-      className="mt-3 rounded-control border border-v2-line bg-v2-deep/40 p-3">
-      <h3 className="flex items-baseline justify-between gap-2 text-caption font-semibold text-v2-ink">
+    <section data-defense-line aria-label={t('clanSupport.lineTitle')} className="gk-well gk-report__why">
+      <h3 className="gk-report__sumhead gk-report__subhead">
         {t('clanSupport.lineTitle')}
-        <span className="font-v2-mono text-micro font-normal text-v2-ink-3">
+        <span className="gk-report__label gk-num">
           {t('clanSupport.lineCount', { count: line.defenderCount })}
         </span>
       </h3>
       {hero && (
-        <p data-line-hero="" className="mt-1.5 flex items-center gap-1.5 rounded-control border border-v2-premium/40 bg-v2-premium/10 px-2 py-1 text-micro font-semibold text-v2-premium">
-          <span aria-hidden="true">★</span>
+        <p data-line-hero="" className="gk-report__hero">
+          <Glyph id="star" />
           <span className="min-w-0">{hero.member.sent
             ? t('clanSupport.lineHero', { name: hero.member.name, count: hero.ships })
             : t('clanSupport.lineHeroName', { name: hero.member.name })}</span>
         </p>
       )}
-      <ul className="mt-1 divide-y divide-v2-line/70">
+      <ul className="gk-report__line">
         {line.members.map((member) => (
-          <li key={member.playerId} className="flex items-center gap-2 py-1.5">
+          <li key={member.playerId}>
             <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5">
-                <span className="truncate text-caption font-semibold text-v2-ink">{member.name}</span>
-                <span className={`shrink-0 rounded-cell border px-1 text-micro ${member.role === 'HOST'
-                  ? 'border-v2-ink-3 text-v2-ink' : 'border-v2-line text-v2-ink-2'}`}>
+              <span className="gk-report__who">
+                <span className="gk-report__subhead gk-person__name">{member.name}</span>
+                <span className="gk-report__role" data-role={member.role}>
                   {t(member.role === 'HOST' ? 'clanSupport.lineHost' : 'clanSupport.lineSupport')}
                 </span>
               </span>
-              <span className="block font-v2-mono text-micro text-v2-ink-2">
+              <span className="gk-report__label gk-num">
                 {t('clanSupport.lineLost', { count: unitCount(member.losses) })}
                 {member.survivors !== null && ` · ${t('clanSupport.lineKept', { count: unitCount(member.survivors) })}`}
               </span>
             </span>
             {/* Only the host's Dominion moves (owner, 2026-10-02): a supporter's row carries none. */}
             {member.role === 'HOST' && (
-              <span className="shrink-0 font-v2-mono text-micro text-v2-ink">
+              <span className="gk-report__copy gk-num" data-strong="">
                 {t('clanSupport.lineDominion', { value: signed(member.dominion) })}
               </span>
             )}
           </li>
         ))}
       </ul>
-      {factorLine && <p className="mt-1 text-micro font-semibold leading-snug text-v2-ink">{factorLine}</p>}
-      <p className="mt-1 text-micro leading-snug text-v2-ink-3">{t('clanSupport.lineRule')}</p>
+      {factorLine && <p className="gk-report__copy" data-strong="">{factorLine}</p>}
+      <p className="gk-report__copy" data-tone="quiet">{t('clanSupport.lineRule')}</p>
     </section>
   );
 }
+
+/** The colour a consequence is read in: a gain, a loss, a resource, a warning, the clan. */
+type EffectTone = 'self' | 'threat' | 'alloy' | 'crystal' | 'warn' | 'ally' | 'plain';
 
 /**
  * The consequences a battle had beyond the loot line, each stated only when true.
@@ -1251,7 +1343,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   const { t } = useTranslation();
   const now = useNow(60_000);
   const salvaged = fleetEntries(report.defenceSalvage).reduce((sum, [, n]) => sum + n, 0);
-  const lines: { key: string; tone: string; text: string }[] = [];
+  const lines: { key: string; tone: EffectTone; text: string }[] = [];
 
   /*
     TAKTİK GERİ ÇEKİLME, FIRST, because it is why the rest of the page reads as it does:
@@ -1265,20 +1357,20 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   */
   const escape = report.fleetEscape ?? null;
   if (escape?.kind === 'ESCAPED' && report.attacking) {
-    lines.push({ key: 'escape', tone: 'text-v2-alloy', text: t('reports.effects.fled') });
+    lines.push({ key: 'escape', tone: 'alloy', text: t('reports.effects.fled') });
   } else if (escape?.kind === 'ESCAPED' && escape.ships !== undefined && escape.fuel !== undefined) {
     // F1: the clanmates' waves that ran with the line, free — said in the same line.
     const lifted = (escape.support ?? []).reduce((sum, wave) => sum + fleetCount(wave.ships), 0);
     const ran = t('reports.effects.escaped', { count: fleetCount(escape.ships), fuel: escape.fuel });
     lines.push({
       key: 'escape',
-      tone: 'text-v2-self',
+      tone: 'self',
       text: lifted > 0 ? `${ran} · ${t('reports.effects.escapedSupport', { count: lifted })}` : ran,
     });
   } else if (escape?.kind === 'STRANDED' && !report.attacking) {
     lines.push({
       key: 'escape',
-      tone: 'text-v2-hostile',
+      tone: 'threat',
       text: t('reports.effects.stranded', { fuel: escape.fuel, available: escape.available }),
     });
   }
@@ -1294,7 +1386,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
       || (fleetCount(report.yourFleet) > 0 && fleetCount(report.yourLosses) >= fleetCount(report.yourFleet));
     lines.push({
       key: `admiral:${String(index)}`,
-      tone: admiral.side !== 'attack' || !report.attacking ? 'text-v2-ink-2' : lost ? 'text-v2-warn' : 'text-v2-self',
+      tone: admiral.side !== 'attack' || !report.attacking ? 'plain' : lost ? 'warn' : 'self',
       text: admiral.side === 'defence' ? t('reports.effects.admiralDefence', values)
         : !report.attacking ? t('reports.effects.admiralRaider', values)
           : lost ? t('reports.effects.admiralRepair', { ...values, minutes: ADMIRAL_WAIT.repairMinutes })
@@ -1308,7 +1400,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   if (report.shieldAbsorbed >= 1 && shieldState(report).before === null) {
     lines.push({
       key: 'shield',
-      tone: 'text-v2-crystal',
+      tone: 'crystal',
       text: t(report.attacking ? 'reports.effects.shieldTheirs' : 'reports.effects.shieldYours', {
         amount: compact(report.shieldAbsorbed),
       }),
@@ -1317,7 +1409,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   if (report.cargoLimited) {
     lines.push({
       key: 'cargo',
-      tone: 'text-v2-alloy',
+      tone: 'alloy',
       text: t(report.opponentKind ? 'starter.reports.cargoLimited' : 'reports.effects.cargoLimited'),
     });
   }
@@ -1325,21 +1417,21 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   if (report.guardDownUntil && report.guardDownUntil.getTime() > now) {
     lines.push({
       key: 'guard',
-      tone: 'text-v2-self',
+      tone: 'self',
       text: t('starter.reports.guardDown', { time: duration((report.guardDownUntil.getTime() - now) / 60_000) }),
     });
   }
   if (salvaged > 0) {
     lines.push({
       key: 'salvage',
-      tone: 'text-v2-self',
+      tone: 'self',
       text: t('reports.effects.salvaged', { count: salvaged }),
     });
   }
   if (report.disruptedMinutes >= 1) {
     lines.push({
       key: 'works',
-      tone: report.attacking ? 'text-v2-self' : 'text-v2-hostile',
+      tone: report.attacking ? 'self' : 'threat',
       text: t(report.attacking ? 'reports.effects.worksTheirs' : 'reports.effects.worksYours', {
         duration: duration(report.disruptedMinutes),
       }),
@@ -1359,7 +1451,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   if (!report.attacking && lifted >= 1) {
     lines.push({
       key: 'collected',
-      tone: 'text-v2-alloy',
+      tone: 'alloy',
       text: t('reports.effects.salvageTheirs', { amount: compact(lifted) }),
     });
   }
@@ -1379,7 +1471,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
     */
     lines.push({
       key: 'wreck',
-      tone: 'text-v2-alloy',
+      tone: 'alloy',
       text: report.pirate
         ? t('reports.effects.wreckVoid', { amount: compact(report.wreckValue) })
         : report.attacking
@@ -1395,7 +1487,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   if (!report.attacking && purse && purse.alloy + purse.crystal + purse.deuterium >= 1) {
     const amounts = (['alloy', 'crystal', 'deuterium'] as const).filter((key) => purse[key] >= 1)
       .map((key) => `${full(purse[key])} ${t(`vocabulary.resource.${key}`)}`).join(' · ');
-    lines.push({ key: 'clanPurse', tone: 'text-v2-ally', text: t('reports.effects.clanPurse', { amounts }) });
+    lines.push({ key: 'clanPurse', tone: 'ally', text: t('reports.effects.clanPurse', { amounts }) });
   }
 
   /*
@@ -1414,7 +1506,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   if (broken.length > 0) {
     lines.push({
       key: 'faults',
-      tone: 'text-v2-hostile',
+      tone: 'threat',
       text: t('reports.effects.colonyFaults', {
         planet: report.yourPlanet,
         faults: broken.map((kind) => t(`faults.name.${kind}`)).join(' · '),
@@ -1445,7 +1537,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
     };
     lines.push({
       key: 'recovery',
-      tone: recovery.shielded ? 'text-v2-self' : 'text-v2-ink-2',
+      tone: recovery.shielded ? 'self' : 'plain',
       text: recovery.shielded
         ? t('reports.effects.recoveryEarned', values)
         : recovery.lossHours >= balance.recoveryLossHours
@@ -1457,14 +1549,14 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   if (lines.length === 0) return null;
 
   return (
-    <div className="rounded-control border border-v2-line bg-v2-deep/40 mt-3 px-3 py-2">
-      <p className="v2-legend">{t('reports.effects.heading')}</p>
-      <ul className="mt-2 grid gap-2">
+    <div className="gk-well gk-effects">
+      <h3 className="gk-report__subhead">{t('reports.effects.heading')}</h3>
+      <ul>
         {lines.map((line) => (
           <li
             key={line.key}
             data-effect={line.key.split(':')[0]}
-            className={`text-micro leading-snug ${line.tone}`}
+            data-tone={line.tone}
             {...(line.key === 'faults' ? { 'data-colony-faults': '' } : {})}
             {...(line.key === 'escape' ? { 'data-fleet-escape': '' } : {})}
             {...(line.key === 'recovery' ? { 'data-recovery-shield': '' } : {})}
@@ -1518,9 +1610,9 @@ function CombatFormula({ grade, pirate = false, balance }: { grade: Grade; pirat
   const { t } = useTranslation();
   const percent = (share: number) => decimal(share * 100, Number.isInteger(share * 100) ? 0 : 1);
   return (
-    <section data-combat-formula className="rounded-control border border-v2-line bg-v2-deep/40 mt-2 px-3 py-2">
-      <p className="text-caption font-semibold text-v2-ink">{t('reports.calculation.formulaHeading')}</p>
-      <ol className="mt-2 grid gap-2 text-micro leading-relaxed text-v2-ink-2">
+    <section data-combat-formula className="gk-report__formula">
+      <p className="gk-report__subhead">{t('reports.calculation.formulaHeading')}</p>
+      <ol>
         <li>{t('reports.calculation.formulaBase')}</li>
         <li>
           {t('reports.calculation.formulaCounter', {
@@ -1535,38 +1627,34 @@ function CombatFormula({ grade, pirate = false, balance }: { grade: Grade; pirat
           })}
         </li>
       </ol>
-      <div className="mt-3 grid gap-1 border-t border-v2-line/60 pt-3 text-micro leading-relaxed text-v2-ink-3">
+      <div className="gk-report__formulanotes">
         <p>{t('reports.calculation.formulaHp')}</p>
         <p>{t('reports.calculation.formulaCarry')}</p>
         <p>{t('reports.calculation.formulaSupport')}</p>
       </div>
-      <div className="mt-3 border-t border-v2-line/60 pt-3">
-        <p className="text-caption font-semibold text-v2-ink">{t('reports.calculation.resultHeading')}</p>
-        <ul className="mt-2 grid gap-2 text-micro leading-relaxed text-v2-ink-2">
-          {(['DECISIVE', 'PARTIAL', 'REPELLED'] as const).map((result) => (
-            <li
-              key={result}
-              className={result === grade ? 'text-v2-ink' : undefined}
-            >
-              {t(
-                pirate && result === 'DECISIVE'
-                  ? 'reports.calculation.resultDecisivePirate'
-                  : RESULT_EXPLANATION[result],
-                {
-                  threshold: full(COMBAT.partialThreshold * 100),
-                  decisiveLoot: percent(balance.lootDecisive),
-                  partialLoot: percent(balance.lootPartial),
-                  decisiveBuffer: percent(balance.lootDecisive * balance.lootBufferShare),
-                  partialBuffer: percent(balance.lootPartial * balance.lootBufferShare),
-                },
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
+      <p className="gk-report__subhead">{t('reports.calculation.resultHeading')}</p>
+      <ul>
+        {(['DECISIVE', 'PARTIAL', 'REPELLED'] as const).map((result) => (
+          <li key={result} {...(result === grade ? { 'data-this-fight': '' } : {})}>
+            {t(
+              pirate && result === 'DECISIVE'
+                ? 'reports.calculation.resultDecisivePirate'
+                : RESULT_EXPLANATION[result],
+              {
+                threshold: full(COMBAT.partialThreshold * 100),
+                decisiveLoot: percent(balance.lootDecisive),
+                partialLoot: percent(balance.lootPartial),
+                decisiveBuffer: percent(balance.lootDecisive * balance.lootBufferShare),
+                partialBuffer: percent(balance.lootPartial * balance.lootBufferShare),
+              },
+            )}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
+
 
 /**
  * THE HULL A RAID TOWED HOME. D133 · D150.
@@ -1595,7 +1683,7 @@ function HoldsTaken({ report }: { report: OrdinaryReport }) {
     .filter(([, n]) => n > 0);
   if (taken.length === 0) return null;
   return (
-    <p data-testid="pirate-overrun" className="mt-2 border-l-2 border-v2-self pl-3 text-caption leading-relaxed text-v2-ink-2">
+    <p data-testid="pirate-overrun" className="gk-report__note" data-tone="good">
       {t('reports.pirateOverrun', {
         fleet: taken.map(([hull, n]) => `${String(n)} ${hullLabel(hull)}`).join(t('counter.lineJoin')),
       })}
@@ -1608,30 +1696,14 @@ function CapturedHull({ hull }: { hull: HullId }) {
   const art = HULL_ART[hull];
 
   return (
-    <section
-      data-captured-hull={hull}
-      className="rounded-control border border-v2-line bg-v2-deep/40 relative mt-2 overflow-hidden p-3"
-    >
-      <span
-        aria-hidden
-        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-v2-self/80 to-transparent"
-      />
-      <div className="flex items-center gap-2">
-        <span className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-cell border border-v2-self/25 bg-v2-self/5">
-          <span aria-hidden className="absolute inset-2 rounded-full bg-v2-self/10 blur-lg" />
-          {art ? (
-            <img src={art} alt="" aria-hidden className="relative size-16 object-contain" />
-          ) : (
-            <HullMark hull={hull} className="relative size-10 text-v2-self" />
-          )}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-caption font-semibold text-v2-self">{t('reports.pirateCaptured')}</p>
-          <p className="name mt-1 text-caption font-semibold text-v2-ink">{hullLabel(hull)}</p>
-          <p className="mt-2 text-micro leading-relaxed text-v2-ink-2">
-            {t('reports.pirateCapturedNote')}
-          </p>
-        </div>
+    <section data-captured-hull={hull} className="gk-well gk-capture">
+      <span className="gk-capture__art" aria-hidden="true">
+        {art ? <img src={art} alt="" /> : <HullMark hull={hull} className="gk-capture__mark" />}
+      </span>
+      <div className="gk-capture__words">
+        <p className="gk-report__copy" data-strong="" data-tone="good">{t('reports.pirateCaptured')}</p>
+        <p className="gk-report__subhead">{hullLabel(hull)}</p>
+        <p className="gk-report__copy">{t('reports.pirateCapturedNote')}</p>
       </div>
     </section>
   );
@@ -1652,49 +1724,35 @@ function ShieldImpact({ report }: { report: OrdinaryReport }) {
   const defendersRemain = report.grade === 'REPELLED';
 
   return (
-    <section className="rounded-control border border-v2-line bg-v2-deep/40 relative mb-2 overflow-hidden p-3 mt-3">
-      <span
-        aria-hidden
-        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-v2-crystal/80 to-transparent"
-      />
-      <div className="flex items-center gap-2">
-        <span className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-cell border border-v2-line bg-v2-raise/40">
-          <span aria-hidden className="absolute inset-2 rounded-full bg-v2-raise/60 blur-lg" />
+    <section className="gk-well gk-aegis">
+      <div className="gk-aegis__head">
+        <span className="gk-aegis__art" data-down={after <= 0 ? '' : undefined}>
           <img
             src={instrumentArt('AEGIS', 1) ?? ''}
             alt={t('reports.aegis.aria')}
-            width={64}
-            height={64}
+            width={56}
+            height={56}
             loading="lazy"
-            className={`relative size-16 object-contain ${after <= 0 ? 'opacity-45 grayscale' : ''}`}
           />
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline justify-between gap-2">
-            <p className="text-micro font-semibold text-v2-crystal">
+        <div className="gk-aegis__words">
+          <div className="gk-aegis__title">
+            <p className="gk-report__subhead">
               {t(report.attacking ? 'reports.aegis.labelTheirs' : 'reports.aegis.labelYours')}
             </p>
             <span
               data-aegis-status={status}
               data-tone={status === 'broken' ? 'threat' : status === 'held' ? 'good' : 'neutral'}
-              className={`inline-flex items-center rounded-chip border px-1.5 py-0.5 text-micro font-semibold ${
-                status === 'broken' ? 'border-v2-hostile/50 text-v2-hostile'
-                  : status === 'held' ? 'border-v2-self/50 text-v2-self' : 'border-v2-alloy/50 text-v2-alloy'
-              }`}
+              className="gk-aegis__status"
             >
               {t(`reports.aegis.${status}`)}
             </span>
           </div>
-          <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">
+          <p className="gk-report__copy">
             {t(report.opponentKind ? 'starter.reports.aegisNote' : 'reports.aegis.note')}
           </p>
           {after <= 0 ? (
-            <p
-              data-aegis-outcome
-              className={`mt-2 text-caption font-semibold leading-relaxed ${
-                defendersRemain ? 'text-v2-alloy' : 'text-v2-ink'
-              }`}
-            >
+            <p data-aegis-outcome className="gk-report__copy" data-strong="" {...(defendersRemain ? { 'data-tone': 'warn' } : {})}>
               {t(
                 defendersRemain
                   ? 'reports.aegis.brokenUnitsRemain'
@@ -1706,36 +1764,23 @@ function ShieldImpact({ report }: { report: OrdinaryReport }) {
           ) : null}
         </div>
       </div>
-      <div className="relative mt-3 grid grid-cols-2 gap-6 border-t border-v2-line/60 pt-3">
+      <div className="gk-aegis__span">
         <div>
-          <p className="v2-legend text-v2-ink-3">{t('reports.aegis.before')}</p>
-          <p className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-ink">{full(before)}</p>
+          <p className="gk-report__label">{t('reports.aegis.before')}</p>
+          <p className="gk-report__figure gk-num">{full(before)}</p>
         </div>
-        <span
-          aria-hidden
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 text-micro text-v2-ink-3"
-        >
-          →
-        </span>
-        <div className="text-right">
-          <p className="v2-legend text-v2-ink-3">{t('reports.aegis.after')}</p>
-          <p className={`font-v2-mono tabular-nums mt-1 text-caption font-semibold ${after <= 0 ? 'text-v2-hostile' : 'text-v2-crystal'}`}>
-            {full(after)}
-          </p>
+        <span className="gk-aegis__arrow" aria-hidden="true"><Glyph id="next" /></span>
+        <div className="gk-aegis__after">
+          <p className="gk-report__label">{t('reports.aegis.after')}</p>
+          <p className="gk-report__figure gk-num" data-tone={after <= 0 ? 'threat' : 'crystal'}>{full(after)}</p>
         </div>
       </div>
-      <div className="mt-3">
-        <div className="h-2 overflow-hidden rounded-cell bg-v2-line">
-          <span
-            data-shield-remaining={remaining}
-            className="block h-full bg-gradient-to-r from-v2-crystal/65 to-v2-crystal"
-            style={{ width: `${String(remaining)}%` }}
-          />
-        </div>
-        <p className="font-v2-mono tabular-nums mt-2 text-right text-micro text-v2-crystal">
-          {t('reports.aegis.absorbed', { amount: full(report.shieldAbsorbed) })}
-        </p>
+      <div className="gk-aegis__meter">
+        <span data-shield-remaining={remaining} style={{ width: `${String(remaining)}%` }} />
       </div>
+      <p className="gk-report__label gk-num gk-aegis__absorbed">
+        {t('reports.aegis.absorbed', { amount: full(report.shieldAbsorbed) })}
+      </p>
     </section>
   );
 }
@@ -1745,10 +1790,10 @@ function BattleRound({ report, round }: { report: OrdinaryReport; round: Round }
   return (
     <section
       data-combat-round={round.round}
-      className="border-b border-v2-line/60 p-3 last:border-b-0"
+      className="gk-turn"
       aria-label={t('reports.calculation.round', { round: round.round })}
     >
-      <h4 className="mb-3 text-caption font-semibold font-semibold text-v2-ink">
+      <h4 className="gk-report__subhead">
         {t('reports.calculation.round', { round: round.round })}
       </h4>
       <RoundBalance
@@ -1756,12 +1801,12 @@ function BattleRound({ report, round }: { report: OrdinaryReport; round: Round }
         took={report.attacking ? round.defenderDamage : round.attackerDamage}
       />
       {round.shieldAbsorbed > 0 ? (
-        <p className="mt-2 text-caption text-v2-crystal">
+        <p className="gk-report__copy" data-tone="crystal">
           {t('reports.roundShield', { amount: full(round.shieldAbsorbed) })}
         </p>
       ) : null}
       {round.attackerShipShieldAbsorbed !== undefined && round.defenderShipShieldAbsorbed !== undefined ? (
-        <p data-round-ship-shields className="mt-2 text-caption leading-relaxed text-v2-crystal">
+        <p data-round-ship-shields className="gk-report__copy" data-tone="crystal">
           {t('research.shipShieldRound', {
             your: full(report.attacking ? round.attackerShipShieldAbsorbed : round.defenderShipShieldAbsorbed),
             their: full(report.attacking ? round.defenderShipShieldAbsorbed : round.attackerShipShieldAbsorbed),
@@ -1775,12 +1820,9 @@ function BattleRound({ report, round }: { report: OrdinaryReport; round: Round }
       <BattleRetreatNote fleet={round.yourRetreated} enemyCount={round.theirRetreatedCount} />
       <RoundStanding report={report} round={round} />
       {hasCalculationTelemetry(round) ? (
-        <details className="mt-2 border-t border-v2-line/60">
-          <summary className="cursor-pointer py-3 text-caption text-v2-crystal focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self">
-            {t('reports.roundCalculationToggle')}
-          </summary>
+        <RulesRow glyph="target" title={t('reports.roundCalculationToggle')}>
           <RoundCalculation report={report} round={round} />
-        </details>
+        </RulesRow>
       ) : null}
     </section>
   );
@@ -1796,8 +1838,8 @@ function RoundCalculation({ report, round }: { report: OrdinaryReport; round: Ro
   const after = round.shieldAfter!;
 
   return (
-    <div data-round-calculation>
-      <div className="grid grid-cols-2 gap-2">
+    <div data-round-calculation className="gk-report__calc">
+      <div className="gk-report__pair">
         <ShotCard label={t('reports.calculation.yourShot')} power={yourPower} roll={yourRoll} />
         <ShotCard label={t('reports.calculation.theirShot')} power={theirPower} roll={theirRoll} />
       </div>
@@ -1811,50 +1853,47 @@ function RoundCalculation({ report, round }: { report: OrdinaryReport; round: Ro
         present, which tells the reader a shield was a thing that might have
         happened here. The step is real and stays; what it reports on is different.
       */}
-      <div className="mt-2 border-t border-v2-line/60 pt-3">
-        <p className="text-caption font-semibold text-v2-ink">
-          {t(
-            report.pirate
-              ? round.defenderShipShieldAbsorbed !== undefined
-                ? 'research.shipShieldStage'
-                : 'reports.calculation.openSpace'
-              : before > 0
-                ? 'reports.calculation.aegis'
-                : 'reports.calculation.noAegis',
-          )}
-        </p>
-        {report.pirate ? (
-          <p className="mt-2 text-micro leading-relaxed text-v2-ink-2">
-            {t(round.defenderShipShieldAbsorbed !== undefined ? 'research.shipShieldHullDamage' : 'reports.calculation.openSpaceNote', { amount: full(round.attackerHullDamage!) })}
-          </p>
-        ) : before > 0 ? (
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <div className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-              <p className="v2-legend text-v2-ink-3">{t('reports.calculation.shieldCharge')}</p>
-              <p className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-crystal">
-                {full(before)} <span className="text-v2-ink-3">→</span> {full(after)}
-              </p>
-              <p className="mt-1 text-micro text-v2-ink-2">
-                {t('reports.calculation.absorbed', { amount: full(round.shieldAbsorbed) })}
-              </p>
-            </div>
-            <div className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-              <p className="v2-legend text-v2-ink-3">{t('reports.calculation.reachedHulls')}</p>
-              <p className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-ink">{full(round.attackerHullDamage!)}</p>
-              {round.shieldBreakerDamage > 0 ? (
-                <p className="mt-1 text-micro text-v2-deut">
-                  {t('reports.calculation.shieldBreaker', { amount: full(round.shieldBreakerDamage) })}
-                </p>
-              ) : null}
-            </div>
-          </div>
-        ) : (
-          <p className="mt-2 text-micro leading-relaxed text-v2-ink-2">
-            {t(round.defenderShipShieldAbsorbed !== undefined ? 'research.shipShieldHullDamage' : 'reports.calculation.noAegisNote', { amount: full(round.attackerHullDamage!) })}
-          </p>
+      <p className="gk-report__subhead">
+        {t(
+          report.pirate
+            ? round.defenderShipShieldAbsorbed !== undefined
+              ? 'research.shipShieldStage'
+              : 'reports.calculation.openSpace'
+            : before > 0
+              ? 'reports.calculation.aegis'
+              : 'reports.calculation.noAegis',
         )}
-      </div>
-
+      </p>
+      {report.pirate ? (
+        <p className="gk-report__copy">
+          {t(round.defenderShipShieldAbsorbed !== undefined ? 'research.shipShieldHullDamage' : 'reports.calculation.openSpaceNote', { amount: full(round.attackerHullDamage!) })}
+        </p>
+      ) : before > 0 ? (
+        <div className="gk-report__pair">
+          <div className="gk-well gk-report__cell">
+            <p className="gk-report__label">{t('reports.calculation.shieldCharge')}</p>
+            <p className="gk-report__value gk-num" data-tone="crystal">
+              {full(before)} <span data-tone="quiet">→</span> {full(after)}
+            </p>
+            <p className="gk-report__label">
+              {t('reports.calculation.absorbed', { amount: full(round.shieldAbsorbed) })}
+            </p>
+          </div>
+          <div className="gk-well gk-report__cell">
+            <p className="gk-report__label">{t('reports.calculation.reachedHulls')}</p>
+            <p className="gk-report__value gk-num">{full(round.attackerHullDamage!)}</p>
+            {round.shieldBreakerDamage > 0 ? (
+              <p className="gk-report__label" data-tone="deut">
+                {t('reports.calculation.shieldBreaker', { amount: full(round.shieldBreakerDamage) })}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <p className="gk-report__copy">
+          {t(round.defenderShipShieldAbsorbed !== undefined ? 'research.shipShieldHullDamage' : 'reports.calculation.noAegisNote', { amount: full(round.attackerHullDamage!) })}
+        </p>
+      )}
     </div>
   );
 }
@@ -1868,11 +1907,11 @@ function ShotCard({ label, power, roll }: { label: string; power: number; roll: 
       ? 'reports.calculation.negativePercent'
       : 'reports.calculation.neutralPercent';
   return (
-    <div className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-      <p className="v2-legend text-v2-ink-3">{label}</p>
-      <p className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-ink">{full(power)}</p>
-      <p className={`font-v2-mono tabular-nums mt-1 text-micro ${change >= 0 ? 'text-v2-self' : 'text-v2-hostile'}`}>
-        <span className="text-v2-ink-3">{t('reports.calculation.shotChange')} </span>
+    <div className="gk-well gk-report__cell">
+      <p className="gk-report__label">{label}</p>
+      <p className="gk-report__value gk-num">{full(power)}</p>
+      <p className="gk-report__label gk-num" data-tone={change >= 0 ? 'good' : 'threat'}>
+        <span data-tone="quiet">{t('reports.calculation.shotChange')} </span>
         {t(changeKey, { amount: full(Math.abs(change)) })}
       </p>
     </div>
@@ -1911,27 +1950,34 @@ function ForceRow({
 }) {
   const { t } = useTranslation();
   return (
-    <div data-force-row={hull} className="grid gap-2 border-b border-v2-line/60 p-3 last:border-b-0 sm:grid-cols-[8rem_1fr] sm:items-center sm:gap-4">
-      <span className="flex min-w-0 items-center gap-2">
-        {HULL_ART[hull] ? (
-          <img src={HULL_ART[hull]} alt="" aria-hidden width={32} height={32} className="size-8 object-contain" />
-        ) : (
-          <span aria-hidden className="v2-legend w-6 text-center">GRD</span>
-        )}
-        <span className="min-w-0">
-          <span className="block text-caption font-semibold text-v2-ink">{hullLabel(hull)}</span>
-          <span className="mt-1 block text-micro text-v2-ink-2">{t(
-            HULLS[hull].ground ? 'reports.force.groundType'
-              : HULLS[hull].atk === 0 ? 'reports.force.supportType' : 'reports.force.combatType',
-          )}</span>
-        </span>
-      </span>
+    <div data-force-row={hull} className="gk-force">
+      <HullName hull={hull} kind={t(
+        HULLS[hull].ground ? 'reports.force.groundType'
+          : HULLS[hull].atk === 0 ? 'reports.force.supportType' : 'reports.force.combatType',
+      )} />
       <SurvivorBar
-        sent={sent} lost={lost} rebuilt={rebuilt} side={side}
+        compactRow sent={sent} lost={lost} rebuilt={rebuilt} side={side}
         sentLabel={t(side === 'theirs' ? 'reports.force.arrived' : attacking ? 'reports.verdict.sent' : 'reports.force.held')}
         leftLabel={t(side === 'yours' && attacking && !HULLS[hull].ground ? 'reports.verdict.returned' : 'reports.force.left')}
       />
     </div>
+  );
+}
+
+/** A hull as the report names it: its picture (or the ground mark), its name, and what kind of unit it is. */
+function HullName({ hull, kind }: { hull: HullId; kind?: string }) {
+  return (
+    <span className="gk-force__hull">
+      {HULL_ART[hull] ? (
+        <img src={HULL_ART[hull]} alt="" aria-hidden width={32} height={32} />
+      ) : (
+        <HullMark hull={hull} className="gk-force__mark" />
+      )}
+      <span className="gk-force__name">
+        <span className="gk-report__subhead">{hullLabel(hull)}</span>
+        {kind !== undefined && <span className="gk-report__label">{kind}</span>}
+      </span>
+    </span>
   );
 }
 
@@ -1961,7 +2007,7 @@ function YourForce({ report }: { report: OrdinaryReport }) {
   const rebuilt = fleetEntries(report.defenceSalvage).reduce((sum, [, n]) => sum + n, 0);
 
   return (
-    <div className="rounded-control border border-v2-line bg-v2-deep/40 mt-2">
+    <div className="gk-ledger gk-forces">
       {entries.map(([hull, count]) => (
         <ForceRow
           key={hull}
@@ -1976,11 +2022,9 @@ function YourForce({ report }: { report: OrdinaryReport }) {
         THE SAME PICTURE FOR THE WHOLE FORCE, which is the line a player reads
         first and the one the table only ever had as a sentence.
       */}
-      <div className="grid gap-2 border-t border-v2-line p-3 sm:grid-cols-[8rem_1fr] sm:items-center sm:gap-4">
-        <span className="text-caption font-semibold text-v2-ink">
-          {t('reports.verdict.total')}
-        </span>
-        <SurvivorBar sent={brought} lost={lost} rebuilt={rebuilt}
+      <div className="gk-force" data-total="">
+        <span className="gk-report__subhead">{t('reports.verdict.total')}</span>
+        <SurvivorBar compactRow sent={brought} lost={lost} rebuilt={rebuilt}
           sentLabel={t(report.attacking ? 'reports.verdict.sent' : 'reports.force.held')}
           leftLabel={t(report.attacking ? 'reports.verdict.returned' : 'reports.force.left')}
         />
@@ -2007,24 +2051,24 @@ function RoundCasualties({
   const { t } = useTranslation();
   const mine = fleetEntries(yours);
   const others = fleetEntries(theirs);
-  const line = (label: string, entries: ReturnType<typeof fleetEntries>, tone: string) => (
-    <div className="min-w-0">
-      <p className="text-caption font-semibold text-v2-ink">{label}</p>
-      <div className="mt-1 flex flex-wrap gap-1.5">
-      {entries.map(([hull, count]) => (
-        <span key={hull} className={`rounded-cell border border-v2-line/60 px-2 py-1 text-caption ${tone}`}>
-          {full(count)} {hullLabel(hull)}
-        </span>
-      ))}
-      {entries.length === 0 ? <span className="text-caption text-v2-ink-2">{t('reports.roundNoCasualties')}</span> : null}
+  const line = (label: string, entries: ReturnType<typeof fleetEntries>, tone: 'threat' | 'plain') => (
+    <div className="gk-report__casualties">
+      <p className="gk-report__label">{label}</p>
+      <div className="gk-hullchips">
+        {entries.map(([hull, count]) => (
+          <span key={hull} className="gk-hullchip" data-tone={tone}>
+            {full(count)} {hullLabel(hull)}
+          </span>
+        ))}
+        {entries.length === 0 ? <span className="gk-report__copy" data-tone="quiet">{t('reports.roundNoCasualties')}</span> : null}
       </div>
     </div>
   );
 
   return (
-    <div data-round-losses className="mt-3 grid gap-3 border-t border-v2-line/60 pt-3 sm:grid-cols-2">
-      {line(t('reports.roundLossesYours'), mine, 'text-v2-hostile')}
-      {line(t('reports.roundLossesTheirs'), others, 'text-v2-ink')}
+    <div data-round-losses className="gk-report__block gk-report__rule">
+      {line(t('reports.roundLossesYours'), mine, 'threat')}
+      {line(t('reports.roundLossesTheirs'), others, 'plain')}
     </div>
   );
 }
@@ -2044,35 +2088,30 @@ function RoundStanding({ report, round }: { report: OrdinaryReport; round: Round
   const supportExposed = standing?.combat === 0 && standing.support > 0;
 
   return (
-    <div
-      data-round-standing={round.round}
-      className={`mt-3 border-l-2 pl-3 ${
-        noForce || supportExposed ? 'border-threat' : 'border-v2-line'
-      }`}
-    >
-      <p className="text-micro font-semibold text-v2-ink">
+    <div data-round-standing={round.round} className="gk-report__note" data-tone={noForce || supportExposed ? 'threat' : 'plain'}>
+      <p className="gk-report__label" data-strong="">
         {t('reports.roundStanding.heading', { round: round.round })}
       </p>
-      <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">
+      <p className="gk-report__copy">
         {standing ? t('reports.roundStanding.summary', {
           combat: full(standing.combat), support: full(standing.support),
         }) : t('reports.roundStanding.unknownOwn')}
       </p>
       {supportExposed ? (
-        <p className="mt-1 text-caption font-semibold leading-relaxed text-v2-hostile">
+        <p className="gk-report__copy" data-strong="" data-tone="threat">
           {t('reports.roundStanding.supportExposed')}
         </p>
       ) : noForce ? (
-        <p className="mt-1 text-caption font-semibold leading-relaxed text-v2-hostile">
+        <p className="gk-report__copy" data-strong="" data-tone="threat">
           {t('reports.roundStanding.noneLeft')}
         </p>
       ) : null}
       {enemy ? (
-        <div data-enemy-round-standing className="mt-2 border-t border-v2-line/60 pt-2">
-          <p className="text-micro font-semibold text-v2-ink">
+        <div data-enemy-round-standing className="gk-report__rule">
+          <p className="gk-report__label" data-strong="">
             {t('reports.roundStanding.enemyHeading', { round: round.round })}
           </p>
-          <p className="mt-1 text-caption text-v2-ink-2">
+          <p className="gk-report__copy">
             {t('reports.roundStanding.summary', { combat: full(enemy.combat), support: full(enemy.support) })}
           </p>
         </div>
@@ -2091,7 +2130,7 @@ function CombatTurningPoint({ report }: { report: OrdinaryReport }) {
   const escaped = report.rounds.filter(round => round.round <= depleted.round)
     .reduce((n, round) => n + unitCount(round.yourRetreated ?? {}), 0);
   return (
-    <p data-combat-turning-point className="mt-2 text-caption font-semibold leading-relaxed text-v2-ink">
+    <p data-combat-turning-point className="gk-report__copy" data-strong="">
       {t(escaped > 0 ? 'reports.turningPointRetreated' : standing.support > 0 ? 'reports.turningPointSupport' : 'reports.turningPointWiped', {
         round: depleted.round,
         support: full(standing.support),
@@ -2110,13 +2149,13 @@ function ClanAtLaunch({
   const { t } = useTranslation();
   return (
     <div className="min-w-0">
-      <p className="v2-legend">{label}</p>
+      <p className="gk-report__label">{label}</p>
       {clan ? (
-        <p className="mt-1 truncate text-micro text-v2-ink" title={clan.name}>
-          <span className="text-v2-crystal">[{clan.tag}]</span> {clan.name}
+        <p className="gk-report__copy" title={clan.name}>
+          <span className="gk-clans__tag">[{clan.tag}]</span> {clan.name}
         </p>
       ) : (
-        <p className="mt-1 text-micro text-v2-ink-3">{t('reports.noClan')}</p>
+        <p className="gk-report__copy" data-tone="quiet">{t('reports.noClan')}</p>
       )}
     </div>
   );
@@ -2138,64 +2177,45 @@ function BattleVerdict({ report }: { report: OrdinaryReport }) {
   const outcome = ordinaryBattleOutcome(report);
   const won = outcome === 'win';
   const title = verdictTitle(report);
+  /* The tone is stated, not implied by a class: a loss is red (K2) whatever else was won. */
+  const tone = outcome === 'partial' ? 'partial' : won ? 'good' : 'threat';
 
   return (
     <section
       data-battle-verdict={report.grade}
-      /* The tone is stated, not implied by a class: a loss is red (K2) whatever else was won. */
-      data-tone={outcome === 'partial' ? 'partial' : won ? 'good' : 'threat'}
-      className={`relative mb-3 mt-2 overflow-hidden rounded-control border p-3 ${battleTone[outcome]}`}
+      data-tone={tone}
+      className="gk-plate gk-report__verdict"
       aria-label={title}
     >
-      <span
-        aria-hidden
-        className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent ${
-          outcome === 'partial' ? 'via-v2-alloy/80' : won ? 'via-v2-self/80' : 'via-v2-hostile/80'
-        } to-transparent`}
-      />
-
-      <div>
-        <h3 className="text-caption font-semibold font-semibold text-v2-ink">
-          {t(rosterKnown ? 'reports.verdict.yourForce' : 'reports.verdict.yourLosses')}
-        </h3>
-        <div className={`mt-3 grid ${rosterKnown ? 'grid-cols-3' : 'grid-cols-1'} divide-x divide-v2-line`}>
-          {rosterKnown ? (
-            <BattleMetric
-              label={t(report.attacking ? 'reports.verdict.sent' : 'reports.verdict.held')}
-              value={starting}
-            />
-          ) : null}
-          <BattleMetric label={t('reports.verdict.lost')} value={yours} tone="text-v2-hostile" />
-          {rosterKnown ? (
-            <BattleMetric
-              label={t(report.attacking ? 'reports.verdict.returned' : 'reports.verdict.standing')}
-              value={remaining}
-              tone={remaining > 0 ? 'text-v2-self' : 'text-v2-hostile'}
-            />
-          ) : null}
-        </div>
+      <h3 className="gk-report__subhead">
+        {t(rosterKnown ? 'reports.verdict.yourForce' : 'reports.verdict.yourLosses')}
+      </h3>
+      <div className="gk-report__metrics" data-cols={rosterKnown ? 3 : 1}>
         {rosterKnown ? (
-          <div className="mt-3 border-t border-v2-line/60 pt-3">
-            <SurvivorBar
-              sent={starting}
-              lost={yours}
-              rebuilt={rebuilt}
-              showFigures={false}
-            />
-          </div>
+          <BattleMetric
+            label={t(report.attacking ? 'reports.verdict.sent' : 'reports.verdict.held')}
+            value={starting}
+          />
+        ) : null}
+        <BattleMetric label={t('reports.verdict.lost')} value={yours} tone="threat" />
+        {rosterKnown ? (
+          <BattleMetric
+            label={t(report.attacking ? 'reports.verdict.returned' : 'reports.verdict.standing')}
+            value={remaining}
+            tone={remaining > 0 ? 'good' : 'threat'}
+          />
         ) : null}
       </div>
-      {!rosterKnown ? (
-        <p data-own-roster-unknown className="mt-2 text-caption leading-relaxed text-v2-alloy">
+      {rosterKnown ? (
+        <SurvivorBar sent={starting} lost={yours} rebuilt={rebuilt} showFigures={false} />
+      ) : (
+        <p data-own-roster-unknown className="gk-report__copy" data-tone="warn">
           {t('reports.verdict.rosterUnknown')}
         </p>
-      ) : null}
+      )}
 
-      <div
-        data-verdict-summary
-        className={`mt-3 border-l-2 pl-3 ${outcome === 'partial' ? 'border-v2-alloy' : won ? 'border-v2-self' : 'border-threat'}`}
-      >
-        <p className="text-caption font-semibold leading-relaxed text-v2-ink">
+      <div data-verdict-summary className="gk-report__summary" data-tone={tone}>
+        <p className="gk-report__copy" data-strong="">
           {t(report.rounds.length === 0
             ? 'reports.verdict.walkoverSummary'
             : report.pirate && report.grade === 'PARTIAL'
@@ -2203,7 +2223,7 @@ function BattleVerdict({ report }: { report: OrdinaryReport }) {
               : `reports.verdict.summary.${report.attacking ? 'attacking' : 'defending'}.${report.grade}`)}
         </p>
         {report.attacking && rosterKnown ? (
-          <p className={`mt-1 text-caption leading-relaxed ${remaining === 0 ? 'text-v2-hostile' : 'text-v2-ink-2'}`}>
+          <p className="gk-report__copy" {...(remaining === 0 ? { 'data-tone': 'threat' } : {})}>
             {t(
               remaining === 0
                 ? 'reports.verdict.noneReturned'
@@ -2213,39 +2233,37 @@ function BattleVerdict({ report }: { report: OrdinaryReport }) {
           </p>
         ) : null}
         {!report.attacking && rebuilt > 0 ? (
-          <p className="mt-2 text-caption leading-relaxed text-v2-self">
+          <p className="gk-report__copy" data-tone="good">
             {t('reports.force.rebuiltNote', { count: full(rebuilt) })}
           </p>
         ) : null}
       </div>
 
-      <dl data-verdict-payoff className="mt-3 grid grid-cols-2 gap-3 border-t border-v2-line/60 pt-3">
+      <dl data-verdict-payoff className="gk-report__payoff">
         <div>
-          <dt className="text-caption text-v2-ink-2">{t(report.attacking ? 'reports.verdict.loot' : 'reports.haulLost')}</dt>
-          <dd className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-alloy">
+          <dt className="gk-report__label">{t(report.attacking ? 'reports.verdict.loot' : 'reports.haulLost')}</dt>
+          <dd className="gk-num">
             {full(Math.abs(report.lootAlloy + report.lootCrystal + report.lootDeuterium))}
           </dd>
         </div>
         {report.dominion !== null ? (
           <div>
-            <dt className="text-caption text-v2-ink-2">{t('reports.dominion')}</dt>
-            <dd className={`font-v2-mono tabular-nums mt-1 text-caption font-semibold ${report.dominion < 0 ? 'text-v2-hostile' : 'text-v2-ink'}`}>
+            <dt className="gk-report__label">{t('reports.dominion')}</dt>
+            <dd className="gk-num" data-tone={report.dominion < 0 ? 'threat' : 'plain'}>
               {signed(report.dominion)}
             </dd>
           </div>
         ) : null}
       </dl>
-      <div className="mt-3 border-t border-v2-line/60 pt-3">
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="text-micro font-semibold text-v2-ink-2">
+      <div className="gk-report__tally">
+        <div className="gk-report__tallyrow">
+          <p className="gk-report__label">
             {t(report.attacking ? 'reports.verdict.enemyDestroyed' : 'reports.verdict.attackerDestroyed')}
           </p>
-          <p className={`font-v2-mono tabular-nums text-caption font-semibold leading-none ${theirs > 0 ? 'text-v2-ink' : 'text-v2-ink-2'}`}>
-            {full(theirs)}
-          </p>
+          <p className="gk-num" {...(theirs > 0 ? {} : { 'data-tone': 'quiet' })}>{full(theirs)}</p>
         </div>
         {report.attacking && report.grade !== 'DECISIVE' && report.enemyFleetVisibility !== 'FULL' ? (
-          <p className="mt-2 text-caption font-semibold leading-relaxed text-v2-alloy">
+          <p className="gk-report__copy" data-strong="" data-tone="warn">
             {t(report.grade === 'REPELLED' ? 'reports.verdict.enemySurvivedNote' : 'reports.verdict.enemyUnknownNote')}
           </p>
         ) : null}
@@ -2258,20 +2276,16 @@ function RoundBalance({ dealt, took }: { dealt: number; took: number }) {
   const { t } = useTranslation();
   const top = Math.max(1, dealt, took);
   return (
-    <span className="grid gap-2">
-      <span className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-        <span className="text-caption text-v2-ink">{t('reports.roundDealt')}</span>
-        <span className="h-1.5 flex-1 overflow-hidden rounded-cell bg-v2-line">
-          <span className="block h-full bg-v2-self" style={{ width: `${String((dealt / top) * 100)}%` }} />
-        </span>
-        <span className="font-v2-mono tabular-nums min-w-14 text-right text-caption text-v2-ink">{full(dealt)}</span>
+    <span className="gk-roundbars">
+      <span className="gk-roundbar" data-side="dealt">
+        <span className="gk-report__copy">{t('reports.roundDealt')}</span>
+        <span className="gk-roundbar__track"><span style={{ width: `${String((dealt / top) * 100)}%` }} /></span>
+        <span className="gk-report__copy gk-num">{full(dealt)}</span>
       </span>
-      <span className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-        <span className="text-caption text-v2-hostile">{t('reports.roundTook')}</span>
-        <span className="h-1.5 flex-1 overflow-hidden rounded-cell bg-v2-line">
-          <span className="block h-full bg-v2-hostile" style={{ width: `${String((took / top) * 100)}%` }} />
-        </span>
-        <span className="font-v2-mono tabular-nums min-w-14 text-right text-caption text-v2-ink">{full(took)}</span>
+      <span className="gk-roundbar" data-side="took">
+        <span className="gk-report__copy" data-tone="threat">{t('reports.roundTook')}</span>
+        <span className="gk-roundbar__track"><span style={{ width: `${String((took / top) * 100)}%` }} /></span>
+        <span className="gk-report__copy gk-num">{full(took)}</span>
       </span>
     </span>
   );
@@ -2280,38 +2294,38 @@ function RoundBalance({ dealt, took }: { dealt: number; took: number }) {
 function BattleMetric({
   label,
   value,
-  tone = 'text-v2-ink',
+  tone,
 }: {
   label: string;
   value: number;
-  tone?: string;
+  tone?: 'threat' | 'good';
 }) {
   return (
-    <div className="min-w-0 px-2 first:pl-0 last:pr-0">
-      <p className="text-caption text-v2-ink-2">{label}</p>
-      <p className={`font-v2-mono tabular-nums mt-1 text-figure ${tone}`}>{full(value)}</p>
+    <div className="gk-report__metric">
+      <p className="gk-report__label">{label}</p>
+      <p className="gk-report__figure gk-num" {...(tone ? { 'data-tone': tone } : {})}>{full(value)}</p>
     </div>
   );
 }
 
-function Losses({ fleet, tone, empty }: { fleet: OrdinaryReport['yourLosses']; tone: string; empty: string }) {
+function Losses({ fleet, tone, empty }: { fleet: OrdinaryReport['yourLosses']; tone: 'threat' | 'plain' | 'alloy'; empty: string }) {
   const entries = fleetEntries(fleet);
   if (entries.length === 0) {
-    return <p className="mt-2 text-caption text-v2-ink-3">{empty}</p>;
+    return <p className="gk-report__copy" data-tone="quiet">{empty}</p>;
   }
 
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
+    <div className="gk-hullchips">
       {entries.map(([hull, count]) => (
-        <div key={hull} className="rounded-control border border-v2-line bg-v2-deep/40 flex items-center gap-2 px-3 py-2">
+        <div key={hull} className="gk-hullcard">
           {HULL_ART[hull] ? (
-            <img src={HULL_ART[hull]} alt="" aria-hidden className="size-8 object-contain" />
+            <img src={HULL_ART[hull]} alt="" aria-hidden width={32} height={32} />
           ) : (
-            <span className="v2-legend">GRD</span>
+            <HullMark hull={hull} className="gk-force__mark" />
           )}
           <div>
-            <p className={`font-v2-mono tabular-nums text-caption font-semibold leading-none ${tone}`}>{full(count)}</p>
-            <p className="v2-legend mt-1">{hullLabel(hull)}</p>
+            <p className="gk-report__value gk-num" data-tone={tone}>{full(count)}</p>
+            <p className="gk-report__label">{hullLabel(hull)}</p>
           </div>
         </div>
       ))}
@@ -2344,10 +2358,10 @@ function Losses({ fleet, tone, empty }: { fleet: OrdinaryReport['yourLosses']; t
 function TheirBoard({ report }: { report: OrdinaryReport }) {
   const { t } = useTranslation();
   if (report.enemyFleetVisibility === 'FULL') return <BattleEnemyFleet fleet={report.theirFleet} losses={report.theirLosses} attacking={report.attacking} />;
-  if (report.enemyFleetVisibility !== undefined) return <section data-their-board="floor" className="mt-3">
-    <h3 className="text-caption font-semibold text-v2-ink">{t('reports.theirBoardFloor')}</h3>
+  if (report.enemyFleetVisibility !== undefined) return <section data-their-board="floor" className="gk-report__block">
+    <h3 className="gk-report__subhead">{t('reports.theirBoardFloor')}</h3>
     <BattleIntelNotice visibility={report.enemyFleetVisibility} />
-    <Losses fleet={report.theirLosses} tone="text-v2-ink" empty={t('reports.theirsEmpty')} />
+    <Losses fleet={report.theirLosses} tone="plain" empty={t('reports.theirsEmpty')} />
   </section>;
 
   /*
@@ -2377,16 +2391,16 @@ function TheirBoard({ report }: { report: OrdinaryReport }) {
     Object.fromEntries(rows);
 
   return (
-    <section data-their-board={complete ? 'complete' : 'floor'} className="mt-3">
-      <div className={complete ? '' : 'border-l-2 border-alloy pl-3'}>
-        <h3 className="text-caption font-semibold text-v2-ink">
+    <section data-their-board={complete ? 'complete' : 'floor'} className="gk-report__block">
+      <div className={complete ? 'gk-report__block' : 'gk-report__note gk-report__block'} {...(complete ? {} : { 'data-tone': 'warn' })}>
+        <h3 className="gk-report__subhead">
           {emptyAtStart
             ? t('reports.theirBoardEmptyAtStart')
             : entries.length === 0 && !complete
             ? t('reports.theirBoardNothing')
             : t(complete ? 'reports.theirBoardComplete' : 'reports.theirBoardFloor')}
         </h3>
-        <p className={`mt-1 text-caption leading-relaxed ${complete ? 'text-v2-ink-2' : 'text-v2-alloy'}`}>
+        <p className="gk-report__copy" {...(complete ? {} : { 'data-tone': 'warn' })}>
           {t(emptyAtStart ? 'reports.theirBoardEmptyAtStartNote'
             : complete ? 'reports.theirBoardCompleteNote'
             : report.attacking ? 'reports.theirBoardFloorNote' : 'reports.theirBoardMissingRosterNote')}
@@ -2395,24 +2409,24 @@ function TheirBoard({ report }: { report: OrdinaryReport }) {
 
       {ships.length > 0 && (
         <>
-          <p className="v2-legend mt-2 text-v2-crystal/85">{t('reports.shipsHeading')}</p>
-          <Losses fleet={asFleet(ships)} tone="text-v2-ink" empty={t('reports.theirsEmpty')} />
+          <p className="gk-report__label" data-tone="crystal">{t('reports.shipsHeading')}</p>
+          <Losses fleet={asFleet(ships)} tone="plain" empty={t('reports.theirsEmpty')} />
         </>
       )}
 
       {ground.length > 0 ? (
-        <div data-ground-group className="mt-2">
-          <p className="v2-legend text-v2-alloy">{t('reports.groundHeading')}</p>
-          <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">
+        <div data-ground-group className="gk-report__block">
+          <p className="gk-report__label" data-tone="alloy">{t('reports.groundHeading')}</p>
+          <p className="gk-report__copy">
             {t('reports.groundNote', { percent: full(COMBAT.defenceSalvage * 100) })}
           </p>
-          <Losses fleet={asFleet(ground)} tone="text-v2-alloy" empty={t('reports.theirsEmpty')} />
+          <Losses fleet={asFleet(ground)} tone="alloy" empty={t('reports.theirsEmpty')} />
         </div>
       ) : complete && !emptyAtStart ? (
         /* Only a DECISIVE proves a negative. See the docblock. */
-        <div data-no-ground className="mt-2 border-l border-v2-line/60 pl-3">
-          <p className="v2-legend text-v2-ink-3">{t('reports.noGroundHeading')}</p>
-          <p className="mt-1 text-micro leading-snug text-v2-ink-3">{t('reports.noGroundNote')}</p>
+        <div data-no-ground className="gk-report__note" data-tone="plain">
+          <p className="gk-report__label" data-strong="">{t('reports.noGroundHeading')}</p>
+          <p className="gk-report__copy" data-tone="quiet">{t('reports.noGroundNote')}</p>
         </div>
       ) : null}
     </section>
@@ -2447,12 +2461,12 @@ function IncomingForce({
   const destroyed = fleetEntries(report.theirLosses).reduce((sum, [, n]) => sum + n, 0);
 
   return (
-    <section data-their-board="arrived" className="mt-3">
-      <h3 className="text-caption font-semibold text-v2-ink">{t('reports.theirBoardArrived')}</h3>
-      <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">
+    <section data-their-board="arrived" className="gk-report__block">
+      <h3 className="gk-report__subhead">{t('reports.theirBoardArrived')}</h3>
+      <p className="gk-report__copy">
         {t('reports.theirBoardArrivedNote')}
       </p>
-      <div className="rounded-control border border-v2-line bg-v2-deep/40 mt-2">
+      <div className="gk-ledger gk-forces" data-side="theirs">
         {entries.map(([hull, count]) => (
           <ForceRow
             key={hull}
@@ -2462,9 +2476,9 @@ function IncomingForce({
             side="theirs"
           />
         ))}
-        <div className="grid gap-2 border-t border-v2-line p-3 sm:grid-cols-[8rem_1fr] sm:items-center sm:gap-4">
-          <span className="text-caption font-semibold text-v2-ink">{t('reports.verdict.total')}</span>
-          <SurvivorBar sent={arrived} lost={destroyed} side="theirs" sentLabel={t('reports.force.arrived')} />
+        <div className="gk-force" data-total="">
+          <span className="gk-report__subhead">{t('reports.verdict.total')}</span>
+          <SurvivorBar compactRow sent={arrived} lost={destroyed} side="theirs" sentLabel={t('reports.force.arrived')} />
         </div>
       </div>
     </section>

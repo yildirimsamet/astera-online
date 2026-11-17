@@ -507,59 +507,6 @@
     filter: drop-shadow(0 10px 22px rgb(0 0 0 / 70%)) drop-shadow(0 1px 0 rgb(0 0 0 / 80%));
   }
 
-  /**
-   * THE COMMITMENT PORTRAIT. One quiet orbital line and one oversized tier mark
-   * give the item sheet a signature frame without competing with the hardware.
-   * Both are decorative, GPU-static and disappear from the accessibility tree.
-   *
-   * RESTORED. These four rules were physically inside the LEGACY block when D109
-   * deleted it, and they are not legacy — losing them left the sheet's portrait
-   * with no plate to stand on and dropped the tier numeral into the flex row as
-   * ordinary body text beside the art.
-   *
-   * THE OBJECT IS GROUNDED BY A CONTACT POOL, NOT BY A DROP SHADOW. The art used
-   * to carry `filter: drop-shadow(0 18px 24px rgb(0 0 0 / 55%))` — a blurred black
-   * copy of its own silhouette. On a near-black plate a black shadow has nothing
-   * lighter to fall on, so it cannot read as a shadow; it reads as a smudge behind
-   * the render. A short ellipse in the plate's own background does the job the
-   * shadow was there for, costs no raster layer, and sits exactly on the hairline
-   * below — which is the surface the object is standing on.
-   */
-  .item-portrait {
-    position: relative;
-    background:
-      radial-gradient(ellipse 34% 9% at 50% 87%, rgb(0 0 0 / 55%), transparent 72%),
-      radial-gradient(circle at 52% 52%, color-mix(in srgb, var(--color-crystal) 12%, transparent) 0%, transparent 42%),
-      linear-gradient(155deg, color-mix(in srgb, var(--color-plate-hi) 78%, transparent), var(--color-plate-lo));
-  }
-
-  .item-portrait::after {
-    content: '';
-    position: absolute;
-    inset: auto 12% 13% 12%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-crystal) 44%, transparent), transparent);
-  }
-
-  .item-portrait-orbit {
-    position: absolute;
-    width: 15rem;
-    height: 5.25rem;
-    border: 1px solid color-mix(in srgb, var(--color-crystal) 18%, transparent);
-    border-radius: 50%;
-    transform: rotate(-11deg);
-  }
-
-  .item-portrait-index {
-    position: absolute;
-    right: 0.75rem;
-    bottom: -0.25rem;
-    color: color-mix(in srgb, var(--color-bone) 7%, transparent);
-    font-size: 4.75rem;
-    line-height: 1;
-    letter-spacing: -0.08em;
-  }
-
   /* ─────────────────────────────────────────────────────────────
      SLAB — a surface you press
      ───────────────────────────────────────────────────────────── */
@@ -1508,11 +1455,40 @@
  */
 .chat-type {
   --text-body: 16px;
-  --text-micro: 11px;
+  /* The kit's floor (owner 2026-11-12): times, quotes and notes in the chat never go under 12 px. */
+  --text-micro: 12px;
+  --text-caption: 13px;
+  --text-label: 12px;
 }
 
 .chat-type [data-chat-author] {
-  font-size: 12px;
+  font-size: 13px;
+}
+
+/* The composer is the kit's glass slot; it grows with no handle, and the send key sits beside it. */
+.chat-type .chat-composer {
+  min-height: var(--gk-hit);
+  max-height: 120px;
+  padding: 11px var(--gk-s3);
+  line-height: 20px;
+}
+/* The room's own tint is darker than the glass the kit's hint was measured on. */
+.chat-type .chat-composer::placeholder {
+  color: var(--gk-ink-2);
+}
+/* A held message (C3): the bubble sinks under a thumb that stays, and stands lit once its keys are out. */
+.chat-type [data-chat-message] {
+  transition: transform 280ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.chat-type [data-chat-message]:active {
+  transform: scale(0.97);
+}
+.chat-type [data-chat-message][data-held] {
+  transform: translateY(-1px);
+}
+/* Lit by its own cut edge layer, not a filter: no raster layer per bubble (the palette rule above). */
+.chat-type [data-chat-message][data-held]::before {
+  background: color-mix(in srgb, var(--gk-self) 85%, transparent);
 }
 
 .chat-type [data-chat-podium-icon] svg {
@@ -1540,46 +1516,12 @@
   border-color: #315541;
 }
 
+/*
+  C2 (2026-11-14): the phone's compact header (a 12 px handle, 28 px keys, a shrunken title) is
+  gone. It pulled the title up under the sheet's edge once the frame's handle became a 44 px grip
+  (G1-g1), and its keys were under the thumb's 44 px. The frame is the kit's, as on every sheet.
+*/
 @media (width < 700px) {
-  [data-chat-host] > [data-sheet-holder] [data-sheet-header] > button {
-    height: 12px;
-  }
-
-  [data-chat-host] > [data-sheet-holder] [data-sheet-header] header {
-    padding-bottom: 4px;
-  }
-
-  [data-chat-host] > [data-sheet-holder] [data-sheet-header] h2 {
-    font-size: var(--text-title);
-  }
-
-  [data-chat-host] > [data-sheet-holder] [data-sheet-header] header button {
-    width: 28px;
-    height: 28px;
-  }
-
-  [data-chat-host] > [data-sheet-holder] [data-sheet-header] header svg {
-    width: 14px;
-    height: 14px;
-  }
-
-  [data-chat-controls] {
-    gap: 4px;
-    padding-inline: 8px;
-    padding-bottom: 4px;
-  }
-
-  [data-chat-controls] .v2-segmented-option {
-    min-height: 28px;
-    padding: 4px 8px;
-  }
-
-  [data-chat-controls] select {
-    height: 28px;
-    max-width: 7rem;
-    padding-inline: 4px;
-  }
-
   /* Only composing borrows the HUD space. Blur restores the normal sheet frame. */
   [data-chat-host]:has(textarea:focus) > [data-sheet-holder] {
     top: var(--chat-viewport-top, 0px);
@@ -1603,11 +1545,8 @@
     display: none;
   }
 }
-/* Give the Now line room only while a timer exists. An empty timer row leaves the
-   galaxy readout at the top edge instead of making a blank 48 px band. */
-.v2-shell:has([data-now-line]) [data-galaxy-top-corners] {
-  top: 3rem;
-}
+/* The galaxy's top corners start under the status line and the Now line by their measured
+   height (`--v2-float-h`, HudTop, G1-b): nothing to add here while a timer exists. */
 /* The desktop Outline owns the left column under the top bar; the Now line floats over
    the galaxy beside it, as it does on a phone. 260px is the Outline's own width. */
 .v2-shell:has([data-outline]) [data-now-float] {

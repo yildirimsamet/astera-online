@@ -11,6 +11,12 @@ import type { DockTab } from '../lib/dock.js';
 export const ART_ICONS = [
   // the dock and the places
   'nav-galaxy', 'nav-base', 'nav-fleet', 'nav-intel', 'nav-research',
+  // the top bar's medallion, and the bell and the chat that sit together on the galaxy (G1-b, 2026-11-14)
+  'hud-medallion', 'hud-bell', 'hud-chat',
+  // the stopwatch over the board of every timer (G1-c, 2026-11-14)
+  'hud-timers',
+  // the way home and the view at the galaxy's top right (G1-d2, 2026-11-14)
+  'hud-home', 'hud-view',
   // the menu
   'menu-clan', 'menu-friends', 'menu-missions', 'menu-news', 'menu-ranking', 'menu-reports', 'menu-shop',
   // cosmetic collections

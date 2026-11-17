@@ -5,6 +5,8 @@ export const accountDeletion = {
   "confirm": "共有アカウントと進行状況が完全に削除されることを理解しました。",
   "password": "現在のパスワード",
   "submit": "アカウント削除を申請",
+  "needPassword": "先に現在のパスワードを入力",
+  "needConfirm": "先に内容を確認してオンにする",
   "received": "削除申請を受け付けました",
   "pending": "アカウントはまだ削除されていません。担当者が申請を確認し、アクセス停止と安全な削除を行います。",
   "receipt": "申請番号",

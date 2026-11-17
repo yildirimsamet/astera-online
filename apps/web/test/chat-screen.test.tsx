@@ -1,7 +1,7 @@
 import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import type { ReactNode } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Api } from '../src/api/client.js';
@@ -82,6 +82,17 @@ function show(
   return { api, post, postClan, client, onFocusPlanet, unmount };
 }
 
+/**
+ * THE GALAXY ROOM'S LANGUAGE (C2, 2026-11-14): a chip with the room's flag says which room you are
+ * in; a press drops the six flags (the kit's language picker) and a flag moves you to that room.
+ */
+const roomLanguage = (name = 'Chat language'): HTMLElement => screen.getByRole('button', { name: new RegExp(`^${name}`) });
+const pickLanguage = async (label: string, name = 'Chat language'): Promise<void> => {
+  const user = userEvent.setup();
+  await user.click(roomLanguage(name));
+  await user.click(within(screen.getByRole('radiogroup', { name })).getByRole('radio', { name: label }));
+};
+
 beforeAll(() => {
   Element.prototype.scrollIntoView = scrollIntoView;
 });
@@ -94,16 +105,63 @@ afterEach(async () => {
 });
 
 describe('galaxy chat surface', () => {
+  /** ON THE KIT (C2, 2026-11-14). */
+  it('lays the rooms out as the kit’s tabs, each with its mark, its unread count and its news for a reader', () => {
+    show();
+    const rooms = screen.getByRole('tablist', { name: 'Chat channels' });
+    expect(rooms).toHaveClass('gk-tabs');
+    const general = within(rooms).getByRole('tab', { name: 'General — 1 unread' });
+    expect(general).toHaveClass('gk-tab');
+    expect(general.querySelector('.gk-dot')).toHaveTextContent('1');
+    expect(general.querySelector('.gk-tab__glyph')).not.toBeNull();
+    expect(within(rooms).getByRole('tab', { name: 'Clan — 1 unread' })).toHaveAttribute('aria-selected', 'false');
+  });
+
+  it('drops the six flags from the room’s language chip, and closes them on a choice', async () => {
+    show();
+    const chip = roomLanguage();
+    expect(chip).toHaveAccessibleName('Chat language: English');
+    expect(chip).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('radiogroup', { name: 'Chat language' })).toBeNull();
+    await userEvent.setup().click(chip);
+    expect(chip).toHaveAttribute('aria-expanded', 'true');
+    const flags = screen.getByRole('radiogroup', { name: 'Chat language' });
+    expect(within(flags).getAllByRole('radio')).toHaveLength(6);
+    expect(within(flags).getByRole('radio', { name: 'English' })).toHaveAttribute('aria-checked', 'true');
+    await userEvent.setup().click(within(flags).getByRole('radio', { name: 'Deutsch' }));
+    expect(screen.queryByRole('radiogroup', { name: 'Chat language' })).toBeNull();
+    expect(roomLanguage()).toHaveAccessibleName('Chat language: Deutsch');
+  });
+
+  it('says an empty room on the kit: what it is, and what to do', () => {
+    show(vi.fn(), 'general', { pages: [{ messages: [], nextBefore: null }], pageParams: [null] });
+    const empty = document.querySelector('.gk-empty');
+    expect(empty).not.toBeNull();
+    expect(empty?.querySelector('.gk-empty__title')).toHaveTextContent('No one has spoken yet');
+    expect(empty?.querySelector('.gk-empty__body')).toHaveTextContent('Be the first voice in the galaxy.');
+  });
+
+  it('writes in the kit’s glass slot and sends with a lit round key', async () => {
+    show();
+    const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
+    expect(composer).toHaveClass('gk-field__input');
+    const send = screen.getByRole('button', { name: 'Send' });
+    expect(send).toHaveClass('gk-round', 'gk-round--self');
+    expect(send).toBeDisabled();
+    await userEvent.setup().type(composer, 'Selam');
+    expect(send).toBeEnabled();
+  });
+
   it('marks each previous-season podium place with a quiet border and a cup beside the author', () => {
     show(vi.fn(), 'general', {
       pages: [{ messages: initial.pages[0]!.messages.map((message, index) => ({
         ...message, previousSeasonRank: index + 1,
       })), nextBefore: null }], pageParams: [null],
     });
-    const metals = ['gold', 'silver', 'copper'];
+    const metals = ['gold', 'silver', 'bronze'];
     initial.pages[0]!.messages.forEach((message, index) => {
       const bubble = document.querySelector(`[data-chat-message="${message.id}"]`)!;
-      expect(bubble).toHaveClass(`border-rank-${metals[index]}/35`);
+      expect(bubble).toHaveAttribute('data-tone', metals[index]);
       const icon = bubble.querySelector('[data-chat-podium-icon]');
       expect(icon).toHaveAttribute('aria-label', `Previous season · place ${index + 1}`);
       expect(icon?.previousElementSibling).toHaveAttribute('data-chat-author');
@@ -157,7 +215,7 @@ describe('galaxy chat surface', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: /👍.*1/ }));
     const dialog = await screen.findByRole('dialog', { name: 'Reactions' });
     expect(await screen.findByText('Vantage')).toBeInTheDocument();
-    expect(dialog.querySelector('[data-reaction-roster]')).toHaveStyle({ height: '108px', overflowY: 'auto' });
+    expect(dialog.querySelector('[data-reaction-roster]')).toHaveStyle({ height: '120px', overflowY: 'auto' });
     expect(api.reactToMessage).not.toHaveBeenCalled();
     const user = userEvent.setup();
     await user.keyboard('{Tab}');
@@ -384,65 +442,62 @@ describe('galaxy chat surface', () => {
   it('opens the public chat in the application language', async () => {
     await i18n.changeLanguage('fr');
     show();
-    expect(screen.getByRole('combobox', { name: 'Langue du chat' })).toHaveValue('fr');
+    expect(roomLanguage('Langue du chat')).toHaveAttribute('data-language', 'fr');
   });
 
   it('reopens on the last chosen chat language while the application stays English', async () => {
     const { unmount } = show();
-    await userEvent.setup().selectOptions(screen.getByRole('combobox', { name: 'Chat language' }), 'tr');
+    await pickLanguage('Türkçe');
     unmount();
 
     show();
-    expect(screen.getByRole('combobox', { name: 'Chat language' })).toHaveValue('tr');
+    expect(roomLanguage()).toHaveAttribute('data-language', 'tr');
     expect(i18n.resolvedLanguage).toBe('en');
   });
 
   it('keeps the saved chat language when the application language changes', async () => {
     const { unmount } = show();
-    await userEvent.setup().selectOptions(screen.getByRole('combobox', { name: 'Chat language' }), 'tr');
+    await pickLanguage('Türkçe');
     unmount();
 
     await i18n.changeLanguage('fr');
     show();
-    expect(screen.getByRole('combobox', { name: 'Langue du chat' })).toHaveValue('tr');
+    expect(roomLanguage('Langue du chat')).toHaveAttribute('data-language', 'tr');
     expect(i18n.resolvedLanguage).toBe('fr');
   });
 
   it('restores a valid saved chat language on a fresh screen', () => {
     localStorage.setItem('astera.chat.language.v1', 'ja');
     show();
-    expect(screen.getByRole('combobox', { name: 'Chat language' })).toHaveValue('ja');
+    expect(roomLanguage()).toHaveAttribute('data-language', 'ja');
   });
 
   it('falls back to the application language for an unsupported saved chat language', async () => {
     localStorage.setItem('astera.chat.language.v1', 'invalid');
     await i18n.changeLanguage('fr');
     show();
-    expect(screen.getByRole('combobox', { name: 'Langue du chat' })).toHaveValue('fr');
+    expect(roomLanguage('Langue du chat')).toHaveAttribute('data-language', 'fr');
   });
 
   it('can still open and switch chat languages when browser storage is blocked', async () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('Storage blocked'); });
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Storage blocked'); });
     show();
-    const select = screen.getByRole('combobox', { name: 'Chat language' });
-    expect(select).toHaveValue('en');
-    await userEvent.setup().selectOptions(select, 'tr');
-    expect(select).toHaveValue('tr');
+    expect(roomLanguage()).toHaveAttribute('data-language', 'en');
+    await pickLanguage('Türkçe');
+    expect(roomLanguage()).toHaveAttribute('data-language', 'tr');
   });
 
   it('switches the public chat language without changing the app language', async () => {
-    const user = userEvent.setup();
     show();
-    const select = screen.getByRole('combobox', { name: 'Chat language' });
-    expect(select).toHaveValue('en');
+    expect(roomLanguage()).toHaveAttribute('data-language', 'en');
 
-    await user.selectOptions(select, 'fr');
-    expect(select).toHaveValue('fr');
+    await pickLanguage('Français');
+    expect(roomLanguage()).toHaveAttribute('data-language', 'fr');
     expect(i18n.resolvedLanguage).toBe('en');
 
-    await user.selectOptions(select, 'ja');
-    expect(select).toHaveValue('ja');
+    await pickLanguage('日本語');
+    expect(roomLanguage()).toHaveAttribute('data-language', 'ja');
     expect(i18n.resolvedLanguage).toBe('en');
   });
 
@@ -456,16 +511,15 @@ describe('galaxy chat surface', () => {
       }],
       pageParams: [null],
     });
-    const select = screen.getByRole('combobox', { name: 'Chat language' });
     await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'English draft');
-    await user.selectOptions(select, 'fr');
+    await pickLanguage('Français');
     expect(screen.getByText('Bonsoir')).toBeInTheDocument();
     expect(screen.queryByText('Merhaba galaksi')).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Message the galaxy' })).toHaveValue('');
     await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'Brouillon français');
-    await user.selectOptions(select, 'en');
+    await pickLanguage('English');
     expect(screen.getByRole('textbox', { name: 'Message the galaxy' })).toHaveValue('English draft');
-    await user.selectOptions(select, 'fr');
+    await pickLanguage('Français');
     expect(screen.getByRole('textbox', { name: 'Message the galaxy' })).toHaveValue('Brouillon français');
   });
   it('keeps the composer outside the independently scrolling message history', () => {
@@ -484,7 +538,7 @@ describe('galaxy chat surface', () => {
     expect(screen.queryByText('Rim temiz')).not.toBeInTheDocument();
 
     await userEvent.setup().click(screen.getByRole('tab', { name: 'Clan — 1 unread' }));
-    expect(screen.queryByRole('combobox', { name: 'Chat language' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Chat language/ })).not.toBeInTheDocument();
     expect(screen.queryByText('Merhaba galaksi')).not.toBeInTheDocument();
     expect(screen.getByText('Rim temiz')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Message your clan' })).toBeEnabled();
@@ -539,8 +593,8 @@ describe('galaxy chat surface', () => {
   it('underlines and routes only commanders whose location is known', async () => {
     const { onFocusPlanet } = show();
     const username = screen.getByRole('button', { name: 'İzci' });
-    expect(username).toHaveClass('underline');
-    expect(screen.getByText('Gizli')).not.toHaveClass('underline');
+    expect(username).toHaveClass('gk-bubble__who--link');
+    expect(screen.getByText('Gizli').closest('[data-chat-author]')).not.toHaveClass('gk-bubble__who--link');
     expect(screen.queryByRole('button', { name: 'Gizli' })).not.toBeInTheDocument();
     await userEvent.setup().click(username);
     expect(onFocusPlanet).toHaveBeenCalledWith('other-planet');
@@ -618,11 +672,11 @@ describe('galaxy chat surface', () => {
     client.setQueryData(keys.chatMessagesFor('tr'), initial);
     const user = userEvent.setup();
     await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'English draft');
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Chat language' }), 'tr');
+    await pickLanguage('Türkçe');
     await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'Merhaba');
     await user.keyboard('{Enter}');
     await waitFor(() => { expect(post).toHaveBeenCalledWith('tr', 'Merhaba'); });
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Chat language' }), 'en');
+    await pickLanguage('English');
     expect(screen.getByRole('textbox', { name: 'Message the galaxy' })).toHaveValue('English draft');
   });
 
@@ -917,16 +971,14 @@ describe('the admin speaking in chat', () => {
   it('separates the admin from the gold podium with a quiet rose border and name', () => {
     const view = adminMessages();
     const row = view.container.querySelector('[data-chat-message="m-admin"]')!;
-    expect(row).toHaveClass('border-chat-admin/35');
-    expect(row.querySelector('[data-chat-author]')).toHaveClass('text-chat-admin-ink');
-    expect(row).not.toHaveClass('border-v2-premium/35');
+    expect(row).toHaveAttribute('data-tone', 'admin');
+    expect(row.querySelector('[data-chat-author]')).toHaveClass('gk-bubble__who');
   });
 
   it('leaves an ordinary commander untouched', () => {
     const view = adminMessages();
     const row = view.container.querySelector('[data-chat-message="m-player"]');
-    expect(row!.className).not.toContain('border-chat-admin');
-    expect(row!.querySelector('[data-chat-author]')!.className).not.toContain('text-chat-admin-ink');
+    expect(row).toHaveAttribute('data-tone', 'plain');
   });
 });
 
@@ -939,7 +991,7 @@ describe('permanent supporter recognition', () => {
     });
     for (const message of initial.pages[0]!.messages) {
       const bubble = document.querySelector(`[data-chat-message="${message.id}"]`)!;
-      expect(bubble).toHaveClass('border-chat-supporter/35');
+      expect(bubble).toHaveAttribute('data-tone', 'supporter');
       const heart = bubble.querySelector('[data-chat-supporter-icon]');
       expect(heart).toHaveAttribute('aria-label', 'Astera supporter');
       expect(heart?.querySelector('svg')).not.toBeNull();
@@ -953,9 +1005,8 @@ describe('permanent supporter recognition', () => {
     ] }] };
     show(vi.fn(), 'general', data);
     const bubble = document.querySelector('[data-chat-message="one"]')!;
-    const metal = { 1: 'gold', 2: 'silver', 3: 'copper' }[rank];
-    expect(bubble).toHaveClass(`border-rank-${metal}/35`);
-    expect(bubble).not.toHaveClass('border-chat-supporter/35');
+    const metal = { 1: 'gold', 2: 'silver', 3: 'bronze' }[rank];
+    expect(bubble).toHaveAttribute('data-tone', metal);
     const heart = bubble.querySelector('[data-chat-supporter-icon]');
     expect(heart).toHaveAttribute('aria-label', 'Astera supporter');
     expect(heart?.nextElementSibling).toHaveAttribute('data-chat-podium-icon');
@@ -966,8 +1017,7 @@ describe('permanent supporter recognition', () => {
       { ...initial.pages[0]!.messages[2], admin: true, supporter: true, previousSeasonRank: 1 },
     ] }] });
     const bubble = document.querySelector('[data-chat-message="two"]')!;
-    expect(bubble).toHaveClass('border-chat-admin/35');
-    expect(bubble.querySelector('[data-chat-author]')).toHaveClass('text-chat-admin-ink');
+    expect(bubble).toHaveAttribute('data-tone', 'admin');
     expect(bubble.querySelector('[data-chat-supporter-icon]')).not.toBeNull();
     expect(bubble.querySelector('[data-chat-podium-icon]')).not.toBeNull();
   });
@@ -998,7 +1048,7 @@ describe('chat recognition explanations', () => {
     ] }] });
     const cup = screen.getByRole('button', { name: `Honor · ${i18n.t('chat.previousSeasonPlace', { rank: 2 })}` });
     expect(cup.querySelectorAll('svg')).toHaveLength(2);
-    expect(document.querySelector('[data-chat-message="one"]')).toHaveClass('border-rank-silver/35');
+    expect(document.querySelector('[data-chat-message="one"]')).toHaveAttribute('data-tone', 'silver');
     fireEvent.click(cup);
     const explanation = screen.getByRole('tooltip');
     expect(explanation).toHaveTextContent('Honor');
@@ -1111,5 +1161,44 @@ describe('chat recognition explanations', () => {
     expect(podium).not.toContain('chat.');
     expect(screen.getByRole('tooltip')).toHaveTextContent(podium);
     expect(podium).toContain('2');
+  });
+});
+
+/**
+ * THE MESSAGES ON THE KIT (2026-11-16). The words are the brightest line in a bubble; the bubble is the
+ * kit's glass with the speaker's corner cut, its tone a data mark the kit paints (yours, the clan's,
+ * an admin's rose, a podium's metal, a supporter's teal); the time in the kit's figures; a quote in a
+ * thin well; the clan's own lines a ship's-log strip between the bubbles.
+ */
+describe('the messages on the kit', () => {
+  const OLD = /(^|\s)(text|bg|border|font|decoration)-v2-|rounded-(control|cell)|(^|\s)text-(micro|caption|body|label)(\s|$)|chat-admin|chat-supporter|rank-(gold|silver|copper)/;
+  const oldPaint = (root: Element): string[] =>
+    [root, ...root.querySelectorAll('[class]')].map((el) => el.getAttribute('class') ?? '').filter((name) => OLD.test(name));
+
+  it('draws each message as a kit bubble on its side, in its tone, with no old paint', () => {
+    show();
+    const theirs = document.querySelector('[data-chat-message="one"]')!;
+    const mine = document.querySelector('[data-chat-message="two"]')!;
+    expect(theirs).toHaveClass('gk-bubble');
+    expect(theirs).toHaveAttribute('data-side', 'other');
+    expect(mine).toHaveAttribute('data-side', 'self');
+    expect(mine).toHaveAttribute('data-tone', 'self');
+    expect(theirs.querySelector('.gk-bubble__text')).toHaveTextContent('Merhaba galaksi');
+    expect(theirs.querySelector('time')).toHaveClass('gk-num');
+    expect(oldPaint(screen.getByRole('log'))).toEqual([]);
+  });
+
+  it('speaks your words in the clan’s blue in the clan room', () => {
+    show(vi.fn(), 'clan', initial, undefined, false, [{ id: 'clan-mine', authorPlayerId: 'mine', username: 'Vantage', content: 'Geliyorum', createdAt: at, self: true }]);
+    expect(document.querySelector('[data-chat-message="clan-mine"]')).toHaveAttribute('data-tone', 'clan');
+  });
+
+  it('logs the clan’s own lines on a kit strip, an alarm in the colour of harm', () => {
+    show(vi.fn(), 'clan', initial, undefined, false, [{ id: 'clan-alarm', authorPlayerId: 'system', username: '', content: '', createdAt: at, self: false,
+      event: { kind: 'ALARM', params: { hostName: 'Ayşe', hostPlanetName: 'Kuzgun', arriveAt: new Date(at.getTime() + 9 * 60_000).toISOString() } } }]);
+    const line = document.querySelector('[data-chat-event="ALARM"]')!;
+    expect(line).toHaveClass('gk-chatevent');
+    expect(line).toHaveAttribute('data-tone', 'hostile');
+    expect(oldPaint(screen.getByRole('log'))).toEqual([]);
   });
 });

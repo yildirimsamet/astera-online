@@ -20,12 +20,14 @@ export const rewards = {
   eyebrow: 'Standing offers',
   title: 'Rewards',
   intro:
-    "These goals do not expire or require a streak. Rewards go directly into your store, even above capacity. Unprotected resources can be raided.",
+    "No expiry, no streak. Rewards go to your store; unprotected ones can be raided.",
 
   waiting: '{{count}} ready to claim',
   allTaken: 'Everything on offer has been taken. More arrives as the galaxy does.',
 
   claim: 'Claim',
+  /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  openPod: 'Open the pod',
   claimed: 'Taken',
   /** What is still between the player and this tier. Never a scolding. */
   toGo: '{{count}} to go',
@@ -41,7 +43,7 @@ export const rewards = {
 
   granted: '+{{alloy}} alloy · +{{crystal}} crystal',
   overCap:
-    'This will take you over your storage ceiling. Nothing is lost — but the works cannot be emptied until you spend some of it.',
+    'Over your storage ceiling: nothing is lost, but you can\'t collect until you spend.',
 
   /**
    * ONE ENTRY PER CHAIN, `name` + `tag`, the same shape every card in the game

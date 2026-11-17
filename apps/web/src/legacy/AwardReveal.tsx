@@ -21,7 +21,7 @@ import { coverGalaxy } from '../lib/galaxyCover.js';
 import { useNativeBack } from '../platform/nativeBack.js';
 import { isAppActive, watchAppActivity } from '../platform/activity.js';
 import type { LegacyAward } from '../api/legacySchemas.js';
-import { Button } from '../v2/kit/Surface.js';
+import { GameButton, Glyph } from '../game-ui/index.js';
 import { AwardEngines, StudioLight, TurntableFrames, useBuiltAward } from './AwardScene.js';
 import { AwardPicture } from './AwardTile.js';
 import { legacyAwardTitle, legacyEditionLabel, legacyGoalText, sortLegacyAwards } from './presentation.js';
@@ -149,7 +149,7 @@ function AwardReveal({ queue, live, onSeen, onDone }: {
           event.preventDefault(); (event.shiftKey ? last : first).focus();
         }
       }}
-      className="legacy-reveal fixed inset-0 z-[70] flex select-none flex-col items-center overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-6 font-v2-ui text-v2-ink outline-none">
+      className="legacy-reveal fixed inset-0 z-[70] flex select-none flex-col items-center overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-6 gk gk-reveal outline-none">
       <div key={`fx-${String(step)}`} aria-hidden="true" className="pointer-events-none absolute inset-0">
         <div className="legacy-reveal-rays" />
         <div className="legacy-reveal-core" />
@@ -161,7 +161,7 @@ function AwardReveal({ queue, live, onSeen, onDone }: {
 
       <div data-single={piece ? '' : undefined} className="legacy-reveal-layout relative my-auto flex w-full shrink-0 flex-col items-center">
       {total > 1 && (
-        <p className="legacy-reveal-counter relative mb-2 font-v2-mono text-micro text-v2-ink-3">{t('legacy.reveal.counter', { index: Math.min(step + 1, total), count: total })}</p>
+        <p className="legacy-reveal-counter gk-reveal__counter gk-num">{t('legacy.reveal.counter', { index: Math.min(step + 1, total), count: total })}</p>
       )}
 
       <div key={`piece-${String(step)}`} className="legacy-reveal-piece relative flex w-full max-w-sm flex-col items-center">
@@ -174,15 +174,15 @@ function AwardReveal({ queue, live, onSeen, onDone }: {
           <RevealCopy award={piece} />
         </> : (
           <>
-            <p className="legacy-reveal-eyebrow v2-legend">{t('legacy.reveal.eyebrowMany')}</p>
-            <h2 className="legacy-reveal-name mt-1 text-center text-title font-semibold">{t('legacy.reveal.restTitle', { count: rest.length })}</h2>
+            <p className="legacy-reveal-eyebrow gk-label">{t('legacy.reveal.eyebrowMany')}</p>
+            <h2 className="legacy-reveal-name gk-display gk-reveal__name">{t('legacy.reveal.restTitle', { count: rest.length })}</h2>
             <ul className="mt-4 grid max-h-[52dvh] w-full grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">
               {rest.map((award, index) => (
                 <li key={award.id} data-testid="legacy-reveal-rest-piece" data-rarity={award.rarity}
-                  className="legacy-tile legacy-reveal-pop flex flex-col items-center gap-1 rounded-control px-1 pb-2 pt-1.5 text-center"
+                  className="legacy-tile legacy-reveal-pop gk-reveal__tile"
                   style={{ animationDelay: `${String(500 + Math.min(index, 16) * 90)}ms` }}>
                   <AwardPicture award={award} className="aspect-square w-[88%]" />
-                  <span className="line-clamp-2 text-label font-semibold leading-tight">{legacyAwardTitle(award)}</span>
+                  <span className="gk-reveal__tilename">{legacyAwardTitle(award)}</span>
                 </li>
               ))}
             </ul>
@@ -192,11 +192,11 @@ function AwardReveal({ queue, live, onSeen, onDone }: {
 
       <div className={`legacy-reveal-actions relative mt-5 flex w-full max-w-sm flex-col gap-2 ${shown ? '' : 'invisible'}`}>
         {piece && <ShelfButton award={piece} />}
-        {piece && !lastSingle && <Button variant="primary" full onClick={() => { setStep(step + 1); }}>{t('legacy.reveal.next')}</Button>}
+        {piece && !lastSingle && <GameButton tone="action" size="lg" wide glyph="next" onPress={() => { setStep(step + 1); }}>{t('legacy.reveal.next')}</GameButton>}
         {piece && lastSingle && rest.length > 0 && (
-          <Button variant="primary" full onClick={() => { setStep(step + 1); }}>{t('legacy.reveal.openRest', { count: rest.length })}</Button>
+          <GameButton tone="action" size="lg" wide glyph="crate" onPress={() => { setStep(step + 1); }}>{t('legacy.reveal.openRest', { count: rest.length })}</GameButton>
         )}
-        {(!piece || (lastSingle && rest.length === 0)) && <Button variant="primary" full onClick={onDone}>{t('legacy.reveal.close')}</Button>}
+        {(!piece || (lastSingle && rest.length === 0)) && <GameButton tone="action" size="lg" wide glyph="check" onPress={onDone}>{t('legacy.reveal.close')}</GameButton>}
       </div>
       </div>
     </div>
@@ -211,17 +211,17 @@ function RevealCopy({ award }: { award: LegacyAward }) {
   const edition = legacyEditionLabel(award);
   return (
     <div className="legacy-reveal-copy flex flex-col items-center text-center">
-      <p className="legacy-reveal-eyebrow v2-legend">{t('legacy.reveal.eyebrow')}</p>
-      <h2 className="legacy-reveal-name mt-1 text-title font-semibold leading-tight">{legacyAwardTitle(award)}</h2>
-      <p className="legacy-reveal-chips mt-2 flex flex-wrap items-center justify-center gap-1.5 text-micro">
-        <span className="legacy-tile legacy-rarity-text inline-flex items-center gap-1 rounded-chip px-2 py-0.5 font-semibold" data-rarity={award.rarity}>
-          <span className="legacy-rarity-dot size-1.5 rounded-full" />{t(`legacy.rarity.${award.rarity}`)}
+      <p className="legacy-reveal-eyebrow gk-label">{t('legacy.reveal.eyebrow')}</p>
+      <h2 className="legacy-reveal-name gk-display gk-reveal__name">{legacyAwardTitle(award)}</h2>
+      <p className="legacy-reveal-chips gk-award__chips gk-reveal__chips">
+        <span className="legacy-tile legacy-rarity-text gk-award__chip" data-rarity={award.rarity}>
+          <span className="legacy-rarity-dot" />{t(`legacy.rarity.${award.rarity}`)}
         </span>
-        {edition && <span className="rounded-chip border border-v2-line-hi px-2 py-0.5 font-v2-mono text-v2-ink-2">{edition}</span>}
-        <span className="rounded-chip border border-v2-line-hi px-2 py-0.5 text-v2-ink-2">{t(`legacy.category.${award.category}`)}</span>
+        {edition && <span className="gk-award__chip gk-num">{edition}</span>}
+        <span className="gk-award__chip">{t(`legacy.category.${award.category}`)}</span>
       </p>
       {definition && goal !== undefined && (
-        <p className="legacy-reveal-goal mt-2 max-w-[30ch] text-caption leading-snug text-v2-ink-2">{legacyGoalText(definition, goal)}</p>
+        <p className="legacy-reveal-goal gk-reveal__goal">{legacyGoalText(definition, goal)}</p>
       )}
     </div>
   );
@@ -235,12 +235,12 @@ function ShelfButton({ award }: { award: LegacyAward }) {
   const [placed, setPlaced] = useState(false);
   if (!me) return null;
   const ids = me.showcase.map(row => row.awardId);
-  if (placed || ids.includes(award.id)) return <p className="text-center text-label font-semibold text-v2-premium">{t('legacy.reveal.onShelf')}</p>;
+  if (placed || ids.includes(award.id)) return <p className="gk-reveal__placed"><Glyph id="check" />{t('legacy.reveal.onShelf')}</p>;
   if (ids.length >= LEGACY_SHOWCASE_SLOTS) return null;
   return (
-    <Button disabled={save.isPending} onClick={() => { save.mutate([...ids, award.id], { onSuccess: () => { setPlaced(true); } }); }}>
+    <GameButton wide glyph="up" pending={save.isPending} onPress={() => { save.mutate([...ids, award.id], { onSuccess: () => { setPlaced(true); } }); }}>
       {t('legacy.award.showOnShelf')}
-    </Button>
+    </GameButton>
   );
 }
 

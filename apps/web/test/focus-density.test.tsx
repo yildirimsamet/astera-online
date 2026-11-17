@@ -107,17 +107,23 @@ beforeEach(async () => {
   window.localStorage.clear();
 });
 
-describe('a weapon you do not own takes no space', () => {
-  it('spends no row telling a commander they have no Death Star', () => {
+describe('the Death Star folds beside the radiation strike', () => {
+  /**
+   * OWNER, 2026-11-16, REVERSING THE OLD "NO SPACE" RULE: the radiation strike shows its
+   * folded row with "0 ready", and the Death Star must stand beside it the same way (red,
+   * where the radiation strike is yellow). Folded it costs one row; opened it says what it
+   * takes to have one.
+   */
+  it('shows a folded red section with 0 ready and what it takes to build one', () => {
     const view = show();
-    expect(view.container.querySelector('[data-death-star]')).toBeNull();
+    const section = view.container.querySelector<HTMLDetailsElement>('[data-weapon="death-star"]');
+    expect(section, 'no Death Star section for a commander without one').not.toBeNull();
+    expect(section?.open).toBe(false);
+    expect(section).toHaveTextContent(i18n.t('focus.planet.strikeReady', { ready: 0 }));
+    expect(section?.querySelector('[data-death-star-build]')).toHaveTextContent(i18n.t('planet.deathStar.none'));
+    expect(view.container.querySelector('[data-death-star]')).toBeDisabled();
   });
 
-  /**
-   * OWNING ONE CHANGES THE ANSWER. Once a strategic asset exists the control is a
-   * real action with a real gap, and the block reason is something the commander
-   * can act on — which is exactly the case I1 was written for.
-   */
   it('shows the control, with its reason, once one is being built', () => {
     const withWeapon = commander();
     const view = show(target(), {
@@ -150,14 +156,32 @@ describe('the colony route is a stepper, not three essays', () => {
     return steps;
   };
 
-  it('expands only the step the commander is standing on', () => {
-    const open = stepsOf(show(neutral))
+  /**
+   * THE ROUTE BEHIND ITS ⓘ (owner 2026-11-17: "koloni nasıl kurulur section'ı bir infobox'a wrap et"). Before
+   * a race opens, the three steps are a lesson, not a state: the title stays on its line and the steps open
+   * from the ⓘ beside it.
+   */
+  const openRoute = async () => {
+    const view = show(neutral);
+    const route = view.container.querySelector<HTMLElement>('[data-colony-route]')!;
+    expect(route.querySelector('[data-colony-step]')).toBeNull();
+    expect(route).toHaveTextContent(i18n.t('focus.planet.colonyRoute'));
+    await userEvent.click(route.querySelector<HTMLElement>('.gk-peek__row button')!);
+    return view;
+  };
+
+  it('keeps the steps behind the ⓘ until it is pressed', async () => {
+    await openRoute();
+  });
+
+  it('expands only the step the commander is standing on', async () => {
+    const open = stepsOf(await openRoute())
       .filter((step) => step.getAttribute('data-open') === 'true');
     expect(open).toHaveLength(1);
   });
 
-  it('keeps the other steps to a single tappable line', () => {
-    const shut = stepsOf(show(neutral))
+  it('keeps the other steps to a single tappable line', async () => {
+    const shut = stepsOf(await openRoute())
       .filter((step) => step.getAttribute('data-open') !== 'true');
     expect(shut.length).toBeGreaterThan(0);
     for (const step of shut) {
@@ -167,7 +191,7 @@ describe('the colony route is a stepper, not three essays', () => {
   });
 
   it('opens a step that is pressed, so the player may read ahead', async () => {
-    const view = show(neutral);
+    const view = await openRoute();
     const shut = stepsOf(view).find((step) => step.getAttribute('data-open') !== 'true');
     expect(shut, 'every step is already open').toBeDefined();
     await userEvent.click(shut!.querySelector('button')!);

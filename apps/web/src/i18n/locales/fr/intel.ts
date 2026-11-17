@@ -11,7 +11,8 @@ export const intel = {
   shelf: {
     label: 'Renseignement',
     watch: 'Veille',
-    reports: 'Rapports',
+    probes: 'Sondes',
+    battles: 'Combats',
     radar: 'Radar',
   },
   rivals: {
@@ -29,9 +30,6 @@ export const intel = {
     empty: 'Rien de connu pour l’instant : un télescope observe en direct, une sonde rapporte une lecture.',
   },
   openOrbit: "Ouvrir l’orbite",
-  tabs: {
-    label: "Rapports de renseignement",
-  },
   coverage: {
     label: "Couverture",
     blind: "Tu ne peux voir l’intérieur d’aucune planète",
@@ -46,9 +44,9 @@ export const intel = {
     idleHint_other:
       "{{count}} emplacements sont libres. Choisis une planète dans la galaxie et oriente l’un d’eux vers elle.",
     scarcity_one:
-      "Il y a {{neighbours}} planètes autour de toi, mais seulement {{count}} œil à ta disposition. Déplacer un emplacement impose un délai ; choisis bien qui surveiller.",
+      "{{neighbours}} planètes autour, {{count}} œil. Le déplacer impose un délai : choisis bien.",
     scarcity_other:
-      "Il y a {{neighbours}} planètes autour de toi, mais seulement {{count}} yeux à ta disposition. Déplacer un emplacement impose un délai ; choisis bien qui surveiller.",
+      "{{neighbours}} planètes autour, {{count}} yeux. En déplacer un impose un délai : choisis bien.",
     oneMore:
       "Un Télescope de niveau {{level}} peut surveiller une planète supplémentaire.",
     noRadar:
@@ -87,6 +85,7 @@ export const intel = {
     accuracyHome: "{{percent}} de précision · la flotte était présente",
     accuracyOut: "{{percent}} de précision · la flotte était absente",
     scaleNote: "Chaque barre part de zéro : la bande est leur estimation, la ligne turquoise ton monde.",
+    estimateFact: "Les chiffres sont des fourchettes estimées.",
     estimateNote:
       "Les nombres sont des estimations. La valeur des unités armées n’inclut ni le bouclier ni les vaisseaux sans armes.",
     caught: "la sonde a été détectée",
@@ -109,15 +108,19 @@ export const intel = {
     cost: "Sans Radar, la plupart des sondes envoyées vers ce monde passent inaperçues.",
     quiet: "Aucun sondage détecté. Radar de niveau {{level}} à l’écoute.",
     scan: "Sondage détecté",
-    bearing: " · depuis la direction galactique {{bearing}}",
+    bearing: "depuis la direction galactique {{bearing}}",
     origin: " · {{planet}}",
     /** Le monde sur lequel le sondage est arrivé. */
     onWorld: " · {{planet}}",
+    hitWorld: "Monde scanné",
     /* Légendes placées à côté des deux anneaux dessinés ; l’image porte le reste. */
     ringSense: "Mouvement détecté",
     ringWarn: "Alerte temporisée",
     /** Tant que les deux anneaux sont confondus, un seul titre suffit. */
     ringOne: "Détection et alerte temporisée",
+    /** C9: the dashed rim the rings are drawn against, and a ring's reach with its unit. */
+    rim: "Bord de la galaxie",
+    reach: "{{value}} unités",
     /** Même lecture pour ceux qui ne voient pas les anneaux. */
     noteFleets:
       "Un Radar de niveau {{level}} distingue à {{sense}} unités les menaces dirigées contre toi, mais n’affiche leur temps d’arrivée qu’à partir de {{warn}} unités.",
@@ -149,7 +152,7 @@ export const reports = {
   enemyRetreated: "{{count}} vaisseaux ennemis ont fui et survécu.",
   turningPointRetreated: "Après le tour {{round}}, aucun vaisseau de guerre ne combattait encore. Certains ont fui vivants.",
   heading: "Rapports de combat",
-  newest: "plus récents d’abord",
+  emptyTitle: "Aucune bataille pour l’instant",
   empty:
     "Aucun combat n’a encore été enregistré dans la galaxie. Un rapport de combat révèle directement les forces réellement engagées et l’issue de l’affrontement.",
   youRaided: "Tu as attaqué : ",
@@ -315,6 +318,14 @@ export const reports = {
     who: "Qu’est-il arrivé à ta flotte ?",
     changed: "Butin et variation des points",
   },
+  /** C15: the doors a fight opened, closing its report. */
+  next: {
+    title: "Ton prochain coup",
+    source: "Monde de l’attaquant : {{planet}}",
+    sourceNote: "Le raid venait d’ici",
+    wreck: "Aller à l’épave : {{planet}}",
+    wreckNote: "Vaut {{amount}} ; au premier arrivé",
+  },
   walkoverHeading: "Aucune unité ne pouvait défendre ici",
   walkoverBody:
     "Il n’y avait ni flotte ni défense terrestre capable de combattre. Tes vaisseaux sont arrivés, ont chargé leur cargaison et sont repartis. Aucun affrontement n’a eu lieu.",
@@ -409,6 +420,7 @@ export const reports = {
   strategicSecededAttacker: "La colonie a fait sécession et est devenue neutre : elle n’appartient plus à personne.",
   strategicSecededDefender: "Ta colonie a fait sécession et est devenue neutre.",
   strategicSecededShort: "colonie perdue",
+  strategicDamageShort: "{{amount}} de dégâts",
   strategicCaptured: "CAPTURÉ",
   strategicIneffective: "INEFFICACE",
   strategicIntercepted: "DÉTRUIT EN VOL",
@@ -433,6 +445,8 @@ export const reports = {
     "Aucun niveau de bâtiment ou d’instrument n’a été perdu.",
   strategicDestroyedOrders: "Constructions détruites",
   strategicNoOrdersLost: "Aucun ordre de construction actif n’a été détruit.",
+  strategicFleetLost: "Vaisseaux et défenses détruits",
+  strategicBombRules: "Comment agit la bombe",
   neutralHolder: "un monde sans propriétaire",
   /**
    * Le jeu explique ici pour la première fois ce que signifie le verdict placé
@@ -574,8 +588,6 @@ export const clarity = {
   unreadable: "ILLISIBLE",
   fleetHome: "FLOTTE PRÉSENTE",
   fleetAway: "FLOTTE ABSENTE",
-  backIn: " · retour dans {{minutes}} min",
-  unwatched: "non surveillée",
 } as const;
 export const dossier = {
   /* The E2 target dossier (docs/ui-v2/gozlemevi.md), in the mock's words. */
@@ -664,7 +676,7 @@ export const dossier = {
     "Selon la valeur des unités capables de tirer. Au-delà de la moitié, une catégorie est considérée comme dominante.",
   shapeUnread: "Illisible",
   shapeUnreadNote:
-    "Leur Voile est plus avancé que le Chantier Spatial qui a envoyé la sonde.",
+    "Leur Voile est plus avancé que le Chantier spatial qui a envoyé la sonde.",
   shapeRangesNote: "Selon la valeur de ce qui peut tirer. Chaque part est une fourchette ; la vraie part s’y trouve.",
   shieldLabel: "Puissance du bouclier",
   shieldNote:

@@ -15,7 +15,7 @@ Dayanak: [araştırma](mobil-ui-ux-arastirmasi-2026-11-11.md), [plan, aşama 2](
 | 2.6 Süreler | **Panel 160 ms · basılı tutma B** | Basılı tutma B (0,6 / 1 / 1,5 sn) 3.5'te `GameHold` `weight` olarak kuruldu. Hangi eylemin hangi ağırlığı alacağı 4. aşamada ekranla seçilir (owner 2026-11-12). |
 | 2.7 Kenar boşluğu | **12 px** | |
 | 2.8 Sayı biçimi | **K/M** (240,1K · 1,4M) | |
-| 2.9 Görünüm | **Komuta + Grafit** | Kitin varsayılanı oldu. Başlık, buton ve sayı fontu Russo One yerine Saira dar kalın. Owner yukarıdaki notları onayladı ("tamam"). |
+| 2.9 Görünüm | **Komuta + Grafit**, panel rengi 2026-11-14'te **Gözlemevi laciverti** | Kitin varsayılanı oldu. Başlık, buton ve sayı fontu Russo One yerine Saira dar kalın. Owner yukarıdaki notları onayladı ("tamam"). 2026-11-14: owner grafiti solgun buldu. Dört palet karşılaştırıldı (Grafit, Gözlemevi, Kobalt krom, Gece altını; https://claude.ai/artifact/7kVfj7m7BNSqThE1sJNgaX) ve owner Gözlemevi'ni seçti. Kitin plakaları v2'nin lacivert zeminini aldı (`--gk-deep` = `--color-v2-deep`, `--gk-glass` = `--color-v2-panel`). Şekil ve font kararı değişmedi. |
 
 Seçilenler 3. aşamada token'a ve koruyucu teste çevrilir.
 
@@ -370,7 +370,7 @@ Ek olarak `GameHold` ve `useHoldPress` bir basılı tutma süresi aldı. 3.5'ten
 
 ## 2.9 Görünüm: dil ve panel rengi
 
-**Karar (owner, 2026-11-12): Komuta + Grafit.** Kitin varsayılanına katlandı: renkler `tokens.css`, şekiller `game-ui.css`. Deneme katmanı (`tone-command.css`, GÖRÜNÜM düğmesi, Lacivert ve Karbon) kaldırıldı. Russo One paketi bağımlılıklardan çıktı. Aşağıdaki metin kararın gerekçesi olarak duruyor.
+**Karar (owner, 2026-11-12): Komuta + Grafit.** *(Panel rengi 2026-11-14'te Gözlemevi lacivertine döndü; bkz. tablo.)* Kitin varsayılanına katlandı: renkler `tokens.css`, şekiller `game-ui.css`. Deneme katmanı (`tone-command.css`, GÖRÜNÜM düğmesi, Lacivert ve Karbon) kaldırıldı. Russo One paketi bağımlılıklardan çıktı. Aşağıdaki metin kararın gerekçesi olarak duruyor.
 
 **Owner (2026-11-12):**
 - "Neredeyse her yerde arka planda kullandığımız mavimsi renk hoşuma gitmiyor."

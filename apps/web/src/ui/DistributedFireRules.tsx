@@ -2,6 +2,9 @@ import { COMBAT } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { percent } from '../lib/format.js';
+import { Glyph } from '../game-ui/index.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 
 /**
  * The fire rule the report was fought under: every living target (no limit recorded), up to ten
@@ -16,9 +19,13 @@ export function fireRule(t: TFunction, targetLimit: number | undefined): string 
 /** Only shown for reports explicitly recorded by the distributed-fire engine. */
 export function DistributedFireRules({ targetLimit }: { targetLimit?: number }) {
   const { t } = useTranslation();
-  return <details data-distributed-fire-rules className="mt-2 rounded-control border border-v2-line/60 px-3 py-2 text-caption text-v2-ink-2">
-    <summary className="cursor-pointer min-h-8 font-semibold text-v2-crystal">{t('reports.distributedRulesTitle')}</summary>
-    <div className="mt-2 grid gap-2 leading-relaxed">
+  return <details data-distributed-fire-rules className="gk-rules">
+    <summary className="gk-rules__head" {...OWN_SOUND} onClick={() => { playSound('tap'); haptic('tap'); }}>
+      <Glyph id="attack" />
+      <span className="flex-1">{t('reports.distributedRulesTitle')}</span>
+      <span className="gk-rules__chev"><Glyph id="down" /></span>
+    </summary>
+    <div className="gk-rules__body">
       <p>{fireRule(t, targetLimit)}</p>
       <p>{t('reports.distributedRetreatRule', { lastRound: COMBAT.rounds - 1 })}</p>
       <p>{t('reports.distributedDamageNote')}</p>

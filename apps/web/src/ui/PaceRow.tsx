@@ -1,17 +1,31 @@
+import { useRef, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { MissionPace } from '@astera/rules';
+import { MISSION_PACES, type MissionPace } from '@astera/rules';
 import { full } from '../lib/format.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { durationPrecise } from '../lib/time.js';
+import { Glyph } from '../game-ui/index.js';
+
+/** Every speed the rules know, slow to fast: the bar's fixed stops, left to right. */
+const RUNGS: readonly MissionPace[] = [...MISSION_PACES].sort((a, b) => a - b);
+const SLOWEST = RUNGS[0] ?? 0.1;
+/** Where a speed stands along the bar: the slowest at the left end, full speed at the right. */
+const at = (pace: number): number => (pace - SLOWEST) / (1 - SLOWEST);
 
 /**
- * THE FLIGHT-SPEED RUNGS, ONE SHAPE ON EVERY LAUNCH THAT TAKES A PACE. Owner decision, 2026-09-21.
+ * THE FLIGHT SPEED, ONE THROTTLE ON EVERY LAUNCH THAT TAKES A PACE. Owner decisions, 2026-09-21
+ * (one shape on every launch) and 2026-11-16 (a progress bar, not a row of buttons: a worm at
+ * the slow end, a rocket at the fast one, a cold colour turning to flame).
  *
- * The raid sheet had it first; the transfer sheet needs the same control for a different reason —
- * a raid is slowed to land on time, a transfer to stay in the air — so the rungs are shared and the
- * sentence under them is the caller's, because that sentence is the part that says what it buys.
+ * Every speed the rules know keeps its stop, so the bar never changes shape; the ones this flight
+ * may not take are locked. A press or a drag anywhere on the bar lands on the nearest speed it may
+ * take. The trade reads as two deltas under it — the fuel it saves, the time it adds — and the
+ * sentence under the label is the caller's, because a raid is slowed to land on time and a
+ * transfer to stay in the air.
  *
- * A single legal speed hides the control, except when explaining why a previous
- * slower selection now falls back to full speed.
+ * A single legal speed hides the control, except when explaining why a previous slower
+ * selection now falls back to full speed.
  */
 export function PaceRow({
   paces,
@@ -28,67 +42,123 @@ export function PaceRow({
   onChange: (pace: MissionPace) => void;
   /** The rule in a sentence, under the row. */
   hint?: string;
-  /** The rule in a phrase, under the label beside the control. */
+  /** The rule in a phrase, beside the label. */
   brief?: string;
   /** Personal flights opt in; prepaid clan strikes must not promise these savings. */
   comparison?: { fuel: number; fullFuel: number; minutes: number; fullMinutes: number };
   reset?: boolean;
 } & Record<`data-${string}`, boolean>) {
   const { t } = useTranslation();
+  const dragging = useRef(false);
+  // The speed a drag last landed on, ahead of the re-render that will say so.
+  const landed = useRef<MissionPace>(pace);
+  const track = useRef<HTMLDivElement>(null);
   if (paces.length <= 1 && !reset) return null;
+  const legal = (rung: number): boolean => paces.includes(rung as MissionPace);
+  const pick = (rung: MissionPace, from: MissionPace = pace): void => {
+    if (rung === from || !legal(rung)) return;
+    landed.current = rung;
+    playSound('tab');
+    haptic(rung === 1 ? 'thunk' : 'tap');
+    onChange(rung);
+  };
+  const nearest = (fraction: number): MissionPace => paces.reduce((best, rung) =>
+    Math.abs(at(rung) - fraction) < Math.abs(at(best) - fraction) ? rung : best, paces[0] ?? 1);
+  /** Measured along the bar wherever the dragged finger is: on a label, past an end, off the row. */
+  const follow = (event: PointerEvent<HTMLElement>): void => {
+    const box = track.current?.getBoundingClientRect();
+    if (!box || box.width <= 0) return;
+    pick(nearest(Math.min(1, Math.max(0, (event.clientX - box.left) / box.width))), landed.current);
+  };
+  const step = (event: KeyboardEvent<HTMLDivElement>): void => {
+    const by = event.key === 'ArrowRight' || event.key === 'ArrowUp' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowDown' ? -1 : 0;
+    if (by === 0) return;
+    event.preventDefault();
+    const open = RUNGS.filter(legal);
+    const next = open[open.indexOf(pace) + by];
+    if (next !== undefined) pick(next);
+  };
   const saving = comparison ? Math.max(0, comparison.fullFuel - comparison.fuel) : 0;
+  const delay = comparison ? durationPrecise(Math.max(0, Math.round(comparison.minutes * 60) - Math.round(comparison.fullMinutes * 60)) / 60) : '';
+  const place: CSSProperties & Record<'--pace', string> = { '--pace': String(at(pace)) };
   return (
-    <div {...data} className="grid gap-1 font-v2-ui">
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex min-w-0 flex-col">
-          <span className="text-caption text-v2-ink-2">{t('launch.pace')}</span>
-          {brief && <span className="text-micro leading-snug text-v2-ink-3">{brief}</span>}
-        </span>
-        {paces.length > 1 && <div role="radiogroup" aria-label={t('launch.pace')} className="flex shrink-0 gap-0.5 rounded-control border border-v2-line bg-v2-panel p-0.5">
-          {paces.map((rung) => (
-            <button
-              key={rung}
-              type="button"
-              role="radio"
-              aria-checked={rung === pace}
-              onClick={() => { onChange(rung); }}
-              className={`rounded-chip px-2 py-1 font-v2-mono text-micro tabular-nums ${
-                rung === pace ? 'bg-v2-raise text-v2-ink ring-1 ring-v2-line-hi' : 'text-v2-ink-3'
-              }`}
-            >
-              {rung === 1 ? t('launch.paceFull') : `${String(Math.round(rung * 100))}%`}
-            </button>
-          ))}
-        </div>}
+    <div {...data} className="gk-pace">
+      <div className="gk-pace__head">
+        <span className="gk-label">{t('launch.pace')}</span>
+        {brief && <span className="gk-sub">{brief}</span>}
       </div>
-      {reset && <p data-pace-reset role="status" className="text-micro leading-snug text-v2-warn">{t('launch.paceReset')}</p>}
-      {comparison && (
-        <div data-pace-comparison aria-live="polite" aria-atomic="true" className="mt-1 rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
-          <dl className="grid grid-cols-2 gap-x-3 gap-y-1">
-            <div className="min-w-0">
-              <dt className="text-micro text-v2-ink-3">{t('launch.fuel')}</dt>
-              <dd data-pace-fuel className="font-v2-mono text-caption tabular-nums text-v2-ink">{t('launch.paceFuelValue', { amount: full(comparison.fuel) })}</dd>
-              <dd data-pace-saving className="mt-1 text-micro leading-snug">
-                <span className="block text-v2-ink-3">{t('launch.paceFuelBaseline', { amount: full(comparison.fullFuel) })}</span>
-                <span className={`block ${saving > 0 ? 'text-v2-self' : 'text-v2-ink-2'}`}>{t('launch.paceSaved', { amount: full(saving) })}</span>
-              </dd>
+      {paces.length > 1 && (
+        <div
+          data-pace-throttle
+          className="gk-throttle"
+          style={place}
+          {...(pace === 1 ? { 'data-flat-out': '' } : {})}
+        >
+          <span data-pace-end="slow" className="gk-throttle__end gk-throttle__end--slow" aria-hidden="true"><Glyph id="worm" /></span>
+          <div className="gk-throttle__rail">
+            <div ref={track} data-pace-track className="gk-throttle__track" aria-hidden="true">
+              <span className="gk-throttle__fill" />
+              {/*
+                ONLY THE KNOB DRAGS (owner 2026-11-17: "sadece sayılara dokunursam veya barın yuvarlağını
+                sürüklersem"). The rest of the row is the page's, so a thumb scrolling the sheet over it
+                scrolls; a number is a tap, and the knob, its touch grown to 44 px, is the one drag.
+              */}
+              <span
+                data-pace-knob
+                className="gk-throttle__thumb"
+                onPointerDown={(event) => {
+                  if (event.button !== 0) return;
+                  dragging.current = true;
+                  landed.current = pace;
+                  if ('setPointerCapture' in event.currentTarget) event.currentTarget.setPointerCapture(event.pointerId);
+                }}
+                onPointerMove={(event) => { if (dragging.current) follow(event); }}
+                onPointerUp={() => { dragging.current = false; }}
+                onPointerCancel={() => { dragging.current = false; }}
+              />
             </div>
-            <div className="min-w-0">
-              <dt className="text-micro text-v2-ink-3">{t('launch.paceArrival')}</dt>
-              <dd data-pace-time className="font-v2-mono text-caption tabular-nums text-v2-ink">{durationPrecise(comparison.minutes)}</dd>
-              <dd data-pace-delay className="mt-1 text-micro leading-snug text-v2-ink-3">
-                <span className="block">{t('launch.paceTimeBaseline', { duration: durationPrecise(comparison.fullMinutes) })}</span>
-                {pace < 1 && <span className="block text-v2-ink-2">{t('launch.paceDelay', { duration: durationPrecise(
-                  Math.max(0, Math.round(comparison.minutes * 60) - Math.round(comparison.fullMinutes * 60)) / 60,
-                ) })}</span>}
-              </dd>
+            <div role="radiogroup" aria-label={t('launch.pace')} className="gk-throttle__rungs" onKeyDown={step} {...OWN_SOUND}>
+              {RUNGS.map((rung) => {
+                const stop: CSSProperties & Record<'--at', string> = { '--at': String(at(rung)) };
+                return (
+                  <button key={rung} type="button" role="radio" aria-checked={rung === pace} disabled={!legal(rung)}
+                    tabIndex={rung === pace ? 0 : -1} className="gk-throttle__rung gk-num" style={stop} onClick={() => { pick(rung); }}>
+                    {rung === 1 ? t('launch.paceFull') : t('units.percent', { value: Math.round(rung * 100) })}
+                  </button>
+                );
+              })}
             </div>
-          </dl>
-          {pace === 1 && paces.length > 1 && <p className="mt-1.5 border-t border-v2-line pt-1.5 text-micro leading-snug text-v2-ink-2">{t('launch.paceBenefit')}</p>}
-          {pace < 1 && saving === 0 && <p data-pace-zero-saving className="mt-1.5 border-t border-v2-line pt-1.5 text-micro leading-snug text-v2-ink-2">{t('launch.paceRounding')}</p>}
+          </div>
+          <span data-pace-end="fast" className="gk-throttle__end gk-throttle__end--fast" aria-hidden="true"><Glyph id="rocket" /></span>
         </div>
       )}
-      {hint && <p className="text-micro leading-snug text-v2-ink-3">{hint}</p>}
+      {reset && <p data-pace-reset role="status" className="gk-inote" data-tone="warn">{t('launch.paceReset')}</p>}
+      {comparison && (
+        <div data-pace-comparison aria-live="polite" aria-atomic="true" className="gk-pace__trade">
+          <span className="gk-pace__side">
+            <Glyph id="fuel" />
+            <b data-pace-fuel className="gk-num">{t('launch.paceFuelValue', { amount: full(comparison.fuel) })}</b>
+            {pace < 1 && (
+              <span data-pace-saving className="gk-num" data-tone="self">
+                <span aria-hidden="true">−{full(saving)}</span>
+                <span className="sr-only">{t('launch.paceSaved', { amount: full(saving) })}</span>
+              </span>
+            )}
+          </span>
+          <span className="gk-pace__side">
+            <Glyph id="clock" />
+            <b data-pace-time className="gk-num">{durationPrecise(comparison.minutes)}</b>
+            {pace < 1 && (
+              <span data-pace-delay className="gk-num" data-tone="warn">
+                <span aria-hidden="true">+{delay}</span>
+                <span className="sr-only">{t('launch.paceDelay', { duration: delay })}</span>
+              </span>
+            )}
+          </span>
+        </div>
+      )}
+      {comparison && pace < 1 && saving === 0 && <p data-pace-zero-saving className="gk-sub">{t('launch.paceRounding')}</p>}
+      {hint && <p className="gk-sub">{hint}</p>}
     </div>
   );
 }

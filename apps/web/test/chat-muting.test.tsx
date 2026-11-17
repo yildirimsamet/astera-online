@@ -101,12 +101,17 @@ describe('personal chat mute controls', () => {
     show(); await muteScout();
     const manager = screen.getByRole('button', { name: 'Muted players' });
     const heading = screen.getByRole('heading', { name: 'Chat' });
-    expect(manager.parentElement).toContainElement(heading);
+    // In the title row beside the page's name (the frame wraps a title's keys since G1-g1).
+    expect(manager.closest('[data-sheet-header]')).toContainElement(heading);
     await userEvent.click(manager);
     const list = screen.getByRole('dialog', { name: 'Muted players' });
     expect(within(list).getByText('Scout')).toBeInTheDocument();
-    await userEvent.click(within(list).getByRole('button', { name: 'Unmute Scout' }));
-    expect(within(list).getByText('No muted players.')).toBeInTheDocument();
+    // On the kit (C4): a person's row, a worded key that says whose it is to a reader, the kit's empty list.
+    const unmute = within(list).getByRole('button', { name: 'Unmute Scout' });
+    expect(unmute).toHaveClass('gk-btn'); expect(unmute).toHaveTextContent('Unmute');
+    expect(unmute.closest('.gk-person')).toHaveTextContent('Scout');
+    await userEvent.click(unmute);
+    expect(within(list).getByText('No muted players.').closest('.gk-empty')).not.toBeNull();
     await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('dialog', { name: 'Muted players' })).not.toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: 'Chat' })).toBeInTheDocument();
@@ -121,7 +126,8 @@ describe('personal chat mute controls', () => {
   });
   it('keeps already-muted authors hidden after changing the general chat language', async () => {
     show(); await muteScout();
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Chat language' }), 'tr');
+    await userEvent.click(screen.getByRole('button', { name: /^Chat language/ }));
+    await userEvent.click(within(screen.getByRole('radiogroup', { name: 'Chat language' })).getByRole('radio', { name: 'Türkçe' }));
     expect(screen.queryByText('First Scout message')).not.toBeInTheDocument();
     expect(screen.getByText('Third message')).toBeInTheDocument();
   });

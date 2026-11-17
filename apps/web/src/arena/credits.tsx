@@ -1,3 +1,4 @@
+import { RulesRow } from '../ui/RulesRow.js';
 import type { ArenaCopy } from './copy.js';
 
 /** The CC BY 4.0 ship models (CREDITS.md): title, author and work, as the licence asks. */
@@ -10,11 +11,10 @@ const LICENCE = 'https://creativecommons.org/licenses/by/4.0/';
 
 /** One tap deep in the arena menu: who made the ships, and that they were changed for the game. */
 export function ModelCredits({ c }: { c: ArenaCopy }) {
-  return <details className="ap-credits">
-    <summary>{c.credits}</summary>
-    <ul>{MODELS.map(model => <li key={model.url}>
+  return <RulesRow glyph="star" title={c.credits}>
+    <ul className="gk-arenacredits">{MODELS.map(model => <li key={model.url}>
       <a href={model.url} target="_blank" rel="noopener noreferrer">{model.title}</a> · {model.author}
     </li>)}</ul>
-    <p><a href={LICENCE} target="_blank" rel="noopener noreferrer">CC BY 4.0</a> · {c.creditsChanged}</p>
-  </details>;
+    <p className="gk-note"><a href={LICENCE} target="_blank" rel="noopener noreferrer">CC BY 4.0</a> · {c.creditsChanged}</p>
+  </RulesRow>;
 }

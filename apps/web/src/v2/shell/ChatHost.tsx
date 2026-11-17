@@ -1,7 +1,7 @@
-import { BlockedPlayersSheet } from '../../screens/CommunityBlocks.js';
+import { BlockedPlayersSheet, PersonRow } from '../../screens/CommunityBlocks.js';
 import { useEffect, useRef, useState } from 'react';
 import { addChatMute, readChatMutes, writeChatMutes, type ChatMuteAuthor } from '../../lib/chatMutes.js';
-import { MuteIcon } from '../../ui/icons/index.js';
+import { EmptyState, GameButton, RoundButton, artIconSrc } from '../../game-ui/index.js';
 import { useTranslation } from 'react-i18next';
 import { useChatUnread, useClanBadge, useDmUnread } from '../../api/queries.js';
 import { ChatScreen, type ChatChannel } from '../../screens/ChatScreen.js';
@@ -72,16 +72,9 @@ function PersonalChatHost({ accountId, onClose, onFocusPlanet, channel, draft, i
   return (
     <>
       <div ref={host} data-chat-host>
-      <Sheet title={t('bell.chat')} titleAction={(<>
-        <button type="button" aria-label={t('chat.personalMutes.title')} aria-haspopup="dialog"
-          className="relative grid size-8 shrink-0 place-items-center rounded-control border border-v2-line text-v2-ink-2 hover:border-v2-self/50 hover:text-v2-self focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
-          onClick={() => { setShowMuted(true); }}>
-          <MuteIcon className="size-4" />
-          {mutedPlayers.length > 0 && <span aria-hidden className="absolute -top-1 -right-1 min-w-3.5 rounded-pill bg-v2-self px-0.5 font-v2-mono text-micro text-v2-self-ink">{mutedPlayers.length}</span>}
-        </button>
-        <button type="button" aria-label={t('moderation.blocks.title')} aria-haspopup="dialog" className="grid size-8 shrink-0 place-items-center rounded-control border border-v2-line text-v2-ink-2 hover:border-v2-self/50 hover:text-v2-self focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self" onClick={() => { setShowBlocked(true); }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="size-4" aria-hidden="true"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3ZM8 12h8" /></svg>
-        </button>
+      <Sheet title={t('bell.chat')} kit={{ art: artIconSrc('hud-chat') }} titleAction={(<>
+        <RoundButton small glyph="mute" label={t('chat.personalMutes.title')} onPress={() => { setShowMuted(true); }} />
+        <RoundButton small glyph="block" label={t('moderation.blocks.title')} onPress={() => { setShowBlocked(true); }} />
       </>)} onClose={onClose} detents={['full']} contained fixedHeight>
         <div className="min-h-0 flex-1">
           <ChatScreen
@@ -99,21 +92,25 @@ function PersonalChatHost({ accountId, onClose, onFocusPlanet, channel, draft, i
       </Sheet>
       </div>
       {showBlocked ? <BlockedPlayersSheet onClose={() => { setShowBlocked(false); }} /> : null}
-      {showMuted && <Sheet title={t('chat.personalMutes.title')} detents={['fit']} onClose={() => { setShowMuted(false); }}>
-        <p className="mb-3 text-caption leading-relaxed text-v2-ink-2">{t('chat.personalMutes.hint')}</p>
-        {mutedPlayers.length === 0 ? <p className="py-4 text-center text-caption text-v2-ink-2">{t('chat.personalMutes.empty')}</p> : (
-          <ul className="grid gap-2">
-            {mutedPlayers.map(player => <li key={player.playerId} className="flex min-w-0 items-center gap-3 rounded-control border border-v2-line bg-v2-deep/50 p-2.5">
-              <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-control border border-v2-line-hi text-caption text-v2-ink-2">{player.username.slice(0, 2).toUpperCase()}</span>
-              <span className="min-w-0 flex-1 truncate text-caption font-semibold text-v2-ink">{player.username}</span>
-              <button type="button" aria-label={t('chat.personalMutes.unmute', { name: player.username })}
-                className="min-h-9 shrink-0 rounded-control border border-v2-self/40 px-2 text-caption font-semibold text-v2-self hover:bg-v2-self/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
-                onClick={() => { setMutedPlayers(current => current.filter(muted => muted.playerId !== player.playerId)); }}>
-                {t('chat.personalMutes.unmuteShort')}
-              </button>
-            </li>)}
-          </ul>
-        )}
+      {/* THE MUTED LIST (C4): each commander a row with their own key; an empty list says how to add one. */}
+      {showMuted && <Sheet title={t('chat.personalMutes.title')} kit={{ art: artIconSrc('hud-chat') }} detents={['fit']} onClose={() => { setShowMuted(false); }}>
+        <div className="gk grid gap-3 pb-3">
+          <p className="gk-copy">{t('chat.personalMutes.hint')}</p>
+          {mutedPlayers.length === 0 ? (
+            <EmptyState art={artIconSrc('hud-chat')} title={t('chat.personalMutes.empty')} body={t('chat.personalMutes.emptyHint')} />
+          ) : (
+            <ul className="grid gap-1.5">
+              {mutedPlayers.map(player => (
+                <PersonRow key={player.playerId} name={player.username} action={(
+                  <GameButton size="sm" spoken={t('chat.personalMutes.unmute', { name: player.username })}
+                    onPress={() => { setMutedPlayers(current => current.filter(muted => muted.playerId !== player.playerId)); }}>
+                    {t('chat.personalMutes.unmuteShort')}
+                  </GameButton>
+                )} />
+              ))}
+            </ul>
+          )}
+        </div>
       </Sheet>}
     </>
   );

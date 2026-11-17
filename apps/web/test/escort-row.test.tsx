@@ -49,7 +49,8 @@ describe('the escort choice on the raid sheet (Y9)', () => {
   it('keeps a busy ship off, saying what keeps it home and for how long', () => {
     render(<EscortRow escort={{ kind: 'busy', ship: 'kilavuz', level: 4, reason: 'repair', until: now + 90_000 }}
       on={false} onChange={vi.fn()} now={now} />);
-    expect(screen.getByRole('switch')).toBeDisabled();
+    // G4-e2: the kit's locked switch answers a press with a refusal instead of going dead
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByText(/repair · 1:30/i)).toBeVisible();
   });
 

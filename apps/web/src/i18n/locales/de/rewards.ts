@@ -20,12 +20,14 @@ export const rewards = {
   eyebrow: 'Dauerhafte Belohnungen',
   title: 'Belohnungen',
   intro:
-    "Diese Ziele laufen nicht ab und erfordern keine Serie. Belohnungen gelangen direkt in den Speicher, auch über dessen Kapazität. Ungeschützte Ressourcen können geplündert werden.",
+    "Kein Ablauf, keine Serie. Alles geht ins Lager; Ungeschütztes kann geplündert werden.",
 
   waiting: '{{count}} zum Abholen bereit',
   allTaken: 'Du hast alle verfügbaren Belohnungen abgeholt. Mit deinem Fortschritt kommen weitere dazu.',
 
   claim: 'Abholen',
+  /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  openPod: 'Kapsel öffnen',
   claimed: 'Abgeholt',
   /** What is still between the player and this tier. Never a scolding. */
   toGo: 'Noch {{count}}',
@@ -41,7 +43,7 @@ export const rewards = {
 
   granted: '+{{alloy}} Legierung · +{{crystal}} Kristall',
   overCap:
-    'Damit überschreitest du deine Lagergrenze. Es geht nichts verloren. Deine Produktion kannst du aber erst wieder abholen, nachdem du Ressourcen ausgegeben hast.',
+    'Über dem Lagerlimit: nichts geht verloren, aber Abholen erst nach dem Ausgeben.',
 
   /**
    * ONE ENTRY PER CHAIN, `name` + `tag`, the same shape every card in the game
@@ -81,12 +83,12 @@ export const rewards = {
     url: 'https://x.com/JoinAstera',
     alloy: '-Legierung',
     crystal: 'Kristall',
-    open: 'Öffnen Sie @JoinAstera auf X',
-    step1: 'Folgen Sie @JoinAstera – die Schaltfläche unten öffnet es in einem neuen Tab.',
-    step2: 'Senden Sie uns eine Direktnachricht mit dem Namen Ihres Kommandanten:',
-    step3: 'Wir prüfen es von Hand. Sobald wir dies tun, wartet die Belohnung hier auf Sie.',
-    pending: 'Warte auf Ihre Nachricht',
-    ready: 'Bestätigt – Fordern Sie Ihren Bonus an',
+    open: '@JoinAstera auf X öffnen',
+    step1: 'Folge @JoinAstera – der Button unten öffnet es in einem neuen Tab.',
+    step2: 'Schick uns eine Direktnachricht mit deinem Kommandantennamen:',
+    step3: 'Wir prüfen es von Hand. Danach wartet die Belohnung hier auf dich.',
+    pending: 'Wir warten auf deine Nachricht',
+    ready: 'Bestätigt – hol dir deinen Bonus',
     /**
      * WHAT A PLAYER WHO ALREADY HAS IT READS, and it has to say more than "Taken"
      * — every other card in this panel says that about THIS season, and a new

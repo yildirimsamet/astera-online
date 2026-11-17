@@ -1,11 +1,10 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Sheet } from '../v2/kit/Sheet.js';
-import { Button } from '../v2/kit/Surface.js';
-import { Icon } from '../v2/icons.js';
 import { BrandLockup, useBrandPanelFocus } from './Panel.js';
 import { installProfile, isBraveBrowser, type InstallBrowser } from './installProfile.js';
 import { copyText } from '../lib/clipboard.js';
+import { Banner, GameButton, Glyph } from '../game-ui/index.js';
 import { capabilities } from '../platform/runtime.js';
 import { observe } from '../lib/playerAnalytics/runtime.js';
 import { findsInstalledPwa, forgetInstalledPwa, INSTALLED_PWA_KEY, rememberInstalledPwa, remembersInstalledPwa, runningAsPwa } from './installedPwa.js';
@@ -151,31 +150,31 @@ function WebInstallProvider({ children }: { children: ReactNode }) {
 
   return <InstallContext value={{ installed, checking, desktop, request }}>
     {children}
-    {instructions && <Sheet title={t('brand.installHeading')} detents={['fit']} placement="card" quietTitle bleed onClose={() => { setInstructions(false); }}>
-      <div ref={content} tabIndex={-1} className="brand-panel brand-install-panel" aria-busy={busy}>
+    {instructions && <Sheet title={t('brand.installHeading')} detents={['fit']} placement="card" quietTitle bleed kit={{ tone: 'self' }} onClose={() => { setInstructions(false); }}>
+      <div ref={content} tabIndex={-1} className="gk-quiz gk-installsheet" aria-busy={busy}>
         <BrandLockup />
         {/* The quiet Sheet title is the accessible heading; this is its visible face. */}
-        <h3 className="brand-panel-heading" aria-hidden="true">{t('brand.installHeading')}</h3>
-        <p className="brand-panel-description">{t(desktop ? 'brand.installBenefitDesktop' : 'brand.installBenefit')}</p>
-        {nativeOffered && <Button variant="primary" disabled={busy} onClick={() => { void launch(); }}><Icon id="i-collect" className="size-4" />{t('brand.nativeInstall')}</Button>}
+        <h3 className="gk-display gk-quiz__title" aria-hidden="true">{t('brand.installHeading')}</h3>
+        <p className="gk-sub">{t(desktop ? 'brand.installBenefitDesktop' : 'brand.installBenefit')}</p>
+        {nativeOffered && <GameButton tone="action" size="lg" wide glyph="home" pending={busy} onPress={() => { void launch(); }}>{t('brand.nativeInstall')}</GameButton>}
         {!nativeOffered && (profile.kind === 'ios' ? <>
-          <ol className="brand-install-steps">{(['brand.iosShare', 'brand.iosHome', 'brand.iosAdd'] as const).map((step, index) => <li key={step}><span aria-hidden="true">{index + 1}</span><strong>{t(step)}</strong></li>)}</ol>
-          <p className="brand-panel-note">{t('brand.iosWebApp')}</p>
-          <p className="brand-panel-note">{t('brand.iosSafari')}</p>
+          <ol className="gk-installsteps">{(['brand.iosShare', 'brand.iosHome', 'brand.iosAdd'] as const).map((step, index) => <li key={step}><span className="gk-num" aria-hidden="true">{index + 1}</span><strong>{t(step)}</strong></li>)}</ol>
+          <p className="gk-note">{t('brand.iosWebApp')}</p>
+          <p className="gk-note">{t('brand.iosSafari')}</p>
         </> : desktop ? <>
-        {profile.os === 'mac' && profile.browser === 'safari' ? <p className="brand-install-guide">{t('brand.macDock')}</p>
-          : firefoxWindows ? <p className="brand-install-guide">{t('brand.firefoxWindows')}</p>
-          : chromium && <p className="brand-install-guide">{t('brand.desktopInstall', { browser: browserNames[profile.browser] })}</p>}
-        <div className="brand-bookmark-guide">
-          <Icon id="i-spark" className="size-5 text-v2-ink-2" />
-          <div><p className="brand-panel-label">{t('brand.bookmarkTitle')}</p><p className="brand-panel-note">{t('brand.bookmarkHint')}</p></div>
-          <kbd>{profile.os === 'mac' ? '⌘' : 'Ctrl'}<span>+</span>D</kbd>
-        </div></> : <p className="brand-install-guide">{profile.kind === 'inApp' ? t('brand.inAppSteps', { browser: profile.os === 'ios' ? 'Safari' : 'Chrome' }) : t(profile.browser === 'firefox' ? 'brand.androidFirefox' : 'brand.androidSteps')}</p>)}
-        {profile.kind === 'android' && !nativeOffered && <p className="brand-panel-note">{t('brand.browserFallback')}</p>}
-        {promptMessage && <p role="status" className="brand-panel-notice">{t(promptMessage === 'dismissed' ? 'brand.installDismissed' : 'brand.installFailed')}</p>}
-        {busy && <p role="status" className="brand-panel-note">{t('brand.installWaiting')}</p>}
-        <div className="brand-address-box"><AsteraAddress /></div>
-        <Button disabled={busy} onClick={() => { void copyAddress(); }}><Icon id={copy === 'copied' ? 'i-check' : 'i-share'} className="size-4" /><span aria-live="polite">{t(copy === 'copied' ? 'brand.copied' : copy === 'failed' ? 'brand.copyFailed' : 'brand.copyAddress')}</span></Button>
+        {profile.os === 'mac' && profile.browser === 'safari' ? <p className="gk-note gk-installsheet__guide">{t('brand.macDock')}</p>
+          : firefoxWindows ? <p className="gk-note gk-installsheet__guide">{t('brand.firefoxWindows')}</p>
+          : chromium && <p className="gk-note gk-installsheet__guide">{t('brand.desktopInstall', { browser: browserNames[profile.browser] })}</p>}
+        <div className="gk-well gk-installsheet__bookmark">
+          <Glyph id="star" />
+          <div><p className="gk-installsheet__lead">{t('brand.bookmarkTitle')}</p><p className="gk-sub">{t('brand.bookmarkHint')}</p></div>
+          <kbd className="gk-installsheet__key">{profile.os === 'mac' ? '⌘' : 'Ctrl'}<span>+</span>D</kbd>
+        </div></> : <p className="gk-note gk-installsheet__guide">{profile.kind === 'inApp' ? t('brand.inAppSteps', { browser: profile.os === 'ios' ? 'Safari' : 'Chrome' }) : t(profile.browser === 'firefox' ? 'brand.androidFirefox' : 'brand.androidSteps')}</p>)}
+        {profile.kind === 'android' && !nativeOffered && <p className="gk-note">{t('brand.browserFallback')}</p>}
+        {promptMessage && <Banner tone="warn" role="status" title={t(promptMessage === 'dismissed' ? 'brand.installDismissed' : 'brand.installFailed')} />}
+        {busy && <p role="status" className="gk-note">{t('brand.installWaiting')}</p>}
+        <div className="gk-well"><p className="gk-installsheet__address select-all">asteraonline<span>.space</span></p></div>
+        <GameButton wide glyph={copy === 'copied' ? 'check' : 'share'} pending={busy} onPress={() => { void copyAddress(); }}><span aria-live="polite">{t(copy === 'copied' ? 'brand.copied' : copy === 'failed' ? 'brand.copyFailed' : 'brand.copyAddress')}</span></GameButton>
       </div>
     </Sheet>}
   </InstallContext>;
@@ -191,15 +190,11 @@ export function useInstalled(): boolean {
   return useContext(InstallContext)?.installed ?? (runningAsPwa() || remembersInstalledPwa());
 }
 
-export function InstallButton({ compact = false, variant = 'primary' }: { compact?: boolean; variant?: 'primary' | 'ghost' }) {
+export function InstallButton({ compact = false, variant = 'primary' }: { compact?: boolean; variant?: 'primary' | 'ghost' | 'steel' }) {
   const { t } = useTranslation();
   const install = useContext(InstallContext);
   if (!capabilities().pwaInstall) return null;
   if (install ? install.installed || install.checking : runningAsPwa() || remembersInstalledPwa()) return null;
   if (!install) return <InstallProvider><InstallButton compact={compact} variant={variant} /></InstallProvider>;
-  return <Button size={compact ? 'sm' : 'md'} variant={variant} onClick={install.request}>{variant === 'ghost' && <Icon id="i-collect" className="size-3.5" />}{t(install.desktop ? 'brand.installDesktop' : 'brand.install')}</Button>;
-}
-
-function AsteraAddress() {
-  return <p className="select-all">asteraonline<span>.space</span></p>;
+  return <GameButton size={compact ? 'sm' : 'md'} tone={variant === 'primary' ? 'action' : variant} glyph="home" onPress={install.request}>{t(install.desktop ? 'brand.installDesktop' : 'brand.install')}</GameButton>;
 }

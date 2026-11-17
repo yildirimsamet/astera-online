@@ -54,14 +54,7 @@ const base: BattleReport = {
 const report = (over: Partial<BattleReport> = {}): BattleReport => ({ ...base, ...over });
 
 describe('the report scene', () => {
-  it('takes both attacker and defender to the report world when its name is pressed', async () => {
-    const focus = vi.fn();
-    const view = render(<ReportScene report={report()} onFocusPlanet={focus} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Kestrel' }));
-    view.rerender(<ReportScene report={report({ attacking: false })} onFocusPlanet={focus} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Kestrel' }));
-    expect(focus.mock.calls).toEqual([['p2'], ['p2']]);
-  });
+  /* The far world's door moved to the sheet's route (C15a/C16a): `report-scene-kit.test.tsx`. */
   /**
    * THE MOCK'S HERO (M4): the report is headed by the reader's own world, then the word,
    * large, then when, how long, and against whom — their name as a chip, their world.
@@ -108,9 +101,9 @@ describe('the report scene', () => {
   /** A win that cost the whole fleet is a loss to the reader (the sheet's verdict says so too). */
   it('reddens the word when the attacker lost every ship, whatever the grade', () => {
     const { rerender } = render(<ReportScene report={report()} word="Partial victory" />);
-    expect(document.querySelector('[data-report-word]')).toHaveClass('text-v2-alloy');
+    expect(document.querySelector('[data-report-word]')).toHaveAttribute('data-tone', 'partial');
     rerender(<ReportScene report={report({ yourLosses: { DART: 23, COURIER: 3 } })} word="Fleet lost" />);
-    expect(document.querySelector('[data-report-word]')).toHaveClass('text-v2-hostile');
+    expect(document.querySelector('[data-report-word]')).toHaveAttribute('data-tone', 'threat');
   });
 
   /** The mock's "Bugün 21:40": a fight from today is dated by the day's word and its clock. */

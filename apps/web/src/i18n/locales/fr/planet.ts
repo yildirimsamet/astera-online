@@ -86,7 +86,7 @@ export const planet = {
 },
   abandon: {
     "action": "Abandonner la colonie",
-    "title": "Abandonner cette colonie ?",
+    "title": "Abandonner la colonie",
     "cancel": "Garder la colonie",
     "confirm": "Abandonner",
     "pending": "Abandon en cours…",
@@ -129,22 +129,21 @@ export const planet = {
     noRadar: "Chargée · rayon Radar désactivé",
     build: "Charger une munition",
     started: "Chargement de la munition",
+    short: "Arrête une Étoile de la mort ou une bombe radiologique.",
     hint: "Arrête une Étoile de la mort ou une bombe radiologique dans l’anneau d’interception Radar ou après identification au Télescope. Chaque tir consomme une charge de la batterie de la planète ciblée.",
     colonyHint: "Chaque Étoile de la Mort qui passe coûte {{loss}} de loyauté à cette colonie et provoque 1 panne aléatoire.",
-    readyHint:
-      "Arrête une Étoile de la mort ou une bombe radiologique dans l’anneau d’interception Radar ou après identification au Télescope. Chaque tir consomme une charge de la batterie de la planète ciblée.",
     noRadarHint:
       "La munition reste chargée, mais ce monde ne dispose plus de rayon d’interception Radar. Réactive l’Antenne et un Radar de niveau 3 ; le champ de vision d’un Télescope sur un autre de tes mondes peut toujours déclencher le tir.",
     needRadar: "Radar niveau {{level}}",
     needUplink: "Antenne en orbite",
     needOperational: "Monde opérationnel",
-    buildTime: "{{duration}} · une munition · consommée au tir",
     buildSecond: "Charger une autre charge",
   },
   deathStar: {
     empDuration: "Durée de l’EMP",
     loyaltyDamage: "Loyauté par impact colonial",
-    eyebrow: "Arme EMP tactique",
+    /** The one line beside the rule's "?" on the forge (G2-g). */
+    rule: "Met l’Aegis de la cible à zéro et coupe ses défenses au sol.",
     tally: "{{used}} armes sur {{total}} disponibles",
     none: "Aucune Étoile de la Mort sur ce monde",
     building: "Construction · {{duration}}",
@@ -156,7 +155,7 @@ export const planet = {
     started: "Construction de l’Étoile de la Mort lancée",
     hint: "Ramène l’Aegis de la cible à zéro. Pendant 1 heure, l’Aegis ne se recharge pas et les défenses terrestres ne prennent part à aucun combat. Chaque frappe sur une colonie lui retire {{loss}} de loyauté et provoque 1 panne aléatoire. Frappe {{hits}} fois de suite une colonie à 100 de loyauté et elle tombe, puis devient neutre.",
     needCore: "Noyau niveau {{level}}",
-    needShipyard: "Chantier Spatial niveau {{level}}",
+    needShipyard: "Chantier spatial niveau {{level}}",
     needOperational: "Monde opérationnel",
     buildTime: "{{duration}} · une arme · aucun rappel possible",
     needs: 'Requiert {{need}}',
@@ -172,14 +171,17 @@ export const planet = {
     reachProblem: "Flotte",
     reachQuestion:
       "Développe ici tes vaisseaux et ta portée.",
-    growProblem: "Production",
+    growProblem: "Usines",
     growQuestion:
       "Augmente ici tes ressources et la limite de niveau de tes bâtiments.",
     tacticalProblem: "Tactique",
     tacticalQuestion: "Construis et gère ici les outils tactiques.",
   },
   queue: {
-    waiting: "En attente",
+    waiting: "En file",
+    /** An idle lane, folded to one line while another works (G2-c). */
+    freeSlots_one: "{{count}} place libre",
+    freeSlots_other: "{{count}} places libres",
     ends: "se termine à {{time}}",
     segment: "{{name}} · {{duration}}",
     cancelOne: "Annuler la commande {{name}}",
@@ -187,7 +189,7 @@ export const planet = {
     idle: "Aucune production",
     capacity: "{{count}} places chacune",
     construction: "Construction",
-    yard: "Chantier Spatial",
+    yard: "Chantier spatial",
     repair: "Réparations",
     slotFree: "Libre",
     empty: "Aucun travail assigné",
@@ -259,11 +261,10 @@ export const planet = {
       "Retraite tactique · un raid de {{ratio}}× la puissance de cette ligne (vaisseaux et canons actifs) qui l’anéantirait ne trouve plus tes vaisseaux · le décollage brûle {{fuel}} Deutérium",
     escapeShort:
       "Retraite tactique · tes vaisseaux fuiraient un raid de {{ratio}}× la puissance de cette ligne (vaisseaux et canons actifs), mais le décollage demande {{fuel}} Deutérium et le réservoir en contient {{stock}}",
-    shieldBand: "Bouclier",
+    buildBand: "Défenses",
+    lineFold: "Ligne de défense",
     shieldNote:
       "L’Aegis absorbe les dégâts avant qu’ils n’atteignent tes unités. Ses niveaux augmentent le bouclier maximal ; il régénère chaque heure 35 % de sa valeur maximale.",
-    groundBand:
-      "Défenses terrestres (capacité augmentée par le Noyau de Commandement)",
     groundNote:
       "Elles ne quittent jamais la planète. Le Hérisson contre les Remparts, le Harpon les Escarmoucheurs et le Bastion les Lances.",
     thornNone:
@@ -335,7 +336,7 @@ export const planet = {
     },
     frontierBand: "Recherches de pointe",
     frontierNote:
-      "Les recherches utilisent la file commune de ton commandant. La Construction et le Chantier Spatial continuent de fonctionner séparément.",
+      "Les recherches utilisent la file commune de ton commandant. La Construction et le Chantier spatial continuent de fonctionner séparément.",
     isotopeName: "Spectrométrie Isotopique",
     isotopeTag: "Débloque l’extraction du Deutérium",
     isotopeRole:
@@ -365,7 +366,7 @@ export const planet = {
     doctrineTag: "Meilleure attaque et meilleur blindage",
     doctrineRole:
       "Augmente ensemble l’attaque et la résistance des défenses au sol. Rapports de classes, capacité au sol et récupération restent inchangés.",
-    yardName: "Automatisation du Chantier Spatial",
+    yardName: "Automatisation du Chantier spatial",
     yardTag: "Construit les vaisseaux plus rapidement",
     yardRole:
       "Réduit le temps de production des vaisseaux mobiles ; n’affecte ni les défenses terrestres ni la capacité des files de production.",
@@ -423,13 +424,13 @@ export const planet = {
     core: "Noyau niveau {{level}}",
     uplink: "Antenne en orbite",
     orbitSlot: "emplacement orbital libre",
-    shipyard: "Chantier Spatial niveau {{level}}",
+    shipyard: "Chantier spatial niveau {{level}}",
     research: "{{research}} {{level}}",
     requirements: "Requis : {{requirements}}",
-    plantRung: "Recherche un palier supplémentaire de Synthèse du Deutérium",
     maxed: "niveau maximal",
     queueFull:
       "Il y a déjà 3 commandes dans la file. Attends que l’une d’elles se termine ou annule-en une avant d’ajouter celle-ci.",
+    queueFullShort: "File pleine",
   },
   done: {
     raised: "{{name}} est maintenant au niveau {{level}}",
@@ -450,7 +451,7 @@ export const planet = {
       collectorUse: 'Ajoute-le à une flotte d’attaque avec des vaisseaux de combat. Il récupère les débris de cette bataille et ramène les ressources.',
       collectorLimit: 'Il n’augmente pas la capacité de butin et ne récupère rien en défense. Tu ne peux pas l’envoyer vers des astéroïdes ou des champs de débris.',
     },
-    eyebrowGround: "Défense terrestre · ne décolle jamais",
+    eyebrowGround: "Défense au sol · ne part jamais",
     eyebrowMobile: "Coque mobile",
     howMany: "Combien",
     fewer: "Réduire {{name}}",
@@ -469,10 +470,10 @@ export const planet = {
     defenceAfter:
       "Une fois terminé, {{count}} unités seront présentes sur ce monde",
     maxOf: 'Max · {{value}}',
-    byPurse: 'autant que tes ressources le permettent',
-    byHangar: 'autant que le hangar a de place',
-    byGround: 'autant que le sol a de place',
-    byBerth: 'autant que tes postes le permettent',
+    byPurse: 'limite des ressources',
+    byHangar: 'limite du hangar',
+    byGround: 'limite au sol',
+    byBerth: 'limite des postes',
     cycle: 'Cycle des classes',
     yardFill: 'File du chantier {{used}}/{{total}}',
     standing: '{{value}} en place',
@@ -499,7 +500,7 @@ export const itemSheet = {
   rungLevel: "Niv.{{level}}",
   nextLook: "Nouvel aspect au niveau {{level}}",
   queueFill: "File de construction {{used}}/{{total}}",
-  affordIn: "Assez dans ~{{duration}}",
+  affordIn: "Assez dans {{duration}}",
   short: "Ressources insuffisantes",
   orbitalDoesHeading: "Ce qu’il apporte",
   orbitalOnce: "Acheté une fois ; jamais amélioré",
@@ -623,8 +624,6 @@ export const launch = {
   holdWorld_other: "Lancer {{count}} vaisseaux",
   holdPirate_one: "Lancer {{count}} vaisseau",
   holdPirate_other: "Lancer {{count}} vaisseaux",
-  warningWorld: "Cette flotte ne défendra pas {{world}} avant son retour. Absence estimée : {{duration}}.",
-  warningPirate: "Tu peux rappeler ce raid une fois avant l’engagement. La flotte ne défendra pas {{world}} avant son retour. Absence estimée : {{duration}}.",
   recallNote:
     "Rappelable une fois en vol — le retour dure autant que le trajet déjà effectué. Le carburant n'est pas remboursé.",
   chooseFleet: "Choisis ta flotte",
@@ -639,12 +638,8 @@ export const launch = {
   pace: "Vitesse de vol",
   paceHint: "Une flotte ralentie arrive plus tard et revient à la même vitesse. Une vitesse plus lente réduit le coût du carburant. Chaque trajet ralenti doit durer au maximum 12 heures.",
   paceFull: "Pleine",
-  paceBenefit: "Choisis une vitesse plus lente pour consommer moins de carburant.",
   paceFuelValue: "{{amount}} deutérium",
-  paceFuelBaseline: "Vitesse maximale : {{amount}}",
   paceSaved: "{{amount}} de deutérium économisé",
-  paceArrival: "Arrivée à la cible",
-  paceTimeBaseline: "Vitesse maximale : {{duration}}",
   paceDelay: "{{duration}} plus tard",
   paceRounding: "L’arrondi du carburant empêche toute économie pour cette flotte.",
   paceReset: "Cette flotte vole à vitesse maximale, car la vitesse choisie dépasse la limite de durée du trajet.",
@@ -672,7 +667,7 @@ export const launch = {
   max: "Maximum de {{name}}",
   maxShort: "Maximum",
   noShips:
-    "Aucun vaisseau n’est présent. Construis-en au Chantier Spatial ou attends le retour de ceux qui sont en mission.",
+    "Aucun vaisseau n’est présent. Construis-en au Chantier spatial ou attends le retour de ceux qui sont en mission.",
   warning:
     "Cette flotte ne défendra pas ta planète avant son retour. {{count}} unités restent sur place.",
   shieldWarning:
@@ -709,6 +704,12 @@ export const launch = {
   cargoEach: "{{amount}} de soute chacun",
   cargoAdds: "+{{amount}} de soute",
   paceBrief: "moins de carburant · trajet ralenti ≤12 h",
+  priceRules: "Règles du vol",
+  awayFor: "{{world}} · {{duration}} sans cette flotte",
+  awayOpen: "{{world}} · sans cette flotte jusqu’à son retour",
+  pirateRecall: "Tu peux rappeler ce raid une fois avant l’engagement.",
+  shieldShort: "Ton bouclier de départ prend fin",
+  recoveryShieldShort: "Ton bouclier de récupération et le +50 % de production prennent fin",
   escort: "Le vaisseau du commandant escorte la flotte",
   escortLabel: "Vaisseau du commandant",
   escortBonusAkinci: "dégâts +{{pct}} %",
@@ -722,8 +723,6 @@ export const launch = {
   escortService: "En maintenance · {{clock}}",
   escortYarik: "En vol dans le Yarık",
   escortAway: "Escorte une autre flotte",
-  warningWorldOpen: "Cette flotte ne défendra pas {{world}} avant son retour.",
-  warningPirateOpen: "Tu peux rappeler ce raid une fois avant l’engagement. La flotte ne défendra pas {{world}} avant son retour.",
 } as const;
 export const transfer = {
   fuel: "carburant de vol",
@@ -757,6 +756,7 @@ export const transfer = {
   sending: "Départ en cours",
   launched: "Transfert lancé · {{duration}}",
   /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
+  recallOnce: "Rappelable une fois en vol.",
   rules: "Rappelable une fois en vol. Les défenses terrestres ne bougent pas ; tout vaisseau doté d’une soute peut transporter des ressources.",
   hullNone: "Aucun sur ce monde",
   holdReady: "Les vaisseaux choisis transportent les ressources. Soute : {{capacity}}.",
@@ -796,26 +796,24 @@ export const faults = {
   mark: "Panne active",
   launchBlock: {
     SILENT_SPACE: "Fermé dans l’Espace Silencieux — reviens pour l’utiliser",
-    SHIPYARD_REVOLT: "Mutinerie au Chantier Spatial",
+    SHIPYARD_REVOLT: "Mutinerie au Chantier spatial",
     PROSPECTOR_FAULT: "Centre des Prospecteurs en panne",
   },
   strip: {
     title: "Réparation",
     capacity: "{{count}} équipes",
-    priceAlloy: "{{alloy}} alliage",
-    priceBoth: "{{alloy}} alliage · {{crystal}} cristal",
     lane: "Équipe {{slot}}",
   },
   tab: "Pannes actives",
   name: {
-    REFINERY_OUTAGE: "Coupure de courant à la Raffinerie d’Alliage",
-    EXTRACTOR_OUTAGE: "Coupure de courant à la Mine de Cristal",
-    PLANT_OUTAGE: "Coupure de courant à la Raffinerie de Deutérium",
+    REFINERY_OUTAGE: "Panne d’alliage",
+    EXTRACTOR_OUTAGE: "Panne de cristal",
+    PLANT_OUTAGE: "Panne de deutérium",
     VAULT_LEAK: "Fuite du Magasin",
-    CORE_OUTAGE: "Coupure de courant au centre de commandement",
+    CORE_OUTAGE: "Panne du noyau",
     TELESCOPE_FAULT: "Panne du Télescope",
-    SHIPYARD_REVOLT: "Mutinerie au Chantier Spatial",
-    PROSPECTOR_FAULT: "Panne du centre des Prospecteurs",
+    SHIPYARD_REVOLT: "Mutinerie au chantier",
+    PROSPECTOR_FAULT: "Panne des prospecteurs",
   },
   stopped: {
     REFINERY_OUTAGE:
@@ -837,29 +835,33 @@ export const faults = {
   },
   toll: {
     title: "Ce que cette panne te coûte",
-    alloy: "{{amount}} alliage par heure ne sont plus produits",
-    crystal: "{{amount}} cristal par heure ne sont plus produits",
-    deuterium: "Toute la production horaire de Deutérium de ce monde",
-    leak: "{{amount}} ressources fuient chaque heure vers le champ de débris. Les commandants qui le voient peuvent les récupérer.",
+    rate: "{{amount}}/h",
+    what: {
+      REFINERY_OUTAGE: "alliage non produit",
+      EXTRACTOR_OUTAGE: "cristal non produit",
+      PLANT_OUTAGE: "deutérium non produit",
+      VAULT_LEAK: "fuit en orbite",
+    },
   },
   loyalty: {
     title: "Loyauté de ce monde",
     battleLoss: "Défaite légère −15 · défaite lourde −30 · Étoile de la Mort −{{strike}}",
-    line: "Loyauté : {{value}} %. Elle baisse avec {{count}} pannes actives. À ce rythme, elle atteint zéro dans {{time}} et tu perds la colonie.",
+    why_one: "Baisse à cause de {{count}} panne. À zéro, tu perds la colonie.",
+    why_other: "Baisse à cause de {{count}} pannes. À zéro, tu perds la colonie.",
     bar: "{{value}} %",
     left: "{{time}} restantes",
   },
   price: {
     title: "Réparation",
-    crew: "équipe",
-    parts: "pièce",
-    takes:
-      "La réparation dure {{min}}–{{max}} minutes. Sa durée exacte est fixée au démarrage.",
+    range: "{{min}}–{{max}} min",
+    drawn: "La durée exacte est fixée au début de la réparation.",
   },
-  repair: "Commencer la réparation",
-  running: "Une équipe sur place · {{time}}",
+  repair: "Réparer",
+  crewOn: "Une équipe s’en occupe",
   noCancel: "Une réparation commencée ne peut pas être annulée.",
   lanesFull: "Tes {{count}} équipes sont toutes mobilisées",
+  short: "Pas assez en réserve",
+  crewsFree: "{{free}}/{{count}} équipes libres",
   started: "La réparation a commencé.",
   failed: "Impossible de démarrer.",
 } as const;

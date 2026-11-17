@@ -4,6 +4,14 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ATMOSPHERE } from '../../src/ui/atmosphere.js';
 import { BaseSwitch } from '../../src/v2/hud/BaseSwitch.js';
+import * as de from '../../src/i18n/locales/de/v2.js';
+import * as en from '../../src/i18n/locales/en/v2.js';
+import * as es from '../../src/i18n/locales/es/v2.js';
+import * as fr from '../../src/i18n/locales/fr/v2.js';
+import * as ja from '../../src/i18n/locales/ja/v2.js';
+import * as tr from '../../src/i18n/locales/tr/v2.js';
+
+const LOCALES = { tr, en, de, es, fr, ja };
 
 /**
  * K6: RESEARCH LIVES ON THE BASE. "Üs sekmesinin üstünde 'Bu dünya | Araştırma'
@@ -14,23 +22,32 @@ describe('the Base switch', () => {
   it('offers the commander ship only when this session can enter the arena', async () => {
     const onChange = vi.fn();
     const { rerender } = render(<BaseSwitch value="world" onChange={onChange} arenaAvailable={false} />);
-    expect(screen.queryByRole('tab', { name: 'Commander ship' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Ship' })).not.toBeInTheDocument();
     rerender(<BaseSwitch value="world" onChange={onChange} arenaAvailable />);
-    await userEvent.click(screen.getByRole('tab', { name: 'Commander ship' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Ship' }));
     expect(onChange).toHaveBeenCalledWith('ship');
   });
   it('offers this world and research, with the page it is on selected', async () => {
     const onChange = vi.fn();
     render(<BaseSwitch value="world" onChange={onChange} />);
-    expect(screen.getByRole('tab', { name: 'This world' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Planet' })).toHaveAttribute('aria-selected', 'true');
     await userEvent.click(screen.getByRole('tab', { name: 'Research' }));
     expect(onChange).toHaveBeenCalledWith('research');
+  });
+  /** S2 (owner 2026-11-16): "tabların adını da değiştir: Planet, Research, Ship olsun" — one short word each, in every language. */
+  it('names the three pages in one short word each, in every language', () => {
+    const words = { tr: ['Gezegen', 'Araştırma', 'Gemi'], en: ['Planet', 'Research', 'Ship'], de: ['Planet', 'Forschung', 'Schiff'],
+      es: ['Planeta', 'Investigación', 'Nave'], fr: ['Planète', 'Recherche', 'Vaisseau'], ja: ['惑星', '研究', '艦船'] };
+    for (const [lng, names] of Object.entries(words)) {
+      const { baseSwitch } = LOCALES[lng as keyof typeof LOCALES];
+      expect([baseSwitch.world, baseSwitch.research, baseSwitch.ship]).toEqual(names);
+    }
   });
   // Owner 2026-10-27: "bu tabların içindeki yazıların yanına renkli iconlar koy".
   it('marks each page with its own coloured glyph beside its word', () => {
     render(<BaseSwitch value="world" onChange={vi.fn()} arenaAvailable />);
     // Stage 4.1: the kit's tabs carry the glyph, each in its own tone.
-    const tones = ['This world', 'Research', 'Commander ship'].map(name => {
+    const tones = ['Planet', 'Research', 'Ship'].map(name => {
       const glyph = screen.getByRole('tab', { name }).querySelector<HTMLElement>('.gk-tab__glyph');
       expect(glyph).toHaveAttribute('aria-hidden', 'true');
       expect(glyph?.querySelector('svg')).not.toBeNull();

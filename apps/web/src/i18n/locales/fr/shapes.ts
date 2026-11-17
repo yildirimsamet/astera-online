@@ -15,9 +15,8 @@ export const spend = {
   readingShort: "{{label}} : il manque {{short}}",
   shortfall: 'manque {{short}}',
 } as const;
-/** Lecture floue d’une sonde, dessinée telle quelle : `RangeBand`. */
+/** Lecture floue d’une sonde, telle que la page Renseignement l’énonce. */
 export const rangeBand = {
-  join: " – ",
   reading: "{{label}} : quelque part entre {{low}} et {{high}}",
   yours: "le tien {{value}}",
 } as const;

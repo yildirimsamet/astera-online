@@ -6,8 +6,9 @@
 export const intel = {
   shelf: {
     label: "情報",
-    watch: "時計",
-    reports: "レポート",
+    watch: "監視",
+    probes: "探査機",
+    battles: "戦闘",
     radar: "レーダー",
   },
   rivals: {
@@ -24,10 +25,7 @@ export const intel = {
     window: "ウィンドウ {{duration}}",
     empty: "まだ何も知られていません: 望遠鏡 はライブを監視し、プローブは 1 つの読み取り値を返します。",
   },
-  openOrbit: "オープンオービット",
-  tabs: {
-    label: "情報のレポート",
-  },
+  openOrbit: "軌道を開く",
   coverage: {
     label: "カバレッジ",
     blind: "単一の惑星を見ることはできません",
@@ -38,9 +36,9 @@ export const intel = {
     idleHint_one: "{{count}} スロットはアイドル状態です。銀河の中から世界を 1 つ選び、そこを指します。",
     idleHint_other: "{{count}} スロットはアイドル状態です。銀河の中から世界を 1 つ選び、そこを指します。",
     scarcity_one:
-      "{{neighbours}} 世界はそこにあり、{{count}} は目を費やします。誰かを動かすとクールダウンがかかるので、誰を動かすかを選択してください。",
+      "外の世界{{neighbours}}、目は{{count}}。付け替えは待ち時間がかかる。",
     scarcity_other:
-      "{{neighbours}} の世界がそこにあり、{{count}} の目を費やします。誰かを動かすとクールダウンがかかるので、誰を動かすかを選択してください。",
+      "外の世界{{neighbours}}、目は{{count}}。付け替えは待ち時間がかかる。",
     oneMore: "望遠鏡 L{{level}} ならもう 1 つ見ます。",
     noRadar: "そして、レーダー がない場合、自分を狙った脅威と他の動きを区別することはできません。",
   },
@@ -62,7 +60,7 @@ export const intel = {
   },
 
   probes: {
-    openDossier: "オープンドシエ",
+    openDossier: "調査書を開く",
     heading: "プローブレポート",
     newest: "新しい順",
     missing: "プローブは戻ってきません",
@@ -85,6 +83,7 @@ export const intel = {
     accuracyHome: "{{percent}} 精度 · 艦隊は帰国しました",
     accuracyOut: "{{percent}} 精度・艦隊が出ました",
     scaleNote: "各バーはゼロから始まります。帯は推定値、青緑色の線はあなたの世界を表します。",
+    estimateFact: "数値は推定範囲です。",
     estimateNote: "これらの数値は推定範囲です。武装ユニットの値には、シールドと非武装の船は含まれません。",
     caught: "彼らはそれを捕まえました",
     /* Two words beside the signal bars, which carry the accuracy themselves. */
@@ -101,7 +100,7 @@ export const intel = {
     day: "過去 24 時間",
     heading: "誰があなたを見ていますか",
     level: "レーダー L{{level}}",
-    missing: "レーダー がありません",
+    missing: "レーダーがありません",
     gives:
       "範囲内の動きと、自分の惑星を狙う脅威の到着時間を示します。探査機を検出できますが、必ず検出するわけではありません。",
     cost: "レーダーがなければ、この惑星への探査機の多くは検出されずに通過します。",
@@ -111,11 +110,15 @@ export const intel = {
     origin: " · {{planet}}",
     /** Which of the caller's own worlds the scan landed on. */
     onWorld: " · {{planet}}",
+    hitWorld: "スキャンされた惑星",
     /* Captions beside the two drawn rings; the picture carries the rest. */
     ringSense: "何かがそこにあります",
     ringWarn: "時間制限付き警告",
     /** While the two circles are one, one caption states what the circle does. */
     ringOne: "検出と時限警告",
+    /** C9: the dashed rim the rings are drawn against, and a ring's reach with its unit. */
+    rim: "銀河の端",
+    reach: "{{value}} 単位",
     /**
      * THE READING FOR SOMEBODY WHO CANNOT SEE THE RINGS. The two circles carry
      * both figures and the difference between them; this is the same fact in the
@@ -133,8 +136,8 @@ export const intel = {
      */
     noteSlow: "低速で重い艦隊が レーダー リーチ内に長く留まります。",
     noteProbesLegacy: "レーダー L{{level}} はプローブを捕捉し、そのサークル内に侵入する艦隊について警告します。",
-    noteBearing: "L2 は、来た方向を追加します。",
-    noteOrigin: "L5 は惑星に名前を付けます。",
+    noteBearing: "L2 では来た方向もわかります。",
+    noteOrigin: "L5 では発信元の惑星名がわかります。",
   },
 } as const;
 
@@ -153,11 +156,11 @@ export const reports = {
   enemyRetreated: "敵艦{{count}}隻が撤退して生還しました。",
   turningPointRetreated: "第{{round}}ラウンド終了後、戦闘を続ける戦闘艦はありません。一部の艦は撤退して生還しました。",
   heading: "戦闘レポート",
-  newest: "新しい順",
+  emptyTitle: "まだ戦闘はありません",
   empty:
     "まだ何も争われていません。戦闘は、このゲームにおいて決して推測ではない唯一の情報です。",
-  youRaided: "あなたが襲撃しました",
-  raidedBy: "による襲撃",
+  youRaided: "あなたの襲撃先：",
+  raidedBy: "襲撃者：",
   rounds: "{{count}} ラウンド",
   sheetYouRaided: "ターゲット: {{opponent}}・{{planet}}",
   sheetYouRaidedPirate: "ターゲット: {{opponent}}",
@@ -200,21 +203,21 @@ export const reports = {
     total: "合計ポイント変更",
   },
   clansAtLaunch: "この艦隊が発足したときのクラン",
-  yourClan: "あなたの側",
-  theirClan: "彼らの側",
+  yourClan: "自陣営",
+  theirClan: "敵陣営",
   noClan: "クランがありません",
   verdict: {
     label: "戦闘結果",
-    yourForce: "あなたの力",
+    yourForce: "自軍",
     yourLosses: "あなたの損失",
-    sent: "送信済み",
-    held: "持っていました",
+    sent: "投入",
+    held: "保有",
     total: "合計",
-    lost: "紛失しました",
-    returned: "生き残った",
-    standing: "立っている",
-    destroyed: "あなたが破壊しました",
-    enemyDestroyed: "敵ユニットを破壊しました",
+    lost: "喪失",
+    returned: "生存",
+    standing: "残存",
+    destroyed: "撃破",
+    enemyDestroyed: "敵ユニット撃破",
     attackerDestroyed: "攻撃船を破壊",
     noneReturned: "あなたの船は戦闘で生き残れませんでした。",
     someReturned: "{{count}} 隻の船が戦闘を生き延びました。",
@@ -262,7 +265,7 @@ export const reports = {
   theirs: "彼らが持っていたもの",
   theirsEmpty: "彼らのものは何も破壊されませんでした。",
   /** The roster table. 'What it cost you' describes one of its three columns. */
-  yourForce: "あなたの力",
+  yourForce: "自軍の戦力",
   yours: "かかった費用",
   yoursEmpty: "何も失いませんでした。",
   howItWent: "どうなったか",
@@ -286,10 +289,10 @@ export const reports = {
     label: "イージス",
     labelTheirs: "敵 イージス シールド",
     labelYours: "イージス シールド",
-    broken: "壊れました",
+    broken: "破壊",
     roundedZero: "報告数 0",
-    damaged: "破損しました",
-    held: "開催中",
+    damaged: "損傷",
+    held: "健在",
     before: "戦闘前",
     after: "戦闘後",
     note: "惑星シールドは防御ユニットよりも先にダメージを受けます。",
@@ -313,6 +316,14 @@ export const reports = {
     incomingForce: "あなたを攻撃した艦隊",
     who: "あなたの勢力はどうなりましたか？",
     changed: "戦利品とポイントの変更",
+  },
+  /** C15: the doors a fight opened, closing its report. */
+  next: {
+    title: "次の一手",
+    source: "襲撃者の惑星：{{planet}}",
+    sourceNote: "襲撃はここから",
+    wreck: "残骸へ：{{planet}}",
+    wreckNote: "価値{{amount}}・早い者勝ち",
   },
   walkoverHeading: "ここには守備部隊はいませんでした",
   walkoverBody:
@@ -407,13 +418,14 @@ export const reports = {
   strategicSecededAttacker: "植民地は離脱して中立となり、現在は誰もそれを保持していません。",
   strategicSecededDefender: "あなたの植民地は離脱して中立になりました。",
   strategicSecededShort: "コロニーが離脱しました",
+  strategicDamageShort: "{{amount}} ダメージ",
   strategicCaptured: "捕獲されました",
   strategicIneffective: "無効です",
   strategicIntercepted: "傍受されました",
   radiationYouAttacked: "放射線爆弾の対象：",
   radiationAttackedBy: "放射線爆弾の発射者：",
-  strategicYouAttacked: "あなたの デス・スター がターゲットにされています",
-  strategicAttackedBy: "デス・スター 送信者",
+  strategicYouAttacked: "デス・スターの標的：",
+  strategicAttackedBy: "デス・スターの発射者：",
   strategicDestroyedInFlight: "デス・スター 飛行中に破壊されました",
   strategicRadarTrigger: "ターゲット ワールドは、レーダー L3+ 傍受リングを通過した後、交戦しました。",
   strategicTelescopeTrigger: "防御側は、自分たちの世界の 1 つが 望遠鏡 の視界を通じてそれを認識した後、それに交戦しました。",
@@ -427,6 +439,8 @@ export const reports = {
   strategicNoLevelLoss: "建物や計器のレベルは失われました。",
   strategicDestroyedOrders: "建設物が破壊されました",
   strategicNoOrdersLost: "アクティブな建設オーダーは破棄されませんでした。",
+  strategicFleetLost: "破壊された艦船と防衛",
+  strategicBombRules: "爆弾の仕組み",
 
   /** A world nobody holds. There is no commander to name. */
   neutralHolder: "要求のない世界",
@@ -559,8 +573,6 @@ export const clarity = {
   unreadable: "読み取れません",
   fleetHome: "艦隊ホーム",
   fleetAway: "艦隊・アウェイ",
-  backIn: "· {{minutes}}mに戻る",
-  unwatched: "監視が割り当てられていません",
 } as const;
 
 /** What you know about another world, and how you know it. */

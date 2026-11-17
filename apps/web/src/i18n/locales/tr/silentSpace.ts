@@ -1,6 +1,6 @@
 export const silentSpace = {
   title: 'Sessiz Uzay’a taşındın',
-  body: "Son 30 saatte saldırı, bina geliştirme, araştırma, gemi veya savunma üretimi başlatmadığın için gezegenlerini Sessiz Uzay’a taşıdık. Gezegenlerin ve ilerlemen korundu.",
+  body: "30 saattir saldırı, geliştirme ya da üretim başlatmadın; gezegenlerin Sessiz Uzay’da, ilerlemen korundu.",
   closed: "Burada saldırı, asteroid ve enkaz toplama, korsan baskını, tüccar seferi ve konvoy vuruşu kapalı.",
   production: "Kaynak üretimi %50 hızda çalışır. Bina, araştırma ve gemi üretimi açık.",
   returnTo: '{{galaxy}} galaksisine dönmek için buradan başvurabilirsin.',
@@ -12,7 +12,7 @@ export const silentSpace = {
   reminder: 'Daha sonra Menü → Sessiz Uzay’dan başvurabilirsin.',
   queued: 'Dönüş başvurun sırada',
   position: '{{galaxy}} · Sıran {{position}}',
-  queueHint: 'Yer açıldığında uygun en eski başvuru değerlendirilir. Uçuşların veya yetersiz gezegen yeri dönüşünü engellerse sıranı kaybetmezsin.',
+  queueHint: 'Yer açılınca en eski başvuru alınır; gecikme olsa da sıran korunur.',
   expiry: '48 saat aktif olmazsan başvurun sona erer.',
   unavailable: 'Eski galaksin şu anda dönüş başvurusu kabul etmiyor.',
 };

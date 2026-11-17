@@ -31,12 +31,16 @@ export const statusBar = {
   menuWaiting: '{{count}} rewards waiting',
   clanWaiting: '{{count}} clan updates waiting',
   newcomerShield: {
+    name: "Newcomer shield",
     hint: 'You cannot be raided for {{duration}}',
   },
   recoveryShield: {
+    name: "Recovery shield",
     hint: 'Recovery shield — you cannot be raided for {{duration}}',
   },
   recoveryBoost: {
+    name: "Recovery production",
+    value: "+50%",
     mark: "Production +50%",
     note: '+50% output while shielded',
   },
@@ -49,7 +53,8 @@ export const statusBar = {
     label: 'Works',
     labelFull: 'Works full',
     collect: 'Collect',
-    firstTip: "Production gathers in the Works. Collect it into the Store before spending it.",
+    inPool: "{{amount}} in the Works",
+    firstTip: "Tap a resource to collect it",
     fullStopped: 'Full — production stopped',
     fillsIn: 'full in {{time}}',
     gathers: 'Production gathers here until you collect it',
@@ -147,8 +152,11 @@ export const signals = {
   openEvent: 'Open related report',
   /** The eyebrow on a galaxy-wide row, so it is never mistaken for personal news. */
   worldEvent: 'Galaxy event',
-  empty:
-    "No notifications yet. Fleet warnings, detected probes and returning ships appear here.",
+  emptyTitle: "All quiet",
+  emptyBody:
+    "Fleet warnings, detected probes and returning ships appear here.",
+  /** The round press at a row's end that flies to whoever the news names (G1-e). */
+  showOnMap: "Show {{name}} on the map",
   repeat: '×{{count}}',
 
   /** The states that are true right now, rather than things that happened. */
@@ -221,9 +229,6 @@ export const menu = {
     settingsHint: "Sound, graphics and language",
     account: "Commander profile",
     back: "Back to menu",
-    resume: "Return to game",
-    shopHint: "Find your look",
-    inventoryHint: "Equip your collection",
     rewardsReady_one: "{{count}} reward ready",
     rewardsReady_other: "{{count}} rewards ready",
   },
@@ -248,6 +253,8 @@ export const menu = {
   helpHeading: 'Help',
   deviceHeading: 'This device',
   marksHeading: 'Your marks',
+  /** The menu's last group: the Academy, the community, support, settings (G1-f2). */
+  gameHeading: 'Game',
   intelLabel: 'Intel',
   intelHint: 'Telescope, probes, radar and battle reports',
   rewardsLabel: 'Rewards',
@@ -409,6 +416,8 @@ export const leaderboard = {
   honorPackageOnce: "If both rankings award resources, you receive the more valuable package once in the next season.",
   honorNext: "{{amount}} Honor to draw level with {{commander}}.",
   honorYourRank: "Your place",
+  view: { label: 'Leaderboard view', standings: 'Standings', rewards: 'Rewards', rules: 'Rules' },
+  ruleTitle: { combat: 'Earning Honor', bands: 'Fleet balance', defense: 'Defending', repeat: 'Repeats and bullying', prize: 'Sharing prizes', package: 'One package' },
   eyebrow: 'The local galaxy',
   title: 'Leaderboard',
   empty: 'No commanders have joined this galaxy yet.',
@@ -572,13 +581,14 @@ export const chat = {
   launcherBothUnread: 'Open chat — {{general}} unread in General, {{clan}} in Clan',
   channelsLabel: 'Chat channels',
   languageLabel: 'Chat language',
+  languageChip: "Chat language: {{language}}",
   general: 'General',
   clan: 'Clan',
   dm: {
     title: 'DM', loading: 'Opening direct messages', conversations: 'Direct message conversations',
     start: 'Start a DM', closeTab: 'Close {{name}} tab', searchLabel: 'Find a commander',
     searchPlaceholder: 'Search commanders', cancel: 'Cancel', contacts: 'Commanders',
-    noContacts: 'No available commander matches.', empty: 'Choose a commander to start a private conversation.',
+    noContacts: 'No available commander matches.', emptyTitle: 'No private messages yet', empty: 'Choose a commander to start a private conversation.',
     emptyConversation: 'Say hello to {{name}}.', list: 'Messages with {{name}}',
     placeholder: 'Message {{name}}', waitingHint: 'This commander is in Silent Space. You can write again when they return to this galaxy.',
     seasonEndedHint: 'This season has ended. Direct messages open fresh in the next season.',
@@ -589,7 +599,8 @@ export const chat = {
   clanLocked: 'Clan chat is private to a crew.',
   clanLockedHint: 'Join or found a clan, then this channel opens immediately.',
   list: 'Galaxy messages',
-  empty: 'No one has spoken yet. Be the first voice in the galaxy.',
+  emptyTitle: "No one has spoken yet",
+  emptyBody: "Be the first voice in the galaxy.",
   older: 'Load older messages',
   loadingOlder: 'Loading older messages',
   placeholder: 'Message the galaxy',
@@ -599,6 +610,7 @@ export const chat = {
     title: "Muted players",
     hint: "Hides their General and Clan messages on this device.",
     empty: "No muted players.",
+    emptyHint: "To mute someone, press and hold their message.",
     mute: "Mute {{name}}",
     unmute: "Unmute {{name}}",
     unmuteShort: "Unmute",
@@ -659,6 +671,9 @@ export const chat = {
  * pasted into a message to the person who will fix it. See `shell/crashReport.ts`.
  */
 export const crash = {
+  /** A sheet whose body threw (ek-3): the game keeps running behind it. */
+  panelTitle: 'This panel could not open.',
+  retry: 'Try again',
   title: "The game interface stopped working",
   body: "Reload the page to continue. Your last action may not be confirmed; check its current status after reloading.",
   reload: 'Reload',

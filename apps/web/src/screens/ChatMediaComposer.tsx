@@ -4,7 +4,10 @@ import { CHAT_MEDIA, type ChatMedia } from '@astera/rules';
 import { useApi } from '../api/context.js';
 import { describeError } from '../i18n/errors.js';
 import { youtubeVideoId } from '../lib/chatMedia.js';
-import { CloseIcon, PlusIcon } from '../ui/icons/index.js';
+import { GameButton, Glyph, RoundButton } from '../game-ui/index.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { ChatMediaAttachment } from './ChatMediaAttachment.js';
 
 export function ChatMediaComposer({ value, onChange, onBusy, disabled, pasteTarget }: {
@@ -60,38 +63,42 @@ export function ChatMediaComposer({ value, onChange, onBusy, disabled, pasteTarg
     request.current?.abort(); request.current = null;
     onChange(null); onBusy(false); setProgress(null); setError(''); setRetryFile(null); setYoutube(false); setMenu(false);
   };
-  const control = 'min-h-9 rounded-control border border-v2-line-hi bg-v2-deep px-3 text-caption text-v2-ink hover:border-v2-self/50 disabled:opacity-50';
-  return <div className="mb-2">
+  // The menu's own key says whether it is open, so it is the kit's face on a plain button (C3).
+  const toggle = useOwnPress(() => { playSound('tap'); haptic('tap'); setMenu(!menu); });
+  const pick = (types: string): void => { setAccept(types); setYoutube(false); requestAnimationFrame(() => input.current?.click()); };
+  const again = useOwnPress(() => { if (retryFile) { playSound('tap'); haptic('tap'); void upload(retryFile); } });
+  return <div className="gk mb-2">
     <input ref={input} type="file" accept={accept} aria-label={t('chat.media.add')} hidden tabIndex={-1} onChange={event => {
       const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; if (file) void upload(file);
     }} />
     {value ? <div className="relative rounded-control border border-v2-self/30 bg-v2-deep/50 px-2">
-      <button type="button" aria-label={t('chat.media.remove')} className="absolute right-1 top-1 z-10 grid size-8 place-items-center rounded-full bg-v2-raise text-v2-ink" onClick={remove} disabled={disabled}><CloseIcon className="size-4" /></button>
+      <div className="absolute right-0 top-0 z-10"><RoundButton small glyph="close" label={t('chat.media.remove')} onPress={() => { if (!disabled) remove(); }} /></div>
       <ChatMediaAttachment key={value.kind === 'youtube' ? value.videoId : value.assetId} media={value} preview />
-    </div> : <button type="button" className="flex min-h-8 items-center gap-1.5 rounded-control px-2 text-micro text-v2-self hover:bg-v2-self/10 disabled:opacity-50" disabled={disabled || progress !== null}
-      aria-expanded={menu} onClick={() => { setMenu(!menu); }}><PlusIcon className="size-4" />{t('chat.media.add')}</button>}
-    {menu && !value && progress === null ? <div className="rounded-control border border-v2-line-hi bg-v2-raise p-2">
+    </div> : <button type="button" {...OWN_SOUND} className="gk-btn gk-btn--sm" disabled={disabled || progress !== null}
+      aria-expanded={menu} onPointerDown={toggle.onPointerDown} onClick={toggle.onClick}><span className="gk-btn__glyph"><Glyph id="plus" /></span><span>{t('chat.media.add')}</span></button>}
+    {menu && !value && progress === null && !disabled ? <div className="mt-2 rounded-control border border-v2-line-hi bg-v2-raise p-2">
       <div className="flex flex-wrap gap-2">
-        <button type="button" className={control} disabled={disabled} onClick={() => { setAccept('image/jpeg,image/png,image/webp,image/gif'); setYoutube(false); requestAnimationFrame(() => input.current?.click()); }}>{t('chat.media.photo')}</button>
-        <button type="button" className={control} disabled={disabled} onClick={() => { setAccept('video/mp4,video/webm'); setYoutube(false); requestAnimationFrame(() => input.current?.click()); }}>{t('chat.media.video')}</button>
-        <button type="button" className={control} disabled={disabled} onClick={() => { setYoutube(true); setError(''); }}>{t('chat.media.youtube')}</button>
+        <GameButton size="sm" onPress={() => { pick('image/jpeg,image/png,image/webp,image/gif'); }}>{t('chat.media.photo')}</GameButton>
+        <GameButton size="sm" onPress={() => { pick('video/mp4,video/webm'); }}>{t('chat.media.video')}</GameButton>
+        <GameButton size="sm" onPress={() => { setYoutube(true); setError(''); }}>{t('chat.media.youtube')}</GameButton>
       </div>
       {youtube ? <div className="mt-2 flex flex-col gap-2">
-        <label className="text-micro text-v2-ink-3">{t('chat.media.url')}<input type="url" value={url} placeholder="https://youtu.be/…" className="mt-1 h-9 w-full rounded-control border border-v2-line-hi bg-v2-deep px-2 text-caption text-v2-ink" onChange={event => { setUrl(event.target.value); }} onKeyDown={event => { if (event.key === 'Enter') event.preventDefault(); }} /></label>
-        <button type="button" className={control} disabled={disabled || !url.trim()} onClick={() => {
+        <label className="grid gap-1 text-caption font-semibold text-v2-ink-2">{t('chat.media.url')}<input type="url" value={url} placeholder="https://youtu.be/…" className="gk-field__input" onChange={event => { setUrl(event.target.value); }} onKeyDown={event => { if (event.key === 'Enter') event.preventDefault(); }} /></label>
+        <GameButton size="sm" tone="action" onPress={() => {
           const videoId = youtubeVideoId(url);
           if (!videoId) { setError(t('chat.media.invalidYoutube')); return; }
           onChange({ kind: 'youtube', videoId }); setMenu(false); setYoutube(false); setUrl(''); setError('');
-        }}>{t('chat.media.attach')}</button>
-      </div> : <p className="mt-2 text-micro text-v2-ink-3">{t('chat.media.fileLimits')} {t('chat.media.pasteHint')}</p>}
+        }}>{t('chat.media.attach')}</GameButton>
+      </div> : <p className="mt-2 text-caption leading-snug text-v2-ink-2">{t('chat.media.fileLimits')} {t('chat.media.pasteHint')}</p>}
     </div> : null}
-    {progress !== null ? <div className="flex items-center gap-2 rounded-control border border-v2-self/30 px-2 py-2 text-micro text-v2-ink">
+    {progress !== null ? <div className="flex items-center gap-2 rounded-control border border-v2-self/30 px-2 py-1 text-caption text-v2-ink">
       <progress className="h-1 min-w-0 flex-1 accent-v2-self" value={progress} max={100} aria-label={t('chat.media.uploading', { percent: progress })} />
-      <span role="status">{t('chat.media.uploading', { percent: progress })}</span><button type="button" className={control} onClick={remove}>{t('chat.dm.cancel')}</button>
+      <span role="status">{t('chat.media.uploading', { percent: progress })}</span><GameButton size="sm" onPress={remove}>{t('chat.dm.cancel')}</GameButton>
     </div> : null}
-    {error ? <div role="alert" className="mt-1 flex flex-wrap items-center gap-2 text-micro text-v2-warn">{error}
-      {retryFile ? <button type="button" className={control} disabled={disabled || progress !== null} onClick={() => { void upload(retryFile); }}>{t('chat.media.retry')}</button> : null}
-      <button type="button" className={control} onClick={remove}>{t('chat.dm.cancel')}</button>
+    {error ? <div role="alert" className="mt-1 flex flex-wrap items-center gap-2 text-caption text-v2-warn">{error}
+      {retryFile ? <button type="button" {...OWN_SOUND} className="gk-btn gk-btn--sm" disabled={disabled || progress !== null}
+        onPointerDown={again.onPointerDown} onClick={again.onClick}><span className="gk-btn__glyph"><Glyph id="refresh" /></span><span>{t('chat.media.retry')}</span></button> : null}
+      <GameButton size="sm" onPress={remove}>{t('chat.dm.cancel')}</GameButton>
     </div> : null}
   </div>;
 }

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useApi } from '../api/context.js';
 import { keys } from '../api/keys.js';
 import { describeError } from '../i18n/errors.js';
-import { CloseIcon } from '../ui/icons/index.js';
+import { GameButton, RoundButton } from '../game-ui/index.js';
 import { useNativeBack } from '../platform/nativeBack.js';
 import type { ChatChannel } from './ChatScreen.js';
 
@@ -53,19 +53,21 @@ export function ChatReactionRoster({ channel, messageId, anchor, onClose }: {
     };
   }, [anchor, onClose]);
   return createPortal(
+    /* WHO REACTED (C3): the kit's small panel beside the chip, its close key the kit's. */
     <div ref={panel} role="dialog" aria-modal="true" aria-label={t('chat.reactions')} tabIndex={-1}
-      className="fixed z-[110] w-[272px] max-w-[calc(100vw-16px)] overflow-hidden rounded-control border border-v2-line-hi bg-v2-raise shadow-xl outline-none"
+      className="gk gk-pop fixed z-[110] w-[272px] max-w-[calc(100vw-16px)] overflow-hidden outline-none"
       style={position}>
-      <div className="flex h-10 items-center justify-between border-b border-v2-line px-3 text-label font-semibold text-v2-ink">
-        {t('chat.reactions')}
-        <button type="button" className="grid size-8 place-items-center rounded-full hover:bg-v2-line/60" aria-label={t('sheet.close')} onClick={onClose}><CloseIcon className="size-4" /></button>
+      <div className="flex items-center justify-between border-b border-v2-line pl-3">
+        <span className="gk-display tracking-wide">{t('chat.reactions')}</span>
+        <RoundButton small glyph="close" label={t('sheet.close')} onPress={onClose} />
       </div>
-      <div data-reaction-roster style={{ height: 108, overflowY: 'auto', overscrollBehavior: 'contain' }} tabIndex={0}>
-        {details.isError ? <p role="alert" className="px-3 py-2 text-micro text-v2-warn">{describeError(details.error)} <button type="button" className="underline" onClick={() => { void details.refetch(); }}>{t('surface.retry')}</button></p>
-          : !details.data ? <p role="status" className="px-3 py-2 text-micro text-v2-ink-3">{t('surface.waitingChat')}</p>
-          : details.data.participants.length === 0 ? <p className="px-3 py-2 text-micro text-v2-ink-3">{t('chat.noReactions')}</p>
-          : details.data.participants.map(person => <div key={person.playerId} className="flex h-9 items-center gap-3 px-3 text-caption text-v2-ink">
-            <span className="shrink-0">{person.emoji}</span><span className="min-w-0 truncate" title={person.username}>{person.username}</span>
+      <div data-reaction-roster style={{ height: 120, overflowY: 'auto', overscrollBehavior: 'contain' }} tabIndex={0}>
+        {details.isError ? <div role="alert" className="flex flex-wrap items-center gap-2 px-3 py-2 text-v2-warn">{describeError(details.error)}
+          <GameButton size="sm" glyph="refresh" onPress={() => { void details.refetch(); }}>{t('surface.retry')}</GameButton></div>
+          : !details.data ? <p role="status" className="gk-copy px-3 py-2">{t('surface.waitingChat')}</p>
+          : details.data.participants.length === 0 ? <p className="gk-copy px-3 py-2">{t('chat.noReactions')}</p>
+          : details.data.participants.map(person => <div key={person.playerId} className="flex h-10 items-center gap-3 px-3 text-v2-ink">
+            <span className="shrink-0 text-title">{person.emoji}</span><span className="min-w-0 truncate" title={person.username}>{person.username}</span>
           </div>)}
       </div>
     </div>, document.body,

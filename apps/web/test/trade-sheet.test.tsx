@@ -105,16 +105,19 @@ const sheet = (
 const commit = (): HTMLElement => within(screen.getByTestId('trade-commit')).getByRole('button');
 
 /**
- * Drag a range input to a value.
+ * Move a slider to a value, as a player's keys do.
  *
- * `userEvent` has no gesture for a slider, and `fireEvent.change` on a controlled
- * React input needs the native setter or React's own value tracker swallows the
- * event as a no-op. This is the standard workaround and it is what a drag does.
+ * The kit's slider (G4-i1) is a `role="slider"` that moves in its own lots: Home sets it on
+ * its floor and each ArrowRight one lot further, until it reaches the value or its end.
  */
 const setAmount = (name: RegExp, value: number): void => {
-  fireEvent.change(screen.getByRole('slider', { name }), {
-    target: { value: String(value) },
-  });
+  const slider = (): HTMLElement => screen.getByRole('slider', { name });
+  fireEvent.keyDown(slider(), { key: 'Home' });
+  for (let moves = 0; moves < 20_000; moves += 1) {
+    const now = Number(slider().getAttribute('aria-valuenow'));
+    if (now >= value || now >= Number(slider().getAttribute('aria-valuemax'))) return;
+    fireEvent.keyDown(slider(), { key: 'ArrowRight' });
+  }
 };
 
 beforeEach(async () => {
@@ -200,11 +203,13 @@ describe('planTradeRoute', () => {
 /* ── the owner's worked example ──────────────────────────────── */
 
 describe('the counter opens on a trade that already works', () => {
-  it('shows the Honor commission and net return beside the trade decision', () => {
+  // G9-a: the receipt's table appears once a carrier gives it a haul to price; the commission leads before that.
+  it('shows the Honor commission and net return beside the trade decision', async () => {
     sheet({ planet: trader({ honorBenefits: { version: 1, score: -25_000_000, thresholds: HONOR_BENEFIT_THRESHOLDS_V1,
       ...honorBenefits(-25_000_000, HONOR_BENEFIT_THRESHOLDS_V1) } }) });
     expect(screen.getByText('Honor commission: 7%')).toBeVisible();
-    expect(screen.getByText('Net haul')).toBeVisible();
+    await userEvent.setup().click(screen.getByRole('button', { name: /max atlas/i }));
+    expect(screen.getByRole('columnheader', { name: 'Net haul' })).toBeVisible();
     expect(screen.getByText('Gross return')).toBeVisible();
     expect(screen.getByText('Cargo space is reserved for the gross exchange before commission.')).toBeVisible();
   });
@@ -317,7 +322,7 @@ describe('the ask reads in the direction the slider moves', () => {
 
   it('keeps the pairing whichever good is being given', async () => {
     sheet({ planet: trader({ fleet: { ATLAS: 1 } }, { deuterium: 2_000 }) });
-    await userEvent.setup().click(screen.getByRole('button', { name: /^Deuterium$/i }));
+    await userEvent.setup().click(screen.getByRole('radio', { name: /^Deuterium$/i }));
     const marks = [...screen.getByTestId('trade-split').querySelectorAll('[data-take]')]
       .map((node) => node.getAttribute('data-take'));
     // Giving deuterium buys alloy and crystal; crystal is the dear one.
@@ -344,7 +349,7 @@ describe('why a full store still buys so little', () => {
   const sellingDeuterium = async (): Promise<void> => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /max atlas/i }));
-    await user.click(screen.getByRole('button', { name: /^Deuterium$/i }));
+    await user.click(screen.getByRole('radio', { name: /^Deuterium$/i }));
   };
 
   it('draws both legs against the convoy’s room', async () => {
@@ -472,7 +477,7 @@ describe('switching which good you give', () => {
     await user.click(screen.getByRole('button', { name: /max atlas/i }));
 
     for (const good of [...goods, ...goods].reverse()) {
-      await user.click(screen.getByRole('button', { name: new RegExp(`^${good}$`, 'i') }));
+      await user.click(screen.getByRole('radio', { name: new RegExp(`^${good}$`, 'i') }));
       // Whatever the sheet is showing after the switch has to be a legal trade,
       // and the commit has to be live without the player touching anything else.
       expect(commit(), good).toBeEnabled();
@@ -492,11 +497,11 @@ describe('switching which good you give', () => {
 
     // Drag the alloy trade's split to its cheap end, then change the good.
     setAmount(/what you take/i, 0);
-    await user.click(screen.getByRole('button', { name: /^Deuterium$/i }));
+    await user.click(screen.getByRole('radio', { name: /^Deuterium$/i }));
 
     // The new trade opens at ITS maximum, not at the old trade's floor.
     const split = screen.getByRole('slider', { name: /what you take/i });
-    expect(split).toHaveValue(split.getAttribute('max'));
+    expect(split.getAttribute('aria-valuenow')).toBe(split.getAttribute('aria-valuemax'));
     expect(commit()).toBeEnabled();
   });
 
@@ -506,7 +511,7 @@ describe('switching which good you give', () => {
     sheet({ planet: trader({ fleet: { ATLAS: 2 } }, { alloy: 50_000, deuterium: 120 }) });
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /max atlas/i }));
-    await user.click(screen.getByRole('button', { name: /^Deuterium$/i }));
+    await user.click(screen.getByRole('radio', { name: /^Deuterium$/i }));
 
     const offered = Number(screen.getByTestId('trade-offer').textContent.replace(/\D/g, ''));
     expect(offered).toBeLessThanOrEqual(120);
@@ -567,7 +572,7 @@ describe('the refusals a commander can still meet', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /max atlas/i }));
     for (const good of ['Alloy', 'Crystal', 'Deuterium']) {
-      await user.click(screen.getByRole('button', { name: new RegExp(`^${good}$`, 'i') }));
+      await user.click(screen.getByRole('radio', { name: new RegExp(`^${good}$`, 'i') }));
       expect(commit(), good).toBeEnabled();
     }
   });
@@ -610,7 +615,7 @@ describe('committing the convoy', () => {
     expect(screen.queryByText(/A launched convoy cannot be recalled/i)).toBeNull();
 
     await user.click(screen.getByRole('button', { name: /max atlas/i }));
-    await user.click(screen.getByRole('button', { name: /^Deuterium$/i }));
+    await user.click(screen.getByRole('radio', { name: /^Deuterium$/i }));
 
     expect(screen.getByText(/recall.*before.*merchant.*fuel.*not refunded/i)).toBeInTheDocument();
     expect(commit()).toHaveAttribute('data-hold');
@@ -670,7 +675,7 @@ describe('committing the convoy', () => {
 
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /max atlas/i }));
-    await user.click(screen.getByRole('button', { name: /^Deuterium$/i }));
+    await user.click(screen.getByRole('radio', { name: /^Deuterium$/i }));
     setAmount(/deuterium to give/i, 200);
     // The commit is held (K4); Enter twice is the keyboard's hold.
     fireEvent.keyDown(commit(), { key: 'Enter' });

@@ -30,7 +30,24 @@ describe('the view chip', () => {
     expect(chip.textContent).toBe('');
     await userEvent.click(chip);
     expect(onOpen).toHaveBeenCalledTimes(1);
-    expect(chip).toHaveAttribute('data-view-chip');
+    // The Academy and the visual tools find it by its handle.
+    expect(chip.closest('[data-view-chip]')).not.toBeNull();
+  });
+});
+
+/**
+ * G1-d2 (2026-11-14): the view is a painted telescope, as the bell and chat are painted; a
+ * light at its foot says a sensor's reach is drawn on the map, as the old teal ring said.
+ */
+describe('the view chip on the kit', () => {
+  it('is a painted telescope, lit while a reach is drawn', () => {
+    const { rerender } = render(<ViewChip layersOn={false} onOpen={vi.fn()} />);
+    const chip = screen.getByRole('button', { name: 'View' });
+    expect(chip).toHaveClass('gk-round');
+    expect(chip.querySelector('img')?.getAttribute('src')).toMatch(/hud-view\.webp$/);
+    expect(chip).not.toHaveAttribute('data-lit');
+    rerender(<ViewChip layersOn onOpen={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'View' })).toHaveAttribute('data-lit');
   });
 });
 
@@ -133,6 +150,34 @@ describe('the galaxy readout', () => {
   });
 });
 
+/**
+ * ON THE GAME KIT (G1-d2, 2026-11-14). Who is here reads as a quiet line; what can be found is
+ * a row of counts, each in the colour of what it counts with its mark, and a press drops the
+ * list of them in that colour.
+ */
+describe('the galaxy readout on the kit', () => {
+  const all = { worlds: 212, fleetsAway: 3, rocks: 9, pirates: 2, wrecks: 4, monuments: 8 };
+  const paints = (container: HTMLElement) =>
+    [...container.querySelectorAll('.gk-tally')].map((tally) => tally.getAttribute('data-paint'));
+
+  it('counts what can be found in the colour of each, and who is here in a line of words', () => {
+    const { container } = render(<GalaxyReadout counts={all} />);
+    expect(paints(container)).toEqual(['crystal', 'hostile', 'alloy', 'deut']);
+    const line = screen.getByText(/212 worlds/);
+    expect(line).toHaveTextContent('212 worlds · 3 fleets away');
+    expect(line.closest('button')).toBeNull();
+  });
+
+  it('drops the list in the colour of the count pressed', async () => {
+    const { container } = render(<GalaxyReadout counts={all} targets={[
+      { kind: 'debris', id: 'wreck-1', label: 'Wreck 1', detail: '600 resources' },
+    ]} onFocusTarget={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: '4 wrecks' }));
+    expect(container.querySelector('.gk-drop')).toHaveAttribute('data-paint', 'alloy');
+    expect(screen.getByRole('list', { name: '4 wrecks' })).toBeInTheDocument();
+  });
+});
+
 describe('the view sheet', () => {
   it('names the galaxy by its code, and leaves the counts to the corner', () => {
     render(<ViewSheet {...props()} />);
@@ -179,8 +224,23 @@ describe('the view sheet', () => {
 
   it('marks each layer by its instrument, for the Academy to point at', () => {
     render(<ViewSheet {...props({ radar: false, onToggleRadar: vi.fn() })} />);
-    expect(screen.getByRole('switch', { name: /Telescope reach/ })).toHaveAttribute('data-sensor-toggle', 'telescope');
-    expect(screen.getByRole('switch', { name: /Radar reach/ })).toHaveAttribute('data-sensor-toggle', 'radar');
+    expect(screen.getByRole('switch', { name: /Telescope reach/ }).closest('[data-sensor-toggle]')).toHaveAttribute('data-sensor-toggle', 'telescope');
+    expect(screen.getByRole('switch', { name: /Radar reach/ }).closest('[data-sensor-toggle]')).toHaveAttribute('data-sensor-toggle', 'radar');
+  });
+
+  /** C10: a layer is switched with the kit's lever switch, its instrument pictured beside it. */
+  it('switches each layer with the kit switch, beside its instrument', () => {
+    render(<ViewSheet {...props({ radar: false, onToggleRadar: vi.fn() })} />);
+    for (const name of [/Telescope reach/, /Radar reach/]) {
+      const layer = screen.getByRole('switch', { name });
+      expect(layer).toHaveClass('gk-toggle');
+      expect(layer.querySelector('img.gk-toggle__art')).not.toBeNull();
+    }
+  });
+
+  it('opens the events guide from a kit door', () => {
+    render(<ViewSheet {...props()} />);
+    expect(screen.getByRole('button', { name: 'Galaxy events guide' })).toHaveClass('gk-ledger__row');
   });
 
   it('opens the galaxy events guide', async () => {
@@ -198,3 +258,13 @@ describe('the view sheet', () => {
     await act(async () => { await i18n.changeLanguage('en'); });
   });
 });
+
+/** H1 (owner 2026-11-16): "28 world yazısını da kaldır, online section tamamen kalksın" — the finds alone lead the corner. */
+describe('the readout without its census', () => {
+  it('leaves out who is here and keeps what can be found', () => {
+    const view = render(<GalaxyReadout census={false} counts={{ worlds: 28, fleetsAway: 3, rocks: 9, pirates: 2, wrecks: 4, monuments: 8 }} />);
+    expect(screen.queryByText(/28 worlds/)).toBeNull();
+    expect(view.container.querySelectorAll('.gk-tally')).toHaveLength(4);
+  });
+});
+

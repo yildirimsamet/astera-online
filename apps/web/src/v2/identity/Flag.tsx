@@ -23,7 +23,7 @@ export function Flag({ code, language = 'en', size = 'regular', className = '' }
   const label = countryName(code, language);
   const src = flagUrl(code);
   if (src === null) {
-    return <span role="img" aria-label={code} className={`inline-flex items-center justify-center font-v2-mono text-micro rounded-cell ${className}`}>{code}</span>;
+    return <span role="img" aria-label={code} className={`inline-flex items-center justify-center gk-flagcode rounded-cell ${className}`}>{code}</span>;
   }
   return <img src={src} alt={label} role="img" className={`inline-block ${size === 'small' ? 'h-1.5 w-2.5' : 'h-3 w-5'} rounded-cell object-cover ${className}`} />;
 }

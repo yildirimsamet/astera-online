@@ -76,6 +76,35 @@ describe('the commander card', () => {
   });
 });
 
+/** The tokens in every class attribute under a node. */
+const classes = (root: Element): string[] =>
+  [root, ...root.querySelectorAll('[class]')].flatMap((node) => (node.getAttribute('class') ?? '').split(/\s+/)).filter(Boolean);
+
+/** C23 (2026-11-15): the account page opens on the commander, drawn in the game kit. */
+describe('the commander card on the kit', () => {
+  it('is a cut plate in the colour of the self, the initials inside the medallion ring', () => {
+    const { container } = render(<CommanderCard {...props()} />);
+    const card = container.querySelector('[data-commander-card]');
+    expect(card).toHaveClass('gk-cut', 'gk-cut--self');
+    expect(card?.querySelector('.gk-medal__face')).toHaveTextContent('KS');
+    expect(card?.querySelector('img.gk-medal__ring')).not.toBeNull();
+  });
+
+  it('wears none of the old surface language', () => {
+    const { container } = render(<CommanderCard {...props()} honor={{ score: 12_500_000, dominion: 400 }} />);
+    expect(classes(container).filter((name) => name.includes('v2'))).toEqual([]);
+  });
+
+  /** A shield is a state worth seeing at a glance: lit while it holds, quiet once gone. */
+  it('lights the shield while it holds and leaves it quiet when there is none', () => {
+    const { unmount } = render(<CommanderCard {...props()} />);
+    expect(screen.getByText('Shield').closest('[data-cell]')).toHaveAttribute('data-on');
+    unmount();
+    render(<CommanderCard {...props({ shield: null })} />);
+    expect(screen.getByText('Shield').closest('[data-cell]')).not.toHaveAttribute('data-on');
+  });
+});
+
 describe('initials', () => {
   it('takes the first letter of two words, or the first two of one', () => {
     expect(initials('Kestrel Sable')).toBe('KS');

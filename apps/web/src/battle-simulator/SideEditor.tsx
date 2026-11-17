@@ -6,6 +6,7 @@ import { HULL_ART } from '../ui/assets.js';
 import { COMBAT_RESEARCH, SIMULATION_UNIT_LIMIT, type BattleScenario, type SimulationParticipant } from './scenario.js';
 import { SimulationNumberInput } from './SimulationNumberInput.js';
 import { ClassChip } from '../ui/CounterMark.js';
+import { Toggle } from '../game-ui/index.js';
 
 export const SideEditor = memo(function SideEditor({ side, scenario, update, invalidFields }: {
   side: 'attackers' | 'defenders'; scenario: BattleScenario; update: (mutate: (draft: BattleScenario) => void) => void;
@@ -62,10 +63,8 @@ export const SideEditor = memo(function SideEditor({ side, scenario, update, inv
         <label>{t('simulator.aegisCharge')}<SimulationNumberInput aria-label={t('simulator.aegisCharge')} min={0} max={100} integer={false} value={scenario.aegisCharge}
           onValueChange={n => { update(d => { d.aegisCharge = n; }); }} /></label>
       </div>
-      {!here && <><label className="sim-check"><input type="checkbox" checked={scenario.defenceOffline} onChange={event => { const value = event.currentTarget.checked; update(d => { d.defenceOffline = value; }); }} />{t('simulator.offline')}</label>
-      <label className="sim-check"><input type="checkbox" checked={scenario.automaticEscape} onChange={event => {
-        const value = event.currentTarget.checked; update(d => { d.automaticEscape = value; });
-      }} />{t('simulator.automaticEscape')}</label>
+      {!here && <><Toggle checked={scenario.defenceOffline} label={t('simulator.offline')} onChange={value => { update(d => { d.defenceOffline = value; }); }} />
+      <Toggle checked={scenario.automaticEscape} label={t('simulator.automaticEscape')} onChange={value => { update(d => { d.automaticEscape = value; }); }} />
       {scenario.automaticEscape && <label className="sim-setting">{t('simulator.escapeFuel')}<SimulationNumberInput min={0} max={1_000_000_000} value={scenario.deuterium}
         onValueChange={n => { update(d => { d.deuterium = n; }); }} /></label>}</>}
     </fieldset>}

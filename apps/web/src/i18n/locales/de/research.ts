@@ -42,7 +42,7 @@ export const research = {
   queueCapacity: "{{count}} Steckplätze",
   queueLane: "Commander-Forschung",
   queueGlobalHint:
-    "Diese Warteschlange gehört deinem Kommandanten, und begonnene Forschung lässt sich nicht abbrechen. Bau und Werft laufen auf jeder Welt getrennt weiter.",
+    "Eine Schlange pro Kommandant; Begonnenes lässt sich nicht abbrechen. Bau und Werft laufen extra.",
   runningLabel: "Läuft",
   runningFinishes: "endet {{time}}",
   idleLabel: "Nichts läuft",
@@ -86,21 +86,21 @@ export const research = {
   sheetEyebrow: "Forschungsprojekt",
   sheetComplete: "Forschung abgeschlossen",
   sheetCost: "Forschungskosten",
-  sheetOnce: "Wird in Ihrer kommandantenweiten Forschungswarteschlange platziert. Es wird kein Bau- oder Hofplatz verwendet.",
+  sheetOnce: "Wird in deine kommandantenweite Forschungswarteschlange gestellt. Es belegt keinen Bau- oder Werftplatz.",
   sheetRung: "Stufe {{level}} von {{max}}. Jede Stufe wird separat gekauft.",
 
   isotopeName: "Isotopenspektrometrie",
   isotopeTag: "Schaltet den Deuteriumabbau frei",
   isotopeRole:
-    "Zeigt das Deuterium in Isotopengesteinen an und ermöglicht es Ihnen, Prospektoren dorthin zu schicken. Der Rücktransport gelangt ins Werk.",
+    "Zeigt das Deuterium in Isotopengestein und lässt dich Prospektoren dorthin schicken. Die Rückfracht landet in den Werken.",
   isotopeDetail:
     "Erforsche es einmal, um Isotopen-Asteroiden in auswählbare Bergbauziele zu verwandeln. Es schaltet den Zugang zum umstrittenen Deuterium frei; Es erzeugt keinen passiven Treibstoff auf einem Planeten.",
   denseName: "Dichte Brennstoffzellen",
   denseTag: "Schaltet den Schiffsantrieb frei",
   denseRole:
-    "Um es aufzudecken, füllen Sie Ihre Fracht in einem Überfall auf, während die Beute auf dem Ziel verbleibt. Durch den Abschluss wird die Forschungsleiter „Schiffsantrieb“ geöffnet.",
+    "Um es aufzudecken, fülle deine Fracht in einem Überfall, während noch Beute auf dem Ziel liegt. Der Abschluss öffnet die Forschungsleiter „Schiffsantrieb“.",
   denseDetail:
-    "Wenn Sie es abschließen, wird die Schiffsantriebsforschung für Ihren Kommandanten dauerhaft geöffnet. Der Antrieb verbessert jedes Schiff Ihrer Flotte und ist auch Teil des Atlas-Build-Gate; Prospektoren oder Sonden werden dadurch nicht verändert.",
+    "Wenn du es abschließt, wird die Schiffsantriebsforschung für deinen Kommandanten dauerhaft geöffnet. Der Antrieb verbessert jedes Schiff deiner Flotte und ist auch Teil der Bauvoraussetzung für Atlas; Prospektoren oder Sonden werden dadurch nicht verändert.",
   graviticName: "Gravitische Ladungen",
   graviticTag: "Schaltet den Nullifier frei",
   graviticRole:
@@ -111,10 +111,10 @@ export const research = {
   synthesisName: "Deuteriumsynthese",
   synthesisTag: "Erhöht die Raffinerie-Obergrenze",
   synthesisRole:
-    "Jede Sprosse öffnet drei weitere Stufen der Deuterium-Raffinerie auf jeder deiner Welten",
+    "Jede Forschungsstufe öffnet drei weitere Stufen der Deuterium-Raffinerie auf jeder deiner Welten",
   synthesisDetail:
-    "Jede Forschungsstufe erhöht die Obergrenze der Deuterium-Raffinerie auf jeder Welt um drei Stufen. Sie bauen die Raffinerieebenen immer noch separat, in denen Sie Treibstoff produzieren müssen.",
-  yardName: "Yard-Automatisierung",
+    "Jede Forschungsstufe erhöht die Obergrenze der Deuterium-Raffinerie auf jeder Welt um drei Stufen. Die Raffinerie baust du weiterhin auf jeder Welt einzeln aus, auf der du Treibstoff brauchst.",
+  yardName: "Werftautomatik",
   yardTag: "Baut Schiffe schneller",
   yardRole:
     "Verkürzt neue Bauaufträge für Schiffe und Bodenverteidigung auf allen deinen Planeten.",
@@ -132,11 +132,11 @@ export const research = {
     "Senkt Kosten und Dauer jedes Auftrags der Reparaturstation",
   industrialDetail:
     "Senkt Schiffsreparaturkosten und -zeit auf allen Planeten. Stufe 1 nutzt 75 % der normalen Kosten und Zeit; Stufe 2 nutzt 50 %. Schiffsbau wird nicht beschleunigt.",
-  holdsName: "Prospektor hält",
+  holdsName: "Prospektor-Laderäume",
   holdsTag: "Bergbauschiffe transportieren mehr",
   holdsRole: "Erhöht jeden Prospektor-Hold; Zusätzlich gilt der Kapazitätsbonus des Derricks",
   holdsDetail:
-    "Jede Sprosse erhöht die Menge, mit der jeder Prospektor zurückkehren kann. Der Bonus vervielfacht sich mit dem Derrick-Satelliten und die dritte Sprosse öffnet einen dritten Prospektor-Slot auf jeder Welt.",
+    "Jede Stufe erhöht die Menge, mit der jeder Prospektor zurückkehren kann. Der Bonus vervielfacht sich mit dem Derrick-Satelliten und die dritte Stufe öffnet einen dritten Prospektor-Slot auf jeder Welt.",
   cargoName: "Frachträume",
   cargoTag: "Jeder Laderaum trägt mehr",
   cargoRole: "Erhöht Überfall-Beute, Welttransfers und Handelskonvois gleichermaßen. Der Asteroidenabbau ist eine eigene Leiter",

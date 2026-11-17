@@ -24,12 +24,12 @@ describe('selecting a world from the outline', () => {
   });
 });
 
-/** Owner, 2026-09-24: Home ("Fly to your world") above the View chip in the right-hand stack. */
+/** Owner, 2026-11-16 (replacing 2026-09-24's Home-above-View): the tools sit two by two, Telescope then Home. */
 describe('the galaxy’s right-hand stack', () => {
-  it('puts Home above the View chip', () => {
+  it('pairs the View chip with Home, Telescope first', () => {
     const stack = galaxy.slice(galaxy.indexOf('<GalaxyReadout'));
-    expect(stack.indexOf('<HomeChip')).toBeGreaterThan(0);
-    expect(stack.indexOf('<HomeChip')).toBeLessThan(stack.indexOf('<ViewChip'));
+    expect(stack.indexOf('<ViewChip')).toBeGreaterThan(0);
+    expect(stack.indexOf('<ViewChip')).toBeLessThan(stack.indexOf('<HomeChip'));
   });
 });
 

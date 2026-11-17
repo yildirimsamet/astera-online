@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { SeasonInfo } from '../api/schemas.js';
 import { full, signed } from '../lib/format.js';
 import { coverGalaxy } from '../lib/galaxyCover.js';
-import { haptic } from '../lib/haptics.js';
-import { AttackIcon, ClanIcon, GalaxyIcon, LeaderboardIcon, ShieldedIcon } from '../ui/icons/index.js';
+import { honorScore } from '../lib/honor.js';
+import { playSound } from '../lib/sound.js';
 import { NextSeason } from '../ui/NextSeason.js';
-import { useOwnPress } from '../ui/kit/index.js';
 import { useNativeBack } from '../platform/nativeBack.js';
-import { RankingScores } from '../ui/RankingScores.js';
-import { HonorIcon } from '../ui/icons/index.js';
+import { artIconSrc } from '../game-ui/art.js';
+import { GameButton, RoundButton } from '../game-ui/buttons.js';
+import { ClanEmblem } from '../game-ui/ranks.js';
+import { StatPlaque } from '../game-ui/readouts.js';
 
 export type SeasonResult = Exclude<SeasonInfo['result'], null | undefined>;
 
@@ -88,9 +89,9 @@ export function SeasonRecap({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  // The kit's presses answer with their own tap and buzz; Escape and native Back need none.
   const close = useCallback((): void => {
     rememberSeasonRecap(result);
-    haptic('tap');
     onClose();
   }, [onClose, result]);
   const panel = useRef<HTMLDivElement>(null);
@@ -109,8 +110,8 @@ export function SeasonRecap({
   }, [close]);
 
   // The recap covers the screen the moment a season result lands, so its close is
-  // another control that can appear under a finger already mid-gesture (D109a).
-  const dismiss = useOwnPress(close);
+  // another control that can appear under a finger already mid-gesture (D109a): the
+  // kit's RoundButton and GameButton take only a press they own (`useOwnPress`).
 
   const primaryRank = result.honorRank ?? result.finalRank;
   const meritsTitle = result.honorScore == null || result.honorScore > 0;
@@ -123,194 +124,143 @@ export function SeasonRecap({
           ? t('seasonRecap.titles.conqueror')
           : t('seasonRecap.titles.commander');
   const quiet = result.recap.battles === 0;
+  // A podium place is the moment of the season: rays behind the crest and the rank-up cue.
+  const podium = meritsTitle && primaryRank <= 3;
+  const rang = useRef(false);
+  useEffect(() => {
+    if (rang.current) return;
+    rang.current = true;
+    playSound(podium ? 'rankup' : 'confirm');
+  }, [podium]);
 
+  /*
+    THE SEASON'S LAST SCREEN, ON THE KIT (C18, G9 #5). The moment: the galaxy froze and this
+    is the commander's record — the place first (in a crest that lights for a podium), the
+    two scores, what they fought, the clan, the one story worth retelling, then when the next
+    galaxy opens and the one way back to the final disc.
+  */
   return (
-    <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-void/95"
-      ref={panel}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="season-recap-title"
-    >
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(89,200,255,0.16),transparent_34%),radial-gradient(circle_at_18%_72%,rgba(90,211,155,0.08),transparent_30%)]" />
-      <main className="relative mx-auto flex min-h-dvh w-full max-w-xl flex-col px-2 pb-[calc(22px+env(safe-area-inset-bottom))] pt-[calc(28px+env(safe-area-inset-top))]">
-        <button
-          type="button"
-          aria-label={t('seasonRecap.close')}
-          {...dismiss}
-          className="absolute right-3 top-[calc(20px+env(safe-area-inset-top))] flex size-11 items-center justify-center rounded-chip border border-line bg-raised text-figure leading-none text-bone transition-colors hover:border-crystal/60 hover:text-crystal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-crystal/70"
-        >
-          &times;
-        </button>
+    <div className="gk gk-recap" ref={panel} role="dialog" aria-modal="true" aria-labelledby="season-recap-title">
+      <span className="gk-recap__sky" aria-hidden="true" />
+      <main className="gk-recap__main">
+        <div className="gk-recap__close">
+          <RoundButton glyph="close" label={t('seasonRecap.close')} onPress={close} />
+        </div>
 
-        <header className="text-center">
-          <GalaxyIcon className="mx-auto size-8 text-crystal drop-shadow-[0_0_12px_var(--color-crystal-glow)]" />
-          <p className="legend mt-2 text-crystal">{t('seasonRecap.eyebrow')}</p>
-          <p className="legend mt-1">
-            {t('seasonRecap.finalRecord', { galaxy })}
-          </p>
-          <h1
-            id="season-recap-title"
-            className="headline mt-6 text-hero"
-          >
-            {title}
-          </h1>
-          <p className="mt-3 text-body text-dim">
-            {t('seasonRecap.planet', {
-              commander: result.recap.commanderName,
-              planet: result.recap.planetName,
-            })}
+        <header className="gk-recap__head">
+          <span className="gk-recap__crest">
+            {podium && <span className="gk-rays" aria-hidden="true" />}
+            <img src={artIconSrc(podium && primaryRank === 1 ? 'crown' : podium ? 'crown-silver' : 'trophy')} alt="" draggable={false} />
+          </span>
+          <p className="gk-label gk-recap__eyebrow">{t('seasonRecap.eyebrow')}</p>
+          <p className="gk-recap__galaxy">{t('seasonRecap.finalRecord', { galaxy })}</p>
+          <h1 id="season-recap-title" className="gk-recap__title gk-display gk-outlined">{title}</h1>
+          <p className="gk-recap__who">
+            {t('seasonRecap.planet', { commander: result.recap.commanderName, planet: result.recap.planetName })}
           </p>
         </header>
 
-        <section className="mt-8 grid grid-cols-2 gap-2" aria-label={t('seasonRecap.finalRecord', { galaxy })}>
-          <HeroFigure
-            icon={result.honorRank != null ? <HonorIcon className="size-5" /> : <LeaderboardIcon className="size-5" />}
-            label={
-              result.honorRank != null ? t('leaderboard.honorRank') : players === undefined
-                ? t('seasonRecap.rankAlone', { rank: result.finalRank })
-                : t('seasonRecap.rank', { rank: result.finalRank, players })
-            }
+        <section className="gk-recap__heroes" aria-label={t('seasonRecap.finalRecord', { galaxy })}>
+          <StatPlaque
+            {...(result.honorRank != null ? { glyph: 'ranking' as const } : { art: artIconSrc('trophy') })}
+            label={result.honorRank != null ? t('leaderboard.honorRank') : t('seasonRecap.place')}
             value={`#${full(primaryRank)}`}
+            {...(result.honorRank == null && players !== undefined ? { sub: t('seasonRecap.rank', { rank: result.finalRank, players }) } : {})}
+            tone={podium ? 'good' : 'neutral'}
           />
-          {result.honorScore != null ? <div className="flex items-center justify-end rounded-control border border-v2-self/25 bg-v2-self/5 px-3 py-3">
-            <RankingScores honor={result.honorScore} dominion={result.dominion} />
-          </div> : <HeroFigure
-            icon={<GalaxyIcon className="size-5" />}
-            label={t('seasonRecap.dominion')}
-            value={signed(result.dominion)}
-          />}
+          {result.honorScore != null ? (
+            <StatPlaque
+              glyph="star"
+              label={t('leaderboard.honorTitle')}
+              value={honorScore(result.honorScore)}
+              sub={<>{t('leaderboard.score')} <span className="gk-num">{result.dominion === 0 ? full(0) : signed(result.dominion)}</span></>}
+            />
+          ) : (
+            <StatPlaque glyph="colony" label={t('seasonRecap.dominion')} value={signed(result.dominion)} />
+          )}
         </section>
 
-        <section className="plate plate-cut mt-3 grid grid-cols-3 divide-x divide-line-soft px-2 py-2">
+        <section data-recap-figures="" className="gk-well gk-recap__figures">
           <Figure label={t('seasonRecap.battles')} value={full(result.recap.battles)} />
           <Figure label={t('seasonRecap.attacks')} value={full(result.recap.attacks)} />
           <Figure label={t('seasonRecap.defences')} value={full(result.recap.defences)} />
         </section>
         {result.recap.support && result.recap.support.stood > 0 && (
-          <p data-recap-support="" className="mt-2 flex items-center justify-center gap-1.5 text-caption text-crystal">
-            <ShieldedIcon className="size-4" />
+          <p data-recap-support="" className="gk-report__note" data-tone="good">
             {t('seasonRecap.support', { count: result.recap.support.stood, held: result.recap.support.held })}
           </p>
         )}
 
-        <section className="mt-3 grid grid-cols-2 gap-2">
-          <SmallFigure
-            icon={<AttackIcon className="size-4 text-alert" />}
-            label={t('seasonRecap.damageDealt')}
-            value={full(result.damageDealt)}
-          />
-          <SmallFigure
-            icon={<ShieldedIcon className="size-4 text-crystal" />}
-            label={t('seasonRecap.damageTaken')}
-            value={full(result.damageTaken)}
-          />
-        </section>
+        <dl className="gk-well gk-report__sum gk-recap__damage">
+          <dt>{t('seasonRecap.damageDealt')}</dt><dd className="gk-num" data-tone="good">{full(result.damageDealt)}</dd>
+          <dt>{t('seasonRecap.damageTaken')}</dt><dd className="gk-num" data-tone="threat">{full(result.damageTaken)}</dd>
+        </dl>
 
         {result.recap.clan ? (
-          <section className="plate plate-cut mt-3 px-2 py-2" aria-label={t('seasonRecap.clan.heading')}>
-            <div className="flex items-start gap-2">
-              <span className="socket grid size-10 shrink-0 place-items-center rounded-control text-crystal">
-                <ClanIcon className="size-5" />
+          <section className="gk-well gk-recap__clan" aria-label={t('seasonRecap.clan.heading')}>
+            <div className="gk-recap__clanhead">
+              <ClanEmblem flag={null} tag={result.recap.clan.tag} label={`[${result.recap.clan.tag}]`} size={44} />
+              <span className="min-w-0 flex-1">
+                <span className="gk-label">{t('seasonRecap.clan.heading')}</span>
+                <span className="gk-recap__clanname">[{result.recap.clan.tag}] {result.recap.clan.name}</span>
               </span>
-              <div className="min-w-0 flex-1">
-                <p className="legend text-crystal">{t('seasonRecap.clan.heading')}</p>
-                <p className="name mt-1 truncate text-bone">
-                  <span className="text-crystal">[{result.recap.clan.tag}]</span>{' '}
-                  {result.recap.clan.name}
-                </p>
-              </div>
-              {result.recap.clan.topThree ? (
-                <span className="chip chip-opportunity shrink-0">{t('seasonRecap.clan.seal')}</span>
-              ) : null}
+              {result.recap.clan.topThree ? <span className="gk-recap__seal">{t('seasonRecap.clan.seal')}</span> : null}
             </div>
-            <div className="mt-2 grid grid-cols-2 divide-x divide-line-soft">
+            <div className="gk-recap__figures" data-cols="2">
               <Figure label={t('seasonRecap.clan.rank')} value={`#${full(result.recap.clan.finalRank)}`} />
-              <Figure
-                label={t('seasonRecap.clan.dominion')}
-                value={result.recap.clan.dominion === 0 ? full(0) : signed(result.recap.clan.dominion)}
-              />
+              <Figure label={t('seasonRecap.clan.dominion')} value={result.recap.clan.dominion === 0 ? full(0) : signed(result.recap.clan.dominion)} />
             </div>
-            <p className="mt-2 text-label leading-relaxed text-faint">{t('seasonRecap.clan.recordOnly')}</p>
+            <p className="gk-report__copy">{t('seasonRecap.clan.recordOnly')}</p>
           </section>
         ) : null}
 
         {quiet ? (
-          <Story
-            heading={t('seasonRecap.quietHeading')}
-            body={t('seasonRecap.quietBody')}
-          />
+          <Story heading={t('seasonRecap.quietHeading')} body={t('seasonRecap.quietBody')} />
         ) : (
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="gk-recap__stories">
             {result.recap.rival && (
               <Story
                 heading={t('seasonRecap.rivalHeading')}
-                body={t('seasonRecap.rival', {
-                  name: result.recap.rival.commanderName,
-                  count: result.recap.rival.battles,
-                })}
+                body={t('seasonRecap.rival', { name: result.recap.rival.commanderName, count: result.recap.rival.battles })}
               />
             )}
             {result.recap.biggestRaid && (
               <Story
                 heading={t('seasonRecap.biggestHeading')}
-                body={t('seasonRecap.biggestRaid', {
-                  value: full(result.recap.biggestRaid.value),
-                  name: result.recap.biggestRaid.opponentName,
-                })}
+                body={t('seasonRecap.biggestRaid', { value: full(result.recap.biggestRaid.value), name: result.recap.biggestRaid.opponentName })}
               />
             )}
           </div>
         )}
 
-        {showPrimaryAction && <NextSeason endsAt={endsAt} className="mt-6" />}
+        {showPrimaryAction && <NextSeason endsAt={endsAt} />}
 
         {showPrimaryAction ? (
-          <button type="button" className="slab slab-primary mt-auto w-full pt-2" onClick={close}>
-            {t(canExplore ? 'seasonRecap.explore' : 'seasonRecap.close')}
-          </button>
+          <div className="gk-recap__go">
+            <GameButton tone="action" size="lg" wide glyph="next" onPress={close}>
+              {t(canExplore ? 'seasonRecap.explore' : 'seasonRecap.close')}
+            </GameButton>
+          </div>
         ) : null}
       </main>
     </div>
   );
 }
 
-function HeroFigure({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
-  return (
-    <div className="plate plate-cut flex min-h-28 flex-col items-center justify-center px-3 py-2 text-center">
-      <span className="text-crystal">{icon}</span>
-      <p className="readout mt-2 text-readout text-bone">{value}</p>
-      <p className="legend mt-1">{label}</p>
-    </div>
-  );
-}
-
 function Figure({ label, value }: { label: string; value: string }) {
   return (
-    <div className="px-2 text-center">
-      <p className="readout text-figure text-bone">{value}</p>
-      <p className="legend mt-1">{label}</p>
-    </div>
-  );
-}
-
-function SmallFigure({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
-  return (
-    <div className="plate flex items-center gap-2 px-3 py-3">
-      {icon}
-      <div className="min-w-0">
-        <p className="legend">{label}</p>
-        <p className="readout mt-1 text-title text-bone">{value}</p>
-      </div>
+    <div className="gk-recap__figure">
+      <p className="gk-recap__value gk-display gk-num">{value}</p>
+      <p className="gk-report__label">{label}</p>
     </div>
   );
 }
 
 function Story({ heading, body }: { heading: string; body: string }) {
   return (
-    <div className="plate mt-3 px-2 py-3 sm:mt-0">
-      <p className="legend text-opportunity">{heading}</p>
-      <p className="mt-1 text-body leading-relaxed text-bone">{body}</p>
+    <div className="gk-well gk-report__why">
+      <p className="gk-label gk-recap__storyhead">{heading}</p>
+      <p className="gk-recap__story">{body}</p>
     </div>
   );
 }

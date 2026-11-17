@@ -31,8 +31,8 @@ describe('the commander menu', () => {
   it('has no season clock, ranking, rewards or store aboard a ship', () => {
     const { container } = show(true);
     expect(screen.queryByText(/season ends/i)).toBeNull();
-    expect(container.querySelector('[data-menu-leaderboard]')).toBeNull();
-    expect(container.querySelector('[data-menu-category="rewards"]')).toBeNull();
+    expect(container.querySelector('[data-tile="leaderboard"]')).toBeNull();
+    expect(container.querySelector('[data-tile="rewards"]')).toBeNull();
     expect(screen.queryByRole('button', { name: /shop/i })).toBeNull();
   });
 
@@ -45,15 +45,15 @@ describe('the commander menu', () => {
   it('keeps the guide, the community and the settings aboard', () => {
     const { container } = show(true);
     for (const id of ['academy', 'community', 'settings']) {
-      expect(container.querySelector(`[data-menu-category="${id}"]`)).not.toBeNull();
+      expect(container.querySelector(`[data-tile="${id}"]`)).not.toBeNull();
     }
   });
 
   it('shows all of it to a commander on a planet', () => {
     const { container } = show(false);
     expect(screen.getByText(/season ends/i)).toBeInTheDocument();
-    expect(container.querySelector('[data-menu-leaderboard]')).not.toBeNull();
-    expect(container.querySelector('[data-menu-category="rewards"]')).not.toBeNull();
+    expect(container.querySelector('[data-tile="leaderboard"]')).not.toBeNull();
+    expect(container.querySelector('[data-tile="rewards"]')).not.toBeNull();
   });
 });
 

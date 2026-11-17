@@ -168,7 +168,7 @@ describe('what it says it needs', () => {
     expect(stateOf(view)).toBe('LOCKED');
     expect(block(view))
       .toHaveTextContent(new RegExp(`Radar.*${String(ANTI_STRATEGIC.requiredRadar)}`, 'i'));
-    expect(button(view)).toBeDisabled();
+    expect(button(view)).toBeNull();
   });
 
   /**
@@ -181,14 +181,41 @@ describe('what it says it needs', () => {
     const view = show(armed({ instruments: { RADAR: 5 }, orbit: [] }));
     expect(stateOf(view)).toBe('LOCKED');
     expect(block(view)).toHaveTextContent(/Uplink/i);
-    expect(button(view)).toBeDisabled();
+    expect(button(view)).toBeNull();
   });
 
   it('refuses a world still in recovery', () => {
     const view = show(armed({}, {
       recoveryUntil: new Date(Date.now() + 3_600_000),
     }));
-    expect(button(view)).toBeDisabled();
+    expect(button(view)).toBeNull();
+    expect(block(view).querySelector('[data-gate]')).toHaveTextContent(/operational/i);
+  });
+
+  /**
+   * WHAT IS MISSING, WHERE THE HOLD WOULD BE (owner 2026-11-17: "Stratejik savunma bataryasını
+   * düzenle"). Ticks for what is already met were three chips of noise over a locked hold that said the
+   * missing one again; now only what is missing is drawn, as a door, in the hold's place.
+   */
+  it('draws only the missing requirement, as a door in the hold’s place', () => {
+    const view = show(armed({ instruments: { RADAR: ANTI_STRATEGIC.requiredRadar - 1 } }));
+    const gate = block(view).querySelector<HTMLElement>('[data-gate]')!;
+    expect(gate.querySelectorAll('.gk-need-door')).toHaveLength(1);
+    expect(block(view).querySelector('[data-met="true"]')).toBeNull();
+    expect(block(view).textContent).not.toMatch(/Uplink/);
+    expect(block(view).querySelector('[data-act]')).toBeNull();
+  });
+
+  it('draws no requirement at all once every one is met', () => {
+    const view = show(armed());
+    expect(block(view).querySelector('[data-gate]')).toBeNull();
+    expect(button(view)).toBeEnabled();
+  });
+
+  it('states the build time alone beside the price, the single-shot rule behind the ⓘ', () => {
+    const view = show(armed());
+    const time = block(view).querySelector<HTMLElement>('.gk-cost__time')!;
+    expect(time.textContent).not.toMatch(/charge|firing/i);
   });
 
   it('refuses when the charge cannot be paid for', () => {
@@ -198,9 +225,13 @@ describe('what it says it needs', () => {
 });
 
 describe('the charge itself', () => {
-  it('loads one when pressed', async () => {
+  /** It spends, so it is a one-second hold (G2-g): a tap does not load it. */
+  it('loads one on a hold, never on a tap', async () => {
     const view = show(armed());
     await userEvent.click(button(view)!);
+    expect(build).not.toHaveBeenCalled();
+    button(view)!.focus();
+    await userEvent.keyboard('{Enter}{Enter}');
     expect(build).toHaveBeenCalledOnce();
   });
 
@@ -328,7 +359,7 @@ describe('the charge itself', () => {
     }));
     expect([...block(view).querySelectorAll<HTMLElement>('[data-tally] [data-cell]')].map((cell) => cell.dataset.cell))
       .toEqual(['ready', 'loading']);
-    expect(block(view).querySelector('[data-charge-progress]')).toHaveClass('bg-v2-self');
+    expect(block(view).querySelector('[data-charge-progress] .gk-bar')).not.toBeNull();
   });
 
   it('sends a Radar too low to be trusted to the Radar', async () => {
@@ -425,8 +456,9 @@ describe('a hull gated on research', () => {
       .querySelector<HTMLElement>(`#row-${hull} [data-open-item]`);
     expect(opener, `${hull} does not open`).not.toBeNull();
     await userEvent.click(opener!);
+    // G2-e: each need is a chip; the first unmet one is the door to its fix
     const lock = view.baseElement
-      .querySelector<HTMLElement>('[data-build-sheet] [data-lock-state="closed"]');
+      .querySelector<HTMLElement>('[data-build-sheet] [data-commit] .gk-need-door');
     expect(lock, `${hull} states no requirement`).not.toBeNull();
     return lock!;
   };

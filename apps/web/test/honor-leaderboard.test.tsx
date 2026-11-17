@@ -43,23 +43,28 @@ describe('Honor is the primary player-visible race', () => {
 
   it('shows Honor first, preserves micro precision and explains the competition and prize cap', async () => {
     await show();
-    expect(screen.getByRole('button', { name: 'Honor', pressed: true })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Honor', selected: true })).toBeInTheDocument();
     expect(screen.getAllByText('1.234567').length).toBeGreaterThan(0);
     expect(screen.getByText('-0.000001')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('radio', { name: 'Rewards' }));
     expect(screen.getByText(/61.25 Honor/)).toBeInTheDocument();
-    await userEvent.click(screen.getByText('How Honor works'));
+    await userEvent.click(screen.getByRole('radio', { name: 'Rules' }));
+    await userEvent.click(screen.getByText('Defending'));
     expect(screen.getByText(/Defending never reduces your Honor/)).toBeVisible();
+    await userEvent.click(screen.getByText('Earning Honor'));
     expect(screen.getByText(/highest tier in the galaxy.*one tier below.*equal-tier/)).toBeVisible();
   });
 
   it('shows the solo-credit rule prominently only when the server announces it', async () => {
     await show(false, false, false, true);
+    await userEvent.click(screen.getByRole('radio', { name: 'Rules' }));
     expect(screen.getByText(/Shared sides cannot earn positive Honor/)).toBeVisible();
     expect(screen.getByText(/A solo opponent can still earn Honor/)).toBeVisible();
   });
 
   it('states the visible opening date and the old-flight boundary at the point of competition', async () => {
     await show(false, false, true);
+    await userEvent.click(screen.getByRole('radio', { name: 'Rules' }));
     const opening = screen.getByTestId('honor-opening');
     expect(opening).toHaveTextContent('Oct 15, 2026');
     expect(opening).toHaveTextContent('Everyone started at 0 Honor. Only attacks sent after this time count.');
@@ -74,12 +79,12 @@ describe('Honor is the primary player-visible race', () => {
 
   it('keeps Dominion available as a separate ranking', async () => {
     await show();
-    const honorTab = screen.getByRole('button', { name: 'Honor' });
-    const dominionTab = screen.getByRole('button', { name: 'Dominion' });
+    const honorTab = screen.getByRole('tab', { name: 'Honor' });
+    const dominionTab = screen.getByRole('tab', { name: 'Dominion' });
     expect(dominionTab.querySelector('svg')).toBeInTheDocument();
     expect(dominionTab.querySelector('svg')?.innerHTML).not.toBe(honorTab.querySelector('svg')?.innerHTML);
-    await userEvent.click(screen.getByRole('button', { name: 'Dominion' }));
-    expect(screen.getByRole('button', { name: 'Dominion', pressed: true })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: 'Dominion' }));
+    expect(screen.getByRole('tab', { name: 'Dominion', selected: true })).toBeInTheDocument();
     expect(screen.getByText('+900')).toBeInTheDocument();
     expect(screen.getByText('+900').closest('[data-dominion-score]')?.querySelector('svg')).toBeInTheDocument();
   });
@@ -87,26 +92,30 @@ describe('Honor is the primary player-visible race', () => {
     await show(true);
     expect(screen.getByText('Previous season prize delivered')).toBeVisible();
     expect(screen.getByText('Honor · Rank 2')).toBeVisible();
+    await userEvent.click(screen.getByRole('radio', { name: 'Rewards' }));
     expect(screen.getByText('Honor season prize')).toBeVisible();
   });
   it('explains a pooled tied prize without promising every tied rank one a personal double package', async () => {
     await show(false, true);
+    await userEvent.click(screen.getByRole('radio', { name: 'Rewards' }));
     expect(screen.getByText(/67.125 Honor/)).toBeVisible();
     expect(screen.getByText(/1,875/)).toBeVisible();
-    await userEvent.click(screen.getByText('How Honor works'));
+    await userEvent.click(screen.getByRole('radio', { name: 'Rules' }));
+    await userEvent.click(screen.getByText('Sharing prizes'));
     expect(screen.getByText(/Tied commanders equally share the packages for their occupied places/)).toBeVisible();
     expect(screen.queryByText(/For the same place, Honor’s full package is twice Dominion’s/)).not.toBeInTheDocument();
   });
   it('keeps the promised Dominion prize visible on its own tab and explains the single payout', async () => {
     await show();
-    await userEvent.click(screen.getByRole('button', { name: 'Dominion' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Dominion' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Rewards' }));
     expect(screen.getByText('End of season prize')).toBeVisible();
     expect(screen.getByText('Rank 1 · you are winning this')).toBeVisible();
     expect(within(screen.getByRole('region', { name: 'End of season prize' })).getByText('1,000')).toBeVisible();
     expect(screen.getByText(/more valuable package once/)).toBeVisible();
     await userEvent.click(screen.getByRole('button', { name: /prize by place/i }));
     expect(screen.getByRole('list', { name: 'Prize by place' }).children).toHaveLength(2);
-    await userEvent.click(screen.getByRole('button', { name: 'Honor' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Honor' }));
     expect(screen.getByText('End of season prize')).toBeVisible();
     expect(screen.getByRole('list', { name: 'Prize by place' }).children).toHaveLength(10);
     expect(screen.getByText('Honor season prize')).toBeVisible();

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { DEATH_STAR } from '@astera/rules';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
@@ -61,8 +62,11 @@ vi.mock('../src/api/queries.js', async () => {
   };
 });
 
-const show = (focusGroup?: 'grow' | 'orbit' | 'defend' | 'reach' | 'tactical') => {
-  current = rich();
+/** The forge keeps its whole rule one tap away (G2-g): the "?" beside its one line. */
+const openRule = async () => { await userEvent.click(screen.getByRole('button', { name: 'How it works' })); };
+
+const show = (focusGroup?: 'grow' | 'orbit' | 'defend' | 'reach' | 'tactical', world: PlanetView = rich()) => {
+  current = world;
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -118,6 +122,13 @@ describe('the tab bar', () => {
   it('reads Production, Intel, Defend, Tactical, Fleet', () => {
     show();
     expect(labels()).toEqual((['grow', 'orbit', 'defend', 'tactical', 'reach'] as const).map(name));
+  });
+
+  /** Owner note 3 (2026-11-14): each tab wears its mark over its name, two storeys. */
+  it('marks each tab over its name: production a pick, intel an eye, defence a shield, tactical a target, the fleet a rocket', () => {
+    show();
+    expect(screen.getByRole('tablist')).toHaveClass('gk-tabs--stacked');
+    expect(screen.getAllByRole('tab').map((tab) => tab.querySelector('.gk-tab__glyph')?.getAttribute('data-glyph'))).toEqual(['mine', 'eye', 'shield', 'target', 'rocket']);
   });
 
   it('lays out a lesson’s revealed tabs in the bar’s order', () => {
@@ -233,9 +244,9 @@ describe('what a Death Star strike actually does', () => {
   it('uses the same image-and-body production layout and a labelled stock counter', () => {
     const view = show('tactical');
     const forge = view.container.querySelector('[data-strategic-state]');
-    expect(forge).toHaveClass('tactical-production');
-    expect(forge?.querySelector('.tactical-production__scene img')).toHaveAttribute('src', '/assets/images/atmosphere/strategic-v2.webp');
-    expect(forge?.querySelector('.tactical-production__body')).not.toBeNull();
+    expect(forge).toHaveClass('gk-arm');
+    expect(forge?.querySelector('.gk-arm__art img')).toHaveAttribute('src', '/assets/images/atmosphere/strategic-v2.webp');
+    expect(forge?.querySelector('.gk-arm__body')).not.toBeNull();
     expect(forge?.querySelector('[data-stock-counter]')).toHaveTextContent('Stock 0/1');
     expect(screen.getByRole('heading', { name: 'Death Star' })).toBeInTheDocument();
   });
@@ -281,8 +292,9 @@ describe('what a Death Star strike actually does', () => {
    * rule the game stopped having. A weapon this expensive being sold on a
    * mechanic that does not exist is the most costly copy error the sheet can make.
    */
-  it('states the deadline rather than a capture', () => {
+  it('states the deadline rather than a capture', async () => {
     show('tactical');
+    await openRule();
     expect(screen.getByText(deathStarHint())).toBeInTheDocument();
     for (const forbidden of ['ele geçir', 'capture']) {
       expect(deathStarHint().toLowerCase()).not.toContain(forbidden);
@@ -310,6 +322,7 @@ describe('what a Death Star strike actually does', () => {
       expect(copy).not.toMatch(/hasar almaz|take damage|or less|veya altında|kopar|secede/i);
     }
     await i18n.changeLanguage('en');
+    await openRule();
     expect(screen.getByText(deathStarHint())).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /tek darbe ne yapar|what one impact does/i }))
       .not.toBeInTheDocument();
@@ -350,10 +363,62 @@ describe('the Base and its Defence tab', () => {
     expect(screen.queryByRole('region', { name: 'Orbit network' })).toBeNull();
   });
 
-  /** The band already names the ground; its room bar under it does not say it a second time. */
-  it('names the ground band once', () => {
+  /**
+   * THE DEFENCE TAB, GATHERED (owner 2026-11-17: "savunma tab'ının UX'i düzeltilmeli, toparlanmalı").
+   * The shield and the guns were two bands, each with a paragraph, the Aegis alone in half a row: one
+   * band now heads all four on one grid of two, and how they work is behind the ground room's ⓘ.
+   */
+  it('heads the shield and the guns with one band, their rules one press away', async () => {
     show('defend');
-    expect(screen.getAllByText(i18n.t('planet.defend.groundBand').trim())).toHaveLength(1);
+    expect(screen.getAllByText(i18n.t('planet.defend.buildBand'))).toHaveLength(1);
+    const room = document.querySelector<HTMLElement>('[data-ground-room]')!;
+    expect(screen.queryByText(i18n.t('planet.defend.shieldNote'))).toBeNull();
+    expect(screen.queryByText(i18n.t('planet.defend.groundNote'))).toBeNull();
+    await userEvent.setup().click(room.querySelector<HTMLElement>('.gk-peek__row button')!);
+    expect(screen.getByText(i18n.t('planet.defend.shieldNote'))).toBeVisible();
+    expect(screen.getByText(i18n.t('planet.defend.groundNote'))).toBeVisible();
+  });
+
+  it('sets the Aegis beside the three guns on one grid of two', () => {
+    show('defend');
+    const parents = ['row-AEGIS', 'row-THORN', 'row-HARPOON', 'row-BASTION'].map((id) => document.getElementById(id)?.parentElement);
+    expect(parents[0]).toBeTruthy();
+    expect(new Set(parents).size).toBe(1);
+  });
+
+  it('says what the battery stops in one line, the rest behind its ⓘ', () => {
+    show('defend');
+    expect(screen.getByText(i18n.t('planet.interceptor.short'))).toBeVisible();
+    expect(screen.queryByText(i18n.t('planet.interceptor.hint'))).toBeNull();
+  });
+
+  /**
+   * THE GUNS ON THE FIRST SCREEN (owner 2026-11-17: "ilk yer topuna ulaşana kadar … bu kadarlık bir content
+   * var"). The ship lists and the escape line sat between the readings and the guns; they are one closed
+   * fold now, its head counting the ships at home, and the room no longer repeats the guns' counts.
+   */
+  it('folds the ship lists and the escape line into one closed fold above the guns', () => {
+    const world = planetView({ ...rich(), fleet: { DART: 6, COURIER: 1 }, fleetAway: {}, rulesetVersion: 99 }, rich().planet);
+    show('defend', world);
+    const fold = document.querySelector<HTMLDetailsElement>('details[data-defence-line]')!;
+    expect(fold.open).toBe(false);
+    expect(fold.querySelector('summary')).toHaveTextContent(i18n.t('planet.defend.lineFold'));
+    expect(fold.querySelector('summary')).toHaveTextContent('7');
+    expect(fold.querySelector('[data-testid^="fleet-band-"]')).not.toBeNull();
+    expect(fold.querySelector('[data-testid="escape-readout"]')).not.toBeNull();
+    expect(document.querySelector('[data-defence-readings] [data-testid^="fleet-band-"]')).toBeNull();
+    const first = document.getElementById('row-THORN')!;
+    expect(fold.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('draws no fold for a world with no ships', () => {
+    show('defend');
+    expect(document.querySelector('[data-defence-line]')).toBeNull();
+  });
+
+  it('keeps the guns’ counts on their cards, not repeated in the ground room', () => {
+    show('defend', planetView({ ...rich(), ground: { THORN: 2 } }, rich().planet));
+    expect(document.querySelector('[data-ground-room] .gk-room__guns')).toBeNull();
   });
 
   it('leads the Defence tab with firepower, the line, the shield and what a raid can take', () => {

@@ -52,7 +52,7 @@ describe('Y7 clan team panel', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Takım kur' }));
     await screen.findByText('Bora');
     expect(calls.find(c => c.url === '/arena/team/create')?.body).toEqual({});
-    expect(screen.getByRole('button', { name: 'Birlikte kalk' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Herkes hazır olunca/ })).toBeDisabled();
     expect(screen.getByText(/Ölen üye de payını alır/)).toBeInTheDocument();
   });
 
@@ -100,8 +100,7 @@ describe('Y7 clan team panel', () => {
     const view = lobby(); if (!view.team?.members[0]) throw new Error('no self');
     view.team.members[0].blocked = 'SHIP_NOT_READY'; view.team.members[0].ship = { class: 'kilavuz', level: 3, fuel: 200, fuelMax: 250, readyAt: '2026-10-25T12:00:00Z' };
     desk({ '/arena/team': [view] }); render(<TeamPanel credential={() => Promise.resolve('tok')} onEnter={vi.fn()} />);
-    expect(await screen.findByRole('button', { name: 'Hazırım' })).toBeDisabled();
-    expect(screen.getAllByText(/Tamir veya bakım/).length).toBeGreaterThan(0);
+    expect(await screen.findByRole('button', { name: /Tamir veya bakım/ })).toBeDisabled();
   });
 
   it('keeps a share claimable outside the clan and shows what the daily cap kept out', async () => {

@@ -36,6 +36,15 @@ describe('the bell sheet', () => {
     expect(onTab).toHaveBeenCalledWith('chronicle');
   });
 
+  /** G1-e: the kit's metal tabs, and the open one's body is the panel it names. */
+  it('switches on the kit\u2019s tabs, each naming the panel it opens', () => {
+    render(<BellSheet {...props()} />);
+    const tab = screen.getByRole('tab', { name: 'Signals' });
+    expect(tab.closest('.gk-tabs')).not.toBeNull();
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', tab.getAttribute('aria-controls'));
+    expect(screen.getByRole('tabpanel')).toHaveTextContent('signal rows');
+  });
+
   it('holds Signals and the Chronicle, and no chat', () => {
     render(<BellSheet {...props()} />);
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Signals', 'Chronicle']);
@@ -53,5 +62,15 @@ describe('the bell sheet', () => {
   it('is as tall as its feed', () => {
     render(<BellSheet {...props()} />);
     expect(screen.getByRole('dialog')).toHaveAttribute('data-detent', 'half');
+  });
+});
+
+/** S1 (owner 2026-11-16): the bell wears the one 48 px head, with the bell's own mark. */
+describe('the bell sheet head', () => {
+  it('is the kit head with the bell mark', () => {
+    render(<BellSheet {...props({ unseen: 3 })} />);
+    const head = screen.getByRole('dialog').querySelector('.gk-sheet__head')!;
+    expect(head.querySelector('.gk-sheet__art')).toHaveAttribute('src', expect.stringMatching(/hud-bell/));
+    expect(head.querySelector('.gk-sheet__eyebrow')).not.toBeNull();
   });
 });

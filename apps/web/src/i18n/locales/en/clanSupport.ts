@@ -12,11 +12,10 @@ export const clanSupport = {
   holdBoth: 'Both off: your fleet always fights.',
   bothOn: 'Both on: against a raid that outmatches the whole line, your fleet and the support lift together. Your tank pays only for your ships.',
   supportLocked: 'Join a clan to accept clan support.',
-  save: 'Save',
   saving: 'Saving…',
-  confirmClose_one: 'Saving sends {{count}} support wave home. No fuel comes back.',
-  confirmClose_other: 'Saving sends {{count}} support waves home. No fuel comes back.',
-  confirm: 'Send them home and save',
+  confirmClose_one: 'Closing sends {{count}} support wave home. No fuel comes back.',
+  confirmClose_other: 'Closing sends {{count}} support waves home. No fuel comes back.',
+  confirm: 'Send home',
   keep: 'Keep support',
 
   /* The Hangar's support bay. */
@@ -28,21 +27,27 @@ export const clanSupport = {
   bayFactor: 'Dominion ×{{factor}} · lose ×{{factor}}, win ÷{{factor}}',
   bayFactorNone: 'Dominion ×1 · nothing standing here that fires yet',
   bayFactorRule: "The support factor is capped at 5. It multiplies your own combat loss and divides your gain. Supporters’ permanent ship losses count separately at resource value.",
+  /** The bay's factor help button, for a reader (G2-h3). */
+  bayFactorAbout: 'How the factor works',
   ruleLine: 'While supported your fleet never retreats · supporters fight with their own research.',
   ruleLineLift: 'If a raid outmatches the whole line, it lifts together · supporters fight with their own research.',
   empty: 'No clanmate is standing here yet.',
   closedEmpty: 'Turn on clan support above to let clanmates station ships here.',
   waveMeta: '{{ships}} ships · {{bulk}} room',
   leftFor: '{{time}} left',
+  /** Beside a standing wave's countdown: the time it still stays (G2-h2). */
+  timeLeft: 'left',
   arriving: 'Arrives in {{time}}',
   damaged: 'Damaged',
   outOfBand: 'Out of tier band · goes home untouched if a raid lands',
   sendBack: 'Send back',
-  sendBackOf: 'Send back {{name}}’s ships',
-  sendBackConfirm: 'Send these ships home? No fuel comes back.',
-  cancel: 'Cancel',
+  /** On the hold that sends a wave home (G2-h3). */
+  sendBackCost: 'No fuel comes back',
   more_one: 'Show {{count}} more wave',
   more_other: 'Show {{count}} more waves',
+  /** The folded bay's head (owner review 2026-11-16): how many waves stand or fly in. */
+  bayWaves_one: '{{count}} wave',
+  bayWaves_other: '{{count}} waves',
 
   /* The send sheet. */
   sendAction: 'Send support',
@@ -68,6 +73,7 @@ export const clanSupport = {
   recallRule: 'Turn it back in flight, or call it home any time after it lands.',
   noOrigin: 'Choose one of your worlds.',
   noFleet: 'Pick at least one ship.',
+  lineShips: 'Your line',
   noShips: 'No ships at home on this world.',
   quoting: 'Pricing the route…',
   sending: 'Sending…',

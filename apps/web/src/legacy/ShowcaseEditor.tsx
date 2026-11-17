@@ -1,14 +1,14 @@
 /**
  * CHOOSING THE SIX: every piece you hold, in the order a tap picks it. The order is the shelf
  * — the first three stand on the top shelf — so the number on a tile is the plinth it goes to.
+ * On the kit since C27: the count in gold, the refusals as banners, save as the screen's move.
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LEGACY_SHOWCASE_SLOTS } from '@astera/rules';
 import type { LegacyAward } from '../api/legacySchemas.js';
 import { Sheet } from '../v2/kit/Sheet.js';
-import { ATMOSPHERE } from '../ui/atmosphere.js';
-import { Button } from '../v2/kit/Surface.js';
+import { Banner, GameButton } from '../game-ui/index.js';
 import { AwardTile } from './AwardTile.js';
 import { sortLegacyAwards } from './presentation.js';
 import { useSetLegacyShowcase } from './queries.js';
@@ -36,22 +36,26 @@ export function ShowcaseEditor({ collection, current, onClose }: {
     save.mutateAsync(picked).then(onClose, () => { setFailed(true); });
   };
   return (
-    <Sheet placement="dialog" detents={['full']} headerArt={ATMOSPHERE.legacy} title={t('legacy.editor.title')} onClose={onClose}
+    <Sheet placement="dialog" detents={['full']} kit={{}} title={t('legacy.editor.title')} onClose={onClose}
       footer={(
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" disabled={picked.length === 0 || save.isPending} onClick={() => { setPicked([]); setFull(false); }}>{t('legacy.editor.clear')}</Button>
-          <Button variant="primary" full disabled={save.isPending} onClick={commit}>{save.isPending ? t('legacy.editor.saving') : t('legacy.editor.save')}</Button>
+        <div className="gk-legacy__foot">
+          {picked.length > 0 && (
+            <GameButton tone="ghost" glyph="close" pending={save.isPending} onPress={() => { setPicked([]); setFull(false); }}>{t('legacy.editor.clear')}</GameButton>
+          )}
+          <GameButton tone="action" wide glyph="check" pending={save.isPending} onPress={commit}>
+            {save.isPending ? t('legacy.editor.saving') : t('legacy.editor.save')}
+          </GameButton>
         </div>
       )}>
-      <div ref={focus} tabIndex={-1} data-legacy-editor className="flex flex-col gap-3 pb-3 font-v2-ui outline-none">
-        <p className="text-label text-v2-ink-2">{t('legacy.editor.hint')}</p>
-        <p aria-live="polite" className="font-v2-mono text-micro font-semibold text-v2-premium">{t('legacy.editor.selected', { count: picked.length })}</p>
-        {full && <p role="alert" className="text-label text-v2-warn">{t('legacy.editor.full')}</p>}
-        {failed && <p role="alert" className="text-label text-v2-hostile">{t('legacy.editor.failed')}</p>}
+      <div ref={focus} tabIndex={-1} data-legacy-editor className="gk-legacy gk-legacy__editor">
+        <p className="gk-legacy__note">{t('legacy.editor.hint')}</p>
+        <p aria-live="polite" className="gk-legacy__picked gk-num">{t('legacy.editor.selected', { count: picked.length })}</p>
+        {full && <Banner tone="warn" role="alert" title={t('legacy.editor.full')} />}
+        {failed && <Banner tone="hostile" role="alert" title={t('legacy.editor.failed')} />}
         {collection.length === 0
-          ? <p className="text-caption text-v2-ink-2">{t('legacy.editor.empty')}</p>
+          ? <p className="gk-legacy__note">{t('legacy.editor.empty')}</p>
           : (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="gk-legacy__grid">
               {sortLegacyAwards(collection).map(award => {
                 const index = picked.indexOf(award.id);
                 return <AwardTile key={award.id} award={award} onOpen={() => { toggle(award.id); }}

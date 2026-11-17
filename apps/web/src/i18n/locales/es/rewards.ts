@@ -20,12 +20,14 @@ export const rewards = {
   eyebrow: 'Recompensas permanentes',
   title: 'Recompensas',
   intro:
-    "Estos objetivos no caducan ni requieren una racha. Las recompensas llegan directamente al almacén, incluso por encima de su capacidad. Los recursos sin protección pueden ser saqueados.",
+    "Sin caducidad ni rachas. Va a tu almacén; lo no protegido puede ser saqueado.",
 
   waiting: '{{count}} recompensas por recoger',
   allTaken: 'Ya has recogido todas las recompensas disponibles. Habrá más cuando avances en la galaxia.',
 
   claim: 'Recoger',
+  /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  openPod: 'Abrir la cápsula',
   claimed: 'Recogida',
   /** What is still between the player and this tier. Never a scolding. */
   toGo: 'Faltan {{count}}',
@@ -41,7 +43,7 @@ export const rewards = {
 
   granted: '+{{alloy}} aleación · +{{crystal}} cristal',
   overCap:
-    'Esto superará el límite de tu almacén. No perderás nada, pero no podrás recoger más producción hasta que gastes parte de tus recursos.',
+    'Supera tu almacén: nada se pierde, pero no recogerás producción hasta gastar.',
 
   /**
    * ONE ENTRY PER CHAIN, `name` + `tag`, the same shape every card in the game

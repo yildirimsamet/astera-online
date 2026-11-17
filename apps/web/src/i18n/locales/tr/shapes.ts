@@ -15,9 +15,8 @@ export const spend = {
   shortfall: '{{short}} eksik',
 } as const;
 
-/** Sondanın bulanık okuması, olduğu gibi çizilir: `RangeBand`. */
+/** Sondanın bulanık okuması, İstihbarat sayfasının söylediği gibi. */
 export const rangeBand = {
-  join: ' – ',
   reading: '{{label}}: {{low}} ile {{high}} arasında bir yerde',
   yours: 'seninki {{value}}',
 } as const;

@@ -1,0 +1,113 @@
+# Arayüz sadeleştirme planı — 2026-11-16
+
+Owner'ın 17 maddelik incelemesinden (2026-11-16) doğan iş. Aşama 4'ün ekran dönüşümü üstüne gelir: ekranlar kite boyandı ama eski boyut, düzen ve metinleri kaldı. Bu plan onları yeniden kurar.
+
+## Amaç (owner, 2026-11-16)
+
+1. **Oyuncu ferahlasın, daralmasın.** Boşa giden dikey alan geri alınır; oyuncunun geldiği şey (gemi, bina, hedef) kaydırmadan görünür.
+2. **Bilgi yağmuru yok.** Gereksiz yazı silinir, uzun yazı kısaltılır, yine uzun kalan **infobox / akordiyon** arkasına saklanır: isteyenin önünde durur ama görmek için basmak gerekir.
+
+Her yüzeyin ölçütü: **350×812 ve 375×667'de kaydırmadan ne görünüyor?** Aynı bilgi ekranda tek bir yerde görünür.
+
+## Aşamalar
+
+| # | İş | Owner maddesi | Durum |
+|---|---|---|---|
+| S1 | Tek başlık standardı: sheet başlığı en fazla 48 px; ikon 32, tek satır başlık, bir satır üst yazı, kapat/geri 40 px; resimli başlık aynı 48 px'in zemini | 5, 10, 15 | bitti |
+| S2 | Sekme çubuğu: eşit genişlik, tek satır, 40 px; menü sekmeleri Gezegen / Araştırma / Gemi | 11 | bitti |
+| S3 | Kompakt bağlam kartı (alt kart): saldırı, etkinlik, öneri; yazı ve düğme küçülür, dikeyde ~%40 kısalır | 1 | bitti (saldırı/öneri 175→108 px, olay 118→96) |
+| S4 | Görsel kart oranı: kart resminin %70–80'i görünür, kart gereksiz uzamaz | 7 | bitti (menü karosu tam genişlik, bina kartı 16:9 pencere; mağaza/envanter zaten tam) |
+| S5 | Kit'e standart `Fold` (akordiyon) ve `InfoPeek` kullanımı; uzun kural metni bunların arkasına | 2. amaç | bitti |
+| S6 | Yazım kuralı: bilineni yazma, tek cümle, kural ⓘ'de (`docs/ux-writing.md`'ye ek) | 17 | bitti (§3.1) |
+| H1 | Galaksi HUD bölgeleri: status bar altı tam genişlikte uçuş şeridi + toast; sol sütun durum rozetleri (sıkı); sağ üst bulunabilecekler; altında 2×2 araç (teleskop, dünyalar, market, zil); çevrimiçi sayısı gizli; etkinlik bitiş şeridi olduğu gibi | 2, 3, 4 | bitti |
+| H2 | Eve dön düğmesi: zaten evdeyken ne yaptığı görünür olsun ya da gizlensin | 12 | bitti (her basışta evde halka + "Buradasın"; HUD harita etiketlerinin üstünde) |
+| E1 | Filo sekmesi: Onur/duruş bloğu akordiyona, gemiler kaydırmadan görünür; gemi kartında saldırı/savunma/hız | 8, 9 | bitti (kit `Fold`; duruş ve klan desteği tek satır, alarmda açık; kartta saldırı/defans/hız; sekme tanıtım cümlesi ve Hangar odasının tekrar eden cümlesi kalktı) |
+| E2 | Gemi üretim kartı baştan | 10 | bitti (istatistikler sıkı ızgara, kalkan kuralı kendi ⓘ'sinde, Maks nedeni kısa — kaydırma 97→28 px; sınıf çipleri ve döngü küçük (O10)) |
+| E3 | Saldırı sheet'i baştan (owner, 2026-11-16 ek): kit'in basılı tutmalı gemi kartları (`UnitCard`), hız ilerleme çubuğu gibi (solda solucan/yavaş renk, sağda roket/alev), kısa ekranda gemi alanı korunur, uyarılar tek satır + ⓘ | 16, 17, ek | bitti (kartlar, gaz kolu tüm uçuşlarda, tek satır fiyat, kısa ekranda cetvel kayar, eşleşme payları ⓘ'de) |
+| E7 | Focus: Ölüm Yıldızı akordiyonu silah yokken de görünür (kırmızı, radyasyon sarı), açınca üretim şartı | ek | bitti |
+| E4 | Klan sheet'i sekmelere (Bul / Kur / Neden); kuramayan oyuncuya form kilitli | 6 | bitti — O5 ile birlikte: kapı açılmadan form yok, yalnız eksik koşul + kilitli düğme |
+| E5 | Ödüller: hangi ödülün açıldığı belli; parlama kutuya sıkışmaz; bir ödül alınırken diğerleri pasif, yükleniyor değil | 13, 14 | bitti — kapsülün altında hangi ödül (zincir adı · hedef) ve içindeki miktar; açılınca yalnız ad kalır, miktarı ganimet söyler. Işınlar artık kapsülün kutusunda kesilmiyor (yalnız yanlardan, tam satır genişliğinde). Bir ödül alınırken yalnız o döner; diğerleri pasif, adıyla durur |
+| E6 | Kalan oyun ekranlarında metin taraması (altı dil) | 17 | bitti |
+| O1 | Anıt: galaksideki etiket ve alt kartta radyasyon ikonu | ek-1 | bitti (radyasyon çubuğunun başında ve anıt kartının radyasyon satırında radyasyon işareti; harita etiketi aynı çubuğu kullanıyor) |
+| O2 | Anıt focus sheet'i: alta uzayan tek sütun yerine sekme / ⓘ / akordiyon | ek-2 | bitti (kurallar bilgi kartının ⓘ'sinde, radyasyon göstergesi ve sonda+rapor akordiyonda, Honor notu gönderme bölümünün başında; 1427→1127 px. Sonraki adım adayı: Durum / Gönder sekmeleri) |
+| O3 | Çökme: "useToast called outside ToastProvider" (arka plandan dönüşte) — kök neden + düzelt; bir yüzeyin hatası bütün oyunu düşürmesin (yüzey başına hata sınırı) | ek-3 | bitti (kök neden: geliştirme sunucusunda kit düzenlemesi `Toast.tsx`'i yeniden çalıştırıp yeni context üretiyordu; context'ler artık yalnız React'e bağlı `toastContext.ts`'te. Her sheet gövdesinde `PanelBoundary`: hata o panelde kalır, \"Tekrar dene\") |
+| O4 | Liderlik tablosu: sıralama ilk ekranda; ödül ve kural metni ⓘ / sekmeye (CoC, Survivor.io, Whiteout Survival incelenir) | ek-4 | bitti — Honor/Hâkimiyet altında Sıralama · Ödüller · Kurallar şeridi; sıralama ilk açılışta (tek satır "senin sıran", arama, liste); ödül kartları Ödüller'de; kurallar başlıklı açılır kutular (6 dil). 350px'te ilk ekranda 3 rakip + podyum görünür (önce: liste 1.400 px aşağıda) |
+| O5 | Klan sheet'i sekmelere: ara / listele / kur / klanım (E4 ile birleşik) | ek-5 | bitti — klansız ekran üç sayfa: Bul (istekler + dizin, rozetle davet sayısı) · Kur (kapı, form yalnız koşul karşılanınca) · Neden (avantajlar). Eski klan ganimeti tek satır, sekmelerin üstünde. Sekmeler 350px'te 1.995 px'lik tek sütun yerine ilk ekranda |
+| O6 | Savaş raporu baştan: sonuç önce, kısa, soru bırakmayan | ek-6 | bitti — sonuç sahnesi (karar, neden, iki taraf, ganimet, bilanço, İzle/Yeniden saldır) üstte; dört soru (Ne oldu · Karşıda ne vardı · Filona ne oldu · Ne değişti) kapalı katlanır kutu, başlıkta özet (3 tur, +120); İzle turları açıp kaydırır; Yeniden saldır tek yerde; ganimet sayısı kırılmıyor. 350px'te rapor 4.350 → ~1.370 px |
+| O7 | Galaksi sol üst zaman rozetleri türüne göre renkli (kalkan yeşil, ticaret sarı, konvoy kırmızı…) | ek-7 | bitti (kalkan ve toparlanma takviyesi yeşil, sinyal takviyesi turkuaz, tatil mavi; göktaşı yağmuru mavi, ticaret sarı, konvoy kırmızı) |
+| O8 | Profil sayfasının sonu: hesabı sil sakin, çıkış en altta; kırmızı tehlike düğmeleri kibar | ek-8 | bitti (hesabı sil küçük, gri bir satır, kırmızı yalnız işaretinde; çıkış en altta; Sunucular ekranında da aynı sakin satır) |
+| O9 | Saldırı sheet'i: kart içi satırlar yan kartla hizalı, kargo rengi, hız çubuğunu sola sürükleme hatası, kalkan uyarısı kırmızı ve üst boşluğu az | ek-9 | bitti (kart satırları sabit, kargo yeşil, kalkan satırı kırmızı ve yakın; hız çubuğunun dokunma alanı tutamağı kapsıyor — tarayıcıda sola sürükleme doğrulandı) |
+| O10 | Sınıf üstünlüğü (counter) bilgi elemanları küçülür | ek-10 | bitti (eşleşme çipleri 28→22 px, döngü basamakları tek satır ~70→28 px) |
+| O11 | Üst bilgi şeritleri (uçuş/iş bitiyor) daha ince; altındaki rozetlerle 8 px; sol ve sağ rozetler aynı hizada | ek-11 | bitti (şerit 58→38 px, halka 28 px, alt satır tek satır; altında 8 px; sol ve sağ rozetler 109 px'te aynı hizada) |
+| O12 | Filo sekmesi toplanır (E1) | ek-12 | bitti (E1) |
+| O13 | Gezegen / Araştırma / Gemi geçişinde sekme çubuğunun genişliği ve yan boşluklar sabit (Gezegen'deki gibi) | ek-13 | bitti (Araştırma ve Gemi de kenardan kenara; sekme çubuğu üçünde 13 px / 324 px, içerik 12 px kenarda) |
+| O14 | Birden fazla gezegende sol üstteki gezegen düğmesi kompakt ve kit'e uygun | ek-14 | bitti (gezegen düğmesi diğer rozetler gibi 28 px hap, turkuaz, açılır işaretli) |
+| O15 | Mağaza kategori kutuları kompakt | ek-15 | bitti (iki satır kutu yerine tek satır kaydırılabilir çip şeridi, ~150→36 px; açık olan görünür alana kayar) |
+| O16 | Komutan menüsü: "Oyuna dön" kalkar; yanındaki iki düğme düzgün | ek-16 | bitti (\"Oyuna dön\" ve metni kalktı; ana ekran ve tam ekran iki eşit çerçeveli düğme, uzun dilde iki satıra sarar) |
+| O17 | Komutan gemisi: "Yarık'a gir" düğmesinin altındaki boşluk kapanır | ek-17 | bitti (dock sheet'in tabanına iniyor; düğme kenardan 8 px yukarıda, altında içerik görünmüyor) |
+| K | Kapanış: altı dil, 350/375×667/masaüstü, tam test, görsel denetim | — | bitti |
+
+Sıra: S1 → S2 → S3 → H1 → H2 → S4 → S5/S6 → E1 → E2 → E3 → E4 → E5 → E6 → K.
+
+Owner'ın ikinci listesi (ek-1…ek-17, 2026-11-17) eklendi. Yeni sıra: O3 (çökme) → O9 → O11 → O7 → O13 → O8 → O16 → O17 → O14 → O15 → O10 → O1 → O2 → O4 → O5/E4 → O6 → E2 → E5 → E6 → K.
+
+**Genel kural (owner, ek-2):** alta doğru uzayan tek sütun section yığını yanlıştır, hiçbir yerde kullanılmaz. Bir yüzey çok uzuyorsa sekme, ⓘ ya da akordiyonla çözülür. Her birim: incele → test (mantık için TDD) → yap → ölç/fotoğrafla → commit → master.
+
+## Kapsam: oyunun tamamı (owner, 2026-11-16)
+
+> "Bir kaç yeri düzeltip diğer yerleri, oyunun yarısını unutma."
+
+Owner'ın gösterdiği ekranlar örnektir. Her standart (S1–S6) ve her yazı taraması **aşağıdaki bütün yüzeylere** uygulanır; bir standart ancak bütün satırlarda doğrulanınca kapanır. Bu iş boyunca çekilmiş fotoğraflar (`out/ui-audit/*`, `out/galaksi-her-sey/`) ve galeri görünümlerinin tamamı her standart için yeniden taranır.
+
+Yüzeyler (`packages/ui-audit/src/inventory.ts`, G14/G15 hariç), parantezde ekrana özel maddeler:
+
+G1 galaxy-hud (H1, H2, S3) · G1 bell · G1 menu (S2, S4: menü kartları) · G1 now-line · G1 outline
+G2 fleet (E1) · G2 planet (E1, E2, S4) · G2 queue · G2 research (S2) · G2 worlds
+G3 events-guide · G3 intel (S2) · G3 view-sheet
+G4 convoy · G4 focus · G4 launch (E3) · G4 peek · G4 settlement · G4 strike · G4 trade · G4 transfer · G4 unknown-signal
+G5 away · G5 battle-replay · G5 chronicle · G5 reports
+G6 cosmetic-trial · G6 donate · G6 inventory · G6 rewards (E5) · G6 shop
+G7 clan (E4) · G7 clan-support
+G8 announcements · G8 chat · G8 feedback · G8 notifications
+G9 leaderboard · G9 monument · G9 season-recap
+G10 legacy · G10 profile · G10 servers · G10 silent-space
+G12 arena
+Son sırada: G11 simulator / wiki-sheet / wiki-public · G13 faults / landing / loading (yalnız denetim)
+
+| Standart | Nasıl doğrulanır | Durum |
+|---|---|---|
+| S1 başlık 48 px | `Sheet` bileşeninden gelir; 48 galeri görünümünde ölçüm (yükseklik + kesilme) tr/de/fr/ja; bütün oyun için sabit başlık uzunluğu testi (`sheet-head-copy.test.ts`) | bitti (rapor başlığı ve dinamik uzun başlıklar E3/rapor biriminde) |
+| S2 sekme | `GameTabs` kullanan her yüzey; eşit genişlik ölçümü | bitti (5 dilde ölçüldü) |
+| S3 alt kart | `ContextCard` / `ContextStrip` her hâli (saldırı, etkinlik, öneri, seçili) | bitti (tr/de/ja ölçüldü) |
+| S4 görsel kart | resimli her kart (bina, gemi, menü, mağaza, araştırma) — görünen resim oranı ölçülür | bitti (ölçüldü; mağaza karosunun kare resmi %47, bilinçli) |
+| S5/S6 yazı | her yüzeyin her paragrafı: sil / kısalt / ⓘ ya da akordiyona; altı dil | bitti (88 galeri görünümü tarandı; G14/G15 ve public/Wiki hariç) |
+
+## Not defteri
+
+### Dosya haritası
+- Sheet başlığı: `apps/web/src/v2/kit/Sheet.tsx` (~257, kit başlığı; `quietTitle` ve kit'siz düz başlık ayrı dallar). CSS: `game-ui/game-ui.css` `.gk-sheet__head/__art/__eyebrow/__title/__meta` (~4529), resimli başlık `styles/atmosphere.css` `.sheet-art-head`.
+- Kit'in sunum kopyası: `game-ui/surfaces.tsx` `SheetFrame` (aynı sınıflar).
+- Bağlam kartı: `game-ui/surfaces.tsx` `ContextCard`, `ContextStrip`; yerleşim `v2/hud/ContextSlot.tsx`.
+- HUD: `v2/shell/HudTop.tsx` (StatusLine, NowLine), `v2/hud/GalaxyCorners.tsx` (GalaxyReadout, HomeChip, ViewChip, EventChips), `screens/GalaxyView.tsx` (~1345 köşe düğmeleri, ~1360 readout).
+- Bilgi açma: `game-ui/controls.tsx` `InfoPeek`.
+- Galeride tam dolu galaksi: `?view=hud-everything` / `hud-everything-calm` (`v2/gallery/hudEverything.ts`).
+
+### Doğrulanmış olgular
+- Bugünkü kit başlığı: tutamak satırı ~16 px + başlık (4 margin + 8+8 padding + 58 px resim) ≈ 96–100 px; başlık 24 px büyük harf ve sarar.
+- 41 dosya `kit={{…}}` ile sheet açıyor, 49 dosya `<Sheet` kullanıyor.
+
+### Kurallar
+- TDD: CSS/className hariç her değişiklik önce test.
+- Admin (G14) ve onboarding/starter (G15) bu planın dışında.
+- Metin değişikliği altı dilde birlikte yapılır.
+
+## İlerleme
+- 2026-11-16: plan yazıldı; S1 başladı.
+- 2026-11-16: S1, S2, H1 bitti (başlık 48 px, yumuşak geçiş, eşit boşluk; sekmeler eşit; HUD bölgeleri, araçlar 2×2, tek araç sağda). E7 bitti. Sıradaki: S3, E3.
+- 2026-11-16: E3 bitti (saldırı sheet'i: basılı tutmalı gemi kartları, solucan→roket hız çubuğu, tek satır fiyat + ⓘ); S3 bitti (alt kartlar ~%40 kısa). Sıradaki: H2, S4.
+- 2026-11-16: H2 bitti; ayrıca harita etiketleri HUD araçlarını örtüyordu (z-index), düzeltildi. Sıradaki: S4.
+- 2026-11-16: S4 bitti. Üs'ün beşli sekmesinde kelime ortadan kırılıyordu: sekme 1 px yan boşluk + 0 harf aralığı, uzun kelimeler kısaldı (Taktik, Economy, Ausbau, Fábricas, Usines; akademi metni de). Sıradaki: S5/S6, E1.
+- 2026-11-17: E1 bitti: kit'e `Fold` (S5'in ilk parçası; Ölüm Yıldızı/radyasyon katlanırları da bunu kullanıyor). Owner'ın ikinci 17 maddelik listesi plana eklendi (O1–O17). Sıradaki: O3.
+- 2026-11-17: O3, O9, O11, O7, O13, O8, O16, O17, O14, O15, O10, O1, O2 bitti (önceki oturumlarda). O4 (liderlik: Sıralama · Ödüller · Kurallar), O5/E4 (klansız ekran: Bul · Kur · Neden), O6 (savaş raporu: sonuç sahnesi + dört kapalı soru), E5 (ödül kapsülü) bitti. Sıradaki: E6 + S5/S6 yazı taraması, yüzey yüzey.
+- 2026-11-17: E6 + S5/S6 bitti. 88 galeri görünümünde 70+ karakterlik paragraflar tarandı; dört partide (302976b8'e kadar, son parti 597bc490) kural metinleri ⓘ'ye, uzun satırlar tek cümleye indi; `test/copy-length.test.ts` her kısaltılmış satırı altı dilde boy sınırında tutar. Karar anında gereken kurallar (koloni korunur, talep önceliği, anıt filo şartları) bilerek ekranda kaldı. Sıradaki: K.
+- 2026-11-17: K bitti. Tam web paketi: 1007 dosya, 11.720 test; benim değişikliklerimin bozduğu 14 test (sezon arşivi ödül sayfası, sekme ve akademi "Economy" adı) düzeltildi; kalan kırmızı yalnız bilinen üçlü (type-scale wiki-room, icons i-clan ×2). Typecheck 0. Görsel denetim: DE/JA 350×812, TR 375×667, EN masaüstü; klan ganimet düğmesi DE/ES/FR'de kısaldı. Aday (yapılmadı): anıt sayfası ~1,6 ekran, Filoların/Gönder sekmeleri düşünülebilir.

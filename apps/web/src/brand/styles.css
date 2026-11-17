@@ -1,11 +1,4 @@
 @layer components {
-  .brand-small {
-    color: var(--color-v2-self);
-    font-family: var(--font-v2-ui);
-    font-size: 13px;
-    font-weight: 650;
-    letter-spacing: 0.025em;
-  }
   .brand-star-mark { color: var(--color-v2-self); font-size: 13px; }
   .brand-masthead {
     position: relative;
@@ -73,99 +66,6 @@
     border-radius: var(--radius-control);
   }
   .brand-masthead-shop:active .brand-masthead-shop-face { transform: translateY(1px); }
-  .brand-masthead-fullscreen {
-    display: grid;
-    width: 44px;
-    height: 44px;
-    place-items: center;
-    flex-shrink: 0;
-    color: var(--color-v2-ink-2);
-    cursor: pointer;
-    touch-action: manipulation;
-  }
-  .brand-masthead-fullscreen-face {
-    display: grid;
-    width: 32px;
-    height: 30px;
-    place-items: center;
-    border: 1px solid var(--color-v2-line-hi);
-    border-radius: var(--radius-control);
-    background: var(--color-v2-deep);
-    transition: border-color 160ms, color 160ms, background-color 160ms;
-  }
-  .brand-masthead-fullscreen:hover .brand-masthead-fullscreen-face,
-  .brand-masthead-fullscreen[aria-pressed="true"] .brand-masthead-fullscreen-face {
-    color: var(--color-v2-self);
-    border-color: color-mix(in srgb, var(--color-v2-self) 55%, transparent);
-    background: color-mix(in srgb, var(--color-v2-self) 8%, var(--color-v2-deep));
-  }
-  .brand-masthead-fullscreen:focus-visible { outline: 2px solid var(--color-v2-self); outline-offset: -2px; border-radius: var(--radius-control); }
-  .brand-masthead-fullscreen:disabled { cursor: default; }
-  .brand-masthead-fullscreen[aria-busy="true"] { opacity: .55; }
-  .brand-return-card {
-    position: fixed;
-    z-index: 35;
-    bottom: calc(var(--v2-dock-h, 64px) + 8px);
-    left: 8px;
-    right: 8px;
-    max-width: 350px;
-    margin-inline: auto;
-    padding: 12px;
-    border: 1px solid var(--color-v2-line-hi);
-    border-radius: 12px;
-    background: var(--color-v2-panel);
-    box-shadow: 0 12px 40px color-mix(in srgb, var(--color-v2-void) 75%, transparent);
-    font-family: var(--font-v2-ui);
-  }
-  .brand-panel { display: flex; flex-direction: column; gap: 14px; padding: 0 20px 20px; outline: none; color: var(--color-v2-ink); font-family: var(--font-v2-ui); background: radial-gradient(ellipse at 0 0, color-mix(in srgb, var(--color-v2-self) 4%, transparent), transparent 65%); }
-  .brand-panel-lockup { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-  .brand-panel-sigil { display: block; width: 27px; height: 27px; color: var(--color-v2-self); }
-  .brand-panel-wordmark { display: block; width: 100px; height: 17px; }
-  .brand-panel-wordmark svg, .brand-panel-sigil svg { display: block; width: 100%; height: 100%; }
-  .brand-panel-lockup > span:last-child { padding-left: 10px; border-left: 1px solid var(--color-v2-line-hi); color: var(--color-v2-self); font-size: 8px; letter-spacing: .2em; text-transform: uppercase; }
-  .brand-panel-heading { margin: 0; font-size: 20px; font-weight: 620; line-height: 1.2; letter-spacing: -.025em; }
-  .brand-panel-description { margin: -4px 0 2px; color: var(--color-v2-ink-2); font-size: 13px; line-height: 1.5; }
-  .brand-panel-label { margin: 0; color: var(--color-v2-ink-2); font-size: 10px; line-height: 1.4; font-weight: 550; }
-  .brand-panel-note { margin: 0; color: var(--color-v2-ink-2); font-size: 11px; line-height: 1.5; }
-  .brand-panel-notice { margin: 0; padding: 10px 12px; border-left: 2px solid var(--color-v2-warn); border-radius: 0 5px 5px 0; background: color-mix(in srgb, var(--color-v2-warn) 5%, transparent); color: var(--color-v2-ink-2); font-size: 12px; line-height: 1.5; }
-  .brand-address-box { padding: 14px 12px; border: 1px solid var(--color-v2-line); border-radius: 6px; background: var(--color-v2-deep); }
-  .brand-address-box p { margin: 0; text-align: center; color: var(--color-v2-ink); font-family: var(--font-v2-mono); font-size: 15px; }
-  .brand-address-box p span, .brand-quiz-address span { color: var(--color-v2-self); }
-  .brand-install-steps { display: flex; flex-direction: column; gap: 12px; margin: 4px 0 0; padding: 0; list-style: none; }
-  .brand-install-steps li { display: flex; align-items: center; gap: 12px; }
-  .brand-install-steps li > span { display: grid; place-items: center; flex-shrink: 0; width: 27px; height: 27px; border: 1px solid color-mix(in srgb, var(--color-v2-self) 25%, var(--color-v2-line)); border-radius: 50%; background: color-mix(in srgb, var(--color-v2-self) 4%, var(--color-v2-deep)); color: var(--color-v2-self); font-family: var(--font-v2-mono); font-size: 11px; }
-  .brand-install-steps strong { font-size: 13px; font-weight: 500; line-height: 1.35; }
-  .brand-install-guide { margin: 0; padding-block: 12px; border-block: 1px solid var(--color-v2-line); color: var(--color-v2-ink-2); font-size: 13px; line-height: 1.65; }
-  .brand-bookmark-guide { display: flex; align-items: center; gap: 10px; padding-block: 16px; border-block: 1px solid var(--color-v2-line); }
-  .brand-bookmark-guide > div { min-width: 0; flex: 1; }
-  .brand-bookmark-guide .brand-panel-label { color: var(--color-v2-ink); font-size: 13px; margin-bottom: 4px; }
-  .brand-bookmark-guide kbd { display: flex; align-items: center; gap: 6px; padding: 7px 9px; border: 1px solid var(--color-v2-line-hi); border-radius: 5px; background: var(--color-v2-raise); color: var(--color-v2-self); font-family: var(--font-v2-mono); font-size: 12px; white-space: nowrap; box-shadow: 0 2px 0 var(--color-v2-deep); }
-  .brand-bookmark-guide kbd span { color: var(--color-v2-ink-3); }
-  .brand-quiz-panel > .brand-panel-label { margin-bottom: -7px; color: var(--color-v2-self); }
-  .brand-reward-tray { padding: 12px 0 14px; border-block: 1px solid var(--color-v2-line); }
-  .brand-reward-values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 10px 0 0; }
-  .brand-reward-values > div { position: relative; text-align: center; }
-  .brand-reward-values > div + div { border-left: 1px solid var(--color-v2-line); }
-  .brand-reward-values dt { display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--color-v2-ink-2); font-size: 10px; line-height: 1.5; }
-  .brand-reward-values dt img { width: 32px; height: 32px; object-fit: contain; }
-  .brand-reward-values dd { margin: 3px 0 0; font-family: var(--font-v2-mono); font-size: 19px; font-weight: 500; letter-spacing: -.04em; line-height: 1.2; }
-  .brand-reward-values [data-resource=alloy] dd { color: var(--color-v2-alloy); }
-  .brand-reward-values [data-resource=crystal] dd { color: var(--color-v2-crystal); }
-  .brand-reward-values [data-resource=deuterium] dd { color: var(--color-v2-deut); }
-  .brand-quiz-choices { display: flex; flex-direction: column; gap: 8px; }
-  .brand-quiz-choice { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 49px; padding: 8px 12px; border: 1px solid var(--color-v2-line-hi); border-radius: 6px; background: var(--color-v2-deep); color: var(--color-v2-ink); cursor: pointer; transition: background 180ms, border-color 180ms; }
-  .brand-quiz-choice:hover, .brand-quiz-choice:focus-visible, .brand-quiz-choice[data-selected] { outline: none; border-color: var(--color-v2-self); background: color-mix(in srgb, var(--color-v2-self) 5%, var(--color-v2-deep)); }
-  .brand-quiz-choice[data-wrong] { border-color: var(--color-v2-warn); }
-  .brand-quiz-choice:disabled { cursor: wait; opacity: .6; }
-  .brand-choice-letter { display: grid; place-items: center; width: 23px; height: 23px; flex-shrink: 0; border: 1px solid var(--color-v2-line-hi); border-radius: 4px; color: var(--color-v2-ink-3); font-family: var(--font-v2-mono); font-size: 10px; }
-  .brand-choice-address { flex: 1; text-align: left; font-family: var(--font-v2-mono); font-size: 12px; white-space: nowrap; }
-  .brand-choice-address span { color: var(--color-v2-ink-2); }
-  .brand-quiz-choice > svg { color: var(--color-v2-ink-3); }
-  .brand-quiz-choice[data-selected] .brand-choice-letter, .brand-quiz-choice:hover .brand-choice-letter { color: var(--color-v2-self); }
-  .brand-quiz-complete { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
-  .brand-success-mark { display: grid; place-items: center; width: 42px; height: 42px; flex-shrink: 0; border: 1px solid color-mix(in srgb, var(--color-v2-self) 30%, var(--color-v2-line)); border-radius: 50%; background: color-mix(in srgb, var(--color-v2-self) 6%, var(--color-v2-deep)); color: var(--color-v2-self); }
-  .brand-quiz-address { margin: 0; color: var(--color-v2-ink); font-family: var(--font-v2-mono); font-size: 17px; letter-spacing: -.035em; }
-  @media (min-width: 1100px) { .brand-return-card { left: auto; right: 24px; bottom: 24px; width: 350px; } }
   .brand-masthead-wordmark svg, .brand-masthead-sigil svg { display: block; width: 100%; height: 100%; }
   @media (min-width: 700px) {
     .brand-masthead { padding-inline: 15px; }

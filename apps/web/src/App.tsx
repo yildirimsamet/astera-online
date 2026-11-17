@@ -27,7 +27,7 @@ import { WorldProvider } from './api/world.js';
 import { LocalAlertSync } from './shell/LocalAlertSync.js';
 import { PushDeviceSync } from './shell/PushDeviceSync.js';
 import { PushOpenRoute } from './shell/PushOpenRoute.js';
-import { Button } from './ui/kit/index.js';
+import { BlockedScreen } from './shell/BlockedScreen.js';
 const ArrivalHost = lazy(() => import('./starter/ArrivalHost.js').then(module => ({ default: module.ArrivalHost })));
 const GameShell = lazy(() => import('./v2/shell/GameShell.js').then(module => ({ default: module.GameShell })));
 import { WebLandingGate } from './landing/public/WebLandingGate.js';
@@ -39,7 +39,7 @@ import { MaintenanceScreen } from './shell/MaintenanceScreen.js';
 import { dismissProfile, leaveProfile, useProfileRoute } from './shell/profileRoute.js';
 import { ProfileHost } from './shell/ProfileHost.js';
 import { commanderKnownHere } from './lib/returning.js';
-import type { StripFocus } from './shell/PendingStrip.js';
+import type { StripFocus } from './lib/airborne.js';
 import {
   nextPanelFocus,
   nextPanelStop,
@@ -255,13 +255,7 @@ function SessionApp() {
 
   if (session.phase === 'blocked') {
     if (publicWeb) return <LandingScreen onAuthenticate={authenticate} onBegin={rehearse} error={session.message} onRetry={retry} />;
-    return (
-      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-8 text-center">
-        <p className="legend">{t('app.blockedTitle')}</p>
-        <p className="text-body text-dim">{session.message}</p>
-        <Button onClick={retry}>{t('app.blockedRetry')}</Button>
-      </main>
-    );
+    return <BlockedScreen message={session.message} onRetry={retry} />;
   }
 
   if (academyReplay) return <TrainingDoor replay onClaim={() => Promise.reject(new Error('REPLAY_ONLY'))}
@@ -294,7 +288,7 @@ function SessionApp() {
           setPanel(null);
           setCraftFocus((current) => ({ focus, request: (current?.request ?? 0) + 1 }));
         }}
-        galaxy={({ homeRequest, worldsRequest, centerRequest, clearRequest, onPanel, onOpenChat }) => (
+        galaxy={({ homeRequest, worldsRequest, centerRequest, clearRequest, onPanel, onOpenChat, onOpenBell }) => (
           <>
           <GalaxyView
             onSceneReady={analyticsSceneReady}
@@ -322,6 +316,7 @@ function SessionApp() {
             centerRequest={centerRequest}
             clearRequest={clearRequest}
             onOpenChat={onOpenChat}
+            onOpenBell={onOpenBell}
           />
           {!session.me.vessel && <ArrivalHost onPanel={onPanel} />}
           {profileOpen && <ProfileHost name={session.me.displayName} country={session.me.country} onCountryChange={updateCountry}

@@ -1,6 +1,6 @@
 export const silentSpace = {
   title: "Te trasladamos al Espacio Silencioso",
-  body: "En 30 horas no iniciaste ningún ataque, mejora de edificio, investigación ni orden de naves o defensas, así que trasladamos tus planetas al Espacio Silencioso. Tus planetas y tu progreso se conservan.",
+  body: "30 horas sin ataques, mejoras, investigación ni órdenes: tus planetas están en el Espacio Silencioso. Todo se conserva.",
   closed: "Aquí están cerrados los ataques, la recolección de asteroides y restos, los ataques piratas, las rutas comerciales y los ataques al convoy.",
   production: "La producción de recursos funciona al 50 %. Los edificios, la investigación y las órdenes de naves siguen abiertos.",
   returnTo: 'Aplicar aquí para volver a {{galaxy}}.',
@@ -12,7 +12,7 @@ export const silentSpace = {
   reminder: 'Puedes aplicar más tarde desde Menú → Espacio Silencioso.',
   queued: 'Su solicitud de devolución está en cola',
   position: '{{galaxy}} · Posición {{position}}',
-  queueHint: 'Cuando se abre el espacio, se considera la solicitud elegible más antigua. Los vuelos o el espacio planetario insuficiente pueden retrasar su regreso, pero usted mantiene su prioridad.',
+  queueHint: 'Al liberarse espacio, entra la solicitud más antigua; un retraso no te quita el turno.',
   expiry: 'Su aplicación caduca después de 48 horas de inactividad.',
   unavailable: 'Tu antigua galaxia no acepta solicitudes de devolución en este momento.',
 };

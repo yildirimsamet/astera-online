@@ -80,7 +80,18 @@ describe('the galaxy corners (owner, 2026-09-24)', () => {
   /** Owner, 2026-09-24: low on the right, riding the slot's corner, opening chat's own page. */
   it('opens chat from low on the right, above the slot, and never in the rehearsal', () => {
     expect(source).toMatch(/const chatButton = showGuidance && showChat && gate\.open\('chat'\)\s*\?\s*<ChatChip[\s\S]*?onPanel\('chat'\)/);
-    expect(source).toMatch(/corner: chatButton/);
+  });
+
+  /** Owner 2026-11-14: "Zil butonunu galaksi ekranında sağ alttaki chat butonunun soluna taşısak". */
+  /** H1 (owner 2026-11-16): off a ship the bell stands with the galaxy's tools; aboard, it keeps the chat's corner. */
+  it('seats the bell left of the chat only aboard a ship, and with the galaxy’s tools elsewhere', () => {
+    expect(source).toMatch(/const bellButton = onOpenBell\s*\?\s*<SignalBell \{\.\.\.bellState\(bell\.data\?\.notifications \?\? \[\], now\)\} onOpen=\{onOpenBell\} \/>/);
+    expect(source).toMatch(/const cornerBell = ship \? bellButton : null;/);
+    expect(source).toMatch(/const cornerButtons = cornerBell \|\| chatButton[\s\S]{0,240}\{cornerBell\}\{chatButton\}/);
+    expect(source).toMatch(/\{!ship && bellButton\}/);
+    expect(source).toMatch(/corner: cornerButtons/);
+    expect(source).not.toMatch(/\{chatButton &&/);
+    expect(source).not.toMatch(/corner: chatButton/);
   });
 });
 

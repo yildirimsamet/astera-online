@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { SHIP_CLASSES, TACTICS, abilityRank, abilityStats, hitShare, shipStats, type AbilityPoints, type ShipClass, type Tactic } from '@astera/rules/arena';
 import { ACTION_ICONS, SIGNATURE_ICONS } from './Controls.js';
+import { Choices } from '../game-ui/index.js';
 import i18n from '../i18n/index.js';
 import type { ArenaCopy } from './copy.js';
 
@@ -33,23 +34,21 @@ export function classStatRows(c: ArenaCopy, level = 1): readonly ClassStatRow[] 
  */
 export function ClassPicker({ c, value, onPick }: { c: ArenaCopy; value: ShipClass; onPick: (ship: ShipClass) => void }) {
   const signature = abilityStats(value, 'signature', 1);
-  return <section className="ap-class" aria-label={c.shipTitle}>
-    <div className="ap-mode is-three" role="radiogroup" aria-label={c.shipTitle}>
-      {SHIP_CLASSES.map(ship => <button key={ship} type="button" role="radio" aria-checked={ship === value} data-ship={ship}
-        className={ship === value ? 'is-selected' : ''} onClick={() => { onPick(ship); }}>{c.classes[ship].name}</button>)}
-    </div>
-    <p className="ap-class-line"><b>{c.classes[value].role}</b> · {c.classes[value].line}</p>
-    <p className="ap-class-signature"><i aria-hidden>{SIGNATURE_ICONS[value]}</i><b>{c.signatures[value].name}</b><span>{c.signatures[value].line(one(signature.power), one(signature.cooldown))}</span></p>
-    <ul className="ap-class-stats">
+  return <section className="gk-arenapanel gk-shipclass" data-ship={value} aria-label={c.shipTitle}>
+    <Choices label={c.shipTitle} value={value} onChange={onPick} options={SHIP_CLASSES.map(ship => ({ id: ship, label: c.classes[ship].name }))} />
+    <p className="gk-shipclass__line"><b>{c.classes[value].role}</b> · {c.classes[value].line}</p>
+    <p className="gk-shipclass__sig"><i aria-hidden>{SIGNATURE_ICONS[value]}</i><b>{c.signatures[value].name}</b><span>{c.signatures[value].line(one(signature.power), one(signature.cooldown))}</span></p>
+    <ul className="gk-shipclass__stats">
       {classStatRows(c).map(row => {
         const best = Math.max(...SHIP_CLASSES.map(row.value));
         return <li key={row.key} style={{ '--fill': String(row.value(value) / best) } as React.CSSProperties}>
-          <span>{c.classStats[row.key]}{row.value(value) >= best - 1e-9 && <em data-best="" aria-hidden> ★</em>}</span><strong>{row.text(row.value(value))}</strong>
+          <span className="gk-shipclass__name">{c.classStats[row.key]}{row.value(value) >= best - 1e-9 && <em data-best="" aria-hidden> ★</em>}</span>
+          <strong className="gk-num">{row.text(row.value(value))}</strong>
           <i aria-hidden><b /></i>
         </li>;
       })}
     </ul>
-    <p className="ap-class-key">{c.classKey}</p>
+    <p className="gk-note gk-shipclass__key">{c.classKey}</p>
   </section>;
 }
 
@@ -62,21 +61,24 @@ export function TacticPicker({ c, value, value2, onPick, ship = 'kilavuz', point
 }) {
   const [slot, setSlot] = useState<1 | 2>(1);
   const second = value2 ?? (value === 'cloak' ? 'smoke' : 'cloak');
-  return <section className="ap-tactic" aria-label={c.tacticTitle}>
-    <p className="ap-tactic-head"><span>{c.tacticTitle}</span><small>{c.tacticKey}</small></p>
-    <div className="ap-tactic-slots" role="group" aria-label={c.tacticTitle}>
-      {([1, 2] as const).map(index => <button key={index} type="button" data-slot={index} aria-pressed={slot === index}
-        onClick={() => { setSlot(index); }}><kbd>{index === 1 ? 'E' : 'C'}</kbd><span>{c[index === 1 ? value : second]}</span><i aria-hidden>{ACTION_ICONS[index === 1 ? value : second]}</i></button>)}
+  const held = (tactic: Tactic): 'E' | 'C' | undefined => tactic === value ? 'E' : tactic === second ? 'C' : undefined;
+  return <section className="gk-tactics" aria-label={c.tacticTitle}>
+    <p className="gk-tactics__head"><span className="gk-label">{c.tacticTitle}</span><small className="gk-sub">{c.tacticKey}</small></p>
+    <div className="gk-tactics__slots" role="group" aria-label={c.tacticTitle}>
+      {([1, 2] as const).map(index => <button key={index} type="button" className="gk-tactics__slot" data-slot={index} aria-pressed={slot === index}
+        onClick={() => { setSlot(index); }}><kbd className="gk-tactics__key">{index === 1 ? 'E' : 'C'}</kbd><span>{c[index === 1 ? value : second]}</span><i aria-hidden>{ACTION_ICONS[index === 1 ? value : second]}</i></button>)}
     </div>
-    <div className="ap-tactic-options" role="radiogroup" aria-label={c.tacticTitle}>
+    <div className="gk-tactics__opts" role="radiogroup" aria-label={c.tacticTitle}>
       {TACTICS.map(tactic => {
         const skill = abilityStats(ship, tactic, abilityRank(ship, tactic, points));
+        const key = held(tactic);
         return <button key={tactic} type="button" role="radio" aria-checked={tactic === (slot === 1 ? value : second)} data-tactic={tactic}
-        className={tactic === (slot === 1 ? value : second) ? 'is-selected' : ''} onClick={() => {
+          className="gk-tactics__opt" {...(key ? { 'data-key': key } : {})} onClick={() => {
           if (slot === 1) onPick(tactic, tactic === second ? value : second);
           else onPick(tactic === value ? second : value, tactic);
         }}>
-        <i aria-hidden>{ACTION_ICONS[tactic]}</i><b>{c[tactic]}</b><small>{c.tactics[tactic](one(skill.duration), one(skill.cooldown))}</small>
+        <i aria-hidden>{ACTION_ICONS[tactic]}</i><b>{c[tactic]}</b>{key && <kbd className="gk-tactics__key" aria-hidden>{key}</kbd>}
+        <small>{c.tactics[tactic](one(skill.duration), one(skill.cooldown))}</small>
       </button>;
       })}
     </div>

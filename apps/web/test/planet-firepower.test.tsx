@@ -111,13 +111,13 @@ describe('the exposed store stands with the defence', () => {
     render(<DefenceReadings planet={planetView({}, { alloy: 900, crystal: 300, deuterium: 0, vaultFloor: 600 })} />);
     const exposed = screen.getByTestId('planet-exposed');
     expect(exposed).toHaveTextContent('600 exposed');
-    expect(exposed.querySelector('.text-v2-warn')).not.toBeNull();
+    expect(exposed).toHaveAttribute('data-tone', 'gap');
   });
 
   it('reads as covered when the Vault holds it all', () => {
     render(<DefenceReadings planet={planetView({}, { alloy: 100, crystal: 50, deuterium: 0, vaultFloor: 600 })} />);
     const exposed = screen.getByTestId('planet-exposed');
     expect(exposed).toHaveTextContent('0 exposed');
-    expect(exposed.querySelector('.text-v2-self')).not.toBeNull();
+    expect(exposed).toHaveAttribute('data-tone', 'good');
   });
 });

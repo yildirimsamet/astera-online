@@ -78,7 +78,7 @@ export const planet = {
 },
   abandon: {
     "action": "Abandonar colonia",
-    "title": "¿Abandonar esta colonia?",
+    "title": "Abandonar colonia",
     "cancel": "Conservar colonia",
     "confirm": "Abandonar",
     "pending": "Abandonando…",
@@ -128,23 +128,22 @@ export const planet = {
     noRadar: "Cargado · El anillo de radar está fuera de línea",
     build: "Cargo de carga",
     started: "Cargando carga",
+    short: "Detiene una Estrella de la Muerte o una bomba de radiación.",
     hint: "Detiene una Estrella de la Muerte o una bomba de radiación en el anillo de intercepción Radar o al identificarla con el Telescopio. Cada disparo consume una carga de la batería del planeta objetivo.",
     colonyHint: "Cada Estrella de la Muerte que pasa le quita {{loss}} de lealtad a esta colonia y provoca 1 avería aleatoria.",
-    readyHint:
-      "Detiene una Estrella de la Muerte o una bomba de radiación en el anillo de intercepción Radar o al identificarla con el Telescopio. Cada disparo consume una carga de la batería del planeta objetivo.",
     noRadarHint:
       "La carga sigue cargada, pero este mundo no tiene anillo de interceptación de radar. Restaurar su enlace ascendente y radar 3; La vista telescópica de otro mundo todavía puede activarlo.",
     needRadar: "Radar L{{level}}",
     needUplink: "Enlace ascendente en órbita",
     needOperational: "Operativo mundial",
-    buildTime: "{{duration}} · una carga · gastada en disparar",
     buildSecond: "Cargar otra carga",
   },
 
   deathStar: {
     empDuration: "Duración del EMP",
     loyaltyDamage: "Lealtad colonial por impacto",
-    eyebrow: "Arma EMP táctica",
+    /** The one line beside the rule's "?" on the forge (G2-g). */
+    rule: "Deja la Égida del objetivo en cero y silencia sus defensas terrestres.",
     tally: "{{used}} de {{total}} armas disponibles",
     none: "No hay Estrella de la Muerte en este mundo",
     building: "Edificio · {{duration}}",
@@ -169,7 +168,7 @@ export const planet = {
     orbitQuestion: "Crea las herramientas que te ayudarán a ver a tus rivales.",
     reachProblem: "Flota",
     reachQuestion: "Desarrolla tus naves y alcance aquí.",
-    growProblem: "Producción",
+    growProblem: "Fábricas",
     growQuestion: "Haga crecer sus recursos y el límite de nivel de construcción aquí.",
     tacticalProblem: "Táctico",
     tacticalQuestion: "Construye y administra herramientas tácticas aquí.",
@@ -179,6 +178,9 @@ export const planet = {
   queue: {
     /** The end of all the work in one lane, which no screen used to carry. */
     waiting: "En cola",
+    /** An idle lane, folded to one line while another works (G2-c). */
+    freeSlots_one: "{{count}} hueco libre",
+    freeSlots_other: "{{count}} huecos libres",
     ends: "finaliza {{time}}",
     segment: "{{name}} · {{duration}}",
     cancelOne: "Cancelar {{name}}",
@@ -186,7 +188,7 @@ export const planet = {
     idle: "Nada en construcción",
     capacity: "{{count}} ranuras cada una",
     construction: "Construcción",
-    yard: "Yarda",
+    yard: "Astillero",
     repair: "Reparaciones",
     slotFree: "Gratis",
     empty: "No hay trabajo comprometido",
@@ -259,10 +261,10 @@ export const planet = {
       "Retirada táctica · un ataque con {{ratio}}× el poder de esta línea (naves y cañones activos) que la aniquilaría no encuentra tus naves · el despegue quema {{fuel}} de Deuterio",
     escapeShort:
       "Retirada táctica · tus naves huirían de un ataque con {{ratio}}× el poder de esta línea (naves y cañones activos), pero el despegue necesita {{fuel}} de Deuterio y el depósito tiene {{stock}}",
-    shieldBand: "Escudo",
+    buildBand: "Defensas",
+    lineFold: "Línea defensiva",
     shieldNote:
       "Égida absorbe el daño antes de que llegue a tus unidades y se regenera el 35% de su máximo cada hora.",
-    groundBand: "En tierra (la capacidad aumenta según el nivel central)",
     /* The figures moved into `CapacityBar`; the band keeps the RULE. */
     groundNote:
       "Las armas terrestres nunca abandonan el mundo. Las Espinas contrarrestan Baluartes, los Arpones Hostigadores y los Bastiones Lanzas.",
@@ -368,7 +370,7 @@ export const planet = {
     yardTag: "Construye naves más rápido",
     yardRole:
       "Reduce el tiempo de construcción de cada casco · El Astillero aún marca la curva",
-    holdsName: "Retenciones del prospector",
+    holdsName: "Bodegas del prospector",
     holdsTag: "Las naves mineras llevan más",
     holdsRole: "Aumenta cada bodega de Prospector y se multiplica con la bonificación de capacidad x2 de la torre de perforación.",
     cargoName: "Bodegas de carga",
@@ -377,7 +379,7 @@ export const planet = {
     synthesisName: "Síntesis de deuterio",
     synthesisTag: "Eleva el techo de la Refinería",
     synthesisRole:
-      "Cada peldaño abre tres niveles más de Refinería de Deuterio en cada mundo que tengas",
+      "Cada nivel de investigación abre tres niveles más de Refinería de Deuterio en cada mundo que tengas",
     researchNeedCore: "Elevar el núcleo de comando a L{{level}}",
     researchAct: "Investigación",
     researchComplete: "investigado",
@@ -419,15 +421,14 @@ export const planet = {
   /** Why a row cannot be pressed yet. Each is a door, so each names its fix. */
   blocked: {
     core: "Núcleo L{{level}}",
-    uplink: "un enlace ascendente en órbita",
+    uplink: "Enlace en órbita",
     orbitSlot: "un espacio orbital libre",
     shipyard: "Astillero L{{level}}",
     research: "{{research}} {{level}}",
     requirements: "Requiere: {{requirements}}",
     maxed: "en su nivel más alto",
-    /** The one building with a second ceiling: its research rung. T5. */
-    plantRung: "Investiga otro peldaño de la síntesis de deuterio",
     queueFull: "Ya hay 3 pedidos esperando. Termine o cancele uno para agregar esto.",
+    queueFullShort: "Cola llena",
   },
 
   /** What a purchase says once it has landed. */
@@ -468,10 +469,10 @@ export const planet = {
     heldOfMax: "{{owned}} de {{max}} retenido. Los que están fuera también cuentan.",
     defenceAfter: "Defensa local cuando esté completa: {{count}} unidades",
     maxOf: 'Máx · {{value}}',
-    byPurse: 'hasta donde llegan tus recursos',
-    byHangar: 'hasta donde cabe en el hangar',
-    byGround: 'hasta donde cabe en tierra',
-    byBerth: 'hasta donde permiten tus amarres',
+    byPurse: 'límite de recursos',
+    byHangar: 'límite del hangar',
+    byGround: 'límite en tierra',
+    byBerth: 'límite de amarres',
     cycle: 'Ciclo de clases',
     yardFill: 'Cola del astillero {{used}}/{{total}}',
     standing: '{{value}} instalados',
@@ -500,7 +501,7 @@ export const itemSheet = {
   rungLevel: "L{{level}}",
   nextLook: "Nuevo aspecto en L{{level}}",
   queueFill: "Cola de obras {{used}}/{{total}}",
-  affordIn: "Suficiente en ~{{duration}}",
+  affordIn: "Suficiente en {{duration}}",
   short: "Recursos insuficientes",
   orbitalDoesHeading: "Qué hace",
   orbitalOnce: "Se compra una vez; nunca se mejora",
@@ -586,8 +587,8 @@ export const planetHero = {
   defenceNone: "Ninguno",
   defenceShips_one: "{{count}} nave",
   defenceShips_other: "{{count}} naves",
-  defenceGuns_one: "{{count}} pistola",
-  defenceGuns_other: "{{count}} pistolas",
+  defenceGuns_one: "{{count}} cañón",
+  defenceGuns_other: "{{count}} cañones",
   defenceUnarmed_one: "{{count}} transporte en la línea",
   defenceUnarmed_other: "{{count}} transportes en la línea",
   defenceDocked_one: "{{count}} en la Estación de Reparación · no defiende",
@@ -649,8 +650,6 @@ export const launch = {
   holdWorld_other: "Lanzar {{count}} naves",
   holdPirate_one: "Lanzar {{count}} nave",
   holdPirate_other: "Lanzar {{count}} naves",
-  warningWorld: "Esta flota no defenderá {{world}} hasta su regreso. Ausencia estimada: {{duration}}.",
-  warningPirate: "Puedes retirar esta incursión una vez antes del combate. La flota no defenderá {{world}} hasta su regreso. Ausencia estimada: {{duration}}.",
   recallNote:
     "Se puede recuperar una vez en vuelo: vuelve en el tiempo que ya ha volado. El combustible no se reembolsa.",
   chooseFleet: "Elige una flota",
@@ -664,12 +663,8 @@ export const launch = {
   pace: "Velocidad de vuelo",
   paceHint: "Una flota más lenta llega después y regresa a la misma velocidad. Una velocidad menor reduce el coste de combustible. Cada tramo ralentizado debe durar como máximo 12 horas.",
   paceFull: "Total",
-  paceBenefit: "Elige una velocidad menor para gastar menos combustible.",
   paceFuelValue: "{{amount}} deuterio",
-  paceFuelBaseline: "Velocidad máxima: {{amount}}",
   paceSaved: "{{amount}} de deuterio ahorrado",
-  paceArrival: "Llegada al objetivo",
-  paceTimeBaseline: "Velocidad máxima: {{duration}}",
   paceDelay: "{{duration}} más tarde",
   paceRounding: "El redondeo del combustible impide ahorrar con esta flota.",
   paceReset: "Esta flota viajará a velocidad máxima porque la velocidad elegida supera el límite de tiempo de vuelo.",
@@ -741,6 +736,12 @@ export const launch = {
   cargoEach: "{{amount}} de carga c/u",
   cargoAdds: "+{{amount}} de carga",
   paceBrief: "menos combustible · tramo lento ≤12 h",
+  priceRules: "Reglas del vuelo",
+  awayFor: "{{world}} · {{duration}} sin esta flota",
+  awayOpen: "{{world}} · sin esta flota hasta su regreso",
+  pirateRecall: "Puedes retirar esta incursión una vez antes del combate.",
+  shieldShort: "Tu escudo inicial se acaba",
+  recoveryShieldShort: "Tu escudo de recuperación y la producción +50 % se acaban",
   escort: "La nave del comandante escolta a la flota",
   escortLabel: "Nave del comandante",
   escortBonusAkinci: "daño +{{pct}} %",
@@ -754,8 +755,6 @@ export const launch = {
   escortService: "En mantenimiento · {{clock}}",
   escortYarik: "Volando en el Yarık",
   escortAway: "Escoltando otra flota",
-  warningWorldOpen: "Esta flota no defenderá {{world}} hasta su regreso.",
-  warningPirateOpen: "Puedes retirar esta incursión una vez antes del combate. La flota no defenderá {{world}} hasta su regreso.",
 } as const;
 
 export const transfer = {
@@ -790,6 +789,7 @@ export const transfer = {
   sending: "Despacho",
   launched: "Transferencia iniciada · {{duration}}",
   /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
+  recallOnce: "Puedes llamarla de vuelta una vez en vuelo.",
   rules: "Se puede recuperar una vez en vuelo. La defensa terrestre no se mueve; cualquier nave con bodega puede llevar recursos.",
   hullNone: "Ninguno en este mundo",
   holdReady: "Las naves seleccionadas llevan recursos. Bodega: {{capacity}}.",
@@ -843,22 +843,20 @@ export const faults = {
   /** The strip under the build queues, and the row it collapses to when idle. */
   strip: {
     title: "Reparaciones",
-    capacity: "{{count}} tripulaciones",
-    priceAlloy: "{{alloy}} aleación",
-    priceBoth: "{{alloy}} aleación · {{crystal}} cristal",
+    capacity: "{{count}} equipos",
     lane: "Equipo {{slot}}",
   },
   tab: "Averías activas",
   /** One line per fault: the name a player sees on the row and the sheet. */
   name: {
-    REFINERY_OUTAGE: "Apagón de refinería de aleación",
-    EXTRACTOR_OUTAGE: "Apagón extractor de cristal",
-    PLANT_OUTAGE: "Apagón en la refinería de deuterio",
+    REFINERY_OUTAGE: "Apagón de aleación",
+    EXTRACTOR_OUTAGE: "Apagón de cristal",
+    PLANT_OUTAGE: "Apagón de deuterio",
     VAULT_LEAK: "Fuga del almacén",
-    CORE_OUTAGE: "Apagón del núcleo de comando",
+    CORE_OUTAGE: "Apagón del núcleo",
     TELESCOPE_FAULT: "Fallo del telescopio",
-    SHIPYARD_REVOLT: "Revuelta en el astillero",
-    PROSPECTOR_FAULT: "Prospección en pozo",
+    SHIPYARD_REVOLT: "Motín del astillero",
+    PROSPECTOR_FAULT: "Fallo de prospección",
   },
   /** What it stops, in the player's terms. One sentence, no hedging. */
   stopped: {
@@ -872,29 +870,34 @@ export const faults = {
     PROSPECTOR_FAULT: "No pueden salir Prospectores de este planeta. Los Prospectores que ya están en misión pueden retirarse.",
   },
   toll: {
-    title: "Lo que está tardando",
-    alloy: "{{amount}} aleación por hora, sin fabricar",
-    crystal: "{{amount}} cristal por hora, sin fabricar",
-    deuterium: "Cada hora de deuterio que este mundo habría producido",
-    leak: "Cada hora se filtran {{amount}} recursos al campo de restos. Los comandantes que lo ven pueden recogerlos.",
+    title: "Lo que te cuesta",
+    rate: "{{amount}}/h",
+    what: {
+      REFINERY_OUTAGE: "aleación sin producir",
+      EXTRACTOR_OUTAGE: "cristal sin producir",
+      PLANT_OUTAGE: "deuterio sin producir",
+      VAULT_LEAK: "se fuga a la órbita",
+    },
   },
   loyalty: {
     title: "La lealtad de este mundo",
     battleLoss: "Derrota parcial −15 · derrota decisiva −30 · Estrella de la Muerte −{{strike}}",
-    line: "Lealtad: {{value}} %. Disminuye con {{count}} averías activas. A este ritmo llega a cero en {{time}} y pierdes la colonia.",
+    why_one: "Baja por {{count}} avería. A cero, pierdes la colonia.",
+    why_other: "Baja por {{count}} averías. A cero, pierdes la colonia.",
     bar: "{{value}}%",
     left: "Quedan {{time}}",
   },
   price: {
     title: "La reparación",
-    crew: "la tripulación",
-    parts: "piezas",
-    takes: "La reparación dura {{min}}–{{max}} minutos. La duración exacta se fija al comenzar.",
+    range: "{{min}}–{{max}} min",
+    drawn: "La duración exacta se fija al comenzar.",
   },
-  repair: "Iniciar reparación",
-  running: "Hay un equipo en él · {{time}}",
+  repair: "Reparar",
+  crewOn: "Un equipo trabaja en ello",
   noCancel: "Una reparación iniciada no puede cancelarse.",
-  lanesFull: "Todos los equipos {{count}} están fuera",
+  lanesFull: "Los {{count}} equipos están fuera",
+  short: "No alcanza el almacén",
+  crewsFree: "{{free}}/{{count}} equipos libres",
   started: "La reparación ha comenzado.",
   failed: "Eso no se pudo iniciar.",
 } as const;

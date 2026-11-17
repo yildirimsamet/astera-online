@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ALL_HULLS, HULLS, RESEARCH_PROJECTS, RESEARCH_PROJECT_IDS, type ResearchProjectId } from '@astera/rules';
-import { constellationLayout, hullDoor, RESEARCH_GROUPS } from '../src/lib/constellation.js';
+import { CONSTELLATION_ASPECT, constellationLayout, hullDoor, RESEARCH_GROUPS } from '../src/lib/constellation.js';
 
 /**
  * THE RESEARCH CONSTELLATION'S LAYOUT. Spec E8 · K9 (docs/ui-v2/gozlemevi.md).
@@ -51,37 +51,51 @@ describe('the research constellation', () => {
   });
 
   /*
-    A label is one line under its star, 76px wide; on a 350px phone the map is about
-    333px across and 350px down. So a label spans 0.24 of the width and — star, name and
-    the "← prerequisite" line — 0.13 of the height.
+    G2-i (2026-11-15): A NAME IS WHOLE, ON UP TO TWO LINES. At 320 px the map is 318 across
+    and CONSTELLATION_ASPECT times that down; a label is 24 % of the width (the widest Turkish
+    word, "Spektrometrisi", is 72 px in the kit's narrow face). Under the 16 px star a label
+    is two lines of 12 px (44 px with the star); a prerequisite from another group adds up to three
+    more ("← Yoğun / Yakıt / Hücreleri").
   */
+  const MAP_W = 318;
   const LABEL_W = 0.24;
-  const LABEL_H = 0.13;
+  const DOT = 8;
+  const NAME_H = 44;
+  const FROM_H = 42;
+  const BAND = 18;
 
-  it('leaves room between any two stars for their labels', () => {
-    for (const a of layout.nodes) {
-      for (const b of layout.nodes) {
-        if (a.id === b.id) continue;
-        const apart = Math.abs(a.x - b.x) >= LABEL_W || Math.abs(a.y - b.y) >= LABEL_H;
-        expect(apart, `${a.id} and ${b.id} crowd each other`).toBe(true);
+  const boxes = (aspect: number) => {
+    const h = MAP_W * aspect;
+    return layout.nodes.map((node) => {
+      const top = node.y * h - DOT;
+      return { node, top, bottom: top + NAME_H + (node.outside === null ? 0 : FROM_H), h };
+    });
+  };
+
+  const crowd = (aspect: number) => {
+    const all = boxes(aspect);
+    for (const a of all) {
+      for (const b of all) {
+        if (a.node.id === b.node.id || Math.abs(a.node.x - b.node.x) >= LABEL_W) continue;
+        const apart = a.bottom <= b.top || b.bottom <= a.top;
+        expect(apart, `${a.node.id} and ${b.node.id} crowd each other`).toBe(true);
       }
     }
+    for (const { node, top, bottom, h } of all) {
+      const region = layout.regions.find((candidate) => candidate.group === node.group)!;
+      expect(top - region.y * h, `${node.id} sits on its group's name`).toBeGreaterThanOrEqual(BAND);
+      expect(bottom, `${node.id}'s label runs into the next group`).toBeLessThanOrEqual((region.y + region.h) * h);
+    }
+  };
+
+  it('leaves room under every star for its whole name and its outside prerequisite', () => {
+    crowd(CONSTELLATION_ASPECT);
   });
 
   it('keeps every label inside the map, off its edges', () => {
     for (const node of layout.nodes) {
       expect(node.x, node.id).toBeGreaterThanOrEqual(LABEL_W / 2);
       expect(node.x, node.id).toBeLessThanOrEqual(1 - LABEL_W / 2);
-      expect(node.y + LABEL_H, node.id).toBeLessThanOrEqual(1);
-    }
-  });
-
-  /** The group's name prints at the top of its quarter; the quarter below starts with its own. */
-  it('keeps the group names clear of the stars', () => {
-    for (const node of layout.nodes) {
-      const region = layout.regions.find((candidate) => candidate.group === node.group)!;
-      expect(node.y - region.y, `${node.id} sits on its group's name`).toBeGreaterThanOrEqual(0.07);
-      expect(node.y + LABEL_H - (region.y + region.h), `${node.id}'s label runs into the next group`).toBeLessThanOrEqual(0.005);
     }
   });
 });

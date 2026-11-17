@@ -62,6 +62,17 @@ function show(view: unknown = catalog, quoteDelay = 0, locked = false, onClanTar
 }
 function hold(button: HTMLElement): void { fireEvent.keyDown(button, { key: 'Enter' }); fireEvent.keyDown(button, { key: 'Enter' }); }
 const send = (): HTMLElement => within(screen.getByTestId('monument-send')).getByRole('button');
+/** The sheet's three pages (owner 2026-11-17): Target, Attack/Reinforce, Your fleets. */
+async function toPage(name: RegExp | string): Promise<void> {
+  fireEvent.click(await screen.findByRole('tab', { name }));
+}
+/** The first page, Target, in whatever language the sheet speaks. */
+async function toTarget(): Promise<void> {
+  await screen.findByTestId('monument-target');
+  fireEvent.click(screen.getAllByRole('tab')[0]!);
+}
+function openRecall(card: HTMLElement): void { fireEvent.click(card.querySelector('[data-monument-recall] summary')!); }
+function openDetail(): void { fireEvent.click(screen.getByTestId('monument-quote').querySelector('[data-monument-detail] summary')!); }
 
 describe('monument decision surface, through the real client and cache', () => {
   it('explains the Honor consequence of shared fighting before monument dispatch', async () => {
@@ -89,7 +100,9 @@ describe('monument decision surface, through the real client and cache', () => {
       radiationProtection: { level: 4, hpPerMinute: 5.25, nextLossAt: later, cargoLossAt: later } } });
     const quantity = await screen.findByRole('textbox', { name: /citadel.*quantity/i });
     fireEvent.change(quantity, { target: { value: '1' } });
-    await screen.findByText(/Fuel: 920 deuterium/);
+    await screen.findByTestId('monument-quote');
+    expect(screen.getByTestId('monument-plates')).toHaveTextContent(/Fuel\s*920/);
+    openDetail();
     expect(screen.getByText(/Outbound: 120.*return reserve: 800 deuterium/)).toBeVisible();
     expect(screen.getByText(/Each ship receives its unused share upon reaching home.*never return lose their share/)).toBeVisible();
     expect(screen.getByText(/Your dispatched fleet.*shielding 4.*5.25 HP\/min/)).toBeVisible();
@@ -102,11 +115,12 @@ describe('monument decision surface, through the real client and cache', () => {
         arrivalLots: [{ ...cargoLot, count: 1, damageBp: 3333, remainderBp: 1 / 3,
           remainingHp: 900, deuterium: 150, cargoCapacity: 300 }] } });
     const card = await screen.findByTestId(`monument-wave-${waveId}`);
+    openRecall(card);
     fireEvent.change(within(card).getByRole('textbox', { name: /argosy.*recall/i }), { target: { value: '1' } });
     const forecast = await screen.findByTestId('monument-recall-forecast');
     expect(within(forecast).getByText('Selected return · 1 ship')).toBeVisible();
     expect(forecast).toHaveTextContent(/Fuel for this return: 5 deuterium/);
-    expect(forecast).toHaveTextContent(/Fuel refund on home arrival: 83.750 deuterium/);
+    expect(forecast).toHaveTextContent(/Fuel refund on home arrival: 83.75 deuterium/);
     expect(forecast).toHaveTextContent(/Argosy.*900.0.*1,350.0 HP on arrival/);
     expect(forecast).not.toHaveTextContent(/190/);
     expect(card).toHaveTextContent(/Whole fleet return/);
@@ -116,9 +130,9 @@ describe('monument decision surface, through the real client and cache', () => {
     const { requests } = show({ ...catalog, monuments: [{ ...monument, motion }] }, 400);
     const quantity = await screen.findByRole('textbox', { name: /citadel.*quantity/i });
     fireEvent.change(quantity, { target: { value: '1' } });
-    await screen.findByText(/Fuel: 120 deuterium/);
+    await waitFor(() => { expect(screen.getByTestId('monument-plates')).toHaveTextContent(/Fuel\s*120/); });
     await waitFor(() => { expect(requests.filter(row => row.path.endsWith('/quote'))).toHaveLength(2); }, { timeout: 6500 });
-    expect(screen.getByText(/Fuel: 120 deuterium/)).toBeVisible();
+    expect(screen.getByTestId('monument-plates')).toHaveTextContent(/Fuel\s*120/);
   }, 10_000);
   it.each(['HOLD', 'OUTBOUND'])('refreshes a selected %s return quote as time passes without any roster change', async status => {
     const { requests } = show({ ...catalog, waves: [{ ...held, status }] });
@@ -144,10 +158,12 @@ describe('monument decision surface, through the real client and cache', () => {
     const onClanTarget = vi.fn();
     show({ ...catalog, monuments: [{ ...monument, difficulty: 'EASY',
       sendAccess: { playerTier: 4, tierAllowed: false, cargoOnly: false } }] }, 0, false, onClanTarget);
+    await toTarget();
     const mark = await screen.findByRole('button', { name: /clan target/i });
     expect(mark).toBeEnabled();
     await userEvent.setup().click(mark);
     expect(onClanTarget).toHaveBeenCalledWith(id);
+    await toPage('Attack');
     expect(screen.getByRole('textbox', { name: /citadel.*quantity/i })).toBeDisabled();
     expect(send()).toBeDisabled();
   });
@@ -170,9 +186,6 @@ describe('monument decision surface, through the real client and cache', () => {
     await waitFor(() => { expect(requests.filter(request => request.path.endsWith('/quote')).at(-1)?.body)
       .toContain('"CITADEL":1'); });
     expect(requests.filter(request => request.path.endsWith('/quote')).at(-1)?.body).toContain('CITADEL');
-    const user = userEvent.setup();
-    await user.click(screen.getByRole('checkbox', { name: /shield/i }));
-    await user.click(screen.getByRole('checkbox', { name: /radiation/i }));
     await waitFor(() => expect(send()).toBeEnabled());
     hold(send());
     await waitFor(() => { expect(requests.find(request => request.path.endsWith('/send'))?.body)
@@ -217,7 +230,9 @@ describe('monument decision surface, through the real client and cache', () => {
   it('explains repeated support and keeps combat and cargo available', async () => {
     show({ ...catalog, monuments: [{ ...monument, difficulty: 'HARD',
       sendAccess: { playerTier: 4, tierAllowed: true, cargoOnly: true } }] });
-    await screen.findByText(/send.*combat.*cargo.*again/i);
+    const dispatch = (await screen.findByTestId('monument-known')).closest<HTMLElement>('[data-monument-dispatch]')!;
+    fireEvent.click(within(dispatch).getByRole('button', { name: i18n.t('counter.compareRuleToggle') }));
+    expect(within(dispatch).getByText(/send.*combat.*cargo.*again/i)).toBeVisible();
     expect(screen.getByRole('textbox', { name: /citadel.*quantity/i })).toBeEnabled();
     expect(screen.getByRole('textbox', { name: /argosy.*quantity/i })).toBeEnabled();
   });
@@ -226,14 +241,18 @@ describe('monument decision surface, through the real client and cache', () => {
     const { requests } = show({ ...catalog, monuments: [{ ...monument, difficulty: 'EASY',
       controller: { kind: 'PLAYER', playerId: 'self', name: 'Commander' },
       sendAccess: { playerTier: 4, tierAllowed: false, cargoOnly: true } }], waves: [held] });
-    const card = await screen.findByTestId(`monument-wave-${waveId}`);
-    const recall = within(card).getByRole('textbox', { name: /argosy.*recall/i });
-    expect(recall).toBeEnabled();
+    await screen.findByTestId(`monument-wave-${waveId}`);
+    await toPage('Reinforce');
     expect(screen.getByRole('textbox', { name: /argosy.*argosy quantity/i })).toBeDisabled();
     expect(send()).toBeDisabled();
+    await toPage(/Your fleets/);
+    const card = screen.getByTestId(`monument-wave-${waveId}`);
+    openRecall(card);
+    const recall = within(card).getByRole('textbox', { name: /argosy.*recall/i });
+    expect(recall).toBeEnabled();
     fireEvent.change(recall, { target: { value: '1' } });
-    await waitFor(() => expect(within(card).getByRole('button', { name: /hold.*recall/i })).toBeEnabled());
-    hold(within(card).getByRole('button', { name: /hold.*recall/i }));
+    await waitFor(() => expect(within(card).getByRole('button', { name: /recall.*hold/i })).toBeEnabled());
+    hold(within(card).getByRole('button', { name: /recall.*hold/i }));
     await waitFor(() => { expect(requests.find(request => request.path.endsWith('/recall'))?.body)
       .toBe(JSON.stringify({ selections: [{ lotId, count: 1 }] })); });
     expect(requests.some(request => request.path.endsWith('/send'))).toBe(false);
@@ -275,6 +294,7 @@ describe('monument decision surface, through the real client and cache', () => {
 
   it('stops selected recall quote POSTs when the open season freezes and physical lots refresh', async () => {
     const { requests, client, freeze } = show({ ...catalog, waves: [held] });
+    openRecall(await screen.findByTestId(`monument-wave-${waveId}`));
     const count = await screen.findByRole('textbox', { name: /argosy.*recall/i });
     fireEvent.change(count, { target: { value: '1' } });
     await screen.findByTestId('monument-recall-forecast');
@@ -289,32 +309,29 @@ describe('monument decision surface, through the real client and cache', () => {
   it('keeps the frozen monument readable and disables every mutation', async () => {
     show({ ...catalog, waves: [held] }, 0, true);
     await screen.findByText(/7,270/);
-    const probe = screen.getByTestId('monument-probe');
-    expect(within(probe).getByRole('button', { name: /hold.*probe/i })).toBeDisabled();
-    expect(screen.getByRole('textbox', { name: /citadel.*quantity/i })).toBeDisabled();
+    openRecall(await screen.findByTestId(`monument-wave-${waveId}`));
     expect(screen.getByRole('textbox', { name: /argosy.*recall/i })).toBeDisabled();
+    await toTarget();
+    expect(within(screen.getByTestId('monument-probe')).getByRole('button', { name: /probe.*hold/i })).toBeDisabled();
+    await toPage('Attack');
+    expect(screen.getByRole('textbox', { name: /citadel.*quantity/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /close/i })).toBeEnabled();
   });
   it('shows shared capacity, production purpose and the enemy intelligence gap before committing', async () => {
     show();
     expect(await screen.findByText(/7,270/)).toBeInTheDocument();
     expect(screen.getByText(/60.*deuterium.*minute/i)).toBeInTheDocument();
-    expect(screen.getByText(/enemy fleet.*probe/i)).toBeInTheDocument();
+    expect(screen.getByTestId('monument-known')).toHaveTextContent(/Defence unknown.*probe/);
     expect(screen.queryByRole('textbox', { name: /prospector/i })).toBeNull();
     expect(send()).toBeDisabled();
   });
-  it('automatically quotes the picked fleet and requires both explicit consents', async () => {
+  it('automatically quotes the picked fleet; the hold carries the risks it names over itself', async () => {
     const { requests, client } = show();
     await screen.findByRole('textbox', { name: /citadel.*quantity/i });
     fireEvent.change(screen.getByRole('textbox', { name: /citadel.*quantity/i }), { target: { value: '2' } });
     await screen.findByText(/Outbound radiation: 500/i);
-    expect(send()).toBeDisabled();
-    expect(screen.getByText(/1.*ship.*lost.*outbound/i)).toBeInTheDocument();
-    const user = userEvent.setup();
-    await user.click(screen.getByRole('checkbox', { name: /shield/i }));
-    expect(send()).toBeDisabled();
-    await user.click(screen.getByRole('checkbox', { name: /radiation/i }));
-    expect(send()).toBeEnabled();
+    expect(screen.getByTestId('monument-risk')).toHaveTextContent(/1 ship is lost en route/);
+    await waitFor(() => { expect(send()).toBeEnabled(); });
     hold(send());
     await waitFor(() => { expect(requests.filter((request) => request.path.endsWith('/send'))).toHaveLength(1); });
     const request = requests.find((entry) => entry.path.endsWith('/send'));
@@ -337,9 +354,10 @@ describe('monument decision surface, through the real client and cache', () => {
     const card = await screen.findByTestId(`monument-wave-${waveId}`);
     expect(card).toHaveTextContent(/300.*600/);
     expect(card).toHaveTextContent(/75.*%/);
+    openRecall(card);
     fireEvent.change(within(card).getByRole('textbox', { name: /argosy.*recall/i }), { target: { value: '1' } });
     await waitFor(() => { expect(within(card).getByTestId('monument-recall-forecast')).toHaveTextContent(/150/); });
-    hold(within(card).getByRole('button', { name: /hold.*recall/i }));
+    hold(within(card).getByRole('button', { name: /recall.*hold/i }));
     await waitFor(() => { expect(requests.find((entry) => entry.path.endsWith('/recall'))?.body)
       .toBe(JSON.stringify({ selections: [{ lotId, count: 1 }] })); });
     expect(requests.find((entry) => entry.path.endsWith('/recall'))?.key).toBeTruthy();
@@ -347,17 +365,19 @@ describe('monument decision surface, through the real client and cache', () => {
   it('discloses the 75% probe loss and its price before the held action', async () => {
     const { requests } = show();
     await screen.findByText(/7,270/);
+    await toTarget();
     const probe = await screen.findByTestId('monument-probe');
     expect(probe).toHaveTextContent(/75%/);
     expect(probe).toHaveTextContent(/65/);
     expect(probe).toHaveTextContent(/40/);
-    hold(within(probe).getByRole('button', { name: /hold.*probe/i }));
+    hold(within(probe).getByRole('button', { name: /probe.*hold/i }));
     await waitFor(() => { expect(requests.find((entry) => entry.path.endsWith('/probe'))?.body)
       .toBe(JSON.stringify({ originPlanetId: 'home' })); });
   });
   it.each(['en', 'tr', 'de', 'fr', 'es', 'ja'] as const)('discloses the current probe loss before launch in %s', async (language) => {
     await i18n.changeLanguage(language);
     show();
+    await toTarget();
     const probe = await screen.findByTestId('monument-probe');
     expect(probe).toHaveTextContent(language === 'tr' ? /%75/ : /75\s?%/);
     expect(probe).not.toHaveTextContent(/90|\{\{/);
@@ -365,7 +385,8 @@ describe('monument decision surface, through the real client and cache', () => {
   it('gives a second intentional probe a new confirmation identity', async () => {
     const { requests } = show();
     await screen.findByText(/7,270/);
-    const button = within(screen.getByTestId('monument-probe')).getByRole('button', { name: /hold.*probe/i });
+    await toTarget();
+    const button = within(screen.getByTestId('monument-probe')).getByRole('button', { name: /probe.*hold/i });
     hold(button);
     await waitFor(() => { expect(requests.filter((request) => request.path.endsWith('/probe'))).toHaveLength(1); });
     await waitFor(() => { expect(button).toBeEnabled(); });
@@ -377,13 +398,15 @@ describe('monument decision surface, through the real client and cache', () => {
   it('uses reinforcement for its own controller and leaves a returning wave read-only', async () => {
     const { requests } = show({ ...catalog, monuments: [{ ...monument, controller: { kind: 'PLAYER', playerId: 'self', name: 'Me' } }],
       waves: [{ ...held, status: 'RETURNING', arriveAt: later }] });
+    const card = await screen.findByTestId(`monument-wave-${waveId}`);
+    expect(within(card).queryByRole('textbox', { name: /recall/i })).toBeNull();
+    expect(card.querySelector('[data-monument-recall]')).toBeNull();
+    expect(within(card).queryByText(/^On arrival/)).toBeNull();
+    await toPage('Reinforce');
     const count = await screen.findByRole('textbox', { name: /citadel.*quantity/i });
     fireEvent.change(count, { target: { value: '1' } });
     await waitFor(() => { expect(requests.find((entry) => entry.path.endsWith('/quote'))?.body).toContain('REINFORCE'); });
     expect(await screen.findByText(/If your side loses the monument on the way, the fleet does not turn back/)).toBeVisible();
-    const card = screen.getByTestId(`monument-wave-${waveId}`);
-    expect(within(card).queryByRole('textbox', { name: /recall/i })).toBeNull();
-    expect(within(card).queryByText(/^On arrival/)).toBeNull();
   });
 
   /** Owner, 2026-10-15: a fleet in flight meets the monument as it is at arrival; the card says what that is now. */
@@ -400,3 +423,33 @@ describe('monument decision surface, through the real client and cache', () => {
     expect(within(card).getByText(text)).toBeVisible();
   });
 });
+
+/**
+ * NOT ONE LONG COLUMN (owner 2026-11-17, ek-2: "alta doğru uzayan sectionlar yapısı çok yanlış").
+ * The facts stay one card with their rules behind its ⓘ; the radiation dial and the probe with
+ * its last report fold away; the waves and the dispatch stay open, the dispatch led by its Honor note.
+ */
+describe('the monument sheet folds what is read rarely', () => {
+  it('keeps the purpose rule behind the facts card ⓘ', async () => {
+    show();
+    const facts = await screen.findByTestId('monument-target');
+    expect(facts).not.toHaveTextContent(/Hold with combat ships to earn deuterium/);
+    fireEvent.click(within(facts).getByRole('button', { name: i18n.t('monument.rulesAbout') }));
+    expect(facts).toHaveTextContent(/Hold with combat ships to earn deuterium/);
+  });
+
+  it('gives the probe its own page instead of a fold at the foot of the sheet', async () => {
+    show();
+    await toTarget();
+    const intel = document.querySelector<HTMLElement>('[data-monument-intel]')!;
+    expect(intel.tagName).toBe('SECTION');
+    expect(intel.querySelector('[data-testid="monument-probe"]')).not.toBeNull();
+  });
+
+  it('leads the dispatch with the Honor note', async () => {
+    show(catalog, 0, false, undefined, { honorSoloCredit: true });
+    const notice = await screen.findByText(/Shared sides cannot earn positive Honor/);
+    expect(notice.closest('[data-monument-dispatch]')).not.toBeNull();
+  });
+});
+

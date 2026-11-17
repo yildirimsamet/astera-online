@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { STARTER, openingProgress } from '@astera/rules';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
@@ -197,7 +197,7 @@ describe('the words a ship\'s surfaces use', () => {
   it('warns of the fleet\'s absence without calling the ship a planet', async () => {
     const { default: i18n } = await import('../src/i18n/index.js');
     const tr = i18n.getFixedT('tr');
-    for (const key of ['launch.warningWorld', 'launch.warningPirate', 'launch.warningWorldOpen', 'launch.warningPirateOpen'] as const) {
+    for (const key of ['launch.awayFor', 'launch.awayOpen', 'launch.pirateRecall'] as const) {
       expect(tr(key, { world: 'Kara Şahin', duration: '5 dk' })).not.toMatch(/gezegen/u);
     }
     expect(tr('starter.launchFleetsave')).not.toMatch(/geminiz/u);
@@ -206,6 +206,8 @@ describe('the words a ship\'s surfaces use', () => {
   it('states the Hangar rule for a ship', () => {
     render(<FleetPage aboard tab="room" onTab={vi.fn()} now={NOW} bays={null} hangar={{ used: 6, total: 20 }} flights={[]} worlds={[]}
       recalling={null} onFocus={vi.fn()} onRecall={vi.fn()} onOpenRepairStation={vi.fn()} onFocusWorld={vi.fn()} onClose={vi.fn()} onDock={vi.fn()} />);
+    // E6: the rule sits behind the room tab's ⓘ.
+    fireEvent.click(screen.getByRole('button', { name: 'What is this?' }));
     expect(document.body.textContent).toContain('Room for every ship this ship carries');
     expect(document.body.textContent).not.toMatch(/a world owns/u);
   });

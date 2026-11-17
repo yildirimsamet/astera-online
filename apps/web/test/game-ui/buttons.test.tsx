@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GameButton, GameHold } from '../../src/game-ui/index.js';
+import { GameButton, GameHold, RoundButton } from '../../src/game-ui/index.js';
 import { HOLD_MS } from '../../src/v2/kit/useHoldPress.js';
 
 beforeEach(() => { vi.useFakeTimers(); });
@@ -29,6 +29,20 @@ describe('the game button', () => {
     expect(onPress).not.toHaveBeenCalled();
   });
 
+  /** "Unblock" on the face, "Unblock Scout" for a reader: a row of the same key says whose it is (C4). */
+  it('names itself in full for a reader when its face says less', () => {
+    render(<GameButton onPress={vi.fn()} spoken="Unblock Scout">Unblock</GameButton>);
+    const button = screen.getByRole('button', { name: 'Unblock Scout' });
+    expect(button).toHaveTextContent('Unblock');
+  });
+
+  it('carries the marks a surface outside it points at (the tutorial, the gate)', () => {
+    render(<GameButton onPress={vi.fn()} marks={{ 'data-attack': '', 'data-guide': 'probe' }}>Attack</GameButton>);
+    const button = screen.getByRole('button', { name: 'Attack' });
+    expect(button).toHaveAttribute('data-attack', '');
+    expect(button).toHaveAttribute('data-guide', 'probe');
+  });
+
   it('is busy, not pressable, while its action is pending', () => {
     const onPress = vi.fn();
     render(<GameButton onPress={onPress} pending>Upgrade</GameButton>);
@@ -36,6 +50,20 @@ describe('the game button', () => {
     expect(button).toHaveAttribute('aria-busy', 'true');
     press(button);
     expect(onPress).not.toHaveBeenCalled();
+  });
+});
+
+/** C25 (2026-11-15): a form's button submits it, so Enter in a field does what the press does. */
+describe('the submit button', () => {
+  it('is the form\'s submit, and a press still answers', () => {
+    const onSubmit = vi.fn((event: Event) => { event.preventDefault(); });
+    const onPress = vi.fn();
+    render(<form onSubmit={(event) => { onSubmit(event.nativeEvent); }}><input aria-label="Email" /><GameButton submit onPress={onPress}>Send</GameButton></form>);
+    const button = screen.getByRole('button', { name: 'Send' });
+    expect(button).toHaveAttribute('type', 'submit');
+    press(button);
+    expect(onPress).toHaveBeenCalledOnce();
+    expect(onSubmit).toHaveBeenCalledOnce();
   });
 });
 
@@ -48,6 +76,27 @@ describe('the hold action', () => {
     rerender(<GameHold label="Saldır" onCommit={onCommit} weight="final" disabledReason="Yakıt yetmiyor" />);
     act(() => { vi.advanceTimersByTime(3_000); });
     expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  // G4-e1: the refused hold carries the same mark the v2 hold did, so a surface can find its reason.
+  it('marks a refused hold and says why on its face', () => {
+    render(<GameHold label="Launch" onCommit={vi.fn()} weight="spends" disabledReason="Not enough deuterium" />);
+    const refused = screen.getByRole('button', { name: /Not enough deuterium/ });
+    expect(refused).toBeDisabled();
+    expect(refused).toHaveAttribute('data-hold-refused');
+  });
+
+  it('marks a live hold as a hold, so a surface can find it', () => {
+    render(<GameHold label="Launch" onCommit={vi.fn()} weight="spends" />);
+    expect(screen.getByRole('button', { name: /Launch/ })).toHaveAttribute('data-hold');
+  });
+
+  // G4-j: a surface's own mark rides the hold, live or refused (the Death Star's `data-death-star`).
+  it('carries a surface’s marks, live and refused', () => {
+    const { rerender } = render(<GameHold label="Launch" onCommit={vi.fn()} weight="final" marks={{ 'data-death-star': '' }} />);
+    expect(screen.getByRole('button', { name: /Launch/ })).toHaveAttribute('data-death-star');
+    rerender(<GameHold label="Launch" onCommit={vi.fn()} weight="final" marks={{ 'data-death-star': '' }} disabledReason="No charge" />);
+    expect(screen.getByRole('button', { name: /No charge/ })).toHaveAttribute('data-death-star');
   });
 
   it('commits after a held press and shows its detail', () => {
@@ -87,5 +136,31 @@ describe('the hold action', () => {
     expect(onCommit).not.toHaveBeenCalled();
     rerender(<GameHold weight="reversible" label="Attack" detail="39 ships" onCommit={onCommit} disabledReason="No free flight bay" />);
     expect(screen.getByRole('button', { name: /No free flight bay/ })).toBeDisabled();
+  });
+
+  /** G2-h2 (2026-11-15): a hold inside a list row (a fleet's recall) is a steel plate a thumb's height, not the page's big move. */
+  it('can be a compact steel hold for a row, and is the big lit one otherwise', () => {
+    const { rerender } = render(<GameHold weight="reversible" label="Recall" onCommit={() => undefined} />);
+    expect(screen.getByRole('button', { name: /Recall/ })).toHaveClass('gk-btn--lg', 'gk-btn--action');
+    rerender(<GameHold weight="reversible" size="md" tone="steel" glyph="recall" label="Recall" detail="Home in 4m" onCommit={() => undefined} />);
+    const hold = screen.getByRole('button', { name: /Recall/ });
+    expect(hold).toHaveClass('gk-hold', 'gk-hold--md', 'gk-btn--steel');
+    expect(hold).not.toHaveClass('gk-btn--lg');
+  });
+
+  /** G2-f (2026-11-14): "2 Schiffe reparieren" did not fit a 320 px phone; the verb shrinks to its line, never cut. */
+  it('hands its verb’s length to the style, so a long one can fit a narrow phone', () => {
+    const { container } = render(<GameHold weight="spends" label="2 Schiffe reparieren" onCommit={() => undefined} />);
+    expect(container.querySelector<HTMLElement>('.gk-hold__label')?.style.getPropertyValue('--gk-len')).toBe('20');
+  });
+});
+
+/** G1-d2 (2026-11-14): a round button can say a state of its own is on, with a light at its foot. */
+describe('the round button', () => {
+  it('is lit only while its state is on', () => {
+    const { rerender } = render(<RoundButton glyph="eye" label="View" onPress={() => undefined} />);
+    expect(screen.getByRole('button', { name: 'View' })).not.toHaveAttribute('data-lit');
+    rerender(<RoundButton glyph="eye" label="View" lit onPress={() => undefined} />);
+    expect(screen.getByRole('button', { name: 'View' })).toHaveAttribute('data-lit');
   });
 });

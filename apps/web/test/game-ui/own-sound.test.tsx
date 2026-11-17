@@ -28,7 +28,7 @@ describe('the mixer\u2019s click', () => {
         <GameTabs label="Clan" tabs={[{ id: 'o', label: 'Overview' }, { id: 'w', label: 'War', locked: 'Clan level 2' }]} value="o" onChange={() => undefined} />
         <BottomNav label="Main" items={[{ id: 'g', label: 'Galaxy' }]} value="g" onChange={() => undefined} />
         <LanguagePicker label="Dil" value="tr" onChange={() => undefined} />
-        <UnitCard name="Dart" art="/dart.webp" cls="SKIRMISHER" multiplier={1} home={4} chosen={1} onChange={() => undefined} />
+        <UnitCard name="Dart" art="/dart.webp" cls="SKIRMISHER" home={4} chosen={1} onChange={() => undefined} />
         <UnitBay name="Lance" art="/lance.webp" cls="LANCE" multiplier={1} home={4} chosen={1} selected={false} onSelect={() => undefined} />
         <RewardPod label="Open the pod" onOpen={() => undefined} />
       </>,

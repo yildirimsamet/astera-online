@@ -152,7 +152,7 @@ describe('the orbit surface', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Defend' }));
     expect(screen.getByRole('heading', { name: 'Aegis' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Harpoon' })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('tab', { name: 'Production' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Economy' }));
     expect(screen.getByRole('heading', { name: 'Foundry' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('tab', { name: 'Fleet' }));
     expect(screen.getByRole('heading', { name: 'Derrick' })).toBeInTheDocument();
@@ -193,7 +193,9 @@ describe('the orbit surface', () => {
       { shield: 80, shieldMax: 120, shieldPerHour: 48 },
     );
     expect(screen.getByText('80 / 120')).toBeInTheDocument();
-    expect(screen.getByRole('meter', { name: 'Aegis shield charge' })).toHaveAttribute('aria-valuenow', '67');
+    const charge = screen.getByRole('progressbar', { name: 'Aegis shield charge' });
+    expect(charge).toHaveAttribute('aria-valuenow', '80');
+    expect(charge).toHaveAttribute('aria-valuemax', '120');
     expect(screen.getByText(/\+48\/h/i)).toBeInTheDocument();
   });
 
@@ -247,10 +249,10 @@ describe('the orbit surface', () => {
   it('tags every Intel card with what it is', () => {
     show();
     for (const tag of [
-      'Unlocks Telescope and Radar',
-      'Resolve distant movement',
-      'Distinguish threats to you',
-      'Hide from telescopes',
+      'Opens Telescope/Radar',
+      'Sees distant movement',
+      'Spots what is inbound',
+      'Hides from telescopes',
     ]) {
       expect(screen.getByText(tag), `${tag} is missing`).toBeInTheDocument();
     }
@@ -495,7 +497,7 @@ describe('finding things', () => {
 
   it('tags the buildings too, not only the hardware', () => {
     show({}, 'grow');
-    for (const tag of ['Unlocks higher levels', 'Makes alloy', 'Makes crystal']) {
+    for (const tag of ['Raises the level cap', 'Makes alloy', 'Makes crystal']) {
       expect(screen.getByText(tag), `${tag} is missing`).toBeInTheDocument();
     }
   });

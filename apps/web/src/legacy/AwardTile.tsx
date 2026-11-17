@@ -3,6 +3,10 @@ import i18n from '../i18n/index.js';
 import type { LegacyAward } from '../api/legacySchemas.js';
 import { legacyAwardTitle, legacyEditionLabel } from './presentation.js';
 import { useAwardSnapshot } from './snapshot.js';
+import { Glyph, ProgressBar } from '../game-ui/index.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 
 /** Day, month and year in the player's language. */
 export const legacyDate = (date: Date): string =>
@@ -26,6 +30,7 @@ export function AwardPicture({ award, className = '' }: {
 /**
  * One piece in a grid: its picture on a glow of its rarity, its name and the season or year it
  * belongs to. A locked piece is the same tile in silhouette, with how far along you are.
+ * On the kit since C27: one press with its sound and buzz, the progress in the kit's bar.
  */
 export function AwardTile({ award, onOpen, selected, order, locked }: {
   award: LegacyAward;
@@ -37,35 +42,31 @@ export function AwardTile({ award, onOpen, selected, order, locked }: {
   locked?: { value: number; goal: number; label: string };
 }) {
   const { t } = useTranslation();
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onOpen(); });
   const title = legacyAwardTitle(award);
   const edition = legacyEditionLabel(award);
   return (
-    <button type="button" onClick={onOpen} data-legacy-tile data-rarity={award.rarity} {...(locked ? { 'data-locked': '' } : {})}
+    <button type="button" {...OWN_SOUND} onPointerDown={own.onPointerDown} onClick={own.onClick}
+      data-legacy-tile data-rarity={award.rarity} {...(locked ? { 'data-locked': '' } : {})} {...(selected ? { 'data-picked': '' } : {})}
       aria-pressed={selected}
       aria-label={locked ? `${locked.label}. ${t('legacy.award.progress')}: ${String(locked.value)}/${String(locked.goal)}` : edition ? `${title} · ${edition}` : title}
-      className={`legacy-tile relative flex min-w-0 flex-col items-center gap-1 rounded-control px-1.5 pb-2 pt-1.5 text-center focus-visible:outline-2 focus-visible:outline-v2-self ${selected ? 'outline-2 outline-v2-self' : ''}`}>
-      <span className="relative grid aspect-square w-full place-items-center">
-        <AwardPicture award={award} className="size-[92%]" />
-        {order !== undefined && (
-          <span className="absolute left-0.5 top-0.5 grid size-5 place-items-center rounded-full bg-v2-self font-v2-mono text-micro font-semibold text-v2-self-ink">{order}</span>
-        )}
-        {locked && (
-          <svg aria-hidden="true" viewBox="0 0 24 24" className="absolute size-5 text-v2-ink-3"><path fill="currentColor" d="M7 10V8a5 5 0 0 1 10 0v2h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1zm2 0h6V8a3 3 0 0 0-6 0z" /></svg>
-        )}
+      className="legacy-tile gk-legacy__tile">
+      <span className="gk-legacy__tileart">
+        <AwardPicture award={award} className="gk-legacy__tilepic" />
+        {order !== undefined && <span className="gk-legacy__order gk-num">{order}</span>}
+        {locked && <span className="gk-legacy__lock"><Glyph id="lock" /></span>}
       </span>
-      <span className={`line-clamp-2 min-h-[2.3em] break-words text-label font-semibold leading-tight ${locked ? 'text-v2-ink-2' : 'text-v2-ink'}`}>{locked ? locked.label : title}</span>
+      <span className="gk-legacy__tilename">{locked ? locked.label : title}</span>
       {locked ? (
-        <span className="w-full">
-          <span className="block h-1 overflow-hidden rounded-full bg-v2-line">
-            <span className="block h-full rounded-full bg-v2-premium" style={{ width: `${String(Math.min(100, (locked.value / locked.goal) * 100))}%` }} />
-          </span>
-          <span className="mt-0.5 block font-v2-mono text-micro text-v2-ink-3">{locked.value}/{locked.goal}</span>
+        <span className="gk-legacy__tileprogress">
+          <ProgressBar value={locked.value} max={locked.goal} tone="warn" />
+          <span className="gk-num">{locked.value}/{locked.goal}</span>
         </span>
       ) : (
-        <span className="flex items-center gap-1 text-micro">
-          <span className="legacy-rarity-dot size-1.5 rounded-full" />
-          <span className="legacy-rarity-text font-semibold">{t(`legacy.rarity.${award.rarity}`)}</span>
-          {edition && <span className="font-v2-mono text-v2-ink-3">· {edition}</span>}
+        <span className="gk-legacy__rarity">
+          <span className="legacy-rarity-dot" />
+          <span className="legacy-rarity-text">{t(`legacy.rarity.${award.rarity}`)}</span>
+          {edition && <span className="gk-num">{edition}</span>}
         </span>
       )}
     </button>

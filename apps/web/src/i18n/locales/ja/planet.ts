@@ -78,7 +78,7 @@ export const planet = {
 },
   abandon: {
     "action": "植民地を放棄",
-    "title": "この植民地を放棄しますか？",
+    "title": "植民地を放棄",
     "cancel": "植民地を維持",
     "confirm": "放棄する",
     "pending": "放棄中…",
@@ -128,23 +128,22 @@ export const planet = {
     noRadar: "装填済み · レーダー迎撃範囲は停止中",
     build: "迎撃弾を装填",
     started: "迎撃弾の装填開始",
+    short: "デス・スターや放射線爆弾を止める。",
     hint: "レーダー迎撃範囲に入るか望遠鏡で識別されたデス・スターまたは放射線爆弾を1つ止めます。発射ごとに標的の惑星の迎撃弾を1発消費します。",
     colonyHint: "突破したデス・スター1基につき、この植民地の忠誠度は{{loss}}下がり、ランダムな故障が1件発生します。",
-    readyHint:
-      "レーダー迎撃範囲に入るか望遠鏡で識別されたデス・スターまたは放射線爆弾を1つ止めます。発射ごとに標的の惑星の迎撃弾を1発消費します。",
     noRadarHint:
       "迎撃弾は装填済みですが、この惑星のレーダー迎撃範囲は使えません。アップリンクとレーダーL3を復旧してください。別の惑星の望遠鏡が標的を捉えれば発射できます。",
     needRadar: "レーダー L{{level}}",
     needUplink: "軌道上のアップリンク",
     needOperational: "惑星の機能が稼働中",
-    buildTime: "{{duration}} · 迎撃弾1発 · 発射時に消費",
     buildSecond: "次の迎撃弾を装填",
   },
 
   deathStar: {
     empDuration: "EMP効果時間",
     loyaltyDamage: "命中ごとのコロニー忠誠度",
-    eyebrow: "戦術EMP兵器",
+    /** The one line beside the rule's "?" on the forge (G2-g). */
+    rule: "目標のイージスを0にし、地上防衛を沈黙させます。",
     tally: "{{used}}/{{total}}基を保有",
     none: "この惑星にデス・スターはありません",
     building: "建造中 · {{duration}}",
@@ -179,6 +178,9 @@ export const planet = {
   queue: {
     /** The end of all the work in one lane, which no screen used to carry. */
     waiting: "待機中",
+    /** An idle lane, folded to one line while another works (G2-c). */
+    freeSlots_one: "空き{{count}}枠",
+    freeSlots_other: "空き{{count}}枠",
     ends: "{{time}}に完了",
     segment: "{{name}} · {{duration}}",
     cancelOne: "{{name}}をキャンセル",
@@ -259,10 +261,10 @@ export const planet = {
       "戦術的撤退 · この防衛線（艦船と稼働中の砲）の{{ratio}}倍の戦力で全滅させる襲撃から、船は退避します · 重水素{{fuel}}を消費",
     escapeShort:
       "戦術的撤退には重水素{{fuel}}が必要ですが、備蓄は{{stock}}です。この防衛線（艦船と稼働中の砲）の{{ratio}}倍の戦力の襲撃から退避できません。",
-    shieldBand: "シールド",
+    buildBand: "防衛施設",
+    lineFold: "防衛ライン",
     shieldNote:
       "イージスは船や地上砲へのダメージを先に吸収し、毎時最大値の35%を再生します。",
-    groundBand: "地上防衛（司令中枢のレベルで収容上限が増加）",
     /* The figures moved into `CapacityBar`; the band keeps the RULE. */
     groundNote:
       "地上砲は惑星から移動できません。ソーンは防壁型、ハープーンは機動型、バスティオンは突撃型に有利です。",
@@ -425,9 +427,8 @@ export const planet = {
     research: "{{research}} {{level}}",
     requirements: "必要条件：{{requirements}}",
     maxed: "最高レベルに到達しています",
-    /** The one building with a second ceiling: its research rung. T5. */
-    plantRung: "重水素合成のもう一段の研究",
     queueFull: "すでに 3 件の注文が待機中です。これを追加するには、1 つを終了またはキャンセルします。",
+    queueFullShort: "キューが満杯",
   },
 
   /** What a purchase says once it has landed. */
@@ -468,10 +469,10 @@ export const planet = {
     heldOfMax: "上限{{max}}のうち{{owned}}を保有。出航中も数に含まれます。",
     defenceAfter: "完成後にこの惑星を守るユニット：{{count}}",
     maxOf: "上限・{{value}}",
-    byPurse: "資源が足りる数まで",
-    byHangar: "格納庫の空き枠まで",
-    byGround: "地上設備の空き枠まで",
-    byBerth: "停泊枠の空きまで",
+    byPurse: '資源の上限',
+    byHangar: '格納庫の上限',
+    byGround: '地上の上限',
+    byBerth: '停泊枠の上限',
     cycle: "艦種の相性",
     yardFill: "造船キュー{{used}}/{{total}}",
     standing: "駐留戦力{{value}}",
@@ -504,7 +505,7 @@ export const itemSheet = {
   /** The construction queue the order joins, as it stands. */
   queueFill: "建設キュー{{used}}/{{total}}",
   /** The primary, when the price is not met yet. */
-  affordIn: "あと約{{duration}}で資源が足ります",
+  affordIn: "{{duration}}で足ります",
   short: "資源が足りません",
   orbitalDoesHeading: "機能",
   orbitalOnce: "一度だけ建設できます · レベルは上げられません",
@@ -653,8 +654,6 @@ export const launch = {
   holdWorld_other: "{{count}}隻を発進",
   holdPirate_one: "{{count}}隻を発進",
   holdPirate_other: "{{count}}隻を発進",
-  warningWorld: "この艦隊は帰還するまで{{world}}を防衛できません。推定不在時間：{{duration}}。",
-  warningPirate: "この襲撃は交戦前に一度だけ呼び戻せます。艦隊は帰還するまで{{world}}を防衛できません。推定不在時間：{{duration}}。",
   recallNote:
     "飛行中に一度だけ呼び戻せます。帰還には往路で経過した時間と同じだけかかります。燃料は返還されません。",
   chooseFleet: "艦隊を選択してください",
@@ -668,12 +667,8 @@ export const launch = {
   pace: "飛行速度",
   paceHint: "減速した艦隊は到着が遅くなり、同じ速度で帰還します。速度を下げると燃料費が減ります。減速するには、各飛行区間が12時間以内である必要があります。",
   paceFull: "フル",
-  paceBenefit: "速度を下げると燃料を節約できます。",
   paceFuelValue: "重水素{{amount}}",
-  paceFuelBaseline: "最高速度：{{amount}}",
   paceSaved: "重水素{{amount}}を節約",
-  paceArrival: "目標への到着",
-  paceTimeBaseline: "最高速度：{{duration}}",
   paceDelay: "{{duration}}遅く到着",
   paceRounding: "燃料の切り上げにより、この艦隊では節約できません。",
   paceReset: "選択した速度では飛行時間の上限を超えるため、この艦隊は最高速度で飛行します。",
@@ -745,6 +740,12 @@ export const launch = {
   cargoEach: "{{amount}} 貨物各",
   cargoAdds: "+{{amount}} 貨物",
   paceBrief: "燃料を節約・減速区間12時間以内",
+  priceRules: "出撃のルール",
+  awayFor: "{{world}}・{{duration}} この艦隊なし",
+  awayOpen: "{{world}}・帰還までこの艦隊なし",
+  pirateRecall: "この襲撃は交戦前に一度だけ呼び戻せます。",
+  shieldShort: "初期シールドが終了します",
+  recoveryShieldShort: "回復シールドと生産+50%が終了します",
   escort: "司令官艦がフリートに随伴",
   escortLabel: "司令官艦",
   escortBonusAkinci: "ダメージ +{{pct}}%",
@@ -758,8 +759,6 @@ export const launch = {
   escortService: "整備中 · {{clock}}",
   escortYarik: "Yarıkを飛行中",
   escortAway: "別のフリートに随伴中",
-  warningWorldOpen: "この艦隊は帰還するまで{{world}}を防衛できません。",
-  warningPirateOpen: "この襲撃は交戦前に一度だけ呼び戻せます。艦隊は帰還するまで{{world}}を防衛できません。",
 } as const;
 
 export const transfer = {
@@ -794,6 +793,7 @@ export const transfer = {
   sending: "派遣中",
   launched: "移送艦隊が出航しました・到着まで{{duration}}",
   /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
+  recallOnce: "飛行中に一度だけ呼び戻せます。",
   rules: "飛行中に一度だけ呼び戻せます。戻るまでの時間は、すでに飛んだ時間と同じです。地上防衛設備は移送できません。積載量のある艦船は資源を運べます。",
   hullNone: "この惑星にいません",
   holdReady: "選んだ艦船が資源を運びます。積載量：{{capacity}}。",
@@ -848,8 +848,6 @@ export const faults = {
   strip: {
     title: "修理",
     capacity: "修理班{{count}}組",
-    priceAlloy: "{{alloy}} 合金",
-    priceBoth: "{{alloy}}合金・{{crystal}}クリスタル",
     lane: "修理班{{slot}}",
   },
   tab: "発生中の故障",
@@ -877,28 +875,33 @@ export const faults = {
   },
   toll: {
     title: "失っているもの",
-    alloy: "1時間あたり合金{{amount}}を生産できません",
-    crystal: "1時間あたりクリスタル{{amount}}を生産できません",
-    deuterium: "この惑星が1時間で生産するはずの重水素を失います",
-    leak: "毎時{{amount}}の資源が残骸地帯へ漏出します。残骸地帯を発見した司令官は資源を回収できます。",
+    rate: "{{amount}}/時",
+    what: {
+      REFINERY_OUTAGE: "合金が生産されない",
+      EXTRACTOR_OUTAGE: "クリスタルが生産されない",
+      PLANT_OUTAGE: "重水素が生産されない",
+      VAULT_LEAK: "軌道へ漏出中",
+    },
   },
   loyalty: {
     title: "この惑星の忠誠度",
     battleLoss: "部分的敗北 −15 · 決定的敗北 −30 · デス・スター −{{strike}}",
-    line: "忠誠度：{{value}}%。{{count}}件の故障により低下しています。この速度では{{time}}後にゼロとなり、植民地を失います。",
+    why_one: "{{count}}件の故障で低下中。0になると植民地を失います。",
+    why_other: "{{count}}件の故障で低下中。0になると植民地を失います。",
     bar: "{{value}}%",
     left: "残り{{time}}",
   },
   price: {
     title: "修理",
-    crew: "修理班",
-    parts: "部品",
-    takes: "修理には{{min}}～{{max}}分かかります。正確な所要時間は修理開始時に決まります。",
+    range: "{{min}}～{{max}}分",
+    drawn: "正確な所要時間は修理開始時に決まります。",
   },
-  repair: "修理を開始",
-  running: "修理班が作業中 · {{time}}",
+  repair: "修理する",
+  crewOn: "修理班が作業中",
   noCancel: "開始した修理はキャンセルできません。",
   lanesFull: "{{count}}組の修理班がすべて出動中",
+  short: "資源が足りません",
+  crewsFree: "空き修理班 {{free}}/{{count}}",
   started: "修理を開始しました。",
   failed: "修理を開始できませんでした。",
 } as const;

@@ -7,7 +7,8 @@ export const intel = {
   shelf: {
     label: 'Intel',
     watch: 'Watch',
-    reports: 'Reports',
+    probes: 'Probes',
+    battles: 'Battles',
     radar: 'Radar',
   },
   rivals: {
@@ -25,9 +26,6 @@ export const intel = {
     empty: 'Nothing known yet: a Telescope watches live, a probe brings back one reading.',
   },
   openOrbit: 'Open Orbit',
-  tabs: {
-    label: 'Intel reports',
-  },
   coverage: {
     label: 'Coverage',
     blind: 'You cannot see into a single planet',
@@ -38,9 +36,9 @@ export const intel = {
     idleHint_one: '{{count}} slot is idle. Pick a world in the galaxy and point one at it.',
     idleHint_other: '{{count}} slots are idle. Pick a world in the galaxy and point one at it.',
     scarcity_one:
-      '{{neighbours}} worlds out there and {{count}} eye to spend. Moving one costs a cooldown, so choose who.',
+      '{{neighbours}} worlds out there, {{count}} eye. Moving it costs a cooldown: choose well.',
     scarcity_other:
-      '{{neighbours}} worlds out there and {{count}} eyes to spend. Moving one costs a cooldown, so choose who.',
+      '{{neighbours}} worlds out there, {{count}} eyes. Moving one costs a cooldown: choose well.',
     oneMore: 'Telescope L{{level}} would watch one more.',
     noRadar: 'And with no Radar, you cannot distinguish a threat aimed at you from other movement.',
   },
@@ -85,6 +83,7 @@ export const intel = {
     accuracyHome: '{{percent}} accuracy · fleet was home',
     accuracyOut: '{{percent}} accuracy · fleet was out',
     scaleNote: 'Each bar runs from zero: the band is their estimate, the teal line is your world.',
+    estimateFact: "These figures are estimated ranges.",
     estimateNote: 'These numbers are estimated ranges. Armed unit value excludes the shield and unarmed ships.',
     caught: 'they caught it',
     /* Two words beside the signal bars, which carry the accuracy themselves. */
@@ -111,11 +110,16 @@ export const intel = {
     origin: ' · {{planet}}',
     /** Which of the caller's own worlds the scan landed on. */
     onWorld: ' · {{planet}}',
+    /** The second door of a scan Radar 5 named: your own world it hit (owner 2026-11-14). */
+    hitWorld: 'Scanned world',
     /* Captions beside the two drawn rings; the picture carries the rest. */
     ringSense: 'Something is out there',
     ringWarn: 'Timed warning',
     /** While the two circles are one, one caption states what the circle does. */
     ringOne: 'Detection and timed warning',
+    /** C9: the dashed rim the rings are drawn against, and a ring's reach with its unit. */
+    rim: 'Galaxy edge',
+    reach: '{{value}} units',
     /**
      * THE READING FOR SOMEBODY WHO CANNOT SEE THE RINGS. The two circles carry
      * both figures and the difference between them; this is the same fact in the
@@ -153,7 +157,7 @@ export const reports = {
   enemyRetreated: "Enemy ships that retreated and survived: {{count}}.",
   turningPointRetreated: "After round {{round}}, no warships remained fighting. Some ships retreated alive.",
   heading: 'Battle reports',
-  newest: 'newest first',
+  emptyTitle: "No battles yet",
   empty:
     'Nothing has been fought over yet. A battle is the only intel in this game that is never a guess.',
   youRaided: 'You raided ',
@@ -314,6 +318,14 @@ export const reports = {
     who: 'What happened to your force?',
     changed: 'Loot and point changes',
   },
+  /** C15: the doors a fight opened, closing its report. */
+  next: {
+    title: "Your next move",
+    source: "Raider’s world: {{planet}}",
+    sourceNote: "Where the raid came from",
+    wreck: "Go to the wreck: {{planet}}",
+    wreckNote: "Worth {{amount}}; first to arrive takes it",
+  },
   walkoverHeading: 'No defending force stood here',
   walkoverBody:
     'No combat fleet or ground defence stood here. Your ships arrived, loaded, and left. There was no fight to report.',
@@ -407,6 +419,7 @@ export const reports = {
   strategicSecededAttacker: "The colony seceded and turned neutral — nobody holds it now.",
   strategicSecededDefender: "Your colony seceded and turned neutral.",
   strategicSecededShort: "colony seceded",
+  strategicDamageShort: "{{amount}} damage",
   strategicCaptured: 'CAPTURED',
   strategicIneffective: 'INEFFECTIVE',
   strategicIntercepted: 'INTERCEPTED',
@@ -427,6 +440,8 @@ export const reports = {
   strategicNoLevelLoss: 'No building or instrument level was lost.',
   strategicDestroyedOrders: 'Construction destroyed',
   strategicNoOrdersLost: 'No active construction order was destroyed.',
+  strategicFleetLost: "Ships and defences destroyed",
+  strategicBombRules: "How the bomb works",
 
   /** A world nobody holds. There is no commander to name. */
   neutralHolder: 'an unclaimed world',
@@ -559,8 +574,6 @@ export const clarity = {
   unreadable: 'UNREADABLE',
   fleetHome: 'FLEET HOME',
   fleetAway: 'FLEET AWAY',
-  backIn: ' · back in {{minutes}}m',
-  unwatched: 'no watch assigned',
 } as const;
 
 /** What you know about another world, and how you know it. */

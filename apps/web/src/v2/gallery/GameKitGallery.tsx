@@ -11,15 +11,18 @@ import '../../game-ui/game-ui.css';
 import type { HonorBenefitTier, HullClass } from '@astera/rules';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  Banner, BottomNav, CLAN_LEVEL_ART, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, CountBadge, CutPlate, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
-  FLAG_IDS, FreeSlot, GameTabs, Glyph, HonorBadge, InfoPeek, LanguagePicker, LevelBadge, Lever, ListRow, LockBadge, MultiplierBadge, Plate, ProgressBar, QueueSlot, RangeBars,
-  ResourceHud, RewardPod, RoundButton, SectionTag, StatusChip, SheetFrame, Slider, SpendBar, StatPlaque, StoreGauge, TextField, Timer, Toggle, UnitBay, UnitCard,
+  Banner, BottomNav, CLAN_LEVEL_ART, MenuTile, TileGrid, CargoBar, Chip, ClanEmblem, ClanLevelBadge, CoachMark, ContextCard, ContextStrip, CountBadge, CutPlate, DropGroup, DropPanel, PickRow, Tally, NewsList, NewsRow, Dialog, Dot, Emblem, EmptyState, GameButton, GameHold,
+  FLAG_IDS, FreeSlot, GameTabs, Glyph, HonorBadge, InfoPeek, LanguagePicker, LevelBadge, Lever, ListRow, LockBadge, Medallion, MultiplierBadge, Plate, ProgressBar, QueueSlot, RangeBars,
+  ResourceHud, RewardPod, RoundButton, SectionTag, StatusChip, SheetFrame, Slider, SpendBar, StatPlaque, StoreGauge, TextField, Timer, TimerPlate, TimerRow, Toggle, UnitBay, UnitCard,
   Well, ART_ICONS, ArtIcon, DOCK_ART, GLYPH_IDS, artIconSrc, type FlagId, type HudResource,
 } from '../../game-ui/index.js';
 import type { Language } from '../../i18n/languages.js';
 import { haptic } from '../../lib/haptics.js';
 import { playSound } from '../../lib/sound.js';
 import { BUILDING_ART, HULL_ART, RESOURCE_ART, planetArt } from '../../ui/assets.js';
+import { ATMOSPHERE } from '../../ui/atmosphere.js';
+import type { BuildOrderView } from '../../api/schemas.js';
+import { Outline } from '../hud/Outline.js';
 import { UpgradeRow } from '../../ui/UpgradeRow.js';
 import { StarField } from '../kit/StarField.js';
 import { Unreachable, Waiting } from '../../ui/kit/Surface.js';
@@ -177,7 +180,7 @@ function LaunchScreen({ layout }: { layout: 'cards' | 'bay' }) {
                 name={ship.name}
                 art={art(HULL_ART[ship.id])}
                 cls={ship.cls}
-                multiplier={ship.mult}
+                {...(ship.mult === null ? {} : { badge: <MultiplierBadge value={ship.mult} /> })}
                 home={ship.home}
                 chosen={fleet[ship.id]}
                 onChange={(next) => { setShip(ship.id, next); }}
@@ -299,31 +302,239 @@ function BaseScreen() {
 /* ── the HUD: the world a player opens the game into ────────────────────────── */
 
 const HUD: readonly HudResource[] = [
-  { id: 'alloy', art: RESOURCE_ART.alloy, amount: '9,8K', rate: '+2,2K', store: 0.62, tone: 'alloy', label: 'Alaşım' },
-  { id: 'crystal', art: RESOURCE_ART.crystal, amount: '2,1K', rate: '+640', store: 1, tone: 'crystal', label: 'Kristal' },
-  { id: 'deut', art: RESOURCE_ART.deuterium, amount: '860', rate: '+180', store: 0.3, tone: 'deut', label: 'Döteryum' },
+  { id: 'alloy', art: RESOURCE_ART.alloy, amount: '9,8K', rate: '+2,2K', store: 0.62, tone: 'alloy', label: 'Alaşım 9.840 / 16.000' },
+  { id: 'crystal', art: RESOURCE_ART.crystal, amount: '2,1K', rate: '+640', store: 1, tone: 'crystal', label: 'Kristal 2.140 / 2.140' },
+  { id: 'deut', art: RESOURCE_ART.deuterium, amount: '860', rate: '+180', store: 0.3, tone: 'deut', label: 'Döteryum 860 / 2.800' },
 ];
+
+/**
+ * THE TOP BAR'S PARTS (G1-b): each pill the press for its store — green waiting to be
+ * collected and breathing, yellow a gap to close, quiet while little waits — the share a
+ * raid cannot take as a notch, a place kept for a resource not in use yet; the commander's
+ * medallion at the end of the bar (owner 2026-11-14); the bell and the chat as they sit
+ * together on the galaxy — a press on the bell here brings news, and it swings; the gift's
+ * painting; effects that answer a press.
+ */
+function TopBarParts() {
+  const [flight, setFlight] = useState<number | undefined>(undefined);
+  const [news, setNews] = useState(3);
+  const collect = (): void => { setFlight(Date.now()); window.setTimeout(() => { setFlight(undefined); }, 1_200); };
+  const alloy: HudResource = { id: 'alloy', art: RESOURCE_ART.alloy, amount: '12.400', store: 0.62, safe: 0.25, pool: { text: '+2,2K', tone: 'good' }, ripe: true, tone: 'alloy', label: 'Alaşım 12.400 / 20.000 · atölyede +2.200 · Topla', onPress: collect, ...(flight === undefined ? {} : { flight }) };
+  const crystal: HudResource = { id: 'crystal', art: RESOURCE_ART.crystal, amount: '2.140', store: 1, safe: 0.25, pool: { text: '+640', tone: 'warn' }, tone: 'crystal', label: 'Kristal dolu 2.140 / 2.140 · atölyede +640 · Depoda yer yok', onPress: () => undefined };
+  const deut: HudResource = { id: 'deut', art: RESOURCE_ART.deuterium, amount: '860', store: 0.3, pool: { text: '+12', tone: 'quiet' }, tone: 'deut', label: 'Döteryum 860 / 2.800 · atölyede +12', onPress: () => undefined };
+  const medal = <Medallion initials="YI" label="Komutan Yıldırım · menü" onPress={() => undefined} />;
+  return (
+    <>
+      <div className="gk-hudbar"><div className="min-w-0 flex-1"><ResourceHud items={[alloy, crystal, deut]} /></div>{medal}</div>
+      <div className="gk-hudbar"><div className="min-w-0 flex-1"><ResourceHud items={[alloy, crystal, { ...deut, hidden: true }]} /></div>{medal}</div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <RoundButton art={artIconSrc('hud-bell')} label={`Sinyaller · ${String(news)} okunmamış`} count={news} onPress={() => { setNews((n) => n + 1); }} />
+        <RoundButton art={artIconSrc('hud-chat')} label="Sohbet · 2 okunmamış" count={2} onPress={() => undefined} />
+        <RoundButton art={artIconSrc('hud-bell')} label="Sinyaller · saldırı geliyor" count={1} urgent onPress={() => undefined} />
+        <RoundButton art={artIconSrc('hud-chat')} label="Sohbet" onPress={() => undefined} />
+      </div>
+      <div className="flex flex-wrap items-center gap-1">
+        <RoundButton art={artIconSrc('gift')} label="Ödüller · 7 hazır" count={7} onPress={() => undefined} />
+        <RoundButton art={artIconSrc('menu-shop')} label="Mağaza" onPress={() => undefined} />
+        <StatusChip glyph="shield" tone="info" label="Yeni komutan kalkanı" value="2 g 6 sa" onPress={() => undefined} />
+        <StatusChip glyph="up" tone="info" label="Toparlanma üretimi" value="×1,5" until="5 sa" onPress={() => undefined} />
+        <StatusChip glyph="up" tone="good" label="Sinyal üretimi" value="×2" until="3 sa" onPress={() => undefined} />
+        <StatusChip glyph="timed" tone="info" label="Tatil" value="Tatil" until="18.11 21:00" onPress={() => undefined} />
+      </div>
+    </>
+  );
+}
+
+/**
+ * THE TIMERS (G1-c, 2026-11-14): the one timer that matters most as a plate under the top
+ * bar — an enemy's in red, yours in your colour, a warning in amber, a ring with no arc where
+ * the whole is not known — and the rows of the board one tap under it.
+ */
+function TimerParts() {
+  const noop = (): undefined => undefined;
+  return (
+    <>
+      <div className="grid justify-items-start gap-2">
+        <TimerPlate tone="hostile" glyph="siren" remaining={252} total={1_800} time="4:12" title="Saldırı → Kestrel" detail="Görüşte · 39 gemi" more={3} live label="En acil sayaç" onPress={noop} />
+        <TimerPlate tone="self" glyph="rocket" remaining={1_500} total={3_600} time="25 dk" title="Filon → Tharsis" detail="12 gemi" label="En acil sayaç" onPress={noop} />
+        <TimerPlate tone="warn" glyph="warn" remaining={0} total={0} time="6 sa 40 dk" title="Sessiz Uzay’a geçiş" detail="Bir yapım, araştırma ya da saldırı başlat" label="En acil sayaç" onPress={noop} />
+        <TimerPlate tone="self" glyph="up" remaining={110} total={3_600} time="1:50" title="Alaşım Rafinerisi 12 · çok uzun bir yapı adı" detail="İş bitiyor" more={1} label="En acil sayaç" onPress={noop} />
+      </div>
+      <ul className="gk-tlist">
+        <li><TimerRow tone="hostile" glyph="siren" remaining={252} total={1_800} title="Saldırı → Kestrel" detail="Görüşte · 39 gemi" time="4 dk 12 sn" at="12:44’te" onPress={noop} /></li>
+        <li><TimerRow tone="self" glyph="rocket" remaining={1_500} total={3_600} title="Filon → Tharsis" detail="12 gemi" time="25 dk" at="13:05’te" onPress={noop} /></li>
+        <li><TimerRow tone="self" glyph="mine" remaining={300} total={1_200} title="Sondaların → Göktaşı" detail="2 sonda" time="5 dk" at="12:45’te" onPress={noop} /></li>
+        <li><TimerRow tone="self" glyph="up" remaining={110} total={3_600} title="Alaşım Rafinerisi 12" detail="İş bitiyor" time="1 dk 50 sn" at="12:42’de" /></li>
+        <li><TimerRow tone="self" glyph="up" remaining={0} total={0} title="Depo 4" detail="Öndeki bitince başlar" waiting="Sırada" /></li>
+        <li><TimerRow tone="warn" glyph="settings" remaining={0} total={0} title="Bakım 03:00–03:30" detail="Bu sırada saldırı inmez" time="14 sa 20 dk" at="03:00’te" /></li>
+      </ul>
+    </>
+  );
+}
+
+/** The card at the foot of the galaxy (G1-d): an attack, an event, a suggestion, and the suggestion folded. */
+function ContextParts() {
+  const noop = (): undefined => undefined;
+  return (
+    <div className="grid gap-2">
+      <ContextCard
+        tone="hostile" glyph="siren" eyebrow="Gelen saldırı" title="Geliyor → Kestrel"
+        timer={{ remaining: 540, total: 600, text: '9 dk 00 sn sonra iner' }}
+        actions={<GameButton tone="danger" size="sm" glyph="shield" onPress={noop}>Savunmayı hazırla</GameButton>}
+        tools={<RoundButton small glyph="eye" label="Ona bak" onPress={noop} />}
+        dismissLabel="Kapat" onDismiss={noop}
+      >
+        Görüşte · 39 gemi
+      </ContextCard>
+      <ContextCard tone="self" glyph="asteroid" eyebrow="Galaksi olayı" title="Asteroid yağmuru" timer={{ remaining: 1_800, total: 5_400 }} dismissLabel="Kapat" onDismiss={noop}>
+        Oluşma ×2 · 30 dk 00 sn kaldı
+      </ContextCard>
+      <ContextCard
+        tone="self" glyph="target" eyebrow="Fırsat" title="456 toplanamıyor"
+        actions={<GameButton tone="self" size="sm" onPress={noop}>Harca</GameButton>}
+        dismissLabel="Kapat" onDismiss={noop} foldLabel="Gizle" onFold={noop}
+      >
+        456 işlikte bekliyor; depo dolu.
+      </ContextCard>
+      <ContextStrip tone="hostile" glyph="warn" eyebrow="Tehdit" title="Bu dünyanın yer savunması yok" label="Göster" onPress={noop} />
+    </div>
+  );
+}
+
+/** The finder at the galaxy's top right (G1-d2): counts in their colours, the list one drops, the lit view. */
+function FinderParts() {
+  const [open, setOpen] = useState(true);
+  const noop = (): undefined => undefined;
+  return (
+    <div className="grid justify-items-end gap-1">
+      <div className="flex flex-wrap justify-end gap-x-1">
+        <Tally glyph="asteroid" paint="crystal" value="12" label="12 kaya" />
+        <Tally glyph="pirate" paint="hostile" value="3" label="3 korsan" />
+        <Tally glyph="debris" paint="alloy" value="30" label="30 enkaz" onPress={noop} />
+        <Tally glyph="colony" paint="warn" value="2" label="2 karakol" onPress={noop} />
+        <Tally glyph="star" paint="deut" value="8" label="8 anıt" expanded={open} onPress={() => { setOpen((now) => !now); }} />
+      </div>
+      <div className="relative h-[260px] w-full">
+        {/* A zero-high anchor: the panel drops from the counts' foot, as it does in the game. */}
+        <div className="absolute inset-x-0 top-0 h-0">
+        {open && (
+          <DropPanel id="kit-finder" label="8 anıt" title="8 anıt" paint="deut">
+            <li><DropGroup tone="hostile">Zor</DropGroup><PickRow glyph="target" tone="hostile" index="05" title="Kadim Gözlemevi" detail="4,0K uzaklık" onPress={noop} /></li>
+            <li><PickRow glyph="target" tone="hostile" index="07" title="Terk Edilmiş İstasyon" detail="6,2K uzaklık" onPress={noop} /></li>
+            <li><DropGroup tone="self">Kolay</DropGroup><PickRow glyph="target" tone="self" index="01" title="Parçalanmış Dünya Gemisi" detail="2,1K uzaklık" onPress={noop} /></li>
+          </DropPanel>
+        )}
+        </div>
+        <div className="absolute left-0 top-0 grid gap-1">
+          <RoundButton art={artIconSrc('hud-home')} label="Dünyana uç" onPress={noop} />
+          <RoundButton art={artIconSrc('hud-view')} label="Görünüm" lit onPress={noop} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The news (G1-e): what is true now, then what happened; lit while new, ground by outcome. */
+function NewsParts() {
+  const noop = (): undefined => undefined;
+  const open = { label: 'İlgili raporu aç', onPress: noop };
+  return (
+    <div className="grid gap-1">
+      <NewsList title="Şu anda">
+        <li><NewsRow glyph="timed" tone="alloy" fresh open={{ label: 'Atölye durdu', onPress: noop }}><strong>Atölye durdu</strong> · Atölye dolu. Toplayana dek üretim saatte 1,2K'da duruyor.</NewsRow></li>
+      </NewsList>
+      <NewsList title="Neler oldu">
+        <li><NewsRow glyph="attack" tone="hostile" outcome="loss" fresh age="35 dk önce" open={open}
+          tool={<RoundButton small glyph="target" label="Haritada göster: Sable" onPress={noop} />}><strong>Sable</strong> · Akın yedin · −1,1K gitti · 3 birlik kayıp</NewsRow></li>
+        <li><NewsRow glyph="attack" tone="good" outcome="win" age="1 sa 20 dk önce" open={open}><strong>Kestrel-12</strong> üzerinde KESİN · +3,1K alaşım · 2 gemi kayıp</NewsRow></li>
+        <li><NewsRow glyph="star" tone="info" banner="Galaksi olayı" age="3 sa önce" open={open}>Galakside asteroid yağmuru başladı.</NewsRow></li>
+        <li><NewsRow glyph="zoom" tone="warn" age="4 sa 20 dk önce" open={open}>Tarama yakalandı <span className="gk-num">×3</span></NewsRow></li>
+      </NewsList>
+    </div>
+  );
+}
+
+/** The menu's tiles (G1-f2): a call across the row, a place with news, the store, a warning. */
+function MenuParts() {
+  const noop = (): undefined => undefined;
+  return (
+    <div className="grid gap-2">
+      <TileGrid>
+        <MenuTile tile="return" wide tone="self" glyph="recall" art={ATMOSPHERE.galaxyAccount.src} artAt={ATMOSPHERE.galaxyAccount.position}
+          label="Galaksiye dön" hint="Sessiz Uzay’dan çık" status="Sessiz Uzay’dan çık, eski yerine dön" onPress={noop} />
+      </TileGrid>
+      <TileGrid>
+        <MenuTile tile="leaderboard" glyph="ranking" art={ATMOSPHERE.commander.src} artAt={ATMOSPHERE.commander.position} label="Liderlik tablosu" hint="Dominion ve Onur" onPress={noop} />
+        <MenuTile tile="rewards" glyph="crate" art={ATMOSPHERE.rewards.src} artAt={ATMOSPHERE.rewards.position} label="Ödüller" hint="Topla" news={{ count: 3, said: '3 ödül hazır' }} onPress={noop} />
+        <MenuTile tile="shop" tone="premium" glyph="star" art="/assets/images/cosmetics/shop-showcase-static.webp" artAt="60% 45%" label="Mağaza" hint="Görünümler" onPress={noop} />
+        <MenuTile tile="inventory" glyph="bay" art={ATMOSPHERE.inventory.src} artAt={ATMOSPHERE.inventory.position} label="Envanter" hint="Sahip oldukların" onPress={noop} />
+        <MenuTile tile="center" wide tone="warn" glyph="bell" art={ATMOSPHERE.notificationCenter.src} artAt={ATMOSPHERE.notificationCenter.position}
+          label="Bildirim Merkezi" hint="Saldırı uyarısı" status="Saldırı uyarısı gitmez: döteryum ekle." badge="Kasa boş" onPress={noop} />
+      </TileGrid>
+    </div>
+  );
+}
+
+/** The return story's lines (C1): what happened, what it came to, and the door each row is. */
+function ReturnParts() {
+  const noop = (): undefined => undefined;
+  return (
+    <div className="grid gap-3">
+      <NewsList label="Sen yokken">
+        <li><NewsRow glyph="target" tone="hostile" fresh detail="Biri senin resmini çıkarıyor." open={{ label: 'Radarı aç', onPress: noop, shown: true }}><strong>2 tarama seni buldu</strong></NewsRow></li>
+        <li><NewsRow glyph="shield" tone="good" outcome="win" fresh detail="Hattı tutarken 3 birlik kayıp" open={{ label: 'Raporu aç', onPress: noop, shown: true }}><strong>Savunma tuttu</strong></NewsRow></li>
+        <li><NewsRow glyph="eye" tone="info" fresh detail="NOVA · Dönüş ~12:20 · Teleskop gördü" open={{ label: 'Dosyayı aç', onPress: noop, shown: true }}><strong>Orin filosu dışarıda</strong></NewsRow></li>
+      </NewsList>
+      <Banner variant="strip" tone="warn" glyph="repair" role={null} title="Thistle-88" body="Sadakat %50 · 2 arıza duruyor"
+        action={<GameButton tone="steel" size="sm" glyph="repair" onPress={noop}>Onar</GameButton>} />
+    </div>
+  );
+}
+
+/** The desk outline (G1-g2) full: an attack coming, flights both ways, a lane at work and idle ones. */
+function DeskParts() {
+  const noop = (): undefined => undefined;
+  const now = Date.parse('2026-11-14T12:00:00Z');
+  const min = 60_000;
+  const order = (id: string, subject: string, from: number, to: number): BuildOrderView => ({
+    id, queue: 'CONSTRUCTION', slot: 0, kind: 'BUILDING', subject, count: 1,
+    startedAt: new Date(now + from * min), finishesAt: new Date(now + to * min), cost: { alloy: 300, crystal: 100, deuterium: 0 },
+  });
+  return (
+    <div className="h-[760px]">
+      <Outline
+        now={now}
+        worlds={[
+          { id: 'p-1', name: 'Kestrel', capital: true, active: true, ships: 39, away: 12, threats: 1 },
+          { id: 'p-2', name: 'Vega', capital: false, active: false, ships: 0, away: 0, threats: 0 },
+        ]}
+        flights={[
+          { key: 'a', title: 'Saldırı → Kestrel', detail: 'Sable · 24 gemi', arrival: now + 4 * min + 12_000, incoming: true, engages: false, mark: 'incoming', span: { from: now - 8 * min, to: now + 4 * min } },
+          { key: 'b', title: 'Filon → Tharsis', detail: '12 gemi', arrival: now + 25 * min, leg: 'outbound', incoming: false, engages: true, mark: 'fleet', span: { from: now - 5 * min, to: now + 25 * min }, focus: { kind: 'thread', key: 'b' } },
+          { key: 'c', title: 'Sondaların dönüyor', detail: '2 sonda', arrival: now + 40 * min, leg: 'return', incoming: false, engages: false, mark: 'mining', span: { from: now - 10 * min, to: now + 40 * min } },
+        ]}
+        queues={[
+          { worldId: null, world: null, lane: 'research', orders: [] },
+          { worldId: 'p-1', world: 'Kestrel', lane: 'construction', orders: [order('o-1', 'REFINERY', -10, 12), order('o-2', 'EXTRACTOR', 12, 40)] },
+          { worldId: 'p-1', world: 'Kestrel', lane: 'yard', orders: [] },
+          { worldId: 'p-2', world: 'Vega', lane: 'construction', orders: [] },
+          { worldId: 'p-2', world: 'Vega', lane: 'yard', orders: [] },
+        ]}
+        onWorld={noop}
+        onFlight={noop}
+        onQueue={noop}
+      />
+    </div>
+  );
+}
 
 function HudScreen() {
   const [tab, setTab] = useState('galaxy');
   return (
     <div className="gk-scene">
-      <ResourceHud items={HUD} end={<RoundButton glyph="bell" label="Bildirimler" onPress={() => undefined} />} />
+      <ResourceHud items={HUD} end={<Medallion initials="YI" label="Komutan · menü" onPress={() => undefined} />} />
       <div className="gk-scene__rail">
-        <CutPlate tone="hostile" className="gk-scene__flight">
-          <Timer remaining={7 * 60} total={12 * 60} text="7:00" glyph="attack" />
-          <span className="min-w-0">
-            <span className="gk-label block">Akın · Tharsis</span>
-            <span className="gk-sub block truncate">39 gemi · varış 12:40</span>
-          </span>
-        </CutPlate>
-        <CutPlate tone="self" className="gk-scene__flight">
-          <Timer remaining={50 * 60} total={160 * 60} text="2:28" glyph="up" />
-          <span className="min-w-0">
-            <span className="gk-label block">Tersane 2</span>
-            <span className="gk-sub block truncate">yapılıyor</span>
-          </span>
-        </CutPlate>
+        <TimerPlate tone="hostile" glyph="siren" remaining={7 * 60} total={12 * 60} time="7:00" title="Akın · Tharsis" detail="39 gemi · varış 12:40" more={1} live label="En acil sayaç" onPress={() => undefined} />
       </div>
       <div className="gk-scene__world">
         <img className="gk-scene__planet" src={HOME_ART} alt="" />
@@ -335,14 +546,16 @@ function HudScreen() {
       </div>
       <div className="gk-scene__nav">
         <CoachMark x={50} y={10} hand={HAND} step="2/3" text="Filon hazır: hedef seçmek için Filo’ya dokun" />
+        {/* Over the galaxy the game's bar lets the scene through (owner, 2026-09-24). */}
         <BottomNav
           label="Ana menü"
           value={tab}
           onChange={setTab}
+          clear
           items={[
             { id: 'galaxy', label: 'Galaksi', art: artIconSrc(DOCK_ART.galaxy) },
-            { id: 'base', label: 'Üs', art: artIconSrc(DOCK_ART.base), badge: 1 },
-            { id: 'fleet', label: 'Filo', art: artIconSrc(DOCK_ART.fleet) },
+            { id: 'base', label: 'Üs', art: artIconSrc(DOCK_ART.base), warn: true },
+            { id: 'fleet', label: 'Filo', art: artIconSrc(DOCK_ART.fleet), tally: 2, progress: 0.4 },
             { id: 'intel', label: 'İstihbarat', art: artIconSrc(DOCK_ART.intel), badge: 3 },
             { id: 'clan', label: 'Klan', art: artIconSrc(DOCK_ART.clan), locked: 'Tersane 2 ile açılır' },
           ]}
@@ -746,6 +959,38 @@ function Catalog() {
           <div className="grid gap-1"><span className="gk-label">Kargo · ganimet</span><CargoBar capacity={16.7} loot={LOOT} /></div>
         </Section>
 
+        <Section title="Üst bar · kaynak hapları, zil, komutan, etkiler">
+          <TopBarParts />
+        </Section>
+
+        <Section title="Sayaçlar · en acil sayaç, sayaç listesi">
+          <TimerParts />
+        </Section>
+
+        <Section title="Bağlam kartı · saldırı, olay, öneri, katlanmış öneri">
+          <ContextParts />
+        </Section>
+
+        <Section title="Bulucu · sayımlar, açılan liste, ev ve görünüm">
+          <FinderParts />
+        </Section>
+
+        <Section title="Haberler · şu anda, neler oldu, galaksi olayı">
+          <NewsParts />
+        </Section>
+
+        <Section title="Menü karoları · çağrı, haber, mağaza, uyarı">
+          <MenuParts />
+        </Section>
+
+        <Section title="Dönüş hikâyesi · ne oldu, neye vardı, kapısı">
+          <ReturnParts />
+        </Section>
+
+        <Section title="Masaüstü özeti · dünyalar, havada, kuyruklar">
+          <DeskParts />
+        </Section>
+
         <Section title="Okumalar">
           <ResourceHud items={HUD} />
           <div className="grid grid-cols-2 gap-1.5">
@@ -786,8 +1031,8 @@ function Catalog() {
 
         <Section title="Gemi kartı · bölme">
           <div className="grid grid-cols-2 gap-2">
-            <UnitCard name="Kargı" art={art(HULL_ART.PIKE)} cls="LANCE" multiplier={1} home={20} chosen={chosen} onChange={setChosen} />
-            <UnitCard name="Sur" art={art(HULL_ART.RAMPART)} cls="BULWARK" multiplier={1.6} home={12} chosen={0} onChange={() => undefined} />
+            <UnitCard name="Kargı" art={art(HULL_ART.PIKE)} cls="LANCE" badge={<MultiplierBadge value={1} />} home={20} chosen={chosen} onChange={setChosen} />
+            <UnitCard name="Sur" art={art(HULL_ART.RAMPART)} cls="BULWARK" badge={<MultiplierBadge value={1.6} />} home={12} chosen={0} onChange={() => undefined} />
           </div>
           <div className="grid grid-cols-4 gap-1.5">
             <UnitBay name="Ok" art={art(HULL_ART.DART)} cls="SKIRMISHER" multiplier={0.625} home={52} chosen={24} selected onSelect={() => undefined} />
@@ -809,6 +1054,48 @@ function Catalog() {
               { id: 'clan', label: 'Klan', art: artIconSrc(DOCK_ART.clan), locked: 'Tersane 2' },
             ]}
           />
+          {/* What waits behind each place: a gap (warning dot), a state (steel count + landing ring), news (red), a place just opened. */}
+          <BottomNav
+            label="Durumlar"
+            value={null}
+            onChange={() => undefined}
+            items={[
+              { id: 'galaxy', label: 'Galaksi', art: artIconSrc(DOCK_ART.galaxy) },
+              { id: 'base', label: 'Üs', art: artIconSrc(DOCK_ART.base), warn: true },
+              { id: 'fleet', label: 'Filo', art: artIconSrc(DOCK_ART.fleet), tally: 2, progress: 0.65 },
+              { id: 'intel', label: 'İstihbarat', art: artIconSrc(DOCK_ART.intel), badge: 12 },
+              { id: 'clan', label: 'Klan', art: artIconSrc(DOCK_ART.clan), fresh: 'Yeni' },
+            ]}
+          />
+          {/* A season with no clan layer: the place stays, inert. */}
+          <BottomNav
+            label="Klansız sezon"
+            value="base"
+            onChange={() => undefined}
+            items={[
+              { id: 'galaxy', label: 'Galaksi', art: artIconSrc(DOCK_ART.galaxy) },
+              { id: 'base', label: 'Üs', art: artIconSrc(DOCK_ART.base) },
+              { id: 'fleet', label: 'Filo', art: artIconSrc(DOCK_ART.fleet) },
+              { id: 'intel', label: 'İstihbarat', art: artIconSrc(DOCK_ART.intel) },
+              { id: 'clan', label: 'Klan', art: artIconSrc(DOCK_ART.clan), disabled: true },
+            ]}
+          />
+          {/* On a desk: the same places in the top bar, each with its key. */}
+          <div className="h-14 overflow-x-auto">
+            <BottomNav
+              label="Masaüstü"
+              value="galaxy"
+              onChange={() => undefined}
+              bar
+              items={[
+                { id: 'galaxy', label: 'Galaksi', art: artIconSrc(DOCK_ART.galaxy), shortcut: '1' },
+                { id: 'base', label: 'Üs', art: artIconSrc(DOCK_ART.base), warn: true, shortcut: '2' },
+                { id: 'fleet', label: 'Filo', art: artIconSrc(DOCK_ART.fleet), tally: 2, progress: 0.4, shortcut: '3' },
+                { id: 'intel', label: 'İstihbarat', art: artIconSrc(DOCK_ART.intel), badge: 3, shortcut: '4' },
+                { id: 'clan', label: 'Klan', art: artIconSrc(DOCK_ART.clan), shortcut: '5' },
+              ]}
+            />
+          </div>
         </Section>
       </div>
     </Screen>
@@ -816,7 +1103,7 @@ function Catalog() {
 }
 
 /** A tag names the part in one or two words; what follows a "·" is its note, in plain case. */
-/* ── the building card in every state the base screen draws (stage 4.1) ───────── */
+/* ── the building card in every state the base screen draws: one skeleton (owner note 4, G2-b) ── */
 
 const CARD = {
   layout: 'card' as const,
@@ -834,21 +1121,22 @@ function BuildingCards() {
   return (
     <div className="grid grid-cols-2 gap-2">
       <UpgradeRow {...refinery} gain={gain} cost={{ alloy: 1_400, crystal: 177 }} takes={13} />
-      <UpgradeRow {...CARD} art={art(BUILDING_ART.CORE)} name="Komuta Çekirdeği" tag="Gezegenin gelişim sınırı" level={6}
+      <UpgradeRow {...CARD} art={art(BUILDING_ART.CORE)} name="Komuta Çekirdeği" tag="Seviye sınırını açar" level={6}
         gain={{ label: 'Bina seviye sınırı', now: 'Sv. 6', next: 'Sv. 7' }} cost={{ alloy: 1_400, crystal: 3_900 }} takes={18} />
       <UpgradeRow {...CARD} art={art(BUILDING_ART.DEUTERIUM_PLANT)} name="Döteryum Rafinerisi" tag="Döteryum üretir" level={0} unowned
-        blocked={{ reason: 'Önce şunlar gerekli: Döteryum Sentezi', onFix: () => undefined }} cost={{ alloy: 30, crystal: 30 }} takes={3} />
+        gain={{ label: 'Saatlik döteryum', now: '0/sa', next: '2/sa' }}
+        blocked={{ reason: 'Önce şunlar gerekli: Döteryum Sentezi I', short: 'Döteryum Sentezi I', onFix: () => undefined }} cost={{ alloy: 30, crystal: 30 }} takes={3} />
       <UpgradeRow {...CARD} art={art(BUILDING_ART.EXTRACTOR)} name="Kristal Ocağı" tag="Kristal üretir" level={5} queued="1 sipariş sırada" queuedActionable
         gain={{ label: 'Saatlik kristal', now: '244/sa', next: '310/sa' }} cost={{ alloy: 900, crystal: 640 }} takes={21} flash />
-      <UpgradeRow {...CARD} art={art(BUILDING_ART.VAULT)} name="Depo" tag="Depo kapasitesini büyütür" level={4} faulty
-        gain={{ label: 'Depo derinliği', now: '39 sa depo · 4 sa korumalı', next: '46 sa depo · 5 sa korumalı' }} cost={{ alloy: 154, crystal: 77 }} takes={5} />
+      <UpgradeRow {...CARD} art={art(BUILDING_ART.VAULT)} name="Depo" tag="Depoyu büyütür" level={4} faulty
+        gain={{ label: 'Depo derinliği', now: '39 sa depo · 4 sa korumalı', next: '46 sa depo · 5 sa korumalı', brief: { now: '39 sa', next: '46 sa' } }} cost={{ alloy: 154, crystal: 77 }} takes={5} />
       <UpgradeRow {...refinery} gain={gain} cost={{ alloy: 1_400, crystal: 177 }} takes={13} highlighted />
       <UpgradeRow {...CARD} art={art(BUILDING_ART.DEUTERIUM_PLANT)} name="Döteryum Rafinerisi" tag="Döteryum üretir" level={9} completed="en üst seviyede" cost={{ alloy: 0, crystal: 0 }} />
-      <UpgradeRow {...CARD} art={art(BUILDING_ART.HANGAR)} name="Hangar" tag="Gemileri korur" level={0} unowned
-        gain={{ label: 'Korunan gemi', next: '40' }} cost={{ alloy: 600, crystal: 400, deuterium: 1_200 }} takes={40} />
+      <UpgradeRow {...CARD} art={art(BUILDING_ART.HANGAR)} name="Hangar" tag="Filo alanını büyütür" level={0} unowned
+        gain={{ label: 'Filo alanı', now: 'Hangar yok', next: '80 alan', brief: { now: '0', next: '80 alan' } }} cost={{ alloy: 600, crystal: 400, deuterium: 1_200 }} takes={40} />
       {/* the construction queue is full: time lifts it, so it wears the hourglass and has no fix to press */}
       <UpgradeRow {...refinery} name="Alaşım Rafinerisi" gain={gain} cost={{ alloy: 1_400, crystal: 177 }} takes={13}
-        blocked={{ reason: 'Sırada zaten 3 sipariş var. Bunu eklemek için biri bitsin veya birini iptal et.', waits: true }} />
+        blocked={{ reason: 'Sırada zaten 3 sipariş var. Bunu eklemek için biri bitsin veya birini iptal et.', short: 'Sıra dolu', waits: true }} />
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { BRAND_RECALL } from '@astera/rules';
 import { useApi } from '../api/context.js';
 import { keys } from '../api/keys.js';
 import { useApplyPlanet } from '../api/queries.js';
-import { Icon } from '../v2/icons.js';
+import { RoundButton } from '../game-ui/index.js';
 import { BrandQuiz, type BrandQuizResult } from './BrandQuiz.js';
 import { InstallButton, useDesktopInstall, useInstalled } from './Install.js';
 import { advanceRecall, readRecall, saveRecall } from './recallState.js';
@@ -100,15 +100,15 @@ export function RecallHost({ accountId, paused = false }: { accountId: string; p
     onClose={() => { if (answer.isPending) return; if (result?.completed) setSurface(null); else answer.mutate(null); }}
   />;
   if (surface !== 'return' || paused || !offerInstall) return null;
-  return <aside data-testid="return-card" className="brand-return-card" aria-label={t('brand.returnTitle')}>
-    <div className="flex items-start gap-2">
-      <div className="min-w-0 flex-1">
-        <p className="text-caption font-semibold text-v2-ink">{t('brand.returnTitle')}</p>
-        <p className="mt-0.5 font-v2-mono text-caption text-v2-self">asteraonline.space</p>
+  return <aside data-testid="return-card" className="gk gk-returncard" aria-label={t('brand.returnTitle')}>
+    <div className="gk-returncard__head">
+      <div>
+        <p className="gk-display gk-returncard__title">{t('brand.returnTitle')}</p>
+        <p className="gk-returncard__address">asteraonline<span>.space</span></p>
       </div>
-      <button type="button" aria-label={t('brand.close')} onClick={() => { setSurface(null); }} className="grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-2"><Icon id="i-close" className="size-4" /></button>
+      <RoundButton glyph="close" label={t('brand.close')} onPress={() => { setSurface(null); }} />
     </div>
-    <p className="mt-1 text-caption leading-snug text-v2-ink-2">{t(desktop ? 'brand.returnHintDesktop' : 'brand.returnHint')}</p>
-    <div className="mt-2 flex items-center justify-between gap-2"><span className="brand-small">Astera Online</span><InstallButton compact /></div>
+    <p className="gk-sub">{t(desktop ? 'brand.returnHintDesktop' : 'brand.returnHint')}</p>
+    <div className="gk-returncard__foot"><span className="gk-label">Astera Online</span><InstallButton compact /></div>
   </aside>;
 }

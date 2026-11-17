@@ -76,3 +76,27 @@ it('dismisses native Back without submitting a return application', () => {
   expect(p.onClose).toHaveBeenCalledOnce();
   expect(p.onApply).not.toHaveBeenCalled();
 });
+
+/** C28 (2026-11-15): the room's notice on the kit — its scene, what it shuts, the way home. */
+it('is a kit dialog with the room drawn and what it shuts marked', async () => {
+  await i18n.changeLanguage('en');
+  render(<SilentSpaceNotice {...props()} />);
+  const dialog = screen.getByRole('dialog');
+  expect(dialog).toHaveClass('gk-dialog');
+  expect(dialog.querySelector('img[data-atmosphere-image]')).not.toBeNull();
+  expect(dialog.querySelectorAll('.gk-silent__shut li .gk-glyph')).toHaveLength(2);
+  const names = [dialog, ...dialog.querySelectorAll('[class]')].flatMap((node) => (node.getAttribute('class') ?? '').split(/\s+/));
+  expect(names.filter((name) => ['plate', 'legend', 'text-bone'].includes(name) || /(^|-)v2(-|$)/.test(name))).toEqual([]);
+});
+
+it('applies from a press that began on the button, answered at once', async () => {
+  await i18n.changeLanguage('en');
+  const p = props();
+  render(<SilentSpaceNotice {...p} />);
+  const apply = screen.getByRole('button', { name: 'Apply to return' });
+  fireEvent.click(apply, { detail: 1 });
+  expect(p.onApply).not.toHaveBeenCalled();
+  fireEvent.pointerDown(apply, { button: 0 });
+  fireEvent.click(apply, { detail: 1 });
+  await waitFor(() => { expect(p.onApply).toHaveBeenCalledOnce(); });
+});

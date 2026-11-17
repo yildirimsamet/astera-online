@@ -117,13 +117,13 @@ describe('colony abandonment confirmation', () => {
     await userEvent.click(row);
     expect(haptic).toHaveBeenCalledWith('tap');
     expect(row.closest('[data-own-sound]')).not.toBeNull();
-    expect(await screen.findByRole('dialog', { name: 'Abandon this colony?' })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Abandon colony' })).toBeInTheDocument();
   });
 
   it('opens a named confirmation and explains losses before submitting', async () => {
     renderDoor();
     await userEvent.click(screen.getByRole('button', { name: 'Abandon colony' }));
-    const sheet = await screen.findByRole('dialog', { name: 'Abandon this colony?' });
+    const sheet = await screen.findByRole('dialog', { name: 'Abandon colony' });
     expect(within(sheet).getByText('Haven')).toBeInTheDocument();
     expect(within(sheet).getByText(/buildings, satellites, resources and ground defences stay/i)).toBeInTheDocument();
     expect(within(sheet).getByText(/ready death stars and interceptor charges also stay/i)).toBeInTheDocument();

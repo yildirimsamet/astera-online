@@ -7,29 +7,34 @@ import { CosmeticTrialGallery } from './CosmeticTrialGallery.jsx';
 import { StoreDiscoveryGallery } from './StoreDiscoveryGallery.js';
 import { PlanetSelectionGallery } from './PlanetSelectionGallery.jsx';
 import { CosmeticPreview } from '../../screens/CosmeticPreview.jsx';
-import { cosmeticById, RESEARCH_PROJECTS } from '@astera/rules';
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { cosmeticById, groundSlots, hangarCapacity, hullBulk, RESEARCH_PROJECTS, type HullId } from '@astera/rules';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
 import { nowEntries } from '../../lib/nowLine.js';
 import { roomOf } from '../../lib/fleetPage.js';
-import type { GalaxyPlanet, IntelView, PlanetView } from '../../api/schemas.js';
+import type { ClanWar, FaultView, GalaxyPlanet, IntelView, PlanetView, UnknownSignalView } from '../../api/schemas.js';
+import { UnknownSignalSheet } from '../../screens/UnknownSignalSheet.js';
+import { FaultSheet } from '../../screens/FaultSheet.js';
 import { LaunchSheet } from '../../screens/LaunchSheet.js';
 import { HangarPanel } from '../../arena/hangar/HangarPanel.js';
 import TeamPanel from '../../arena/TeamPanel.js';
 import { BaseSwitch } from '../hud/BaseSwitch.js';
 import { SettlementSheet } from '../../screens/SettlementSheet.js';
 import { IntergalacticConvoySheet } from '../../screens/IntergalacticConvoySheet.js';
+import type { IntergalacticConvoyEvent } from '../../lib/intergalacticConvoy.js';
+import type { TradeShipEvent } from '../../lib/trade.js';
 import { TransferSheet } from '../../screens/TransferSheet.js';
 import { IntelScreen } from '../../screens/IntelScreen.js';
-import { PlanetScreen } from '../../screens/PlanetScreen.js';
+import { BuildSheet, PlanetScreen } from '../../screens/PlanetScreen.js';
 import { ClanScreen } from '../../screens/ClanScreen.js';
 import { keys } from '../../api/keys.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
 import { LateAlerts, NotificationCenterSheet } from '../../screens/NotificationCenterSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
-import { MonumentFocus, PlanetFocus, StrikeSheet, ThreadFocus } from '../../galaxy/FocusPanel.js';
-import { StrategicReportSheet } from '../../screens/BattleReports.js';
+import { ClanDonateSheet } from '../../screens/ClanDonateSheet.js';
+import { AsteroidFocus, ContactFocus, DebrisFocus, IntergalacticConvoyFocus, MonumentFocus, PirateFocus, PlanetFocus, RunFocus, StrikeSheet, ThreadFocus, TradeFocus } from '../../galaxy/FocusPanel.js';
+import { BattleReportDoor, StrategicReportSheet } from '../../screens/BattleReports.js';
 import i18n from '../../i18n/index.js';
 import { ReportScene } from '../hud/ReportScene.js';
 import { AwaySheet } from '../hud/AwaySheet.js';
@@ -37,18 +42,31 @@ import { PlanetModelsGallery } from './PlanetModelsGallery.js';
 import { MonumentModelsGallery } from './MonumentModelsGallery.js';
 import { LegacyAwardGallery, LegacyPeekGallery, LegacyRevealGallery, LegacyShelfGallery } from './LegacyGallery.js';
 import { GallerySupport } from './GallerySupport.js';
+import { GalleryMonument } from './GalleryMonument.js';
+import { GalleryReports } from './GalleryReports.js';
+import { GalleryChat } from './GalleryChat.js';
+import { GalleryCommunity } from './GalleryCommunity.js';
+import { GalleryReplay } from './GalleryReplay.js';
+import { ProfileGallery, isProfileView } from './ProfileGallery.js';
 import { WorldProvider } from '../../api/world.js';
-import { clanWarSchema } from '../../api/schemas.js';
-import { TRADE } from '@astera/rules';
+import { clanWarSchema, reportsSchema } from '../../api/schemas.js';
+import { COMMUNITY_POLICY_VERSION, HONOR_BENEFIT_THRESHOLDS_V1, PIRATE, TRADE, honorBenefits } from '@astera/rules';
 // Development only: the same world the tests draw, so the gallery needs no server.
 import { planetView } from '../../../test/fixtures.js';
-import type { AirborneItem } from '../../shell/PendingStrip.js';
+import type { AirborneItem } from '../../lib/airborne.js';
 import type { DockBadges } from '../../lib/dock.js';
 import { BellSheet } from '../hud/BellSheet.js';
+import { ChatChip, EventChips, GalaxyReadout, HomeChip, SignalBell } from '../hud/GalaxyCorners.js';
+import { useToast } from '../../ui/Toast.js';
+import { SignalsFeed } from '../../shell/Signals.js';
+import type { GalaxyEvent, NotificationView } from '../../api/schemas.js';
+import { ChronicleScreen } from '../../screens/ChronicleScreen.js';
+import { GalaxyEventsGuide } from '../../screens/GalaxyEventsGuide.js';
 import { ContextSlot, type ContextSlotProps } from '../hud/ContextSlot.js';
 import { FleetPage, type FleetTab } from '../hud/FleetPage.js';
 import { Dock } from '../hud/Dock.js';
 import { NowLine, type NowLineProps } from '../hud/NowLine.js';
+import { StatusLine, type StatusLineProps } from '../hud/StatusLine.js';
 import { TopBar, type TopBarProps } from '../hud/TopBar.js';
 import { ViewChip, ViewSheet } from '../hud/ViewSheet.js';
 import { ClassEmblem } from '../kit/ClassEmblem.js';
@@ -58,21 +76,25 @@ import { HoldButton } from '../kit/HoldButton.js';
 import { MatchupLine } from '../kit/MatchupLine.js';
 import { QueueLane } from '../kit/QueueLane.js';
 import { QueueSheet } from '../kit/QueueSheet.js';
-import { ResourceMeter } from '../kit/ResourceMeter.js';
 import { Segmented } from '../kit/Segmented.js';
 import { Sheet } from '../kit/Sheet.js';
 import { ATMOSPHERE } from '../../ui/atmosphere.js';
+import { artIconSrc } from '../../game-ui/index.js';
+import { CosmeticTrialBar } from '../../screens/CosmeticTrialBar.js';
+import { ShopierPayButton, ShopierProgress } from '../../screens/ShopierCheckout.js';
 import { Api } from '../../api/client.js';
 import { ApiProvider } from '../../api/context.js';
 import { MenuPanel } from '../../shell/MenuPanel.js';
 import { LeaderboardScreen } from '../../screens/LeaderboardScreen.js';
 import { SeasonArchiveScreen } from '../../screens/SeasonArchiveScreen.js';
+import { SeasonRecap } from '../../screens/SeasonRecap.js';
 import { CountryPicker } from '../identity/CountryPicker.js';
 import { SkinShopContent } from '../../screens/SkinsScreen.js';
 import { useTranslation } from 'react-i18next';
 import { useSoundEffects } from '../../lib/sound.js';
 import { PremiumSpaceGallery } from './PremiumSpaceGallery.js';
 import { ResearchPanel } from '../../screens/ResearchPanel.js';
+import { WorldsPanel } from '../../screens/WorldsPanel.js';
 import { WikiScreen } from '../../screens/WikiScreen.js';
 import { SkinPreview } from '../../screens/SkinPreview.js';
 import { DonateScreen } from '../../screens/DonateScreen.js';
@@ -132,33 +154,32 @@ const works = (
       noRoom,
       stopped,
     },
-    fill: { alloy: Math.min(1, each.alloy / 1_000), crystal: Math.min(1, each.crystal / 1_000), deuterium: Math.min(1, each.deuterium / 500) },
-    fullInMinutes: stopped.length > 0 ? null : 140,
     pending: false,
     onCollect: noop,
-    onOpenBase: noop,
   };
 };
 
 const topBar: TopBarProps = {
-  commander: 'Samet',
-  shield: null,
-  now: NOW,
-  world: null,
   stock: {
     alloy: { value: 12_400, cap: 20_000, safe: 6_000 },
     crystal: { value: 3_105, cap: 8_000, safe: 2_400 },
     deuterium: { value: 860, cap: 4_000, safe: 1_200 },
   },
   works: works({ alloy: 2_200, crystal: 862, deuterium: 40 }),
-  bell: { unseen: 0, urgent: false },
-  rewards: 0,
-  boosted: false,
-  onCommander: noop,
-  onRewards: noop,
-  onWorld: noop,
+  commander: { initials: 'YI', name: 'Yildirim' },
   onResource: noop,
-  onBell: noop,
+  onCommander: noop,
+};
+
+const statusLine: StatusLineProps = {
+  now: NOW,
+  world: null,
+  shield: null,
+  recoveryUntil: null,
+  signalUntil: null,
+  vacationUntil: null,
+  onWorld: noop,
+  onHint: noop,
 };
 
 const slotBase: ContextSlotProps = {
@@ -231,7 +252,14 @@ const launchIntel: IntelView = {
  * commander has no damaged ship, so the card and its sheet are photographed here.
  * `empty` draws the station with nothing in it; `open` names the row the sheet opens on.
  */
-function GalleryBase({ empty = false, open = false, production = false }: { empty?: boolean; open?: boolean; production?: boolean }) {
+/**
+ * THE BASE (G2): `open` raises the Repair Station on it. G2-f: `hangar` puts wounded ships at
+ * home (the station opens on the Hangar), `working` leaves only jobs already on the cradle (it
+ * opens on the Queue), `radiation` closes the workshop.
+ */
+function GalleryBase({ empty = false, open = false, production = false, faults = false, hangar = false, working = false, radiation = false }: {
+  empty?: boolean; open?: boolean; production?: boolean; faults?: boolean; hangar?: boolean; working?: boolean; radiation?: boolean;
+}) {
   const client = useQueryClient();
   useState(() => {
     const order = (id: string, slot: number, subject: string, count: number, from: number, to: number) => ({
@@ -243,14 +271,29 @@ function GalleryBase({ empty = false, open = false, production = false }: { empt
       buildings: { CORE: 6, REFINERY: 5, EXTRACTOR: 5, VAULT: 2, SHIPYARD: 4, HANGAR: 3 },
       fleet: { DART: 40, TALON: 10, WARDEN: 2 },
       rulesetVersion: 14,
+      // G2-c: one crew at work, two faults no crew is on yet — one the store can pay, one it cannot.
+      ...(faults ? {
+        faults: [
+          { id: 'f-1', kind: 'REFINERY_OUTAGE' as const, startedAt: new Date(NOW - 40 * MIN), cost: { alloy: 600, crystal: 200, deuterium: 0 }, repair: { slot: 0, readyAt: new Date(NOW + 7 * MIN) } },
+          { id: 'f-2', kind: 'VAULT_LEAK' as const, startedAt: new Date(NOW - 20 * MIN), cost: { alloy: 300, crystal: 0, deuterium: 0 }, repair: null },
+          { id: 'f-3', kind: 'TELESCOPE_FAULT' as const, startedAt: new Date(NOW - 10 * MIN), cost: { alloy: 900, crystal: 1_200, deuterium: 0 }, repair: null },
+        ],
+      } : {}),
+      ...(hangar ? { fleetDamage: [
+        { hull: 'DART' as const, count: 6, damageBp: 4200, remainderBp: 0 },
+        { hull: 'TALON' as const, count: 2, damageBp: 9600, remainderBp: 0 },
+      ] } : {}),
+      ...(radiation ? { workshopRadiation: true } : {}),
       ...(empty ? {} : {
         fleetDocked: { BALLISTA: 1, TALON: 2, WARDEN: 1, DART: 3 },
         dock: {
           lots: [
             { id: 'lot-1', hull: 'BALLISTA', count: 1, damageBp: 6400, repairing: true, orderId: 'r-1', cost: { alloy: 1_273, crystal: 488, deuterium: 4 }, minutes: 5.1 },
             { id: 'lot-4', hull: 'DART', count: 3, damageBp: 2600, repairing: true, orderId: 'r-2', cost: { alloy: 94, crystal: 31, deuterium: 0 }, minutes: 0.9 },
-            { id: 'lot-2', hull: 'TALON', count: 2, damageBp: 3500, repairing: false, orderId: null, cost: { alloy: 551, crystal: 230, deuterium: 2 }, minutes: 2.3 },
-            { id: 'lot-3', hull: 'WARDEN', count: 1, damageBp: 8800, repairing: false, orderId: null, cost: { alloy: 335, crystal: 134, deuterium: 0 }, minutes: 1.5 },
+            ...(working ? [] : [
+              { id: 'lot-2', hull: 'TALON' as const, count: 2, damageBp: 3500, repairing: false, orderId: null, cost: { alloy: 551, crystal: 230, deuterium: 2 }, minutes: 2.3 },
+              { id: 'lot-3', hull: 'WARDEN' as const, count: 1, damageBp: 8800, repairing: false, orderId: null, cost: { alloy: 335, crystal: 134, deuterium: 0 }, minutes: 1.5 },
+            ]),
           ],
           waiting: { cost: { alloy: 886, crystal: 364, deuterium: 2 }, minutes: 3.8 },
           pct: 75,
@@ -270,13 +313,91 @@ function GalleryBase({ empty = false, open = false, production = false }: { empt
 }
 
 /**
+ * THE FAULT SHEET (G2-d): a colony's refinery dark and no crew on it yet, with a leak a crew is
+ * already mending. `running` opens the one a crew is on; `short` leaves the store below the price.
+ */
+function GalleryFault({ running = false, short = false }: { running?: boolean; short?: boolean }) {
+  const blackout: FaultView = {
+    id: 'f-1', kind: 'REFINERY_OUTAGE', startedAt: new Date(NOW - 40 * MIN), cost: { alloy: 1_200, crystal: 400, deuterium: 0 },
+    repair: running ? { slot: 1, readyAt: new Date(NOW + 7 * MIN) } : null,
+  };
+  const leak: FaultView = {
+    id: 'f-2', kind: 'VAULT_LEAK', startedAt: new Date(NOW - 25 * MIN), cost: { alloy: 300, crystal: 0, deuterium: 0 },
+    repair: { slot: 0, readyAt: new Date(NOW + 3 * MIN) },
+  };
+  const world = planetView(
+    { buildings: { CORE: 6, REFINERY: 7, EXTRACTOR: 5, VAULT: 3 }, faults: [blackout, leak], loyalty: { value: 62, minutesLeft: 14 * 60 } },
+    { id: 'p-1', name: 'Thistle', kind: 'COLONY', alloy: short ? 900 : 4_000, crystal: 2_000, deuterium: 600, alloyPerHour: 0, nominalAlloyPerHour: 1_770 },
+  );
+  return <FaultSheet fault={blackout} planet={world} onClose={noop} />;
+}
+
+type BuildVariant = 'ready' | 'short' | 'locked' | 'full';
+
+/**
+ * THE SHIPYARD'S ORDER SHEET (G2-e): a hull you can order, one you cannot pay for yet, one the
+ * yard cannot build, a full Hangar, a special role and a ground gun.
+ */
+function GalleryBuild({ hull, variant = 'ready' }: { hull: HullId; variant?: BuildVariant }) {
+  const hangar = hangarCapacity(4);
+  const researched = new Set(['STARSHIP_ENGINEERING', 'GRAVITIC_CHARGES', 'SHIP_POWER']);
+  const base = planetView({}, {});
+  const world = planetView({
+    buildings: { CORE: 8, REFINERY: 8, EXTRACTOR: 7, VAULT: 4, SHIPYARD: variant === 'locked' ? 2 : 4, HANGAR: 4 },
+    fleet: variant === 'full' ? { RAMPART: Math.floor(hangar / hullBulk('RAMPART')) } : { TALON: 8, DART: 12 },
+    fleetAway: variant === 'full' ? {} : { TALON: 3 },
+    ground: { THORN: 4 },
+    capacity: { hangar, hangarUsed: 0, ground: groundSlots(8), groundUsed: 0 },
+    research: variant === 'locked' ? base.research
+      : base.research.map((project) => researched.has(project.id) ? { ...project, level: 2, completed: true, discovered: true } : project),
+  }, {
+    id: 'p-1', name: 'Thistle',
+    alloy: variant === 'short' ? 900 : 48_000, crystal: variant === 'short' ? 200 : 16_000, deuterium: variant === 'short' ? 20 : 2_400,
+    alloyPerHour: 1_800, crystalPerHour: 600,
+  });
+  return (
+    <div data-build-sheet>
+      <BuildSheet hull={hull} planet={world} held={{ alloy: world.planet.alloy, crystal: world.planet.crystal, deuterium: world.planet.deuterium }}
+        onNeed={noop} onClose={noop} />
+    </div>
+  );
+}
+
+/**
  * THE STRATEGIC PAIR WITH FULL PADS AND NO RESEARCH (owner, 2026-10-01): one Death Star and
  * two charges, each panel naming the research that raises it. `tab` picks the panel.
  */
-function GalleryStrategic({ tab }: { tab: 'tactical' | 'defend' }) {
+/** The strategic bays (G2-g): armed, with the radiation forge open and a weapon building, or locked on a young world. */
+function GalleryStrategic({ tab, variant = 'armed' }: { tab: 'tactical' | 'defend'; variant?: 'armed' | 'radiation' | 'locked' }) {
   const client = useQueryClient();
   useState(() => {
     const ready = (id: string) => ({ id, status: 'READY' as const, readyAt: null, remainingSeconds: 0 });
+    const building = (id: string, hours: number) => ({ id, status: 'BUILDING' as const, readyAt: new Date(Date.now() + hours * 3_600_000), remainingSeconds: hours * 3600 });
+    if (variant === 'locked') {
+      client.setQueryData(['planet'], planetView({
+        buildings: { CORE: 5, REFINERY: 5, EXTRACTOR: 4, VAULT: 2, SHIPYARD: 2, HANGAR: 2 },
+        instruments: { RADAR: 1, TELESCOPE: 1 },
+      }, { id: 'p-1', alloy: 4_200, crystal: 1_800, deuterium: 300, alloyPerHour: 600, crystalPerHour: 200 }));
+      return null;
+    }
+    if (variant === 'radiation') {
+      const world = planetView({}, {});
+      client.setQueryData(['planet'], planetView({
+        buildings: { CORE: 13, REFINERY: 12, EXTRACTOR: 12, VAULT: 8, SHIPYARD: 6, HANGAR: 4 },
+        instruments: { RADAR: 3, TELESCOPE: 3 },
+        orbit: ['UPLINK'],
+        strategic: ready('ds-1'),
+        deathStars: [ready('ds-1'), building('ds-2', 5)],
+        research: world.research.map((project) => project.id === 'STRATEGIC_STOCKPILE'
+          ? { ...project, level: 1, discovered: true, completed: true, available: false } : project),
+        radiationBombsAvailable: true,
+        radiationBombs: [
+          { id: 'rb-1', level: 1, status: 'READY', readyAt: null, remainingSeconds: 0 },
+          { id: 'rb-2', level: 2, status: 'BUILDING', readyAt: new Date(Date.now() + 40 * 60_000), remainingSeconds: 2400 },
+        ],
+      }, { id: 'p-1', alloy: 420_000, crystal: 260_000, deuterium: 40_000, alloyPerHour: 2_400, crystalPerHour: 900 }));
+      return null;
+    }
     client.setQueryData(['planet'], planetView({
       buildings: { CORE: 12, REFINERY: 10, EXTRACTOR: 10, VAULT: 6, SHIPYARD: 5, HANGAR: 3 },
       instruments: { RADAR: 3, TELESCOPE: 2 },
@@ -352,8 +473,50 @@ const powerOf = (mine: [number, number], theirs: [number, number]) => ({
 /**
  * THE INTEL SHEET WITH SOMETHING IN IT. D4. The live commander the camera signs in as
  * has no Telescope and no Radar, so this is where the full shelves are photographed.
+ * `blind` is the first evening (C7): no instrument, no mark, nothing known yet; `shelf` opens
+ * another shelf than Watch (C8: the probe reports; C9: the radar, and each missing instrument).
  */
-function GalleryIntel() {
+/**
+ * THE BATTLES SHELF'S WEEK (G5, C14): a raid half won with Honor, a defence that held
+ * against a clan, a pirate crew that broke you, a Death Star that took a colony, and a
+ * monument fight — every kind of row the list draws.
+ */
+function galleryBattles(): unknown[] {
+  const ago = (minutes: number) => new Date(NOW - minutes * MIN);
+  const ordinary = {
+    neutral: false, rounds: [
+      { round: 1, attackerDamage: 800, defenderDamage: 300, shieldAbsorbed: 0, shieldBreakerDamage: 0, attackerLosses: { DART: 6 }, defenderLosses: { PIKE: 10 } },
+      { round: 2, attackerDamage: 640, defenderDamage: 120, shieldAbsorbed: 0, shieldBreakerDamage: 0, attackerLosses: { DART: 3 }, defenderLosses: { PIKE: 8 } },
+      { round: 3, attackerDamage: 90, defenderDamage: 40, shieldAbsorbed: 0, shieldBreakerDamage: 0, attackerLosses: {}, defenderLosses: { BASTION: 2 } },
+    ],
+    yourLosses: { DART: 9 }, theirLosses: { PIKE: 18, BASTION: 2 }, yourFleet: { DART: 23, TALON: 19 }, theirFleet: {},
+    lootAlloy: 0, lootCrystal: 0, lootDeuterium: 0, dominion: 0, shieldAbsorbed: 0, cargoLimited: false,
+    defenceSalvage: {}, yourDamage: [], disruptedMinutes: 0, wreckValue: 0,
+  };
+  return [
+    { ...ordinary, id: 'b-raid', missionId: 'm-raid', at: ago(20), grade: 'PARTIAL', attacking: true,
+      opponentName: 'VEX', opponentPlanet: 'Kestrel', opponentPlanetId: 'p-kestrel', yourPlanet: 'Bellwether', yourPlanetId: 'p-1',
+      defenderClan: { id: 'c-1', tag: 'NOVA', name: 'Nova Drift' },
+      lootAlloy: 3_100, lootCrystal: 1_000, lootDeuterium: 240, dominion: 120, honor: { delta: 38_400_000, reason: 'COMBAT' } },
+    { ...ordinary, id: 'b-held', missionId: 'm-held', at: ago(3 * 60), grade: 'REPELLED', attacking: false,
+      opponentName: 'Rook', opponentPlanet: 'Hollow-88', opponentPlanetId: 'p-hollow', yourPlanet: 'Bellwether', yourPlanetId: 'p-1',
+      attackerClan: { id: 'c-2', tag: 'IRON', name: 'Iron Veil' }, dominion: 64, honor: { delta: 21_000_000, reason: 'COMBAT' },
+      yourFleet: { RAMPART: 10, PIKE: 12 }, theirFleet: { DART: 30 }, yourLosses: { PIKE: 2 }, theirLosses: { DART: 30 } },
+    { ...ordinary, id: 'b-pirate', missionId: null, pirateRaidId: 'pr-1', at: ago(9 * 60), grade: 'REPELLED', attacking: true,
+      opponentName: 'Pirates', opponentPlanet: '', opponentPlanetId: null, yourPlanet: 'Thistle-131', yourPlanetId: 'p-131',
+      pirate: { level: 3, callsign: 'Red Maw', damageMult: 1.4, capturedHull: null }, yourLosses: { DART: 23 }, rounds: ordinary.rounds.slice(0, 2) },
+    { kind: 'STRATEGIC', id: 's-colony', missionId: 'm-colony', at: ago(26 * 60), attacking: true,
+      opponentName: 'Sable', opponentPlanet: 'Tharsis', opponentPlanetId: 'p2', yourPlanet: 'Thistle', yourPlanetId: 'p-1',
+      outcome: 'FIRST_STRIKE', damage: 18_400, destroyedFleet: {}, destroyedResources: { alloy: 0, crystal: 0, deuterium: 0 },
+      levelChanges: [], destroyedOrders: [], shieldDestroyed: 1_800, trigger: null, loyalty: { before: 18, after: 0 }, honor: { delta: 12_000_000, reason: 'TACTICAL' } },
+    { kind: 'MONUMENT', id: 'battle-3', at: ago(2 * 24 * 60), attacking: true, grade: 'PARTIAL', control: 'DEFENDER', roundCount: 5,
+      monument: { id: '00000000-0000-4000-8000-000000000003', ordinal: 3, position: { x: 6000, y: 410, z: -500 } },
+      yourFleet: { CITADEL: 3, ARGOSY: 2 }, yourSurvivors: { CITADEL: 2, ARGOSY: 1 }, yourLosses: { CITADEL: 1, ARGOSY: 1 },
+      yourDamage: [], theirLosses: { DART: 12 }, lootDeuterium: 17, dominion: -123 },
+  ];
+}
+
+function GalleryIntel({ blind = false, shelf, named = false }: { blind?: boolean; shelf?: 'probes' | 'battles' | 'radar'; named?: boolean }) {
   const client = useQueryClient();
   useState(() => {
     const watch = (slot: number, target: string, owner: string, reading: Record<string, unknown>) => ({
@@ -366,9 +529,13 @@ function GalleryIntel() {
       accuracy: 0.82, stock: { low: 18_000, high: 26_000 }, deuteriumStock: null,
       defence: { low: 4_000, high: 7_000 }, fleetSize: { low: 12, high: 20 }, fleetHome: true, detected: false, ...over,
     });
-    client.setQueryData(['planet'], planetView({ instruments: { TELESCOPE: 4, RADAR: 4 } }, { id: 'p-1' }));
+    client.setQueryData(['planet'], planetView({ instruments: blind ? { TELESCOPE: 0, RADAR: 0 } : { TELESCOPE: 4, RADAR: named ? 5 : 4 } }, { id: 'p-1' }));
     client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [] });
-    client.setQueryData(['reports'], { reports: [], rivals: [] });
+    client.setQueryData(['reports'], { reports: shelf === 'battles' ? galleryBattles() : [], rivals: [] });
+    if (blind) {
+      client.setQueryData(['intel'], { watching: [], probeReports: [], probeCooldowns: [], radarLog: [], probeCost: { alloy: 50, crystal: 50 } });
+      return null;
+    }
     client.setQueryData(['intel'], {
       watching: [
         watch(0, 'p-kestrel', 'VEX', {}),
@@ -380,7 +547,8 @@ function GalleryIntel() {
       ],
       probeCooldowns: [],
       radarLog: [
-        { at: new Date(NOW - 50 * MIN), planetId: 'p-1', planetName: 'Thistle-131', bearing: 'NW', originPlanetName: 'Kestrel' },
+        // Radar 5 names the scanner: the row splits into two doors (owner 2026-11-14)
+        { at: new Date(NOW - 50 * MIN), planetId: 'p-1', planetName: 'Thistle-131', bearing: 'NW', originPlanetName: 'Kestrel', ...(named ? { originPlanetId: 'p-kestrel' } : {}) },
         { at: new Date(NOW - 7 * 60 * MIN), planetId: 'p-1', planetName: 'Hollow', bearing: 'S', originPlanetName: null },
         { at: new Date(NOW - 26 * 60 * MIN), planetId: 'p-1', planetName: 'Thistle-131', bearing: null, originPlanetName: null },
       ],
@@ -389,15 +557,17 @@ function GalleryIntel() {
     return null;
   });
   return (
-    <Sheet title="Intel" headerArt={ATMOSPHERE.intel} eyebrow="What you know" onClose={noop} detents={['full']} bleed>
+    <Sheet title="Intel" headerArt={ATMOSPHERE.intel} eyebrow="What you know" onClose={noop} detents={['full']} bleed kit={{ tone: 'self' }}>
       <IntelScreen
-        rivals={[
+        {...(shelf ? { open: { stop: shelf, request: 1 } } : {})}
+        rivals={blind ? [] : [
           { planetId: 'p-kestrel', slot: 0, owner: 'VEX', name: 'Kestrel', lost: false },
           { planetId: 'p-vega', slot: 1, owner: 'Vega', name: 'Mira', lost: false },
         ]}
         onFocusRival={noop}
         onOpenDossier={noop}
         onOpenOrbit={noop}
+        {...(shelf === 'battles' ? { onFocusPlanet: noop } : {})}
       />
     </Sheet>
   );
@@ -408,10 +578,39 @@ function GalleryIntel() {
  * the identity card, the seats, the treasury, forces, the crew, aid and the war room —
  * is photographed here.
  */
-function GalleryClan({ tab }: { tab: 'overview' | 'strength' | 'members' | 'aid' | 'war' }) {
+function GalleryClan({ tab, quote = false, outside = false, donate = false, pact = false, arena = false }: { tab: 'overview' | 'strength' | 'members' | 'aid' | 'war'; quote?: boolean; outside?: boolean; donate?: boolean; pact?: boolean; arena?: boolean }) {
   const client = useQueryClient();
   useState(() => {
     const ago = (minutes: number) => new Date(NOW - minutes * MIN);
+    if (outside) {
+      // G7-f: a clanless commander — an invitation, an application waiting, loot left from a former clan, a directory of four.
+      const later = (minutes: number) => new Date(NOW + minutes * MIN);
+      // G8 close: `pact` — the room's rules not yet agreed, so founding waits behind the gate.
+      client.setQueryData(keys.communityPolicy, { version: COMMUNITY_POLICY_VERSION, acceptedAt: pact ? null : ago(9000) });
+      client.setQueryData(keys.clanHome, {
+        state: 'OUTSIDE',
+        requests: [
+          { id: 'r-1', clanId: 'c-orb', clanName: 'Orbital Guild', clanTag: 'ORB', kind: 'INVITATION', status: 'PENDING', expiresAt: later(20 * 60), resolvedAt: null },
+          { id: 'r-2', clanId: 'c-ash', clanName: 'Ashen Wake', clanTag: 'ASH', kind: 'APPLICATION', status: 'PENDING', expiresAt: later(9 * 60), resolvedAt: null },
+        ],
+        depot: { alloy: 1_840, crystal: 620, deuterium: 0 },
+        creation: { capitalPlanetId: 'p-1', coreLevel: 6, intel: 'RESOLVED', requiredCoreLevel: 7,
+          cost: { alloy: 20_000, crystal: 10_000, deuterium: 0 }, affordable: false, unlockedAt: null },
+      });
+      client.setQueryData(keys.clanDepot, { resources: { alloy: 1_840, crystal: 620, deuterium: 0 }, purseRemaining: { alloy: 0, crystal: 0, deuterium: 0 } });
+      const listed = [
+        { id: 'c-orb', name: 'Orbital Guild', tag: 'ORB', description: 'Watch the rim. Bring everyone home.', recruiting: true, leaderName: 'Ada', memberCount: 4, score: 2_900, level: 6, members: [] },
+        { id: 'c-ash', name: 'Ashen Wake', tag: 'ASH', description: 'Night raids, clean returns.', recruiting: true, leaderName: 'Korr', memberCount: 3, score: 1_420, level: 3, members: [] },
+        { id: 'c-tide', name: 'Tidebreakers of the Long Dark', tag: 'TIDE', description: '', recruiting: false, leaderName: 'Mira', memberCount: 5, score: 880, level: null, members: [] },
+        { id: 'c-lum', name: 'Lumen', tag: 'LUM', description: 'Miners first. We share the haul.', recruiting: true, leaderName: 'Orin', memberCount: 1, score: 0, level: null, members: [] },
+      ];
+      client.setQueryData(keys.clanDirectory(''), { pages: [{ clans: listed, total: listed.length }], pageParams: [0] });
+      client.setQueryData(keys.clanProfile('c-orb'), { ...listed[0], members: [
+        { playerId: 'ada', username: 'Ada', role: 'LEADER', dominion: 14_200 }, { playerId: 'mira', username: 'Mira', role: 'MEMBER', dominion: 9_800 },
+        { playerId: 'tarn', username: 'Tarn', role: 'MEMBER', dominion: 2_100 }, { playerId: 'orin', username: 'Orin', role: 'MEMBER', dominion: 0 },
+      ] });
+      return null;
+    }
     const person = (playerId: string, username: string, slot: number, active: number, role: 'LEADER' | 'MEMBER' = 'MEMBER') => ({
       playerId, username, role, slot, joinedAt: ago(9000), matureAt: ago(8000), mature: true, aidEnabled: true,
       lastActiveAt: ago(active), activeRecently: active < 30,
@@ -483,22 +682,46 @@ function GalleryClan({ tab }: { tab: 'overview' | 'strength' | 'members' | 'aid'
         pool: { combatHulls: 98, waves: 3, participants: 3 },
       },
     }));
-    client.setQueryData(keys.galaxy, { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [] });
+    client.setQueryData(keys.galaxy, { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [],
+      // G7-a: where each clanmate can be sent aid, so the route's third picker names a world.
+      clanPresence: { clan, members: [
+        { playerId: 'mira', username: 'Mira', worlds: [{ planetId: 'p-mira', name: 'Lantern', position: { x: 900, y: 0, z: 300 } }, { planetId: 'p-mira-2', name: 'Halcyon', position: { x: 1400, y: 0, z: -200 } }] },
+        { playerId: 'orin', username: 'Orin', worlds: [{ planetId: 'p-orin', name: 'Brask', position: { x: -700, y: 0, z: 500 } }] },
+      ] } });
     return null;
   });
-  return (
-    <Sheet title="Clan" headerArt={ATMOSPHERE.clan} eyebrow="Seasonal clans" onClose={noop} detents={['full']} bleed>
+  // G7-a: a server that prices any aid flight, so the quote can be photographed after "Check flight".
+  const [api] = useState(() => new Api({ fetch: () => Promise.resolve(new Response(JSON.stringify({
+    clanId: 'c-nova', canLand: true, withinAllowance: true, bay: { used: 1, total: 3, available: true }, cargoCapacity: 4_000,
+    value: { alloy: 600, crystal: 0, deuterium: 0 }, remaining: { alloy: 9_000, crystal: 4_000, deuterium: 900 },
+    nextReleaseAt: new Date(NOW + 140 * MIN).toISOString(), arriveAt: new Date(NOW + 22 * MIN).toISOString(),
+    possibleReturnAt: new Date(NOW + 44 * MIN).toISOString(), canFinishBeforeSeasonEnd: true, travelMinutes: 22,
+  }), { status: 200, headers: { 'content-type': 'application/json' } })) }));
+  const screen = (
+    <Sheet title="Klan" headerArt={ATMOSPHERE.clan} kit={{ art: artIconSrc('menu-clan'), tone: 'self' }} eyebrow="Sezonluk klanlar" onClose={noop} detents={['full']} bleed>
       <WorldProvider>
-        <ClanScreen initialTab={tab} onOpenClanChat={noop} />
+        <ClanScreen initialTab={tab} onOpenClanChat={noop} {...(arena ? { arena: { credential: () => Promise.resolve('dev'), onEnter: noop } } : {})} />
       </WorldProvider>
     </Sheet>
   );
+  // G7-h: the treasury's gift page, opened over the war room.
+  const war = client.getQueryData<ClanWar>(keys.clanWar);
+  const worlds = client.getQueryData<{ planets: PlanetView[] }>(keys.planets)?.planets ?? [];
+  if (donate && war) return <>{screen}<ClanDonateSheet war={war} worlds={worlds} onClose={noop} /></>;
+  return quote ? <ApiProvider api={api}>{screen}</ApiProvider> : screen;
 }
 
 /** The commander surface and live ladder, staged together so their v2 density can be inspected. */
 const ARCHIVE_ID = '11111111-1111-4111-8111-111111111111';
 
-function GalleryCommander({ page }: { page: 'menu' | 'leaderboard' | 'leaderboard-archive' }) {
+type GalleryMenu = 'menu' | 'menu-settings' | 'menu-academy' | 'menu-community' | 'menu-ended';
+
+type GalleryArchive = 'leaderboard-archive' | 'leaderboard-archive-profile' | 'leaderboard-archive-career';
+
+/** G9-a: Honor's terms for a score, as the server quotes them. */
+const galleryHonor = (score: number) => ({ version: 1 as const, score, thresholds: HONOR_BENEFIT_THRESHOLDS_V1, ...honorBenefits(score, HONOR_BENEFIT_THRESHOLDS_V1) });
+
+function GalleryCommander({ page }: { page: GalleryMenu | 'leaderboard' | 'leaderboard-honor' | GalleryArchive }) {
   const [client] = useState(() => {
     const next = new QueryClient();
     next.setQueryData(keys.rewards, { chains: [], claimable: 2 });
@@ -512,7 +735,28 @@ function GalleryCommander({ page }: { page: 'menu' | 'leaderboard' | 'leaderboar
       })),
       you: { rank: 1, playerId: 'gallery-0', username: 'Samet', country: 'TR', planetId: 'gallery-planet-0', planetName: 'World 1', skinId: 'planet-ice', score: 420, clan: null, isBot: false },
     });
-    if (page === 'leaderboard-archive') {
+    if (page === 'leaderboard-honor') {
+      // The live Honor race (C19): the reader 12th, three rivals close, a prize below full, a season ten days from its end.
+      const honorRow = (index: number) => ({
+        rank: index + 1, playerId: `gallery-${String(index)}`, username: index === 11 ? 'Samet' : `Commander ${String(index + 1)}`,
+        country: index % 2 === 0 ? 'TR' : 'DE', planetId: `gallery-planet-${String(index)}`, planetName: `World ${String(index + 1)}`,
+        skinId: index === 11 ? 'planet-ice' : null, score: 98_400_000 - index * 6_300_000, honor: 98_400_000 - index * 6_300_000,
+        dominion: 2_400 - index * 150, clan: index === 1 || index === 11 ? { id: 'c1', name: 'Nova', tag: 'NOVA' } : null,
+      });
+      const ladder = Array.from({ length: 16 }, (_, index) => honorRow(index));
+      next.setQueryData(keys.leaderboard, {
+        ranking: 'HONOR', honorEnabled: true, honorSoloCredit: false, honorStartsAt: null, ladder, you: { ...ladder[11], isBot: false },
+        honorBenefits: galleryHonor(29_100_000),
+        honorReward: { rank: 12, honor: 29_100_000, nominal: { alloy: 1_750, crystal: 1_250, deuterium: 250 },
+          reward: { alloy: 820, crystal: 590, deuterium: 118 }, fullThreshold: 61_250_000 },
+      });
+      next.setQueryData(keys.season, {
+        seasonId: ARCHIVE_ID, shard: 'EU-1', shardName: 'Vantage', seed: 11, status: 'live',
+        startsAt: new Date(NOW - 4 * 24 * 60 * MIN), endsAt: new Date(NOW + 10 * 24 * 60 * MIN), playerCap: 1_000, players: 188,
+        rivals: [], shieldUntil: null, shieldKind: null,
+      });
+    }
+    if (page.startsWith('leaderboard-archive')) {
       next.setQueryData(keys.season, {
         seasonId: ARCHIVE_ID,
         shard: 'EU-1',
@@ -552,7 +796,15 @@ function GalleryCommander({ page }: { page: 'menu' | 'leaderboard' | 'leaderboar
           closedAt: new Date(NOW - 24 * 60 * MIN),
           endReason: 'SCHEDULED_END',
         },
-        record: null,
+        // The galaxy's own record (C20): who won it, the clan podium and the fights it is remembered by.
+        record: {
+          version: 1,
+          champion: { commanderName: 'Samet', dominion: 420 },
+          clanPodium: [{ rank: 1, name: 'Nova Pact', tag: 'NOVA', dominion: 1_900 }, { rank: 2, name: 'Iron Choir', tag: 'IRON', dominion: 1_240 }],
+          biggestBattle: { attackerName: 'Commander 2', defenderName: 'Samet', planetName: 'Kestrel', totalLossValue: 48_200, occurredAt: new Date(NOW - 3 * 24 * 60 * MIN) },
+          sharpestDominionSwing: { attackerName: 'Commander 3', defenderName: 'Commander 5', amount: 186, occurredAt: new Date(NOW - 5 * 24 * 60 * MIN) },
+          mostContestedWorld: { planetName: 'Tharsis', events: 14 },
+        },
         ladder: Array.from({ length: 8 }, (_, index) => ({
           resultId: `22222222-2222-4222-8222-${String(index + 1).padStart(12, '0')}`,
           rank: index + 1,
@@ -564,30 +816,144 @@ function GalleryCommander({ page }: { page: 'menu' | 'leaderboard' | 'leaderboar
           reward: null,
         })),
       });
+      // The first commander's season record (C21): opened from the ladder by the audit's press step.
+      const seasonStats = {
+        version: 1 as const,
+        competition: {
+          battles: 31, attacks: 22, defences: 9, damageDealt: 184_000, damageTaken: 61_000,
+          playerLoot: { alloy: 42_000, crystal: 17_500, deuterium: 3_100 }, shipsBuilt: 96, shipsLost: 28,
+          shipsBuiltByHull: { DART: 48, PIKE: 30, PROSPECTOR: 18 }, shipsLostByHull: { DART: 21, PIKE: 7 },
+        },
+        economy: { produced: { alloy: 1_250_000, crystal: 610_000, deuterium: 92_000 }, productiveSeconds: 410_000 },
+        exploration: {
+          asteroidRuns: 14, asteroidMined: { alloy: 88_000, crystal: 31_000, deuterium: 6_200 },
+          convoyAttempts: 6, convoySuccesses: 5, convoyDelivered: { alloy: 12_000, crystal: 4_800, deuterium: 900 },
+        },
+      };
+      const firstId = '22222222-2222-4222-8222-000000000001';
+      const seasonOf = (ordinal: number, rank: number, resultId: string) => ({
+        resultId, seasonId: ARCHIVE_ID, ordinal, shard: 'EU-1', shardName: 'Vantage', status: 'frozen',
+        startsAt: new Date(NOW - 14 * 24 * 60 * MIN), endsAt: new Date(NOW - 24 * 60 * MIN),
+        commanderName: 'Samet', rank, dominion: 420 - rank * 20, title: rank === 1 ? 'The Cartographer' : 'Frontier Hand', statsAvailable: true,
+      });
+      next.setQueryData(keys.seasonCommanderProfile(firstId), {
+        selected: {
+          ...seasonOf(11, 1, firstId), closedAt: new Date(NOW - 24 * 60 * MIN), endReason: 'SCHEDULED_END',
+          country: 'TR', planetName: 'Kestrel', commanders: 188, honorScore: null, honorRank: null, dominion: 420,
+          recap: {
+            commanderName: 'Samet', planetName: 'Kestrel', battles: 31, attacks: 22, defences: 9,
+            rival: { commanderName: 'Commander 2', battles: 7 }, biggestRaid: { value: 18_400, opponentName: 'Commander 4' }, clan: null,
+          },
+          stats: seasonStats,
+          averages: {
+            cohortSize: 188,
+            competition: {
+              battles: 12, attacks: 7, defences: 5, damageDealt: 61_000, damageTaken: 58_000,
+              playerLoot: { alloy: 14_000, crystal: 6_000, deuterium: 900 }, shipsBuilt: 40, shipsLost: 19,
+            },
+            economy: { produced: { alloy: 720_000, crystal: 300_000, deuterium: 40_000 }, productiveSeconds: 300_000 },
+            exploration: {
+              asteroidRuns: 6, asteroidMined: { alloy: 30_000, crystal: 11_000, deuterium: 2_000 },
+              convoyAttempts: 3, convoySuccesses: 2, convoyDelivered: { alloy: 5_000, crystal: 2_000, deuterium: 300 },
+            },
+          },
+          reward: null,
+        },
+        career: {
+          completedSeasons: 3, bestRank: 1, championships: 1, podiums: 2, topTen: 3,
+          competitionTotals: { seasonsCovered: 3, battles: 64, attacks: 41, defences: 23, damageDealt: 352_000, damageTaken: 140_000 },
+          totals: { seasonsCovered: 2, partialSeasons: 1, stats: seasonStats },
+          seasons: [seasonOf(11, 1, firstId), seasonOf(10, 3, '22222222-2222-4222-8222-000000000010'), seasonOf(9, 8, '22222222-2222-4222-8222-000000000009')],
+        },
+      });
     }
     return next;
   });
   const [api] = useState(() => new Api());
+  const menuPage = page === 'menu-settings' ? 'settings' : page === 'menu-academy' ? 'academy' : page === 'menu-community' ? 'community' : 'home';
   return (
     <QueryClientProvider client={client}>
       <ApiProvider api={api}>
-        {page === 'menu' ? (
-          <Sheet title="Commander" eyebrow="Your account" onClose={noop} detents={['full']} bleed>
+        {page.startsWith('menu') ? (
+          // Headed as the game heads it (G1-f): the commander's eyebrow, the page's name, a way back from a page.
+          <Sheet kit={{ tone: 'self' }} eyebrow={i18n.t('galaxy.panelCommanderEyebrow')} title={i18n.t(menuPage === 'home' ? 'menu.navigation.title' : `menu.navigation.${menuPage}`)}
+            {...(menuPage === 'home' ? {} : { onBack: noop })} onClose={noop} detents={['full']} bleed>
             <div className="flex flex-col gap-4 p-3">
-              <MenuPanel commander="Kestrel Sable" galaxy="Vantage" shard="EU-1" endsAt={new Date(NOW + 11 * 60 * MIN)} country="TR" onOpen={noop} onSignOut={noop} onReplayAcademy={noop} />
+              <MenuPanel
+                commander="Kestrel Sable" galaxy="Vantage" shard="EU-1" endsAt={new Date(NOW + 11 * 60 * MIN)} country="TR"
+                ended={page === 'menu-ended'} hasSeasonResult={page === 'menu-ended'}
+                page={menuPage}
+                onPageChange={noop} onOpen={noop} onSignOut={noop} onReplayAcademy={noop}
+              />
             </div>
           </Sheet>
-        ) : page === 'leaderboard' ? (
-          <Sheet title="Dominion" headerArt={ATMOSPHERE.season} eyebrow="Season ladder" onClose={noop} detents={['full']} bleed>
+        ) : page === 'leaderboard' || page === 'leaderboard-honor' ? (
+          <Sheet title={i18n.t('leaderboard.title')} headerArt={ATMOSPHERE.season} kit={{ art: artIconSrc('menu-ranking'), tone: 'self' }} eyebrow={i18n.t('leaderboard.eyebrow')} onClose={noop} detents={['full']} bleed>
             <LeaderboardScreen onFocusPlanet={noop} />
           </Sheet>
         ) : (
-          <Sheet title="Dominion" headerArt={ATMOSPHERE.season} eyebrow="Season archive" onClose={noop} detents={['full']} bleed>
+          <Sheet title={i18n.t('leaderboard.title')} headerArt={ATMOSPHERE.season} kit={{ art: artIconSrc('menu-ranking'), tone: 'self' }} eyebrow={i18n.t('leaderboard.eyebrow')} onClose={noop} detents={['full']} bleed>
             <SeasonArchiveScreen onFocusPlanet={noop} initialSeasonId={ARCHIVE_ID} />
           </Sheet>
         )}
       </ApiProvider>
     </QueryClientProvider>
+  );
+}
+
+/**
+ * G4-k: THE UNKNOWN SIGNAL — open from a capital with two colonies, with no Courier at home,
+ * and three outcomes come home: an ambush, a cosmetic, a derelict warship.
+ */
+function GallerySignal({ state }: { state: 'open' | 'noship' | 'pirates' | 'skin' | 'derelict' }) {
+  const outcome = state === 'pirates' ? { kind: 'PIRATES' as const }
+    : state === 'skin' ? { kind: 'SKIN' as const, cosmeticId: 'planet-lava' as const }
+    : state === 'derelict' ? { kind: 'DERELICT' as const, hull: 'PIKE' as const, damageBp: 3000 } : null;
+  const signal: UnknownSignalView = {
+    id: '00000000-0000-4000-8000-000000000001', at: { x: 2000, y: 0, z: 0 }, status: outcome ? 'returning' : 'open',
+    appearedAt: new Date(NOW - 12 * MIN), expiresAt: new Date(NOW + 48 * MIN), originPlanetId: null, origin: null,
+    fleet: null, damage: null, departAt: null, arriveAt: null, returnDepartAt: null, returnAt: null,
+    recalledAt: null, outcome, deliveredAt: null, pirateFree: false,
+  };
+  const fleet = state === 'noship' ? { DART: 2 } : { DART: 3, PIKE: 1, COURIER: 2 };
+  const planet = { ...launchWorld, fleet };
+  return (
+    <UnknownSignalSheet signal={signal} planet={planet} radar={{ level: 2, range: 3200 }} tier={1} now={NOW}
+      origins={state === 'open' ? [{ id: planet.planet.id, name: planet.planet.name }, { id: 'c-2', name: 'Vesta' }, { id: 'c-3', name: 'Hollow' }] : undefined}
+      onOrigin={noop} onClose={noop} onSend={noop} onBuild={noop} onSkins={noop} />
+  );
+}
+
+/**
+ * G4-j: THE TWO STRIKES ON THE FOCUS RAIL, OPENED — a probed colony, a Death Star ready on the
+ * pad and two radiation bombs in stock, so the camera sees both folds' heads and bodies.
+ */
+/** `bare`: no weapon on the pad — both folds closed, each saying 0 ready (owner, 2026-11-16). */
+function GalleryStrikes({ bare = false }: { bare?: boolean }) {
+  const client = useQueryClient();
+  useState(() => {
+    client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [], radiation: [] });
+    client.setQueryData(['reports'], { reports: [], rivals: [] });
+    return null;
+  });
+  useEffect(() => {
+    if (bare) return;
+    document.querySelectorAll('details.gk-strike').forEach((fold) => { if (fold instanceof HTMLDetailsElement) fold.open = true; });
+  }, [bare]);
+  const colony: GalaxyPlanet = { ...rival, kind: 'COLONY' };
+  const read = { ...launchIntel.probeReports[0]!, targetPlanetId: colony.id, loyalty: 38, interceptors: 2 };
+  const armed: PlanetView = {
+    ...launchWorld,
+    deathStars: bare ? [] : [{ id: 'ds-1', status: 'READY', readyAt: null, remainingSeconds: 0 }],
+    radiationBombsAvailable: true,
+    radiationBombs: bare ? [] : [
+      { id: 'rb-1', level: 1, status: 'READY', readyAt: null, remainingSeconds: 0 },
+      { id: 'rb-3', level: 3, status: 'READY', readyAt: null, remainingSeconds: 0 },
+    ],
+  };
+  return (
+    <PlanetFocus target={colony} planet={armed} intel={{ ...launchIntel, probeReports: [read] }} reports={[]} now={NOW}
+      onClose={noop} onAttack={noop} onDeathStar={noop} onInstallTelescope={noop} onLaunched={noop} open onToggle={noop} />
   );
 }
 
@@ -652,6 +1018,99 @@ function GalleryMonumentFocus() {
   return <MonumentFocus monument={{ id: 'monument-2', ordinal: 2, difficulty: 'HARD', position: { x: 0, y: 7000, z: 0 },
     controller: { kind: 'NEUTRAL' }, capacity: 7270, used: 0, productionPerMinute: 8, radiationHpPerMinute: 12.5,
     emptySince: null, respawnAt: null }} onInspect={noop} onClose={noop} />;
+}
+
+/** The convoy and the merchant every gallery view of them shares: one crossing, one window. */
+const GALLERY_CONVOY: IntergalacticConvoyEvent = {
+  id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'INTERGALACTIC_CONVOY',
+  startsAt: new Date(NOW - 10 * MIN), endsAt: new Date(NOW + 110 * MIN),
+  appearsAtMinute: 1140, expiresAtMinute: 1260,
+  route: { from: { x: -2000, y: 0, z: 0 }, to: { x: 2000, y: 0, z: 0 }, velocity: { x: 100 / 3, y: 0, z: 0 }, speed: 100 / 3 },
+  visual: { formationVersion: 1 },
+  rewardPolicy: { resourceCapHours: 4, fullRewardForceRatio: 1, shipDropFullFirepower: 5780, shipDropChanceAtFullQuality: 0.15, maxAwardedShips: 3 },
+};
+const GALLERY_MERCHANT: TradeShipEvent = {
+  id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'TRADE_SHIP',
+  startsAt: new Date(NOW - 30 * MIN), endsAt: new Date(NOW + 150 * MIN),
+  rate: TRADE.rate, appearsAtMinute: 570, expiresAtMinute: 750,
+  orbit: { radius: 1_100, period: (2 * Math.PI * 1_100) / TRADE.speed, phase: 0.7, inclination: 0.4, ascendingNode: 1.9, speed: TRADE.speed },
+};
+
+/**
+ * G4-h1: the two mining cards as a player meets them. The rock: an isotope-rich one, a craft already
+ * out on it and one resting, the Derrick still to buy. The wreck: a haul whose crystal will not
+ * fit, with something waiting to collect.
+ */
+function GalleryMining({ kind }: { kind: 'asteroid' | 'debris' }) {
+  const rest = [{ runId: 'rest-1', craft: 1, readyAt: new Date(NOW + 7 * MIN) }];
+  if (kind === 'asteroid') {
+    return (
+      <AsteroidFocus
+        rock={{ id: 'rock-7', level: 3, ore: 40_000, oreRemaining: 31_500, crystalShare: 0.35, radius: 400, period: 30, phase: 0.2,
+          inclination: 1, ascendingNode: 0.8, speed: 9.2, appearsAt: 0, expiresAt: 999, active: true, isotopeRich: true, deuteriumShare: 0.2 }}
+        isotopeAccess craftAvailable={3} craftHold={300} derrick={false} derrickHold={780} minutesLeft={140} reachMinutes={12}
+        atHome={() => ({ room: 12_000, lost: { alloy: 0, crystal: 0, deuterium: 0 } })}
+        run={{ id: 'run-1', targetKind: 'asteroid', asteroidId: 'rock-7', debrisFieldId: null, status: 'outbound', craft: 1,
+          departAt: new Date(NOW - 4 * MIN), arriveAt: new Date(NOW + 5 * MIN), homeAt: null, intercept: { x: 0, y: 0, z: 0 },
+          minedAlloy: 0, minedCrystal: 0, minedDeuterium: 0 }}
+        craftReadyAt={null} craftCooldowns={rest}
+        onClose={noop} onSend={noop} busy={false} open onToggle={noop}
+      />
+    );
+  }
+  return (
+    <DebrisFocus
+      field={{ id: 'wreck-2', alloy: 9_000, crystal: 3_400, deuterium: 600, minutesLeft: 24 }}
+      planetName="Grimhold" craftAvailable={2} craftHold={300} reachMinutes={9}
+      atHome={() => ({ room: 420, lost: { alloy: 0, crystal: 63, deuterium: 0 } })} onCollect={noop}
+      run={undefined} craftReadyAt={null} onSend={noop} onClose={noop} busy={false} open onToggle={noop}
+    />
+  );
+}
+
+/** G2-k: the queue sheet, and a cancel opened in its row as a player opens it. */
+function GalleryQueue({ ask }: { ask: boolean }) {
+  useEffect(() => {
+    if (!ask) return undefined;
+    const timer = window.setTimeout(() => {
+      const first = document.querySelector('.gk-qrow__ask');
+      if (first instanceof HTMLElement) first.click();
+    }, 300);
+    return () => { window.clearTimeout(timer); };
+  }, [ask]);
+  return <QueueSheet queues={{ CONSTRUCTION: construction, YARD: yard }} now={NOW} onCancel={noop} onClose={noop} />;
+}
+
+/** G4-a: the focus frame closed, over a rival's world and over one of mine; G4-c opens mine. */
+function GalleryFocusClosed({ own, open = false }: { own: boolean; open?: boolean }) {
+  const client = useQueryClient();
+  useState(() => {
+    client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [], radiation: [] });
+    client.setQueryData(['reports'], { reports: [], rivals: [] });
+    return null;
+  });
+  const target: GalaxyPlanet = own ? { ...rival, name: 'Haven', kind: 'COLONY', isOwned: true } : rival;
+  return (
+    <PlanetFocus target={target} planet={launchWorld} intel={launchIntel} reports={[]} now={NOW}
+      onClose={noop} onAttack={noop} onTransfer={noop} onInstallTelescope={noop} onLaunched={noop} open={open} onToggle={noop} />
+  );
+}
+
+/** G4-b3: a neutral world in its claim window, the route open on its third step. */
+/** `focus-neutral-locked` (owner 2026-11-17): no claim yet and the colony slot shut behind the Core — the long requirement line. */
+function GalleryFocusNeutral({ locked = false }: { locked?: boolean }) {
+  const client = useQueryClient();
+  useState(() => {
+    client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [], radiation: [] });
+    client.setQueryData(['reports'], { reports: [], rivals: [] });
+    return null;
+  });
+  return (
+    <PlanetFocus target={locked ? { ...claimWorld(true), neutral: { tier: 1, threat: 'UNGUARDED', reserve: 'RICH', nextReinforcementAt: null, claimUntil: null } }
+      : claimWorld(true)} planet={{ ...launchWorld, colonies: locked ? { capitalCore: 3, colonies: 0, reservations: 0, capacity: 0 } : { capitalCore: 4, colonies: 0, reservations: 0, capacity: 1 } }}
+      intel={launchIntel} reports={[]} now={NOW} onSettle={noop}
+      onClose={noop} onAttack={noop} onInstallTelescope={noop} onLaunched={noop} open onToggle={noop} />
+  );
 }
 
 function GalleryBand() {
@@ -719,7 +1178,7 @@ function GalleryRewards({ state }: { state: string }) {
     next.setQueryData(keys.planet, planetView({}, { alloy: 5500, crystal: 2500 }));
     return next;
   });
-  return <QueryClientProvider client={client}><div className="[--v2-top-h:3rem]"><Sheet detents={['full']} headerArt={ATMOSPHERE.rewards} title={t('rewards.title')} eyebrow={t('rewards.eyebrow')} onClose={noop}>
+  return <QueryClientProvider client={client}><div className="[--v2-top-h:3rem]"><Sheet detents={['full']} kit={{ art: artIconSrc('gift') }} title={t('rewards.title')} eyebrow={t('rewards.eyebrow')} onClose={noop}>
     <RewardsScreen commander="Samet_The_Long_Commander_Name" />
   </Sheet></div></QueryClientProvider>;
 }
@@ -737,19 +1196,66 @@ function GalleryEscort() {
   return null;
 }
 
-function GalleryResearch() {
+/** THE WORLDS PANEL (G2-j): a capital and two colonies, or a commander with one world. */
+function GalleryWorlds({ one = false }: { one?: boolean }) {
+  const capital = planetView({ fleet: { DART: 14, COURIER: 2 }, ground: { THORN: 6 }, flight: { used: 1, total: 3 } },
+    { id: 'capital-1', name: 'Kestrel-12', alloy: 38_400, crystal: 12_100, deuterium: 2_060, alloyCap: 60_000, crystalCap: 30_000, deuteriumCap: 8_000, alloyPerHour: 2_200, crystalPerHour: 860, deuteriumPerHour: 40 });
+  const haven = planetView({ fleet: { DART: 4 }, ground: {}, flight: { used: 0, total: 2 } },
+    { id: 'colony-1', name: 'Haven', alloy: 3_300, crystal: 980, deuterium: 0, alloyCap: 20_000, crystalCap: 10_000, deuteriumCap: 4_000, alloyPerHour: 640, crystalPerHour: 210 });
+  const orlo = planetView({ fleet: {}, ground: { THORN: 2 }, flight: { used: 2, total: 2 } },
+    { id: 'colony-2', name: 'Orlo Prime', alloy: 18_000, crystal: 400, deuterium: 120, alloyCap: 18_000, crystalCap: 10_000, deuteriumCap: 4_000, alloyPerHour: 420, crystalPerHour: 160 });
+  const worlds = one ? [capital] : [capital, haven, orlo];
+  return <WorldsPanel worlds={worlds} activePlanetId="capital-1" capitalPlanetId="capital-1" onSelect={noop} onTransfer={noop} onClose={noop} />;
+}
+
+/**
+ * RESEARCH (G2-i): the map with the card; `sheet` opens Ship Armor's Details, `locked` shows a
+ * card whose door is a missing prerequisite, `paused` a lane stopped by a vacation.
+ */
+function GalleryResearch({ variant = 'map' }: { variant?: 'map' | 'sheet' | 'locked' | 'paused' }) {
   const client = useQueryClient();
   useState(() => {
     const fixture = planetView({ academyStep: null, buildings: { CORE: 15, SHIPYARD: 9, HANGAR: 6 } },
       { alloy: 90_000, crystal: 40_000, deuterium: 15_000 });
-    client.setQueryData(keys.planet, { ...fixture, research: fixture.research.map((project) => ({
+    const research = fixture.research.map((project) => ({
       ...project, discovered: true, available: true, availableAt: new Date('2026-01-01'), level: 1,
       maxLevel: RESEARCH_PROJECTS[project.id].maxLevel,
       completed: RESEARCH_PROJECTS[project.id].maxLevel === 1,
-    })) });
+    }));
+    const shut = variant === 'locked'
+      ? research.map((project) => project.id === 'ISOTOPE_SPECTROMETRY'
+        ? { ...project, level: 0, completed: false }
+        : project.id === 'DENSE_FUEL_CELLS'
+          ? { ...project, level: 0, completed: false, discovered: false, queueDiscovered: false, available: false, queueAvailable: false, prerequisiteMet: false, queuePrerequisiteMet: false }
+          : project)
+      : research;
+    const paused = new Date(Date.now() - 40 * MIN);
+    client.setQueryData(keys.planet, {
+      ...fixture,
+      research: shut,
+      ...(variant === 'paused' ? { researchQueue: [{
+        id: 'research-0', slot: 0, projectId: 'SHIP_ARMOR' as const, level: 2, cost: RESEARCH_PROJECTS.SHIP_ARMOR.costAt(2),
+        startedAt: new Date(Date.now() - 80 * MIN), finishesAt: new Date(Date.now() + 70 * MIN), pausedAt: paused,
+      }] } : {}),
+    });
     return null;
   });
-  return <Sheet title="Araştırma" headerArt={ATMOSPHERE.research} eyebrow="Astera · örnek veriler" onClose={noop} detents={['full']} bleed><ResearchPanel /></Sheet>;
+  useEffect(() => {
+    if (variant !== 'sheet') return undefined;
+    // the Details press, as a player makes it
+    const timer = window.setTimeout(() => {
+      const details = [...document.querySelectorAll('[data-constellation-card] button')].find((button) => button.textContent === 'Ayrıntılar');
+      if (details instanceof HTMLElement) details.click();
+    }, 300);
+    return () => { window.clearTimeout(timer); };
+  }, [variant]);
+  const focus = variant === 'locked' ? 'DENSE_FUEL_CELLS' : variant === 'map' ? undefined : 'SHIP_ARMOR';
+  return (
+    <Sheet bleed title={i18n.t('research.title')} headerArt={ATMOSPHERE.research} kit={{ art: artIconSrc('nav-research'), tone: 'self' }} eyebrow={i18n.t('research.eyebrow')} onClose={noop} detents={['full']}>
+      <BaseSwitch value="research" onChange={noop} arenaAvailable />
+      <div className="gk-sheet__pad"><ResearchPanel {...(focus ? { focus } : {})} /></div>
+    </Sheet>
+  );
 }
 
 /** Bildirim Merkezi (owner 2026-10-30): built with a ledger, and not yet built. */
@@ -774,13 +1280,119 @@ function GalleryNotificationCenter({ state }: { state: 'built' | 'new' }) {
   return <NotificationCenterSheet onClose={noop} />;
 }
 
+/**
+ * The bell as a mid-game commander opens it: a clanmate's raid in the air, a fleet on the
+ * way in, and the history under it, grouped (owner 2026-11-13: measure the real feed, not a
+ * stand-in). `empty` is the first evening, before anything has happened.
+ */
+function GalleryBell({ empty = false }: { empty?: boolean }) {
+  const [api] = useState(() => new Api());
+  const [client] = useState(() => {
+    const next = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    const at = (minutes: number) => new Date(NOW - minutes * MIN);
+    const news = (id: string, kind: string, minutes: number, payload: Record<string, unknown>, seen = true): NotificationView => ({ id, kind, payload, refId: null, seen, at: at(minutes) });
+    const notifications: NotificationView[] = empty ? [] : [
+      news('n-alarm', 'clan_alarm', 2, { arriveAt: new Date(NOW + 14 * MIN).toISOString(), etaMinutes: 14, targetPlanetName: 'Kuzgun', alarmId: '00000000-0000-4000-8000-0000000000a1', hostPlayerId: 'ayse', hostPlanetId: 'kuzgun', hostName: 'Ayşe' }, false),
+      news('n-incoming', 'incoming_fleet', 4, { arriveAt: new Date(NOW + 9 * MIN).toISOString(), etaMinutes: 13, targetPlanetName: 'Thistle' }, false),
+      news('n-raided', 'raided', 35, { grade: 'PARTIAL', lootAlloy: 900, lootCrystal: 240, unitsLost: 3, targetPlanetName: 'Thistle', originPlanetId: 'p-sable', originUsername: 'Sable', originPlanetName: 'Corvid' }, false),
+      news('n-won', 'raid_result', 80, { grade: 'DECISIVE', lootAlloy: 3_100, lootCrystal: 1_000, unitsLost: 2, shipsHome: 28, targetPlanetName: 'Kestrel-12' }),
+      news('n-probe-1', 'probe_report', 140, { targetPlanetId: 'p-kestrel', targetPlanetName: 'Kestrel-12' }),
+      news('n-probe-2', 'probe_report', 150, { targetPlanetId: 'p-kestrel', targetPlanetName: 'Kestrel-12' }),
+      news('n-home', 'fleet_returned', 190, { trip: 'raid', ships: 26, lootAlloy: 3_100, lootCrystal: 1_000 }),
+      news('n-scan', 'scan_detected', 260, {}),
+      news('n-unlock', 'unlock', 420, { unlock: 'RADAR' }),
+    ];
+    next.setQueryData(keys.notifications, { notifications });
+    next.setQueryData(keys.planet, planetView({}, { id: 'p-1', name: 'Thistle', alloy: 4_200, crystal: 900, deuterium: 640, alloyCap: 40_000, crystalCap: 30_000, deuteriumCap: 20_000 }));
+    return next;
+  });
+  return (
+    <QueryClientProvider client={client}>
+      <ApiProvider api={api}>
+        <BellSheet
+          tab="signals"
+          onTab={noop}
+          onClose={noop}
+          unseen={empty ? 0 : 3}
+          signals={<SignalsFeed justRead={new Set()} onGo={noop} onFocusPlanet={noop} onFocusMonument={noop} />}
+          chronicle={null}
+        />
+      </ApiProvider>
+    </QueryClientProvider>
+  );
+}
+
+/**
+ * The bell's chronicle tab as a galaxy a few days in reads it (C10): a raid run folded into
+ * one row, a Death Star strike, the merchant arriving, a world's Core tier and the Dominion
+ * lead, a spent rock and the season's turn. `empty` is a galaxy where nothing public has
+ * happened yet.
+ */
+function GalleryChronicle({ empty = false }: { empty?: boolean }) {
+  const [api] = useState(() => new Api());
+  const [client] = useState(() => {
+    const next = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    const at = (minutes: number) => new Date(NOW - minutes * MIN);
+    const events: GalaxyEvent[] = empty ? [] : [
+      { id: 'c-raid-1', kind: 'bombardment', subjectPlanetId: 'p-kestrel', occurredAt: at(12), payload: { planetName: 'Kestrel-12', commanderName: 'Vex' } },
+      { id: 'c-raid-2', kind: 'bombardment', subjectPlanetId: 'p-kestrel', occurredAt: at(16), payload: { planetName: 'Kestrel-12', commanderName: 'Vex' } },
+      { id: 'c-ds', kind: 'death_star_impact', subjectPlanetId: 'p-vela', occurredAt: at(55), payload: { planetName: 'Vela-3', outcome: 'FIRST_STRIKE', capturable: true } },
+      { id: 'c-trade', kind: 'galaxy_event_started', subjectPlanetId: null, occurredAt: at(90), payload: { eventKind: 'TRADE_SHIP', startsAt: at(90).toISOString(), endsAt: at(-90).toISOString(), rate: { alloy: 1, crystal: 2, deuterium: 32 } } },
+      { id: 'c-core', kind: 'core_tier', subjectPlanetId: 'p-thistle', occurredAt: at(180), payload: { planetName: 'Thistle', commanderName: 'Mimar', tier: 3 } },
+      { id: 'c-lead', kind: 'dominion_leader', subjectPlanetId: 'p-thistle', occurredAt: at(240), payload: { planetName: 'Thistle', commanderName: 'Mimar' } },
+      { id: 'c-iso', kind: 'isotope_exhausted', subjectPlanetId: null, occurredAt: at(400), payload: {} },
+      { id: 'c-act', kind: 'season_act', subjectPlanetId: null, occurredAt: at(1440), payload: { act: 'war' } },
+    ];
+    next.setQueryData(keys.chronicle, { pages: [{ events, nextBefore: empty ? null : 'older' }], pageParams: [null] });
+    return next;
+  });
+  return (
+    <QueryClientProvider client={client}>
+      <ApiProvider api={api}>
+        <BellSheet tab="chronicle" onTab={noop} onClose={noop} unseen={0} signals={null} chronicle={<ChronicleScreen onFocusPlanet={noop} />} />
+      </ApiProvider>
+    </QueryClientProvider>
+  );
+}
+
+/** The galaxy events guide with the next shower 42 minutes out (C10). */
+function GalleryEventsGuide({ timeZone }: { timeZone?: string }) {
+  const client = useQueryClient();
+  useState(() => {
+    client.setQueryData(keys.galaxyEvents, { events: [], next: { kind: 'ASTEROID_SHOWER', startsAt: new Date(Date.now() + 42 * MIN) } });
+    return null;
+  });
+  return <GalaxyEventsGuide onClose={noop} {...(timeZone ? { timeZone } : {})} />;
+}
+
+/**
+ * One toast, said once the page is up: what every action answers with (G1-d3, 2026-11-14) —
+ * the works collected, the store full and some left behind, and a refusal.
+ */
+function GalleryToast({ tone }: { tone: 'info' | 'warn' | 'error' }) {
+  const say = useToast();
+  useEffect(() => {
+    say({
+      info: i18n.t('statusBar.works.collected', { amount: '4,2K' }),
+      warn: i18n.t('statusBar.works.collectedPartly', { moved: '1,2K', held: '3K' }),
+      error: i18n.t('convoy.cannotReach'),
+    }[tone], tone);
+  }, [say, tone]);
+  return null;
+}
+
 function Views({ view }: { view: string }) {
   const { t } = useTranslation();
-  if (view === 'wiki') return <div className="wiki-gallery"><Sheet detents={['full']} bleed quietTitle eyebrow="Astera Online" title="Wiki" onClose={noop}><WikiScreen language={i18n.resolvedLanguage} /></Sheet></div>;
+  if (view === 'wiki') return <div className="wiki-gallery"><Sheet detents={['full']} bleed headerArt={ATMOSPHERE.intel} kit={{ tone: 'self' }} eyebrow="Astera Online" title="Wiki" onClose={noop}><WikiScreen language={i18n.resolvedLanguage} /></Sheet></div>;
   if (view.startsWith('support-')) return <GallerySupport view={view} />;
+  if (view.startsWith('report-sheet')) return <GalleryReports view={view} />;
+  if (view.startsWith('monument-sheet')) return <GalleryMonument />;
+  if (view.startsWith('replay-')) return <GalleryReplay view={view} />;
+  if (view === 'chat' || view.startsWith('chat-')) return <GalleryChat view={view} />;
+  if (view === 'feedback' || view.startsWith('announcements')) return <GalleryCommunity view={view} />;
   if (view.startsWith('rewards')) return <GalleryRewards state={view.replace('rewards-', '')} />;
   // The Komutan gemisi hangar; the camera mocks `/arena/hangar` with each state it photographs.
-  if (view === 'arena-hangar') return <Sheet detents={['full']} headerArt={ATMOSPHERE.commanderShip} eyebrow="Samet" title="Komutan gemisi" onClose={noop}>
+  if (view === 'arena-hangar') return <Sheet bleed detents={['full']} headerArt={ATMOSPHERE.commanderShip} kit={{ art: artIconSrc('cos-ship'), tone: 'self' }} eyebrow="Samet" title="Komutan gemisi" onClose={noop}>
     <BaseSwitch value="ship" onChange={noop} arenaAvailable /><HangarPanel credential={() => Promise.resolve('dev')} onEnter={noop} />
   </Sheet>;
   if (view === 'arena-team') return <Sheet detents={['full']} title="Yarık" onClose={noop}>
@@ -792,32 +1404,114 @@ function Views({ view }: { view: string }) {
   if (view === 'legacy-reveal') return <LegacyRevealGallery />;
   if (view === 'legacy-peek' || view === 'legacy-profile') return <LegacyPeekGallery page={view === 'legacy-peek' ? 'peek' : 'profile'} />;
   if (view === 'intel') return <GalleryIntel />;
+  if (view === 'intel-blind') return <GalleryIntel blind />;
+  if (view === 'intel-probes') return <GalleryIntel shelf="probes" />;
+  if (view === 'intel-radar') return <GalleryIntel shelf="radar" />;
+  if (view === 'intel-battles') return <GalleryIntel shelf="battles" />;
+  if (view === 'intel-radar-named') return <GalleryIntel shelf="radar" named />;
+  if (view === 'intel-blind-probes') return <GalleryIntel blind shelf="probes" />;
+  if (view === 'intel-blind-radar') return <GalleryIntel blind shelf="radar" />;
   if (view === 'notification-center') return <GalleryNotificationCenter state="built" />;
   if (view === 'notification-center-new') return <GalleryNotificationCenter state="new" />;
   if (view === 'notification-center-late') return <Sheet placement="dialog" title="Bildirim Merkezi" headerArt={ATMOSPHERE.notificationCenter} onClose={noop} detents={['full']}><div className="pb-3"><LateAlerts /></div></Sheet>;
   if (view === 'base-fleet') return <GalleryBase />;
   if (view === 'base-production') return <GalleryBase production />;
+  if (view === 'base-faults') return <GalleryBase production faults />;
+  if (view === 'fault-sheet') return <GalleryFault />;
+  if (view === 'fault-sheet-running') return <GalleryFault running />;
+  if (view === 'fault-sheet-short') return <GalleryFault short />;
+  if (view === 'build-sheet') return <GalleryBuild hull="TALON" />;
+  if (view === 'build-sheet-short') return <GalleryBuild hull="STRONGHOLD" variant="short" />;
+  if (view === 'build-sheet-locked') return <GalleryBuild hull="TEMPEST" variant="locked" />;
+  if (view === 'build-sheet-full') return <GalleryBuild hull="DART" variant="full" />;
+  if (view === 'build-sheet-special') return <GalleryBuild hull="NULLIFIER" />;
+  if (view === 'build-sheet-gun') return <GalleryBuild hull="THORN" />;
   if (view === 'base-research') return <GalleryResearch />;
+  if (view === 'worlds') return <GalleryWorlds />;
+  if (view === 'worlds-one') return <GalleryWorlds one />;
+  if (view === 'base-research-sheet') return <GalleryResearch variant="sheet" />;
+  if (view === 'base-research-locked') return <GalleryResearch variant="locked" />;
+  if (view === 'base-research-paused') return <GalleryResearch variant="paused" />;
   if (view === 'base-fleet-empty') return <GalleryBase empty />;
   if (view === 'repair-station') return <GalleryBase open />;
+  if (view === 'repair-station-hangar') return <GalleryBase open hangar />;
+  if (view === 'repair-station-queue') return <GalleryBase open working />;
+  if (view === 'repair-station-radiation') return <GalleryBase open radiation />;
   if (view === 'strategic-forge') return <GalleryStrategic tab="tactical" />;
   if (view === 'strategic-battery') return <GalleryStrategic tab="defend" />;
+  if (view === 'strategic-radiation') return <GalleryStrategic tab="tactical" variant="radiation" />;
+  if (view === 'strategic-locked') return <GalleryStrategic tab="tactical" variant="locked" />;
   if (view === 'repair-station-empty') return <GalleryBase empty open />;
   if (view === 'launch-radiation') return <GalleryRadiation surface="launch" />;
   if (view === 'launch-radiation-lethal') return <GalleryRadiation surface="launch-lethal" />;
   if (view === 'transfer-radiation') return <GalleryRadiation surface="transfer" />;
   if (view === 'focus-radiation') return <GalleryRadiation surface="focus" />;
+  if (view === 'focus-strike') return <GalleryStrikes />;
+  if (view === 'focus-strike-bare') return <GalleryStrikes bare />;
+  if (view === 'signal' || view === 'signal-noship' || view === 'signal-pirates' || view === 'signal-skin' || view === 'signal-derelict') {
+    return <GallerySignal state={view === 'signal' ? 'open' : view === 'signal-noship' ? 'noship' : view === 'signal-pirates' ? 'pirates' : view === 'signal-skin' ? 'skin' : 'derelict'} />;
+  }
   if (view === 'focus-band') return <GalleryBand />;
+  if (view === 'focus-closed') return <GalleryFocusClosed own={false} />;
+  if (view === 'focus-own') return <GalleryFocusClosed own />;
+  if (view === 'focus-own-open') return <GalleryFocusClosed own open />;
+  if (view === 'focus-neutral') return <GalleryFocusNeutral />;
+  if (view === 'focus-neutral-locked') return <GalleryFocusNeutral locked />;
   if (view === 'focus-monument') return <GalleryMonumentFocus />;
+  if (view === 'focus-asteroid' || view === 'focus-debris') return <GalleryMining kind={view === 'focus-asteroid' ? 'asteroid' : 'debris'} />;
+  // G4-h2: a pirate seen by the eye; a contact read by Radar coming at me; one in full sight; my Prospectors coming home.
+  if (view === 'focus-pirate') {
+    return (
+      <PirateFocus pirate={{ id: 'pirate-9', callsign: 'mJtQ', zone: 'IDENTIFIED', at: { x: 100, y: 0, z: 0 }, expiresInMinutes: 96,
+        reachMinutes: 12, reach: [{ hull: 'DART', minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } }], level: 3,
+        fleet: { TEMPEST: 1, DART: 4, COURIER: 2 }, damageMult: PIRATE.damageMult[3], mass: 'MEDIUM', remembered: true }}
+        fleetAtHome={{ DART: 12, PIKE: 3 }} onClose={noop} onAttack={noop} raiding={false} open onToggle={noop} />
+    );
+  }
+  if (view === 'focus-contact' || view === 'focus-contact-fleet') {
+    const radar = view === 'focus-contact';
+    return (
+      <ContactFocus open onToggle={noop} onClose={noop} contact={{ id: 'c-1', kind: radar ? 'unknown' : 'fleet',
+        from: { x: 0, y: 0, z: 0 }, to: { x: 100, y: 0, z: 0 }, startAt: new Date(NOW - MIN), endAt: new Date(NOW + 9 * MIN),
+        ...(radar ? { mass: 'HEAVY' as const, silhouette: 'fleet' as const, inbound: true } : { fleet: { DART: 8, TEMPEST: 2, COURIER: 3 } }) }} />
+    );
+  }
+  // G4-i2: the merchant and the convoy as the focus card shows them, before the sheet opens.
+  if (view === 'focus-trade') {
+    return <TradeFocus merchant={GALLERY_MERCHANT} fleetAtHome={{ ATLAS: 12, DART: 4 }} fleetAway={{}} minutesLeft={150} reachMinutes={10}
+      onClose={noop} onTrade={noop} open onToggle={noop} />;
+  }
+  if (view === 'focus-convoy') {
+    return <IntergalacticConvoyFocus convoy={GALLERY_CONVOY} minutesLeft={110} reachMinutes={14} hasCombatCraft launchLocked={false}
+      occurrenceSpent={false} onClose={noop} onRaid={noop} open onToggle={noop} />;
+  }
+  if (view === 'focus-run') {
+    return (
+      <RunFocus run={{ id: 'run-2', targetKind: 'asteroid', asteroidId: 'rock-7', debrisFieldId: null, status: 'returning', craft: 2,
+        departAt: new Date(NOW - 20 * MIN), arriveAt: new Date(NOW - 8 * MIN), recalledAt: null, homeAt: new Date(NOW + 6 * MIN),
+        intercept: { x: 0, y: 0, z: 0 }, minedAlloy: 380, minedCrystal: 160, minedDeuterium: 60 }}
+        rock={undefined} wreck={undefined} minutesRemaining={6} onClose={noop} open onToggle={noop} />
+    );
+  }
   if (view === 'clan') return <GalleryClan tab="overview" />;
   if (view === 'clan-strength') return <GalleryClan tab="strength" />;
   if (view === 'clan-members') return <GalleryClan tab="members" />;
   if (view === 'clan-aid') return <GalleryClan tab="aid" />;
+  if (view === 'clan-aid-quote') return <GalleryClan tab="aid" quote />;
   if (view === 'clan-war') return <GalleryClan tab="war" />;
-  if (view === 'menu') return <GalleryCommander page="menu" />;
+  if (view === 'clan-donate') return <GalleryClan tab="war" donate />;
+  if (view === 'clan-outside') return <GalleryClan tab="overview" outside />;
+  if (view === 'clan-pact') return <GalleryClan tab="overview" outside pact />;
+  // G12-a: the Yarık team over the clan's overview, as the leader's lobby (the audit answers `/arena/team`).
+  if (view === 'clan-arena') return <GalleryClan tab="overview" arena />;
+  if (view === 'menu' || view === 'menu-settings' || view === 'menu-academy' || view === 'menu-community' || view === 'menu-ended') return <GalleryCommander page={view} />;
   if (view === 'leaderboard') return <GalleryCommander page="leaderboard" />;
   if (view === 'leaderboard-archive') return <GalleryCommander page="leaderboard-archive" />;
+  if (view === 'leaderboard-archive-profile') return <GalleryCommander page="leaderboard-archive-profile" />;
+  if (view === 'leaderboard-archive-career') return <GalleryCommander page="leaderboard-archive-career" />;
+  if (view === 'leaderboard-honor') return <GalleryCommander page="leaderboard-honor" />;
   if (view === 'country-picker') return <GalleryCountryPicker />;
+  if (isProfileView(view)) return <ProfileGallery view={view} />;
   if (view === 'cosmetic-fleet') return <CosmeticFleetGallery />;
   if (view === 'ufo-probe-flight') return <UfoProbeGallery />;
   if (view === 'cosmetic-fleet-titan') return <CosmeticFleetGallery engineId="engine-titan" />;
@@ -826,9 +1520,11 @@ function Views({ view }: { view: string }) {
     return <CosmeticFleetGallery engineId={engineId} flagId={flagId} />;
   }
   if (view === 'ship-skin-fleet') return <CosmeticFleetGallery shipSkins={{ CORSAIR: 'ship-red-dragon', CITADEL: 'ship-shark', VIPER: 'ship-scorpion', LEVIATHAN: 'ship-stingray' }} />;
-  if (view === 'ship-skin-inventory') return <SkinInventoryContent onEquip={noop} onEquipCosmetic={noop} onOpenShop={noop} pending={null} failure={null}
-    collection={{ ownedSkinIds: [], ownedCosmeticIds: ['ship-red-dragon', 'ship-shark', 'ship-scorpion', 'ship-stingray'], planets: [],
-      equipment: { SHIP: { CORSAIR: 'ship-red-dragon', CITADEL: 'ship-shark', VIPER: 'ship-scorpion', LEVIATHAN: 'ship-stingray' } } }} />;
+  if (view === 'ship-skin-inventory') return <Sheet detents={['full']} bleed kit={{ art: artIconSrc('cos-planet'), tone: 'self' }} eyebrow={t('skins.collection')} title={t('menu.skinsInventoryLabel')} onClose={noop}>
+    <SkinInventoryContent onEquip={noop} onEquipCosmetic={noop} onOpenShop={noop} pending={null} failure={null}
+      collection={{ ownedSkinIds: [], ownedCosmeticIds: ['ship-red-dragon', 'ship-shark', 'ship-scorpion', 'ship-stingray'], planets: [],
+        equipment: { SHIP: { CORSAIR: 'ship-red-dragon', CITADEL: 'ship-shark', VIPER: 'ship-scorpion', LEVIATHAN: 'ship-stingray' } } }} />
+  </Sheet>;
   if (view.startsWith('cosmetic-card:')) {
     const [id = '', angle] = view.slice('cosmetic-card:'.length).split(':');
     const inspectionView = angle === 'top' || angle === 'side' || angle === 'right' || angle === 'rear' ? angle : undefined;
@@ -836,23 +1532,29 @@ function Views({ view }: { view: string }) {
     return item ? <div className="bg-v2-void" style={{ width: 600 }}><CosmeticPreview id={id} still inspectionView={inspectionView} productCard={!inspectionView} /></div> : null;
   }
   if (view === 'skin-shop') {
-    return <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} />;
+    return (
+      <Sheet detents={['full']} bleed kit={{ art: artIconSrc('menu-shop'), tone: 'self' }} eyebrow={t('skins.collection')} title={t('menu.skinsShopLabel')} onClose={noop}>
+        <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} />
+      </Sheet>
+    );
   }
   if (view === 'skin-shop-live') {
     const liraQuote = { formatted: '₺99', currencyCode: 'TRY' as const };
     const euroQuote = { formatted: '€2.99', currencyCode: 'EUR' as const };
     const euroCountries = new Set<PlanetSkinId>(SKIN_COLLECTIONS.country.ids.filter((id) => id !== 'planet-turkey'));
     return (
-      <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} enabled
-        onPurchase={noop} countryCode="TR"
-        prices={{ ...Object.fromEntries(PLANET_SKIN_IDS.map((id) => [id, euroCountries.has(id) ? euroQuote : liraQuote])),
-          bundle: { formatted: '₺279', currencyCode: 'TRY' } }} />
+      <Sheet detents={['full']} bleed kit={{ art: artIconSrc('menu-shop'), tone: 'self' }} eyebrow={t('skins.collection')} title={t('menu.skinsShopLabel')} onClose={noop}>
+        <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} enabled
+          onPurchase={noop} countryCode="TR"
+          prices={{ ...Object.fromEntries(PLANET_SKIN_IDS.map((id) => [id, euroCountries.has(id) ? euroQuote : liraQuote])),
+            bundle: { formatted: '₺279', currencyCode: 'TRY' } }} />
+      </Sheet>
     );
   }
   if (view === 'skin-inventory' || view === 'skin-inventory-empty') {
     const owned = view === 'skin-inventory' ? (['planet-lava', 'planet-ice', 'planet-turkey'] as const) : [];
     return (
-      <Sheet detents={['full']} bleed eyebrow={t('menu.asteraHeading')} title={t('menu.skinsInventoryLabel')} onClose={noop}>
+      <Sheet detents={['full']} bleed kit={{ art: artIconSrc('cos-planet'), tone: 'self' }} eyebrow={t('skins.collection')} title={t('menu.skinsInventoryLabel')} onClose={noop}>
         <SkinInventoryContent onEquip={noop} onOpenShop={noop}
           collection={{ ownedSkinIds: [...owned], planets: [
             { id: 'p-home', name: 'Kestrel', skinId: owned.length > 0 ? 'planet-lava' : null },
@@ -866,7 +1568,7 @@ function Views({ view }: { view: string }) {
   }
   if (view === 'donate') {
     return (
-      <Sheet detents={['full']} eyebrow={t('community.donate.eyebrow')} title={t('community.donate.title')} onClose={noop}>
+      <Sheet detents={['full']} eyebrow={t('community.donate.eyebrow')} title={t('community.donate.title')} kit={{ art: artIconSrc('star') }} onClose={noop}>
         <DonateScreen />
       </Sheet>
     );
@@ -899,19 +1601,83 @@ function Views({ view }: { view: string }) {
         minutesRemaining={8} onClose={noop} open onToggle={noop} />
     );
   }
-  if (view === 'queue') {
-    return <QueueSheet queues={{ CONSTRUCTION: construction, YARD: yard }} now={NOW} onCancel={noop} onClose={noop} />;
-  }
-  if (view === 'bell') {
+  if (view === 'queue' || view === 'queue-cancel') return <GalleryQueue ask={view === 'queue-cancel'} />;
+  if (view === 'bell' || view === 'bell-empty') return <GalleryBell empty={view === 'bell-empty'} />;
+  if (view === 'chronicle' || view === 'chronicle-empty') return <GalleryChronicle empty={view === 'chronicle-empty'} />;
+  if (view === 'events-guide') return <GalleryEventsGuide />;
+  // a player six hours ahead of the galaxy: the late windows land on the next day (owner 2026-11-14)
+  if (view === 'events-guide-tokyo') return <GalleryEventsGuide timeZone="Asia/Tokyo" />;
+  if (view === 'toast') return <GalleryToast tone="info" />;
+  if (view === 'toast-warn') return <GalleryToast tone="warn" />;
+  if (view === 'toast-error') return <GalleryToast tone="error" />;
+  if (view === 'readout') {
+    // The galaxy's top-right reading in a busy late galaxy; the audit opens the monument list.
+    const monument = (n: number, difficulty: 'EASY' | 'HARD', detail: string) => ({ kind: 'monument' as const, id: `m${String(n)}`, label: `Monument ${String(n)}`, detail, difficulty, ordinal: n });
+    // The galaxy's two top corners as the game lays them out (G1-d2): the events left, the reading, home and the view right.
+    const events = [
+      { id: 'e1', kind: 'ASTEROID_SHOWER' as const, startsAt: at(-60), endsAt: at(30), asteroidSpawnMultiplier: 2 },
+      {
+        id: 'e2', kind: 'TRADE_SHIP' as const, startsAt: at(-20), endsAt: at(90), rate: TRADE.rate, appearsAtMinute: 580, expiresAtMinute: 690,
+        orbit: { radius: 1_100, period: (2 * Math.PI * 1_100) / TRADE.speed, phase: 0.7, inclination: 0.4, ascendingNode: 1.9, speed: TRADE.speed },
+      },
+    ];
     return (
-      <BellSheet
-        tab="signals"
-        onTab={noop}
-        onClose={noop}
-        unseen={2}
-        signals={<p className="text-caption text-v2-ink-2">Signal rows draw here (SignalsFeed).</p>}
-        chronicle={null}
-      />
+      <div className="flex items-start justify-between px-[var(--gk-gutter)] pt-3">
+        <EventChips events={events} now={NOW} onOpen={noop} />
+        <div className="flex flex-col items-end">
+          <GalaxyReadout
+            onlineToday={42}
+            counts={{ worlds: 177, fleetsAway: 4, rocks: 12, pirates: 3, wrecks: 30, monuments: 8 }}
+            targets={[monument(1, 'EASY', '2,1K uzaklık'), monument(3, 'EASY', '3,4K uzaklık'), monument(5, 'HARD', '4,0K uzaklık'), monument(7, 'HARD', '6,2K uzaklık'),
+              { kind: 'debris', id: 'd1', label: 'Kestrel-12', detail: '+4,1K' }]}
+            onFocusTarget={noop}
+          />
+          <HomeChip onHome={noop} />
+          <ViewChip layersOn onOpen={noop} />
+        </div>
+      </div>
+    );
+  }
+  if (view === 'context-suggestion' || view === 'context-selected') {
+    // A suggestion (open; folding is remembered on the device), and an attack waiting beside a selection.
+    return (
+      <div className="relative h-dvh [--v2-dock-h:4rem]">
+        {view === 'context-suggestion' ? (
+          <ContextSlot
+            {...slotBase}
+            suggestion={{
+              id: 'undefended',
+              kind: 'threat',
+              title: 'Bu dünyanın yer savunması yok',
+              detail: '456 yağmaya açık. Kalıcı savunma için Diken ya da Burç kur.',
+              action: { label: 'Savunma kur', screen: 'planet', group: 'defend' },
+              weight: 820,
+            }}
+          />
+        ) : <ContextSlot {...slotBase} selected threats={[thread('incoming', 9), thread('incoming', 20)]} />}
+        <div className="absolute inset-x-0 bottom-0"><Dock active="galaxy" badges={quiet} onSelect={noop} /></div>
+      </div>
+    );
+  }
+  if (view === 'context-attack' || view === 'context-event' || view === 'context-events') {
+    // The card where the game draws it: above the dock, over the galaxy.
+    const shower = { id: 'e1', kind: 'ASTEROID_SHOWER' as const, startsAt: at(-60), endsAt: at(30), asteroidSpawnMultiplier: 2 };
+    const events = view === 'context-attack' ? [] : view === 'context-event' ? [shower]
+      : [shower, {
+        id: 'e2', kind: 'TRADE_SHIP' as const, startsAt: at(-20), endsAt: at(90), rate: TRADE.rate, appearsAtMinute: 580, expiresAtMinute: 690,
+        orbit: { radius: 1_100, period: (2 * Math.PI * 1_100) / TRADE.speed, phase: 0.7, inclination: 0.4, ascendingNode: 1.9, speed: TRADE.speed },
+      }];
+    return (
+      <div className="relative h-dvh [--v2-dock-h:4rem]">
+        <ContextSlot
+          {...slotBase}
+          // An attack in sight: the galaxy saw it leave three minutes ago, so its ring drains and it can be looked at.
+          threats={view === 'context-attack' ? [thread('incoming', 9, { contactId: 'c-1' })] : []}
+          contacts={[{ id: 'c-1', kind: 'unknown', from: { x: 0, y: 0, z: 0 }, to: { x: 1, y: 0, z: 1 }, startAt: at(-3), endAt: at(9), inbound: true }]}
+          events={events}
+        />
+        <div className="absolute inset-x-0 bottom-0"><Dock active="galaxy" badges={quiet} onSelect={noop} /></div>
+      </div>
     );
   }
   if (view === 'view') {
@@ -968,14 +1734,7 @@ function Views({ view }: { view: string }) {
   if (view === 'convoy') {
     return (
       <IntergalacticConvoySheet
-        event={{
-          id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'INTERGALACTIC_CONVOY',
-          startsAt: new Date(NOW - 10 * MIN), endsAt: new Date(NOW + 110 * MIN),
-          appearsAtMinute: 1140, expiresAtMinute: 1260,
-          route: { from: { x: -2000, y: 0, z: 0 }, to: { x: 2000, y: 0, z: 0 }, velocity: { x: 100 / 3, y: 0, z: 0 }, speed: 100 / 3 },
-          visual: { formationVersion: 1 },
-          rewardPolicy: { resourceCapHours: 4, fullRewardForceRatio: 1, shipDropFullFirepower: 5780, shipDropChanceAtFullQuality: 0.15, maxAwardedShips: 3 },
-        }}
+        event={GALLERY_CONVOY}
         seasonStart={new Date(NOW - 1150 * MIN)}
         planet={launchWorld}
         onClose={noop}
@@ -1007,6 +1766,7 @@ function Views({ view }: { view: string }) {
       />
     );
   }
+  if (view === 'report-full' || view === 'report-full-defend') return <GalleryReportDoor defending={view === 'report-full-defend'} />;
   if (view === 'report' || view === 'report-defend') {
     const defending = view === 'report-defend';
     const word = i18n.t(defending ? 'reports.verdict.title.defending.PARTIAL' : 'reports.verdict.title.attacking.PARTIAL');
@@ -1041,6 +1801,32 @@ function Views({ view }: { view: string }) {
           }}
         />
       </Sheet>
+    );
+  }
+  if (view === 'season-recap' || view === 'season-recap-quiet') {
+    // The season's last screen (C18): a podium Honor place with a clan seal, or a quiet frontier.
+    const quiet = view === 'season-recap-quiet';
+    return (
+      <SeasonRecap
+        galaxy="Vantage"
+        players={50}
+        endsAt={new Date(NOW - 2 * MIN)}
+        onClose={noop}
+        result={{
+          seasonId: 'season-86', accountId: 'account-7', finalRank: quiet ? 41 : 4, dominion: quiet ? 0 : 1_840,
+          ...(quiet ? {} : { honorRank: 2, honorScore: 120_500_000 }),
+          damageDealt: quiet ? 0 : 124_500, damageTaken: quiet ? 0 : 82_000, rivalName: null, biggestRaid: 0, title: 'Vanguard',
+          recap: quiet
+            ? { commanderName: 'İzci', planetName: 'Kestrel-12', battles: 0, attacks: 0, defences: 0, rival: null, biggestRaid: null }
+            : {
+              commanderName: 'İzci', planetName: 'Kestrel-12', battles: 38, attacks: 24, defences: 14,
+              rival: { commanderName: 'VEX', battles: 9 }, biggestRaid: { value: 48_000, opponentName: 'Rook' },
+              support: { stood: 7, held: 3 },
+              clan: { tag: 'NOVA', name: 'Nova Pact', finalRank: 3, dominion: 9_200, topThree: true },
+            },
+          createdAt: new Date(NOW - 2 * MIN),
+        }}
+      />
     );
   }
   if (view === 'report-strike-colony') {
@@ -1090,14 +1876,10 @@ function Views({ view }: { view: string }) {
   if (view === 'trade') {
     return (
       <TradeSheet
-        merchant={{
-          id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'TRADE_SHIP',
-          startsAt: new Date(NOW - 30 * MIN), endsAt: new Date(NOW + 150 * MIN),
-          rate: TRADE.rate, appearsAtMinute: 570, expiresAtMinute: 750,
-          orbit: { radius: 1_100, period: (2 * Math.PI * 1_100) / TRADE.speed, phase: 0.7, inclination: 0.4, ascendingNode: 1.9, speed: TRADE.speed },
-        }}
+        merchant={GALLERY_MERCHANT}
         seasonStart={new Date(NOW - 600 * MIN)}
-        planet={planetView({ fleet: { ATLAS: 12, COURIER: 3, DART: 4 } }, { alloy: 5_000, crystal: 5_000, deuterium: 5_000 })}
+        // G9-a: a commander in the first penalty tier, so the commission's receipt is on the page.
+        planet={{ ...planetView({ fleet: { ATLAS: 12, COURIER: 3, DART: 4 } }, { alloy: 5_000, crystal: 5_000, deuterium: 5_000 }), honorBenefits: galleryHonor(-30_000_000) }}
         onClose={noop}
         onLaunched={noop}
       />
@@ -1138,6 +1920,25 @@ function Views({ view }: { view: string }) {
   return null;
 }
 
+/** C38: the Shopier step in each of its states: the press, the wait, the page made, the refusal. */
+function ShopierCheckoutGallery() {
+  const { t } = useTranslation();
+  const url = 'https://www.shopier.com/61000001';
+  return (
+    <Sheet detents={['full']} eyebrow={t('menu.asteraHeading')} title={t('menu.skinsShopLabel')} kit={{ art: artIconSrc('menu-shop') }} onClose={noop}>
+      <div className="gk grid gap-4 pb-4">
+        <ShopierPayButton amount={9900} state={null} onPress={noop} wide />
+        <ShopierPayButton amount={9900} state={{ itemId: 'planet-toxic', status: 'loading' }} onPress={noop} wide />
+        <div>
+          <ShopierPayButton amount={9900} state={{ itemId: 'planet-toxic', status: 'ready', url }} onPress={noop} wide />
+          <ShopierProgress state={{ itemId: 'planet-toxic', status: 'ready', url }} />
+        </div>
+        <ShopierProgress state={{ itemId: 'planet-toxic', status: 'error', message: t('skins.shopierCheckoutError') }} />
+      </div>
+    </Sheet>
+  );
+}
+
 export function Gallery({ view }: { view: string | null }) {
   useSoundEffects();
   if (view !== null && isKitView(view)) return <GameKitGallery view={view} />;
@@ -1145,7 +1946,17 @@ export function Gallery({ view }: { view: string | null }) {
   if (view === 'fleet-towing') return <FleetTowingGallery />;
   if (view === 'premium-space') return <PremiumSpaceGallery />;
   if (view === 'store-discovery') return <StoreDiscoveryGallery />;
+  if (view === 'hud-protected' || view === 'hud-vacation') return <StoreDiscoveryGallery hud={view === 'hud-protected' ? 'protected' : 'vacation'} />;
+  if (view === 'hud-everything' || view === 'hud-everything-calm') return <StoreDiscoveryGallery hud={view === 'hud-everything' ? 'everything' : 'everything-calm'} />;
   if (view === 'cosmetic-trial') return <CosmeticTrialGallery />;
+  // C39: the trial bar itself, as it stands on the dock over a world of mine, with two worlds to choose from.
+  if (view === 'cosmetic-trial-bar') {
+    return <div className="relative h-dvh overflow-hidden bg-v2-void">
+      <CosmeticTrialBar trial={{ planetId: 'home', cosmeticId: 'ring-aurora', enabled: true }}
+        worlds={[{ id: 'home', name: 'Kestrel' }, { id: 'colony', name: 'Vega' }]} onSelect={noop} onCompare={noop} onEnd={noop} onShop={noop} />
+    </div>;
+  }
+  if (view === 'shopier-checkout') return <ShopierCheckoutGallery />;
   if (view === 'planet-selection') return <PlanetSelectionGallery />;
   if (view === 'monument-models') return <MonumentModelsGallery />;
   if (view?.startsWith('skin-card:')) {
@@ -1179,14 +1990,21 @@ export function Gallery({ view }: { view: string | null }) {
         <TopBar {...topBar} works={works({ alloy: 0, crystal: 0, deuterium: 0 }, { ripe: false })} />
         <TopBar
           {...topBar}
-          shield={{ until: NOW + 7 * 60 * MIN, kind: 'RECOVERY' }}
-          world={{ capital: false, name: 'Hollow' }}
           stock={{ ...topBar.stock, alloy: { value: 20_000, cap: 20_000, safe: 6_000 }, crystal: { value: 184_000, cap: 250_000, safe: 60_000 } }}
           works={works({ alloy: 4_000, crystal: 9_000, deuterium: 0 }, { stopped: ['crystal'], noRoom: ['alloy'] })}
-          bell={{ unseen: 12, urgent: true }}
-          rewards={2}
-          boosted
         />
+        {/* The bell and the chat, low on the galaxy's right (owner, 2026-11-14). */}
+        <div className="flex justify-end gap-2 px-3">
+          <SignalBell unseen={0} urgent={false} onOpen={noop} />
+          <ChatChip unread={0} onOpen={noop} />
+        </div>
+        <div className="flex justify-end gap-2 px-3">
+          <SignalBell unseen={12} urgent onOpen={noop} />
+          <ChatChip unread={3} onOpen={noop} />
+        </div>
+        <StatusLine {...statusLine} shield={{ until: NOW + 7 * 60 * MIN, kind: 'NEWCOMER' }} />
+        <StatusLine {...statusLine} world={{ capital: false, name: 'Hollow' }} shield={{ until: NOW + 50 * 60 * MIN, kind: 'RECOVERY' }} recoveryUntil={NOW + 50 * 60 * MIN} />
+        <StatusLine {...statusLine} world={{ capital: true, name: 'Kestrel-12' }} signalUntil={NOW + 95 * MIN} vacationUntil={NOW + 40 * 60 * MIN} />
       </Section>
 
       <Section title="B2 · now line">
@@ -1253,12 +2071,7 @@ export function Gallery({ view }: { view: string | null }) {
           <HoldButton label="Launch" onCommit={noop} disabledReason="Not enough Deuterium: 240 short" />
         </Section>
 
-        <Section title="resource meter · segmented">
-          <div className="grid grid-cols-3 gap-2">
-            <ResourceMeter resource="alloy" value={12_400} cap={20_000} safe={6_000} />
-            <ResourceMeter resource="crystal" value={8_000} cap={8_000} safe={2_400} />
-            <ResourceMeter resource="deuterium" value={0} cap={0} />
-          </div>
+        <Section title="segmented">
           <Segmented
             label="Bell"
             value="signals"
@@ -1273,16 +2086,16 @@ export function Gallery({ view }: { view: string | null }) {
       </div>
 
       <Section title="B3 · context slot">
-        <div className="relative h-36">
+        <div className="relative h-44">
           <ContextSlot {...slotBase} threats={[thread('incoming', 9)]} />
         </div>
-        <div className="relative h-32">
+        <div className="relative h-40">
           <ContextSlot
             {...slotBase}
             events={[{ id: 'e1', kind: 'ASTEROID_SHOWER', startsAt: at(-60), endsAt: at(30), asteroidSpawnMultiplier: 2 }]}
           />
         </div>
-        <div className="relative h-36">
+        <div className="relative h-52">
           <ContextSlot
             {...slotBase}
             suggestion={{
@@ -1295,7 +2108,7 @@ export function Gallery({ view }: { view: string | null }) {
             }}
           />
         </div>
-        <div className="relative h-12">
+        <div className="relative h-14">
           <ContextSlot {...slotBase} selected threats={[thread('incoming', 9), thread('incoming', 20)]} />
         </div>
       </Section>
@@ -1312,5 +2125,35 @@ export function Gallery({ view }: { view: string | null }) {
         <Dock active="fleet" badges={{ base: true, fleet: { airborne: 3, progress: 0.4 }, intel: 2, clan: 12 }} onSelect={noop} />
       </Section>
     </div>
+  );
+}
+
+/** The whole battle report as a reader opens it (O6): the scene, then everything under it. */
+function GalleryReportDoor({ defending }: { defending: boolean }) {
+  const [client] = useState(() => {
+    const next = new QueryClient();
+    const round = (n: number, over: Record<string, unknown> = {}) => ({
+      round: n, attackerDamage: 800, defenderDamage: 300, shieldAbsorbed: 0, shieldBreakerDamage: 0,
+      attackerLosses: { DART: 3 }, defenderLosses: { PIKE: 6 }, ...over,
+    });
+    next.setQueryData(keys.reports, reportsSchema.parse({ rivals: [], reports: [{
+      kind: 'BATTLE', id: 'r-raid', missionId: 'm-raid', at: new Date(NOW - 20 * MIN).toISOString(),
+      grade: 'PARTIAL', attacking: !defending, opponentName: 'VEX', opponentPlanet: 'Kestrel', opponentPlanetId: 'p-kestrel',
+      yourPlanet: 'Bellwether', yourPlanetId: 'p-1', neutral: false, rounds: [round(1), round(2), round(3, { attackerLosses: {}, defenderLosses: { BASTION: 2 } })],
+      yourFleet: { DART: 23, TALON: 19, RAMPART: 10, COURIER: 8 }, yourLosses: { DART: 6, TALON: 1 },
+      theirFleet: defending ? { VIPER: 22 } : {}, theirLosses: { PIKE: 12, BASTION: 2 },
+      lootAlloy: 3_100, lootCrystal: 1_000, lootDeuterium: 240, dominion: 120,
+      dominionBreakdown: { ruleVersion: 7, lootValue: 4_580, enemyPermanentLossValue: 9_200, ownPermanentLossValue: 4_100, rawExchange: 9_680 },
+      shieldAbsorbed: 0, cargoLimited: true, defenceSalvage: {}, disruptedMinutes: 0, wreckValue: 5_200, fuelPaid: 320,
+      yourDamage: [{ hull: 'TALON', count: 1, damageBp: 3400 }],
+      salvage: { alloy: 600, crystal: 240, deuterium: 0 },
+      attackerClan: { id: 'c-1', name: 'Halo Watch', tag: 'HALO' }, defenderClan: { id: 'c-2', name: 'Nova Pact', tag: 'NOVA' },
+    }] }));
+    return next;
+  });
+  return (
+    <QueryClientProvider client={client}>
+      <BattleReportDoor missionId="m-raid" onClose={noop} onUnavailable={noop} onAttackAgain={noop} onFocusPlanet={noop} />
+    </QueryClientProvider>
   );
 }

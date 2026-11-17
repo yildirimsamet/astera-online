@@ -3,10 +3,18 @@ import { useNativeBack } from '../../platform/nativeBack.js';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { CountryCode } from '@astera/rules';
-import { Button, SectionHead } from '../kit/Surface.js';
+import { GameButton, Glyph, RoundButton } from '../../game-ui/index.js';
+import { haptic } from '../../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../../lib/sound.js';
+import { useOwnPress } from '../../ui/kit/useOwnPress.js';
 import { Flag } from './Flag.js';
 import { countryName, countryOptions } from './country.js';
 
+/**
+ * THE FLAG A COMMANDER FLIES (G10, C26 2026-11-15): from the account page and at sign-up. The
+ * chosen country heads the plate and the list, lit and ticked; a search narrows the list; the
+ * choice is only sent by the confirm, so a stray tap in a long list costs nothing.
+ */
 export function CountryPicker({ value, onSelect, onClose }: {
   value: CountryCode;
   onSelect: (country: CountryCode) => void;
@@ -21,31 +29,41 @@ export function CountryPicker({ value, onSelect, onClose }: {
   const options = useMemo(() => countryOptions(language, selected, query), [language, query, selected]);
 
   return createPortal(
-    <div ref={panel} className="fixed inset-0 z-[60] flex items-end justify-center bg-v2-void/70 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center" role="dialog" aria-modal="true" aria-label={t('country.choose')}>
-      <section className="flex max-h-[min(720px,92dvh)] w-full max-w-xl flex-col gap-3 rounded-sheet border border-v2-line bg-v2-panel p-3 font-v2-ui">
-        <header className="flex items-start justify-between gap-3">
+    <div ref={panel} className="gk gk-cpick fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label={t('country.choose')}>
+      <section className="gk-cpick__panel gk-plate gk-bolts">
+        <header className="gk-cpick__head">
           <div className="min-w-0">
-            <SectionHead label={t('country.choose')} />
-            <p className="mt-1 flex items-center gap-2 text-caption text-v2-ink-2"><Flag code={selected} language={language} />{countryName(selected, language)}</p>
+            <p className="gk-label">{t('country.choose')}</p>
+            <p className="gk-cpick__now"><Flag code={selected} language={language} /><span>{countryName(selected, language)}</span></p>
           </div>
-          <button type="button" aria-label={t('sheet.close')} className="text-v2-ink-2" onClick={() => { onClose(); }}>×</button>
+          <RoundButton glyph="close" label={t('sheet.close')} onPress={onClose} />
         </header>
         <label className="sr-only" htmlFor="country-search">{t('country.searchLabel')}</label>
-        <input id="country-search" className="min-h-12 w-full shrink-0 rounded-control border border-v2-line-hi bg-v2-deep px-3 text-body text-v2-ink outline-none focus:border-v2-self" type="search" placeholder={t('country.searchPlaceholder')} value={query} onChange={(event) => { setQuery(event.target.value); }} />
-        <div className="min-h-0 overflow-y-auto" role="list" aria-label={t('country.list')}>
+        <input id="country-search" className="gk-field__input" type="search" placeholder={t('country.searchPlaceholder')} value={query}
+          onChange={(event) => { setQuery(event.target.value); }} />
+        <div className="gk-cpick__list gk-well" role="list" aria-label={t('country.list')}>
           {options.map(({ code, name }) => (
             <div key={code} role="listitem">
-              <button type="button" aria-label={name} aria-pressed={selected === code} className={`flex min-h-10 w-full items-center gap-2 border-b border-v2-line px-2 text-left text-caption ${selected === code ? 'bg-v2-self/10 text-v2-self' : 'text-v2-ink-2'}`} onClick={() => { setSelected(code); }}>
-                <Flag code={code} language={language} />
-                <span className="min-w-0 flex-1 truncate">{name}</span>
-                <span className="font-v2-mono text-micro text-v2-ink-3">{code}</span>
-              </button>
+              <CountryRow code={code} name={name} language={language} chosen={selected === code} onPress={() => { setSelected(code); }} />
             </div>
           ))}
         </div>
-        <Button full variant="primary" onClick={() => { onSelect(selected); }}>{t('country.confirm')}</Button>
+        <GameButton tone="action" size="lg" wide onPress={() => { onSelect(selected); }}>{t('country.confirm')}</GameButton>
       </section>
     </div>,
     document.body,
+  );
+}
+
+function CountryRow({ code, name, language, chosen, onPress }: { code: CountryCode; name: string; language: string; chosen: boolean; onPress: () => void }) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress(); });
+  return (
+    <button type="button" {...OWN_SOUND} aria-label={name} aria-pressed={chosen} className="gk-cpick__row"
+      onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <Flag code={code} language={language} className="gk-cpick__flag" />
+      <span className="gk-cpick__name">{name}</span>
+      <span className="gk-cpick__code gk-num">{code}</span>
+      <span className="gk-cpick__tick" aria-hidden="true">{chosen && <Glyph id="check" />}</span>
+    </button>
   );
 }

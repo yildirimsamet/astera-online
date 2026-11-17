@@ -24,17 +24,17 @@ export const onboarding = {
   beats: {
     wide: {
       title: '{{shard}}',
-      line: 'Echte Menschen spielen in dieser Galaxie. Jeder Planet ist die Heimat eines Spielers. Die Schiffe, die Sie sehen, sind ihre echten Flotten.',
+      line: 'Echte Menschen spielen in dieser Galaxie. Jeder Planet ist die Heimat eines Spielers. Die Schiffe, die du siehst, sind ihre echten Flotten.',
       action: 'Zeig mir meine Welt',
     },
     yours: {
       title: 'Dieser Planet gehört dir',
-      line: '{{name}} ist Ihr sicherer Heimatplanet. Hier stellen Sie Ressourcen her, studieren Rivalen, bauen Verteidigungsanlagen und bauen Schiffe. Tippen Sie auf Ihren Planeten.',
+      line: '{{name}} ist dein sicherer Heimatplanet. Hier erzeugst du Ressourcen, studierst Rivalen, baust Verteidigung und Schiffe. Tippe auf deinen Planeten.',
     },
     briefing: {
       title: 'Das Spiel besteht aus vier Schritten',
-      line: 'Erstellen Sie zunächst Ressourcen. Dann studieren Sie Rivalen. Schützen Sie Ihren Planeten. Wenn Sie bereit sind, schicken Sie Ihre Schiffe. Jedes Upgrade macht einen dieser Jobs stärker.',
-      action: 'Machen Sie den ersten Schritt',
+      line: 'Erzeuge zuerst Ressourcen. Dann studiere Rivalen. Schütze deinen Planeten. Wenn du bereit bist, schick deine Schiffe los. Jedes Upgrade macht eine dieser Aufgaben stärker.',
+      action: 'Mach den ersten Schritt',
       mapGrow: 'Machen',
       mapIntel: 'Siehe',
       mapDefend: 'Schützen',
@@ -43,7 +43,7 @@ export const onboarding = {
     },
     fog: {
       title: 'Erst lernen, später riskieren',
-      line: 'Tippen Sie auf einen anderen Planeten. Sie können den Level sehen, aber nicht die Ressourcen, Schiffe oder Verteidigungsanlagen. Sammeln Sie zunächst Informationen. Dann entscheiden Sie, ob Sie angreifen sollen.',
+      line: 'Tippe auf einen anderen Planeten. Du siehst sein Level, aber nicht seine Ressourcen, Schiffe oder Verteidigung. Sammle zuerst Informationen. Dann entscheide, ob du angreifen solltest.',
     },
     fogAlone: {
       title: 'Es ist noch niemand hier',
@@ -51,20 +51,20 @@ export const onboarding = {
       action: 'Verstanden',
     },
     core: {
-      title: 'Erhöhen Sie zuerst das Levellimit',
+      title: 'Erhöhe zuerst das Levellimit',
       line: "Der Befehlskern begrenzt Strukturstufen, außer beim Hangar. Öffne seine Zeile und prüfe Wirkung und Kosten von Stufe 2. Stelle dann das Upgrade in die Warteschlange.",
     },
     refinery: {
       title: 'Mehr Legierung herstellen',
-      line: 'Die Raffinerie stellt stündlich Legierungen her. Für die meisten Gebäude und Schiffe verwenden Sie Legierungen. Tippen Sie auf die entsprechende Zeile und Warteschlangenebene 2.',
+      line: 'Die Raffinerie erzeugt jede Stunde Legierung. Legierung brauchst du für die meisten Gebäude und Schiffe. Tippe auf ihre Zeile und gib Level 2 in Auftrag.',
     },
     extractor: {
       title: 'Jetzt Kristall herstellen',
-      line: 'Der Extraktor stellt stündlich Kristalle her. Starke Schiffe und Geheimdienstwerkzeuge brauchen Kristall. Tippen Sie auf die entsprechende Zeile und Warteschlangenebene 2.',
+      line: 'Der Extraktor erzeugt jede Stunde Kristall. Starke Schiffe und Aufklärungswerkzeuge brauchen Kristall. Tippe auf seine Zeile und gib Level 2 in Auftrag.',
     },
     fleet: {
       title: 'Baue nun zwei Schiffe',
-      line: 'Öffnen Sie die Zeile {{ship}} unter Flotte. Wählen Sie „Max“ und stellen Sie beide Schiffe in die Warteschlange. Mit diesen schnellen Schiffen können Sie Rivalen auskundschaften oder angreifen.',
+      line: 'Öffne die Zeile {{ship}} unter Flotte. Wähle „Max“ und gib beide Schiffe in Auftrag. Mit diesen schnellen Schiffen kannst du Rivalen auskundschaften oder angreifen.',
     },
   },
 
@@ -93,7 +93,7 @@ export const onboarding = {
   trouble: {
     noFrontier: 'Jede Galaxie ist im Moment voll. Es gibt nichts zu proben, bis eine Saison vorbei ist.',
     unreachable: 'Die Galaxie konnte nicht erreicht werden.',
-    retry: 'Versuchen Sie es erneut',
+    retry: 'Versuch es erneut',
     /** One or more replayed decisions were refused once the server ran them. */
     partial: "Dein Planet wurde erstellt. Einige vorbereitete Aufträge konnten nicht starten. Prüfe die Produktionswarteschlangen.",
   },

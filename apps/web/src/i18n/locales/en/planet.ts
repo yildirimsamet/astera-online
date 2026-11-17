@@ -78,7 +78,7 @@ export const planet = {
 },
   abandon: {
     "action": "Abandon colony",
-    "title": "Abandon this colony?",
+    "title": "Abandon colony",
     "cancel": "Keep colony",
     "confirm": "Abandon",
     "pending": "Abandoning…",
@@ -128,23 +128,22 @@ export const planet = {
     noRadar: "Loaded · Radar ring is offline",
     build: "Load charge",
     started: "Charge loading",
+    short: "Stops a Death Star or a radiation bomb.",
     hint: "Stops one Death Star or radiation bomb at the Radar interception ring or when identified in Telescope sight. Each shot spends one charge from the target planet’s battery.",
     colonyHint: "Every Death Star that gets through costs this colony {{loss}} loyalty and breaks 1 random fault.",
-    readyHint:
-      "Stops one Death Star or radiation bomb at the Radar interception ring or when identified in Telescope sight. Each shot spends one charge from the target planet’s battery.",
     noRadarHint:
       "The charge remains loaded, but this world has no Radar interception ring. Restore its Uplink and Radar 3; Telescope sight from another world can still trigger it.",
     needRadar: "Radar L{{level}}",
     needUplink: "Uplink in orbit",
     needOperational: "World operational",
-    buildTime: "{{duration}} · one charge · spent on firing",
     buildSecond: "Load another charge",
   },
 
   deathStar: {
     empDuration: "EMP duration",
     loyaltyDamage: "Loyalty per colony hit",
-    eyebrow: "Tactical EMP weapon",
+    /** The one line beside the rule's "?" on the forge (G2-g). */
+    rule: "Zeroes the target's Aegis and silences its ground defences.",
     tally: "{{used}} of {{total}} weapons held",
     none: "No Death Star on this world",
     building: "Building · {{duration}}",
@@ -169,7 +168,7 @@ export const planet = {
     orbitQuestion: "Build the tools that help you see rivals.",
     reachProblem: "Fleet",
     reachQuestion: "Develop your ships and range here.",
-    growProblem: "Production",
+    growProblem: "Economy",
     growQuestion: "Grow your resources and building level limit here.",
     tacticalProblem: "Tactical",
     tacticalQuestion: "Build and manage tactical tools here.",
@@ -179,6 +178,9 @@ export const planet = {
   queue: {
     /** The end of all the work in one lane, which no screen used to carry. */
     waiting: "Queued",
+    /** An idle lane, folded to one line while another works (G2-c). */
+    freeSlots_one: "{{count}} free slot",
+    freeSlots_other: "{{count}} free slots",
     ends: "ends {{time}}",
     segment: "{{name}} · {{duration}}",
     cancelOne: "Cancel {{name}}",
@@ -259,10 +261,10 @@ export const planet = {
       "Tactical retreat · a raid with {{ratio}}× the power of this line (ships and active guns) that would wipe it out finds your ships gone · the lift burns {{fuel}} Deuterium",
     escapeShort:
       "Tactical retreat · your ships would run from a raid with {{ratio}}× the power of this line (ships and active guns), but the lift needs {{fuel}} Deuterium and the tank holds {{stock}}",
-    shieldBand: "Shield",
+    buildBand: "Defences",
+    lineFold: "Defensive line",
     shieldNote:
       "Aegis absorbs damage before it reaches your units and regenerates 35% of its maximum each hour.",
-    groundBand: "On the ground (capacity is increased by core level) ",
     /* The figures moved into `CapacityBar`; the band keeps the RULE. */
     groundNote:
       "Ground guns never leave the world. Thorns counter Bulwarks, Harpoons counter Skirmishers, and Bastions counter Lances.",
@@ -425,9 +427,8 @@ export const planet = {
     research: "{{research}} {{level}}",
     requirements: "Requires: {{requirements}}",
     maxed: "at its highest level",
-    /** The one building with a second ceiling: its research rung. T5. */
-    plantRung: "Research another level of Deuterium Synthesis",
     queueFull: "3 orders are already waiting. Finish or cancel one to add this.",
+    queueFullShort: "Queue full",
   },
 
   /** What a purchase says once it has landed. */
@@ -468,10 +469,10 @@ export const planet = {
     heldOfMax: "{{owned}} of {{max}} held. The ones that are out count too.",
     defenceAfter: "Home defence when complete: {{count}} units",
     maxOf: 'Max · {{value}}',
-    byPurse: 'as far as your resources go',
-    byHangar: 'as far as the Hangar has room',
-    byGround: 'as far as the ground has room',
-    byBerth: 'as far as your berths allow',
+    byPurse: 'resources limit',
+    byHangar: 'Hangar room limit',
+    byGround: 'ground room limit',
+    byBerth: 'berth limit',
     cycle: 'Class cycle',
     yardFill: 'Yard queue {{used}}/{{total}}',
     standing: '{{value}} standing',
@@ -504,7 +505,7 @@ export const itemSheet = {
   /** The construction queue the order joins, as it stands. */
   queueFill: "Build queue {{used}}/{{total}}",
   /** The primary, when the price is not met yet. */
-  affordIn: "Enough in ~{{duration}}",
+  affordIn: "Enough in {{duration}}",
   short: "Not enough resources",
   orbitalDoesHeading: "What it does",
   orbitalOnce: "Bought once — never raised",
@@ -653,8 +654,6 @@ export const launch = {
   holdWorld_other: "Launch {{count}} ships",
   holdPirate_one: "Launch {{count}} ship",
   holdPirate_other: "Launch {{count}} ships",
-  warningWorld: "This fleet cannot defend {{world}} until it returns. Estimated time away: {{duration}}.",
-  warningPirate: "You can call this raid back once before its engagement. The fleet cannot defend {{world}} until it returns. Estimated time away: {{duration}}.",
   recallNote:
     "Can be recalled once while in flight — it returns in the time already flown. Fuel is not refunded.",
   chooseFleet: "Choose a fleet",
@@ -668,12 +667,8 @@ export const launch = {
   pace: "Flight speed",
   paceHint: "Slower fleets arrive later and return at the same speed. Lower speed reduces fuel cost. Slower speeds require every flight leg to fit within 12 hours.",
   paceFull: "Full",
-  paceBenefit: "Choose a slower speed to spend less fuel.",
   paceFuelValue: "{{amount}} deuterium",
-  paceFuelBaseline: "Full speed: {{amount}}",
   paceSaved: "{{amount}} deuterium saved",
-  paceArrival: "Target arrival",
-  paceTimeBaseline: "Full speed: {{duration}}",
   paceDelay: "{{duration}} later",
   paceRounding: "Fuel rounding leaves no fuel savings for this fleet.",
   paceReset: "This fleet uses full speed because the selected speed exceeds the flight time limit.",
@@ -745,6 +740,12 @@ export const launch = {
   cargoEach: "{{amount}} cargo each",
   cargoAdds: "+{{amount}} cargo",
   paceBrief: "less fuel · slower legs ≤12h",
+  priceRules: "Flight rules",
+  awayFor: "{{world}} · {{duration}} without this fleet",
+  awayOpen: "{{world}} · without this fleet until it returns",
+  pirateRecall: "You can call this raid back once before its engagement.",
+  shieldShort: "Your starting shield ends",
+  recoveryShieldShort: "Your recovery shield and +50% output end",
   escort: "Commander ship escorts the fleet",
   escortLabel: "Commander ship",
   escortBonusAkinci: "damage +{{pct}}%",
@@ -758,8 +759,6 @@ export const launch = {
   escortService: "In maintenance · {{clock}}",
   escortYarik: "Flying in the Yarık",
   escortAway: "Escorting another fleet",
-  warningWorldOpen: "This fleet cannot defend {{world}} until it returns.",
-  warningPirateOpen: "You can call this raid back once before its engagement. The fleet cannot defend {{world}} until it returns.",
 } as const;
 
 export const transfer = {
@@ -794,6 +793,7 @@ export const transfer = {
   sending: "Dispatching",
   launched: "Transfer launched · {{duration}}",
   /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
+  recallOnce: "Recall it once while in flight.",
   rules: "Can be recalled once while in flight — it returns in the time already flown. Ground defence cannot move; every ship with a hold can carry resources.",
   hullNone: "None at this world",
   holdReady: "Selected ships carry resources. Hold: {{capacity}}.",
@@ -848,21 +848,19 @@ export const faults = {
   strip: {
     title: "Repairs",
     capacity: "{{count}} crews",
-    priceAlloy: "{{alloy}} alloy",
-    priceBoth: "{{alloy}} alloy · {{crystal}} crystal",
     lane: "Crew {{slot}}",
   },
   tab: "Active faults",
   /** One line per fault: the name a player sees on the row and the sheet. */
   name: {
-    REFINERY_OUTAGE: "Alloy refinery blackout",
-    EXTRACTOR_OUTAGE: "Crystal extractor blackout",
-    PLANT_OUTAGE: "Deuterium refinery blackout",
+    REFINERY_OUTAGE: "Alloy blackout",
+    EXTRACTOR_OUTAGE: "Crystal blackout",
+    PLANT_OUTAGE: "Deuterium blackout",
     VAULT_LEAK: "Store leak",
-    CORE_OUTAGE: "Command core blackout",
+    CORE_OUTAGE: "Core blackout",
     TELESCOPE_FAULT: "Telescope failure",
-    SHIPYARD_REVOLT: "Revolt in the yard",
-    PROSPECTOR_FAULT: "Prospecting pit down",
+    SHIPYARD_REVOLT: "Yard revolt",
+    PROSPECTOR_FAULT: "Prospectors down",
   },
   /** What it stops, in the player's terms. One sentence, no hedging. */
   stopped: {
@@ -877,28 +875,33 @@ export const faults = {
   },
   toll: {
     title: "What it is taking",
-    alloy: "{{amount}} alloy an hour, not being made",
-    crystal: "{{amount}} crystal an hour, not being made",
-    deuterium: "Every hour of deuterium this world would have made",
-    leak: "{{amount}} resources leak into the wreck field each hour. Commanders who see the field can collect them.",
+    rate: "{{amount}}/h",
+    what: {
+      REFINERY_OUTAGE: "alloy not being made",
+      EXTRACTOR_OUTAGE: "crystal not being made",
+      PLANT_OUTAGE: "deuterium not being made",
+      VAULT_LEAK: "leaking into orbit",
+    },
   },
   loyalty: {
     title: "This world's loyalty",
     battleLoss: "Partial defeat −15 · decisive defeat −30 · Death Star −{{strike}}",
-    line: "Loyalty: {{value}}%. Falling with {{count}} active faults. At this rate, it reaches zero in {{time}} and you lose the colony.",
+    why_one: "Falling with {{count}} active fault. At zero you lose the colony.",
+    why_other: "Falling with {{count}} active faults. At zero you lose the colony.",
     bar: "{{value}}%",
     left: "{{time}} left",
   },
   price: {
     title: "The repair",
-    crew: "the crew",
-    parts: "parts",
-    takes: "Repairs take {{min}}–{{max}} minutes. The exact duration is set when repairs start.",
+    range: "{{min}}–{{max}} min",
+    drawn: "The exact time is set when the repair starts.",
   },
-  repair: "Start repair",
-  running: "A crew is on it · {{time}}",
+  repair: "Repair",
+  crewOn: "A crew is on it",
   noCancel: "Repairs cannot be cancelled once started.",
   lanesFull: "All {{count}} crews are out",
+  short: "Not enough in the store",
+  crewsFree: "{{free}}/{{count}} crews free",
   started: "Repairs started.",
   failed: "That could not be started.",
 } as const;

@@ -194,7 +194,7 @@ describe('the support sheet answering an alarm', () => {
     sheet(quote(new Date(raidAt.getTime() + 6 * MINUTE)), raidAt);
     await pick(3);
     const late = await screen.findByText(/6m 00s too late for the raid/i);
-    expect(late).toHaveClass('text-v2-warn');
+    expect(late).toHaveAttribute('data-tone', 'warn');
   });
 
   it('says the raid has landed once it has, with no countdown and no verdict', async () => {

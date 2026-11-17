@@ -26,13 +26,14 @@ const initialEvents: GalaxyEvent[] = [
 function show(
   onFocusPlanet = vi.fn(),
   events: GalaxyEvent[] = initialEvents,
+  nextBefore: string | null = null,
 ) {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData(keys.chronicle, {
     pages: [{
       events,
-      nextBefore: null,
+      nextBefore,
     }],
     pageParams: [null],
   });
@@ -64,6 +65,26 @@ describe('Galaxy Chronicle surface', () => {
     const { onFocusPlanet } = show();
     await userEvent.setup().click(screen.getByRole('button', { name: 'Bombardment reached Kestrel-4' }));
     expect(onFocusPlanet).toHaveBeenCalledWith('target');
+  });
+
+  /** C10: the chronicle on the kit ledger — a whole row is the door, named by its headline, its story the description. */
+  it('makes each remembered moment one kit row, named by its headline', () => {
+    show();
+    const row = screen.getByRole('button', { name: 'Bombardment reached Kestrel-4' });
+    expect(row).toHaveClass('gk-ledger__row');
+    expect(row).toHaveAccessibleDescription(/came under fire/);
+  });
+
+  it('says a quiet galaxy with the kit empty state', () => {
+    show(vi.fn(), []);
+    expect(document.querySelector('.gk-empty')).not.toBeNull();
+    expect(screen.getByText('The galaxy is quiet for now')).toBeInTheDocument();
+    expect(screen.getByText('The next launch may change that.')).toBeInTheDocument();
+  });
+
+  it('offers older moments with the kit key', () => {
+    show(vi.fn(), initialEvents, 'older');
+    expect(screen.getByRole('button', { name: 'Load earlier events' })).toHaveClass('gk-btn');
   });
 
   it('groups repeated bombardments of one world inside eight minutes', () => {

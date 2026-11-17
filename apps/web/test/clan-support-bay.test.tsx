@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
@@ -64,11 +64,14 @@ function show(node: React.ReactNode, fetch = vi.fn(), honorSoloCredit = false) {
   return { api, fetch };
 }
 
-const toggle = (name: RegExp) => screen.getByRole('checkbox', { name });
+// G2-h3: the kit's switches; flipping one applies it, there is no Save.
+const toggle = (name: RegExp) => screen.getByRole('switch', { name });
 
 describe('the defence posture card', () => {
   it('explains Honor before the player enables clan defence support', () => {
     show(<DefencePostureCard planet={world('HOLD')} />, vi.fn(), true);
+    // Folded since 2026-11-16: the notice stands inside, above the switches, once it is opened.
+    document.querySelector<HTMLDetailsElement>('[data-defence-posture]')!.open = true;
     expect(screen.getByText(/Shared sides cannot earn positive Honor/)).toBeVisible();
     expect(screen.getByText(/supported defenders/)).toBeVisible();
   });
@@ -77,21 +80,24 @@ describe('the defence posture card', () => {
     expect(toggle(/tactical retreat/i)).toHaveAttribute('aria-checked', 'true');
     expect(toggle(/clan support/i)).toHaveAttribute('aria-checked', 'false');
     expect(screen.getByText(/lifts off and survives/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^save/i })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /^save/i })).toBeNull();
   });
 
-  it('keeps the retreat on when support is turned on (F1), and only then offers Save', async () => {
+  it('keeps the retreat on when support is turned on (F1), and applies both at once', async () => {
     const user = userEvent.setup();
-    show(<DefencePostureCard planet={world('ESCAPE')} />);
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ planet: planetView(), returnedWaves: 0 }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    }));
+    show(<DefencePostureCard planet={world('ESCAPE')} />, fetch);
     await user.click(toggle(/clan support/i));
     expect(toggle(/clan support/i)).toHaveAttribute('aria-checked', 'true');
     expect(toggle(/tactical retreat/i)).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByRole('button', { name: /^save/i })).toBeEnabled();
+    await waitFor(() => { expect(fetch).toHaveBeenCalledTimes(1); });
   });
 
   it('lets both be off — and says the fleet then always fights', async () => {
     const user = userEvent.setup();
-    show(<DefencePostureCard planet={world('ESCAPE')} />);
+    show(<DefencePostureCard planet={world('ESCAPE')} />, vi.fn(() => new Promise<Response>(() => undefined)));
     await user.click(toggle(/tactical retreat/i));
     expect(toggle(/tactical retreat/i)).toHaveAttribute('aria-checked', 'false');
     expect(toggle(/clan support/i)).toHaveAttribute('aria-checked', 'false');
@@ -106,28 +112,28 @@ describe('the defence posture card', () => {
     expect(toggle(/clan support/i)).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('asks before a save sends standing waves home', async () => {
+  it('asks before closing the door sends standing waves home', async () => {
     const user = userEvent.setup();
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ planet: planetView(), returnedWaves: 1 }), {
       status: 200, headers: { 'content-type': 'application/json' },
     }));
     show(<DefencePostureCard planet={world('SUPPORT', { waves: [wave()] })} />, fetch);
-    await user.click(toggle(/tactical retreat/i));
     await user.click(toggle(/clan support/i));
-    await user.click(screen.getByRole('button', { name: /^save/i }));
     expect(screen.getByText(/1 support wave home/i)).toBeInTheDocument();
     expect(fetch).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: /send them home and save/i }));
-    expect(fetch).toHaveBeenCalledTimes(1);
+    // The hold that replaced the confirm (owner 2026-11-14: the shortest, 0.6 s).
+    screen.getByRole('button', { name: /^send home/i }).focus();
+    await user.keyboard('{Enter}{Enter}');
+    await waitFor(() => { expect(fetch).toHaveBeenCalledTimes(1); });
     const [url, init] = fetch.mock.calls[0] as [string, RequestInit];
     expect(url).toContain('/defence-posture');
-    expect(JSON.parse(typeof init.body === 'string' ? init.body : '')).toEqual({ escape: true, support: false });
+    expect(JSON.parse(typeof init.body === 'string' ? init.body : '')).toEqual({ escape: false, support: false });
   });
 
   it('is not drawn in a season dealt before the rule', () => {
     const base = planetSchema.parse(JSON.parse(JSON.stringify({ ...planetView(), rulesetVersion: 14 })));
     show(<DefencePostureCard planet={base} />);
-    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.queryByRole('switch')).toBeNull();
   });
 });
 
@@ -143,7 +149,8 @@ describe('the clan support bay', () => {
     expect(rows).toHaveLength(2);
     expect(within(rows[0]!).getByText('Ali')).toBeInTheDocument();
     expect(within(rows[0]!).getByText(/left/i)).toBeInTheDocument();
-    expect(within(rows[1]!).getByText(/arrives in/i)).toBeInTheDocument();
+    // G2-h3: a wave flying in reads as a flight does — the time left and the clock it lands at.
+    expect(within(rows[1]!).getByText(/^at /)).toBeInTheDocument();
     expect(screen.getByText(/never retreats/i)).toBeInTheDocument();
   });
 
@@ -172,7 +179,7 @@ describe('the clan support bay', () => {
     expect(screen.getByText(/out of tier band/i)).toBeInTheDocument();
   });
 
-  it('sends a wave back after one confirming tap', async () => {
+  it('sends a wave back only by a short hold', async () => {
     const user = userEvent.setup();
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ wave: { ...wave(), status: 'RETURNING',
       returnReason: 'SENT_BACK', returnAt: new Date(Date.now() + HOUR).toISOString() } }), {
@@ -181,8 +188,9 @@ describe('the clan support bay', () => {
     show(<ClanSupportBay planet={world('SUPPORT', { waves: [wave()] })} />, fetch);
     await user.click(screen.getByRole('button', { name: /send back/i }));
     expect(fetch).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: /^send back$/i }));
-    expect(fetch).toHaveBeenCalledTimes(1);
+    screen.getByRole('button', { name: /^send back/i }).focus();
+    await user.keyboard('{Enter}{Enter}');
+    await waitFor(() => { expect(fetch).toHaveBeenCalledTimes(1); });
     expect((fetch.mock.calls[0] as [string])[0]).toContain('/api/clan/support/wave-1/send-back');
   });
 

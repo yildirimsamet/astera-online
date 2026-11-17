@@ -57,10 +57,12 @@ export const galaxy = {
     title: "Événements galactiques",
     intro:
       "Les horaires des événements récurrents de semaine et de week-end sont indiqués ici.",
-    timeZone: "Heure de Turquie (UTC+3)",
+    timeZone: "Ton heure ({{zone}})",
     nextLabel: "Prochain événement",
     nextUpcoming: "{{event}} · dans {{duration}}",
-    localTime: "Heure locale · {{time}}",
+    dayShift: "Les jours suivent le calendrier de la galaxie (Turquie). +1 est le lendemain pour toi, −1 la veille.",
+    nextDay: "lendemain",
+    previousDay: "veille",
     event: {
       ASTEROID_SHOWER: "Pluie d’Astéroïdes",
       TRADE_SHIP: "Vaisseau marchand",
@@ -75,6 +77,7 @@ export const galaxy = {
     },
     asteroid: {
       title: "Pluie d’Astéroïdes",
+      lead: "Pendant la pluie, les rochers apparaissent bien plus vite, surtout au début.",
       summary:
         "Le taux normal est de {{rate}} astéroïde par commandant actif et par heure. La pluie multiplie ce taux pendant sa durée. La moitié des astéroïdes supplémentaires apparaît sur les {{frontMinutes}} premières minutes. Les astéroïdes restent jusqu’à épuisement ou expiration. Hors des pluies, la galaxie ne compte jamais plus d’astéroïdes que de joueurs actifs ces {{window}} dernières minutes ; les flottes pirates respectent toujours cette limite.",
     },
@@ -120,8 +123,7 @@ export const galaxy = {
     galaxyUnknown: "—",
     endsLabel: "Fin de la saison dans",
     endsUnknown: "—",
-    wipeNote:
-      "À la réinitialisation, toutes les galaxies sont recréées depuis zéro et tout le monde recommence.",
+    wipeNote: "À la fin de la saison, chaque galaxie repart de zéro.",
     signOut: "Se déconnecter",
   },
 } as const;
@@ -147,6 +149,7 @@ export const worlds = {
   /** Les deux extrémités de la phrase et son bouton. Les libellés servent au lecteur d’écran. D163. */
   sendFrom: "Depuis",
   sendTo: "Vers",
+  swap: "Inverser",
   send: "Transférer",
   /** Équivalent lecteur d’écran des deux visuels de la ligne. */
   store: "{{resource}} : {{amount}} sur {{cap}} de capacité",
@@ -189,23 +192,28 @@ export const focus = {
     },
     settlementConfirm: {
       eyebrow: "Course à la colonisation",
-      title: "Coloniser {{world}}",
       unsurveyedTitle: "Coloniser ce monde",
       race: "Le premier joueur à faire arriver 2 Cargos valides prend le contrôle de la planète.",
       priorityMineFirst: "Ta priorité : tes Cargos atterrissent avant sa fin, personne ne peut atterrir avant toi.",
       priorityMineLate: "Tes Cargos atterrissent après la fin de ta priorité ; dès lors, la première arrivée valide l’emporte.",
-      noRecall:
-        "Les vaisseaux de colonisation ne peuvent pas être rappelés. Si tu remportes la colonie, les ressources de fondation sont consommées et la planète s’ouvre avec le stock correspondant à son palier. Si quelqu’un arrive avant toi, tes Cargos et les ressources de fondation reviennent ; le carburant consommé, lui, n’est pas remboursé.",
+      noRecall: "Les vaisseaux de colonisation ne peuvent pas être rappelés.",
+      ifWin: "Si tu gagnes",
+      winSpent: "Le coût de fondation est dépensé ; la colonie démarre avec :",
+      winUnread: "Le coût de fondation est dépensé ; la colonie démarre avec le stock de son palier.",
+      ifLose: "Si tu perds",
+      loseBack: "Tes Cargos et le coût de fondation reviennent ; pas le carburant.",
+      priorityEnds: "Fin de ta priorité",
+      line: "Arrivée dans {{arrives}} · fin de la course dans {{closes}}",
+      linePriority: "Arrivée dans {{arrives}} · fin de ta priorité dans {{priority}} · fin de la course dans {{closes}}",
       transports: "Vaisseaux de colonisation",
       foundingCost: "Coût de fondation",
-      opensWith: "La colonie démarre avec",
       cargoValue: "{{alloy}} Alliage · {{crystal}} Cristal",
       stockValue:
         "{{alloy}} Alliage · {{crystal}} Cristal · {{deuterium}} Deutérium",
       fuel: "Carburant de vol",
       arrives: "Temps d’arrivée",
       closes: "Fermeture de la course dans",
-      confirm: "Envoyer les vaisseaux de colonisation",
+      confirm: "Envoyer les colons",
       confirming: "Envoi…",
     },
     deathStar: "Étoile de la Mort",
@@ -384,10 +392,11 @@ export const focus = {
     probeCoolingShort: "dans {{duration}}",
     attack: "Préparer une attaque",
     attackNeutralAgain: "Attaquer à nouveau · revendication inchangée",
+    attackNeutralAgainShort: "Nouveau raid",
     attackOriginRecovering: "Attaque · planète capitale en récupération",
     attackSilentSpace: "Attaque impossible · fermé dans l’Espace Silencieux",
     attackSilentSpaceShort: "Espace Silencieux",
-    attackShipyardRevolt: "Attaque impossible · mutinerie au Chantier Spatial",
+    attackShipyardRevolt: "Attaque impossible · mutinerie au Chantier spatial",
     attackShipyardRevoltShort: "Mutinerie",
     radiationHere: "Nuage de radiation : chaque vaisseau ici perd {{pct}} % de sa coque par minute. Au-delà de 20 %, il attend la Station de réparation.",
     radiationShelter: "Dans un nuage de radiation, mais sous un abri : les vaisseaux ici ne reçoivent aucune dose.",

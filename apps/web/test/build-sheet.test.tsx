@@ -177,7 +177,7 @@ describe('strategic hardware hierarchy', () => {
     Element.prototype.scrollIntoView = vi.fn();
     const doors = within(forgeOf(view)).getByRole('list');
     await userEvent.click(within(doors).getByRole('button', { name: new RegExp(`core l${String(DEATH_STAR.requiredCore)}`, 'i') }));
-    expect(screen.getByRole('tab', { name: 'Production' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Economy' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('refuses the build with the first thing it needs, rather than a dead button', async () => {
@@ -220,7 +220,7 @@ describe('strategic hardware hierarchy', () => {
     expect(forge).toHaveAttribute('data-strategic-state', 'READY');
     expect(forge).toHaveAttribute('data-strategic-count', '1');
     expect(forge).toHaveAttribute('data-strategic-capacity', '2');
-    const button = within(forge).getByRole('button', { name: 'Build' });
+    const button = within(forge).getByRole('button', { name: /^Build/ });
     expect(button).toBeEnabled();
 
     // A tap is not a commitment.
@@ -260,7 +260,7 @@ describe('strategic hardware hierarchy', () => {
 
     const forge = forgeOf(view);
     expect(forge).toHaveAttribute('data-strategic-capacity', '1');
-    expect(within(forge).queryByRole('button', { name: 'Build' })).toBeNull();
+    expect(within(forge).queryByRole('button', { name: /^Build/ })).toBeNull();
     const next = within(forge).getByRole('button', { name: /strategic stockpile/i });
     expect(next).toHaveTextContent('2');
     await userEvent.click(next);
@@ -276,7 +276,7 @@ describe('strategic hardware hierarchy', () => {
 
     const forge = forgeOf(view);
     expect(forge.querySelector('[data-tally]')).toHaveAttribute('data-total', '2');
-    expect(within(forge).queryByRole('button', { name: 'Build' })).toBeNull();
+    expect(within(forge).queryByRole('button', { name: /^Build/ })).toBeNull();
   });
 
   /**
@@ -305,9 +305,8 @@ describe('strategic hardware hierarchy', () => {
     expect(forge).toHaveTextContent(/Ready: 1.*Building: 1/i);
     expect([...forge.querySelectorAll<HTMLElement>('[data-tally] [data-cell]')].map((cell) => cell.dataset.cell))
       .toEqual(['ready', 'loading']);
-    const progress = forge.querySelector<HTMLElement>('[data-strategic-progress]')!;
+    const progress = forge.querySelector<HTMLElement>('[data-strategic-progress] .gk-bar__fill')!;
     expect(Number.parseFloat(progress.style.width)).toBeCloseTo(50, 0);
-    expect(progress).toHaveClass('bg-v2-self');
   });
 
   /** A ready first slot must not suppress the wake-up for the second slot. */
@@ -406,7 +405,9 @@ describe('the two build queues', () => {
     await userEvent.click(cancel!);
     expect(cancelOrder, 'the first press cancelled without asking').not.toHaveBeenCalled();
 
-    await userEvent.click(screen.getByTestId('confirm-commit'));
+    // G2-k: the row says what burns, and the cancel is the kit's shortest hold
+    within(sheet).getByRole('button', { name: /Cancel the order/ }).focus();
+    await userEvent.keyboard('{Enter}{Enter}');
     expect(cancelOrder).toHaveBeenCalledOnce();
     expect(cancelOrder.mock.calls[0]?.[0]).toBe('construction-1');
     expectMutationCallbacks(cancelOrder.mock.calls[0]?.[1]);
@@ -969,7 +970,7 @@ describe('the matchup on a hull sheet', () => {
     expect(screen.getByTestId('counter-weak')).toHaveTextContent(/lance/i);
     expect(screen.getByTestId('counter-weak')).toHaveTextContent(factor(COMBAT.weakMult));
     // Weak is a gap to plan around, not a threat: warn, never hostile red.
-    expect(screen.getByTestId('counter-weak').className).toMatch(/v2-warn/);
+    expect(screen.getByTestId('counter-weak')).toHaveAttribute('data-tone', 'warn');
   });
 
   it('opens the whole cycle on a tap, with this hull lit', async () => {
@@ -991,10 +992,11 @@ describe('special ship roles before crafting', () => {
     expect(role).toHaveTextContent(/bonus damage hits only the shield/i);
     expect(role).toHaveTextContent(/shield is empty.*normal attack/i);
     expect(document.querySelector('[data-item-detail]')).toBeNull();
+    // G2-e: the hull card (picture, matchup, figures) first, the role under it, the long reading last.
     const how = screen.getByRole('button', { name: /how it works/i });
     const matchup = document.querySelector('[data-counter-cycle]');
-    expect(how.compareDocumentPosition(role) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(matchup && role.compareDocumentPosition(matchup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(role.compareDocumentPosition(how) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(matchup && matchup.compareDocumentPosition(role) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('states the per-survivor salvage ceiling and attack-only limits without describing it as loot cargo', async () => {
@@ -1236,13 +1238,14 @@ describe('the room sections', () => {
     expect(room.querySelector('[data-room-legend]')).toHaveTextContent(`away ${String(2 * dart)}`);
   });
 
-  it('says what the next Hangar rung does to the room, and that a returning fleet fits', () => {
+  // The next rung's room is the Hangar card's to say (owner review 2026-11-16: one fact, one place).
+  it('says a returning fleet fits, and leaves the next rung to the Hangar card', () => {
     show({
       buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4, HANGAR: 2 },
       capacity: { hangar: hangarCapacity(2), hangarUsed: 0, ground: groundSlots(6), groundUsed: 0 },
     });
     const section = document.querySelector<HTMLElement>('[data-hangar-room]')!;
-    expect(section).toHaveTextContent(`Hangar 3 makes it ${compact(hangarCapacity(2))} → ${compact(hangarCapacity(3))}`);
+    expect(section).not.toHaveTextContent(/Hangar 3 makes it/);
     expect(section).toHaveTextContent(/returning fleet always fits/i);
   });
 
@@ -1254,15 +1257,16 @@ describe('the room sections', () => {
     expect(document.querySelector('[data-hangar-room]')).not.toHaveTextContent(/makes it/);
   });
 
-  /** Owner, round 2: no particular gun's picture in the ground room; the guns are named. */
-  it('draws the ground room with the guns standing named, and no gun picture', () => {
+  /**
+   * Owner, round 2: no particular gun's picture in the ground room. Owner 2026-11-17: each gun's count is
+   * on its own card right under the room, so the room no longer repeats them.
+   */
+  it('draws the ground room with what stands in it, no gun picture and no gun list', () => {
     show({ ground: { THORN: 3, HARPOON: 1 } }, 'defend');
     const section = document.querySelector<HTMLElement>('[data-ground-room]')!;
     expect(section.querySelector('[data-room-bar]')).toHaveTextContent(/ground room/i);
     expect(section.querySelector('[data-part="home"]')).not.toBeNull();
-    expect(section).toHaveTextContent('Thorn 3');
-    expect(section).toHaveTextContent('Harpoon 1');
-    expect(section).toHaveTextContent('Bastion 0');
+    expect(section).not.toHaveTextContent(/Thorn|Harpoon|Bastion/);
     expect(section.querySelector('img')).toBeNull();
   });
 
@@ -1273,6 +1277,28 @@ describe('the room sections', () => {
     expect(document.querySelector('[data-ground-room]')).toHaveTextContent(
       `Command Core ${String(next)} makes it ${compact(groundSlots(6))} → ${compact(groundSlots(next))}`,
     );
+    // How the guns work sits behind the room's ⓘ (owner 2026-11-17).
+    fireEvent.click(document.querySelector<HTMLElement>('[data-ground-room] .gk-peek__row button')!);
     expect(document.querySelector('[data-ground-room]')).toHaveTextContent(/never leave/i);
+  });
+
+  /** G2-h: both rooms on the kit's gauge; their notes and the guns at the 12 px floor. */
+  const v2Classes = (root: Element): string[] => [...root.querySelectorAll<HTMLElement>('[class]')]
+    .flatMap((node) => [...node.classList])
+    .filter((name) => /^(v2-|font-v2|text-micro|text-caption|text-v2|bg-v2|border-v2|text-faint|text-dim|text-bone|num$)/.test(name));
+
+  it('draws the Hangar room on the kit gauge, its note under it, nothing of the v2 type left', () => {
+    show({ fleet: { DART: 10 }, fleetAway: { DART: 2 } });
+    const section = document.querySelector<HTMLElement>('[data-hangar-room]')!;
+    expect(section.querySelector('[data-room-bar]')).toHaveClass('gk-room', 'gk-well');
+    expect(section.querySelector('.gk-room__note')).toHaveTextContent(/returning fleet always fits/i);
+    expect(v2Classes(section)).toEqual([]);
+  });
+
+  it('draws the ground gauge on the kit, nothing of the v2 type left', () => {
+    show({ ground: { THORN: 3 } }, 'defend');
+    const section = document.querySelector<HTMLElement>('[data-ground-room]')!;
+    expect(section.querySelector('[data-room-bar]')).toHaveClass('gk-well');
+    expect(v2Classes(section)).toEqual([]);
   });
 });

@@ -20,12 +20,16 @@ export const statusBar = {
   menuWaiting: '{{count}} ödül bekliyor',
   clanWaiting: '{{count}} klan gelişmesi bekliyor',
   newcomerShield: {
+    name: "Yeni komutan kalkanı",
     hint: '{{duration}} boyunca sana akın yapılamaz',
   },
   recoveryShield: {
+    name: "Toparlanma kalkanı",
     hint: 'Toparlanma kalkanı: {{duration}} boyunca sana akın yapılamaz',
   },
   recoveryBoost: {
+    name: "Toparlanma üretimi",
+    value: "+%50",
     mark: "Üretim +%50",
     note: 'Koruma boyunca +%50 üretim',
   },
@@ -38,7 +42,8 @@ export const statusBar = {
     label: 'Havuz',
     labelFull: 'Havuz dolu',
     collect: 'Topla',
-    firstTip: "Üretim havuzda birikir. Harcayabilmek için kaynakları depoya topla.",
+    inPool: "Havuzda {{amount}}",
+    firstTip: "Toplamak için bir kaynağa dokun",
     fullStopped: 'Doldu — üretim durdu',
     fillsIn: '{{time}} sonra dolar',
     gathers: 'Üretim sen toplayana dek burada birikir',
@@ -111,8 +116,11 @@ export const signals = {
   eventsHeading: 'Neler oldu',
   openEvent: 'İlgili raporu aç',
   worldEvent: 'Galaksi olayı',
-  empty:
-    "Henüz bildirim yok. Yaklaşan filo uyarıları, yakalanan sondalar ve dönen gemiler burada gösterilir.",
+  emptyTitle: "Ortalık sakin",
+  emptyBody:
+    "Yaklaşan filo uyarıları, yakalanan sondalar ve dönen gemiler burada görünür.",
+  /** The round press at a row's end that flies to whoever the news names (G1-e). */
+  showOnMap: "Haritada göster: {{name}}",
   repeat: '×{{count}}',
 
   status: {
@@ -176,9 +184,6 @@ export const menu = {
     settingsHint: "Ses, görüntü ve dil",
     account: "Komutan profili",
     back: "Menüye dön",
-    resume: "Oyuna dön",
-    shopHint: "Görünümünü seç",
-    inventoryHint: "Koleksiyonunu kuşan",
     rewardsReady_one: "{{count}} ödül hazır",
     rewardsReady_other: "{{count}} ödül hazır",
   },
@@ -198,6 +203,8 @@ export const menu = {
   helpHeading: 'Yardım',
   deviceHeading: 'Bu cihaz',
   marksHeading: 'İşaretlerin',
+  /** The menu's last group: the Academy, the community, support, settings (G1-f2). */
+  gameHeading: 'Oyun',
   intelLabel: 'İstihbarat',
   intelHint: 'İzlediğin dünyalar, Radar kayıtları, sondalar ve savaş raporları',
   rewardsLabel: 'Ödüller',
@@ -344,8 +351,10 @@ export const leaderboard = {
   honorThreshold: "Şu anki sıranda tam paket için {{amount}} Honor gerekir.",
   honorPrizeHint: "Aynı sıra için Honor’un temel ödülü, Hâkimiyet’in iki katıdır. Eşit puanlı komutanlar kapladıkları sıraların paketlerini eşit paylaşır. Gerçek ödemeyi puanın sınırlar.",
   honorPackageOnce: "İki sıralamada da kaynak ödülü kazanırsan daha değerli paket, sonraki sezonda bir kez verilir.",
-  honorNext: "{{commander}} ile aynı puana ulaşmak için {{amount}} Honor gerekir.",
+  honorNext: "{{commander}} ile fark: {{amount}} Honor",
   honorYourRank: "Senin sıran",
+  view: { label: 'Liderlik tablosu görünümü', standings: 'Sıralama', rewards: 'Ödüller', rules: 'Kurallar' },
+  ruleTitle: { combat: 'Honor kazanmak', bands: 'Güç dengesi', defense: 'Savunma', repeat: 'Tekrar ve zorbalık', prize: 'Ödül paylaşımı', package: 'Tek paket' },
   eyebrow: 'Yerel galaksi',
   title: 'Liderlik tablosu',
   empty: 'Bu galaksiye henüz bir komutan katılmadı.',
@@ -509,13 +518,14 @@ export const chat = {
   launcherBothUnread: 'Sohbeti aç — Genelde {{general}}, Klanda {{clan}} okunmamış',
   channelsLabel: 'Sohbet kanalları',
   languageLabel: 'Sohbet dili',
+  languageChip: "Sohbet dili: {{language}}",
   general: 'Genel',
   clan: 'Klan',
   dm: {
     title: 'DM', loading: 'Özel mesajlar açılıyor', conversations: 'Özel mesaj görüşmeleri',
     start: 'Yeni DM başlat', closeTab: '{{name}} sekmesini kapat', searchLabel: 'Komutan ara',
     searchPlaceholder: 'Komutan adı ara', cancel: 'Vazgeç', contacts: 'Komutanlar',
-    noContacts: 'Uygun komutan bulunamadı.', empty: 'Özel konuşma başlatmak için bir komutan seç.',
+    noContacts: 'Uygun komutan bulunamadı.', emptyTitle: 'Henüz özel mesaj yok', empty: 'Özel konuşma başlatmak için bir komutan seç.',
     emptyConversation: '{{name}} kişisine ilk mesajı gönder.', list: '{{name}} ile mesajlar',
     placeholder: '{{name}} kişisine mesaj yaz', waitingHint: 'Bu komutan Silent Space’te. Kendi galaksisine dönünce yazmaya devam edebilirsin.',
     seasonEndedHint: 'Bu sezon sona erdi. Yeni sezonda özel mesajlar yeniden başlar.',
@@ -526,7 +536,8 @@ export const chat = {
   clanLocked: 'Klan sohbeti yalnız ekibine açıktır.',
   clanLockedHint: 'Bir klana katıl veya klan kur; bu kanal hemen açılır.',
   list: 'Galaksi mesajları',
-  empty: 'Henüz kimse konuşmadı. Galaksideki ilk ses sen ol.',
+  emptyTitle: "Henüz kimse konuşmadı",
+  emptyBody: "Galaksideki ilk ses sen ol.",
   older: 'Eski mesajları yükle',
   loadingOlder: 'Eski mesajlar yükleniyor',
   placeholder: 'Galaksiye mesaj yaz',
@@ -536,6 +547,7 @@ export const chat = {
     title: "Susturulanlar",
     hint: "Bu cihazda genel ve klan sohbetindeki mesajlarını gizler.",
     empty: "Henüz susturulan kimse yok.",
+    emptyHint: "Birini susturmak için mesajına basılı tut.",
     mute: "{{name}} kişisini sustur",
     unmute: "{{name}} kişisinin susturmasını kaldır",
     unmuteShort: "Susturmayı kaldır",
@@ -585,6 +597,9 @@ export const chat = {
 } as const;
 
 export const crash = {
+  /** A sheet whose body threw (ek-3): the game keeps running behind it. */
+  panelTitle: 'Bu panel açılamadı.',
+  retry: 'Tekrar dene',
   title: "Oyun arayüzü çalışmayı durdurdu",
   body: "Devam etmek için sayfayı yeniden yükle. Son işleminin sonucu doğrulanmamış olabilir; yükledikten sonra güncel durumu kontrol et.",
   reload: 'Yeniden yükle',

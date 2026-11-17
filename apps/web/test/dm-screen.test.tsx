@@ -68,7 +68,7 @@ describe('direct messages in chat', () => {
     });
     await userEvent.setup().click(screen.getByRole('tab', { name: /DM.*1 unread/i }));
     const bubble = document.querySelector('[data-chat-message="message-1"]')!;
-    expect(bubble).toHaveClass('border-rank-silver/35');
+    expect(bubble).toHaveAttribute('data-tone', 'silver');
     expect(bubble.querySelector('[data-chat-supporter-icon]')).toHaveAttribute('aria-label', 'Astera supporter');
     expect(bubble.querySelector('[data-chat-podium-icon]')).toHaveAttribute('aria-label', 'Previous season · place 2');
   });
@@ -138,7 +138,7 @@ describe('direct messages in chat', () => {
     expect(screen.getByRole('tab', { name: /Commander Atlas.*1 unread/i })).toBeInTheDocument();
     expect(screen.getByRole('log', { name: 'Messages with Commander Atlas' })).toHaveTextContent('Private hello');
     await waitFor(() => { expect(api.markDmRead).toHaveBeenCalledWith('thread-1', 'message-1'); });
-    expect(screen.queryByRole('combobox', { name: 'Chat language' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Chat language/ })).not.toBeInTheDocument();
   });
 
   it('opens a new tab from the plus button and sends to the chosen commander', async () => {

@@ -2,7 +2,9 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ActiveGalaxyEvent } from '../../src/api/schemas.js';
-import { ChatChip, EventChips, HomeChip } from '../../src/v2/hud/GalaxyCorners.js';
+import { Glyph } from '../../src/game-ui/index.js';
+import { readFileSync } from 'node:fs';
+import { ChatChip, EventChips, GiftChip, HomeChip, HudTools, ShopChip, SignalBell } from '../../src/v2/hud/GalaxyCorners.js';
 
 /**
  * THE GALAXY'S CORNERS. Owner feedback, 2026-09-24.
@@ -41,6 +43,16 @@ describe('the way home', () => {
   });
 });
 
+/** G1-d2 (2026-11-14): painted as the bell and chat are, a 44 px press with its sound. */
+describe('the way home on the kit', () => {
+  it('is a painted pin on a world', () => {
+    render(<HomeChip onHome={vi.fn()} />);
+    const home = screen.getByRole('button', { name: /fly to your world/i });
+    expect(home).toHaveClass('gk-round');
+    expect(home.querySelector('img')?.getAttribute('src')).toMatch(/hud-home\.webp$/);
+  });
+});
+
 describe('home, aboard', () => {
   it('flies to your ship, not to a world', () => {
     render(<HomeChip onHome={vi.fn()} aboard />);
@@ -57,6 +69,39 @@ describe('the chat, in reach', () => {
     await userEvent.click(screen.getByRole('button', { name: /chat.*4 unread/i }));
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
+
+  it('is painted in the house style, as the bell beside it is', () => {
+    render(<ChatChip unread={2} onOpen={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /chat/i }).querySelector('img')?.getAttribute('src')).toMatch(/hud-chat\.webp$/);
+  });
+});
+
+/**
+ * THE BELL, BESIDE THE CHAT (owner 2026-11-14). The strip above the bar went; the menu took
+ * the bell's place at its end and the bell came down to the galaxy, left of the chat, where
+ * a thumb reaches it. It counts news, swings when news arrives and beats only for the urgent.
+ */
+describe('the bell on the galaxy', () => {
+  it('is a painted bell that counts unseen news and opens the signals', async () => {
+    const onOpen = vi.fn();
+    const { rerender } = render(<SignalBell unseen={0} urgent={false} onOpen={onOpen} />);
+    expect(screen.getByRole('button', { name: 'Signals' }).querySelector('img')?.getAttribute('src')).toMatch(/hud-bell\.webp$/);
+    rerender(<SignalBell unseen={3} urgent={false} onOpen={onOpen} />);
+    const bell = screen.getByRole('button', { name: 'Signals — 3 unread' });
+    expect(within(bell).getByText('3')).toHaveClass('gk-dot');
+    await userEvent.click(bell);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('swings when news arrives and beats only for an urgent one', () => {
+    const { rerender } = render(<SignalBell unseen={0} urgent={false} onOpen={vi.fn()} />);
+    rerender(<SignalBell unseen={2} urgent={false} onOpen={vi.fn()} />);
+    const bell = screen.getByRole('button', { name: 'Signals — 2 unread' });
+    expect(bell).toHaveAttribute('data-rang', '1');
+    expect(bell).not.toHaveAttribute('data-urgent');
+    rerender(<SignalBell unseen={2} urgent onOpen={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Signals — 2 unread' })).toHaveAttribute('data-urgent');
+  });
 });
 
 describe('the events running now', () => {
@@ -66,12 +111,13 @@ describe('the events running now', () => {
     expect(screen.getByRole('button', { name: /asteroid shower.*1h 30m/i })).toBeInTheDocument();
   });
 
-  it('shows the actual shower multiplier in the primary color before its remaining time', async () => {
+  /** The multiplier changes with the calendar: the chip shows the one running, before its time (G1-d2: a kit chip). */
+  it('shows the actual shower multiplier before its remaining time', async () => {
     const onOpen = vi.fn();
     const { rerender } = render(<EventChips events={[trade, shower]} now={NOW} onOpen={onOpen} />);
     const chip = screen.getByRole('button', { name: /asteroid shower.*2x.*1h 30m/i });
-    expect(within(chip).getByText('2x')).toHaveClass('text-v2-self');
-    expect(chip.textContent).toMatch(/Asteroid shower2x1h 30m/i);
+    expect(within(chip).getByText('2x')).toHaveClass('gk-status__value');
+    expect(chip.textContent).toMatch(/2x1h 30m/i);
     expect(within(screen.getByRole('button', { name: /trade ship/i })).queryByText(/\dx/)).toBeNull();
     await userEvent.click(chip);
     expect(onOpen).toHaveBeenCalledWith(shower);
@@ -79,6 +125,20 @@ describe('the events running now', () => {
     rerender(<EventChips events={[oldCalendarEvent]} now={NOW} onOpen={onOpen} />);
     expect(screen.getByRole('button', { name: /asteroid shower.*5x/i })).toBeInTheDocument();
     expect(screen.queryByText('2x')).toBeNull();
+  });
+
+  it('wears each event\'s own mark on a kit chip: the rock, the merchant\'s goods', () => {
+    const mark = (id: 'asteroid' | 'crate') => render(<Glyph id={id} />).container.querySelector('path')?.getAttribute('d');
+    render(<EventChips events={[trade, shower]} now={NOW} onOpen={vi.fn()} />);
+    const path = (name: RegExp) => screen.getByRole('button', { name }).querySelector('.gk-status__coin path')?.getAttribute('d');
+    expect(path(/asteroid shower/i)).toBe(mark('asteroid'));
+    expect(path(/trade ship/i)).toBe(mark('crate'));
+  });
+
+  /** Owner 2026-11-17 (ek-7): the badges were one blue; each event wears its own colour. */
+  it('colours each event by its kind: the merchant yellow, the shower blue', () => {
+    const { container } = render(<EventChips events={[trade, shower]} now={NOW} onOpen={vi.fn()} />);
+    expect([...container.querySelectorAll('.gk-status')].map((chip) => chip.getAttribute('data-tone'))).toEqual(['warn', 'info']);
   });
 
   it('hands the pressed event to its host', async () => {
@@ -91,5 +151,45 @@ describe('the events running now', () => {
   it('draws nothing when nothing is running', () => {
     const { container } = render(<EventChips events={[]} now={NOW} onOpen={vi.fn()} />);
     expect(container.innerHTML).toBe('');
+  });
+});
+
+/**
+ * H1 (owner 2026-11-16): THE GALAXY'S TOOLS, TOGETHER ON THE RIGHT. "Asteroid korsan anıt … en üste
+ * çıkar, altına telescope, gezegen, market iconları gelsin, bildirim iconu da onların yanına, 2x2
+ * gibi bir düzen." The finds stay on top; under them the round keys stand in two columns.
+ */
+describe('the galaxy’s tools', () => {
+  it('stands its keys in one two-column group', () => {
+    render(<HudTools label="Galaxy tools"><HomeChip onHome={vi.fn()} /><SignalBell unseen={0} urgent={false} onOpen={vi.fn()} /></HudTools>);
+    const group = screen.getByRole('group', { name: 'Galaxy tools' });
+    expect(group).toHaveClass('gk-hudtools');
+    expect(within(group).getAllByRole('button')).toHaveLength(2);
+  });
+
+  it('offers the gift while claims wait, and opens the rewards', async () => {
+    const onOpen = vi.fn();
+    const { rerender } = render(<GiftChip waiting={0} onOpen={onOpen} />);
+    expect(screen.queryByRole('button')).toBeNull();
+    rerender(<GiftChip waiting={7} onOpen={onOpen} />);
+    await userEvent.click(screen.getByRole('button', { name: /Rewards/ }));
+    expect(onOpen).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: /Rewards/ })).toHaveTextContent('7');
+  });
+
+  it('opens the shop from its painted door', async () => {
+    const onOpen = vi.fn();
+    render(<ShopChip onOpen={onOpen} />);
+    await userEvent.click(screen.getByRole('button', { name: /shop/i }));
+    expect(onOpen).toHaveBeenCalledOnce();
+  });
+
+  it('is where the galaxy puts its tools: the finds first, then home, view, shop, bell and gift; no online count', () => {
+    const source = readFileSync('src/screens/GalaxyView.tsx', 'utf8');
+    const corner = source.slice(source.indexOf('<GalaxyReadout'), source.indexOf('</HudTools>'));
+    // owner 2026-11-16: "Telescope-Gezegen, Mağaza-Ödül, Alarm" — two to a row, the bell alone under them
+    expect(corner).toMatch(/<HudTools[\s\S]*<ViewChip[\s\S]*<HomeChip[\s\S]*<ShopChip[\s\S]*<GiftChip[\s\S]*bellButton/);
+    expect(corner).toMatch(/<GalaxyReadout census=\{Boolean\(ship\)\}/);
+    expect(source).not.toMatch(/onlineToday: season\.data\.onlineToday/);
   });
 });

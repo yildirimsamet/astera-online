@@ -449,7 +449,8 @@ describe('what the launch costs the world it leaves', () => {
     // Combat v3: "power" is the ruler's matchup power alone; the garrison is priced as the probe prices a wall.
     expect(document.querySelector('[data-launch-figures]')).toHaveTextContent(/armed unit value/i);
     expect(document.querySelector('[data-launch-figures]')).not.toHaveTextContent(/power/i);
-    expect(document.querySelector('[data-launch-warning]')).toHaveTextContent(/cannot defend Kestrel-12 until it returns.*Estimated time away:/i);
+    // One line over the hold (owner, 2026-11-16): the world and how long it goes without this fleet.
+    expect(document.querySelector('[data-launch-warning]')).toHaveTextContent(/^Kestrel-12 · .+ without this fleet$/);
     expect(document.body.textContent).not.toMatch(/cannot be recalled/i);
   });
 
@@ -457,6 +458,8 @@ describe('what the launch costs the world it leaves', () => {
     show({ DART: 4 });
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /more dart/i }));
+    // One press away, behind the price line's ⓘ.
+    await user.click(screen.getByRole('button', { name: /flight rules/i }));
     expect(document.body.textContent).toMatch(/cannot be raided/i);
   });
 });
@@ -497,46 +500,20 @@ describe('the fuel this launch burns', () => {
   });
 
   /**
-   * THE TANK SITS WITH THE FORCE, NOT FIVE BLOCKS BELOW IT. D183, owner
-   * instruction: *"Seçilen gemi miktarına göre harcanacak yakıt gösteren
-   * section'ı da taşı."*
-   *
-   * The two things a commander adjusts a wing against are what it is WORTH in a
-   * fight and what it COSTS to fly, and both move on the same "+" — so reading
-   * them meant scrolling past the flight figures and the pirate note. The order
-   * is asserted rather than described because it is invisible to a typecheck and
-   * this block has already been re-edited once by another pass since it moved.
+   * THE FUEL STANDS OVER THE HOLD THAT SPENDS IT (owner 2026-11-17: "harcanacak olan yakıtı altta uygun
+   * bir yere ekle, en üstteki kısımda scroll yapınca gözükmüyor"). D183 had the tank ride the sticky force
+   * box; read from the bottom, where the launch is held, it was out of sight. It now sits in the footer
+   * right above the hold, once — the force box keeps the two force bars only.
    */
-  it('draws the tank INSIDE the force box, not as a block under it', async () => {
-    await packOne(10_000);
-    const box = document.querySelector('[data-force-ruler]');
-    expect(box, 'the force comparison is not on the sheet').not.toBeNull();
-
-    /*
-      INSIDE, BECAUSE THE BOX IS STICKY. Owner correction: *"lan altında demiyorum
-      aynı kutunun içinde altında olsun. güç gösteren kutu sticky, sheet'te scroll
-      yapınca yakıt gösteren alan sayfanın üstünde kalıyor."*
-
-      As a SIBLING the fuel meter scrolled out from under a box that stays pinned,
-      so the two figures a wing is adjusted against came apart the moment the sheet
-      moved — which is the whole thing moving it was meant to fix. Containment is
-      the assertion; a sibling in the right order would pass an ordering test and
-      still be wrong.
-    */
-    expect(box!.querySelector('[data-launch-meters]')).not.toBeNull();
-    expect(box!.querySelector('[data-spend-bar]')).not.toBeNull();
-  });
-
-  /** And it is the last thing in that box, under both force bars. */
-  it('puts the tank below the two force bars', async () => {
+  it('draws the tank in the footer right above the hold, and not in the force box', async () => {
     await packOne(10_000);
     const box = document.querySelector('[data-force-ruler]')!;
-    const parts = [...box.querySelectorAll('[data-part], [data-launch-meters]')]
-      .map((node) => node.getAttribute('data-launch-meters') !== null
-        ? 'fuel'
-        : node.getAttribute('data-part'));
-    expect(parts.indexOf('fuel')).toBeGreaterThan(parts.indexOf('yours'));
-    expect(parts.indexOf('fuel')).toBeGreaterThan(parts.indexOf('theirs'));
+    expect(box.querySelector('[data-launch-meters]')).toBeNull();
+    const commit = document.querySelector<HTMLElement>('.gk-launch__commit')!;
+    const meters = commit.querySelector('[data-launch-meters]')!;
+    expect(meters.querySelector('[data-spend-bar]')).not.toBeNull();
+    expect(meters.compareDocumentPosition(commit.querySelector('[data-launch-commit]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(document.querySelectorAll('[data-launch-meters]')).toHaveLength(1);
   });
 
   /**
@@ -884,6 +861,7 @@ describe('committing a fleet at a pirate', () => {
     const user = userEvent.setup();
     await openAllBands(user);
     await user.click(screen.getByRole('button', { name: /max.*dart/i }));
+    await user.click(screen.getByRole('button', { name: /flight rules/i }));
 
     expect(screen.getByText(/ships in flight cannot be raided/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /back/i })).toBeNull();
@@ -1266,7 +1244,7 @@ describe('how much of a wall the wing takes', () => {
     expect(screen.queryByTestId('ruler-lines')).toBeNull();
     expect(document.body.textContent).not.toMatch(/estimated loss|none of your ships may return|full success if/i);
     const footer = document.querySelector<HTMLElement>('[data-launch-commit]')!;
-    expect(within(footer).getByRole('button', { name: /^launch 20 ships$/i })).toBeVisible();
+    expect(within(footer).getByRole('button', { name: /^launch 20 ships/i })).toBeVisible();
   });
 
   /**
@@ -1437,14 +1415,15 @@ describe('choosing how fast to fly', () => {
 
     const row = view.container.querySelector<HTMLElement>('[data-launch-pace]');
     expect(row).toBeTruthy();
-    const rungs = within(row!).getAllByRole('radio');
+    // The throttle runs slow to fast (owner, 2026-11-16); a speed this flight may not take is locked.
+    const rungs = within(row!).getAllByRole('radio').filter((rung) => !(rung as HTMLButtonElement).disabled);
     expect(rungs.length).toBeGreaterThan(1);
-    expect(rungs[0]).toBeChecked();
+    expect(rungs[rungs.length - 1]).toBeChecked();
 
     const figures = view.container.querySelector<HTMLElement>('[data-launch-figures]')!;
     const atFullSpeed = figures.textContent;
-    await user.click(rungs[rungs.length - 1]!);
-    expect(rungs[rungs.length - 1]).toBeChecked();
+    await user.click(rungs[0]!);
+    expect(rungs[0]).toBeChecked();
     expect(figures.textContent).not.toBe(atFullSpeed);
   });
 
@@ -1484,9 +1463,7 @@ describe('choosing how fast to fly', () => {
       onClose={vi.fn()} onLaunched={vi.fn()} />, { wrapper: paceWrapper });
     const user = userEvent.setup();
     await user.type(screen.getByRole('textbox', { name: /dart quantity/i }), '5');
-    const rungs = within(view.container.querySelector<HTMLElement>('[data-launch-pace]')!)
-      .getAllByRole('radio');
-    await user.click(rungs[1]!);
+    await user.click(within(view.container.querySelector<HTMLElement>('[data-launch-pace]')!).getByRole('radio', { name: '75%' }));
     // The commit is held (K4); Enter twice is the keyboard's hold.
     const commit = screen.getByRole('button', { name: /^launch/i });
     fireEvent.keyDown(commit, { key: 'Enter' });
@@ -1525,13 +1502,16 @@ describe('what the sheet promises about turning a raid back', () => {
     render(ui, { wrapper });
     const user = userEvent.setup();
     await user.type(screen.getByRole('textbox', { name: /dart quantity/i }), '2');
+    // The rules sit one press away, behind the price line's ⓘ (owner, 2026-11-16).
+    const rules = screen.queryByRole('button', { name: /flight rules/i });
+    if (rules) await user.click(rules);
   };
 
   it('launches a raid on a world with the recall rule beside the button', async () => {
     await confirmWith(
       <LaunchSheet planet={holding} target={{ kind: 'world', world: target }} onClose={vi.fn()} onLaunched={vi.fn()} />,
     );
-    expect(screen.getByRole('button', { name: /^launch 2 ships$/i })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^launch 2 ships/i })).toBeVisible();
     expect(screen.getByText(/recalled once while in flight/i)).toBeVisible();
     expect(screen.queryByText(/no recall/i)).toBeNull();
   });
@@ -1540,7 +1520,7 @@ describe('what the sheet promises about turning a raid back', () => {
     await confirmWith(
       <LaunchSheet planet={holding} target={{ kind: 'pirate', pirate: pirateTarget }} onClose={vi.fn()} onLaunched={vi.fn()} />,
     );
-    expect(screen.getByRole('button', { name: /^launch 2 ships$/i })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^launch 2 ships/i })).toBeVisible();
     expect(screen.getByText(/call this raid back once before its engagement/i)).toBeVisible();
     expect(screen.queryByText(/no recall/i)).toBeNull();
   });

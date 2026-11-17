@@ -25,9 +25,11 @@ export async function verifyCommanderMenu(output) {
       await menu.waitFor();
       await page.locator('[data-loading-screen]').waitFor({ state: 'hidden', timeout: 60_000 });
       await page.evaluate(() => document.fonts.ready);
-      assert.equal(await menu.locator('[data-menu-category]').count(), 5);
-      assert.equal(await menu.locator('[data-menu-leaderboard] .menu-art-tile img').count(), 1);
-      assert.equal(await menu.locator('[data-menu-category="rewards"] img').count(), 0);
+      // One kind of thing (G1-f2): every place the home page opens is a kit tile with its picture.
+      assert.equal(await menu.locator('[data-menu-row], [data-menu-category], [data-menu-tile]').count(), 0);
+      for (const tile of ['leaderboard', 'rewards', 'academy', 'community', 'settings']) {
+        assert.equal(await menu.locator(`[data-tile="${tile}"].gk-mtile img`).count(), 1);
+      }
       assert.equal(await menu.getByRole('slider').count(), 0);
       assert.equal(await menu.locator('canvas').count(), 0);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
@@ -37,16 +39,17 @@ export async function verifyCommanderMenu(output) {
         const style = getComputedStyle(element);
         return { outline: style.outlineStyle, bottom: style.borderBottomWidth, top: style.borderTopWidth, paddingLeft: style.paddingLeft, paddingRight: style.paddingRight };
       });
-      assert.deepEqual(entryStyle, { outline: 'none', bottom: '1px', top: '0px', paddingLeft: '4px', paddingRight: '4px' });
-      const support = menu.locator('[data-menu-category="donate"]');
-      assert(await support.evaluate(element => element.nextElementSibling?.getAttribute('data-menu-category') === 'settings'));
+      assert.deepEqual(entryStyle, { outline: 'none', bottom: '0px', top: '0px', paddingLeft: '0px', paddingRight: '6px' });
+      const support = menu.locator('[data-tile="donate"]');
+      assert(await support.evaluate(element => element.nextElementSibling?.getAttribute('data-tile') === 'settings'));
       await page.screenshot({ path: join(output, `${width}-${language}-${state === 'waiting' ? 'waiting' : 'home'}.png`) });
       const homeSize = await menu.boundingBox();
       // The extra direct standings entry may scroll on a short phone; every entry stays reachable.
       const homeScrolls = await menu.evaluate(element => element.parentElement.scrollHeight > element.parentElement.clientHeight + 1);
       if (state === 'waiting') {
-        assert.equal(await menu.locator('[data-menu-row]').count(), 1);
-        assert(await menu.locator('[data-menu-category="community"]').innerText().then(value => value.includes('1')));
+        // The waiting count rides the Rewards tile; no second row repeats it.
+        assert.equal(await menu.locator('[data-tile="rewards"] .gk-dot').innerText(), '3');
+        assert.equal(await menu.locator('[data-tile="community"] .gk-dot').innerText(), '1');
         results.push({ width, height, language, state, homeSize, overflow, waitingRewards: 3, unread: 1, longName: true, errors });
         await page.close();
         continue;
@@ -62,18 +65,18 @@ export async function verifyCommanderMenu(output) {
       await page.getByRole('dialog').last().locator('header button').first().click();
       await menu.waitFor();
       for (const category of ['academy', 'community', 'settings']) {
-        await menu.locator(`[data-menu-category="${category}"]`).click();
+        await menu.locator(`[data-tile="${category}"]`).click();
         await page.locator(`[data-menu-page="${category}"]`).waitFor();
         await menu.locator('img').evaluateAll(images => Promise.all(images.map(image => image.decode().catch(() => undefined))));
-        assert.equal(await menu.locator('[data-menu-category]').count(), 0);
+        assert.equal(await menu.locator('[data-tile="academy"], [data-tile="community"], [data-tile="settings"]').count(), 0);
         await page.screenshot({ path: join(output, `${width}-${language}-${category}.png`) });
         const dialog = page.getByRole('dialog').last();
         await dialog.locator('header button').first().click();
         await page.locator('[data-menu-page="home"]').waitFor();
-        assert(await menu.locator(`[data-menu-category="${category}"]`).evaluate(element => element === document.activeElement));
+        assert(await menu.locator(`[data-tile="${category}"]`).evaluate(element => element === document.activeElement));
       }
       for (const destination of ['leaderboard', 'rewards']) {
-        await menu.locator(destination === 'leaderboard' ? '[data-menu-leaderboard] [data-menu-tile]' : '[data-menu-category="rewards"]').click();
+        await menu.locator(`[data-tile="${destination}"]`).click();
         await menu.waitFor({ state: 'hidden' });
         assert.equal(await page.locator('[data-menu-page="season"]').count(), 0);
         await page.screenshot({ path: join(output, `${width}-${language}-${destination}.png`) });
@@ -81,16 +84,16 @@ export async function verifyCommanderMenu(output) {
         await page.locator('[data-menu-page="home"]').waitFor();
       }
       // Following a destination's Back restores its category rather than losing the place.
-      await menu.locator('[data-menu-category="community"]').click();
-      await menu.locator('[data-menu-tile]').first().click();
+      await menu.locator('[data-tile="community"]').click();
+      await menu.locator('[data-tile]').first().click();
       await menu.waitFor({ state: 'hidden' });
       await page.getByRole('dialog').last().locator('header button').first().click();
       await page.locator('[data-menu-page="community"]').waitFor();
       await page.getByRole('dialog').last().locator('header button').first().click();
-      await menu.locator('[data-menu-category="settings"]').click();
+      await menu.locator('[data-tile="settings"]').click();
       await page.getByRole('dialog').last().locator('header button').last().click();
       await menu.waitFor({ state: 'hidden' });
-      await page.locator('[data-menu-button]').click();
+      await page.locator('button.gk-medal').click();
       await page.locator('[data-menu-page="home"]').waitFor();
       await menu.locator('[data-menu-identity]').click();
       await page.locator('[data-profile-page]').waitFor();

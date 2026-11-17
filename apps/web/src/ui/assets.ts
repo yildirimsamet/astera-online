@@ -137,6 +137,14 @@ export const PLANET_ART: readonly string[] = Array.from(
 
 /* ── hulls ──────────────────────────────────────────────────── */
 
+/** Each monument's own portrait, rendered from its galaxy model; by ordinal, in the galaxy's model order (four Hard, four Easy). */
+const MONUMENT_PORTRAITS = ['abandoned-space-wreckage', 'abandoned-station', 'ancient-observatory', 'ancient-stargate',
+  'shattered-world-ship', 'fragmented-dyson-sphere', 'sleeping-guard', 'ancient-war-cemetery'] as const;
+export const monumentPortrait = (ordinal: number): string | null => {
+  const name = MONUMENT_PORTRAITS[ordinal - 1];
+  return name === undefined ? null : `/assets/images/monuments/${name}-v1.webp`;
+};
+
 export const HULL_ART: Record<HullId, string | null> = {
   ...Object.fromEntries(
     Object.entries(FLEET_V2_ASSET_MANIFEST).map(([id, entry]) => [id, entry.card]),

@@ -143,3 +143,27 @@ describe('revealing a won piece', () => {
     expect(screen.queryByTestId('legacy-reveal')).toBeNull();
   });
 });
+
+/** C33 (2026-11-15): the reveal keeps its light show; its words and moves are the kit's. */
+describe('the reveal on the kit', () => {
+  const oldLook = (root: Element): string[] =>
+    [root, ...root.querySelectorAll('[class]')].flatMap(node => (node.getAttribute('class') ?? '').split(/\s+/))
+      .filter(name => /(^|-)v2(-|$)/.test(name) || ['text-micro', 'text-label', 'text-caption', 'text-body', 'text-title'].includes(name));
+
+  it('speaks in the kit for one piece and for the rest together', async () => {
+    show([honor, pirate, probe, coin, pin]);
+    const dialog = await screen.findByTestId('legacy-reveal');
+    finishIntro();
+    expect(await screen.findByRole('button', { name: i18n.t('legacy.reveal.next') })).toHaveClass('gk-btn');
+    expect(screen.getByRole('button', { name: i18n.t('legacy.award.showOnShelf') })).toHaveClass('gk-btn');
+    expect(oldLook(dialog)).toEqual([]);
+    for (let step = 0; step < 2; step += 1) {
+      fireEvent.click(await screen.findByRole('button', { name: i18n.t('legacy.reveal.next') }));
+      finishIntro();
+    }
+    fireEvent.click(await screen.findByRole('button', { name: i18n.t('legacy.reveal.openRest', { count: 2 }) }));
+    finishIntro();
+    expect(await screen.findByRole('button', { name: i18n.t('legacy.reveal.close') })).toHaveClass('gk-btn');
+    expect(oldLook(screen.getByTestId('legacy-reveal'))).toEqual([]);
+  });
+});

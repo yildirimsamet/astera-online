@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
+import { render, unfoldReportsOnArrival } from './report-unfold.js';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
@@ -7,6 +8,8 @@ import { ApiProvider } from '../src/api/context.js';
 import { reportsSchema, type BattleReport } from '../src/api/schemas.js';
 import i18n from '../src/i18n/index.js';
 import { BattleReportDoor } from '../src/screens/BattleReports.js';
+
+unfoldReportsOnArrival();
 
 // Illustrative casualty distribution, NOT a replay of CaptainZovi's individual hull losses.
 const wing = { DART: 95, COURIER: 9 };
@@ -87,7 +90,7 @@ describe.each(['tr', 'en'])('battle clarity in %s', language => {
     for (const [round, combat, support] of [[1, 31, 9], [2, 0, 9], [3, 0, 0]]) {
       const standing = dialog.querySelector(`[data-round-standing="${String(round)}"]`);
       expect(standing).toHaveTextContent(i18n.t('reports.roundStanding.summary', { combat, support }));
-      expect(standing?.closest('details')).toBeNull();
+      expect(standing?.closest('details:not([data-report-section])')).toBeNull();
     }
     expect(dialog.querySelector('[data-round-standing="2"]')).toHaveTextContent(i18n.t('reports.roundStanding.supportExposed'));
     expect(dialog.querySelector('[data-round-standing="3"]')).toHaveTextContent(i18n.t('reports.roundStanding.noneLeft'));
@@ -209,7 +212,7 @@ describe('bounded and historical report information', () => {
   it('keeps casualties visible while calculations open only on request', async () => {
     const dialog = await open();
     const first = dialog.querySelector<HTMLElement>('[data-combat-round="1"]')!;
-    expect(first.querySelector('[data-round-losses]')?.closest('details')).toBeNull();
+    expect(first.querySelector('[data-round-losses]')?.closest('details:not([data-report-section])')).toBeNull();
     expect(first.querySelector('details')).not.toHaveAttribute('open');
     await userEvent.click(within(first).getByText(i18n.t('reports.roundCalculationToggle')));
     expect(first.querySelector('details')).toHaveAttribute('open');

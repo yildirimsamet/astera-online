@@ -16,6 +16,8 @@ export const hold = {
 export const lane = {
   /** A slot in the lane with nothing in it. */
   free: '+ Free slot',
+  /** A ring a vacation stopped, in one word; the slot's name for a reader says why. */
+  paused: 'Paused',
 };
 
 /** B1: a resource meter on the top bar. */
@@ -74,6 +76,8 @@ export const now = {
   label: 'Most urgent timer',
   /** The sheet one tap under it: every timer. */
   sheet: 'Timers',
+  /** Under the sheet's name: the order the timers are listed in (G1-c). */
+  order: 'Enemies first, then the soonest',
   work: 'Work finishing',
   research: 'Research finishing',
   /** An order behind the head of its lane: no clock yet (2026-10-06). */
@@ -113,6 +117,8 @@ export const topBar = {
 
 /** The View chip and sheet: layers, the events guide and the galaxy caption. */
 export const view = {
+  /** H1 (2026-11-16): the round keys under the finds on the galaxy's right. */
+  tools: 'Galaxy tools',
   chip: 'View',
   title: 'View',
   layers: 'Layers',
@@ -123,6 +129,7 @@ export const view = {
   events: 'Galaxy events guide',
   /** The round button under the View chip: the disc's old Home mark. */
   home: 'Fly to your world',
+  youAreHere: 'You are here',
 };
 
 /** B3: the context slot, one card at a time. */
@@ -147,7 +154,7 @@ export const fleetPage = {
   hangar: "Hangar",
   pace: "{{pct}}% speed",
   recall: "Recall",
-  recallHome: "If recalled, home in {{time}}",
+  recallHome: "Home in {{time}}",
   recalling: "Turning…",
   emptyAir: "Nothing in the air. Tap a world, a rock or a pirate on the galaxy to send ships.",
   focusWorld: "Show {{world}} in the galaxy",
@@ -157,6 +164,7 @@ export const fleetPage = {
   noShips: "No ships at home",
   capital: "Capital",
   colony: "Colony",
+  roomFact: "A full Hangar stops the yard.",
   roomRule: "Room for every ship a world owns — home, away and in the yard. A full Hangar stops the yard and transfers in; a recalled fleet always fits.",
   ground: "Ground defence",
   ceiling: "up to {{shown}} at this Core",
@@ -174,6 +182,8 @@ export const reportScene = {
   rounds_one: "{{count}} round",
   rounds_other: "{{count}} rounds",
   you: "You",
+  /** C16a: who stood on a neutral world, as the scene names a side. */
+  neutralSide: "Neutral garrison",
   destroyed: "{{count}} destroyed",
   hidden: "What they still have, and the rest of the field, stays hidden; a report only says what you destroyed.",
   whyDecisive: "Where the losses came from",
@@ -200,8 +210,9 @@ export const reportScene = {
 /** K6: the switch at the top of the Base — this world, or the commander's research. */
 export const baseSwitch = {
   label: 'Base',
-  world: 'This world',
+  world: 'Planet',
   research: 'Research',
+  ship: 'Ship',
 } as const;
 
 /** E8 · K9: the research constellation. */
@@ -226,7 +237,6 @@ export const roomBar = {
   free: 'free {{value}}',
   reading: '{{label}}: {{used}} of {{total}} taken',
   returnFits: 'A returning fleet always fits: ships away keep their room.',
-  nextHangar: 'Hangar {{level}} makes it {{from}} → {{to}}.',
   gunsStay: 'Guns never leave the world.',
   nextCore: 'Command Core {{level}} makes it {{from}} → {{to}}.',
 };
@@ -256,12 +266,12 @@ export const away = {
     orbit: 'Install it',
     signals: 'Open signals',
     dossier: 'Open the dossier',
-    repair: 'repair',
+    repair: 'Repair',
   },
   sighting: '{{planet}}’s fleet is out',
   sightingBack: 'Back ~{{time}} · seen by your Telescope',
   sightingSeen: 'Seen by your Telescope',
-  careLoyalty: '{{world}} loyalty {{loyalty}}%',
+  careLoyalty: 'Loyalty {{loyalty}}%',
   careFaults_one: '{{count}} fault standing',
   careFaults_other: '{{count}} faults standing',
 };
@@ -288,6 +298,7 @@ export const repairStation = {
     workshop: "Workshop",
     repair: "Repair",
     scrap: "Scrap",
+    order: "Work order",
     healthy: "Full hull",
     ready: "Combat ready",
     critical: "Cannot fight",
@@ -303,7 +314,9 @@ export const repairStation = {
     reserved: "Repair reserved",
     move: "Move to workshop",
     return: "Return to hangar",
-    scrapAction: "Scrap ships",
+    back: "Return",
+    scrapSelected_one: "Scrap {{count}} ship",
+    scrapSelected_other: "Scrap {{count}} ships",
     moved: "Ships moved to workshop.",
     returned: "Ships returned to hangar.",
     scrapped: "Ships scrapped.",
@@ -313,10 +326,9 @@ export const repairStation = {
     rule: "Wounds remain until paid repair. Ships with 5% HP or less cannot fight.",
     dockRule: "Moving ships here is free. They cannot fly or defend while docked.",
     scrapRule: "Instant and permanent. Returns half the production resources for the hull remaining.",
-    scrapConfirm: "Scrap {{count}} ships?",
-    keep: "Keep ships",
     returnedResources: "Resources returned",
     radiation: "Radiation closes entry, repair and scrapping. Return docked ships to the hangar to evacuate.",
+    radiationShort: "Closed by radiation",
     homeHint: "Choose damaged ships to move to this planet’s workshop.",
     selected: "{{count}} selected",
     empty: "No ships in this group.",
@@ -325,16 +337,14 @@ export const repairStation = {
   all: "mixed ships",
   title: "Repair Station",
   role: "Choose ships to repair or scrap.",
-  tagline: "Brings damaged ships back to the fleet.",
   idle: "Workshop empty. Choose ships from the hangar.",
   waitingShips_one: "{{count}} ship waiting",
   waitingShips_other: "{{count}} ships waiting",
   repairingShips_one: "{{count}} under repair",
   repairingShips_other: "{{count}} under repair",
+  damagedShips_one: "{{count}} damaged ship",
+  damagedShips_other: "{{count}} damaged ships",
   queueFill: "Queue {{used}}/{{total}}",
-  statWaiting: "Waiting",
-  statRepairing: "Under repair",
-  statQueue: "Queue",
   outOfAction: "Docked ships cannot fly or defend. Return waiting ships to the hangar to move them.",
   howItWorks: "How it works",
   ruleFree: "There is no free repair. Wounds remain until paid repair.",
@@ -344,28 +354,21 @@ export const repairStation = {
   youPay: "You pay {{pct}}% now.",
   ruleQueue: "Jobs run one after another, up to {{depth}} in the queue, apart from the Shipyard's own queue.",
   ruleCancel: "A cancel gives back half the price; the ships wait again.",
-  industrialChip: "{{industrial}} −{{off}}%",
   damagedHeading: "Damaged ships",
   selectBatch: "Select first {{max}} health groups",
   selectAll: "Select all",
-  selectNone: "Clear",
-  choose: "Repair {{name}} ×{{count}}",
-  noneWaiting: "No ship is waiting for a repair.",
   damaged: "{{pct}}% damaged",
-  share: "{{pct}}% of a new ship",
-  queueHeading: "Repair queue",
   queueEmpty: "Nothing under repair.",
   finishing: "Finishing…",
   startsIn: "starts in {{time}}",
   ends: "done in {{time}}",
-  selected_one: "{{count}} ship chosen",
-  selected_other: "{{count}} ships chosen",
   afterQueue: "Starts after the queue, in {{time}}",
   repairSelected_one: "Repair {{count}} ship",
   repairSelected_other: "Repair {{count}} ships",
   pick: "Choose ships to repair",
   queueFullShort: "Queue full · {{used}}/{{total}}",
   tooMany: "Choose at most {{max}} health groups per action.",
+  tooManyShort: "Too many groups",
   starting: "Starting…",
   cancel: "Cancel",
   docked_one: "{{count}} in repair",

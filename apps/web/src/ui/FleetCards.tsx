@@ -4,6 +4,9 @@ import { hullLabel } from '../i18n/names.js';
 import { useAccordion } from '../lib/accordion.js';
 import { familyGroups } from '../lib/roster.js';
 import { HULL_ART } from './assets.js';
+import { Glyph } from '../game-ui/index.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 
 /**
  * THE WHOLE FORCE, DRAWN, ON THE WORLD'S OWN SHEET. D170, owner request.
@@ -18,14 +21,12 @@ import { HULL_ART } from './assets.js';
  * owner's report is what that produced — *"her kategoriden 3-5 gemim olsa çok yer
  * kaplıyor"* — a block meant to save a trip to another tab that had to be scrolled
  * past instead. So the card is gone entirely. What is left is the smallest thing
- * that still answers the question: a 16px hull, a `text-micro` name and the two
- * figures, on one line, with no container around it.
+ * that still answers the question: a small hull, its name and the two figures, on
+ * one line, with no container around it.
  *
- * THE OWNER ASKED FOR 8px AND THIS IS 9. `text-micro` is the bottom of the type
- * scale and `eslint` refuses a bare `text-[8px]` in as many words — a new step
- * belongs in `@theme`, not in a class. One point is not worth a ninth size for
- * the whole game to keep in step with, and the height here is spent on padding
- * and thumbnails rather than on the type.
+ * ON THE KIT SINCE G2-g (2026-11-14). The owner once asked for 8 px and it was 9; the
+ * game's type floor is 12 px now (standard 2.2), so the names sit at the floor and the
+ * figures one step above, and the band heads are 44 px doors.
  *
  * WRAPPED, NOT GRIDDED. A grid pays the widest name's width for every hull; a wrap
  * lets "Ok" cost two characters and fits five or six chips on a 350px line where
@@ -69,12 +70,12 @@ export function FleetCards({
   if (groups.length === 0) return null;
 
   return (
-    <div className="flex flex-col">
+    <div className="gk-fleetbands">
       {groups.map(({ family, hulls }) => {
         const open = families.isOpen(family);
         const total = hulls.reduce((sum, id) => sum + owned(id), 0);
         return (
-          <div key={family} data-testid={`fleet-band-${family}`} data-family={family}>
+          <div key={family} data-testid={`fleet-band-${family}`} data-family={family} className="gk-fleetband">
             {/*
               THE HEADING IS THE WHOLE OF A SHUT BAND, so it carries the count: a
               fold that hides its contents without saying how much it is hiding is
@@ -83,68 +84,43 @@ export function FleetCards({
             */}
             <button
               type="button"
+              {...OWN_SOUND}
               aria-expanded={open}
-              className="flex w-full items-center gap-1.5 py-1 text-left"
-              onClick={() => { families.toggle(family); }}
+              className="gk-fleetband__head"
+              onClick={() => { playSound('tap'); haptic('tap'); families.toggle(family); }}
             >
-              <span aria-hidden className="text-micro leading-none text-faint">
-                {open ? '▾' : '▸'}
-              </span>
-              <span className="legend text-micro leading-none">
-                {t(`planet.reach.family.${family}.label`)}
-              </span>
-              <span className="num text-micro leading-none text-dim">{total}</span>
+              <Glyph id={open ? 'down' : 'next'} />
+              <span className="gk-label">{t(`planet.reach.family.${family}.label`)}</span>
+              <span className="gk-fleetband__count gk-num">{total}</span>
             </button>
             {open && (
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pb-1.5 pl-3">
+              <div className="gk-fleetband__chips">
                 {hulls.map((id) => {
                   const home = fleet[id] ?? 0;
                   const away = fleetAway[id] ?? 0;
                   const docked = fleetDocked[id] ?? 0;
                   const art = HULL_ART[id];
                   return (
-                    <span
-                      key={id}
-                      data-testid={`fleet-card-${id}`}
-                      className="inline-flex items-center gap-1"
-                    >
-                      {art !== null && (
-                        <img
-                          src={art}
-                          alt=""
-                          aria-hidden="true"
-                          className="size-4 shrink-0 rounded-cell object-cover"
-                        />
-                      )}
-                      <span className="text-micro leading-none text-faint">{hullLabel(id)}</span>
-                      <span
-                        data-testid={`fleet-home-${id}`}
-                        className="num text-caption leading-none text-bone"
-                      >
-                        {home}
-                      </span>
+                    <span key={id} data-testid={`fleet-card-${id}`} className="gk-fleetchip">
+                      {art !== null && <img src={art} alt="" aria-hidden="true" className="gk-fleetchip__art" />}
+                      <span className="gk-fleetchip__name">{hullLabel(id)}</span>
+                      <span data-testid={`fleet-home-${id}`} className="gk-fleetchip__home gk-num">{home}</span>
                       {/*
                         THE ARROW IS THE LABEL. One glyph says "out" in every
                         language this game ships, and at this size a word would
                         cost more room than the figure it describes.
                       */}
                       {away > 0 && (
-                        <span
-                          data-testid={`fleet-away-${id}`}
-                          className="num text-micro leading-none text-faint"
-                          title={t('planetHero.fleetAway', { count: away })}
-                        >
-                          ↗{away}
+                        <span data-testid={`fleet-away-${id}`} className="gk-fleetchip__away gk-num"
+                          title={t('planetHero.fleetAway', { count: away })}>
+                          <Glyph id="up" />{away}
                         </span>
                       )}
                       {/* Waiting for repair: the reason the home figure is short. */}
                       {docked > 0 && (
-                        <span
-                          data-testid={`fleet-docked-${id}`}
-                          className="num text-micro leading-none text-threat-ink"
-                          title={t('repairStation.docked', { count: docked })}
-                        >
-                          ⚒{docked}
+                        <span data-testid={`fleet-docked-${id}`} className="gk-fleetchip__docked gk-num"
+                          title={t('repairStation.docked', { count: docked })}>
+                          <Glyph id="repair" />{docked}
                         </span>
                       )}
                     </span>

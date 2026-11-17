@@ -195,7 +195,7 @@ describe('the compact native landing screen', () => {
 
     const dialog = screen.getByRole('dialog', { name: /sign in/i });
     expect(dialog).toBeInTheDocument();
-    expect(within(dialog).getByRole('heading')).toHaveClass('text-v2-ink');
+    expect(within(dialog).getByRole('heading')).toHaveClass('gk-display');
     expect(within(dialog).getByLabelText(/username or email/i)).toHaveAttribute('aria-invalid', 'false');
     await userEvent.setup().click(within(dialog).getByRole('button', { name: /^close$/i }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -644,9 +644,10 @@ describe('reaching the way out', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${i18n.t('menu.navigation.settings')}\\.`) }));
+    // The kit's slider (G1-f): its level is announced, and the arrows move it a step.
     const slider = screen.getByRole('slider', { name: /music volume/i });
-    expect(slider).toHaveValue('35');
-    fireEvent.change(slider, { target: { value: '36' } });
+    expect(slider).toHaveAttribute('aria-valuenow', '35');
+    fireEvent.keyDown(slider, { key: 'ArrowRight' });
     expect(musicVolume()).toBeCloseTo(0.36, 5);
   });
 
@@ -714,8 +715,7 @@ describe('reaching the way out', () => {
 
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${i18n.t('menu.navigation.community')}\\.`) }));
     const announcements = screen.getByRole('button', { name: /^announcements\./i });
-    expect(announcements.querySelector('[data-attention="true"]')).toHaveClass('text-v2-self');
-    expect(announcements).toHaveTextContent('1');
+    expect(announcements.querySelector('.gk-dot')).toHaveTextContent('1');
   });
 
   it('offers one-tap focus for a live Rival and a clear action for a reclaimed one', async () => {

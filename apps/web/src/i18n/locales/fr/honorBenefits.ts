@@ -2,6 +2,7 @@ export const honorBenefits = {
   grossReturn: 'Retour brut',
   grossCargoRule: 'La soute est réservée pour l’échange brut avant commission.',
   title: 'Avantages Honor', current: 'Votre palier actuel', allTiers: 'Tous les paliers',
+  next: 'Encore {{amount}} Honor pour {{tier}}', climb: 'Dépasse Honor {{amount}} : {{tier}}',
   positiveTier: 'Palier d’avantage {{tier}}', negativeTier: 'Palier de pénalité {{tier}}', neutral: 'Neutre',
   repair: 'Coût de réparation', convoy: 'Ressources du convoi', trade: 'Commission commerciale',
   percent: '{{amount}} %', atLeast: 'Honor ≥ {{amount}}', atMost: 'Honor ≤ {{amount}}',

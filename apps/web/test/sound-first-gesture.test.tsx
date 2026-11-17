@@ -8,8 +8,11 @@ import { playSound, useSoundEffects } from '../src/lib/sound.js';
  * moment for the audio to open instead of being lost.
  */
 let resumes = true;
-const started: { buffer: unknown; stop: ReturnType<typeof vi.fn> }[] = [];
-let gain: { value: number; setValueAtTime: ReturnType<typeof vi.fn>; linearRampToValueAtTime: ReturnType<typeof vi.fn> };
+interface Param { value: number; setValueAtTime: ReturnType<typeof vi.fn>; linearRampToValueAtTime: ReturnType<typeof vi.fn>; cancelScheduledValues: ReturnType<typeof vi.fn> }
+const param = (): Param => ({ value: 1, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn(), cancelScheduledValues: vi.fn() });
+interface Voice { buffer: unknown; loop: boolean; loopStart: number; loopEnd: number; playbackRate: Param; start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> }
+const started: Voice[] = [];
+let gain: Param;
 
 class FakeContext {
   state = 'suspended';
@@ -18,7 +21,7 @@ class FakeContext {
   destination = {};
   private node = () => ({ connect: (next: unknown) => next, disconnect: () => undefined });
   createGain() {
-    gain = { value: 1, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() };
+    gain = param();
     return { ...this.node(), gain };
   }
   createDynamicsCompressor() {
@@ -28,10 +31,11 @@ class FakeContext {
   createStereoPanner() { return { ...this.node(), pan: { value: 0 } }; }
   createBuffer() { return { copyToChannel: () => undefined }; }
   createBufferSource() {
-    const voice = { ...this.node(), buffer: null as unknown, onended: null, start: vi.fn(() => { started.push(voice); }), stop: vi.fn() };
+    const voice = { ...this.node(), buffer: null as unknown, onended: null, loop: false, loopStart: 0, loopEnd: 0, playbackRate: param(),
+      start: vi.fn(() => { started.push(voice); }), stop: vi.fn() };
     return voice;
   }
-  decodeAudioData() { return Promise.reject(new Error('no files here')); }
+  decodeAudioData() { return Promise.resolve({ duration: 0.467 }); }
   resume() {
     if (!resumes) return Promise.reject(new Error('not on pointerdown'));
     this.state = 'running';

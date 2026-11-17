@@ -11,9 +11,12 @@ import { useRequest } from '../lib/useRequest.js';
 import { useSensorReach } from '../lib/useSensorReach.js';
 import { ViewChip, ViewSheet } from '../v2/hud/ViewSheet.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
+import { artIconSrc } from '../game-ui/index.js';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
-import { ChatChip, EventChips, GalaxyReadout, HomeChip, type GalaxyTarget } from '../v2/hud/GalaxyCorners.js';
+import { bellState } from '../lib/bell.js';
+import { capabilities } from '../platform/runtime.js';
+import { ChatChip, EventChips, GalaxyReadout, GiftChip, HomeChip, HudTools, ShopChip, SignalBell, type GalaxyTarget } from '../v2/hud/GalaxyCorners.js';
 import { outpostFinderTargets } from '../starter/outpostTargets.js';
 import type { MainSky } from '../api/starterSchemas.js';
 import { mainSkyPoints } from '../galaxy/mainSky.js';
@@ -87,6 +90,7 @@ import {
   useUnknownSignalDetail,
   useCollect,
   useNotifications,
+  useRewards,
 } from '../api/queries.js';
 import type {
   AsteroidView,
@@ -195,7 +199,7 @@ import {
   reconcileOwnInterceptionImpacts,
   reconcileOwnInterceptions,
 } from '../galaxy/ownCraft.js';
-import type { StripFocus } from '../shell/PendingStrip.js';
+import type { StripFocus } from '../lib/airborne.js';
 import {
   keepsPlanetGroup,
   returnsToMenu,
@@ -326,6 +330,7 @@ export function GalaxyView({
   centerRequest,
   clearRequest,
   onOpenChat,
+  onOpenBell,
   showChat = true,
   showGuidance = true,
 }: {
@@ -434,6 +439,8 @@ export function GalaxyView({
   clearRequest?: number;
   /** Open chat as its own page on a given room: the war room's "Clan chat" (E9). */
   onOpenChat?: (channel?: ChatChannel, draft?: string) => void;
+  /** The bell's sheet, held by the shell: the bell sits left of the chat (owner, 2026-11-14). */
+  onOpenBell?: () => void;
   /** Hidden in the pre-account rehearsal, where no commander identity exists. */
   showChat?: boolean;
   /** The scripted lesson owns guidance during training. */
@@ -514,6 +521,7 @@ export function GalaxyView({
   const now = useNow(5_000);
   // F2: clanmate worlds under a raid, ringed on the map from the reader's own bell.
   const bell = useNotifications();
+  const rewardsWaiting = useRewards().data?.claimable ?? 0;
   const clanAlarms = useMemo(() => activeClanAlarms(bell.data?.notifications ?? [], now), [bell.data, now]);
   /**
    * THE SKY ANSWERS THE EVENT. Owner instruction, D149.
@@ -1341,9 +1349,21 @@ export function GalaxyView({
   const chatButton = showGuidance && showChat && gate.open('chat')
     ? <ChatChip unread={chatUnread + dmUnread + (clanBadge.data?.clanChatUnread ?? 0)} onOpen={() => { onPanel('chat'); }} />
     : null;
+  /**
+   * THE BELL, LEFT OF THE CHAT (owner, 2026-11-14): "Zil butonunu galaksi ekranında sağ
+   * alttaki chat butonunun soluna taşısak". The strip above the top bar went and the menu took
+   * the bell's place; the two ride together wherever the chat stood, and the bell stands
+   * alone on a ship whose chat has not opened yet. Only the shell holds the bell's sheet.
+   */
+  const bellButton = onOpenBell ? <SignalBell {...bellState(bell.data?.notifications ?? [], now)} onOpen={onOpenBell} /> : null;
+  /* H1 (owner 2026-11-16): off a ship the bell joins the galaxy's tools on the right; aboard, it keeps the corner. */
+  const cornerBell = ship ? bellButton : null;
+  const cornerButtons = cornerBell || chatButton
+    ? <div data-corner-buttons="" className="pointer-events-auto flex items-center gap-2">{cornerBell}{chatButton}</div>
+    : null;
   /** Daily activity and the galaxy's objects (top right). */
+  // The online count is hidden for now (owner 2026-11-16, H1): the finds lead the corner.
   const galaxyReadout = {
-    ...(season.data?.onlineToday === undefined ? {} : { onlineToday: season.data.onlineToday }),
     counts: {
       worlds: planets.length,
       fleetsAway: windowsOpen(planets),
@@ -1459,8 +1479,9 @@ export function GalaxyView({
         one chip at top right, which the Academy hides with the sensor switches
         until its Telescope exercise (`data-sensor-toggles`).
       */}
-      <div data-galaxy-top-corners="" className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2 pt-1">
-        <div className="pointer-events-none flex min-w-0 flex-col items-start gap-1">
+      <div data-galaxy-top-corners="" style={{ paddingTop: 'var(--v2-float-h, 0px)' }} className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between px-[var(--gk-gutter)] pb-2">
+        {/* Under the status column the top bar's float hangs on the left (H1): the events stack below it. */}
+        <div style={{ marginTop: 'calc(var(--v2-badges-h, 0px) + 2px)' }} className="gk-hudcol pointer-events-none flex min-w-0 flex-col items-start gap-1">
           <UnknownSignalHud data={signalData} planet={planet.data} worlds={worlds}
             focusedId={focus?.kind === 'unknownSignal' ? focus.id : null}
             busy={signalActions.send.isPending || signalActions.recall.isPending}
@@ -1503,14 +1524,20 @@ export function GalaxyView({
           `data-sensor-toggles`, not `data-disc-controls`: the chip carries the sensor
           switches now, and the Academy reveals it with them for its Telescope exercise.
         */}
-        <div className="pointer-events-none flex flex-col items-end gap-1.5">
-          {/* What is out there, at a glance (owner, 2026-09-24): back at the top right. */}
-          {showGuidance && (!ship || gate.open('fleet')) && <GalaxyReadout {...galaxyReadout} targets={findableTargets} onFocusTarget={onFocus} />}
-          {/* Home, back in plain sight and first in the stack (owner, 2026-09-24): never under a card or a rail. */}
-          {showGuidance && <HomeChip onHome={flyHome} aboard={gate.aboard} />}
-          {gate.open('telescope') && <div data-sensor-toggles className="pointer-events-none">
-            <ViewChip layersOn={showTelescopeReach || (hasRadar && showRadarReach)} onOpen={() => { setViewOpen(true); }} />
-          </div>}
+        <div className="pointer-events-none flex flex-col items-end gap-1">
+          {/* What is out there, at a glance (owner, 2026-09-24): back at the top right, first (H1). */}
+          {showGuidance && (!ship || gate.open('fleet')) && <GalaxyReadout census={Boolean(ship)} {...galaxyReadout} targets={findableTargets} onFocusTarget={onFocus} />}
+          {/* Under the finds, the round keys in two columns (H1, owner 2026-11-16). */}
+          <HudTools label={t('view.tools')}>
+            {/* Owner 2026-11-16: "Telescope-Gezegen, Mağaza-Ödül, Alarm" — two to a row, the bell under them. */}
+            {gate.open('telescope') && <div data-sensor-toggles className="pointer-events-none">
+              <ViewChip layersOn={showTelescopeReach || (hasRadar && showRadarReach)} onOpen={() => { setViewOpen(true); }} />
+            </div>}
+            {showGuidance && <HomeChip onHome={flyHome} aboard={gate.aboard} />}
+            {!ship && showGuidance && capabilities().webCheckout && <ShopChip onOpen={() => { onPanel('skin-shop'); }} />}
+            {showGuidance && <GiftChip waiting={rewardsWaiting} onOpen={() => { onPanel('rewards'); }} />}
+            {!ship && bellButton}
+          </HudTools>
           {/* Below the telescope (owner, 2026-11-09): the way out to the universe and back. */}
           {showGuidance && <UniverseChip open={universeOpen} atLimit={atUniverseLimit} available={universeAvailable} onOpen={openUniverse} onClose={closeUniverse} />}
         </div>
@@ -1883,14 +1910,14 @@ export function GalaxyView({
 
       {season.data?.status === 'frozen' && panel === null && (
         <div className="pointer-events-none absolute inset-x-0 bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] z-30 mx-auto flex w-full max-w-sm flex-col gap-2 px-2">
-          {chatButton && <div className="flex justify-end">{chatButton}</div>}
+          {cornerButtons && <div className="flex justify-end">{cornerButtons}</div>}
           <NextSeason endsAt={season.data.endsAt} />
         </div>
       )}
 
-      {/* Chat still in reach on a galaxy with no slot and no next-season card. */}
-      {chatButton && !ship && panel === null && !slotShown && season.data?.status !== 'frozen' && (
-        <div className="pointer-events-none absolute bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] right-2 z-20">{chatButton}</div>
+      {/* The bell and the chat still in reach on a galaxy with no slot and no next-season card. */}
+      {cornerButtons && !ship && panel === null && !slotShown && season.data?.status !== 'frozen' && (
+        <div className="pointer-events-none absolute bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] right-[var(--gk-gutter)] z-20">{cornerButtons}</div>
       )}
 
       {/* ── full surfaces, over the live galaxy ─────────────── */}
@@ -1907,7 +1934,7 @@ export function GalaxyView({
       */}
       {slotShown && planet.data && season.data && (
         <ContextSlot
-          {...(chatButton ? { corner: chatButton } : {})}
+          {...(cornerButtons ? { corner: cornerButtons } : {})}
           now={now}
           selected={slotSelected}
           threats={threads.filter((thread) => thread.kind === 'incoming')}
@@ -1959,8 +1986,8 @@ export function GalaxyView({
       {/* A selection that draws a card already took the foot (`bottomSurface`); the own ship draws none,
           so a tap on it must not hide the step the guide points at (prod 2026-11-13: 5 of 6 stuck guides). */}
       {ship && bottom === 'starter' && (
-        <div className="pointer-events-auto absolute inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20">
-          {chatButton && <div className="mb-2 flex justify-end">{chatButton}</div>}
+        <div className={`pointer-events-auto absolute inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 ${focus !== null && !focusGone ? 'hidden' : ''}`}>
+          {cornerButtons && <div className="mb-2 flex justify-end">{cornerButtons}</div>}
           {/* A raid on an outpost that ends while the player watches is told here, over the next step (F4f). */}
           {outcome.current && <OutpostOutcome outcome={outcome.current} onDone={outcome.dismiss} onOpenShip={() => { onPanel('planet'); }} onOpenReport={(reportId) => { if (reportId) onPanel('report', 'battles', reportId); else openBattleList(); }} />}
           {/* The way out, over everything else down here: it is what the whole galaxy was for. */}
@@ -2043,8 +2070,10 @@ export function GalaxyView({
       */}
       {panel === 'research' && (
         <V2Sheet
+          bleed
           detents={['full']}
           headerArt={ATMOSPHERE.research}
+          kit={{ art: artIconSrc('nav-research'), tone: 'self' }}
           eyebrow={t('research.eyebrow')}
           title={t('research.title')}
           onClose={() => {
@@ -2052,7 +2081,9 @@ export function GalaxyView({
             onPanel(null);
           }}
         >
+          {/* Bled like the world page, so the switch keeps one width and one gutter on all three (owner 2026-11-17, ek-13). */}
           <BaseSwitch value="research" onChange={openBase} arenaAvailable={arenaAvailable} />
+          <div className="gk-sheet__pad">
           <ResearchPanel
             {...(researchFocus === null ? {} : { focus: researchFocus })}
             onNeed={(id) => {
@@ -2063,11 +2094,12 @@ export function GalaxyView({
               setRequestedPlanetGroup(TAB_OF[id] ?? 'grow');
             }}
           />
+          </div>
         </V2Sheet>
       )}
 
       {panel === 'ship' && onEnterArena && (
-        <V2Sheet detents={['full']} headerArt={ATMOSPHERE.commanderShip} eyebrow={commander} title={t('arena.nav')} onClose={() => { onPanel(null); }}>
+        <V2Sheet bleed detents={['full']} headerArt={ATMOSPHERE.commanderShip} kit={{ art: artIconSrc('cos-ship'), tone: 'self' }} eyebrow={commander} title={t('arena.nav')} onClose={() => { onPanel(null); }}>
           <BaseSwitch value="ship" onChange={openBase} arenaAvailable />
           <Suspense fallback={null}><HangarPanel credential={() => arenaCredential(api)} onEnter={onEnterArena}
             onSpent={() => { for (const queryKey of [keys.planet, keys.commanderShip]) void queryClient.invalidateQueries({ queryKey }); }} /></Suspense>
@@ -2086,6 +2118,7 @@ export function GalaxyView({
       {panel === 'menu' && (
         <V2Sheet
           detents={['full']}
+          kit={{ tone: 'self' }}
           eyebrow={t('galaxy.panelCommanderEyebrow')}
           title={t(menuPage === 'home' ? 'menu.navigation.title' : `menu.navigation.${menuPage}`)}
           {...(menuPage === 'home' ? {} : { onBack: () => { setMenuPage('home'); } })}
@@ -2097,7 +2130,6 @@ export function GalaxyView({
             commander={commander}
             page={menuPage}
             onPageChange={setMenuPage}
-            onResume={() => { onPanel(null); }}
             galaxy={season.data?.shardName ?? null}
             shard={season.data?.shard ?? null}
             endsAt={season.data?.endsAt ?? null}
@@ -2136,7 +2168,7 @@ export function GalaxyView({
       )}
 
       {panel === 'wiki' && (
-        <V2Sheet detents={['full']} {...menuBack} eyebrow="Astera Online" title="Wiki" quietTitle bleed onClose={() => { onPanel(null); }}>
+        <V2Sheet detents={['full']} {...menuBack} eyebrow="Astera Online" title="Wiki" headerArt={ATMOSPHERE.intel} kit={{ tone: 'self' }} bleed onClose={() => { onPanel(null); }}>
           <Suspense fallback={<p className="p-6 text-v2-ink-2">Wiki…</p>}>
             <WikiScreen language={i18n.resolvedLanguage} />
           </Suspense>
@@ -2148,7 +2180,7 @@ export function GalaxyView({
           detents={['full']}
           {...menuBack}
           eyebrow={t('rewards.eyebrow')}
-          headerArt={ATMOSPHERE.rewards}
+          kit={{ art: artIconSrc('gift') }}
           title={t('rewards.title')}
           onClose={() => {
             onPanel(null);
@@ -2165,6 +2197,7 @@ export function GalaxyView({
           {...menuBack}
           eyebrow={t('leaderboard.eyebrow')}
           headerArt={ATMOSPHERE.season}
+          kit={{ art: artIconSrc('menu-ranking'), tone: 'self' }}
           title={t('leaderboard.title')}
           onClose={() => {
             onPanel(null);
@@ -2185,6 +2218,7 @@ export function GalaxyView({
           {...menuBack}
           eyebrow={t('community.announcements.eyebrow')}
           headerArt={ATMOSPHERE.announcements}
+          kit={{ tone: 'self' }}
           title={t('community.announcements.title')}
           onClose={() => { onPanel(null); }}
         >
@@ -2197,6 +2231,8 @@ export function GalaxyView({
           detents={['full']}
           {...menuBack}
           eyebrow={t('community.feedback.eyebrow')}
+          headerArt={ATMOSPHERE.feedback}
+          kit={{ art: artIconSrc('hud-chat'), tone: 'self' }}
           title={t('community.feedback.title')}
           onClose={() => { onPanel(null); }}
         >
@@ -2210,6 +2246,7 @@ export function GalaxyView({
           {...menuBack}
           eyebrow={t('galaxy.panelCommanderEyebrow')}
           title={t('community.donate.menuLabel')}
+          kit={{ art: artIconSrc('star') }}
           onClose={() => { onPanel(null); }}
         >
           <DonateScreen />
@@ -2231,6 +2268,7 @@ export function GalaxyView({
           detents={['full']}
           bleed
           {...menuBack}
+          kit={{ art: artIconSrc('menu-shop'), tone: 'self' }}
           eyebrow={t('skins.collection')}
           title={t('menu.skinsShopLabel')}
           onClose={() => { onPanel(null); }}
@@ -2246,6 +2284,7 @@ export function GalaxyView({
           detents={['full']}
           bleed
           {...menuBack}
+          kit={{ art: artIconSrc('cos-planet'), tone: 'self' }}
           eyebrow={t('skins.collection')}
           title={t('menu.skinsInventoryLabel')}
           onClose={() => { onPanel(null); }}
@@ -2280,6 +2319,7 @@ export function GalaxyView({
           placement="page"
           eyebrow={t('clan.outside.eyebrow')}
           headerArt={ATMOSPHERE.clan}
+          kit={{ art: artIconSrc('menu-clan'), tone: 'self' }}
           title={t('clan.title')}
           onClose={() => { setClanInitialTab('overview'); onPanel(null); }}
         >
@@ -2326,6 +2366,7 @@ export function GalaxyView({
           placement="page"
           eyebrow={t('galaxy.panelIntelEyebrow')}
           headerArt={ATMOSPHERE.intel}
+          kit={{ tone: 'self' }}
           title={t('galaxy.panelIntelTitle')}
           onClose={() => {
             onPanel(null);

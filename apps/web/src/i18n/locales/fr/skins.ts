@@ -4,7 +4,6 @@ export const skins = {
   priceUnavailable: 'Prix indisponible',
   retryPrices: 'Recharger les prix',
   checkoutStarting: 'Ouverture du paiement…',
-  showcaseDescription: 'Apparences de planètes, de vaisseaux et effets.',
   "productengine-titan": "Propulsion Titan",
   "storytitanENGINE": "Un allumage bleu-blanc, une combustion orange turbulente et une traînée de braises.",
   "shipFits": "Pour {{hull}}",
@@ -88,6 +87,7 @@ export const skins = {
   buy: 'Acheter avec Polar · {{price}}',
   onSaleSoon: 'Bientôt en vente',
   wearIt: 'L’appliquer à un monde',
+  priceTitle: 'Prix',
   oneTime: 'Paiement unique · tant qu’Astera Online existe',
   ownedNote: 'Dans ta collection',
   bundleKicker: 'Collection complète',
@@ -121,7 +121,7 @@ export const skins = {
   noOwnedSkins:
     "Ton inventaire est vide. Tu peux découvrir toutes les apparences dans la Boutique.",
   intro:
-    "Une apparence peut être utilisée sur toutes les planètes que tu possèdes. Tu peux choisir une apparence différente pour chaque planète et la changer quand tu veux.",
+    "Habille n’importe quel monde d’un skin, change-le à volonté.",
   inspect: "Examiner le modèle",
   dragHint: "Fais glisser pour faire pivoter",
   modelUnavailable: "Impossible de charger le modèle",

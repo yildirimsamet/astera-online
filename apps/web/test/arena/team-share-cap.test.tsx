@@ -34,6 +34,6 @@ describe('a team share taken before a flight', () => {
   it('says what today\'s full cap would leave behind', async () => {
     const view = render(<Sandbox credential={() => Promise.resolve('tok')} onLeave={vi.fn()} />);
     await screen.findByText('Akıncı');
-    await waitFor(() => { expect(view.container.querySelector('.ap-team [data-claim-overflow]')).not.toBeNull(); });
+    await waitFor(() => { expect(view.container.querySelector('[data-part="arena-team"] [data-claim-overflow]')).not.toBeNull(); });
   });
 });

@@ -185,9 +185,8 @@ describe('the fuel a clan gift burns', () => {
   it('quotes two fuel legs once the Courier is carrying resources home again', async () => {
     show(5_000);
     await packOneCourier();
-    const alloy = screen.getByRole('spinbutton', { name: 'Alloy' });
-    await userEvent.setup().clear(alloy);
-    await userEvent.setup().type(alloy, '100');
+    // G7-a: the hold is loaded on the kit's slider; one step of alloy makes it a delivery.
+    fireEvent.keyDown(screen.getByRole('slider', { name: 'Alloy' }), { key: 'ArrowRight' });
 
     const fuel = document.querySelector('[data-aid-fuel] [role="img"]');
     expect(document.querySelector('[data-aid-fuel] [data-spend-amount]')).toHaveTextContent(String(returningCourier));
@@ -215,9 +214,9 @@ describe('the fuel a clan gift burns', () => {
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Check flight' }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /send — no recall/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^send aid/i })).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /send — no recall/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^send aid/i })).toBeDisabled();
   });
 
   it('sends it once the tank covers the leg', async () => {
@@ -227,7 +226,7 @@ describe('the fuel a clan gift burns', () => {
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Check flight' }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /send — no recall/i })).toBeEnabled();
+      expect(screen.getByRole('button', { name: /^send aid/i })).toBeEnabled();
     });
   });
 
@@ -242,7 +241,7 @@ describe('the fuel a clan gift burns', () => {
     await packOneCourier();
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Check flight' }));
-    const send = await screen.findByRole('button', { name: /send — no recall/i });
+    const send = await screen.findByRole('button', { name: /^send aid/i });
     await waitFor(() => { expect(send).toBeEnabled(); });
     await userEvent.setup().click(send);
     expect(launch).not.toHaveBeenCalled();
@@ -268,7 +267,7 @@ describe('a sender still behind the newcomer shield', () => {
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Check flight' }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /send — no recall/i })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /^send aid/i })).toBeDisabled();
     });
     expect(document.querySelector('[data-aid-shielded]')).toHaveTextContent(/shield/i);
   });
@@ -280,8 +279,85 @@ describe('a sender still behind the newcomer shield', () => {
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Check flight' }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /send — no recall/i })).toBeEnabled();
+      expect(screen.getByRole('button', { name: /^send aid/i })).toBeEnabled();
     });
     expect(document.querySelector('[data-aid-shielded]')).toBeNull();
+  });
+});
+
+/**
+ * G7-a (2026-11-15): THE AID TAB ON THE GAME KIT — the owner's own example of what was wrong:
+ * a plate inside a plate, three browser selects, number boxes. Receiving is a switch thrown;
+ * the route is three kit pickers (a lone answer is a fact); the convoy on hull rows; the hold on
+ * the kit's sliders; the quote in a kit well; the send on the FINAL hold, because a gift cannot
+ * be called back.
+ */
+const V2_LOOK = /(^|\s)(text|bg|border|font)-v2-|rounded-control|(^|\s)text-(micro|body|caption|label)(\s|$)/;
+const oldPaint = (root: Element): string[] =>
+  [root, ...root.querySelectorAll('[class]')].map((el) => el.getAttribute('class') ?? '').filter((name) => V2_LOOK.test(name));
+
+describe('the aid tab on the kit', () => {
+  it('throws a switch to receive, and packs the convoy with no browser field', async () => {
+    show(5_000);
+    await packOneCourier();
+    const aid = document.querySelector<HTMLElement>('[data-clan-aid]')!;
+    expect(oldPaint(aid)).toEqual([]);
+    expect(aid.querySelector('select, input[type="number"]')).toBeNull();
+    expect(screen.getByRole('switch', { name: /receiving aid/i })).toHaveClass('gk-toggle');
+    expect(document.querySelector('[data-hull-row="COURIER"]')).toHaveClass('gk-lrow');
+    expect(screen.getByRole('slider', { name: 'Alloy' })).toHaveClass('gk-slider__track');
+  });
+
+  // A hull with none at home is not a choice: it takes no row (the world holds only Couriers here).
+  it('lists only the hulls standing at home', async () => {
+    show(5_000);
+    await packOneCourier();
+    expect(document.querySelector('[data-hull-row="COURIER"]')).not.toBeNull();
+    expect(document.querySelector('[data-hull-row="DART"]')).toBeNull();
+  });
+
+  it('quotes in a kit well and sends on the final hold', async () => {
+    const { api } = show(5_000);
+    vi.spyOn(api, 'quoteClanAid').mockResolvedValue(quote);
+    await packOneCourier();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Check flight' }));
+    const send = await screen.findByRole('button', { name: /^send aid/i });
+    expect(document.querySelector('[data-aid-quote]')).toHaveClass('gk-well');
+    expect(send).toHaveClass('gk-hold');
+    expect(send.style.getPropertyValue('--gk-hold-ms')).toBe('1500ms');
+    expect(oldPaint(document.querySelector('[data-clan-aid]')!)).toEqual([]);
+  });
+});
+
+/**
+ * G7-b (2026-11-15): THE CLAN'S HEAD AND ITS FIVE TABS ON THE KIT. "Which clan is mine, where am
+ * I in it?" The tag as a badge, the name, my role, the motto, the crew and what the clan has won,
+ * at the kit's type floor; the five tabs as the Base's two-storey kit bar with their short names.
+ */
+describe('the clan’s head and tabs on the kit', () => {
+  it('draws the head with none of the old look and the tabs as the kit’s bar', async () => {
+    show(5_000);
+    const head = await screen.findByTestId('clan-head');
+    expect(oldPaint(head)).toEqual([]);
+    const tabs = screen.getByRole('tablist');
+    expect(tabs).toHaveClass('gk-tabs', 'gk-tabs--stacked');
+    expect(screen.getByRole('tab', { name: /Aid/ })).toBeInTheDocument();
+    expect(screen.getAllByRole('tab')).toHaveLength(5);
+  });
+});
+
+/**
+ * G7-c (2026-11-15): THE OVERVIEW ON THE KIT. "How is my clan doing?" Five seats as kit coins,
+ * the adaptation as a note, what the clan does folded one press away for a member who already
+ * knows it, the standings as kit rows with a bar off the centre line, the loot depot in a well
+ * with the kit's press, the record as kit rows.
+ */
+describe('the clan overview on the kit', () => {
+  it('draws the overview with none of the old look, the seats as a kit list and the benefits folded', async () => {
+    show(5_000);
+    const panel = await screen.findByRole('tabpanel');
+    expect(oldPaint(panel)).toEqual([]);
+    expect(screen.getByRole('list', { name: /clan seats/i })).toHaveClass('gk-seats');
+    expect(panel.querySelector('details.gk-rules')).not.toBeNull();
   });
 });

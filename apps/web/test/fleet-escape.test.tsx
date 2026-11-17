@@ -213,8 +213,17 @@ describe('the defender’s own readout', () => {
     const line = screen.getByTestId('escape-readout');
     expect(line).toHaveAttribute('data-short', '');
     // E5 · K2: a tank you can fill is a gap you can close — yellow, never a threat's red.
-    expect(line).toHaveClass('text-v2-warn');
+    expect(line).toHaveAttribute('data-tone', 'warn');
     expect(line.className).not.toMatch(/threat|hostile/);
+  });
+
+  /** Owner 2026-11-17 (the Defence tab, gathered): the line reads as the kit's note, not a 9 px v2 caption. */
+  it('reads as the kit’s note with its mark', () => {
+    render(<EscapeReadout fleet={LINE} ground={{}} deuterium={500} />);
+    const line = screen.getByTestId('escape-readout');
+    expect(line).toHaveClass('gk-inote');
+    expect(line.querySelector('.gk-glyph')).not.toBeNull();
+    expect(line.className).not.toMatch(/text-caption|text-v2/);
   });
 
   it('has nothing to say about a world with no ships to lift', () => {

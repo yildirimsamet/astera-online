@@ -1,5 +1,5 @@
 export const legacy = {
-  title: 'Kommandanten-Vermächtnis',
+  title: 'Kommandantenerbe',
   permanence: 'Am Saisonende werden Welten, Flotten und Ressourcen zurückgesetzt. Dein Vermächtnis bleibt bei deinem Konto. Jedes Stück ist rein kosmetisch und bringt keinen Vorteil im Spiel.',
   tabs: { legacy: 'Vermächtnis', collection: 'Sammlung', account: 'Konto' },
   stats: {
@@ -95,6 +95,7 @@ export const legacy = {
     activeTitleOther: 'Aktiver Titel',
     detailFailed: 'Die Auszeichnungsdetails konnten nicht geladen werden.',
     shelfFull: 'Deine Vitrine ist voll. Entferne zuerst im Editor ein Stück.',
+    shelfFullShort: 'Vitrine voll',
     failed: 'Die Änderung wurde nicht gespeichert. Versuche es erneut.',
     loading: 'Das Stück wird geladen…',
     cosmetic: 'Rein kosmetisch. Kein Vorteil im Spiel.',

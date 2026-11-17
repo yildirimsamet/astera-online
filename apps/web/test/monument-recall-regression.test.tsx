@@ -9,7 +9,8 @@ import { monumentsSchema } from '../src/api/schemas.js';
 import { resetClock } from '../src/lib/clock.js';
 import { flightRecallInput } from '../src/lib/flights.js';
 import { monumentPendingThreads } from '../src/lib/monumentFlights.js';
-import { FlightList, useAirborne } from '../src/shell/PendingStrip.js';
+import { useAirborne } from '../src/lib/airborne.js';
+import { FlightList } from '../src/shell/PendingStrip.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { FlightRow } from '../src/v2/hud/FleetPage.js';
 
@@ -103,9 +104,9 @@ describe('monument flight recall regressions', () => {
       return <FlightRow item={items[0]!} now={now} recalling={false} onFocus={vi.fn()} onRecall={vi.fn()} />;
     }
     render(<Row />);
-    expect(screen.getByRole('button', { name: /^Recall/ })).toHaveAccessibleName('Recall · If recalled, home in 1m 00s');
+    expect(screen.getByRole('button', { name: /^Recall/ })).toHaveAccessibleName(/Home in 1m 00s$/);
     act(() => { vi.advanceTimersByTime(30_000); });
-    expect(screen.getByRole('button', { name: /^Recall/ })).toHaveAccessibleName('Recall · If recalled, home in 1m 30s');
+    expect(screen.getByRole('button', { name: /^Recall/ })).toHaveAccessibleName(/Home in 1m 30s$/);
   });
 
   it('predicts away from a different safe home with the surviving wing speed', () => {

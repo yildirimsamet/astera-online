@@ -17,9 +17,7 @@ import { compact, full } from '../lib/format.js';
 import { projectedQueueState } from '../lib/predict.js';
 import { countdown, duration, useNow } from '../lib/time.js';
 import { SATELLITE_ART } from './assets.js';
-import { FleetCards } from './FleetCards.js';
-import { Banner, Glyph, StoreGauge } from '../game-ui/index.js';
-import { Meter } from './kit/index.js';
+import { Banner, Glyph, ProgressBar, StoreGauge, type GlyphId } from '../game-ui/index.js';
 import { PlanetSigil } from './PlanetSigil.js';
 import { StarField } from '../v2/kit/StarField.js';
 
@@ -37,6 +35,30 @@ import { StarField } from '../v2/kit/StarField.js';
  * the fleet — answers "can this world hold?", so it opens the Defence tab instead
  * (`DefenceReadings`). Nothing was dropped; each fact moved to the question it answers.
  */
+/**
+ * A COLONY'S LOYALTY IN ONE ROW: the bar, the figure, and how long it lasts at this rate. The
+ * hero and the fault sheet draw it alike, so the two never disagree about how long a world has.
+ */
+export function LoyaltyRow({ loyalty }: { loyalty: { value: number; minutesLeft: number | null } }) {
+  const { t } = useTranslation();
+  return (
+    <div className="gk-loyalty__row">
+      <span className="gk-label">{t('faults.loyalty.title')}</span>
+      <span className="gk-bar gk-loyalty__bar">
+        <span
+          data-loyalty-bar
+          className={`gk-bar__fill ${loyalty.value <= 25 ? 'gk-fill-hostile' : 'gk-fill-self'}`}
+          style={{ width: `${String(Math.max(2, Math.round(loyalty.value)))}%` }}
+        />
+      </span>
+      <span className="gk-loyalty__value gk-num">{t('faults.loyalty.bar', { value: Math.round(loyalty.value) })}</span>
+      {loyalty.minutesLeft !== null && (
+        <span className="gk-sub gk-num">{t('faults.loyalty.left', { time: duration(loyalty.minutesLeft) })}</span>
+      )}
+    </div>
+  );
+}
+
 export function PlanetHero({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
   const now = useNow(1000);
@@ -66,20 +88,7 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
     <div className="flex flex-col gap-2">
       {loyalty && (
         <div data-loyalty data-testid="loyalty-line" className="gk gk-loyalty">
-          <div className="gk-loyalty__row">
-            <span className="gk-label">{t('faults.loyalty.title')}</span>
-            <span className="gk-bar gk-loyalty__bar">
-              <span
-                data-loyalty-bar
-                className={`gk-bar__fill ${loyalty.value <= 25 ? 'gk-fill-hostile' : 'gk-fill-self'}`}
-                style={{ width: `${String(Math.max(2, Math.round(loyalty.value)))}%` }}
-              />
-            </span>
-            <span className="gk-loyalty__value gk-num">{t('faults.loyalty.bar', { value: Math.round(loyalty.value) })}</span>
-            {loyalty.minutesLeft !== null && (
-              <span className="gk-sub gk-num">{t('faults.loyalty.left', { time: duration(loyalty.minutesLeft) })}</span>
-            )}
-          </div>
+          <LoyaltyRow loyalty={loyalty} />
           <p className="gk-sub">{t('faults.loyalty.battleLoss', { strike: DEATH_STAR.colonyLoyaltyLoss })}</p>
           <div data-testid="fault-protection" className="gk-loyalty__guard">
             {faultProtectionRemaining > 0 && (
@@ -313,32 +322,6 @@ function ProductionRow({ planet }: { planet: PlanetView }) {
   );
 }
 
-/**
- * THE WORLD'S FIREPOWER — WHAT AN ENEMY PROBE MEASURES ABOUT IT. D199.
- *
- * This was "Power", and Power was `wealth()`: buildings, satellites, ships and the
- * STORE. It ranked nothing and taught the opposite of the game — it fell while a
- * building was under construction, fell when the fleet flew, and grew while ore
- * waited to be raided. Owner: *"hiç bir halt anlamıyor."*
- *
- * Firepower is the one force unit every surface is written in: what the hulls and
- * guns in this world's defending line cost, transports and miners left out. It is
- * the figure a rival's probe reports about this world, so the commander learns the
- * scale on the one world they know exactly — "mine reads 12k; a world that reads
- * 12k is a world like mine".
- */
-function Firepower({ planet, coreOnline }: { planet: PlanetView; coreOnline: boolean }) {
-  const { t } = useTranslation();
-  return (
-    <div className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-      <p className="v2-legend">{t('planetHero.firepower')}</p>
-      <p data-testid="planet-firepower" className="mt-1 font-v2-mono text-body font-semibold text-v2-ink">
-        {full(combatValue(garrisonOf(planet.fleet, coreOnline ? planet.ground : {})))}
-      </p>
-    </div>
-  );
-}
-
 function Disrupted({ ms }: { ms: number }) {
   const { t } = useTranslation();
   return (
@@ -354,7 +337,7 @@ function Disrupted({ ms }: { ms: number }) {
  * Four readings, each one answering the tab's question from a different side:
  * FIREPOWER (the line, in the unit a probe reads it in), DEFENCE (what that line is
  * made of), SHIELD (the Aegis) and what is EXPOSED (the ore outside the Vault — why a
- * raider would come). Then the fleet itself, the one reading drawn as a picture.
+ * raider would come). The fleet itself folds under them on the tab (owner 2026-11-17), so the guns are on the first screen.
  */
 export function DefenceReadings({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
@@ -385,11 +368,31 @@ export function DefenceReadings({ planet }: { planet: PlanetView }) {
     ships > 0 ? t('planetHero.defenceShips', { count: ships }) : null,
     guns > 0 ? t('planetHero.defenceGuns', { count: guns }) : null,
   ].filter((part): part is string => part !== null).join(' · ');
+  const shieldDetail = !coreOnline
+    ? t('planetHero.shieldCoreOffline')
+    : shieldMax > 0
+      ? (
+          <>
+            <ProgressBar value={shield} max={shieldMax} tone="crystal" segments={8} label={t('planetHero.shieldMeter')} />
+            {/* A full shield has nothing to refill (owner 2026-11-17: the guns on the first screen). */}
+            {shield < shieldMax && <span className="gk-verdict__sub">{t('planetHero.shieldRegen', { amount: compact(planet.planet.shieldPerHour) })}</span>}
+          </>
+        )
+      : t('planetHero.shieldNoAegis');
   return (
-    <div data-defence-readings className="grid grid-cols-2 gap-2 font-v2-ui">
-      <Firepower planet={planet} coreOnline={coreOnline} />
+    <div data-defence-readings className="gk gk-verdicts">
+      {/*
+        THE WORLD'S FIREPOWER — WHAT AN ENEMY PROBE MEASURES ABOUT IT. D199. It was "Power"
+        (`wealth()`), which fell while a building rose and grew while ore waited to be raided.
+        Firepower is what the hulls and guns in this world's defending line cost, transports and
+        miners left out: the figure a rival's probe reports, learned on the one world the
+        commander knows exactly.
+      */}
+      <Verdict testId="planet-firepower-plate" glyph="attack" label={t('planetHero.firepower')} tone="neutral"
+        value={<span data-testid="planet-firepower">{full(combatValue(line))}</span>} />
       <Verdict
         testId="planet-defence"
+        glyph="rocket"
         label={t('planetHero.defence')}
         value={armed ? standing : t('planetHero.defenceNone')}
         detail={[
@@ -402,6 +405,7 @@ export function DefenceReadings({ planet }: { planet: PlanetView }) {
       />
       <Verdict
         testId="planet-shield"
+        glyph="shield"
         label={t('planetHero.shield')}
         value={
           !coreOnline
@@ -410,43 +414,16 @@ export function DefenceReadings({ planet }: { planet: PlanetView }) {
             ? t('planetHero.shieldValue', { current: compact(shield), max: compact(shieldMax) })
             : t('planetHero.shieldNone')
         }
-        detail={
-          !coreOnline
-            ? t('planetHero.shieldCoreOffline')
-            : shieldMax > 0
-            ? (
-                <div className="mt-2">
-                  <Meter
-                    value={shield}
-                    cap={shieldMax}
-                    tone="crystal"
-                    cells={8}
-                    label={t('planetHero.shieldMeter')}
-                  />
-                  <p className="mt-1 text-micro text-v2-ink-3">
-                    {t('planetHero.shieldRegen', { amount: compact(planet.planet.shieldPerHour) })}
-                  </p>
-                </div>
-              )
-            : t('planetHero.shieldNoAegis')
-        }
+        detail={shieldDetail}
         tone={!coreOnline || shieldMax === 0 ? 'gap' : shieldShare < 0.35 ? 'warn' : 'good'}
       />
       <Verdict
         testId="planet-exposed"
+        glyph="crate"
         label={t('planetHero.atRisk')}
         value={t('planetHero.atRiskValue', { amount: compact(exposed) })}
         tone={exposed > 0 ? 'gap' : 'good'}
       />
-      {/*
-        THE WHOLE FORCE, UNDER THE VERDICTS ABOUT IT. D170. It spans both columns
-        because a fleet is not another verdict — it is the answer to what the line is
-        made of, and the one thing here read as a picture rather than as a sentence.
-        `FleetCards` draws nothing when there is nothing to draw.
-      */}
-      <div className="col-span-2">
-        <FleetCards fleet={planet.fleet} fleetAway={planet.fleetAway} fleetDocked={planet.fleetDocked ?? {}} />
-      </div>
     </div>
   );
 }
@@ -463,34 +440,34 @@ export function DefenceReadings({ planet }: { planet: PlanetView }) {
  * So there are three readings and each means one thing: a GAP to close (or a
  * system that is thin), a system that is holding, and a plain fact.
  */
-const TONE = {
-  gap: 'text-v2-warn',
-  warn: 'text-v2-warn',
-  good: 'text-v2-self',
-  neutral: 'text-v2-ink-2',
-} as const;
+type VerdictTone = 'gap' | 'warn' | 'good' | 'neutral';
 
+/** One reading on a glass well: its picture, what it is, the verdict, and one line under it. */
 function Verdict({
   label,
   value,
   detail,
   tone,
+  glyph,
   testId,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   detail?: ReactNode;
-  tone: keyof typeof TONE;
-  testId?: string;
+  tone: VerdictTone;
+  glyph: GlyphId;
+  testId: string;
 }) {
   return (
-    <div data-testid={testId} className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-      <p className="v2-legend">{label}</p>
+    <div data-testid={testId} data-tone={tone} className="gk-verdict gk-well">
+      {/* the picture beside the name, so a long name (VERTEIDIGUNG at 320 px) has the plate's width */}
+      <span className="gk-verdict__head">
+        <span className="gk-verdict__coin" aria-hidden="true"><Glyph id={glyph} /></span>
+        <span className="gk-label">{label}</span>
+      </span>
       {/* A verdict is a WORD — "None", "4 ships". A word does not need a heading's size to land. */}
-      <p className={`mt-1 font-v2-mono text-body font-semibold ${TONE[tone]}`}>{value}</p>
-      {typeof detail === 'string'
-        ? <p className="mt-1 font-v2-mono text-micro text-v2-ink-3">{detail}</p>
-        : detail}
+      <span className="gk-verdict__value gk-num">{value}</span>
+      {typeof detail === 'string' ? <span className="gk-verdict__sub">{detail}</span> : detail}
     </div>
   );
 }

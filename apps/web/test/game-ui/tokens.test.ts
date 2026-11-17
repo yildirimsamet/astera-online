@@ -36,11 +36,20 @@ describe('the game kit palette', () => {
     expect(readFileSync(join(KIT, 'game-ui.css'), 'utf8')).not.toMatch(/russo-one/);
   });
 
-  it('paints the panels in graphite, without a blue cast (owner 2026-11-12: "this bluish colour is not for me")', () => {
+  /**
+   * Owner 2026-11-14 picked "Gözlemevi" from four palettes (Grafit, Gözlemevi, Kobalt krom,
+   * Gece altını): the kit's plates take the v2 navy, so a panel on the kit and a v2 page
+   * under it are one ground. It replaces 2026-11-12's graphite.
+   */
+  it('paints the panels in the Gözlemevi navy, on the v2 ground (owner 2026-11-14)', () => {
     const material = [...tokens.matchAll(/--gk-(metal-[\w]+|glass[\w-]*|steel[\w-]*|void|deep|tint):\s*(#[0-9a-fA-F]{6})\b/g)];
     expect(material.length).toBeGreaterThan(12);
     const cast = (hex: string): number => parseInt(hex.slice(5, 7), 16) - parseInt(hex.slice(1, 3), 16);
-    expect(material.filter(([, , hex = '']) => cast(hex) > 20).map(([, name]) => name)).toEqual([]);
+    expect(material.filter(([, , hex = '']) => cast(hex) < 7).map(([, name]) => name)).toEqual([]);
+    const v2 = readFileSync('src/v2/tokens.css', 'utf8');
+    const value = (source: string, name: string): string | undefined => new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})`).exec(source)?.[1];
+    expect(value(tokens, '--gk-deep')).toBe(value(v2, '--color-v2-deep'));
+    expect(value(tokens, '--gk-glass')).toBe(value(v2, '--color-v2-panel'));
     expect(tokens).not.toMatch(/--gk-tint:\s*var\(--gk-info\)/);
   });
 

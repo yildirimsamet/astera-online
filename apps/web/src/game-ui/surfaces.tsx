@@ -1,8 +1,12 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
-import { playSound, type SoundCue } from '../lib/sound.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound, type SoundCue } from '../lib/sound.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
+import { useNativeBack } from '../platform/nativeBack.js';
 import { RoundButton } from './buttons.js';
 import { Glyph, type GlyphId } from './icons.js';
+import { Timer, type TimerTone } from './readouts.js';
 import type { CssVars } from './style.js';
 
 type Edge = 'self' | 'hostile' | 'warn';
@@ -39,13 +43,18 @@ export function CutPlate({
 }
 
 /** A stencil tag naming a section, with a rule out to the edge and an optional note at the end. */
-export function SectionTag({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
+export function SectionTag({ children, aside, as: Element = 'div' }: {
+  children: ReactNode;
+  aside?: ReactNode;
+  /** The heading of its part, where a reader walks a landmark by headings (the desk outline). */
+  as?: 'div' | 'h2' | 'h3';
+}) {
   return (
-    <div className="gk-tag">
+    <Element className="gk-tag">
       <span className="gk-tag__name">{children}</span>
       <span className="gk-tag__rule" aria-hidden="true" />
       {aside !== undefined && <span className="gk-tag__aside">{aside}</span>}
-    </div>
+    </Element>
   );
 }
 
@@ -72,15 +81,20 @@ export function SheetFrame({
   return (
     <section className={`gk gk-sheet ${className}`} aria-labelledby={titleId}>
       <div className="gk-sheet__grab" aria-hidden="true" />
-      <CutPlate tone={tone} className="gk-sheet__head">
+      {/* the one 48 px head every sheet wears (S1, owner 2026-11-16) */}
+      <header className="gk-sheet__head" {...(tone ? { 'data-tone': tone } : {})}>
         {art ? <img className="gk-sheet__art" src={art} alt="" /> : <span />}
         <div className="min-w-0">
-          {eyebrow !== undefined && <div className="gk-sheet__eyebrow">{eyebrow}</div>}
+          {(eyebrow !== undefined || meta !== undefined) && (
+            <div className="gk-sheet__line">
+              {eyebrow !== undefined && <div className="gk-sheet__eyebrow">{eyebrow}</div>}
+              {meta !== undefined && <div className="gk-sheet__meta">{meta}</div>}
+            </div>
+          )}
           <h2 id={titleId} className="gk-sheet__title gk-display gk-outlined">{title}</h2>
-          {meta !== undefined && <div className="gk-sheet__meta">{meta}</div>}
         </div>
         {onClose ? <RoundButton glyph="close" label={t('sheet.close')} onPress={onClose} /> : <span />}
-      </CutPlate>
+      </header>
       <div className="gk-sheet__body">{children}</div>
       {footer !== undefined && <div className="gk-sheet__foot">{footer}</div>}
     </section>
@@ -89,7 +103,7 @@ export function SheetFrame({
 
 /** A centred window over a scrim, with a ribbon title. `rays` turns slow light behind a reward. */
 export function Dialog({
-  ribbon, tone = 'info', children, actions, rays = false, sound,
+  ribbon, tone = 'info', children, actions, rays = false, sound, onBack,
 }: {
   ribbon: ReactNode;
   tone?: 'good' | 'hostile' | 'info';
@@ -98,12 +112,15 @@ export function Dialog({
   rays?: boolean;
   /** The moment's own sound, once as it opens: `rankup` for a new rank, clan level or medal. */
   sound?: SoundCue;
+  /** Its way out: the phone's Back takes it (C28). Without one, Back passes the dialog by. */
+  onBack?: () => void;
 }) {
   const titleId = useId();
   const rang = useRef(false);
   const box = useRef<HTMLDivElement>(null);
   // Focus starts inside, so a keyboard or a reader is in the dialog it was shown.
   useEffect(() => { box.current?.focus(); }, []);
+  useNativeBack(box, onBack, onBack !== undefined);
   useEffect(() => {
     if (sound === undefined || rang.current) return;
     rang.current = true;
@@ -130,7 +147,7 @@ const BANNER_GLYPH: Record<'info' | 'good' | 'warn' | 'hostile', GlyphId> = {
  * colours the rim and the icon, never the words, so it stays readable.
  */
 export function Banner({
-  tone = 'info', title, body, action, variant = 'block', glyph,
+  tone = 'info', title, body, action, variant = 'block', glyph, role = variant === 'toast' ? 'status' : null,
 }: {
   tone?: 'info' | 'good' | 'warn' | 'hostile';
   title: ReactNode;
@@ -138,11 +155,13 @@ export function Banner({
   action?: ReactNode;
   variant?: 'block' | 'strip' | 'toast';
   glyph?: GlyphId;
+  /** How it is read out: a toast speaks as a status; `null` where the place it sits in already speaks for it. */
+  role?: 'status' | 'alert' | null;
 }) {
   return (
     <div
       className={`gk-banner${tone === 'info' ? '' : ` gk-banner--${tone}`} gk-banner--${variant}`}
-      {...(variant === 'toast' ? { role: 'status' } : {})}
+      {...(role === null ? {} : { role })}
     >
       <span className="gk-banner__icon" aria-hidden="true"><Glyph id={glyph ?? BANNER_GLYPH[tone]} /></span>
       <span className="min-w-0">
@@ -191,5 +210,126 @@ export function CoachMark({
         {text}
       </div>
     </div>
+  );
+}
+
+/**
+ * THE CARD AT THE FOOT OF THE GALAXY (G1-d, 2026-11-14): the one thing that matters now — an
+ * attack coming, a galaxy event, a suggestion. A cut plate in the colour of whose it is, the
+ * thing's mark in a ring that drains over its clock (only the track when its whole is not
+ * known), the time large beside what it is, a line of what, a clause of why, and what to do on
+ * its own row. It beats only for an enemy: a card that always moves is a card nobody reads.
+ */
+export function ContextCard({
+  tone, glyph, eyebrow, title, timer, children, actions, tools, onDismiss, dismissLabel, onFold, foldLabel,
+}: {
+  tone: TimerTone;
+  glyph: GlyphId;
+  /** What it is ("Incoming attack"); it names the region. */
+  eyebrow: string;
+  title?: string;
+  /** Its clock: the ring's reading, and the words beside it when the body does not already say them. */
+  timer?: { remaining: number; total: number; text?: string };
+  /** Why: one clause, or the rows of what it holds. */
+  children?: ReactNode;
+  actions?: ReactNode;
+  /** Round presses in the head beside the close (look at it): a second press that keeps the actions on one row. */
+  tools?: ReactNode;
+  onDismiss: () => void;
+  dismissLabel: string;
+  /** Fold it to one line (a suggestion, at the size the player chose). */
+  onFold?: () => void;
+  foldLabel?: string;
+}) {
+  return (
+    <section aria-label={eyebrow} data-tone={tone} className={`gk-ccard gk-cut gk-cut--${tone}`}>
+      <div className="gk-ccard__head">
+        <Timer remaining={timer?.remaining ?? 0} total={timer?.total ?? 0} glyph={glyph} tone={tone} beat={tone === 'hostile'} />
+        <span className="gk-ccard__heading">
+          <span className="gk-label gk-ccard__eyebrow">{eyebrow}</span>
+          {timer?.text !== undefined && <span className="gk-ccard__time gk-display gk-num">{timer.text}</span>}
+        </span>
+        {tools}
+        {onFold !== undefined && <RoundButton small glyph="down" label={foldLabel ?? ''} onPress={onFold} />}
+        <RoundButton small glyph="close" label={dismissLabel} onPress={onDismiss} />
+      </div>
+      {title !== undefined && title !== '' && <p className="gk-ccard__title">{title}</p>}
+      {children !== undefined && <div className="gk-ccard__body">{children}</div>}
+      {actions !== undefined && <div className="gk-ccard__actions">{actions}</div>}
+    </section>
+  );
+}
+
+/** A folded card: one line, one press — what it is and its title, in its colour — that opens it again. */
+export function ContextStrip({ tone, glyph, eyebrow, title, label, onPress }: {
+  tone: TimerTone;
+  glyph: GlyphId;
+  eyebrow: string;
+  title: string;
+  /** What the press does ("Show"). */
+  label: string;
+  onPress: () => void;
+}) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress(); });
+  return (
+    <button type="button" {...OWN_SOUND} aria-label={label} data-tone={tone} className="gk-cstrip" onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className={`gk-cut gk-cut--${tone} gk-cstrip__plate`}>
+        <span className="gk-cstrip__coin" aria-hidden="true"><Glyph id={glyph} /></span>
+        <span className="gk-label gk-cstrip__eyebrow">{eyebrow}</span>
+        <span className="gk-cstrip__title">{title}</span>
+        <span className="gk-cstrip__open" aria-hidden="true"><Glyph id="next" /></span>
+      </span>
+    </button>
+  );
+}
+
+/**
+ * THE KIT'S ONE FOLD (S5, 2026-11-16): what a player sets once or reads rarely, shut until
+ * wanted. The head says what it is, where it stands (`sub`) and its one figure (`value`), in
+ * its tone; opening is a press with its own click. `open` arrives open — for what is urgent.
+ */
+export function Fold({ glyph, title, sub, value, tone = 'self', open = false, children, ref, ...data }: {
+  glyph: GlyphId;
+  title: string;
+  sub?: string;
+  value?: string;
+  tone?: 'self' | 'warn' | 'hostile';
+  open?: boolean;
+  children: ReactNode;
+  /** The fold itself, for a caller that opens it from elsewhere (a report's Watch). */
+  ref?: Ref<HTMLDetailsElement>;
+} & Record<`data-${string}`, string>) {
+  return (
+    <details {...data} ref={ref} data-tone={tone} open={open} className="gk gk-strike">
+      <summary className="gk-strike__head" {...OWN_SOUND} onClick={() => { playSound('tap'); haptic('tap'); }}>
+        <span className="gk-strike__mark" aria-hidden="true"><Glyph id={glyph} /></span>
+        <span className="gk-strike__words">
+          <span className="gk-strike__title">{title}</span>
+          {sub !== undefined && <span className="gk-sub gk-strike__target">{sub}</span>}
+        </span>
+        {value !== undefined && <span className="gk-chip gk-num gk-strike__ready">{value}</span>}
+        <span className="gk-strike__chev" aria-hidden="true"><Glyph id="down" /></span>
+      </summary>
+      <div className="gk-strike__body">{children}</div>
+    </details>
+  );
+}
+
+/**
+ * A STRIKE THAT FOLDS (G4-j, 2026-11-15): a weapon on the focus panel, closed until wanted — the
+ * kit's fold in the weapon's colour (radiation yellow, the rest red). The head names the strike,
+ * what it is aimed at and how many are ready; the launch inside is a hold.
+ */
+export function StrikeFold({ glyph, title, target, ready, children, ...data }: {
+  glyph: GlyphId;
+  title: string;
+  target: string;
+  ready: string;
+  children: ReactNode;
+} & Record<`data-${string}`, string>) {
+  return (
+    <Fold {...data} glyph={glyph} title={title} sub={target} value={ready} tone={data['data-weapon'] === 'radiation' ? 'warn' : 'hostile'}>
+      {children}
+    </Fold>
   );
 }

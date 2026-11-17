@@ -42,7 +42,8 @@
  * (the Academy, the rehearsal) nothing sets it and sheets take the full screen.
  */
 .v2-shell {
-  --v2-dock-h: calc(4rem + env(safe-area-inset-bottom));
+  /* The kit's bottom bar (G1-a): 40 px art, a 12 px name, its edge and padding (game-ui.css .gk-nav). */
+  --v2-dock-h: calc(69px + env(safe-area-inset-bottom));
   /* The top bar and the Now line; the shell measures the real height (`--v2-top-h` inline). */
   --v2-top-h: calc(3rem + env(safe-area-inset-top));
 }
@@ -166,82 +167,6 @@
 .radiation-instrument__sources li strong { font: 500 10px var(--font-v2-mono, monospace); white-space: nowrap; }
 .radiation-instrument__sources li small { grid-column: 1/-1; font-size: 9px; color: var(--color-v2-ink-2); }
 
-.radiation-forge, .radiation-launch { padding: 12px; border: 1px solid var(--color-v2-radiation-forge-border); border-radius: 10px; background: linear-gradient(130deg, var(--color-v2-radiation-forge-glow), transparent 60%), var(--color-v2-panel); font-family: var(--font-v2-ui, sans-serif); }
-.radiation-forge header h3, .radiation-launch h3 { font-size: 14px; font-weight: 600; color: var(--color-v2-radiation-title); }
-.radiation-forge header p, .radiation-forge details p, .radiation-launch p { font-size: 11px; line-height: 1.5; color: var(--color-v2-ink-2); margin-top: 5px; }
-/* Tactical production uses full-width arsenal scenes, like the Death Star forge. */
-.radiation-forge { padding: 0; border: 0; background: none; }
-.radiation-forge > header { padding: 0 2px; }
-.radiation-forge__products { display: grid; gap: 12px; margin-top: 10px; }
-.tactical-production { --munition-accent: var(--color-v2-radiation-tier-1); position: relative; isolation: isolate; overflow: hidden; border: 1px solid var(--color-v2-line); border-radius: var(--radius-control, 10px); background: var(--color-v2-deep); box-shadow: inset 0 1px color-mix(in srgb, var(--munition-accent) 12%, transparent); }
-.radiation-product[data-level='2'] { --munition-accent: var(--color-v2-radiation-tier-2); }
-.radiation-product[data-level='3'] { --munition-accent: var(--color-v2-radiation-tier-3); }
-.tactical-production__scene { position: relative; aspect-ratio: 3 / 1; overflow: hidden; background: var(--color-v2-void); }
-.tactical-production__scene::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, var(--color-v2-deep), transparent 45%); pointer-events: none; }
-.tactical-production__art { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 42%; }
-.tactical-production[data-locked='true'] .tactical-production__art { filter: grayscale(1) brightness(.65); }
-.tactical-production__body { position: relative; margin-top: -12px; padding: 0 12px 12px; display: grid; gap: 9px; }
-.tactical-production__heading { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 10px; }
-.tactical-production__heading h4 { flex: 1 1 180px; display: flex; flex-wrap: wrap; align-items: center; column-gap: 6px; row-gap: 3px; min-width: 0; color: var(--color-v2-ink); font-size: 13px; font-weight: 600; line-height: 1.4; }
-.tactical-production__heading h4 > svg { color: var(--munition-accent); flex-shrink: 0; }
-.tactical-production__heading h4 > span { color: var(--munition-accent); font: 500 10px/1.4 var(--font-v2-mono); border-left: 1px solid var(--color-v2-line-hi); padding-left: 7px; margin-left: 1px; white-space: nowrap; }
-.tactical-production__status { display: flex; align-items: center; gap: 6px; color: var(--color-v2-ink-2); font-size: 11px; line-height: 1.4; }
-.tactical-production__status > i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-.tactical-production__status[data-state='READY'] { color: var(--color-v2-self); }
-.tactical-production__status[data-state='LAUNCHED'] { color: var(--color-v2-radiation-flying); }
-.tactical-production__status[data-state='BUILDING'] { color: var(--munition-accent); }
-.tactical-production__status[data-state='PAUSED'], .tactical-production__status[data-state='NO_RADAR'] { color: var(--color-v2-warn); }
-.tactical-production__specs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; padding: 8px 0; border-block: 1px solid var(--color-v2-line); }
-.tactical-production__specs > div { min-width: 0; }
-.tactical-production__specs > div + div { border-left: 1px solid var(--color-v2-line); padding-left: 12px; }
-.tactical-production__specs dt { display: flex; align-items: center; gap: 4px; color: var(--color-v2-ink-2); font-size: 10px; line-height: 1.4; }
-.tactical-production__specs dt svg { flex-shrink: 0; }
-.tactical-production__specs dd { margin-top: 3px; color: var(--munition-accent); font: 500 14px/1.4 var(--font-v2-mono); }
-.tactical-production__specs > div + div dd { color: var(--color-v2-ink); }
-.tactical-production__price { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; font: 10px/1.4 var(--font-v2-mono); color: var(--color-v2-ink-2); }
-.tactical-production__price > span:first-child { gap: 7px; font-size: 10px; }
-.tactical-production__body > progress { width: 100%; height: 3px; accent-color: var(--munition-accent); }
-.tactical-production__body > button, .tactical-production__body [data-act] > button { height: auto; min-height: 38px; font-size: 12px; line-height: 1.3; padding: 6px; }
-.tactical-production--death-star { --munition-accent: var(--color-v2-warn); }
-.tactical-production--battery { --munition-accent: var(--color-v2-self); }
-.tactical-production__eyebrow { font-size: 9px; line-height: 1.4; color: var(--color-v2-ink-2); text-transform: uppercase; letter-spacing: .08em; }
-.tactical-production__hint { font-size: 11px; line-height: 1.55; color: var(--color-v2-ink-2); }
-.tactical-stock { display: grid; gap: 4px; max-width: 100%; margin-left: auto; flex-shrink: 0; text-align: right; }
-.tactical-stock__counter { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 7px; font: 500 10px/1.4 var(--font-v2-mono); color: var(--color-v2-ink); }
-.tactical-stock__summary { max-width: 190px; font-size: 9px; line-height: 1.4; color: var(--color-v2-ink-2); }
-.radiation-product__level { display: inline-flex; align-items: center; gap: 6px; }
-.radiation-product__level > span { display: inline-flex; gap: 3px; }
-.radiation-forge details { margin-top: 10px; padding: 8px 2px; border-top: 1px solid var(--color-v2-line); font-size: 11px; color: var(--color-v2-ink-2); }
-.radiation-forge summary { cursor: pointer; }
-.radiation-launch__levels { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 5px; margin: 10px 0; }
-.radiation-launch__levels button { display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 8px 3px; border: 1px solid var(--color-v2-radiation-level-border); border-radius: 6px; color: var(--color-v2-radiation-level-copy); background: var(--color-v2-radiation-level-ground); }
-.radiation-launch__levels button[aria-checked='true'] { background: var(--color-v2-radiation-selected-ground); border-color: var(--color-v2-radiation-selected-border); color: var(--color-v2-radiation-selected-copy); box-shadow: inset 0 1px var(--color-v2-radiation-selected-shine); }
-.radiation-launch__levels button:disabled { opacity: .4; }
-.radiation-launch__levels button span { font: 9px/1.2 var(--font-v2-mono, monospace); }
-.radiation-launch .radiation-launch__target { color: var(--color-v2-radiation-title); font-size: 12px; overflow-wrap: anywhere; }
-.radiation-launch .radiation-launch__flight { color: var(--color-v2-radiation-flight); font-family: var(--font-v2-mono, monospace); }
-/* THE STRIKE SECTIONS FOLD (owner, 2026-10-16): the radiation strike and the Death Star share one
-   accordion on the focus panel; folded, the header still names the weapon, its target and what is
-   ready. The Death Star wears the colour of harm, like its hold. */
-.strike-launch > summary.strike-launch__summary { display: flex; align-items: center; gap: 10px; min-height: 34px; cursor: pointer; list-style: none; -webkit-tap-highlight-color: transparent; }
-.strike-launch > summary::-webkit-details-marker { display: none; }
-.strike-launch > summary::after { content: ''; flex-shrink: 0; width: 7px; height: 7px; margin: 0 3px 3px 0; border-right: 1.5px solid var(--color-v2-ink-3); border-bottom: 1.5px solid var(--color-v2-ink-3); transform: rotate(45deg); transition: transform .18s ease; }
-.strike-launch[open] > summary::after { margin: 3px 3px 0 0; transform: rotate(-135deg); }
-.strike-launch > summary:focus-visible { outline: 2px solid var(--color-v2-self); outline-offset: 3px; border-radius: 6px; }
-.strike-launch__heading { display: grid; gap: 2px; flex: 1; min-width: 0; }
-.strike-launch__title { font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--color-v2-radiation-title); }
-.strike-launch__target { font-size: 11px; line-height: 1.35; color: var(--color-v2-ink-2); overflow-wrap: anywhere; }
-.strike-launch__ready { flex-shrink: 0; padding: 2px 8px; border: 1px solid color-mix(in srgb, currentColor 45%, transparent); border-radius: 999px; font: 500 10px/1.4 var(--font-v2-mono, monospace); color: var(--color-v2-radiation-title); white-space: nowrap; }
-.strike-launch[open] > .strike-launch__body { margin-top: 10px; }
-.strike-launch--death-star { margin-top: 12px; padding: 12px; border: 1px solid color-mix(in srgb, var(--color-v2-hostile) 55%, transparent); border-radius: 10px; background: linear-gradient(130deg, color-mix(in srgb, var(--color-v2-hostile) 18%, transparent), transparent 62%), var(--color-v2-panel); font-family: var(--font-v2-ui, sans-serif); }
-.strike-launch--death-star .strike-launch__title, .strike-launch--death-star .strike-launch__ready { color: var(--color-v2-hostile); }
-.strike-launch--death-star + .radiation-launch { margin-top: 10px; }
-/* The radiation strike's Honor box reads like the Death Star's; `.radiation-launch p` would shrink it. */
-.radiation-launch .honor-note { margin: 10px 0; }
-.radiation-launch .honor-note p { margin-top: 0; }
-.radiation-launch .honor-note .honor-note__title { font-size: 12px; font-weight: 600; color: var(--color-v2-ink); }
-.radiation-launch .honor-note .honor-note__body { font-size: 12px; line-height: 1.55; color: var(--color-v2-ink-2); }
-.radiation-launch > button { margin-top: 10px; }
 
 /* Dev-only art review page. */
 .bomb-preview { margin: 0 auto; max-width: 1280px; padding: 28px; display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 18px; background: var(--color-v2-radiation-preview-ground); min-height: 100dvh; color: var(--color-v2-radiation-preview-copy); }
@@ -254,3 +179,6 @@
 .bomb-preview__dial { position: absolute; left: 16px; right: 16px; bottom: 58px; max-width: 340px; }
 .bomb-preview__replay { position: absolute; left: 18px; bottom: 16px; padding: 6px 12px; border: 1px solid var(--color-v2-radiation-preview-button-border); border-radius: 5px; font-size: 12px; background: var(--color-v2-radiation-preview-button-ground); }
 @media(max-width:700px) { .bomb-preview { padding: 12px; grid-template-columns: minmax(0,1fr); gap: 12px; } .bomb-preview__scene { height: 440px; } .bomb-preview h1 { font-size: 25px; } }
+/* ek-1 (owner 2026-11-17): the radiation mark leads the meter and the monument's radiation line. */
+.radiation-meter__mark { display: inline-grid; flex: none; place-items: center; color: currentColor; }
+.radiation-meter__mark .gk-glyph { width: 11px; height: 11px; }

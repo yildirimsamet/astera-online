@@ -11,7 +11,7 @@ vi.mock('../src/onboarding/flightSchool/SchoolPointer.js', () => ({ SchoolPointe
 const observe = vi.hoisted(() => vi.fn());
 vi.mock('../src/lib/playerAnalytics/runtime.js', () => ({ observe }));
 const sound = vi.hoisted(() => vi.fn());
-vi.mock('../src/lib/sound.js', () => ({ playSound: sound }));
+vi.mock('../src/lib/sound.js', async (importActual) => ({ ...await importActual<Record<string, unknown>>(), playSound: sound }));
 
 afterEach(() => { cleanup(); vi.useRealTimers(); observe.mockClear(); localStorage.clear(); });
 

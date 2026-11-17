@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { claimEscape, dragStep, nextDetent, type Detent } from '../../lib/sheet.js';
 import { useGalaxyCover } from '../../lib/galaxyCover.js';
 import { useNativeBack } from '../../platform/nativeBack.js';
+import { haptic } from '../../lib/haptics.js';
 import { useOwnPress } from '../../ui/kit/useOwnPress.js';
 import { Glyph } from '../../game-ui/icons.js';
-import { Icon } from '../icons.js';
 import { AtmosphereImage } from '../../ui/AtmosphereArt.js';
 import type { AtmosphereArt } from '../../ui/atmosphere.js';
+import { PanelBoundary } from '../../shell/ErrorBoundary.js';
 
 /**
  * Peek and half are ceilings: a sheet with little in it is only as tall as its
@@ -94,6 +95,8 @@ export interface SheetProps {
   contained?: boolean;
   /** Keep a contained conversation panel at a stable height while its log scrolls. */
   fixedHeight?: boolean;
+  /** Stand at the room's full height whatever the body holds: a paged sheet whose pages differ never jumps at a tab. */
+  fill?: boolean;
   /**
    * Wide screens only (E11): a page docks to the right, a dialog stands in the middle.
    * Default: a dialog when it only ever fits its content, a page otherwise.
@@ -104,7 +107,7 @@ export interface SheetProps {
    * a plate with the subject's picture, the title in the display face and a line of meta;
    * the body and the foot take the kit's metal. What the sheet does does not change.
    */
-  kit?: { art?: string; meta?: ReactNode; tone?: 'self' | 'hostile' };
+  kit?: { art?: string; meta?: ReactNode; tone?: 'self' | 'hostile' | 'warn' };
 }
 
 /**
@@ -145,6 +148,7 @@ export function Sheet({
   floatingHead = false,
   contained = false,
   fixedHeight = false,
+  fill = false,
   placement = detents.every((height) => height === 'fit') ? 'dialog' : 'page',
   kit,
 }: SheetProps) {
@@ -202,6 +206,33 @@ export function Sheet({
   const modal = detent !== 'peek';
   useGalaxyCover(panel, modal);
 
+  const kitHead = Boolean(kit) && !quietTitle;
+  const grab = placement !== 'card' && !floatingHead ? (
+    <button
+      type="button"
+      aria-label={t(atTop ? 'handle.collapse' : 'handle.expand')}
+      onClick={(event) => {
+        const afterPull = dragged.current;
+        dragged.current = false;
+        // Only a pointer click can be the tail of a pull; a key press (`detail` 0) never is.
+        if (afterPull && event.detail !== 0) return;
+        settle(atTop ? 'down' : 'up');
+      }}
+      /*
+        A column on a wide screen has one height: its handle would promise a pull that does nothing.
+        A thumb's 44 px tall, it takes no more room than its 16 px row: it reaches down over the
+        head's quiet middle, between the back and the close (G1-g).
+      */
+      className={kitHead
+        // S1 (owner 2026-11-16; 54 px since 2026-11-17): inside the one head bar, over its quiet middle — never a row of its own.
+        ? `gk-sheet__pull group ${placement === 'page' ? 'v2-split:invisible' : ''}`
+        : `group relative z-10 mx-auto -mb-7 flex h-11 w-16 shrink-0 items-start justify-center ${placement === 'page' ? 'v2-split:invisible' : ''}`}
+    >
+      {/* The bar lights and stretches under the thumb: the pull was felt. */}
+      <span aria-hidden="true" className={kit ? 'gk-sheet__grab' : 'mt-1.5 h-1 w-9 rounded-full bg-v2-line-hi transition-[width,background-color] duration-150 group-active:w-12 group-active:bg-v2-ink-2'} />
+    </button>
+  ) : null;
+
   return (
     <div
       data-sheet-holder=""
@@ -216,7 +247,8 @@ export function Sheet({
           tabIndex={-1}
           data-scrim=""
           {...dismiss}
-          className={`pointer-events-auto absolute inset-0 ${FRAME[placement].scrim}`}
+          // A press on the dim deepens it a moment before the sheet goes: the tap was heard (G1-g).
+          className={`pointer-events-auto absolute inset-0 transition-colors duration-150 active:bg-v2-deep/40 ${FRAME[placement].scrim}`}
         />
       )}
       <div
@@ -227,73 +259,42 @@ export function Sheet({
         data-detent={detent}
         data-placement={placement}
         data-sheet-panel=""
-        className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col ${floatingHead ? 'h-full' : ''} overflow-hidden ${kit ? 'gk gk-sheet' : 'border border-b-0 border-v2-line bg-v2-panel font-v2-ui'} transition-[height,max-height] duration-300 ease-v2 ${fixedHeight ? 'h-[70dvh] max-h-full' : HEIGHT[detent]} ${FRAME[placement].panel}`}
+        className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col ${floatingHead ? 'h-full' : ''} overflow-hidden ${kit ? 'gk gk-sheet' : 'border border-b-0 border-v2-line bg-v2-panel font-v2-ui'} transition-[height,max-height] duration-300 ease-v2 ${fixedHeight ? 'h-[70dvh] max-h-full' : fill ? 'h-full max-h-full' : HEIGHT[detent]} ${FRAME[placement].panel}`}
       >
         <div data-sheet-header="" className={`${floatingHead ? 'pointer-events-none absolute inset-x-0 top-0 z-10' : 'shrink-0'} touch-none ${headerArt && !quietTitle && detent !== 'peek' ? 'sheet-art-head' : ''}`} {...(placement === 'card' ? {} : { onPointerDown: onPull })}>
           {headerArt && !quietTitle && detent !== 'peek' && <div data-sheet-art=""><AtmosphereImage art={headerArt} /></div>}
-          {placement !== 'card' && !floatingHead && <button
-            type="button"
-            aria-label={t(atTop ? 'handle.collapse' : 'handle.expand')}
-            onClick={(event) => {
-              const afterPull = dragged.current;
-              dragged.current = false;
-              // Only a pointer click can be the tail of a pull; a key press (`detail` 0) never is.
-              if (afterPull && event.detail !== 0) return;
-              settle(atTop ? 'down' : 'up');
-            }}
-            // A column on a wide screen has one height: its handle would promise a pull that does nothing.
-            className={`flex h-4 w-full items-center justify-center ${placement === 'page' ? 'v2-split:invisible' : ''}`}
-          >
-            <span aria-hidden="true" className={kit ? 'gk-sheet__grab' : 'h-1 w-9 rounded-full bg-v2-line-hi'} />
-          </button>}
+          {!kitHead && grab}
           {/* The close owns a stable row; scrolling tabs never need to move around it. */}
           {kit && !quietTitle ? (
-            <header className={`gk-cut${kit.tone ? ` gk-cut--${kit.tone}` : ''} gk-sheet__head${onBack ? ' gk-sheet__head--back' : ''}`}>
-              {onBack && (
-                <button type="button" aria-label={t('sheet.back')} onClick={onBack} className="gk-round pointer-events-auto">
-                  <span className="gk-round__face"><Glyph id="back" /></span>
-                </button>
-              )}
+            <header className={`gk-sheet__head${onBack ? ' gk-sheet__head--back' : ''}`} {...(kit.tone ? { 'data-tone': kit.tone } : {})}>
+              {grab}
+              {onBack && <SheetBack onBack={onBack} small />}
               {kit.art ? <img className="gk-sheet__art" src={kit.art} alt="" draggable={false} /> : <span />}
               <div className="min-w-0">
-                {eyebrow && <p className="gk-sheet__eyebrow">{eyebrow}</p>}
+                {(Boolean(eyebrow) || kit.meta !== undefined) && (
+                  <div className="gk-sheet__line">
+                    {eyebrow && <p className="gk-sheet__eyebrow">{eyebrow}</p>}
+                    {kit.meta !== undefined && <div className="gk-sheet__meta">{kit.meta}</div>}
+                  </div>
+                )}
                 <div className={titleAction ? 'flex min-w-0 items-center gap-2' : undefined}>
                   <h2 className="gk-sheet__title gk-display gk-outlined" {...(titleLang ? { lang: titleLang } : {})}>
-                    {lead !== undefined ? <span className="inline-flex min-w-0 items-center gap-1.5">{lead}<span className="truncate">{title}</span></span> : title}
+                    {lead !== undefined ? <span className="inline-flex min-w-0 items-center gap-1.5">{lead}<span className="gk-sheet__titleline">{title}</span></span> : title}
                   </h2>
-                  {titleAction}
+                  {titleAction !== undefined && <span data-title-action="" className="relative z-20 flex shrink-0 items-center gap-2">{titleAction}</span>}
                 </div>
-                {kit.meta !== undefined && <div className="gk-sheet__meta">{kit.meta}</div>}
               </div>
-              <button
-                type="button"
-                aria-label={t('sheet.close')}
-                data-sheet-close=""
-                onPointerDown={(event) => { event.preventDefault(); }}
-                onClick={onClose}
-                className="gk-round pointer-events-auto"
-              >
-                <span className="gk-round__face"><Glyph id="close" /></span>
-              </button>
+              <SheetClose onClose={onClose} small />
             </header>
-          ) : <header className={quietTitle ? 'flex shrink-0 items-start justify-end gap-1 px-2 pb-1' : 'flex items-start gap-1 px-2 pb-2'}>
-            {onBack && (
-              <button
-                type="button"
-                aria-label={t('sheet.back')}
-                onClick={onBack}
-                // Pressable in the quiet header's stable row too.
-                className="pointer-events-auto grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-2"
-              >
-                <Icon id="i-chev" className="size-4 rotate-180" />
-              </button>
-            )}
-            <div className={quietTitle ? 'contents' : 'min-w-0 flex-1 px-1 pt-1'}>
-              {eyebrow && <p className={quietTitle ? 'sr-only' : 'truncate text-micro uppercase tracking-wide text-v2-ink-3'}>{eyebrow}</p>}
+          ) : <header className={quietTitle ? 'flex shrink-0 items-start justify-end gap-1 px-1 pb-1' : 'flex items-center gap-1 px-1 pb-1'}>
+            {/* Pressable in the quiet header's stable row too. */}
+            {onBack && <SheetBack onBack={onBack} small />}
+            <div className={quietTitle ? 'contents' : 'min-w-0 flex-1 px-1'}>
+              {eyebrow && <p className={quietTitle ? 'sr-only' : 'gk-sheet__eyebrow'}>{eyebrow}</p>}
               {titleAction ? (
                 <div className="flex min-w-0 items-center gap-2">
                   <h2 className="truncate text-figure font-semibold text-v2-ink">{title}</h2>
-                  {titleAction}
+                  <span data-title-action="" className="relative z-20 flex shrink-0 items-center gap-2">{titleAction}</span>
                 </div>
               ) : lead ? (
                 <h2 className="flex min-w-0 items-center gap-1.5 text-figure font-semibold text-v2-ink">
@@ -304,31 +305,53 @@ export function Sheet({
                 <h2 className={quietTitle ? 'sr-only' : 'truncate text-figure font-semibold text-v2-ink'}>{title}</h2>
               )}
             </div>
-            <button
-              type="button"
-              aria-label={t('sheet.close')}
-              data-sheet-close=""
-              // Taking focus first would close a phone keyboard and move the page under the finger.
-              onPointerDown={(event) => { event.preventDefault(); }}
-              onClick={onClose}
-              className={`pointer-events-auto grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-2 ${quietTitle ? 'border border-v2-line bg-v2-panel' : ''}`}
-            >
-              <Icon id="i-close" className="size-4" />
-            </button>
+            <SheetClose onClose={onClose} small />
           </header>}
         </div>
 
         <div
           data-sheet-body=""
           className={kit
-            ? `gk-sheet__body relative ${contained ? 'flex flex-col overflow-hidden!' : ''} ${bleed ? 'px-0! pt-0!' : ''}`
+            ? `gk-sheet__body relative ${contained ? 'flex flex-col overflow-hidden!' : ''} ${bleed ? 'px-0!' : ''}`
             : `relative ${floatingHead ? 'z-0' : ''} min-h-0 flex-auto ${contained ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overscroll-contain'} ${bleed ? '' : 'px-3 pb-3'}`}
         >
-          {typeof children === 'function' ? children(detent) : children}
+          {/* A throw in the body stays in the sheet (owner, 2026-11-17, ek-3); the head and its close keep working. */}
+          <PanelBoundary>{typeof children === 'function' ? children(detent) : children}</PanelBoundary>
         </div>
 
         {footer && <div className={kit ? 'gk-sheet__foot shrink-0' : 'shrink-0 border-t border-v2-line px-3 py-2.5'}>{footer}</div>}
       </div>
     </div>
+  );
+}
+
+/*
+  THE SHEET'S OWN CONTROLS (G1-g, 2026-11-14): the kit's round plates, a thumb's 44 px in either
+  look (the plain head's face is the small one). A press buzzes once; the mixer's click is their
+  sound. Escape, the dim and a pull close the sheet without a buzz: they are not this press.
+*/
+function SheetBack({ onBack, small = false }: { onBack: () => void; small?: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <button type="button" aria-label={t('sheet.back')} onClick={() => { haptic('tap'); onBack(); }} className={`gk-round${small ? ' gk-round--small' : ''} pointer-events-auto`}>
+      <span className="gk-round__face"><Glyph id="back" /></span>
+    </button>
+  );
+}
+
+function SheetClose({ onClose, small = false }: { onClose: () => void; small?: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <button
+      type="button"
+      aria-label={t('sheet.close')}
+      data-sheet-close=""
+      // Taking focus first would close a phone keyboard and move the page under the finger.
+      onPointerDown={(event) => { event.preventDefault(); }}
+      onClick={() => { haptic('tap'); onClose(); }}
+      className={`gk-round${small ? ' gk-round--small' : ''} pointer-events-auto`}
+    >
+      <span className="gk-round__face"><Glyph id="close" /></span>
+    </button>
   );
 }

@@ -13,6 +13,7 @@ export const hold = {
 export const lane = {
   /** Hatta boş duran yer. */
   free: '+ Boş hat',
+  paused: 'Durdu',
 };
 
 /** B1: üst çubuktaki kaynak ölçeri. */
@@ -70,6 +71,8 @@ export const now = {
   label: 'En acil zamanlayıcı',
   /** The sheet one tap under it: every timer. */
   sheet: 'Zamanlayıcılar',
+  /** Under the sheet's name: the order the timers are listed in (G1-c). */
+  order: 'Önce düşman, sonra en yakını',
   work: 'İş bitiyor',
   research: 'Araştırma bitiyor',
   /** An order behind the head of its lane: no clock yet (2026-10-06). */
@@ -109,6 +112,8 @@ export const topBar = {
 
 /** Görünüm çipi ve sayfası: katmanlar, olay rehberi ve galaksi başlığı. */
 export const view = {
+  /** H1 (2026-11-16): the round keys under the finds on the galaxy's right. */
+  tools: 'Galaksi araçları',
   chip: 'Görünüm',
   title: 'Görünüm',
   layers: 'Katmanlar',
@@ -119,6 +124,7 @@ export const view = {
   events: 'Galaksi olayları rehberi',
   /** The round button under the View chip: the disc's old Home mark. */
   home: 'Dünyana uç',
+  youAreHere: 'Buradasın',
 };
 
 /** B3: bağlam yuvası, bir seferde tek kart. */
@@ -143,7 +149,7 @@ export const fleetPage = {
   hangar: "Hangar",
   pace: "%{{pct}} hız",
   recall: "Geri çağır",
-  recallHome: "Geri çağırırsan {{time}} içinde evde",
+  recallHome: "Eve dönüş {{time}}",
   recalling: "Dönüyor…",
   emptyAir: "Havada bir şey yok. Gemi göndermek için galakside bir dünyaya, kayaya ya da korsana dokun.",
   focusWorld: "{{world}} gezegenini galakside göster",
@@ -153,6 +159,7 @@ export const fleetPage = {
   noShips: "Evde gemi yok",
   capital: "Başkent",
   colony: "Koloni",
+  roomFact: "Dolu Hangar tersaneyi durdurur.",
   roomRule: "Dünyanın sahip olduğu her gemi için yer — evde, dışarıda ve tersanede. Dolu Hangar tersaneyi ve gelen transferi durdurur; geri çağrılan filo her zaman sığar.",
   ground: "Yer savunması",
   ceiling: "bu Çekirdek’le en çok {{shown}}",
@@ -170,6 +177,8 @@ export const reportScene = {
   rounds_one: "{{count}} tur",
   rounds_other: "{{count}} tur",
   you: "Sen",
+  /** C16a: who stood on a neutral world, as the scene names a side. */
+  neutralSide: "Tarafsız garnizon",
   destroyed: "{{count}} yok edildi",
   hidden: "Kalanları ve sahaya çıkardığı filo gizli; rapor yalnızca yok ettiğini söyler.",
   whyDecisive: "Kayıplar nereden geldi",
@@ -196,8 +205,9 @@ export const reportScene = {
 /** K6: the switch at the top of the Base — this world, or the commander's research. */
 export const baseSwitch = {
   label: 'Üs',
-  world: 'Bu dünya',
+  world: 'Gezegen',
   research: 'Araştırma',
+  ship: 'Gemi',
 } as const;
 
 /** E8 · K9: the research constellation. */
@@ -221,7 +231,6 @@ export const roomBar = {
   free: 'boş {{value}}',
   reading: '{{label}}: {{total}} yerin {{used}} kadarı dolu',
   returnFits: 'Dönen filo her zaman sığar: dışarıdaki gemiler yerini korur.',
-  nextHangar: 'Hangar {{level}} odayı {{from}} → {{to}} yapar.',
   gunsStay: 'Toplar dünyadan ayrılmaz.',
   nextCore: 'Komuta Çekirdeği {{level}} odayı {{from}} → {{to}} yapar.',
 };
@@ -250,12 +259,12 @@ export const away = {
     orbit: 'Kur',
     signals: 'Sinyalleri aç',
     dossier: 'Dosyayı aç',
-    repair: 'onar',
+    repair: 'Onar',
   },
   sighting: '{{planet}} filosu dışarıda',
   sightingBack: 'Dönüş ~{{time}} · Teleskop gördü',
   sightingSeen: 'Teleskop gördü',
-  careLoyalty: '{{world}} sadakati %{{loyalty}}',
+  careLoyalty: 'Sadakat %{{loyalty}}',
   careFaults_one: '{{count}} arıza duruyor',
   careFaults_other: '{{count}} arıza duruyor',
 };
@@ -281,6 +290,7 @@ export const repairStation = {
     workshop: "Tamirhane",
     repair: "Onarım",
     scrap: "Parçalama",
+    order: "İş emri",
     healthy: "Tam canlı",
     ready: "Savaşabilir",
     critical: "Savaşamaz",
@@ -296,7 +306,9 @@ export const repairStation = {
     reserved: "Onarıma ayrıldı",
     move: "Tamirhaneye aktar",
     return: "Hangara geri al",
-    scrapAction: "Gemileri parçala",
+    back: "Geri al",
+    scrapSelected_one: "{{count}} gemiyi parçala",
+    scrapSelected_other: "{{count}} gemiyi parçala",
     moved: "Gemiler tamirhaneye aktarıldı.",
     returned: "Gemiler hangara geri alındı.",
     scrapped: "Gemiler parçalandı.",
@@ -306,10 +318,9 @@ export const repairStation = {
     rule: "Yaralar yalnız ücretli onarımla giderilir. Canı %5 veya altındaki gemiler savaşamaz.",
     dockRule: "Buraya aktarım ücretsizdir. Tamirhanedeki gemiler uçamaz ve savunmaya katılmaz.",
     scrapRule: "Anında yapılır ve geri alınamaz. Kalan can oranına karşılık gelen üretim kaynaklarının yarısını alırsın.",
-    scrapConfirm: "{{count}} gemi parçalansın mı?",
-    keep: "Gemileri koru",
     returnedResources: "Geri alınacak kaynaklar",
     radiation: "Radyasyonda aktarım, onarım ve parçalama kapalıdır. Tahliye için gemileri hangara geri al.",
+    radiationShort: "Radyasyon nedeniyle kapalı",
     homeHint: "Bu gezegenin tamirhanesine aktaracağın hasarlı gemileri seç.",
     selected: "{{count}} adet seçildi",
     empty: "Bu grupta gemi yok.",
@@ -318,16 +329,14 @@ export const repairStation = {
   all: "karışık gemiler",
   title: "Tamirhane",
   role: "Onaracağın veya parçalayacağın gemileri seç.",
-  tagline: "Hasarlı gemileri filoya geri kazandırır.",
   idle: "Tamirhane boş. Hangardan gemi seç.",
   waitingShips_one: "{{count}} gemi bekliyor",
   waitingShips_other: "{{count}} gemi bekliyor",
   repairingShips_one: "{{count}} onarımda",
   repairingShips_other: "{{count}} onarımda",
+  damagedShips_one: "{{count}} hasarlı gemi",
+  damagedShips_other: "{{count}} hasarlı gemi",
   queueFill: "Kuyruk {{used}}/{{total}}",
-  statWaiting: "Bekliyor",
-  statRepairing: "Onarımda",
-  statQueue: "Kuyruk",
   outOfAction: "Tamirhanedeki gemiler uçamaz ve savunmaya katılmaz. Aktarmak için bekleyen gemileri hangara geri al.",
   howItWorks: "Nasıl çalışır",
   ruleFree: "Ücretsiz tamir yoktur. Yaralar ücretli onarıma kadar kalır.",
@@ -337,28 +346,21 @@ export const repairStation = {
   youPay: "Şu an %{{pct}} ödüyorsun.",
   ruleQueue: "İşler sırayla yapılır; kuyrukta en fazla {{depth}} iş olur ve Tersane kuyruğundan bağımsızdır.",
   ruleCancel: "İptal edersen bedelin yarısı geri döner; gemiler yeniden beklemeye geçer.",
-  industrialChip: "{{industrial}} −%{{off}}",
   damagedHeading: "Hasarlı gemiler",
   selectBatch: "İlk {{max}} can grubunu seç",
   selectAll: "Tümünü seç",
-  selectNone: "Temizle",
-  choose: "{{name}} ×{{count}} onar",
-  noneWaiting: "Onarım bekleyen gemi yok.",
   damaged: "%{{pct}} hasarlı",
-  share: "yeni geminin %{{pct}} kadarı",
-  queueHeading: "Onarım kuyruğu",
   queueEmpty: "Onarımda gemi yok.",
   finishing: "Bitiyor…",
   startsIn: "{{time}} sonra başlar",
   ends: "{{time}} içinde biter",
-  selected_one: "{{count}} gemi seçili",
-  selected_other: "{{count}} gemi seçili",
   afterQueue: "Kuyruk bitince başlar · {{time}} sonra",
   repairSelected_one: "{{count}} gemiyi onar",
   repairSelected_other: "{{count}} gemiyi onar",
   pick: "Onarılacak gemileri seç",
   queueFullShort: "Kuyruk dolu · {{used}}/{{total}}",
   tooMany: "Tek işlemde en fazla {{max}} can grubu seçebilirsin.",
+  tooManyShort: "Çok fazla grup",
   starting: "Başlıyor…",
   cancel: "İptal",
   docked_one: "{{count}} tamirde",

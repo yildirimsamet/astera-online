@@ -65,7 +65,7 @@ describe('Academy ownership and progression', () => {
     expect(document.querySelector('img[src$="tutorial-hand-icon.png"]')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Home planet' }));
     expect(screen.getByTestId('academy-galaxy')).toHaveAttribute('data-panel', 'planet');
-    expect(screen.getByText(/Production menu/i)).toBeInTheDocument();
+    expect(screen.getByText(/Economy menu/i)).toBeInTheDocument();
   });
   it('points at Show the target before a launch sheet exists', () => {
     const frames: FrameRequestCallback[] = [];
@@ -220,7 +220,7 @@ describe('Academy ownership and progression', () => {
     saveAcademy(openAcademy(Date.now(), ACADEMY_STEPS.findIndex((s) => s.id === 'production')));
     const saved = localStorage.getItem('astera.academy.v1');
     const view = render(<Academy onClaim={vi.fn()} onSignIn={vi.fn()} onLeave={vi.fn()} />);
-    expect(screen.getByText(/Production menu/i)).toBeInTheDocument();
+    expect(screen.getByText(/Economy menu/i)).toBeInTheDocument();
     view.unmount();
     render(<Academy replay onClaim={vi.fn()} onSignIn={vi.fn()} onLeave={vi.fn()} />);
     expect(screen.getByText(/private training galaxy/i)).toBeInTheDocument();
@@ -276,7 +276,7 @@ describe('Academy ownership and progression', () => {
     render(<Academy onClaim={vi.fn()} onSignIn={vi.fn()} onLeave={vi.fn()} />);
     expect(screen.getByText(/private training galaxy/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Home planet' }));
-    expect(screen.getByText(/Production menu/i)).toBeInTheDocument();
+    expect(screen.getByText(/Economy menu/i)).toBeInTheDocument();
     expect(network).not.toHaveBeenCalled();
     network.mockRestore();
   });

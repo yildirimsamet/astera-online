@@ -43,9 +43,21 @@ const row = (name: string): HTMLElement => {
 /** The row body itself: its accessible name STARTS with the world's name. */
 const openRow = (name: string) =>
   within(row(name)).getByRole('button', { name: new RegExp(`^${name}`) });
-const from = () => screen.getByRole<HTMLSelectElement>('combobox', { name: /from/i });
-const to = () => screen.getByRole<HTMLSelectElement>('combobox', { name: /to/i });
+/** The two ends of the route: kit plates that drop a list of worlds (G2-j; they were selects). */
+const from = () => screen.getByRole('button', { name: /^from/i });
+const to = () => screen.getByRole('button', { name: /^to\b/i });
 const send = () => screen.getByRole('button', { name: /^transfer$/i });
+const choose = async (user: ReturnType<typeof userEvent.setup>, end: () => HTMLElement, name: string): Promise<void> => {
+  await user.click(end());
+  await user.click(screen.getByRole('option', { name: new RegExp(name) }));
+};
+/** What an end offers, read off its list and closed again. */
+const offers = async (user: ReturnType<typeof userEvent.setup>, end: () => HTMLElement): Promise<string[]> => {
+  await user.click(end());
+  const names = screen.getAllByRole('option').map((option) => option.getAttribute('data-world') ?? '');
+  await user.click(end());
+  return names;
+};
 
 /**
  * THE PANEL EXISTS BECAUSE THE DISC IS NOT A LIST. T3.
@@ -100,9 +112,9 @@ describe('the worlds panel', () => {
     render(panel());
 
     const capitalRow = row('Kestrel-12');
-    const meters = within(capitalRow).getAllByRole('meter');
-    expect(meters).toHaveLength(3);
-    expect(within(capitalRow).getByRole('meter', { name: /alloy: 9\.4k of/i }))
+    // the Base's store gauges (G2-j): each a group named by its reading
+    expect(capitalRow.querySelectorAll('.gk-store')).toHaveLength(3);
+    expect(within(capitalRow).getByRole('group', { name: /alloy: 9\.4k of/i }))
       .toBeInTheDocument();
   });
 
@@ -168,7 +180,7 @@ describe('the worlds panel', () => {
       const onSelect = vi.fn();
       render(panel({ onTransfer, onSelect }));
 
-      await user.selectOptions(to(), 'colony-1');
+      await choose(user, to, 'Haven');
       await user.click(send());
 
       expect(onTransfer).toHaveBeenCalledWith('capital-1', 'colony-1');
@@ -178,7 +190,7 @@ describe('the worlds panel', () => {
     /** The world they are standing on is the source nine times out of ten. */
     it('opens on the active world as the source', () => {
       render(panel({ activePlanetId: 'colony-2' }));
-      expect(from().value).toBe('colony-2');
+      expect(from()).toHaveTextContent('Orlo');
     });
 
     /**
@@ -191,11 +203,11 @@ describe('the worlds panel', () => {
       const user = userEvent.setup();
       render(panel());
 
-      expect([...to().options].map((option) => option.value)).toEqual(['colony-1', 'colony-2']);
+      expect(await offers(user, to)).toEqual(['colony-1', 'colony-2']);
 
-      await user.selectOptions(from(), 'colony-1');
-      expect([...to().options].map((option) => option.value)).toEqual(['capital-1', 'colony-2']);
-      expect(to().value).not.toBe('colony-1');
+      await choose(user, from, 'Haven');
+      expect(await offers(user, to)).toEqual(['capital-1', 'colony-2']);
+      expect(to()).not.toHaveTextContent('Haven');
     });
 
     it('commits whatever the two dropdowns are showing', async () => {
@@ -203,8 +215,8 @@ describe('the worlds panel', () => {
       const onTransfer = vi.fn();
       render(panel({ onTransfer }));
 
-      await user.selectOptions(from(), 'colony-1');
-      await user.selectOptions(to(), 'colony-2');
+      await choose(user, from, 'Haven');
+      await choose(user, to, 'Orlo');
       await user.click(send());
 
       expect(onTransfer).toHaveBeenCalledWith('colony-1', 'colony-2');
@@ -219,7 +231,7 @@ describe('the worlds panel', () => {
       render(panel({ worlds: [capital] }));
 
       expect(within(list()).getByText('Kestrel-12')).toBeInTheDocument();
-      expect(screen.queryByRole('combobox', { name: /from/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^from/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /^transfer$/i })).not.toBeInTheDocument();
     });
   });

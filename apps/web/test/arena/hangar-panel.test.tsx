@@ -229,7 +229,7 @@ describe('the hangar panel', () => {
     open(enter);
     await waitFor(() => { expect(screen.getByTestId('stage').dataset.ship).toBe('muhafiz'); });
     expect(calls[0]?.url).toBe('/arena/hangar');
-    const plate = el('.hp-plate');
+    const plate = el('[data-part="ship-plate"]');
     expect(plate.textContent).toContain(c.classes.muhafiz.name);
     expect(plate.textContent).toContain(c.classes.muhafiz.role);
     expect(plate.textContent).toContain(c.level(3));
@@ -292,8 +292,8 @@ describe('the hangar panel', () => {
     fireEvent.click(screen.getByRole('tab', { name: c.classes.akinci.name }));
     // F7: a class tried on is a preview, never the ship that flies: no level, no state, no way in, no desk for it.
     expect(screen.getByTestId('stage').dataset.ship).toBe('akinci');
-    expect(el('.hp-plate').textContent).toContain(c.preview);
-    expect(el('.hp-plate').textContent).not.toContain(c.level(3));
+    expect(el('[data-part="ship-plate"]').textContent).toContain(c.preview);
+    expect(el('[data-part="ship-plate"]').textContent).not.toContain(c.level(3));
     expect(document.querySelector('[data-status]')).toBeNull();
     expect(screen.queryByTestId('hangar-enter')).toBeNull();
     expect(document.querySelector('[data-part="level"]')).toBeNull();
@@ -320,7 +320,7 @@ describe('the hangar panel', () => {
     fireEvent.click(up);
     expect(calls.some(call => call.url === '/arena/upgrade')).toBe(false);
     hold(up);
-    await waitFor(() => { expect(el('.hp-plate').textContent).toContain(c.level(4)); });
+    await waitFor(() => { expect(el('[data-part="ship-plate"]').textContent).toContain(c.level(4)); });
     expect(calls.filter(call => call.url === '/arena/upgrade')).toHaveLength(1);
     expect(screen.getByTestId('stage').dataset.pulse).toBe('1');
   });
@@ -423,7 +423,7 @@ describe('the ship\'s desk', () => {
     const view = level(hangar({ crystal: 100 }));
     expect(el('[data-hp-level]')).toBeDisabled();
     expect(el('[data-hp-level]').textContent).toBe(c.capitalShort);
-    const short = [...view.querySelectorAll('.text-v2-warn')];
+    const short = [...view.querySelectorAll('.gk-cost__part[data-short]')];
     expect(short.map(node => node.textContent)).toEqual(['225']);
   });
 
@@ -457,11 +457,12 @@ describe('the ship\'s desk', () => {
 
   it('opens one tap deeper onto the rules', () => {
     const view = render(<RulesBlock c={c} />).container;
-    const toggle = view.querySelector('button[aria-expanded]');
-    expect(view.querySelector('ul')).toBeNull();
-    if (!toggle) throw new Error('no rules button');
-    fireEvent.click(toggle);
-    const rules = view.querySelector('ul')?.textContent ?? '';
+    const fold = view.querySelector('details');
+    if (!fold) throw new Error('no rules fold');
+    expect(fold.open).toBe(false);
+    fireEvent.click(fold.querySelector('summary')!);
+    expect(fold.open).toBe(true);
+    const rules = fold.querySelector('ul')?.textContent ?? '';
     // Owner 2026-10-28: repair and maintenance are 3 min for now.
     for (const fact of ['Tamir 3 dk', '3 dk bakımda', '4', '24', '500 m']) expect(rules).toContain(fact);
   });
@@ -478,8 +479,8 @@ describe('the ship\'s desk', () => {
 
   it('describes the signature with its purchased power, rather than the old level-one value', () => {
     const view = render(<ClassBlock c={c} value="kilavuz" level={3} points={{ signature: 2 }} />).container;
-    expect(view.querySelector('.hp-sig')?.textContent).toContain('144');
-    expect(view.querySelector('.hp-sig')?.textContent).not.toContain('120');
+    expect(view.querySelector('.gk-shipsig')?.textContent).toContain('144');
+    expect(view.querySelector('.gk-shipsig')?.textContent).not.toContain('120');
   });
 
   it('offers the tank in quarters and the magazine from empty, priced and named', () => {
@@ -499,7 +500,7 @@ describe('the ship\'s desk', () => {
     const tank = Math.round(shipStats('muhafiz', 3).fuelTank);
     render(<LoadoutBlock c={c} hangar={hangar({}, { fuel: tank * 0.96, plan: { fuel: 50, ammo: 100 } })} busy={false} onPlan={vi.fn()} />);
     const cells = [...document.querySelectorAll('[data-gauge="fuel"] [role="radio"]')];
-    expect(cells.map(cell => cell.classList.contains('is-aboard'))).toEqual([true, true, true, true]);
+    expect(cells.map(cell => cell.getAttribute('data-fill') === 'aboard')).toEqual([true, true, true, true]);
   });
 
   it('lists the abilities with their ranks, and the points ready', () => {

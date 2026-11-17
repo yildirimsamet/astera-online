@@ -31,6 +31,21 @@ describe('the painted icons', () => {
     for (const id of ['medal-1', 'medal-2', 'medal-3', 'trophy', 'crown', 'crown-silver', 'star']) expect(ART_ICONS).toContain(id);
   });
 
+  /** G1-b (owner 2026-11-14): the strip above the bar went; what it held got painted homes. */
+  it('paints the commander’s ring, and the bell and the chat that sit together on the galaxy', () => {
+    for (const id of ['hud-medallion', 'hud-bell', 'hud-chat']) expect(ART_ICONS).toContain(id);
+  });
+
+  /** G1-c (2026-11-14): the timers sheet opens under a painted stopwatch. */
+  it('paints the stopwatch over the board of every timer', () => {
+    expect(ART_ICONS).toContain('hud-timers');
+  });
+
+  /** G1-d2 (2026-11-14): the way home and the view at the galaxy's top right, painted as the bell and chat are. */
+  it('paints the way home and the view over the galaxy', () => {
+    for (const id of ['hud-home', 'hud-view']) expect(ART_ICONS).toContain(id);
+  });
+
   it('paints every place in the dock', () => {
     for (const tab of DOCK_TABS) expect(ART_ICONS).toContain(DOCK_ART[tab]);
   });

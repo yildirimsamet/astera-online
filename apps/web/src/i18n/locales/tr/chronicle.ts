@@ -18,7 +18,9 @@ export const chronicle = {
   launcherTradeShipEnded: 'Ticaret gemisi gitti',
   list: 'Bu galaksideki herkese açık olaylar',
   repeatCount: '{{count}} kez',
-  empty: 'Galaksi şimdilik sakin. Bir sonraki kalkış bunu değiştirebilir.',
+  /** C10: the kit empty state's title; `empty` is its body. */
+  emptyTitle: 'Galaksi şimdilik sakin',
+  empty: 'Bir sonraki kalkış bunu değiştirebilir.',
   older: 'Daha eski olayları yükle',
   loadingOlder: 'Eski olaylar okunuyor',
   bombardment: '{{planet}} bombardımana uğradı',

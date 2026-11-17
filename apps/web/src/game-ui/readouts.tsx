@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { combatClassLabel } from '../i18n/names.js';
 import { compact, factor } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
-import { playSound } from '../lib/sound.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { Glyph, type GlyphId } from './icons.js';
@@ -195,32 +195,99 @@ export interface HudResource {
   id: string;
   art: string;
   amount: string;
-  /** Production per hour, already formatted ("+2,2K"). */
+  /** Production per hour, already formatted ("+2,2K"); a pool, when given, takes its line. */
   rate?: string;
   /** How full the store is, 0…1; full turns the amount yellow. */
   store?: number;
+  /** The share of the store a raid cannot take, 0…1: a tick on the store bar. */
+  safe?: number;
+  /**
+   * What waits in the works for this store, already formatted, in the colour of what a
+   * press does: green worth collecting, yellow a gap to close (the vessel is full and has
+   * stopped, or the store has no room for it), quiet while there is little.
+   */
+  pool?: { text: string; tone: 'good' | 'warn' | 'quiet' };
+  /** A press is worth it now: the pill breathes until it is pressed. */
+  ripe?: boolean;
+  /** Not in use yet (a colony ship): the place stays and holds nothing, so the others never move. */
+  hidden?: boolean;
+  /** A new value for each collection that lands: the art flies in and the figure bumps. */
+  flight?: number;
   tone: 'alloy' | 'crystal' | 'deut';
+  /** The whole name: what it holds — and, on a press, what the press does. */
   label: string;
+  /** Makes the pill one press. */
+  onPress?: () => void;
 }
 
-/** The resource bar across the top: art overlapping a dark pill, as games draw it. */
+const FLIGHT = [0, 1, 2] as const;
+
+function HudPill({ item }: { item: HudResource }) {
+  const own = useOwnPress(() => {
+    playSound('tap');
+    haptic('tap');
+    item.onPress?.();
+  });
+  const safe = item.safe ?? 0;
+  // the figure's length, so the style can fit a long one to a narrow pill (`.gk-res__amount`)
+  const length: CssVars = { '--gk-len': item.amount.length };
+  const body = (
+    <>
+      <img className="gk-res__art" src={item.art} alt="" draggable={false} />
+      <span
+        key={item.flight}
+        className="gk-res__amount gk-display gk-num gk-outlined"
+        style={length}
+        {...(item.flight === undefined ? {} : { 'data-bump': '' })}
+      >
+        {item.amount}
+      </span>
+      {item.pool !== undefined
+        ? <span data-pool="" data-tone={item.pool.tone} className="gk-res__pool gk-num">{item.pool.text}</span>
+        : item.rate !== undefined && <span className="gk-res__rate">{item.rate}</span>}
+      {item.store !== undefined && (
+        <span className="gk-res__store" aria-hidden="true">
+          <span className="gk-res__fill" style={{ width: pct(Math.round(Math.min(1, item.store) * 1000) / 10) }} />
+          {safe > 0 && <span data-safe="" className="gk-res__safe" style={{ left: pct(Math.round(Math.min(1, safe) * 1000) / 10) }} />}
+        </span>
+      )}
+      {item.flight !== undefined && FLIGHT.map((index) => {
+        const place: CssVars = { '--i': index };
+        return <img key={`${String(item.flight)}:${String(index)}`} data-collect-particle="" className="gk-res__fly" src={item.art} alt="" aria-hidden="true" style={place} />;
+      })}
+    </>
+  );
+  const look = `gk-res${(item.store ?? 0) >= 1 ? ' gk-res--full' : ''}`;
+  const colour = { color: `var(--gk-${item.tone})` };
+  return item.onPress === undefined
+    ? <div className={look} style={colour} data-pill={item.id} aria-label={item.label} role="group">{body}</div>
+    : (
+      <button
+        type="button"
+        {...OWN_SOUND}
+        className={`${look} gk-res--press`}
+        style={colour}
+        data-pill={item.id}
+        aria-label={item.label}
+        {...(item.ripe ? { 'data-ripe': '' } : {})}
+        onPointerDown={own.onPointerDown}
+        onClick={own.onClick}
+      >
+        {body}
+      </button>
+    );
+}
+
+/**
+ * The resource bar across the top: art overlapping a dark pill, as games draw it. A pill
+ * given a press is the one press that deals with its resource; one left out keeps its place.
+ */
 export function ResourceHud({ items, end }: { items: readonly HudResource[]; end?: ReactNode }) {
   return (
     <div className="gk-hud">
-      {items.map((item) => (
-        <div
-          key={item.id}
-          className={`gk-res${(item.store ?? 0) >= 1 ? ' gk-res--full' : ''}`}
-          style={{ color: `var(--gk-${item.tone})` }}
-          aria-label={`${item.label} ${item.amount}`}
-          role="group"
-        >
-          <img className="gk-res__art" src={item.art} alt="" />
-          <span className="gk-res__amount gk-display gk-num gk-outlined">{item.amount}</span>
-          {item.rate !== undefined && <span className="gk-res__rate">{item.rate}</span>}
-          {item.store !== undefined && <span className="gk-res__store"><span style={{ width: pct(Math.min(1, item.store) * 100) }} /></span>}
-        </div>
-      ))}
+      {items.map((item) => (item.hidden
+        ? <span key={item.id} className="gk-res" data-pill={item.id} data-hidden="" aria-hidden="true" />
+        : <HudPill key={item.id} item={item} />))}
       {end}
     </div>
   );
@@ -264,40 +331,226 @@ export function StoreGauge({ resource, held, cap, safe, rate, label }: {
   );
 }
 
+type RoomPart = 'home' | 'away' | 'queued' | 'incoming';
+const ROOM_PARTS: readonly RoomPart[] = ['home', 'away', 'queued', 'incoming'];
+
+/**
+ * A WORLD'S ROOM, AND WHAT THIS ORDER TAKES OF IT (stage 4.2; D1 the build sheet, D2 the
+ * Hangar and ground). The figure reads "taken +this order / total"; the bar draws each
+ * part at its share in your colour — full at home, lighter away, hatched in the queue,
+ * striped and lit for the order being decided — and the legend names each part beside
+ * the swatch it wears. An empty part is neither drawn nor named.
+ */
+export function RoomGauge({ label, total, home, away, queued, incoming = 0, children }: {
+  label: string;
+  total: number;
+  home: number;
+  away: number;
+  queued: number;
+  /** The order on the sheet; zero where nothing is being ordered. */
+  incoming?: number;
+  /** What the section adds inside the well, under the legend (the ground's guns). */
+  children?: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const taken = home + away + queued;
+  // Scaled against whichever is bigger, so an order past the end still fits the bar.
+  const scale = Math.max(total, taken + incoming);
+  const amounts: Record<RoomPart, number> = { home, away, queued, incoming };
+  const shown = ROOM_PARTS.filter((part) => amounts[part] > 0);
+  const free = Math.max(0, total - taken - incoming);
+  return (
+    <section data-room-bar="" className="gk-room gk-well">
+      <p className="gk-room__head">
+        <span className="gk-label">{label}</span>
+        <span data-room-figure="" className="gk-room__figure gk-num">
+          {compact(taken)}
+          {incoming > 0 && <span className="gk-room__more"> +{compact(incoming)}</span>}
+          <span className="gk-room__total"> / {compact(total)}</span>
+        </span>
+      </p>
+      <span role="img" aria-label={t('roomBar.reading', { label, used: compact(taken + incoming), total: compact(total) })} className="gk-bar gk-room__bar">
+        {scale > 0 && shown.map((part) => (
+          <span key={part} data-part={part} className="gk-room__part" style={{ width: pct(Math.round((amounts[part] / scale) * 1000) / 10) }} />
+        ))}
+      </span>
+      {/* An empty room says "0 / 30" once; a "free 30" under it would say it twice (owner 2026-11-17). */}
+      {taken + incoming > 0 && <p data-room-legend="" className="gk-room__legend">
+        {shown.map((part) => (
+          <span key={part} className="gk-room__key" {...(part === 'incoming' ? { 'data-order': '' } : {})}>
+            <span aria-hidden="true" data-part={part} className="gk-room__swatch" />
+            {t(`roomBar.${part}`, { value: compact(amounts[part]) })}
+          </span>
+        ))}
+        <span className="gk-room__key">{t('roomBar.free', { value: compact(free) })}</span>
+      </p>}
+      {children}
+    </section>
+  );
+}
+
 /** A countdown ring with the time beside it. */
-export type StatusTone = 'good' | 'hostile' | 'warn' | 'info';
+export type StatusTone = 'good' | 'hostile' | 'warn' | 'info' | 'self';
 
 /**
  * AN EFFECT ON A FLEET OR A WORLD: a coin of its colour holding its mark, the size of the
  * change, and the time it has left. Green helps you, red hurts you, yellow is a risk you can
  * still dodge. The name is for a screen reader; on screen the mark carries it.
  */
-export function StatusChip({ glyph, tone, label, value, until }: { glyph: GlyphId; tone: StatusTone; label: string; value: string; until?: string }) {
-  return (
+export function StatusChip({ glyph, tone, label, value, until, drop = false, named = false, onPress }: {
+  glyph: GlyphId;
+  tone: StatusTone;
+  label: string;
+  value: string;
+  until?: string;
+  /** A press opens a list (the worlds): a small drop mark says so. */
+  drop?: boolean;
+  /** The label already names the value ("Colony · Hollow"): a reader hears it once. */
+  named?: boolean;
+  /** Makes the chip a question: a press says what the effect does (a 44 px target round the chip). */
+  onPress?: () => void;
+}) {
+  const own = useOwnPress(() => {
+    playSound('tap');
+    haptic('tap');
+    onPress?.();
+  });
+  const chip = (
     <span className="gk-status" data-tone={tone}>
       <span className="gk-status__coin"><Glyph id={glyph} /></span>
-      <span className="sr-only">{label}</span>
+      {onPress === undefined && <span className="sr-only">{label}</span>}
       <span className="gk-status__value gk-num">{value}</span>
       {until !== undefined && <span className="gk-status__until gk-num">{until}</span>}
+      {drop && <span className="gk-status__drop" aria-hidden="true"><Glyph id="down" /></span>}
+    </span>
+  );
+  if (onPress === undefined) return chip;
+  return (
+    <button
+      type="button"
+      {...OWN_SOUND}
+      className="gk-hit"
+      aria-label={named ? label : [label, value, ...(until === undefined ? [] : [until])].join(' · ')}
+      onPointerDown={own.onPointerDown}
+      onClick={own.onClick}
+    >
+      {chip}
+    </button>
+  );
+}
+
+/** Whose a timer is: yours, an enemy's, or a warning. */
+export type TimerTone = 'self' | 'hostile' | 'warn';
+
+/**
+ * A countdown ring, with the time beside it when there is one. The ring drains over the
+ * timer's whole; with no whole known (`total` 0) it draws only its track, never a guessed
+ * arc. `beat`: something is under way, so the mark beats in its owner's colour.
+ */
+export function Timer({ remaining, total, text, glyph = 'clock', tone, beat = false }: {
+  remaining: number;
+  total: number;
+  text?: string;
+  glyph?: GlyphId;
+  tone?: TimerTone;
+  beat?: boolean;
+}) {
+  const left = ringFraction(remaining, total);
+  const length = 2 * Math.PI * 14;
+  return (
+    <span className="gk-timer" {...(tone === undefined ? {} : { 'data-tone': tone })} {...(beat ? { 'data-beat': '' } : {})}>
+      <span className="gk-timer__ring" data-glyph={glyph} aria-hidden="true">
+        <svg viewBox="0 0 34 34">
+          <circle className="gk-timer__track" cx="17" cy="17" r="14" />
+          {total > 0 && <circle className="gk-timer__arc" cx="17" cy="17" r="14" strokeDasharray={length} strokeDashoffset={length * (1 - left)} />}
+        </svg>
+        <Glyph id={glyph} />
+      </span>
+      {text !== undefined && <span className="gk-timer__time gk-display gk-num gk-outlined">{text}</span>}
     </span>
   );
 }
 
-export function Timer({ remaining, total, text, glyph = 'clock' }: { remaining: number; total: number; text: string; glyph?: GlyphId }) {
-  const left = ringFraction(remaining, total);
-  const length = 2 * Math.PI * 14;
+/**
+ * THE TIMER PLATE (G1-c, 2026-11-14): the one timer that matters most, under the top bar. A
+ * cut plate in the colour of whose it is, the ring, the time large, what it is and one
+ * clause, and "+N" for the timers behind it. The whole plate is one press. `live`: an enemy
+ * is announced once, by its title — never the time, which would read the clock aloud.
+ */
+export function TimerPlate({ tone, glyph, remaining, total, time, title, detail, more = 0, live = false, label, onPress }: {
+  tone: TimerTone;
+  glyph: GlyphId;
+  remaining: number;
+  /** The whole the ring drains over; 0 when it is not known. */
+  total: number;
+  time: string;
+  title: string;
+  detail?: string;
+  /** How many timers wait behind it. */
+  more?: number;
+  live?: boolean;
+  /** What the plate is, for a screen reader ("Most urgent timer"). */
+  label: string;
+  onPress: () => void;
+}) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress(); });
   return (
-    <span className="gk-timer">
-      <span className="gk-timer__ring" aria-hidden="true">
-        <svg viewBox="0 0 34 34">
-          <circle className="gk-timer__track" cx="17" cy="17" r="14" />
-          <circle className="gk-timer__arc" cx="17" cy="17" r="14" strokeDasharray={length} strokeDashoffset={length * (1 - left)} />
-        </svg>
-        <Glyph id={glyph} />
+    <button type="button" {...OWN_SOUND} className="gk-tplate" data-tone={tone} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className={`gk-cut gk-cut--${tone} gk-tplate__plate`}>
+        <span className="sr-only">{label}</span>
+        <Timer remaining={remaining} total={total} glyph={glyph} tone={tone} beat />
+        <span className="gk-tplate__time gk-display gk-num gk-outlined">{time}</span>
+        <span className="gk-tplate__text">
+          <span className="gk-tplate__title gk-label" {...(live ? { 'aria-live': 'polite' as const } : {})}>{title}</span>
+          {detail !== undefined && <span className="gk-sub">{detail}</span>}
+        </span>
+        {more > 0 && <span className="gk-tplate__more gk-num">+{more}</span>}
       </span>
-      <span className="gk-timer__time gk-display gk-num gk-outlined">{text}</span>
-    </span>
+    </button>
   );
+}
+
+/**
+ * A ROW IN A LIST OF TIMERS: the ring and its mark, what it is and one clause, and the time
+ * with the clock time it lands at — or, for an order whose clock is not running yet, an
+ * hourglass and the word for why (owner, 2026-10-06). One press when it can take you to the
+ * timer; information otherwise.
+ */
+export function TimerRow({ tone, glyph, remaining, total, title, detail, time, at, waiting, onPress }: {
+  tone: TimerTone;
+  glyph: GlyphId;
+  remaining: number;
+  total: number;
+  title: string;
+  detail?: string;
+  time?: string;
+  /** The clock time it lands at ("at 14:32"). */
+  at?: string;
+  /** In place of a time: why no clock runs yet ("Queued"). */
+  waiting?: string;
+  onPress?: () => void;
+}) {
+  const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress?.(); });
+  const body = (
+    <>
+      <Timer remaining={remaining} total={total} glyph={glyph} tone={tone} />
+      <span className="gk-trow__text">
+        <span className="gk-trow__title">{title}</span>
+        {detail !== undefined && <span className="gk-sub">{detail}</span>}
+      </span>
+      {waiting !== undefined ? (
+        <span data-waiting="" className="gk-trow__wait"><Glyph id="timed" />{waiting}</span>
+      ) : (
+        <span className="gk-trow__end">
+          {time !== undefined && <span className="gk-trow__time gk-num">{time}</span>}
+          {at !== undefined && <span className="gk-sub gk-num">{at}</span>}
+        </span>
+      )}
+    </>
+  );
+  return onPress === undefined
+    ? <div className="gk-trow" data-tone={tone}>{body}</div>
+    : <button type="button" {...OWN_SOUND} className="gk-trow" data-tone={tone} onPointerDown={own.onPointerDown} onClick={own.onClick}>{body}</button>;
 }
 
 interface Cost { alloy: number; crystal: number; deuterium?: number }
@@ -351,19 +604,10 @@ export function QueueSlot({ art, name, count = 1, progress, left, state, label, 
   onPress: () => void;
 }) {
   const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onPress(); });
-  const length = 2 * Math.PI * 16;
-  const built = Math.min(1, Math.max(0, progress));
   const mark = SLOT_MARK[state];
   return (
-    <button type="button" className="gk-qslot" data-state={state} aria-label={label} onPointerDown={own.onPointerDown} onClick={own.onClick}>
-      <span className="gk-qslot__ring" aria-hidden="true">
-        <svg viewBox="0 0 38 38">
-          <circle className="gk-qslot__track" cx="19" cy="19" r="16" />
-          <circle className="gk-qslot__arc" cx="19" cy="19" r="16" strokeDasharray={length} strokeDashoffset={length * (1 - built)} />
-        </svg>
-        {art !== null && <img className="gk-qslot__art" src={art} alt="" draggable={false} />}
-        {count > 1 && <span className="gk-qslot__count gk-num">×{count}</span>}
-      </span>
+    <button type="button" {...OWN_SOUND} className="gk-qslot" data-state={state} aria-label={label} onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <SlotRing art={art} count={count} progress={progress} />
       <span className="gk-qslot__text">
         <span className="gk-qslot__name">{name}</span>
         <span className="gk-qslot__left gk-num">
@@ -374,6 +618,25 @@ export function QueueSlot({ art, name, count = 1, progress, left, state, label, 
     </button>
   );
 }
+
+/** The slot's ring: how far the order has built, round its picture, the batch on its corner. */
+export function SlotRing({ art, count = 1, progress }: { art: string | null; count?: number; progress: number }) {
+  const length = 2 * Math.PI * 16;
+  const built = Math.min(1, Math.max(0, progress));
+  return (
+    <span className="gk-qslot__ring" aria-hidden="true">
+      <svg viewBox="0 0 38 38">
+        <circle className="gk-qslot__track" cx="19" cy="19" r="16" />
+        <circle className="gk-qslot__arc" cx="19" cy="19" r="16" strokeDasharray={length} strokeDashoffset={length * (1 - built)} />
+      </svg>
+      {art !== null && <img className="gk-qslot__art" src={art} alt="" draggable={false} />}
+      {count > 1 && <span className="gk-qslot__count gk-num">×{count}</span>}
+    </span>
+  );
+}
+
+/** The mark beside a slot's time: why no clock runs. */
+export const slotMark = (state: SlotState): GlyphId | undefined => SLOT_MARK[state];
 
 /** An empty slot, said in words: the room left must be seen without counting. */
 export function FreeSlot({ text }: { text: string }) {

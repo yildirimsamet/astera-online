@@ -23,7 +23,7 @@ export const academy = {
   replayComplete: '¡Práctica terminada! Tu cuenta real no ha cambiado y no se le han añadido recompensas. Vuelve a tu galaxia.',
   steps: {
     welcome: 'Esta es tu galaxia privada de entrenamiento. Toca tu planeta para abrir el menú de gestión.',
-    production: 'En «Producción» desarrollas tu mundo. Abre esa pestaña y empieza por el Núcleo de Mando.',
+    production: 'En «Fábricas» desarrollas tu mundo. Abre esa pestaña y empieza por el Núcleo de Mando.',
     core: 'El Núcleo de Mando determina hasta dónde puedes mejorar tus edificios. Súbelo al nivel 2.',
     coreReward: 'Tu primera mejora te ha dado una recompensa. Recógela.',
     refinery: 'La Refinería de Aleaciones fabrica material para edificios y naves. Mejórala.',

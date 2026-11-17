@@ -16,6 +16,7 @@ export const hold = {
 export const lane = {
   /** A slot in the lane with nothing in it. */
   free: "+ 空き枠",
+  paused: "停止中",
 };
 
 /** B1: a resource meter on the top bar. */
@@ -74,6 +75,8 @@ export const now = {
   label: "次に起きること",
   /** The sheet one tap under it: every timer. */
   sheet: "タイマー",
+  /** Under the sheet's name: the order the timers are listed in (G1-c). */
+  order: '敵が先、次に近い順',
   work: "作業完了",
   research: "研究完了",
   /** An order behind the head of its lane: no clock yet (2026-10-06). */
@@ -113,6 +116,8 @@ export const topBar = {
 
 /** The View chip and sheet: layers, the events guide and the galaxy caption. */
 export const view = {
+  /** H1 (2026-11-16): the round keys under the finds on the galaxy's right. */
+  tools: "銀河ツール",
   chip: "ビュー",
   title: "ビュー",
   layers: "レイヤー",
@@ -123,6 +128,7 @@ export const view = {
   events: "銀河イベントの案内",
   /** The round button under the View chip: the disc's old Home mark. */
   home: "自分の惑星へ移動",
+  youAreHere: '現在地',
 };
 
 /** B3: the context slot, one card at a time. */
@@ -147,7 +153,7 @@ export const fleetPage = {
   hangar: "格納庫",
   pace: "{{pct}}% 速度",
   recall: "呼び戻す",
-  recallHome: "呼び戻すと{{time}}後に帰還",
+  recallHome: "{{time}}後に帰還",
   recalling: "帰還へ転針中…",
   emptyAir: "飛行中の艦隊はありません。銀河にある惑星、小惑星、海賊をタップして艦船を派遣できます。",
   focusWorld: "{{world}}を銀河で表示",
@@ -157,6 +163,7 @@ export const fleetPage = {
   noShips: "駐留する艦船はありません",
   capital: "首都",
   colony: "植民地",
+  roomFact: "格納庫が満杯だと造船所が止まります。",
   roomRule: "格納庫の枠は、この惑星の船が帰還中や建造中でも使います。満杯になると新しい船の建造と受け入れはできません。呼び戻した艦隊は必ず戻れます。",
   ground: "地上防衛",
   ceiling: "この司令中枢での上限は{{shown}}",
@@ -174,6 +181,8 @@ export const reportScene = {
   rounds_one: "{{count}}ラウンド",
   rounds_other: "{{count}}ラウンド",
   you: "あなた",
+  /** C16a: who stood on a neutral world, as the scene names a side. */
+  neutralSide: "中立守備隊",
   destroyed: "{{count}}を破壊",
   hidden: "敵に残る戦力と戦場の全体像は不明です。報告書には、あなたが撃破したものだけが載ります。",
   whyDecisive: "損失の理由",
@@ -200,8 +209,9 @@ export const reportScene = {
 /** K6: the switch at the top of the Base — this world, or the commander's research. */
 export const baseSwitch = {
   label: "ベース",
-  world: "この惑星",
+  world: "惑星",
   research: "研究",
+  ship: "艦船",
 } as const;
 
 /** E8 · K9: the research constellation. */
@@ -226,7 +236,6 @@ export const roomBar = {
   free: "空き{{value}}",
   reading: "{{label}}：{{total}}枠中{{used}}枠を使用",
   returnFits: "飛行中の船も格納枠を使い続けるため、帰還する艦隊は必ず収まります。",
-  nextHangar: "格納庫をレベル{{level}}にすると{{from}}→{{to}}枠になります。",
   gunsStay: "地上砲は惑星間を移動できません。",
   nextCore: "司令中枢をレベル{{level}}にすると{{from}}→{{to}}枠になります。",
 };
@@ -261,7 +270,7 @@ export const away = {
   sighting: "{{planet}}の艦隊が出航しました",
   sightingBack: "{{time}}ごろ帰還・望遠鏡で確認",
   sightingSeen: "望遠鏡で確認",
-  careLoyalty: "{{world}}の忠誠度{{loyalty}}%",
+  careLoyalty: "忠誠度{{loyalty}}%",
   careFaults_one: "故障が{{count}}件続いています",
   careFaults_other: "故障が{{count}}件続いています",
 };
@@ -288,6 +297,7 @@ export const repairStation = {
     workshop: "整備場",
     repair: "修理",
     scrap: "解体",
+    order: "作業指示",
     healthy: "船体は完全",
     ready: "戦闘可能",
     critical: "戦闘不可",
@@ -303,7 +313,9 @@ export const repairStation = {
     reserved: "修理用に確保済み",
     move: "整備場へ移す",
     return: "格納庫へ戻す",
-    scrapAction: "艦船を解体",
+    back: "返却",
+    scrapSelected_one: "{{count}}隻を解体",
+    scrapSelected_other: "{{count}}隻を解体",
     moved: "艦船を整備場へ移しました。",
     returned: "艦船を格納庫へ戻しました。",
     scrapped: "艦船を解体しました。",
@@ -313,10 +325,9 @@ export const repairStation = {
     rule: "損傷は有料修理まで残ります。HPが5%以下の艦船は戦闘できません。",
     dockRule: "移動は無料です。整備場の艦船は出撃も防衛もできません。",
     scrapRule: "即時かつ取り消し不可です。残りHPの割合に応じて生産資源の半分を回収します。",
-    scrapConfirm: "{{count}}隻を解体しますか？",
-    keep: "艦船を残す",
     returnedResources: "回収する資源",
     radiation: "放射線下では搬入・修理・解体ができません。退避させるには格納庫へ戻してください。",
+    radiationShort: "放射線で閉鎖中",
     homeHint: "この惑星の整備場へ移す損傷艦船を選択してください。",
     selected: "{{count}}隻を選択",
     empty: "このグループに艦船はありません。",
@@ -325,16 +336,14 @@ export const repairStation = {
   all: "複数の艦種",
   title: "修理ステーション",
   role: "修理または解体する艦船を選びます。",
-  tagline: "損傷した艦船を戦列に戻します。",
   idle: "修理工場は空です。格納庫から艦船を選んでください。",
   waitingShips_one: "{{count}}隻が修理待ち",
   waitingShips_other: "{{count}}隻が修理待ち",
   repairingShips_one: "{{count}}隻を修理中",
   repairingShips_other: "{{count}}隻を修理中",
+  damagedShips_one: "損傷艦{{count}}隻",
+  damagedShips_other: "損傷艦{{count}}隻",
   queueFill: "修理キュー{{used}}/{{total}}",
-  statWaiting: "待機中",
-  statRepairing: "修理中",
-  statQueue: "キュー",
   outOfAction: "修理工場内の艦船は飛行も防衛もできません。待機中の艦船を移動するには格納庫に戻してください。",
   howItWorks: "仕組み",
   ruleFree: "無料修理はありません。損傷は有料修理まで残ります。",
@@ -344,28 +353,21 @@ export const repairStation = {
   youPay: "今回支払うのは新造価格の{{pct}}%です。",
   ruleQueue: "修理は造船所とは別のキューで、最大{{depth}}件を順番に進めます。",
   ruleCancel: "キャンセルすると費用の半分が戻り、艦船は再び修理待ちになります。",
-  industrialChip: "{{industrial}} −{{off}}%",
   damagedHeading: "損傷した艦船",
   selectBatch: "最初の{{max}}耐久度グループを選択",
   selectAll: "すべて選択",
-  selectNone: "クリア",
-  choose: "{{name}}×{{count}}を修理",
-  noneWaiting: "修理待ちの艦船はありません。",
   damaged: "損傷{{pct}}%",
-  share: "新造価格の{{pct}}%",
-  queueHeading: "修理キュー",
   queueEmpty: "修理中のものはありません。",
   finishing: "処理を完了しています…",
   startsIn: "開始まで{{time}}",
   ends: "完了まで{{time}}",
-  selected_one: "{{count}}隻を選択中",
-  selected_other: "{{count}}隻を選択中",
   afterQueue: "キューの後で開始・あと{{time}}",
   repairSelected_one: "{{count}}隻を修理",
   repairSelected_other: "{{count}}隻を修理",
   pick: "修理する艦船を選んでください",
   queueFullShort: "キューが満杯・{{used}}/{{total}}",
   tooMany: "1回の操作で選べる耐久値グループは最大{{max}}個です。",
+  tooManyShort: "グループが多すぎます",
   starting: "開始中…",
   cancel: "キャンセル",
   docked_one: "{{count}}隻を修理中",

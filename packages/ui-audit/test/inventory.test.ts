@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { GALLERY_OUT_OF_SCOPE, KIT_SURFACES, LISTED_DIRECTORIES, OUT_OF_SCOPE, SURFACES } from '../src/inventory.js';
+import { GALLERY_OUT_OF_SCOPE, GROUPS, KIT_SURFACES, LISTED_DIRECTORIES, OUT_OF_SCOPE, SURFACES } from '../src/inventory.js';
 
 /**
  * NOTHING THE PLAYER SEES IS LEFT OFF THE LIST.
@@ -29,7 +29,12 @@ const listed = new Set([...SURFACES.flatMap((s) => s.files), ...Object.keys(OUT_
 const gallerySource = ['v2/gallery/main.tsx', 'v2/gallery/Gallery.tsx', 'v2/gallery/GallerySupport.tsx'].map((file) => readFileSync(join(WEB, file), 'utf8')).join('\n');
 const found = (pattern: RegExp) => [...gallerySource.matchAll(pattern)].map((m) => m[1] ?? '');
 /** `view === 'launch'`, and main.tsx's `params.get('view') === 'planet-card'`. */
-const exactViews = new Set(found(/(?:view|get\('view'\)) === '([a-z0-9-]+)'/g));
+/** The account pages route their own views (`PROFILE_VIEWS` in ProfileGallery.tsx, C23). */
+const profileSource = /PROFILE_VIEWS = \[([^\]]+)\]/.exec(readFileSync(join(WEB, 'v2/gallery/ProfileGallery.tsx'), 'utf8'))?.[1] ?? '';
+const exactViews = new Set([
+  ...found(/(?:view|get\('view'\)) === '([a-z0-9-]+)'/g),
+  ...[...profileSource.matchAll(/'([a-z0-9-]+)'/g)].map((m) => m[1] ?? ''),
+]);
 /** `view.startsWith('rewards')`: one branch, many views. */
 const prefixViews = [...new Set(found(/view\??\.startsWith\('([a-z0-9:-]+)'\)/g))];
 const reachedViews = new Set(SURFACES.flatMap((s) => s.reach).filter((r) => r.startsWith('gallery:')).map((r) => r.slice('gallery:'.length)));
@@ -82,6 +87,20 @@ describe('the surface inventory', () => {
     expect(KIT_SURFACES.flatMap((s) => s.reach).filter((r) => !r.startsWith('gallery:ui-kit'))).toEqual([]);
     expect(SURFACES.flatMap((s) => s.reach).filter((r) => r.startsWith('gallery:ui-kit'))).toEqual([]);
     expect(KIT_SURFACES.filter((k) => SURFACES.some((s) => s.id === k.id))).toEqual([]);
+  });
+
+  it('puts every surface in a redesign group (plan §4.B); every group but the admin panel (G14) holds one', () => {
+    const used = new Set(SURFACES.map((s) => s.group));
+    expect(GROUPS.filter((g) => g !== 'G14' && !used.has(g))).toEqual([]);
+    expect(GROUPS).toHaveLength(15);
+  });
+
+  it('names each state no way in reaches yet, in words and once (4.A, 2026-11-13: it leaves the list when its group adds the way in)', () => {
+    const bad = SURFACES.flatMap((s) => (s.unreached ?? [])
+      .filter((state, i, all) => state.trim().length < 4 || all.indexOf(state) !== i)
+      .map((state) => `${s.id}: ${state}`));
+    expect(bad).toEqual([]);
+    expect(SURFACES.filter((s) => s.unreached?.length === 0).map((s) => s.id)).toEqual([]);
   });
 
   it('gives every exclusion a reason', () => {

@@ -12,6 +12,7 @@ import {
 } from '@astera/rules';
 import { decimal } from '../lib/format.js';
 import { sumFleets } from '../lib/fleetPage.js';
+import { Glyph } from '../game-ui/index.js';
 
 /**
  * TAKTİK GERİ ÇEKİLME, FROM THE DEFENDER'S SIDE — BEFORE ANY RAID. Owner decision, 2026-09-23.
@@ -77,8 +78,9 @@ export function EscapeReadout({
   if (fleetCount(ships) + fleetCount(guests) === 0) return null;
   if (posture === 'SUPPORT' || posture === 'HOLD') {
     return (
-      <p data-testid="escape-readout" data-held="" className="px-3 py-2 text-caption leading-snug text-v2-ink-2">
-        {t(`clanSupport.defendOff.${posture}`)}
+      <p data-testid="escape-readout" data-held="" className="gk-inote">
+        <Glyph id="recall" />
+        <span>{t(`clanSupport.defendOff.${posture}`)}</span>
       </p>
     );
   }
@@ -86,10 +88,13 @@ export function EscapeReadout({
   const combatShips = escapeCombatShipCount(line) + escapeCombatShipCount(guests);
   if (fleetEscapeMinimumApplies(rulesetVersion) && combatShips < ESCAPE.minimumCombatShips) {
     return (
-      <p data-testid="escape-readout" className="px-3 py-2 text-caption leading-snug text-v2-ink-2">
-        {t('planet.defend.escapeMinimum', { count: combatShips, minimum: ESCAPE.minimumCombatShips })}
-        {withSupport && ` · ${t('clanSupport.escapeWithSupport')}`}
-        {arrivingNote}
+      <p data-testid="escape-readout" className="gk-inote">
+        <Glyph id="recall" />
+        <span>
+          {t('planet.defend.escapeMinimum', { count: combatShips, minimum: ESCAPE.minimumCombatShips })}
+          {withSupport && ` · ${t('clanSupport.escapeWithSupport')}`}
+          {arrivingNote}
+        </span>
       </p>
     );
   }
@@ -102,14 +107,18 @@ export function EscapeReadout({
   return (
     <p
       data-testid="escape-readout"
-      {...(short ? { 'data-short': '' } : {})}
-      className={`px-3 py-2 text-caption leading-snug ${short ? 'text-v2-warn' : 'text-v2-ink-2'}`}
+      {...(short ? { 'data-short': '', 'data-tone': 'warn' } : {})}
+      // The kit's note (owner 2026-11-17, the Defence tab gathered): a dry tank is yellow, never a threat's red.
+      className="gk-inote"
     >
-      {short
-        ? t('planet.defend.escapeShort', { ratio, fuel, stock })
-        : t('planet.defend.escapeReady', { ratio, fuel })}
-      {withSupport && ` · ${t(short ? 'clanSupport.escapeShortSupport' : 'clanSupport.escapeWithSupport')}`}
-      {arrivingNote}
+      <Glyph id="recall" />
+      <span>
+        {short
+          ? t('planet.defend.escapeShort', { ratio, fuel, stock })
+          : t('planet.defend.escapeReady', { ratio, fuel })}
+        {withSupport && ` · ${t(short ? 'clanSupport.escapeShortSupport' : 'clanSupport.escapeWithSupport')}`}
+        {arrivingNote}
+      </span>
     </p>
   );
 }

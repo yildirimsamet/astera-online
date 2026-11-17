@@ -29,6 +29,7 @@ const NOT_TEXT = new Map([
   ['.gk-unit__home .gk-glyph', 'the hangar glyph by the stock'],
   ['.gk-lang__tick', 'the tick by the chosen language'],
   ['.gk-status__coin', 'the glyph on a status coin'],
+  ['.gk-frow__coin', 'the damage glyph on a fault row’s coin'],
   ['.gk-store__safe .gk-glyph', 'the shield on a store\'s raid-safe box'],
 ]);
 

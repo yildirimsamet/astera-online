@@ -18,7 +18,9 @@ export const chronicle = {
   launcherTradeShipEnded: 'Nave comercial partió',
   list: 'Eventos públicos en esta galaxia',
   repeatCount: '{{count}} veces',
-  empty: 'La galaxia está en silencio por ahora. El próximo lanzamiento puede cambiar eso.',
+  /** C10: the kit empty state's title; `empty` is its body. */
+  emptyTitle: 'La galaxia está en silencio por ahora',
+  empty: 'El próximo lanzamiento puede cambiar eso.',
   older: 'Cargar eventos anteriores',
   loadingOlder: 'Leyendo eventos anteriores',
   bombardment: 'Bombardeo alcanzado {{planet}}',

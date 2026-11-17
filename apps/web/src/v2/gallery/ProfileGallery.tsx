@@ -1,0 +1,128 @@
+/**
+ * THE ACCOUNT PAGE AND ITS SHEETS (G10) for the gallery camera. Never shipped; nothing reaches a server.
+ *   ?view=profile            the account page: commander card, Legacy, vacation, security, country, galaxy, season
+ *   ?view=vacation           the vacation sheet, ready: two worlds priced, the store covers it
+ *   ?view=vacation-blocked   the same with flights away and the store short
+ *   ?view=vacation-active    on vacation: protected until, the early return
+ *   ?view=account-security       a username account adding its recovery email
+ *   ?view=account-security-code  the code step of the same, the mail sent
+ *   ?view=account-deletion       the deletion request: password, the understanding, the final hold
+ *   ?view=account-deletion-sent  the request received, its reference
+ *   ?view=password-reset         the forgotten password, from the front door
+ *   ?view=front-door             the app's own front door (Android), whatever the browser
+ *   ?view=silent-space           30 hours without an order: the waiting room, the way home
+ *   ?view=silent-space-queued    the same, the application in the queue
+ *   ?view=servers                choosing a galaxy: one open and filling, one locked behind it
+ */
+import { useState } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ApiProvider } from '../../api/context.js';
+import { keys } from '../../api/keys.js';
+import { WorldProvider } from '../../api/world.js';
+import { ProfilePage } from '../../shell/ProfilePage.js';
+import { VacationSheet } from '../../screens/VacationSheet.js';
+import { AccountSecuritySheet } from '../../screens/AccountSecuritySheet.js';
+import { AccountDeletionSheet } from '../../screens/AccountDeletionSheet.js';
+import { PasswordResetSheet } from '../../screens/PasswordResetSheet.js';
+import { CompactLandingScreen } from '../../screens/LandingScreen.js';
+import type { AccountSecurityStatus } from '../../api/schemas.js';
+import { SilentSpaceNotice } from '../../shell/SilentSpaceNotice.js';
+import { ServersScreen } from '../../screens/ServersScreen.js';
+import type { vacationSchema } from '../../api/schemas.js';
+import type { z } from 'zod';
+import { createCosmeticTrialClient } from './CosmeticTrialGallery.js';
+import { legacyGalleryApi } from './LegacyGallery.js';
+
+const HOUR = 3_600_000;
+
+const PROFILE_VIEWS = [
+  'profile', 'vacation', 'vacation-blocked', 'vacation-active',
+  'account-security', 'account-security-code', 'account-deletion', 'account-deletion-sent', 'password-reset', 'front-door',
+  'silent-space', 'silent-space-queued', 'servers',
+] as const;
+export type ProfileView = (typeof PROFILE_VIEWS)[number];
+export const isProfileView = (view: string | null): view is ProfileView => PROFILE_VIEWS.some((id) => id === view);
+
+function profileClient() {
+  const client = createCosmeticTrialClient();
+  const now = Date.now();
+  const later = { updatedAt: now + 24 * HOUR };
+  client.setQueryData(keys.season, {
+    seasonId: 'trial-season', shard: 'EU-1', shardName: 'Vantage', seed: 11, status: 'live',
+    startsAt: new Date(now - 8 * 24 * HOUR), endsAt: new Date(now + 6 * 24 * HOUR + 5 * HOUR), playerCap: 1_000, players: 212,
+    rivals: [], shieldUntil: new Date(now + 9 * HOUR + 12 * 60_000), shieldKind: 'NEWCOMER',
+  }, later);
+  client.setQueryData(keys.leaderboard, {
+    ranking: 'HONOR', honorEnabled: true, ladder: [],
+    you: { rank: 14, playerId: 'trial-commander', username: 'Kestrel Sable', country: 'TR', planetId: 'trial-home', planetName: 'Kestrel',
+      skinId: 'planet-ice', score: 12_500_000, honor: 12_500_000, dominion: 400, clan: { id: 'c1', name: 'Nova Kolektif', tag: 'NOVA', tier: 'SILVER' }, isBot: false },
+  }, later);
+  client.setQueryData(keys.servers, { placement: null, servers: [
+    { code: 'EU-1', name: 'Vantage', ordinal: 1, planets: 38, capacity: 50, online: 6, status: 'open', endsAt: null, yours: false },
+    { code: 'EU-2', name: 'Kestrel', ordinal: 2, planets: 0, capacity: 50, online: 0, status: 'locked', endsAt: null, yours: false },
+  ] }, later);
+  return client;
+}
+
+type Vacation = z.infer<typeof vacationSchema>;
+
+/** A commander with a capital and one colony: what a day costs each, what the capital holds. */
+function vacationQuote(view: ProfileView, days: number): Vacation {
+  const now = Date.now();
+  const blocked = view === 'vacation-blocked';
+  const capital = 25 * days, colony = 12.5 * days;
+  return {
+    active: view === 'vacation-active' ? { id: 'vacation-1', startedAt: new Date(now - 5 * HOUR), endsAt: new Date(now + 43 * HOUR), days: 2, cost: 75 } : null,
+    days, maxDays: 5, seasonEndsAt: new Date(now + 6 * 24 * HOUR),
+    worlds: [{ id: 'trial-home', name: 'Kestrel', kind: 'CAPITAL', coreLevel: 7 }, { id: 'trial-colony', name: 'Vega', kind: 'COLONY', coreLevel: 4 }],
+    price: { total: capital + colony, worlds: [
+      { id: 'trial-home', capital: true, coreLevel: 7, referenceLevel: 8, hours: 12 * days, rate: 2.08, cost: capital },
+      { id: 'trial-colony', capital: false, coreLevel: 4, referenceLevel: 4, hours: 6 * days, rate: 2.08, cost: colony },
+    ] },
+    store: blocked ? 14 : 180, buffer: blocked ? 6 : 40, blocker: null, fingerprint: `quote-${String(days)}`,
+    reasons: blocked ? ['VACATION_FLEET', 'VACATION_MINING', 'VACATION_FUNDS'] : view === 'vacation-active' ? ['VACATION_ACTIVE'] : [],
+  };
+}
+
+/** A username account; on the code step its bind challenge is out, the mail sent, the resend a minute away. */
+function securityStatus(view: ProfileView): AccountSecurityStatus {
+  const now = Date.now();
+  const pending = view === 'account-security-code'
+    ? { challengeId: '11111111-1111-4111-8111-111111111111', purpose: 'bind' as const, expiresAt: new Date(now + 600_000).toISOString(),
+      resendAvailableAt: new Date(now + 45_000).toISOString(), target: 'kestrel@example.com', deliveryStatus: 'sent' as const }
+    : null;
+  return { enabled: true, loginMethod: 'username', email: null, maskedEmail: null, verifiedAt: null, pending };
+}
+
+function profileApi(view: ProfileView) {
+  const api = legacyGalleryApi(true);
+  api.security = () => Promise.resolve(securityStatus(view));
+  api.accountDeletion = () => Promise.resolve({ request: view === 'account-deletion-sent'
+    ? { requestId: '5b2f0c1e-7a44-4d0e-9a51-3c8e2f6d9b10', requestedAt: new Date().toISOString(), status: 'requested' as const } : null });
+  api.vacation = (days) => Promise.resolve(vacationQuote(view, days ?? 1));
+  return api;
+}
+
+export function ProfileGallery({ view }: { view: ProfileView }) {
+  const [client] = useState(profileClient);
+  const [api] = useState(() => profileApi(view));
+  return (
+    <QueryClientProvider client={client}>
+      <ApiProvider api={api}>
+        <WorldProvider>
+          {view === 'profile' ? <ProfilePage name="Kestrel Sable" country="TR" onCountryChange={() => Promise.resolve()} onSignOut={() => undefined} onBack={() => undefined} />
+            : view === 'account-security' || view === 'account-security-code'
+              ? <AccountSecuritySheet status={securityStatus(view)} onClose={() => undefined} refresh={() => Promise.resolve()} />
+            : view === 'account-deletion' || view === 'account-deletion-sent' ? <AccountDeletionSheet onClose={() => undefined} />
+            : view === 'password-reset' ? <PasswordResetSheet onClose={() => undefined} />
+            : view === 'front-door' ? <CompactLandingScreen onAuthenticate={() => Promise.resolve()} onBegin={() => Promise.resolve()} knownCommander={() => false} />
+            : view === 'silent-space' || view === 'silent-space-queued' ? <SilentSpaceNotice open allowAutomatic={false} onClose={() => undefined} onApply={() => Promise.resolve()}
+              data={{ placement: { playerId: 'trial-commander', version: 1, role: 'WAITING' }, homeShard: 'EU-1', canApply: true,
+                application: view === 'silent-space-queued' ? { id: 'application-1', position: 4 } : null }} />
+            : view === 'servers' ? <ServersScreen displayName="Kestrel Sable" onChoose={() => undefined} onSignOut={() => undefined} />
+            : <VacationSheet onClose={() => undefined} />}
+        </WorldProvider>
+      </ApiProvider>
+    </QueryClientProvider>
+  );
+}

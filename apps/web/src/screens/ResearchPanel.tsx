@@ -11,7 +11,11 @@ import {
 import { useCompleteResearch, usePlanet } from '../api/queries.js';
 import { RESEARCH_GROUPS, hullDoor } from '../lib/constellation.js';
 import { ResearchConstellation, type StarState } from '../v2/hud/ResearchConstellation.js';
-import { QueueLane } from '../v2/kit/QueueLane.js';
+import { Lane } from '../v2/shell/BaseQueues.js';
+import { CostLine, GameButton, Glyph } from '../game-ui/index.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
+import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import type { BuildOrderView, PlanetView } from '../api/schemas.js';
 import { percent } from '../lib/format.js';
 import { researchQueueOrders } from '../lib/orders.js';
@@ -23,12 +27,12 @@ import { AtmosphereImage } from '../ui/AtmosphereArt.js';
 import { HULL_ART } from '../ui/assets.js';
 import { hullLabel } from '../i18n/names.js';
 import { researchGain, type Gain } from '../lib/gains.js';
-import { ActionButton, Price, TimeCost } from '../ui/Action.js';
-import type { Blocked } from '../ui/UpgradeRow.js';
+import { CardTime, type Blocked } from '../ui/UpgradeRow.js';
 import { Rungs } from '../ui/Rungs.js';
 import { orderMinutes } from '../lib/orderTime.js';
 import { describe, useToast } from '../ui/Toast.js';
-import { Sheet, Unreachable, Waiting } from '../ui/kit/index.js';
+import { Unreachable, Waiting } from '../ui/kit/index.js';
+import { Sheet as KitSheet } from '../v2/kit/Sheet.js';
 
 /**
  * EVERY RESEARCH PROJECT, ON ONE SURFACE THAT IS NOT A WORLD. T12.
@@ -489,14 +493,13 @@ export function ResearchPanel({ onNeed, focus }: {
   });
 
   return (
-    <div className="flex flex-col gap-3 font-v2-ui">
-      <p className="text-caption leading-snug text-v2-ink-2">{aboard ? t('starter.lab.premise') : t('research.premise')}</p>
+    <div className="gk gk-research">
+      <p className="gk-sub">{aboard ? t('starter.lab.premise') : t('research.premise')}</p>
 
       <ResearchConstellation
         stars={stars}
         selected={chosen}
         onSelect={setPicked}
-        compact={aboard}
       />
       {chosenSpec && (
         <ConstellationCard
@@ -525,32 +528,40 @@ export function ResearchPanel({ onNeed, focus }: {
         the commander holds, drawn as the Base draws its own (B12); research cannot be
         cancelled, so a cell selects its project on the map instead of opening a sheet.
       */}
-      <section aria-label={t('research.queueTitle')} className="flex flex-col gap-1.5">
-        <QueueLane label={aboard ? t('starter.lab.queue') : t('research.queueLane')} orders={queueOrders} now={now} onOpen={pickOrder} slots={aboard ? STARTER.queues.research : BUILD.queueDepth} />
+      <section aria-label={t('research.queueTitle')} className="gk gk-rlane">
+        <Lane label={aboard ? t('starter.lab.queue') : t('research.queueLane')} orders={queueOrders} now={now} onOpen={pickOrder} slots={aboard ? STARTER.queues.research : BUILD.queueDepth} />
         {running?.finishesAt ? (
-          <p data-research-running className="text-micro leading-snug text-v2-ink-2">
-            <span className="text-v2-self">{t('research.runningLabel')}</span>
-            {' · '}
-            <span className="text-v2-ink">{copy(running.projectId).name}</span>
-            {' · '}
-            <span data-research-finishes className="font-v2-mono">
-              {'pausedAt' in running && running.pausedAt ? t('vacation.paused') : t('research.runningFinishes', { time: clockTime(running.finishesAt) })}
-            </span>
-          </p>
+          'pausedAt' in running && running.pausedAt ? (
+            // a vacation stops the clock: the line says so, and never that it runs
+            <p data-research-running className="gk-sub">
+              <span className="gk-rlane__what">{copy(running.projectId).name}</span>
+              {' · '}
+              <span data-research-finishes data-tone="warn" className="gk-rlane__paused">{t('vacation.paused')}</span>
+            </p>
+          ) : (
+            <p data-research-running className="gk-sub">
+              <span className="gk-rlane__on">{t('research.runningLabel')}</span>
+              {' · '}
+              <span className="gk-rlane__what">{copy(running.projectId).name}</span>
+              {' · '}
+              <span data-research-finishes className="gk-num">{t('research.runningFinishes', { time: clockTime(running.finishesAt) })}</span>
+            </p>
+          )
         ) : (
-          <p data-research-idle className="text-micro leading-snug text-v2-ink-2">
-            <span className="text-v2-ink">{t('research.idleLabel')}</span>
+          <p data-research-idle className="gk-sub">
+            <span className="gk-rlane__what">{t('research.idleLabel')}</span>
             {' · '}
             {aboard ? t('starter.lab.idleHint') : t('research.idleHint')}
           </p>
         )}
-        <p className="text-micro leading-snug text-v2-ink-3">{aboard ? t('starter.lab.queueHint') : t('research.queueGlobalHint')}</p>
+        <p className="gk-sub gk-rlane__rule">{aboard ? t('starter.lab.queueHint') : t('research.queueGlobalHint')}</p>
       </section>
 
       {sheet && (
         <ProjectSheet
           spec={sheet}
           held={held}
+          takes={orderMinutes('RESEARCH', sheet.cost, planet, 1, { research: sheet.id, level: sheet.level + 1 })}
           pending={research.isPending}
           onAct={() => {
             buy(sheet.id, sheet.name);
@@ -568,7 +579,7 @@ export function ResearchPanel({ onNeed, focus }: {
  * it does, what the next rung buys and where the ladder ends, the prerequisite it
  * stands on, the ships its next door opens, its price and time — and the press.
  *
- * A REFUSAL IS SAID ONCE, WHERE THE PRESS WOULD BE. The sheet's `ActionButton` does
+ * A REFUSAL IS SAID ONCE, WHERE THE PRESS WOULD BE. The sheet behind it does
  * the same: a door with a fix is a button that takes it (yellow, a gap you can close
  * — K2), one without is the sentence in the button's place. The research press only
  * appears when there is nothing in front of it.
@@ -601,6 +612,7 @@ function ConstellationCard({
   const { t } = useTranslation();
   const short = spec.cost.alloy > held.alloy || spec.cost.crystal > held.crystal || spec.cost.deuterium > held.deuterium;
   const door = spec.completed === undefined && spec.queued === undefined ? spec.blocked : undefined;
+  const fix = useOwnPress(() => { playSound('tap'); haptic('tap'); door?.onFix?.(); });
   const state = spec.completed
     ? 'complete'
     : spec.queued
@@ -611,104 +623,96 @@ function ConstellationCard({
           ? 'available-unowned'
           : 'owned';
   const shown = opens?.hulls.slice(0, 4) ?? [];
+  const settled = spec.completed ?? spec.queued;
   return (
     <section
       ref={cardRef}
       data-constellation-card={spec.id}
       data-progression-state={state}
-      className="scene-panel research-selection-scene flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel p-3"
+      className="gk gk-rcard"
     >
       {art && <AtmosphereImage art={{ src: art, position: '60% 46%' }} />}
-      <div className="flex items-start gap-3">
-        <div className="grid min-w-0 flex-1 gap-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <h3 className="v2-name min-w-0 text-caption">{spec.name}</h3>
-            {spec.maxLevel > 1 && <Rungs level={spec.level} max={spec.maxLevel} next={!spec.completed} />}
-          </div>
-          <p className="text-micro leading-snug text-v2-ink-2">{spec.role}</p>
-          <p className="font-v2-mono text-micro text-v2-ink-2">
-            <span className="font-v2-ui text-v2-ink-3">{spec.gain.label} </span>
-            {spec.gain.maxed ? spec.gain.now : (
-              <>
-                {spec.gain.now} <span className="text-v2-ink-3">→</span> <span className="text-v2-self">{spec.gain.next}</span>
-              </>
-            )}
-            {spec.gain.ceiling !== undefined && spec.gain.maxed !== true && (
-              <span className="text-v2-ink-3"> · {spec.id === 'RADIATION_SHIELDING'
-                ? t('research.shieldingCeiling', { rate: spec.gain.ceiling, level: spec.maxLevel })
-                : t('upgradeRow.ceiling', { value: spec.gain.ceiling })}</span>
-            )}
-          </p>
-          {prerequisite !== null && spec.completed === undefined && (
-            <p data-prerequisite className="text-micro text-v2-ink-3">
-              {t('researchMap.needs', { name: prerequisite })} <span className="text-v2-self">✓</span>
-            </p>
-          )}
-        </div>
+      <div className="gk-rcard__head">
+        <h3 className="gk-rcard__name">{spec.name}</h3>
+        {spec.maxLevel > 1 && <Rungs look="kit" level={spec.level} max={spec.maxLevel} next={!spec.completed} />}
       </div>
+      <p className="gk-rcard__role">{spec.role}</p>
+      <p className="gk-rcard__gain">
+        <span className="gk-rcard__gain-label">{spec.gain.label} </span>
+        <span className="gk-num">{spec.gain.now}</span>
+        {!spec.gain.maxed && (
+          <>
+            <span className="gk-rcard__becomes" aria-label={t('upgradeRow.becomes')}>→</span>
+            <span className="gk-num gk-rcard__next">{spec.gain.next}</span>
+          </>
+        )}
+        {spec.gain.ceiling !== undefined && spec.gain.maxed !== true && (
+          // the ceiling copy reads on from the figures ("10% of 25%"); only shielding's is its own clause
+          <span className="gk-rcard__ceiling"> {spec.id === 'RADIATION_SHIELDING'
+            ? `· ${t('research.shieldingCeiling', { rate: spec.gain.ceiling, level: spec.maxLevel })}`
+            : t('upgradeRow.ceiling', { value: spec.gain.ceiling })}</span>
+        )}
+      </p>
+      {prerequisite !== null && spec.completed === undefined && (
+        <p data-prerequisite className="gk-rcard__need">
+          <span className="gk-need-chip" data-met=""><Glyph id="check" />{t('researchMap.needs', { name: prerequisite })}</span>
+        </p>
+      )}
       {opens && (
-        <div data-opens className="flex flex-wrap items-center gap-1.5">
-          <span className="text-micro text-v2-ink-3">
+        <div data-opens className="gk-rcard__opens">
+          <span className="gk-rcard__opens-label">
             {opens.permission ? t('researchMap.opens') : t('researchMap.opensAt', { level: opens.level })}
           </span>
           {shown.map((hull) => {
             const picture = HULL_ART[hull];
             return (
-              <span
-                key={hull}
-                data-hull={hull}
-                className="flex items-center gap-1 rounded-chip border border-v2-line bg-v2-raise/60 py-0.5 pr-1.5 pl-0.5 text-micro text-v2-ink"
-              >
-                {picture && <img src={picture} alt="" aria-hidden className="size-4 object-contain" />}
+              <span key={hull} data-hull={hull} className="gk-rcard__hull">
+                {picture && <img src={picture} alt="" aria-hidden />}
                 {hullLabel(hull)}
               </span>
             );
           })}
           {opens.hulls.length > shown.length && (
-            <span className="font-v2-mono text-micro text-v2-ink-3">+{opens.hulls.length - shown.length}</span>
+            <span className="gk-num gk-rcard__more">+{opens.hulls.length - shown.length}</span>
           )}
         </div>
       )}
-      <div data-research-footer className="mt-auto grid gap-2 pt-3">
-        {!spec.completed && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <Price cost={spec.cost} held={held} layout="row" />
-            {takes === undefined ? null : <TimeCost minutes={takes} />}
+      <div data-research-footer className="gk-rcard__foot">
+        {settled === undefined && !door && (
+          <div className="gk-rcard__price">
+            <CostLine cost={spec.cost} held={held} time={takes === undefined ? undefined : <CardTime minutes={takes} />} />
           </div>
         )}
-        <div className="grid grid-cols-[auto_1fr] gap-2">
-          <button
-            type="button"
-            data-open-item
-            onClick={onOpen}
-            className="min-h-10 rounded-control border border-v2-line-hi bg-v2-raise/60 px-3 text-caption font-semibold text-v2-ink"
-          >
-            {t('research.details')}
+        {door && (door.onFix ? (
+          <button type="button" {...OWN_SOUND} className="gk-rcard__door" onPointerDown={fix.onPointerDown} onClick={fix.onClick}>
+            <Glyph id="lock" />
+            <span data-blocked-reason>{door.reason}</span>
+            <Glyph id="next" />
           </button>
-          {door ? (
-            door.onFix ? (
-              <button
-                type="button"
-                onClick={door.onFix}
-                className="min-h-10 rounded-control border border-v2-warn/50 px-3 py-1.5 text-left text-caption leading-snug font-semibold text-v2-warn"
-              >
-                <span data-blocked-reason>{door.reason}</span> →
-              </button>
-            ) : (
-              <p className="flex min-h-10 items-center rounded-control border border-v2-line px-3 py-1.5 text-caption leading-snug text-v2-ink-2">
-                <span data-blocked-reason>{door.reason}</span>
-              </p>
-            )
-          ) : (
-            <button
-              type="button"
-              data-primary
-              disabled={spec.completed !== undefined || spec.queued !== undefined || short || pending}
-              onClick={onAct}
-              className="min-h-10 rounded-control bg-v2-self px-3 text-caption font-semibold text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-3"
+        ) : (
+          <p className="gk-rcard__door" data-still="">
+            <Glyph id="lock" />
+            <span data-blocked-reason>{door.reason}</span>
+          </p>
+        ))}
+        <div className="gk-rcard__acts">
+          <GameButton tone="steel" onPress={onOpen}>{t('research.details')}</GameButton>
+          {settled !== undefined ? (
+            <p role="status" className="gk-rcard__settled" data-tone={spec.completed ? 'good' : 'self'}>
+              <Glyph id={spec.completed ? 'check' : 'timed'} />
+              {settled}
+            </p>
+          ) : !door && (
+            <GameButton
+              tone="action"
+              heavy
+              wide
+              onPress={onAct}
+              pending={pending}
+              disabledReason={short ? t('research.cannotAfford') : null}
             >
-              {spec.completed ?? spec.queued ?? (short ? t('research.cannotAfford') : t('research.act'))}
-            </button>
+              {t('research.act')}
+            </GameButton>
           )}
         </div>
       </div>
@@ -717,147 +721,152 @@ function ConstellationCard({
 }
 
 /**
- * THE FULL PICTURE BEHIND ONE CARD. Moved here from `PlanetScreen` with the rest
- * of research: the card is the decision, the sheet behind "Details" the whole of
- * it — the long explanation, the ceiling, the rung being paid for.
+ * THE FULL PICTURE BEHIND ONE CARD (G2-i2, on the kit). The card is the decision; the sheet
+ * behind "Details" is the whole of it: the project's scene with the rung held on it, what the
+ * next rung buys and where the ladder ends, how it works, the price of exactly that rung — and
+ * the card's own press, door or state where the press would be.
+ *
+ * GREY MEANS "YOU DO NOT HAVE THIS", on `level === 0`, the rule every buyable in the game uses
+ * (`ItemSheet`): a doctrine with three of five rungs bought is in colour. Research art is not
+ * tiered, so the index on the scene is the only thing that says WHICH rung is held.
  */
 function ProjectSheet({
   spec,
   held,
+  takes,
   pending,
   onAct,
   onClose,
 }: {
   spec: SheetSpec;
   held: { alloy: number; crystal: number; deuterium: number };
+  takes: number | undefined;
   pending: boolean;
   onAct: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const [explained, setExplained] = useState(false);
+  const short = spec.cost.alloy > held.alloy || spec.cost.crystal > held.crystal || spec.cost.deuterium > held.deuterium;
+  const settled = spec.completed ?? spec.queued;
+  const door = settled === undefined ? spec.blocked : undefined;
+  const fix = door?.onFix;
   return (
     <div data-item-sheet>
-      <Sheet
+      <KitSheet
+        detents={['fit']}
+        kit={{ tone: 'self', meta: <span className="gk-sub">{spec.tag}</span> }}
         eyebrow={spec.completed ? t('research.sheetComplete') : t('research.sheetEyebrow')}
         title={spec.name}
         onClose={onClose}
         footer={(
-          <span data-act className="block">
-            <ActionButton
-              verb="install"
-              cost={spec.cost}
-              held={held}
-              full
-              label={t('research.act')}
-              pending={pending}
-              {...(spec.completed ? { completed: spec.completed } : {})}
-              {...(spec.queued ? { completed: spec.queued } : {})}
-              {...(spec.blocked
-                ? {
-                    blocked: {
-                      reason: spec.blocked.reason,
-                      ...(spec.blocked.onFix
-                        ? {
-                            onFix: () => {
-                              spec.blocked?.onFix?.();
-                              onClose();
-                            },
-                          }
-                        : {}),
-                    },
-                  }
-                : {})}
-              onAct={onAct}
-            />
-          </span>
+          <div className="grid gap-2">
+            {settled === undefined && (
+              <div className="gk-rsheet__price">
+                <CostLine cost={spec.cost} held={held} time={takes === undefined ? undefined : <CardTime minutes={takes} />} />
+                <span className="gk-sub">
+                  {/* A ladder says which rung is being bought; a permission has none. */}
+                  {spec.maxLevel > 1
+                    ? t('research.sheetRung', { level: Math.min(spec.maxLevel, spec.level + 1), max: spec.maxLevel })
+                    : t('research.sheetOnce')}
+                </span>
+              </div>
+            )}
+            <span data-act className="block">
+              {settled !== undefined ? (
+                <p role="status" className="gk-inote gk-inote--plate" {...(spec.completed ? {} : { 'data-tone': 'self' })}>
+                  <Glyph id={spec.completed ? 'check' : 'timed'} />
+                  <span>{settled}</span>
+                </p>
+              ) : door ? (
+                fix ? (
+                  // A REQUIREMENT IS A DOOR, NOT AN ALARM (I1): it goes where the fix is.
+                  <GameButton wide glyph="lock" className="gk-btn--door" onPress={() => { fix(); onClose(); }}>
+                    {door.reason} →
+                  </GameButton>
+                ) : (
+                  <p className="gk-inote gk-inote--plate">
+                    <Glyph id="lock" />
+                    <span>{door.reason}</span>
+                  </p>
+                )
+              ) : (
+                <GameButton
+                  tone="action"
+                  size="lg"
+                  wide
+                  heavy
+                  glyph="up"
+                  pending={pending}
+                  disabledReason={short ? t('research.cannotAfford') : null}
+                  onPress={onAct}
+                >
+                  {t('research.act')}
+                </GameButton>
+              )}
+            </span>
+          </div>
         )}
       >
-        {/*
-          GREY MEANS "YOU DO NOT HAVE THIS", AND IT USED TO MEAN "NOT FINISHED YET".
-          
-          The condition here was `completed`, which is only set at the TOP of a
-          ladder — so a Wasp Doctrine with three of its five rungs bought and paid
-          for was drawn as though the player owned none of it. It also disagreed
-          with the row the player had just tapped: `UpgradeRow` greys on `unowned`,
-          which is `level === 0`, so the same project was in colour in the list and
-          grey in the sheet one tap later.
-
-          `level === 0` is the rule every other buyable in the game already uses
-          (`ItemSheet`), down to the opacity. One idea, one threshold, one number.
-
-          THE LEVEL IS DRAWN AS WELL, for the same reason the planet sheet draws it:
-          research art is not tiered, so the index is the only thing that can say
-          WHICH rung is held. Without it a doctrine at 1 and at 4 are the same
-          picture with no way to tell them apart.
-        */}
-        <div data-research-portrait className="item-portrait flex h-48 items-center justify-center overflow-hidden">
-          <span aria-hidden className="item-portrait-orbit" />
-          {spec.maxLevel > 1 && (
-            <span aria-hidden className="item-portrait-index num">
-              {String(Math.max(0, spec.level)).padStart(2, '0')}
-            </span>
-          )}
-          <img
-            src={RESEARCH_SCENES[spec.id].src}
-            alt={spec.name}
-            className={`relative z-[1] h-full w-full object-cover ${spec.level === 0 ? 'opacity-45 grayscale' : ''}`}
-            decoding="async"
-          />
-        </div>
-        <p className="legend mt-2 text-crystal/85">{spec.tag}</p>
-        <p className="mt-2 text-body leading-relaxed text-dim">{spec.role}</p>
-        <p data-item-detail className="mt-2 text-caption leading-relaxed text-faint">
-          {spec.detail}
-        </p>
-        {/*
-          THE FIGURE SITS ABOVE THE PRICE, because that is the comparison being
-          made. A sheet that shows a cost and no effect is asking for a decision
-          with one of its two numbers missing.
-        */}
-        <div
-          data-research-gain
-          className="mt-6 flex items-baseline justify-between gap-2 border-t border-line-soft pt-3"
-        >
-          <span className="legend text-faint">{spec.gain.label}</span>
-          <span className="num text-body">
-            {spec.gain.maxed
-              ? spec.gain.now
-              : `${spec.gain.now} → ${spec.gain.next}`}
-            {spec.gain.ceiling !== undefined && spec.gain.maxed !== true && (
-              <span className="ml-2 text-faint">
-                {spec.id === 'RADIATION_SHIELDING'
-                  ? t('research.shieldingCeiling', { rate: spec.gain.ceiling, level: spec.maxLevel })
-                  : t('upgradeRow.ceiling', { value: spec.gain.ceiling })}
-              </span>
-            )}
-          </span>
-        </div>
-        {spec.gain.unlocks !== undefined && (
-          <p className="mt-2 text-caption leading-snug text-crystal/80">{spec.gain.unlocks}</p>
-        )}
-        <div className="mt-2 grid grid-cols-[1fr_auto] items-center gap-4 border-y border-line-soft py-3">
-          <div>
-            <p className="legend">{t('research.sheetCost')}</p>
-            <p className="mt-1 text-label text-faint">
-              {/* A ladder says which rung is being bought; a permission has none. */}
-              {spec.maxLevel > 1
-                ? t('research.sheetRung', {
-                    level: Math.min(spec.maxLevel, spec.level + 1),
-                    max: spec.maxLevel,
-                  })
-                : t('research.sheetOnce')}
-            </p>
+        <div className="grid gap-3">
+          <section data-research-portrait className="gk-cut gk-cut--self gk-ihero gk-rhero">
+            <div className="gk-rhero__scene">
+              <img
+                src={RESEARCH_SCENES[spec.id].src}
+                alt={spec.name}
+                className={spec.level === 0 ? 'opacity-45 grayscale' : ''}
+                decoding="async"
+              />
+              {spec.maxLevel > 1 && (
+                <span aria-hidden className="gk-rhero__index gk-display gk-num">{String(Math.max(0, spec.level)).padStart(2, '0')}</span>
+              )}
+            </div>
+            <div data-research-gain className="gk-rhero__gain">
+              <div className="gk-rhero__label">
+                <p className="gk-label">{spec.gain.label}</p>
+                {spec.maxLevel > 1 && <Rungs look="kit" level={spec.level} max={spec.maxLevel} next={!spec.completed} />}
+              </div>
+              <p className="gk-ihero__value gk-display gk-num gk-outlined">
+                {spec.gain.maxed ? spec.gain.now : (
+                  <>
+                    <span className="inline-block">{spec.gain.now}</span>{' '}
+                    <span className="inline-block"><span className="gk-ihero__arrow">→</span>{' '}<span className="gk-ihero__next">{spec.gain.next}</span></span>
+                    {/* the ceiling reads on from the figures ("10% of 25%"), quieter */}
+                    {spec.gain.ceiling !== undefined && spec.id !== 'RADIATION_SHIELDING' && (
+                      <span className="gk-rhero__ceiling"> {t('upgradeRow.ceiling', { value: spec.gain.ceiling })}</span>
+                    )}
+                  </>
+                )}
+              </p>
+              {spec.gain.ceiling !== undefined && spec.gain.maxed !== true && spec.id === 'RADIATION_SHIELDING' && (
+                <p className="gk-ihero__line">{t('research.shieldingCeiling', { rate: spec.gain.ceiling, level: spec.maxLevel })}</p>
+              )}
+              {spec.gain.unlocks !== undefined && <p className="gk-ihero__line">{spec.gain.unlocks}</p>}
+            </div>
+          </section>
+          {/* E6: what it does is the line; how it works is one tap deeper, as on the building and ship sheets. */}
+          <div className="grid gap-1.5">
+            <div className="gk-iabout">
+              <p className="gk-iabout__role">{spec.role}</p>
+              <button
+                type="button"
+                aria-expanded={explained}
+                onClick={() => {
+                  playSound('tap');
+                  setExplained((open) => !open);
+                }}
+                className="gk-hit gk-iabout__how"
+              >
+                <span className="gk-chip">
+                  <Glyph id="help" />
+                  {t('itemSheet.howItWorks')}
+                </span>
+              </button>
+            </div>
+            {explained && <p data-item-detail className="gk-well gk-iabout__detail">{spec.detail}</p>}
           </div>
-          <Price cost={spec.cost} held={held} />
         </div>
-        {(spec.blocked ?? spec.queued) && (
-          <p className={`mt-2 border px-3 py-2 text-caption leading-snug ${spec.blocked ? 'border-threat/30 bg-threat/10 text-threat' : 'border-crystal/30 bg-crystal/10 text-crystal'}`}>
-            {spec.blocked
-              ? t('itemSheet.lockedNote', { reason: spec.blocked.reason })
-              : spec.queued}
-          </p>
-        )}
-      </Sheet>
+      </KitSheet>
     </div>
   );
 }

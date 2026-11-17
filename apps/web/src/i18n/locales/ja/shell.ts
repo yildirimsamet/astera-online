@@ -31,12 +31,16 @@ export const statusBar = {
   menuWaiting: "受取可能な報酬{{count}}件",
   clanWaiting: "クランの新着{{count}}件",
   newcomerShield: {
+    name: "新人シールド",
     hint: "あと{{duration}}は襲撃されません",
   },
   recoveryShield: {
+    name: "回復シールド",
     hint: "回復シールド · あと{{duration}}は襲撃されません",
   },
   recoveryBoost: {
+    name: "回復生産",
+    value: "+50%",
     mark: "生産量+50%",
     note: "シールド時出力 +50%",
   },
@@ -49,7 +53,8 @@ export const statusBar = {
     label: "生産施設",
     labelFull: "生産施設が満杯",
     collect: "回収",
-    firstTip: "生産した資源は生産プールに貯まります。使う前に貯蔵庫へ回収してください。",
+    inPool: "生産プールに{{amount}}",
+    firstTip: "資源をタップして回収",
     fullStopped: "満杯 · 生産停止",
     fillsIn: "満杯まで{{time}}",
     gathers: "回収するまで生産した資源がここに貯まります",
@@ -147,8 +152,11 @@ export const signals = {
   openEvent: "関連レポートを開く",
   /** The eyebrow on a galaxy-wide row, so it is never mistaken for personal news. */
   worldEvent: "銀河の出来事",
-  empty:
-    "通知はまだありません。接近する艦隊の警告、検出した偵察機、帰還した艦船をここに表示します。",
+  emptyTitle: "静かです",
+  emptyBody:
+    "接近する艦隊の警告、検出した偵察機、帰還した艦船をここに表示します。",
+  /** The round press at a row's end that flies to whoever the news names (G1-e). */
+  showOnMap: "マップで表示: {{name}}",
   repeat: "×{{count}}",
 
   /** The states that are true right now, rather than things that happened. */
@@ -221,9 +229,6 @@ export const menu = {
     settingsHint: "音声・画質・言語",
     account: "司令官プロフィール",
     back: "メニューに戻る",
-    resume: "ゲームに戻る",
-    shopHint: "外観を選ぶ",
-    inventoryHint: "コレクションを装備",
     rewardsReady_one: "報酬{{count}}件を受取可能",
     rewardsReady_other: "報酬{{count}}件を受取可能",
   },
@@ -248,6 +253,8 @@ export const menu = {
   helpHeading: "ヘルプ",
   deviceHeading: "このデバイス",
   marksHeading: "あなたのマーク",
+  /** The menu's last group: the Academy, the community, support, settings (G1-f2). */
+  gameHeading: "ゲーム",
   intelLabel: "情報",
   intelHint: "望遠鏡、探査機、レーダー、戦闘レポート",
   rewardsLabel: "報酬",
@@ -409,6 +416,8 @@ export const leaderboard = {
   honorPackageOnce: "両方のランキングで資源報酬を得た場合、次のシーズンに価値が高い方を一度だけ受け取ります。",
   honorNext: "{{commander}}と同点になるまであと{{amount}} Honor。",
   honorYourRank: "自分の順位",
+  view: { label: 'ランキングの表示', standings: '順位', rewards: '報酬', rules: 'ルール' },
+  ruleTitle: { combat: 'Honorの獲得', bands: '艦隊の戦力差', defense: '防衛', repeat: '再戦といじめ', prize: '報酬の分配', package: '報酬は1つ' },
   eyebrow: "ローカル銀河",
   title: "リーダーボード",
   empty: "この銀河にはまだ指揮官が参加していません。",
@@ -572,13 +581,14 @@ export const chat = {
   launcherBothUnread: "オープンチャット — 一般では {{general}} 未読、クランでは {{clan}}",
   channelsLabel: "チャット チャネル",
   languageLabel: "チャット言語",
+  languageChip: "チャット言語：{{language}}",
   general: "一般",
   clan: "クラン",
   dm: {
     title: "DM", loading: "ダイレクトメッセージを開く", conversations: "ダイレクト メッセージでの会話",
     start: "DMを開始", closeTab: "{{name}} タブを閉じる", searchLabel: "指揮官を探せ",
     searchPlaceholder: "司令官の検索", cancel: "キャンセル", contacts: "司令官",
-    noContacts: "利用可能な指揮官の一致がありません。", empty: "プライベート会話を開始するには指揮官を選択してください。",
+    noContacts: "利用可能な指揮官の一致がありません。", emptyTitle: "まだ個人メッセージはありません", empty: "プライベート会話を開始するには指揮官を選択してください。",
     emptyConversation: "{{name}} に挨拶します。", list: "{{name}} のメッセージ",
     placeholder: "メッセージ {{name}}", waitingHint: "この指揮官はサイレントスペースにいます。彼らがこの銀河に戻ってきたら、また書くことができます。",
     seasonEndedHint: "今シーズンは終了しました。ダイレクトメッセージは次のシーズンに新しくオープンします。",
@@ -589,7 +599,8 @@ export const chat = {
   clanLocked: "クランチャットはクルー専用です。",
   clanLockedHint: "クランに参加するかクランを見つけると、このチャンネルがすぐに開きます。",
   list: "ギャラクシーメッセージ",
-  empty: "まだ誰も発言していません。銀河系で最初の声を上げましょう。",
+  emptyTitle: "まだ誰も発言していません",
+  emptyBody: "銀河系で最初の声を上げましょう。",
   older: "古いメッセージをロードします",
   loadingOlder: "古いメッセージをロードしています",
   placeholder: "銀河にメッセージを",
@@ -599,6 +610,7 @@ export const chat = {
     title: "ミュートしたプレイヤー",
     hint: "この端末で全体チャットとクランチャットのメッセージを非表示にします。",
     empty: "ミュートしたプレイヤーはいません。",
+    emptyHint: "ミュートするには、その人のメッセージを長押しします。",
     mute: "{{name}}をミュート",
     unmute: "{{name}}のミュートを解除",
     unmuteShort: "解除",
@@ -659,6 +671,9 @@ export const chat = {
  * pasted into a message to the person who will fix it. See `shell/crashReport.ts`.
  */
 export const crash = {
+  /** A sheet whose body threw (ek-3): the game keeps running behind it. */
+  panelTitle: 'このパネルを開けませんでした。',
+  retry: '再試行',
   title: "ゲーム画面が停止しました",
   body: "続けるにはページを再読み込みしてください。最後の操作が確認できていない可能性があります。再読み込み後に状況を確認してください。",
   reload: "リロード",

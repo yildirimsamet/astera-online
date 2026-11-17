@@ -113,3 +113,33 @@ describe('the small showcase over the galaxy', () => {
     await waitFor(() => { expect(screen.getByRole('alert')).toHaveTextContent(i18n.t('legacy.profile.failed')); });
   });
 });
+
+/** C31 (2026-11-15): the small showcase on the kit — the shelf in brass, the places in glass, the way on as the move. */
+describe('the small showcase on the kit', () => {
+  const oldLook = (root: Element): string[] =>
+    [root, ...root.querySelectorAll('[class]')].flatMap(node => (node.getAttribute('class') ?? '').split(/\s+/))
+      .filter(name => /(^|-)v2(-|$)/.test(name) || ['text-micro', 'text-label', 'text-caption', 'text-body'].includes(name));
+
+  it('wears none of the old surface language and sits on a kit sheet', async () => {
+    show(path => path.endsWith('/seasons') ? json(seasons) : json(profile));
+    await screen.findByText(/Andromeda/);
+    const peek = document.querySelector('[data-legacy-peek]');
+    expect(peek).toHaveClass('gk-legacy');
+    expect(oldLook(peek ?? document.body)).toEqual([]);
+    expect(screen.getByRole('dialog')).toHaveClass('gk-sheet');
+  });
+
+  it('opens a piece and the whole profile only on a press that began on them', async () => {
+    const { onOpenProfile } = show(path => path.endsWith('/seasons') ? json(seasons) : json(profile));
+    const piece = await screen.findByRole('button', { name: 'Honor Champion · (S. 12)' });
+    fireEvent.click(piece, { detail: 1 });
+    expect(screen.queryAllByRole('dialog')).toHaveLength(1);
+    const whole = screen.getByRole('button', { name: i18n.t('legacy.profile.full') });
+    expect(whole).toHaveClass('gk-btn');
+    fireEvent.click(whole, { detail: 1 });
+    expect(onOpenProfile).not.toHaveBeenCalled();
+    fireEvent.pointerDown(whole, { button: 0 });
+    fireEvent.click(whole, { detail: 1 });
+    expect(onOpenProfile).toHaveBeenCalledOnce();
+  });
+});

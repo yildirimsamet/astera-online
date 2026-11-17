@@ -1,14 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { type ArenaResources, type Tactic, type TeamView } from '@astera/rules/arena';
 import i18n from '../i18n/index.js';
+import { GameButton, Glyph, SectionTag } from '../game-ui/index.js';
 import { RESOURCE_ART } from '../ui/assets.js';
-import { Button, SectionHead } from '../v2/kit/Surface.js';
-import { Icon } from '../v2/icons.js';
+import { RulesRow } from '../ui/RulesRow.js';
 import { TacticPicker } from './ClassPicker.js';
 import { arenaCopy } from './copy.js';
 import { amount } from './hangarDesk.js';
 import { askTeam, type TeamAction } from './teamDesk.js';
 import { teamCopy } from './teamCopy.js';
+
+type TeamMember = NonNullable<TeamView['team']>['members'][number];
 
 /** No global cache: an account switch cannot inherit another commander's team or claims. */
 export function useTeamDesk(credential: () => Promise<string | null>) {
@@ -69,17 +71,17 @@ const over = (share: ArenaResources, left: ArenaResources): ArenaResources =>
 function ClaimOverflow({ over: lost, resetsAt }: { over: ArenaResources; resetsAt: string }) {
   if (!KINDS.some(kind => lost[kind] > 0)) return null;
   const t = teamCopy();
-  return <div data-claim-overflow="" className="flex w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-control border border-v2-warn/30 bg-v2-warn/5 px-2 py-1.5 text-micro">
-    <span className="text-v2-warn">{t.overToday}</span><Loot value={lost} />
-    <span className="basis-full text-v2-ink-3">{t.overWait(resetsAt)}</span>
+  return <div data-claim-overflow="" className="gk-inote gk-squad__over" data-tone="warn">
+    <Glyph id="warn" /><span>{t.overToday} <Loot value={lost} /></span>
+    <span className="gk-squad__wait">{t.overWait(resetsAt)}</span>
   </div>;
 }
 
 function Loot({ value }: { value: ArenaResources }) {
   const c = arenaCopy();
-  return <span className="flex flex-wrap items-center gap-x-3 gap-y-1 font-v2-mono text-caption tabular-nums">
-    {KINDS.map((kind, i) => value[kind] > 0 && <span key={kind} className="flex items-center gap-1" title={c.kinds[i]}>
-      <img alt={c.kinds[i]} src={RESOURCE_ART[kind]} className="size-3.5 object-contain" />+{amount(value[kind])}</span>)}
+  return <span className="gk-squad__loot gk-num">
+    {KINDS.map((kind, i) => value[kind] > 0 && <span key={kind} title={c.kinds[i]}>
+      <img alt={c.kinds[i]} src={RESOURCE_ART[kind]} />+{amount(value[kind])}</span>)}
   </span>;
 }
 
@@ -123,62 +125,75 @@ export default function TeamPanel({ credential, onEnter, claimsOnly = false, pre
   const run = (action: TeamAction): void => { void desk.act(action).then(ok => { if (ok && action.kind === 'claim') onClaim?.(); }); };
   const date = (at: string): string => new Intl.DateTimeFormat(i18n.resolvedLanguage, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(at));
   if (claimsOnly && view?.claims.length === 0 && !desk.receipt) return null;
-  return <section data-part="arena-team" className="flex flex-col gap-3 text-v2-ink">
-    <SectionHead label={claimsOnly ? t.claims : t.title} icon={<Icon id="i-fleet" className="size-3" />}
-      {...(team && !claimsOnly ? { aside: `${team.members.length}/${view.capacity}` } : {})} />
-    {(desk.error || desk.note) && <p role="status" className="text-caption text-v2-warn">{errors[desk.note || desk.error] ?? errors.TEAM_UNAVAILABLE}
-      {desk.error && <button type="button" className="ml-2 underline" onClick={desk.refresh}>{c.reconnect}</button>}</p>}
-    {!view && !desk.error && <p className="text-caption text-v2-ink-3">{t.loading}</p>}
+  const stateOf = (m: TeamMember): { text: string; tone?: 'self' | 'warn' } => team?.state === 'flying'
+    ? { text: m.outcome ? outcomes[m.outcome] ?? t.waiting : t.flying }
+    : m.blocked ? { text: errors[m.blocked] ?? t.waiting, tone: 'warn' } : m.ready ? { text: t.readyState, tone: 'self' } : { text: t.waiting };
+  return <section data-part="arena-team" className="gk gk-squad">
+    <SectionTag as="h3" {...(team && !claimsOnly ? { aside: `${String(team.members.length)}/${String(view.capacity)}` } : {})}>{claimsOnly ? t.claims : t.title}</SectionTag>
+    {(desk.error || desk.note) && <p role="status" className="gk-inote" data-tone="warn"><Glyph id="warn" /><span>{errors[desk.note || desk.error] ?? errors.TEAM_UNAVAILABLE}</span>
+      {desk.error && <GameButton size="sm" glyph="refresh" onPress={desk.refresh}>{c.reconnect}</GameButton>}</p>}
+    {!view && !desk.error && <p className="gk-sub" aria-busy>{t.loading}</p>}
     {!claimsOnly && view && <>
-      <p className="text-caption leading-relaxed text-v2-ink-2">{t.rule}</p>
-      {!team ? view.canCreate ? <Button full disabled={disabled} onClick={() => { run({ kind: 'create' }); }}>{t.create}</Button>
-        : <p className="text-caption text-v2-ink-3">{view.clanId ? t.needLeader : t.needClan}</p> : <>
-        <ul className="divide-y divide-v2-line border-y border-v2-line">
-          {team.members.map(m => <li key={m.playerId} className="flex items-center gap-2 py-2">
-            <span className={`size-1.5 shrink-0 rounded-full ${m.ready ? 'bg-v2-self' : 'bg-v2-ink-3'}`} aria-hidden />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-caption font-semibold">{m.name}{m.playerId === view.playerId && <small className="ml-1.5 font-normal text-v2-ink-3">{t.self}</small>}</p>
-              <p className="flex flex-wrap gap-x-2 text-micro text-v2-ink-3">{m.ship && <><span>{c.classes[m.ship.class].name} · {c.level(m.ship.level)}</span>
-                {team.state === 'forming' && <span>{c.fuel} {amount(m.ship.fuel)}/{amount(m.ship.fuelMax)}</span>}</>}
-                <span className={m.blocked && team.state === 'forming' ? 'text-v2-warn' : m.ready ? 'text-v2-self' : ''}>
-                  {team.state === 'flying' ? m.outcome ? outcomes[m.outcome] ?? t.waiting : t.flying : m.blocked ? errors[m.blocked] ?? t.waiting : m.ready ? t.readyState : t.waiting}</span>
-                {team.state === 'forming' && m.blocked === 'SHIP_NOT_READY' && m.ship?.readyAt && <time dateTime={m.ship.readyAt}>{date(m.ship.readyAt)}</time>}
-              </p>
-            </div>
-            {leader && team.state === 'forming' && m.playerId !== view.playerId && <button type="button" disabled={disabled} aria-label={t.remove(m.name)}
-              className="grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-3 disabled:opacity-35" onClick={() => { run({ kind: 'remove', teamId: team.id, playerId: m.playerId }); }}>×</button>}
-          </li>)}
-        </ul>
+      <p className="gk-sub">{t.rule}</p>
+      {!team ? view.canCreate ? <GameButton tone="action" wide glyph="support" pending={busy} disabledReason={desk.error ? errors.TEAM_UNAVAILABLE : null}
+        onPress={() => { run({ kind: 'create' }); }}>{t.create}</GameButton>
+        : <p className="gk-inote"><Glyph id="support" /><span>{view.clanId ? t.needLeader : t.needClan}</span></p> : <>
+        <ol className="gk-well gk-crewlist gk-squad__crew">
+          {team.members.map(m => {
+            const state = stateOf(m);
+            return <li key={m.playerId} className="gk-crewlist__row">
+              <span className="gk-crewlist__lamp" data-on={m.ready ? 'true' : 'false'} aria-hidden />
+              <span className="gk-crewlist__who">
+                <span className="gk-crewlist__name"><strong>{m.name}</strong>
+                  {m.playerId === view.playerId && <span className="gk-chip gk-crewlist__chip" data-tone="self">{t.self}</span>}
+                  <span className="gk-chip gk-crewlist__chip" data-state="" {...(state.tone ? { 'data-tone': state.tone } : {})}>{state.text}</span>
+                </span>
+                <span className="gk-sub gk-num">{m.ship && <>{c.classes[m.ship.class].name} · {c.level(m.ship.level)}
+                  {team.state === 'forming' && <> · <span className="gk-squad__fuel">{c.fuel} {amount(m.ship.fuel)}/{amount(m.ship.fuelMax)}</span></>}</>}
+                  {team.state === 'forming' && m.blocked === 'SHIP_NOT_READY' && m.ship?.readyAt && <> · <time dateTime={m.ship.readyAt}>{date(m.ship.readyAt)}</time></>}
+                </span>
+              </span>
+              {leader && team.state === 'forming' && m.playerId !== view.playerId && <span className="gk-crewlist__acts">
+                <GameButton size="sm" glyph="close" spoken={t.remove(m.name)} pending={busy} onPress={() => { run({ kind: 'remove', teamId: team.id, playerId: m.playerId }); }}>{t.removeShort}</GameButton>
+              </span>}
+            </li>;
+          })}
+        </ol>
         {team.state === 'forming' ? team.joined ? <>
-          {prepareOnly ? <Button full variant="primary" disabled={disabled} onClick={() => { onEnter?.(view); }}>{t.prepare}</Button> : <>
-          <fieldset disabled={disabled} className="min-w-0">
+          {prepareOnly ? <GameButton tone="action" wide glyph="rocket" pending={busy} onPress={() => { onEnter?.(view); }}>{t.prepare}</GameButton> : <>
+          <fieldset disabled={disabled} className="gk-squad__tactics">
             <TacticPicker c={c} value={tactic} value2={tactic2} ship={self?.ship?.class} points={self?.ship?.abilities} onPick={(first, second) => {
               setChoice(first); setChoice2(second);
               if (self?.ready) run({ kind: 'ready', teamId: team.id, ready: false, tactic: first, tactic2: second });
             }} />
           </fieldset>
-          <Button full disabled={disabled || (!self?.ready && self?.blocked !== null)} onClick={() => { run({ kind: 'ready', teamId: team.id, ready: !self?.ready, tactic, tactic2 }); }}>{self?.ready ? t.unready : t.ready}</Button>
-          {self?.ready && <p className="text-center text-micro text-v2-ink-3">{t.stay}</p>}
-          {leader && <Button full variant="primary" disabled={disabled || team.members.length === 0 || team.members.some(m => !m.ready)} onClick={() => { run({ kind: 'start', teamId: team.id }); }}>{t.start}</Button>}
+          <GameButton wide glyph={self?.ready ? 'close' : 'check'} pending={busy}
+            disabledReason={!self?.ready && self?.blocked ? errors[self.blocked] ?? t.waiting : null}
+            onPress={() => { run({ kind: 'ready', teamId: team.id, ready: !self?.ready, tactic, tactic2 }); }}>{self?.ready ? t.unready : t.ready}</GameButton>
+          {self?.ready && <p className="gk-inote" data-tone="self"><Glyph id="clock" /><span>{t.stay}</span></p>}
+          {leader && <GameButton tone="action" wide glyph="rocket" heavy pending={busy}
+            disabledReason={team.members.some(m => !m.ready) ? t.startWait : null}
+            onPress={() => { run({ kind: 'start', teamId: team.id }); }}>{t.start}</GameButton>}
           </>}
-          <button type="button" disabled={disabled} className="self-center px-3 py-1 text-caption text-v2-ink-3" onClick={() => { run({ kind: 'leave', teamId: team.id }); }}>{leader ? t.cancel : t.leave}</button>
-        </> : <Button full disabled={disabled || team.members.length >= view.capacity} onClick={() => { run({ kind: 'join', teamId: team.id }); }}>{t.join}</Button>
-          : team.joined && onEnter && <Button full variant="primary" disabled={disabled} onClick={() => { onEnter(view); }}>{self?.outcome ? t.watch : t.enter}</Button>}
+          <GameButton size="sm" className="gk-squad__leave" pending={busy} onPress={() => { run({ kind: 'leave', teamId: team.id }); }}>{leader ? t.cancel : t.leave}</GameButton>
+        </> : <GameButton wide glyph="support" pending={busy} disabledReason={team.members.length >= view.capacity ? errors.TEAM_FULL ?? null : null}
+          onPress={() => { run({ kind: 'join', teamId: team.id }); }}>{t.join}</GameButton>
+          : team.joined && onEnter && <GameButton tone="action" wide glyph={self?.outcome ? 'eye' : 'rocket'} pending={busy} onPress={() => { onEnter(view); }}>{self?.outcome ? t.watch : t.enter}</GameButton>}
       </>}
-      <details className="text-caption text-v2-ink-3"><summary className="cursor-pointer">{t.rules}</summary><p className="mt-2 leading-relaxed">{t.remainder} {t.cap} {t.auto}</p></details>
+      <RulesRow glyph="help" title={t.rules}><p className="gk-note">{t.remainder} {t.cap} {t.auto}</p></RulesRow>
     </>}
-    {view && view.claims.length > 0 && <div className="flex flex-col gap-2">
-      {!claimsOnly && <SectionHead label={t.claims} />}
-      {view.claims.map(claim => <div key={claim.teamId} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-v2-line pt-2">
-        <div className="min-w-0 flex-1"><Loot value={claim.share} /><p className="mt-1 text-micro text-v2-ink-3">{t.autoAt(date(claim.autoAt))}</p></div>
-        <Button disabled={disabled} onClick={() => { run({ kind: 'claim', teamId: claim.teamId }); }}>{t.claim}</Button>
+    {view && view.claims.length > 0 && <div className="gk-squad__claims">
+      {!claimsOnly && <SectionTag as="h3">{t.claims}</SectionTag>}
+      {view.claims.map(claim => <div key={claim.teamId} className="gk-well gk-squad__claim">
+        <span className="gk-squad__share"><Loot value={claim.share} /><span className="gk-sub">{t.autoAt(date(claim.autoAt))}</span></span>
+        <GameButton size="sm" tone="action" glyph="crate" pending={busy} onPress={() => { run({ kind: 'claim', teamId: claim.teamId }); }}>{t.claim}</GameButton>
         {room && <ClaimOverflow over={over(claim.share, room.left)} resetsAt={date(room.resetsAt)} />}
       </div>)}
-      <p className="text-micro text-v2-ink-3">{t.cap}</p>
+      <p className="gk-note">{t.cap}</p>
     </div>}
-    {desk.receipt && <div role="status" className="flex flex-col gap-1 text-caption">
-      <span className="text-v2-self">{t.delivered}</span><Loot value={desk.receipt.deposit} />
-      {KINDS.some(k => (desk.receipt?.overflow[k] ?? 0) > 0) && <><span className="text-v2-warn">{t.overflow}</span><Loot value={desk.receipt.overflow} /></>}
+    {desk.receipt && <div role="status" className="gk-inote gk-squad__receipt" data-tone="self">
+      <Glyph id="check" /><span>{t.delivered} <Loot value={desk.receipt.deposit} /></span>
+      {KINDS.some(k => (desk.receipt?.overflow[k] ?? 0) > 0) && <span className="gk-squad__wait" data-tone="warn">{t.overflow} <Loot value={desk.receipt.overflow} /></span>}
     </div>}
   </section>;
 }

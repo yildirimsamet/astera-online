@@ -19,12 +19,14 @@ export const rewards = {
   eyebrow: 'Kalıcı hedefler',
   title: 'Ödüller',
   intro:
-    'Bu hedeflerin süresi dolmaz ve hiçbiri kesintisiz seri gerektirmez. Aldığın kaynaklar doğrudan depoya eklenir; depo sınırını aşabilir ve akınlarda kaybedilebilir.',
+    'Süresi dolmaz, seri istemez. Ödül depoya girer; korumasız kısmı yağmalanabilir.',
 
   waiting: '{{count}} ödül seni bekliyor',
   allTaken: 'Bütün hedeflerin ödüllerini aldın.',
 
   claim: 'Al',
+  /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
+  openPod: 'Kapsülü aç',
   claimed: 'Alındı',
   /** Kalanı söyler, azarlamaz. */
   toGo: '{{count}} tane kaldı',
@@ -38,7 +40,7 @@ export const rewards = {
 
   granted: '+{{alloy}} alaşım · +{{crystal}} kristal',
   overCap:
-    'Bu ödül depo sınırını aşacak. Kaynak kaybolmaz; ancak depoda yer açmadan üretim havuzundan kaynak toplayamazsın.',
+    'Depo sınırı aşılır: kaynak kaybolmaz, ama yer açana dek üretimi toplayamazsın.',
 
   /**
    * Her zincir için ad ve etiket. Ad hedefin NE olduğunu, etiket birinin bunu

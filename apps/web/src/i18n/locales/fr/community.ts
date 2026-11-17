@@ -3,8 +3,8 @@ export const community = {
   announcements: {
     eyebrow: "Du commandement d’Astera",
     title: "Annonces",
-    empty:
-      "Aucune annonce pour le moment. Les notes brèves et les mises à jour de l’équipe apparaîtront ici.",
+    emptyTitle: "Aucune annonce pour le moment",
+    empty: "Les notes brèves et les mises à jour de l’équipe apparaîtront ici.",
     new: "NOUVEAU",
   },
   feedback: {
@@ -25,6 +25,7 @@ export const community = {
     send: "Envoyer le retour",
     sending: "Envoi…",
     sent: "Bien reçu. Merci de nous aider à façonner Astera.",
+    tooShort: "Écris au moins 3 caractères",
   },
   admin: {
     ops: adminOps,
@@ -149,8 +150,8 @@ export const community = {
   donate: {
     aboutHeading: "Développement du jeu",
     developerNote: "Un mot du développeur",
-    eyebrow: "Soutenir le développement d’Astera Online",
-    title: "Soutenir Astera Online",
+    eyebrow: 'Astera Online',
+    title: 'Soutenir',
     menuLabel: "Soutenir",
     menuHint: "Soutenir le jeu.",
     intro:

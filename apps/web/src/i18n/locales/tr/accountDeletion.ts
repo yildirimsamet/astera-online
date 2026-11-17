@@ -5,6 +5,8 @@ export const accountDeletion = {
   "confirm": "Ortak hesabımın ve ilerlememin kalıcı olarak silineceğini anlıyorum.",
   "password": "Mevcut parola",
   "submit": "Hesap silme talebi gönder",
+  "needPassword": "Önce mevcut parolanı yaz",
+  "needConfirm": "Önce anladığını onayla",
   "received": "Hesap silme talebin alındı",
   "pending": "Hesabın henüz silinmedi. Ekip talebini inceleyecek; ardından erişim kapatılıp güvenli silme tamamlanacak.",
   "receipt": "Talep numarası",

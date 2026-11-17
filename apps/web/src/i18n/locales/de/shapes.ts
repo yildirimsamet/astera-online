@@ -20,9 +20,8 @@ export const spend = {
   shortfall: '{{short}} fehlen',
 } as const;
 
-/** A probe's fuzzed reading, drawn as the doubt it is: `RangeBand`. */
+/** A probe's fuzzed reading, as the Intel page states it. */
 export const rangeBand = {
-  join: ' – ',
   reading: '{{label}}: irgendwo zwischen {{low}} und {{high}}',
   yours: 'deins {{value}}',
 } as const;
@@ -102,10 +101,10 @@ export const counter = {
   noteUnarmedUnknown: 'Transporte nicht gezählt',
   noteUnarmed_one: '{{band}} Transport steht in der Schlange',
   noteUnarmed_other: '{{band}} Transporte stehen in der Schlange',
-  noteSeen: 'Ihre Sonde wurde gesehen',
+  noteSeen: 'Deine Sonde wurde gesehen',
   noteSomeAway: 'Ein Teil ihrer Flotte war bei dem Anblick unterwegs',
-  noteTelescopeAway: '-Teleskop: Ihre Flotte ist jetzt draußen',
-  noteTelescopeHome: '-Teleskop: Ihre Flotte ist zu Hause',
+  noteTelescopeAway: 'Teleskop: ihre Flotte ist jetzt draußen',
+  noteTelescopeHome: 'Teleskop: ihre Flotte ist zu Hause',
   noteLastRaid: 'Beim letzten Angriff sanken größtenteils {{class}}',
   mixMostly: 'Meistens {{class}}',
   mixEven: 'Keine einzelne Klasse dominiert',

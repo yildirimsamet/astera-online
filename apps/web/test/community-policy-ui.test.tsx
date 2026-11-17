@@ -39,8 +39,12 @@ it('takes joining as the agreement and forwards version and display language', a
 it('keeps history readable and enables posting only after the server confirms explicit agreement', async () => {
   const posts = chat(); expect(screen.getByText('Readable history')).toBeInTheDocument();
   const agreement = await screen.findByRole('checkbox'); expect(agreement).not.toBeChecked(); expect(screen.queryByRole('textbox')).toBeNull();
-  const accept = screen.getByRole('button', { name: 'Accept and continue' }); expect(accept).toBeDisabled();
-  fireEvent.click(agreement); fireEvent.click(accept); expect(await screen.findByRole('textbox')).toBeInTheDocument();
+  expect(agreement).toHaveClass('gk-check');
+  // The dead key says what it still needs (C4).
+  expect(screen.getByRole('button', { name: 'Tick the agreement first' })).toBeDisabled();
+  expect(screen.getByRole('link', { name: 'Community guidelines' })).toHaveClass('gk-linkchip');
+  fireEvent.click(agreement); const accept = screen.getByRole('button', { name: 'Accept and continue' });
+  expect(accept).toHaveClass('gk-btn'); fireEvent.click(accept); expect(await screen.findByRole('textbox')).toBeInTheDocument();
   expect(posts).toEqual([{ version, locale: 'en' }]);
 });
 it('does not invent consent during an outage and offers retry without hiding readable history', async () => {
@@ -55,7 +59,7 @@ it('keeps a failed agreement editable and never opens the composer as a false su
 it('coalesces agreement taps while the confirmation is in flight', async () => {
   const posts = chat({ delay: true }); fireEvent.click(await screen.findByRole('checkbox'));
   const accept = screen.getByRole('button', { name: 'Accept and continue' }); fireEvent.click(accept); fireEvent.click(accept);
-  await waitFor(() => { expect(posts).toHaveLength(1); }); expect(accept).toBeDisabled();
+  await waitFor(() => { expect(posts).toHaveLength(1); }); expect(accept).toHaveAttribute('aria-busy', 'true');
 });
 it('honors existing server evidence without asking for acceptance again', async () => {
   const posts = chat({ accepted: true }); expect(await screen.findByRole('textbox')).toBeInTheDocument(); expect(screen.queryByRole('checkbox')).toBeNull(); expect(posts).toHaveLength(0);

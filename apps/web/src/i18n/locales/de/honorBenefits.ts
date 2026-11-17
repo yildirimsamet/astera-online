@@ -2,6 +2,7 @@ export const honorBenefits = {
   grossReturn: 'Brutto-Rückfracht',
   grossCargoRule: 'Frachtraum wird für den Bruttotausch vor der Gebühr reserviert.',
   title: 'Honor-Vorteile', current: 'Deine aktuelle Stufe', allTiers: 'Alle Stufen',
+  next: 'Noch {{amount}} Honor bis {{tier}}', climb: 'Über Honor {{amount}} steigen: {{tier}}',
   positiveTier: 'Vorteilsstufe {{tier}}', negativeTier: 'Abzugsstufe {{tier}}', neutral: 'Neutral',
   repair: 'Reparaturkosten', convoy: 'Konvoi-Ressourcen', trade: 'Handelsgebühr',
   percent: '{{amount}} %', atLeast: 'Honor ≥ {{amount}}', atMost: 'Honor ≤ {{amount}}',

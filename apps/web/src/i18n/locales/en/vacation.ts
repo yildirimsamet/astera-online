@@ -38,8 +38,6 @@ export const vacation = {
   "end": "End vacation",
   "endTitle": "Return to your worlds?",
   "endBody": "Protection ends immediately on every world. Production and paused queues resume. Unused time is not refunded.",
-  "endConfirm": "End vacation",
-  "back": "Keep vacation",
   "until": "Protected until {{time}}",
   "paused": "Paused — vacation mode",
   "loading": "Loading vacation details…",

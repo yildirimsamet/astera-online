@@ -110,8 +110,20 @@ describe('the signals beacon', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Signals — 1 unread' }));
     expect(screen.getByText(/Raided · −900 taken · 3 units lost/)).toBeInTheDocument();
     const row = screen.getByTestId('signal-event');
-    expect(row.querySelector('svg')).not.toBeNull();
-    expect(row.querySelector('.size-9')).not.toBeNull();
+    expect(row.querySelector('.gk-news__coin svg')).not.toBeNull();
+    // The feed is a list a reader can count.
+    expect(screen.getByRole('list', { name: 'What happened' })).toContainElement(row);
+  });
+
+  /** G1-e: nothing yet is said with the bell's own picture, and what will arrive here. */
+  it('says it is quiet, with the bell, when nothing has happened yet', async () => {
+    mount([]);
+    await userEvent.click(screen.getByRole('button', { name: 'Signals' }));
+    const empty = document.querySelector('.gk-empty');
+    expect(empty).not.toBeNull();
+    expect(empty).toHaveTextContent(i18n.t('signals.emptyTitle'));
+    expect(empty).toHaveTextContent(i18n.t('signals.emptyBody'));
+    expect(empty?.querySelector('img')?.getAttribute('src')).toContain('hud-bell');
   });
 
   it('announces both Asteroid Shower lifecycle moments in Turkish', async () => {
@@ -135,6 +147,11 @@ describe('the signals beacon', () => {
     await i18n.changeLanguage('en');
   });
 
+  /**
+   * G1-e: the name stays bold in the sentence, and the way there is a round press of its own at
+   * the end of the row. It used to be the underlined name itself — a line of text the thumb had
+   * to hit, under the row's own press.
+   */
   it('bolds a revealed identity and closes Signals through its planet focus route', async () => {
     const view = mount([
       notification({
@@ -149,9 +166,10 @@ describe('the signals beacon', () => {
       }),
     ]);
     await userEvent.click(screen.getByRole('button', { name: 'Signals — 1 unread' }));
-    const identity = screen.getByRole('button', { name: /\[WAR\] İzci/i });
-    expect(identity).toHaveClass('font-bold');
-    await userEvent.click(identity);
+    expect(screen.getByText(/\[WAR\] İzci/i).tagName).toBe('STRONG');
+    const fly = screen.getByRole('button', { name: /^Show .*\[WAR\] İzci.* on the map$/i });
+    expect(fly).toHaveClass('gk-round');
+    await userEvent.click(fly);
     expect(view.onFocusPlanet).toHaveBeenCalledWith('target-planet');
     expect(screen.queryByRole('dialog', { name: 'Signals' })).not.toBeInTheDocument();
   });
@@ -173,9 +191,8 @@ describe('the signals beacon', () => {
       }),
     ]);
     await userEvent.click(screen.getByRole('button', { name: 'Signals — 1 unread' }));
-    const identity = screen.getByRole('button', { name: /Akıncı/ });
-    expect(identity).toHaveClass('font-bold');
-    await userEvent.click(identity);
+    expect(screen.getByText(/Akıncı/).tagName).toBe('STRONG');
+    await userEvent.click(screen.getByRole('button', { name: /^Show .*Akıncı.* on the map$/ }));
     expect(view.onFocusPlanet).toHaveBeenCalledWith('raider-planet');
   });
 
@@ -245,6 +262,8 @@ describe('what a signal row looks like', () => {
     if (!row) throw new Error(`no row for ${id}`);
     return row;
   };
+  /** The ground a row lies on: how the news went (G1-e: the kit row's `data-outcome`). */
+  const groundOf = (id: string): string | null => rowOf(id).querySelector('.gk-news')?.getAttribute('data-outcome') ?? null;
 
   it('gives four kinds of news four different hues', async () => {
     mount([
@@ -304,9 +323,9 @@ describe('what a signal row looks like', () => {
     await open();
 
     expect(rowOf('pirate').getAttribute('data-family')).toBe('pirate');
-    expect(rowOf('pirate').querySelector('[data-glyph="skull"]')).not.toBeNull();
+    expect(rowOf('pirate').querySelector('[data-glyph="pirate"]')).not.toBeNull();
     expect(rowOf('pvp').getAttribute('data-family')).toBe('gain');
-    expect(rowOf('pvp').querySelector('[data-glyph="skull"]')).toBeNull();
+    expect(rowOf('pvp').querySelector('[data-glyph="pirate"]')).toBeNull();
   });
 
   /**
@@ -339,6 +358,25 @@ describe('what a signal row looks like', () => {
     expect(rowOf('raid').textContent).not.toContain(i18n.t('signals.worldEvent'));
   });
 
+  /** G1-e: a galaxy event wears the mark its chip wears on the galaxy and on the Now line. */
+  it('marks a galaxy event with the mark of the event, as the galaxy does', async () => {
+    mount([
+      notification({
+        id: 'shower',
+        kind: 'galaxy_event_started',
+        payload: { eventKind: 'ASTEROID_SHOWER', startsAt: '2026-09-02T09:00:00.000Z', endsAt: '2026-09-02T10:00:00.000Z', asteroidSpawnMultiplier: 5 },
+      }),
+      notification({
+        id: 'trade',
+        kind: 'galaxy_event_ended',
+        payload: { eventKind: 'TRADE_SHIP', startsAt: '2026-09-02T09:00:00.000Z', endsAt: '2026-09-02T10:00:00.000Z', rate: { alloy: 32, crystal: 16, deuterium: 1 } },
+      }),
+    ]);
+    await open();
+    expect(rowOf('shower').querySelector('[data-glyph="asteroid"]')).not.toBeNull();
+    expect(rowOf('trade').querySelector('[data-glyph="crate"]')).not.toBeNull();
+  });
+
   /**
    * A WIN IS THINLY GREEN, A LOSS IS THINLY RED, AND THE REST IS UNTOUCHED.
    *
@@ -360,10 +398,9 @@ describe('what a signal row looks like', () => {
     ]);
     await open();
 
-    expect(rowOf('loss').className).toContain('bg-threat');
-    expect(rowOf('win').className).toContain('bg-opportunity');
-    expect(rowOf('neutral').className).not.toContain('bg-threat');
-    expect(rowOf('neutral').className).not.toContain('bg-opportunity');
+    expect(groundOf('loss')).toBe('loss');
+    expect(groundOf('win')).toBe('win');
+    expect(groundOf('neutral')).toBeNull();
   });
 
   /** The wash follows the OUTCOME, so one lane can carry both of them. */
@@ -388,10 +425,10 @@ describe('what a signal row looks like', () => {
     ]);
     await open();
 
-    expect(rowOf('won').className).toContain('bg-opportunity');
-    expect(rowOf('wiped').className).toContain('bg-threat');
+    expect(groundOf('won')).toBe('win');
+    expect(groundOf('wiped')).toBe('loss');
     for (const id of ['won', 'wiped']) {
-      expect(rowOf(id).querySelector('[data-glyph="skull"]'), id).not.toBeNull();
+      expect(rowOf(id).querySelector('[data-glyph="pirate"]'), id).not.toBeNull();
     }
   });
 
@@ -408,8 +445,8 @@ describe('what a signal row looks like', () => {
     ]);
     await open();
 
-    expect(rowOf('fresh').className).toContain('bg-threat');
-    expect(rowOf('old').className).toContain('bg-threat');
+    expect(groundOf('fresh')).toBe('loss');
+    expect(groundOf('old')).toBe('loss');
     expect(rowOf('fresh').querySelector('[data-unread]')).not.toBeNull();
     expect(rowOf('old').querySelector('[data-unread]')).toBeNull();
   });

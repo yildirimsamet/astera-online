@@ -22,12 +22,16 @@ export const statusBar = {
   menuWaiting: "{{count}} récompenses en attente",
   clanWaiting: "{{count}} nouveautés de clan en attente",
   newcomerShield: {
+    name: "Bouclier de débutant",
     hint: "Aucun raid ne peut te viser pendant {{duration}}",
   },
   recoveryShield: {
+    name: "Bouclier de récupération",
     hint: "Bouclier de récupération : aucun raid ne peut te viser pendant {{duration}}",
   },
   recoveryBoost: {
+    name: "Production de récupération",
+    value: "+50 %",
     mark: "Production +50 %",
     note: "Production +50 % pendant la protection",
   },
@@ -40,7 +44,8 @@ export const statusBar = {
     label: "Stock de production",
     labelFull: "Stock de production plein",
     collect: "Collecter",
-    firstTip: "Récupère les ressources du Stock de production dans le Magasin pour les dépenser.",
+    inPool: "{{amount}} dans le Stock de production",
+    firstTip: "Touche une ressource pour la collecter",
     fullStopped: "Plein — production arrêtée",
     fillsIn: "plein dans {{time}}",
     gathers: "La production s’accumule ici jusqu’à ce que tu la collectes",
@@ -111,8 +116,11 @@ export const signals = {
   eventsHeading: "Ce qui s’est passé",
   openEvent: "Ouvrir le rapport associé",
   worldEvent: "Événement galactique",
-  empty:
-    "Aucune notification. Les alertes de flotte, sondes détectées et retours de vaisseaux s’affichent ici.",
+  emptyTitle: "Tout est calme",
+  emptyBody:
+    "Les alertes de flotte, sondes détectées et retours de vaisseaux s’affichent ici.",
+  /** The round press at a row's end that flies to whoever the news names (G1-e). */
+  showOnMap: "Montrer sur la carte : {{name}}",
   repeat: "×{{count}}",
   status: {
     disruptedLine: "Stock de production hors service",
@@ -174,9 +182,6 @@ export const menu = {
     settingsHint: "Son, graphismes et langue",
     account: "Profil du commandant",
     back: "Retour au menu",
-    resume: "Reprendre le jeu",
-    shopHint: "Choisir votre style",
-    inventoryHint: "Équiper votre collection",
     rewardsReady_one: "{{count}} récompense prête",
     rewardsReady_other: "{{count}} récompenses prêtes",
   },
@@ -196,6 +201,8 @@ export const menu = {
   helpHeading: "Aide",
   deviceHeading: "Cet appareil",
   marksHeading: "Tes repères",
+  /** The menu's last group: the Academy, the community, support, settings (G1-f2). */
+  gameHeading: "Jeu",
   intelLabel: "Renseignement",
   intelHint: "Mondes surveillés, relevés Radar, sondes et rapports de combat",
   rewardsLabel: "Récompenses",
@@ -351,6 +358,8 @@ export const leaderboard = {
   honorPackageOnce: "Si les deux classements accordent des ressources, vous recevez le lot le plus précieux une seule fois, la saison suivante.",
   honorNext: "Encore {{amount}} Honor pour égaler {{commander}}.",
   honorYourRank: "Votre place",
+  view: { label: 'Vue du classement', standings: 'Classement', rewards: 'Récompenses', rules: 'Règles' },
+  ruleTitle: { combat: 'Gagner de l’Honor', bands: 'Rapport de flottes', defense: 'Défense', repeat: 'Répétition et harcèlement', prize: 'Partage des prix', package: 'Un seul paquet' },
   eyebrow: "Galaxie locale",
   title: "Classement",
   empty: "Aucun commandant n’a encore rejoint cette galaxie.",
@@ -521,13 +530,14 @@ export const chat = {
     "Ouvrir le chat — Général : {{general}}, Clan : {{clan}} non lus",
   channelsLabel: "Canaux de discussion",
   languageLabel: 'Langue du chat',
+  languageChip: "Langue du chat : {{language}}",
   general: "Général",
   clan: "Clan",
   dm: {
     title: 'MP', loading: 'Ouverture des messages privés', conversations: 'Conversations privées',
     start: 'Nouveau message privé', closeTab: 'Fermer l’onglet {{name}}', searchLabel: 'Chercher un commandant',
     searchPlaceholder: 'Chercher un commandant', cancel: 'Annuler', contacts: 'Commandants',
-    noContacts: 'Aucun commandant disponible.', empty: 'Choisis un commandant pour commencer une conversation privée.',
+    noContacts: 'Aucun commandant disponible.', emptyTitle: 'Aucun message privé pour l’instant', empty: 'Choisis un commandant pour commencer une conversation privée.',
     emptyConversation: 'Dis bonjour à {{name}}.', list: 'Messages avec {{name}}',
     placeholder: 'Écrire à {{name}}', waitingHint: 'Ce commandant est dans Silent Space. Tu pourras lui écrire à son retour.',
     seasonEndedHint: 'Cette saison est terminée. Les messages privés reprendront à zéro la saison prochaine.',
@@ -538,7 +548,8 @@ export const chat = {
   clanLocked: "Le chat du clan est réservé à ton équipe.",
   clanLockedHint: "Rejoins ou crée un clan ; ce canal s’ouvrira immédiatement.",
   list: "Messages de la galaxie",
-  empty: "Personne n’a encore parlé. Sois la première voix de la galaxie.",
+  emptyTitle: "Personne n’a encore parlé",
+  emptyBody: "Sois la première voix de la galaxie.",
   older: "Charger les anciens messages",
   loadingOlder: "Chargement des anciens messages",
   placeholder: "Écrire un message à la galaxie",
@@ -548,6 +559,7 @@ export const chat = {
     title: "Joueurs masqués",
     hint: "Masque leurs messages des salons général et de clan sur cet appareil.",
     empty: "Aucun joueur masqué.",
+    emptyHint: "Pour masquer quelqu’un, maintiens son message appuyé.",
     mute: "Masquer {{name}}",
     unmute: "Réafficher {{name}}",
     unmuteShort: "Réafficher",
@@ -596,6 +608,9 @@ export const chat = {
   },
 } as const;
 export const crash = {
+  /** A sheet whose body threw (ek-3): the game keeps running behind it. */
+  panelTitle: 'Ce panneau n’a pas pu s’ouvrir.',
+  retry: 'Réessayer',
   title: "L’interface du jeu ne fonctionne plus",
   body: "Recharge la page pour continuer. Le résultat de ta dernière action peut être inconnu ; vérifie-le après le rechargement.",
   reload: "Recharger",

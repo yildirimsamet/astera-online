@@ -45,13 +45,15 @@ export const galaxy = {
   hideRadar: "レーダー リーチを非表示",
   eventsGuide: {
     open: "銀河イベントを表示",
-    eyebrow: "ウィークリーカレンダー",
-    title: "ギャラクシーイベント",
+    eyebrow: "週間カレンダー",
+    title: "銀河イベント",
     intro: "平日と週末に繰り返されるウィンドウ。",
-    timeZone: "トゥルキエ時間 (UTC+3)",
+    timeZone: "あなたの時刻 ({{zone}})",
     nextLabel: "次のイベント",
     nextUpcoming: "{{event}} · {{duration}}",
-    localTime: "ローカル · {{time}}",
+    dayShift: "曜日は銀河のカレンダー(トルコ)に従います。+1 はあなたにとって翌日、−1 は前日です。",
+    nextDay: "翌日",
+    previousDay: "前日",
     event: {
       ASTEROID_SHOWER: "小惑星シャワー",
       TRADE_SHIP: "貿易船",
@@ -65,6 +67,7 @@ export const galaxy = {
     },
     asteroid: {
       title: "小惑星シャワー",
+      lead: "流星群の間は小惑星が何倍も出現し、序盤が最も多くなります。",
       summary: "通常の出現率は、アクティブな司令官1人につき毎時{{rate}}個です。シャワーの期間中は、この出現率に倍率が掛かります。追加の小惑星の半分は最初の{{frontMinutes}}分間に出現します。小惑星は鉱石が尽きるか、寿命が来るまで残ります。シャワー以外の時間は、銀河に漂う小惑星の数が直近{{window}}分間にプレイした人数を超えることはありません。海賊艦隊には常にこの上限が適用されます。",
     },
     trade: {
@@ -110,9 +113,9 @@ export const galaxy = {
   commander: {
     galaxyLabel: "ギャラクシー",
     galaxyUnknown: "—",
-    endsLabel: "シーズンは に終了します",
+    endsLabel: "シーズン終了まで",
     endsUnknown: "—",
-    wipeNote: "ワイプではすべての銀河がリセットされ、全員が再びスタートします。",
+    wipeNote: "シーズン終了で全銀河が最初から始まります。",
     signOut: "サインアウト",
   },
 } as const;
@@ -146,6 +149,7 @@ export const worlds = {
    */
   sendFrom: "から",
   sendTo: "へ",
+  swap: "入れ替え",
   send: "転送",
   /** Screen-reader readings for the two pictures on a row. */
   store: "{{resource}}: {{amount}}/{{cap}}",
@@ -189,16 +193,21 @@ export const focus = {
     },
     settlementConfirm: {
       eyebrow: "入植競争",
-      title: "{{world}}に入植",
       unsurveyedTitle: "この惑星に入植",
       race: "有効なクーリエ2隻の艦隊を最初に到着させた司令官が、この惑星を獲得します。",
       priorityMineFirst: "あなたの優先権：クーリエは優先権の終了前に着陸するため、先に着陸できる者はいません。",
       priorityMineLate: "クーリエはあなたの優先権が終わった後に着陸します。それ以降は最初の有効な到着が勝ちます。",
-      noRecall:
-        "入植艦隊は呼び戻せません。先に到着して入植できれば、創設費用を払い、そのティアに応じた資源を持つ植民地を得ます。ほかの司令官が先に入植した場合はクーリエと創設費用が戻りますが、使用した燃料は戻りません。",
+      noRecall: "入植艦隊は呼び戻せません。",
+      ifWin: "勝ったら",
+      winSpent: "創設費用を払い、植民地はこの資源で始まります：",
+      winUnread: "創設費用を払い、植民地はティアに応じた資源で始まります。",
+      ifLose: "負けたら",
+      loseBack: "クーリエと創設費用は戻ります。燃料は戻りません。",
+      priorityEnds: "優先権の終了",
+      line: "到着まで{{arrives}}・入植期限まで{{closes}}",
+      linePriority: "到着まで{{arrives}}・優先権終了まで{{priority}}・入植期限まで{{closes}}",
       transports: "入植艦隊",
       foundingCost: "創設費用",
-      opensWith: "入植後の資源",
       cargoValue: "{{alloy}} 合金・{{crystal}} クリスタル",
       stockValue: "{{alloy}} 合金・{{crystal}} クリスタル・{{deuterium}} 重水素",
       fuel: "飛行用燃料",
@@ -395,6 +404,7 @@ export const focus = {
     probeCoolingShort: "{{duration}} のプローブ",
     attack: "攻撃を計画する",
     attackNeutralAgain: "再びレイド · 主張は変更されていない",
+    attackNeutralAgainShort: "再レイド",
     attackOriginRecovering: "攻撃・原点回復",
     attackSilentSpace: "攻撃不可・サイレントスペースでは使用不可",
     attackSilentSpaceShort: "サイレントスペース",

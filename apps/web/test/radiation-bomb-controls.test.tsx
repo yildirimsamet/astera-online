@@ -9,12 +9,16 @@ const origin = () => planetView({ radiationBombsAvailable: true,
     { id: 'l2', level: 2, status: 'LAUNCHED', readyAt: null, remainingSeconds: 0 },
   ], buildings: { CORE: 13, SHIPYARD: 5 } });
 
+const held = { alloy: 100000, crystal: 100000, deuterium: 100000 };
+/** The forge shows one level at a time (G2-g): the lever chooses it. */
+const choose = (level: number) => { fireEvent.click(screen.getByRole('radio', { name: `Level ${String(level)}` })); };
+
 it('presents each level as a cinematic production scene with visible effect duration', () => {
-  render(<RadiationBombForge planet={origin()} held={{ alloy: 100000, crystal: 100000, deuterium: 100000 }}
-    now={0} pending={false} onBuild={vi.fn()} />);
+  render(<RadiationBombForge planet={origin()} held={held} now={0} pending={false} onBuild={vi.fn()} />);
   for (const level of [1, 2, 3]) {
+    choose(level);
     const card = screen.getByTestId(`radiation-product-${String(level)}`);
-    expect(card.querySelector('.radiation-product__scene img')?.getAttribute('src'))
+    expect(card.querySelector('.gk-arm__art img')?.getAttribute('src'))
       .toBe(`/assets/images/tactical/radiation-bomb-forge-l${String(level)}.webp`);
     expect(within(card).getByText('Effect duration')).toBeTruthy();
     expect(within(card).getByText('30m 00s')).toBeTruthy();
@@ -23,45 +27,49 @@ it('presents each level as a cinematic production scene with visible effect dura
 
 it('explains Core 13 and refuses production at command tier four', () => {
   const view = render(<RadiationBombForge planet={{ ...origin(), radiationBombs: [], buildings: { ...origin().buildings, CORE: 12 } }}
-    held={{ alloy: 100000, crystal: 100000, deuterium: 100000 }} now={0} pending={false} onBuild={vi.fn()} />);
-  const blocked = screen.getAllByRole('button', { name: /Requires Core 13 and Shipyard 5/ });
-  expect(blocked).toHaveLength(3);
-  for (const button of blocked) expect(button).toBeDisabled();
+    held={held} now={0} pending={false} onBuild={vi.fn()} />);
+  for (const level of [1, 2, 3]) {
+    choose(level);
+    const blocked = screen.getByRole('button', { name: /Requires Core 13 and Shipyard 5/ });
+    expect(blocked).toBeDisabled();
+  }
+  choose(1);
   view.rerender(<RadiationBombForge planet={{ ...origin(), radiationBombs: [] }}
-    held={{ alloy: 100000, crystal: 100000, deuterium: 100000 }} now={0} pending={false} onBuild={vi.fn()} />);
+    held={held} now={0} pending={false} onBuild={vi.fn()} />);
   expect(screen.getByRole('button', { name: /Build L1/ })).not.toBeDisabled();
 });
 
 it('shows three separate products, their actual durations and an occupied slot during flight', () => {
-  render(<RadiationBombForge planet={origin()} held={{ alloy: 100000, crystal: 100000, deuterium: 100000 }}
-    now={0} pending={false} onBuild={vi.fn()} />);
-  expect(screen.getByText('Ready to launch')).toBeTruthy();
-  expect(screen.getByText('In flight · stock occupied')).toBeTruthy();
-  expect(screen.queryByRole('button', { name: /Build L1/ })).toBeNull();
-  expect(screen.queryByRole('button', { name: /Build L2/ })).toBeNull();
+  render(<RadiationBombForge planet={origin()} held={held} now={0} pending={false} onBuild={vi.fn()} />);
   expect(screen.getByRole('button', { name: /Build L3/ })).toBeTruthy();
   expect(screen.getByTestId('radiation-product-3').textContent).toContain('1h 13m');
+  choose(1);
+  expect(screen.getByText('Ready to launch')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: /Build L1/ })).toBeNull();
+  choose(2);
+  expect(screen.getByText('In flight · stock occupied')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: /Build L2/ })).toBeNull();
 });
 
 it('uses radiation symbols for level and one stock cell per bomb level', () => {
-  render(<RadiationBombForge planet={origin()} held={{ alloy: 100000, crystal: 100000, deuterium: 100000 }}
-    now={0} pending={false} onBuild={vi.fn()} />);
-  for (const level of [1, 2, 3]) {
+  render(<RadiationBombForge planet={origin()} held={held} now={0} pending={false} onBuild={vi.fn()} />);
+  const cell = { 1: 'ready', 2: 'flight', 3: 'empty' } as const;
+  for (const level of [1, 2, 3] as const) {
+    choose(level);
     const card = screen.getByTestId(`radiation-product-${String(level)}`);
     expect(card.querySelectorAll('[data-radiation-level] svg')).toHaveLength(level);
     expect(card.querySelector('[data-tally]')).toHaveAttribute('data-total', '1');
     expect(card.querySelector('[data-tally]')).toHaveAttribute('data-used', level === 3 ? '0' : '1');
     expect(card.querySelector('[data-stock-counter]')).toHaveTextContent(`Stock ${level === 3 ? '0' : '1'}/1`);
+    expect(card.querySelector('[data-cell]')).toHaveAttribute('data-cell', cell[level]);
   }
-  expect(screen.getByTestId('radiation-product-1').querySelector('[data-cell]')).toHaveAttribute('data-cell', 'ready');
-  expect(screen.getByTestId('radiation-product-2').querySelector('[data-cell]')).toHaveAttribute('data-cell', 'flight');
-  expect(screen.getByTestId('radiation-product-3').querySelector('[data-cell]')).toHaveAttribute('data-cell', 'empty');
 });
 
 it.each(['BUILDING', 'PAUSED'] as const)('keeps a %s bomb in its stock slot and does not offer duplicate production', status => {
   render(<RadiationBombForge planet={{ ...origin(), radiationBombs: [{ id: 'busy', level: 1, status,
     readyAt: status === 'BUILDING' ? new Date(60000) : null, remainingSeconds: 60 }] }}
-    held={{ alloy: 100000, crystal: 100000, deuterium: 100000 }} now={0} pending={false} onBuild={vi.fn()} />);
+    held={held} now={0} pending={false} onBuild={vi.fn()} />);
+  choose(1);
   const card = screen.getByTestId('radiation-product-1');
   expect(card.querySelector('[data-tally]')).toHaveAttribute('data-used', '1');
   expect(card.querySelector('[data-cell]')).toHaveAttribute('data-cell', status === 'BUILDING' ? 'loading' : 'paused');
@@ -109,18 +117,16 @@ it('does not promise radiation Honor in a season without the tactical policy', (
 });
 
 it('keeps the forge help consistent with the current season instead of advertising an unavailable Honor gain', () => {
-  render(<RadiationBombForge planet={origin()} held={{ alloy: 100000, crystal: 100000, deuterium: 100000 }}
-    now={0} pending={false} onBuild={vi.fn()} />);
-  fireEvent.click(screen.getByText('How it works'));
+  render(<RadiationBombForge planet={origin()} held={held} now={0} pending={false} onBuild={vi.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: 'How it works' }));
   expect(screen.getByText('Special weapons do not change Honor in this season.')).toBeVisible();
   expect(screen.queryByText(/at most 2.5 Honor per bomb/)).toBeNull();
 });
 
-
 it('shows the colony loyalty and maximum fault payload on each product', () => {
-  render(<RadiationBombForge planet={origin()} held={{ alloy: 100000, crystal: 100000, deuterium: 100000 }}
-    now={0} pending={false} onBuild={vi.fn()} />);
-  for (const [level, loss, faults] of [[1, 5, 0], [2, 10, 1], [3, 15, 2]]) {
+  render(<RadiationBombForge planet={origin()} held={held} now={0} pending={false} onBuild={vi.fn()} />);
+  for (const [level, loss, faults] of [[1, 5, 0], [2, 10, 1], [3, 15, 2]] as const) {
+    choose(level);
     const card = screen.getByTestId(`radiation-product-${String(level)}`);
     expect(within(card).getByText(`Colonies: −${String(loss)} loyalty points · up to ${String(faults)} new faults.`)).toBeTruthy();
   }

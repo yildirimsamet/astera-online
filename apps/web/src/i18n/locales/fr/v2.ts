@@ -13,6 +13,7 @@ export const hold = {
 export const lane = {
   /** Une place vide dans la file. */
   free: '+ Place libre',
+  paused: 'Pause',
 };
 
 /** B1 : une jauge de ressource dans la barre du haut. */
@@ -70,6 +71,8 @@ export const now = {
   label: 'Minuteur le plus urgent',
   /** The sheet one tap under it: every timer. */
   sheet: 'Minuteurs',
+  /** Under the sheet's name: the order the timers are listed in (G1-c). */
+  order: 'Les ennemis d’abord, puis le plus proche',
   work: 'Travaux bientôt finis',
   research: 'Recherche bientôt finie',
   /** An order behind the head of its lane: no clock yet (2026-10-06). */
@@ -109,6 +112,8 @@ export const topBar = {
 
 /** La puce Vue : calques, guide des événements et légende de la galaxie. */
 export const view = {
+  /** H1 (2026-11-16): the round keys under the finds on the galaxy's right. */
+  tools: 'Outils de la galaxie',
   chip: 'Vue',
   title: 'Vue',
   layers: 'Calques',
@@ -119,6 +124,7 @@ export const view = {
   events: 'Guide des événements galactiques',
   /** The round button under the View chip: the disc's old Home mark. */
   home: 'Aller à ton monde',
+  youAreHere: 'Tu es ici',
 };
 
 /** B3 : l’emplacement de contexte, une carte à la fois. */
@@ -143,7 +149,7 @@ export const fleetPage = {
   hangar: "Hangar",
   pace: "vitesse {{pct}} %",
   recall: "Rappeler",
-  recallHome: "Rappelée, de retour dans {{time}}",
+  recallHome: "Retour dans {{time}}",
   recalling: "Demi-tour…",
   emptyAir: "Rien en vol. Touche un monde, un astéroïde ou un pirate dans la galaxie pour envoyer des vaisseaux.",
   focusWorld: "Afficher {{world}} dans la galaxie",
@@ -153,6 +159,7 @@ export const fleetPage = {
   noShips: "Aucun vaisseau à quai",
   capital: "Capitale",
   colony: "Colonie",
+  roomFact: "Un hangar plein arrête le chantier.",
   roomRule: "Place pour chaque vaisseau d'un monde — à quai, en route et au chantier. Un Hangar plein arrête le chantier et les transferts entrants ; une flotte rappelée trouve toujours sa place.",
   ground: "Défense au sol",
   ceiling: "jusqu'à {{shown}} avec ce Noyau",
@@ -170,6 +177,8 @@ export const reportScene = {
   rounds_one: "{{count}} tour",
   rounds_other: "{{count}} tours",
   you: "Toi",
+  /** C16a: who stood on a neutral world, as the scene names a side. */
+  neutralSide: "Garnison neutre",
   destroyed: "{{count}} détruits",
   hidden: "Ce qui leur reste et le reste du terrain restent cachés ; un rapport ne dit que ce que tu as détruit.",
   whyDecisive: "D’où viennent les pertes",
@@ -196,8 +205,9 @@ export const reportScene = {
 /** K6: the switch at the top of the Base — this world, or the commander's research. */
 export const baseSwitch = {
   label: 'Base',
-  world: 'Ce monde',
+  world: 'Planète',
   research: 'Recherche',
+  ship: 'Vaisseau',
 } as const;
 
 /** E8 · K9: the research constellation. */
@@ -221,7 +231,6 @@ export const roomBar = {
   free: 'libre {{value}}',
   reading: '{{label}} : {{used}} sur {{total}} occupés',
   returnFits: 'Une flotte qui rentre a toujours sa place : les vaisseaux en vol gardent la leur.',
-  nextHangar: 'Le hangar {{level}} la porte de {{from}} → {{to}}.',
   gunsStay: 'Les canons ne quittent jamais le monde.',
   nextCore: 'Le Noyau de commande {{level}} la porte de {{from}} → {{to}}.',
 };
@@ -250,12 +259,12 @@ export const away = {
     orbit: 'Installer',
     signals: 'Ouvrir les signaux',
     dossier: 'Ouvrir le dossier',
-    repair: 'réparer',
+    repair: 'Réparer',
   },
   sighting: 'La flotte de {{planet}} est sortie',
   sightingBack: 'Retour ~{{time}} · vue par ton télescope',
   sightingSeen: 'Vue par ton télescope',
-  careLoyalty: '{{world}} loyauté {{loyalty}} %',
+  careLoyalty: 'Loyauté {{loyalty}} %',
   careFaults_one: '{{count}} panne en cours',
   careFaults_other: '{{count}} pannes en cours',
 };
@@ -281,6 +290,7 @@ export const repairStation = {
     workshop: "Atelier",
     repair: "Réparation",
     scrap: "Démantèlement",
+    order: "Ordre de travail",
     healthy: "Coque intacte",
     ready: "Apte au combat",
     critical: "Inapte au combat",
@@ -296,7 +306,9 @@ export const repairStation = {
     reserved: "Réservés pour réparation",
     move: "Envoyer à l’atelier",
     return: "Renvoyer au hangar",
-    scrapAction: "Démanteler les vaisseaux",
+    back: "Retour",
+    scrapSelected_one: "Démanteler {{count}} vaisseau",
+    scrapSelected_other: "Démanteler {{count}} vaisseaux",
     moved: "Vaisseaux envoyés à l’atelier.",
     returned: "Vaisseaux renvoyés au hangar.",
     scrapped: "Vaisseaux démantelés.",
@@ -306,10 +318,9 @@ export const repairStation = {
     rule: "Les dégâts persistent jusqu’à une réparation payante. À 5% de PV ou moins, un vaisseau ne peut pas combattre.",
     dockRule: "Le transfert est gratuit. Les vaisseaux à l’atelier ne peuvent ni voler ni défendre.",
     scrapRule: "Immédiat et irréversible. Tu récupères la moitié des ressources de production correspondant à la coque restante.",
-    scrapConfirm: "Démanteler {{count}} vaisseaux ?",
-    keep: "Garder les vaisseaux",
     returnedResources: "Ressources récupérées",
     radiation: "Les radiations bloquent l’entrée, les réparations et le démantèlement. Renvoie les vaisseaux au hangar pour les évacuer.",
+    radiationShort: "Fermé par les radiations",
     homeHint: "Choisis les vaisseaux endommagés à envoyer à l’atelier de cette planète.",
     selected: "{{count}} sélectionnés",
     empty: "Aucun vaisseau dans ce groupe.",
@@ -318,16 +329,14 @@ export const repairStation = {
   all: "vaisseaux mixtes",
   title: "Station de réparation",
   role: "Choisis les vaisseaux à réparer ou à démanteler.",
-  tagline: "Rend les vaisseaux endommagés à la flotte.",
   idle: "Atelier vide. Choisis des vaisseaux dans le hangar.",
   waitingShips_one: "{{count}} vaisseau en attente",
   waitingShips_other: "{{count}} vaisseaux en attente",
   repairingShips_one: "{{count}} en réparation",
   repairingShips_other: "{{count}} en réparation",
+  damagedShips_one: "{{count}} vaisseau endommagé",
+  damagedShips_other: "{{count}} vaisseaux endommagés",
   queueFill: "File {{used}}/{{total}}",
-  statWaiting: "En attente",
-  statRepairing: "En réparation",
-  statQueue: "File",
   outOfAction: "Les vaisseaux à l’atelier ne peuvent ni voler ni défendre. Ramène ceux en attente au hangar pour les transférer.",
   howItWorks: "Comment ça marche",
   ruleFree: "Aucune réparation gratuite. Les dégâts restent jusqu’à une réparation payante.",
@@ -335,30 +344,23 @@ export const repairStation = {
   ruleTime: "Durée : la même part de son temps de construction. Les niveaux de {{shipyard}} et {{automation}} la raccourcissent.",
   ruleIndustrial: "La recherche {{industrial}} réduit prix et durée à 75 %, puis à 50 %.",
   youPay: "Tu paies {{pct}} % maintenant.",
-  ruleQueue: "Les travaux se suivent, jusqu’à {{depth}} en file, à part de la file du Chantier naval.",
+  ruleQueue: "Les travaux se suivent, jusqu’à {{depth}} en file, à part de la file du Chantier spatial.",
   ruleCancel: "Une annulation rend la moitié du prix ; les vaisseaux attendent à nouveau.",
-  industrialChip: "{{industrial}} −{{off}} %",
   damagedHeading: "Vaisseaux endommagés",
   selectBatch: "Choisir les {{max}} premiers groupes de santé",
   selectAll: "Tout choisir",
-  selectNone: "Vider",
-  choose: "Réparer {{name}} ×{{count}}",
-  noneWaiting: "Aucun vaisseau n’attend de réparation.",
   damaged: "{{pct}} % endommagé",
-  share: "{{pct}} % d’un vaisseau neuf",
-  queueHeading: "File de réparation",
   queueEmpty: "Rien en réparation.",
   finishing: "Se termine…",
   startsIn: "commence dans {{time}}",
   ends: "terminé dans {{time}}",
-  selected_one: "{{count}} vaisseau choisi",
-  selected_other: "{{count}} vaisseaux choisis",
   afterQueue: "Commence après la file, dans {{time}}",
   repairSelected_one: "Réparer {{count}} vaisseau",
   repairSelected_other: "Réparer {{count}} vaisseaux",
   pick: "Choisis les vaisseaux à réparer",
   queueFullShort: "File pleine · {{used}}/{{total}}",
   tooMany: "Choisis au plus {{max}} groupes de coque par action.",
+  tooManyShort: "Trop de groupes",
   starting: "Démarrage…",
   cancel: "Annuler",
   docked_one: "{{count}} en réparation",

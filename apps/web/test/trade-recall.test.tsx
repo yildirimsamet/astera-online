@@ -31,7 +31,10 @@ describe('trade ship fleet recall', () => {
     render(<ThreadFocus thread={thread} minutesRemaining={10} onClose={vi.fn()} onToggle={vi.fn()} open onRecall={onRecall} />);
     expect(screen.getByRole('region', { name: `${i18n.t('trade.title')} — focus` })).toBeVisible();
     expect(screen.queryByText('TRADE_SHIP')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Recall fleet' }));
+    const hold = screen.getByRole('button', { name: /^recall fleet/i });
+    // a kit hold since G4-h2 (0.6 s): the keyboard's press and release stand in for the finger
+    fireEvent.keyDown(hold, { key: 'Enter' });
+    fireEvent.keyDown(hold, { key: 'Enter' });
     expect(onRecall).toHaveBeenCalledOnce();
   });
 

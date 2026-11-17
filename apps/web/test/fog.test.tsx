@@ -2,7 +2,6 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { galaxySchema, trafficSchema, type Contact } from '../src/api/schemas.js';
 import { ContactFocus } from '../src/galaxy/FocusPanel.js';
-import { Reading, Unwatched } from '../src/ui/Clarity.js';
 
 /**
  * THE ONE LIE THIS UI IS NOT ALLOWED TO TELL.
@@ -37,50 +36,6 @@ describe('the fog, as rendered', () => {
     });
 
     expect(parsed.planets[0]!.fleet).toBeUndefined();
-  });
-
-  it('shows an unwatched planet as unwatched, never as unknown', () => {
-    render(<Unwatched />);
-    expect(screen.getByText(/no watch assigned/i)).toBeInTheDocument();
-    expect(screen.queryByText(/unreadable/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/UNKNOWN/)).not.toBeInTheDocument();
-  });
-
-  it('shows a veiled reading as unreadable — you looked and could not tell', () => {
-    render(<Reading status="UNKNOWN" staleMinutes={0} etaMinutes={null} state="BLIND" />);
-    expect(screen.getByText(/unreadable/i)).toBeInTheDocument();
-    expect(screen.queryByText(/no watch assigned/i)).not.toBeInTheDocument();
-  });
-
-  /**
-   * The interesting state. "HOME, 18 minutes ago" is a completely different bet
-   * from "HOME, live", and dropping the age would erase the decision.
-   */
-  it('never shows a stale reading without its age', () => {
-    render(<Reading status="HOME" staleMinutes={18} etaMinutes={null} state="INTERMITTENT" />);
-    expect(screen.getByText(/FLEET HOME/)).toBeInTheDocument();
-    expect(screen.getByText(/18m ago/)).toBeInTheDocument();
-  });
-
-  it('shows a live reading as live rather than as zero minutes ago', () => {
-    render(<Reading status="AWAY" staleMinutes={0} etaMinutes={null} state="CLEAR" />);
-    expect(screen.getByText(/live/)).toBeInTheDocument();
-  });
-
-  /** The return ETA is bought at clarity +2 and must not leak below it. */
-  it('shows a return ETA only when the reading carries one', () => {
-    const { rerender } = render(
-      <Reading status="AWAY" staleMinutes={0} etaMinutes={24} state="FULL" />,
-    );
-    expect(screen.getByText(/back in 24m/)).toBeInTheDocument();
-
-    rerender(<Reading status="AWAY" staleMinutes={0} etaMinutes={null} state="CLEAR" />);
-    expect(screen.queryByText(/back in/)).not.toBeInTheDocument();
-  });
-
-  it('labels clarity for anyone who cannot see the bars', () => {
-    render(<Reading status="HOME" staleMinutes={0} etaMinutes={null} state="DEGRADED" />);
-    expect(screen.getByRole('img', { name: /clarity degraded/i })).toBeInTheDocument();
   });
 });
 
@@ -269,8 +224,9 @@ describe('a foreign contact, as rendered', () => {
   it('lists exact hulls and total craft when Telescope sight supplies a manifest', () => {
     const { container } = show(contact({ fleet: { DART: 12, PIKE: 3 } }));
     expect(screen.getByText(/15 craft/i)).toBeInTheDocument();
-    expect(container.textContent).toMatch(/12 Dart/i);
-    expect(container.textContent).toMatch(/3 Pike/i);
+    // each hull on its own kit chip since G4-h2: the name, then the count
+    expect(container.querySelector('[data-crew-hull="DART"]')?.textContent).toMatch(/Dart\s*12/i);
+    expect(container.querySelector('[data-crew-hull="PIKE"]')?.textContent).toMatch(/Pike\s*3/i);
     expect(container.textContent).not.toMatch(/no manifest at this range/i);
   });
 

@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ActiveGalaxyEvent, Contact, PendingThread } from '../../src/api/schemas.js';
 import type { Directive } from '../../src/lib/directives.js';
 import { activeEvents, slotKey, threatKeyOf } from '../../src/lib/contextSlot.js';
+import { Glyph } from '../../src/game-ui/index.js';
 import { ContextSlot, type ContextSlotProps } from '../../src/v2/hud/ContextSlot.js';
 
 /**
@@ -149,7 +150,10 @@ describe('the context slot', () => {
     const { rerender } = render(<ContextSlot {...props({ threats: [inSight] })} />);
     expect(screen.queryByRole('button', { name: 'Look at it' })).toBeNull();
     rerender(<ContextSlot {...props({ threats: [inSight], contacts: [seen], onLook })} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Look at it' }));
+    const look = screen.getByRole('button', { name: 'Look at it' });
+    // A round eye in the card's head: the one thing to do keeps its row whole in every language.
+    expect(look.closest('.gk-ccard__head')).not.toBeNull();
+    await userEvent.click(look);
     expect(onLook).toHaveBeenCalledWith('c-1');
   });
 
@@ -247,7 +251,7 @@ describe('the context slot', () => {
     const onClearSelection = vi.fn();
     render(<ContextSlot {...props({ selected: true, threats: [attack(9), attack(20)], onClearSelection })} />);
     expect(screen.queryByRole('region')).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Incoming attacks: 2' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Incoming attacks: 2/ }));
     expect(onClearSelection).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('region', { name: 'Incoming attack' })).toBeInTheDocument();
   });
@@ -293,5 +297,76 @@ describe('the context slot', () => {
     expect(onDismiss).toHaveBeenCalledWith([slotKey('threat', threatKeyOf(attack(9)))]);
     rerender(<ContextSlot {...props({ threats: [attack(9)], dismissed: new Set([slotKey('threat', threatKeyOf(attack(9)))]) })} />);
     expect(screen.queryByRole('region')).toBeNull();
+  });
+});
+
+/**
+ * ON THE GAME KIT (G1-d, 2026-11-14). Each card wears the mark of what it is in a ring:
+ * an attack its siren, draining over the flight the galaxy saw leave; an event its own mark
+ * over its window; a suggestion its kind. The waiting attack beside a selection is a red
+ * chip with its count.
+ */
+describe('the context slot on the kit', () => {
+  const ring = (region: HTMLElement) => region.querySelector('.gk-timer__ring')?.getAttribute('data-glyph');
+  const arc = (region: HTMLElement) => region.querySelector('.gk-timer__arc');
+
+  it('marks an attack with the siren and drains it over the flight the galaxy saw', () => {
+    const seen: Contact = {
+      id: 'c-1', kind: 'unknown', from: { x: 0, y: 0, z: 0 }, to: { x: 1, y: 0, z: 1 },
+      startAt: new Date(NOW - 60_000), endAt: new Date(NOW + 540_000), inbound: true,
+    };
+    const inSight = { ...attack(9), contactId: 'c-1' };
+    const { rerender } = render(<ContextSlot {...props({ threats: [inSight] })} />);
+    let card = screen.getByRole('region', { name: 'Incoming attack' });
+    expect(ring(card)).toBe('siren');
+    // Not seen leaving: no whole to drain over, so no arc.
+    expect(arc(card)).toBeNull();
+    rerender(<ContextSlot {...props({ threats: [inSight], contacts: [seen] })} />);
+    card = screen.getByRole('region', { name: 'Incoming attack' });
+    const length = Number(arc(card)?.getAttribute('stroke-dasharray'));
+    expect(Number(arc(card)?.getAttribute('stroke-dashoffset'))).toBeCloseTo(length * 0.1);
+  });
+
+  it.each([
+    ['a shower', [shower], 'asteroid'],
+    ['the merchant', [trade], 'crate'],
+    ['two events at once', [trade, shower], 'star'],
+  ] as const)('marks %s by what it is', (_name, events, glyph) => {
+    render(<ContextSlot {...props({ events })} />);
+    expect(ring(screen.getByRole('region', { name: 'Galaxy event' }))).toBe(glyph);
+  });
+
+  it('drains a lone event over its own window', () => {
+    render(<ContextSlot {...props({ events: [shower] })} />);
+    const card = screen.getByRole('region', { name: 'Galaxy event' });
+    const length = Number(arc(card)?.getAttribute('stroke-dasharray'));
+    // Ninety minutes long, thirty left.
+    expect(Number(arc(card)?.getAttribute('stroke-dashoffset'))).toBeCloseTo(length * (2 / 3));
+  });
+
+  it('marks a suggestion by its kind, and folds it to a strip in its colour', async () => {
+    localStorage.clear();
+    render(<ContextSlot {...props({ suggestion: advice })} />);
+    expect(ring(screen.getByRole('region', { name: 'Opportunity' }))).toBe('target');
+    await userEvent.click(screen.getByRole('button', { name: 'Hide' }));
+    expect(screen.getByRole('button', { name: 'Show' })).toHaveAttribute('data-tone', 'self');
+    localStorage.clear();
+  });
+
+  it('brings a new attack in as a new card, so it rises in rather than repainting the old one', () => {
+    const { rerender } = render(<ContextSlot {...props({ threats: [attack(20)] })} />);
+    const before = screen.getByRole('region', { name: 'Incoming attack' });
+    rerender(<ContextSlot {...props({ threats: [attack(20), attack(4, 'colony')] })} />);
+    expect(screen.getByRole('region', { name: 'Incoming attack' })).not.toBe(before);
+  });
+
+  it('keeps the attack beside a selection as a red chip with its count', () => {
+    const { container } = render(<ContextSlot {...props({ selected: true, threats: [attack(9), attack(20)] })} />);
+    const chip = container.querySelector('.gk-status');
+    expect(chip).toHaveAttribute('data-tone', 'hostile');
+    // The siren, as everywhere an attack coming for you is drawn.
+    const siren = render(<Glyph id="siren" />).container.querySelector('path')?.getAttribute('d');
+    expect(chip?.querySelector('path')?.getAttribute('d')).toBe(siren);
+    expect(chip).toHaveTextContent('2');
   });
 });

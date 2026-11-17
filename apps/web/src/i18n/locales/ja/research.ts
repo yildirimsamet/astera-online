@@ -42,7 +42,7 @@ export const research = {
   queueCapacity: "{{count}}枠",
   queueLane: "司令官の研究",
   queueGlobalHint:
-    "研究キューは司令官全体で共有します。開始した研究はキャンセルできません。各惑星の建設と造船所は別に進みます。",
+    "研究は司令官で一列、開始後は取り消せない。建設と造船所は別。",
   runningLabel: "研究中",
   runningFinishes: "{{time}}に完了",
   idleLabel: "研究中の項目はありません",

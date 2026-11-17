@@ -36,7 +36,7 @@ vi.mock('../../src/starter/tutorial/StarterTutorialCoach.js', () => ({ StarterTu
 
 vi.mock('../../src/v2/shell/HudTop.js', () => ({
   HudTop: (p: {
-    onCommander: () => void; onRewards: () => void; onWorlds: () => void; onEconomy: () => void; onBell: () => void;
+    onCommander: () => void; onWorlds: () => void; onEconomy: () => void;
     nowOpen: boolean; onNow: (open: boolean) => void;
     onFocusCraft: (focus: { kind: 'thread'; key: string }) => void; tabs?: ReactNode;
   }) => (
@@ -47,10 +47,8 @@ vi.mock('../../src/v2/shell/HudTop.js', () => ({
         <button type="button" onClick={() => { p.onNow(false); p.onFocusCraft({ kind: 'thread', key: 'm-1' }); }}>timer flight</button>
       </div>}
       <button type="button" onClick={p.onCommander}>chip</button>
-      <button type="button" onClick={p.onRewards}>gift</button>
       <button type="button" onClick={p.onWorlds}>world mark</button>
       <button type="button" onClick={p.onEconomy}>meter</button>
-      <button type="button" onClick={p.onBell}>bell</button>
     </div>
   ),
 }));
@@ -130,8 +128,9 @@ const shell = () => render(
     onPanel={onPanel}
     onFocusPlanet={onFocusPlanet}
     onFocusCraft={onFocusCraft}
-    galaxy={({ homeRequest, worldsRequest, centerRequest, clearRequest, onPanel: route, onOpenChat }) => (
+    galaxy={({ homeRequest, worldsRequest, centerRequest, clearRequest, onPanel: route, onOpenChat, onOpenBell }) => (
       <div>
+        <button type="button" onClick={onOpenBell}>bell</button>
         <p>{`home ${String(homeRequest)} worlds ${String(worldsRequest)}`}</p>
         <p>{`center ${String(centerRequest)} clear ${String(clearRequest)}`}</p>
         <button type="button" onClick={() => { route('chat'); }}>galaxy asks for chat</button>
@@ -163,11 +162,6 @@ afterEach(() => { vi.unstubAllGlobals(); });
 
 /** E11 · K10: a desk opens columns instead of scaling the phone up. */
 describe('the shell on a desk', () => {
-  it('opens the rewards page directly from the header gift', async () => {
-    shell();
-    await userEvent.click(screen.getByRole('button', { name: 'gift' }));
-    expect(onPanel).toHaveBeenLastCalledWith('rewards', undefined, undefined, undefined);
-  });
   it('keeps the phone layout on a phone: the dock at the foot, no outline', () => {
     desk(false);
     shell();

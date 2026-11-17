@@ -175,6 +175,33 @@ const OPEN: Partial<Record<Reach, { open: (base: string) => (page: Page, lang: s
       await page.waitForTimeout(4000);
     },
   },
+  /** The settings over a flight: practice, then the HUD's menu press. */
+  'arena:menu': {
+    open: (base) => async (page, lang) => {
+      await openApp(page, app(base, lang, '?arena=sandbox'), {}, '.ap-launch');
+      await page.locator('.ap-launch').click();
+      await page.locator('.ah-menu').waitFor();
+      await page.locator('.ah-menu').dispatchEvent('click');
+      await page.locator('.arena-menu').waitFor();
+      await page.waitForTimeout(600);
+    },
+  },
+  /** How a practice flight ends: the dev hook downs the ship, and the result card follows. */
+  'arena:result': {
+    open: (base) => async (page, lang) => {
+      await openApp(page, app(base, lang, '?arena=sandbox'), {}, '.ap-launch');
+      await page.locator('.ap-launch').click();
+      await page.waitForTimeout(2500);
+      await page.evaluate(() => {
+        const arena: unknown = Reflect.get(window, '__arena');
+        const world: unknown = arena && typeof arena === 'object' ? Reflect.get(arena, 'world') : null;
+        const pilot: unknown = world && typeof world === 'object' ? Reflect.get(world, 'pilot') : null;
+        if (pilot && typeof pilot === 'object') { Reflect.set(pilot, 'hull', 0); Reflect.set(pilot, 'phase', 'dead'); Reflect.set(pilot, 'respawn', 1e6); }
+      });
+      await page.locator('.arena-result').waitFor({ timeout: 15_000 });
+      await page.waitForTimeout(800);
+    },
+  },
   simulator: { open: (base) => (page, lang) => openApp(page, app(base, lang, '?simulator=1'), {}, 'main') },
   'special:maintenance-flag': {
     open: (base) => (page, lang) => openApp(page, app(base, lang), { storage: KNOWN_COMMANDER, api: () => ({ status: 503, body: { error: 'MAINTENANCE', params: { endsAt: new Date(Date.now() + 42 * 60_000).toISOString() } } }) }, 'main'),

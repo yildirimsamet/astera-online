@@ -4,7 +4,9 @@ import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound, type SoundCue } from '../lib/sound.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { HOLD_MS, useHoldPress } from '../v2/kit/useHoldPress.js';
+import { artIconSrc } from './art.js';
 import { Glyph, type GlyphId } from './icons.js';
+import { Dot } from './readouts.js';
 import type { CssVars } from './style.js';
 
 export type ButtonTone = 'action' | 'steel' | 'self' | 'danger' | 'ghost';
@@ -37,6 +39,12 @@ export interface GameButtonProps {
    * the commit cue and buzz instead of a tap, so the press lands with its weight.
    */
   heavy?: boolean;
+  /** The whole name for a reader when the face says less ("Unblock" → "Unblock Scout", C4). */
+  spoken?: string;
+  /** Marks a surface outside it points at: the tutorial's pointer, the onboarding gate. */
+  marks?: Record<`data-${string}`, string>;
+  /** Its form's submit (C25): the form's own submit acts, so Enter in a field does what the press does. */
+  submit?: boolean;
 }
 
 /**
@@ -46,7 +54,7 @@ export interface GameButtonProps {
  */
 export function GameButton({
   children, onPress, tone: look = 'steel', size = 'md', wide = false, glyph, cost, detail,
-  disabledReason = null, pending = false, className = '', heavy = false,
+  disabledReason = null, pending = false, className = '', heavy = false, spoken, marks, submit = false,
 }: GameButtonProps) {
   const own = useOwnPress(() => {
     if (pending || disabledReason !== null) return;
@@ -59,11 +67,13 @@ export function GameButton({
   const sizing = size === 'md' ? '' : ` gk-btn--${size}`;
   return (
     <button
-      type="button"
+      type={submit ? 'submit' : 'button'}
       {...OWN_SOUND}
       className={`gk-btn${tone(look)}${sizing}${wide ? ' gk-btn--wide' : ''} ${className}`}
       disabled={disabledReason !== null}
       aria-busy={pending || undefined}
+      {...(spoken === undefined ? {} : { 'aria-label': spoken })}
+      {...marks}
       onPointerDown={own.onPointerDown}
       onClick={own.onClick}
     >
@@ -81,27 +91,64 @@ export function GameButton({
   );
 }
 
+/** What a round button wears: a glyph, letters (a commander's initials) or a painting at its full 40 px. */
+type RoundFace =
+  | { glyph: GlyphId; face?: undefined; art?: undefined }
+  | { face: string; glyph?: undefined; art?: undefined }
+  | { art: string; glyph?: undefined; face?: undefined };
+
 /** A round button: close, back, help. The face is 36 px, the hit area 44. */
 export function RoundButton({
-  glyph, label, onPress, tone: look = 'steel', small = false,
-}: {
-  glyph: GlyphId;
+  glyph, face, art, label, onPress, tone: look = 'steel', small = false, count = 0, urgent = false, lit = false,
+}: RoundFace & {
   label: string;
   onPress: () => void;
   tone?: 'steel' | 'danger' | 'self';
   small?: boolean;
+  /** News behind it, in the red of news; nothing at zero. */
+  count?: number;
+  /** Something that cannot wait: the button beats. A count alone never does — a bar that always moves is not read. */
+  urgent?: boolean;
+  /** A state of its own is on (a sensor's reach drawn on the map): a light at its foot. */
+  lit?: boolean;
 }) {
   const own = useOwnPress(() => { answer(); onPress(); });
+  /*
+    A count that rises is news arriving: the face swings once (its key restarts the swing),
+    a falling count is quiet. Adjusted while rendering, so the swing lands with the number.
+  */
+  const [news, setNews] = useState({ seen: 0, rang: 0 });
+  if (count !== news.seen) setNews({ seen: count, rang: count > news.seen ? news.rang + 1 : news.rang });
   return (
     <button
       type="button"
       {...OWN_SOUND}
       aria-label={label}
-      className={`gk-round${look === 'steel' ? '' : ` gk-round--${look}`}${small ? ' gk-round--small' : ''}`}
+      className={`gk-round${look === 'steel' ? '' : ` gk-round--${look}`}${small ? ' gk-round--small' : ''}${art === undefined ? '' : ' gk-round--art'}`}
+      {...(urgent ? { 'data-urgent': '' } : {})}
+      {...(lit ? { 'data-lit': '' } : {})}
+      {...(news.rang > 0 ? { 'data-rang': String(news.rang) } : {})}
       onPointerDown={own.onPointerDown}
       onClick={own.onClick}
     >
-      <span className="gk-round__face"><Glyph id={glyph} /></span>
+      {art === undefined
+        ? <span key={news.rang} className="gk-round__face">{glyph === undefined ? <span className="gk-round__letters gk-display">{face}</span> : <Glyph id={glyph} />}</span>
+        : <img key={news.rang} className="gk-round__art" src={art} alt="" draggable={false} />}
+      {count > 0 && <span className="gk-round__count" aria-hidden="true"><Dot count={count} /></span>}
+    </button>
+  );
+}
+
+/**
+ * THE COMMANDER'S MEDALLION (G1-b, 2026-11-14): their initials inside a painted ring at the
+ * end of the top bar. It is the menu — the one door to everything that is not the galaxy.
+ */
+export function Medallion({ initials, label, onPress }: { initials: string; label: string; onPress: () => void }) {
+  const own = useOwnPress(() => { answer(); onPress(); });
+  return (
+    <button type="button" {...OWN_SOUND} aria-label={label} className="gk-medal" onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-medal__face gk-display" aria-hidden="true">{initials}</span>
+      <img className="gk-medal__ring" src={artIconSrc('hud-medallion')} alt="" draggable={false} />
     </button>
   );
 }
@@ -140,11 +187,16 @@ export interface GameHoldProps {
   detail?: ReactNode;
   onCommit: () => void;
   disabledReason?: string | null;
-  tone?: 'action' | 'danger';
+  /** `steel` for a hold that is not the screen's one move (a fleet's recall in its row). */
+  tone?: 'action' | 'danger' | 'steel';
   glyph?: GlyphId;
   commitSound?: SoundCue;
+  /** `md`: a thumb's height, to sit inside a list row (G2-h2); `lg`, the default, is the screen's move. */
+  size?: 'lg' | 'md';
   /** How heavy the action is; a heavier one holds longer. No default: each action picks its own (stage 4). */
   weight: HoldWeight;
+  /** Marks a surface outside it finds the hold by (the Death Star's `data-death-star`), live or refused. */
+  marks?: Record<`data-${string}`, string>;
 }
 
 /**
@@ -160,7 +212,7 @@ const HOLD_WEIGHT_MS: Record<HoldWeight, number> = { reversible: HOLD_MS, spends
  * down, the face rumbles, and the commit flashes. A tap says how to do it.
  */
 export function GameHold({
-  label, detail, onCommit, disabledReason = null, tone: look = 'action', glyph = 'rocket', commitSound = 'confirm', weight,
+  label, detail, onCommit, disabledReason = null, tone: look = 'action', glyph = 'rocket', commitSound = 'confirm', weight, size = 'lg', marks,
 }: GameHoldProps) {
   const holdMs = HOLD_WEIGHT_MS[weight];
   const { t } = useTranslation();
@@ -172,8 +224,7 @@ export function GameHold({
     onCommit();
   };
   const { holding, confirming, nudge, handlers } = useHoldPress(commit, disabledReason !== null, holdMs);
-  // the charge rises with the dial; letting go early leaves it to fade on its own
-  useEffect(() => { if (holding) playSound('charge'); }, [holding]);
+  // No sound while the finger is down (owner 2026-11-17: "Basılı tutmada ses istemiyorum"); the commit sounds.
 
   useEffect(() => {
     if (committed === 0) return undefined;
@@ -181,10 +232,10 @@ export function GameHold({
     return () => { window.clearTimeout(done); };
   }, [committed]);
 
-  const face = `gk-btn gk-btn--${look} gk-btn--lg gk-hold`;
+  const face = `gk-btn gk-btn--${look} ${size === 'lg' ? 'gk-btn--lg' : 'gk-hold--md'} gk-hold`;
   if (disabledReason !== null) {
     return (
-      <button type="button" disabled className={face}>
+      <button type="button" disabled data-hold-refused="" className={face} {...marks}>
         <span className="gk-hold__dial"><Glyph id="lock" /></span>
         <span className="gk-hold__words"><span className="gk-btn__detail">{disabledReason}</span></span>
       </button>
@@ -192,12 +243,16 @@ export function GameHold({
   }
 
   const style: CssVars = { '--gk-hold-ms': `${String(holdMs)}ms` };
+  // the verb keeps one line: a long one (German, at 320 px) shrinks to fit it, never cut
+  const labelLength: CssVars = { '--gk-len': label.length };
   const hint = confirming ? t('hold.confirm', { label }) : nudge ? t('hold.release') : t('hold.verb');
   return (
     <>
       <button
         type="button"
         {...OWN_SOUND}
+        data-hold=""
+        {...marks}
         className={face}
         style={style}
         aria-describedby={hintId}
@@ -214,7 +269,7 @@ export function GameHold({
           <Glyph id={glyph} />
         </span>
         <span className="gk-hold__words">
-          <span className="gk-hold__label">{label}</span>
+          <span className="gk-hold__label" style={labelLength}>{label}</span>
           <span className="gk-btn__detail">{hint}</span>
         </span>
         {detail !== undefined && <span className="gk-hold__aside">{detail}</span>}

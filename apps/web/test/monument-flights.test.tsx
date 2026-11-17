@@ -87,7 +87,10 @@ describe('native monument flights in the existing fleet surfaces', () => {
     const onRecall = vi.fn();
     render(<ThreadFocus thread={monumentPendingThreads(view)[0]!} minutesRemaining={60}
       open onToggle={vi.fn()} onClose={vi.fn()} onRecall={onRecall} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Recall fleet' }));
+    const hold = screen.getByRole('button', { name: /^recall fleet/i });
+    // a kit hold since G4-h2 (0.6 s): the keyboard's press and release stand in for the finger
+    fireEvent.keyDown(hold, { key: 'Enter' });
+    fireEvent.keyDown(hold, { key: 'Enter' });
     expect(onRecall).toHaveBeenCalledOnce();
     expect(screen.getByText(/current position.*fuel/i)).toBeInTheDocument();
     expect(screen.queryByText(/takes as long as it has flown/i)).not.toBeInTheDocument();

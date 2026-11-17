@@ -9,11 +9,11 @@ export type FlightMode = 'online' | 'solo';
 export function ModePicker({ c, mode, onPick, lock }: {
   c: ArenaCopy; mode: FlightMode; onPick: (mode: FlightMode) => void; lock: { core: number; need: number } | null;
 }) {
-  return <div className="ap-mode is-noted" role="radiogroup">
+  return <div className="gk-tabs gk-choices gk-flightmode" role="radiogroup" aria-label={c.modeTitle}>
     {(['online', 'solo'] as const).map(value => {
       const shut = value === 'online' && lock !== null;
       return <button key={value} type="button" role="radio" aria-checked={mode === value} disabled={shut}
-        className={mode === value ? 'is-selected' : ''} onClick={() => { onPick(value); }}>
+        className="gk-tab gk-flightmode__opt" onClick={() => { onPick(value); }}>
         <b>{value === 'solo' ? c.solo : c.shared}</b>
         <small>{shut ? c.coreShort(lock.core, lock.need) : value === 'solo' ? c.soloNote : c.sharedNote}</small>
       </button>;

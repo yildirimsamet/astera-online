@@ -1,20 +1,24 @@
-import { HULLS, SHIP_DAMAGE, fleetEntries, type Fleet, type HpDamageLots } from '@astera/rules';
+import { HULLS, fleetEntries, type Fleet, type HpDamageLots } from '@astera/rules';
 import { useState } from 'react';
-import { homeMaintenanceRows, maintenanceChoice } from '../../lib/maintenanceInventory.js';
-import { ShipHealthInventory } from '../../ui/ShipHealthInventory.js';
 import { useTranslation } from 'react-i18next';
 import type { ClanSupportWave, Monuments } from '../../api/schemas.js';
+import {
+  Chip, DOCK_ART, Emblem, GameButton, GameHold, GameTabs, Glyph, InfoPeek, ProgressBar, SectionTag, TimerRow, artIconSrc,
+} from '../../game-ui/index.js';
 import { hullLabel, hullName, monumentName } from '../../i18n/names.js';
-import { garrisonOf, legProgress, paceShown, recallPreview, type roomOf } from '../../lib/fleetPage.js';
-import { decimal, full } from '../../lib/format.js';
-import { clockTime, countdown, durationPrecise } from '../../lib/time.js';
+import type { AirborneItem } from '../../lib/airborne.js';
 import { supportVerdict } from '../../lib/clanAlarm.js';
-import type { AirborneItem, FlightMark } from '../../shell/PendingStrip.js';
-import { Icon, type IconId } from '../icons.js';
-import { ClassEmblem } from '../kit/ClassEmblem.js';
-import { Segmented } from '../kit/Segmented.js';
-import { Sheet } from '../kit/Sheet.js';
+import { garrisonOf, paceShown, recallPreview, type roomOf } from '../../lib/fleetPage.js';
+import { decimal, full } from '../../lib/format.js';
+import { haptic } from '../../lib/haptics.js';
+import { homeMaintenanceRows, maintenanceChoice } from '../../lib/maintenanceInventory.js';
+import { OWN_SOUND, playSound } from '../../lib/sound.js';
+import { clockTime, countdown, durationPrecise } from '../../lib/time.js';
 import { ATMOSPHERE } from '../../ui/atmosphere.js';
+import { useOwnPress } from '../../ui/kit/useOwnPress.js';
+import { ShipHealthInventory } from '../../ui/ShipHealthInventory.js';
+import { Sheet } from '../kit/Sheet.js';
+import { FLIGHT_MARK } from './Outline.js';
 
 export type FleetTab = 'air' | 'home' | 'room';
 
@@ -49,7 +53,7 @@ export interface FleetPageProps {
   /** `useAirborne().items`: yours and the enemy coming for you, soonest first. */
   flights: readonly AirborneItem[];
   worlds: readonly FleetWorld[];
-  /** The row whose recall is on its way, so its button holds. */
+  /** The row whose recall is on its way, so it says so instead of offering it again. */
   recalling: string | null;
   onFocus: (item: AirborneItem) => void;
   onRecall: (item: AirborneItem) => void;
@@ -74,48 +78,35 @@ export interface FleetPageProps {
   onClose: () => void;
 }
 
-/** The act as a picture: the glyph the rest of the game uses for it. */
-const MARK: Record<FlightMark, IconId> = {
-  unknown_signal: 'i-probe',
-  monument: 'i-attack',
-  fleet: 'i-attack',
-  probe: 'i-probe',
-  incoming: 'i-attack',
-  transfer: 'i-transfer',
-  settlement: 'm-colony',
-  death_star: 'i-attack',
-  radiation_bomb: 'i-attack',
-  mining: 'i-mine',
-  salvage: 'm-debris',
-  pirate: 'm-pirate',
-  trade: 'i-trade',
-  intergalactic_convoy: 'i-attack',
-};
+/** A kit press: the tap, the buzz, then the place it opens. */
+function usePress(onPress: () => void) {
+  return useOwnPress(() => { playSound('tap'); haptic('tap'); onPress(); });
+}
 
-/** A figure and its fill: the header's two readings. */
-function Room({ label, used, total }: { label: string; used: number; total: number }) {
+/**
+ * ONE OF THE PAGE'S TWO READINGS (G2-h2): how full the world on top is, and in words what is
+ * left — "free 2" says a launch is possible without counting. Bays are few, so each is a cell.
+ */
+function Gauge({ kind, label, used, total }: { kind: 'bays' | 'hangar'; label: string; used: number; total: number }) {
+  const { t } = useTranslation();
   const atCap = used >= total;
   return (
-    <div className="rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
-      <span className="block truncate text-micro text-v2-ink-3">{label}</span>
-      <span className={`mt-0.5 block font-v2-mono text-body font-semibold ${atCap ? 'text-v2-warn' : 'text-v2-ink'}`}>{`${full(used)} / ${full(total)}`}</span>
-      <span aria-hidden="true" className="mt-1.5 block h-1 rounded-full bg-v2-line">
-        <span
-          className={`block h-full rounded-full ${atCap ? 'bg-v2-warn' : 'bg-v2-self'}`}
-          style={{ width: `${String(total > 0 ? Math.min(100, (used / total) * 100) : 0)}%` }}
-        />
-      </span>
+    <div data-fleet-gauge={kind} {...(atCap ? { 'data-full': '' } : {})} className="gk-fgauge gk-well">
+      <span className="gk-label">{label}</span>
+      <p className="gk-fgauge__read">
+        <span className="gk-fgauge__figure gk-num">{`${full(used)} / ${full(total)}`}</span>
+        <span className="gk-fgauge__left gk-num">{atCap ? t('fleetPage.full') : t('roomBar.free', { value: full(total - used) })}</span>
+      </p>
+      <ProgressBar value={used} max={total} tone={atCap ? 'warn' : 'self'} {...(kind === 'bays' && total <= 12 ? { segments: total } : {})} />
     </div>
   );
 }
 
 /**
- * ONE FLIGHT, ONE ROW. Spec B11.
- *
- * What it is and the time left, one line of detail — the craft, the pace when it
- * is not full speed, the clock it lands at — and a track filled to where it is on
- * this leg. A flight the server says may still turn carries a last line, as the mock
- * draws it: the price of turning in words ("home in 42m"), and the Recall beside it.
+ * ONE FLIGHT, ONE ROW (G2-h2): the timers sheet's ring row — its mark in a ring that empties,
+ * red when it comes for you — and a tap frames the craft. A flight the server says may still
+ * turn carries a short steel hold under it with the way home written on it ("Home in 42m"): a
+ * recall is not free (K8), and a stray tap on a crowded list must never cancel a raid.
  */
 export function FlightRow({
   item,
@@ -128,101 +119,71 @@ export function FlightRow({
   now: number;
   recalling: boolean;
   onFocus: (item: AirborneItem) => void;
-  /** Absent where the row is a glance (the desk outline): the recall lives on the Fleet page. */
+  /** Absent where the row is a glance: the recall lives on the Fleet page. */
   onRecall?: (item: AirborneItem) => void;
 }) {
   const { t } = useTranslation();
-  const progress = legProgress(item.span, now);
   const pace = paceShown(item.pace);
   const turnable = onRecall !== undefined && item.leg !== 'return'
     && (item.recallMission !== undefined || item.recall !== undefined);
   const home = item.recallMinutes !== undefined ? { backInMs: item.recallMinutes * 60_000 }
     : item.span ? recallPreview(item.span.from, now) : null;
-  const hostile = item.incoming;
-  const detail = [
-    item.detail,
-    ...(pace === null ? [] : [t('fleetPage.pace', { pct: pace })]),
-    t('now.at', { time: clockTime(new Date(item.arrival)) }),
-  ].join(' · ');
-
-  const body = (
-    <>
-      <span
-        aria-hidden="true"
-        className={`grid size-8 shrink-0 place-items-center rounded-control border ${
-          hostile ? 'border-v2-hostile/50 bg-v2-hostile/15 text-v2-hostile' : 'border-v2-line bg-v2-raise text-v2-ink-2'
-        }`}
-      >
-        <Icon id={MARK[item.mark]} className="size-4" />
-      </span>
-      <span className="grid min-w-0 flex-1 gap-1">
-        <span className="flex items-baseline gap-2">
-          <span className="min-w-0 flex-1 truncate text-caption font-semibold text-v2-ink">{item.title}</span>
-          <span className={`shrink-0 font-v2-mono text-caption font-semibold tabular-nums ${hostile ? 'text-v2-hostile' : 'text-v2-ink'}`}>
-            {countdown(item.arrival - now)}
-          </span>
-        </span>
-        <span className="truncate text-micro text-v2-ink-3">{detail}</span>
-        <span
-          aria-hidden="true"
-          data-progress={progress === null ? undefined : String(Math.round(progress * 100) / 100)}
-          className={`mt-0.5 block h-[3px] rounded-full ${progress === null ? 'bg-v2-line/60' : 'bg-v2-line'}`}
-        >
-          {progress !== null && (
-            <span
-              className={`block h-full rounded-full ${hostile ? 'bg-v2-hostile' : 'bg-v2-self'} ${item.leg === 'return' ? 'ml-auto' : ''}`}
-              style={{ width: `${String(Math.round(progress * 100))}%` }}
-            />
-          )}
-        </span>
-      </span>
-    </>
-  );
-  const price = home && !recalling ? t('fleetPage.recallHome', { time: countdown(home.backInMs) }) : null;
-
+  const detail = [item.detail, ...(pace === null ? [] : [t('fleetPage.pace', { pct: pace })])].filter(Boolean).join(' · ');
   return (
-    <li data-tone={hostile ? 'hostile' : 'self'} className="border-b border-v2-line/70 py-2.5 last:border-b-0">
-      {item.focus ? (
-        <button
-          type="button"
-          aria-label={item.title}
-          onClick={() => { onFocus(item); }}
-          className="flex w-full min-w-0 items-start gap-2.5 text-left"
-        >
-          {body}
-        </button>
+    <li data-tone={item.incoming ? 'hostile' : 'self'} className="gk-flight">
+      <TimerRow
+        tone={item.incoming ? 'hostile' : 'self'}
+        glyph={item.leg === 'return' ? 'recall' : FLIGHT_MARK[item.mark]}
+        remaining={Math.max(0, item.arrival - now)}
+        total={item.span ? item.span.to - item.span.from : 0}
+        title={item.title}
+        {...(detail === '' ? {} : { detail })}
+        time={countdown(item.arrival - now)}
+        at={t('now.at', { time: clockTime(new Date(item.arrival)) })}
+        {...(item.focus ? { onPress: () => { onFocus(item); } } : {})}
+      />
+      {turnable && (recalling ? (
+        <p role="status" className="gk-flight__more gk-flight__turning">{t('fleetPage.recalling')}</p>
       ) : (
-        <div className="flex min-w-0 items-start gap-2.5">{body}</div>
-      )}
-      {turnable && (
-        <div className="mt-1.5 flex items-center gap-2 pl-[2.625rem]">
-          <span className="min-w-0 flex-1 truncate text-micro text-v2-ink-3">{recalling ? t('fleetPage.recalling') : price}</span>
-          <button
-            type="button"
-            aria-label={[t('fleetPage.recall'), recalling ? t('fleetPage.recalling') : price].filter(Boolean).join(' · ')}
-            disabled={recalling}
-            onClick={() => { onRecall(item); }}
-            className="shrink-0 rounded-control border border-v2-line-hi bg-v2-raise px-2.5 py-1 text-micro font-semibold text-v2-ink disabled:opacity-50"
-          >
-            {t('fleetPage.recall')}
-          </button>
+        <div className="gk-flight__more">
+          <GameHold weight="reversible" size="md" tone="steel" glyph="recall"
+            label={t('fleetPage.recall')}
+            {...(home ? { detail: t('fleetPage.recallHome', { time: countdown(home.backInMs) }) } : {})}
+            onCommit={() => { onRecall(item); }} />
         </div>
-      )}
+      ))}
     </li>
   );
 }
 
+/** Where a support wave's clock runs to, and what that clock means beside it. */
+function waveClock(wave: ClanSupportWave, now: number, left: string): {
+  remaining: number; total: number; time?: string; at?: string;
+} {
+  const at = (date: Date) => clockTime(date);
+  if (wave.status === 'OUTBOUND') {
+    const arrive = wave.arriveAt.getTime();
+    return { remaining: Math.max(0, arrive - now), total: arrive - wave.sentAt.getTime(), time: countdown(arrive - now), at: at(wave.arriveAt) };
+  }
+  if (wave.status === 'STATIONED' && wave.expiresAt) {
+    const ends = wave.expiresAt.getTime();
+    return { remaining: Math.max(0, ends - now), total: ends - (wave.stationedAt ?? wave.arriveAt).getTime(), time: countdown(ends - now), at: left };
+  }
+  if (wave.returnAt) return { remaining: Math.max(0, wave.returnAt.getTime() - now), total: 0, time: countdown(wave.returnAt.getTime() - now), at: at(wave.returnAt) };
+  return { remaining: 0, total: 0 };
+}
+
 /**
- * MY SUPPORT WAVES. Where each stands, what is in it, how long it has — and, beside it,
- * the one way home: Recall once it stands, Turn back while it flies (the K8 price said
- * in words), nothing once it is already coming home.
+ * MY SUPPORT WAVES. Where each stands, what is in it, how long it has — and, under it, the one
+ * way home as the flights take it: a short hold to recall it once it stands, to turn it back
+ * while it flies (the K8 price said in words), nothing once it is already coming home.
  */
 function SupportGroup({ support, now }: { support: NonNullable<FleetPageProps['support']>; now: number }) {
   const { t } = useTranslation();
   return (
-    <section aria-label={t('clanSupport.groupTitle')} data-support-group="" className="flex flex-col gap-1.5">
-      <p className="px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('clanSupport.groupTitle')}</p>
-      <ul className="flex flex-col gap-1.5">
+    <section aria-label={t('clanSupport.groupTitle')} data-support-group="" className="gk-fleet__group">
+      <SectionTag aside={<span className="gk-num">{support.waves.length}</span>}>{t('clanSupport.groupTitle')}</SectionTag>
+      <ul className="gk-tlist">
         {support.waves.map((wave) => {
           const flying = wave.status === 'OUTBOUND';
           const landing = flying && wave.arriveAt.getTime() <= now;
@@ -231,56 +192,49 @@ function SupportGroup({ support, now }: { support: NonNullable<FleetPageProps['s
             : wave.status === 'STATIONED'
               ? t('clanSupport.statusStationed', { world: wave.hostPlanetName })
               : t('clanSupport.statusReturning', { world: wave.hostPlanetName });
-          const when = flying
-            ? t('clanSupport.arriving', { time: countdown(wave.arriveAt.getTime() - now) })
-            : wave.status === 'STATIONED' && wave.expiresAt
-              ? t('clanSupport.leftFor', { time: countdown(wave.expiresAt.getTime() - now) })
-              : wave.returnAt ? t('now.at', { time: clockTime(wave.returnAt) }) : '';
+          const clock = waveClock(wave, now, t('clanSupport.timeLeft'));
           const control = wave.status === 'STATIONED' ? t('clanSupport.recall')
             : flying && !landing ? t('clanSupport.recallFlight') : null;
           // F2 corridor: a raid the clan was alarmed about, still ahead, on the world this wave guards.
           const raidAt = wave.raidAt && wave.raidAt.getTime() > now ? wave.raidAt : null;
           const race = raidAt && flying && !landing ? supportVerdict(wave.arriveAt, raidAt) : null;
           return (
-            <li key={wave.id} data-support-wave={wave.id} className="rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
-              <div className="flex items-center gap-2">
-                <Icon id="i-transfer" className="size-3.5 shrink-0 text-v2-self" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-caption font-semibold text-v2-ink">{status}</span>
-                  <span className="block truncate text-micro text-v2-ink-2">
-                    {fleetEntries(wave.fleet).map(([hull, n]) => `${String(n)} ${hullName(hull)}`).join(' · ')}
-                    {when && <> · {when}</>}
-                  </span>
-                </span>
-                {control !== null && (
-                  <button
-                    type="button"
-                    disabled={support.recalling === wave.id}
-                    onClick={() => { support.onRecall(wave.id); }}
-                    className="min-h-8 shrink-0 rounded-control border border-v2-line px-2 text-micro text-v2-ink disabled:opacity-60"
-                  >
-                    {control}
-                  </button>
-                )}
-              </div>
+            <li key={wave.id} data-support-wave={wave.id} className="gk-flight">
+              <TimerRow
+                tone="self"
+                glyph="support"
+                remaining={clock.remaining}
+                total={clock.total}
+                title={status}
+                detail={fleetEntries(wave.fleet).map(([hull, n]) => `${String(n)} ${hullName(hull)}`).join(' · ')}
+                {...(landing ? { waiting: t('clanSupport.landing') } : {
+                  ...(clock.time === undefined ? {} : { time: clock.time }),
+                  ...(clock.at === undefined ? {} : { at: clock.at }),
+                })}
+              />
               {race && raidAt && (
-                <p data-raid-race={race.inTime ? 'in-time' : 'late'} className="mt-1 flex flex-wrap items-baseline gap-x-2 text-micro">
-                  <span className="font-v2-mono tabular-nums text-v2-ink-2">
-                    {t('clanSupport.corridorTimes', { arrive: clockTime(wave.arriveAt), raid: clockTime(raidAt) })}
-                  </span>
-                  <span className={`font-semibold ${race.inTime ? 'text-v2-self' : 'text-v2-warn'}`}>
+                <p data-raid-race={race.inTime ? 'in-time' : 'late'} className="gk-flight__more gk-flight__race">
+                  <span className="gk-num">{t('clanSupport.corridorTimes', { arrive: clockTime(wave.arriveAt), raid: clockTime(raidAt) })}</span>
+                  <span data-tone={race.inTime ? 'good' : 'warn'} className="gk-flight__verdict">
                     {t(race.inTime ? 'clanSupport.alarmInTime' : 'clanSupport.alarmLate', { time: durationPrecise(race.minutes) })}
                   </span>
                 </p>
               )}
               {raidAt && wave.status === 'STATIONED' && (
-                <p data-raid-race="standing" className="mt-1 text-micro font-semibold text-v2-hostile">
-                  {t('clanSupport.alarmRaidIn', { time: countdown(raidAt.getTime() - now) })}
+                <p data-raid-race="standing" data-tone="hostile" className="gk-flight__more gk-flight__note">
+                  <Glyph id="siren" />{t('clanSupport.alarmRaidIn', { time: countdown(raidAt.getTime() - now) })}
                 </p>
               )}
-              {flying && !landing && <p className="mt-1 text-micro text-v2-ink-3">{t('clanSupport.recallFlightRule')}</p>}
-              {landing && <p className="mt-1 text-micro text-v2-ink-3">{t('clanSupport.landing')}</p>}
-              {wave.outOfBand && <p className="mt-1 text-micro text-v2-warn">{t('clanSupport.outOfBand')}</p>}
+              {wave.outOfBand && <p data-tone="warn" className="gk-flight__more gk-flight__note">{t('clanSupport.outOfBand')}</p>}
+              {flying && !landing && <p className="gk-flight__more gk-flight__note">{t('clanSupport.recallFlightRule')}</p>}
+              {control !== null && (support.recalling === wave.id ? (
+                <p role="status" className="gk-flight__more gk-flight__turning">{t('fleetPage.recalling')}</p>
+              ) : (
+                <div className="gk-flight__more">
+                  <GameHold weight="reversible" size="md" tone="steel" glyph="recall"
+                    label={control} onCommit={() => { support.onRecall(wave.id); }} />
+                </div>
+              ))}
             </li>
           );
         })}
@@ -289,28 +243,50 @@ function SupportGroup({ support, now }: { support: NonNullable<FleetPageProps['s
   );
 }
 
-/**
- * A WORLD'S NAME, AND THE WAY TO IT. Owner, 2026-10-07: "gezegenlerime tıklayınca tıkladığım
- * gezegene focus olsun." The head of the row is the door — the chevron says so — while the
- * hull chips, the dock count and the room bars keep their own jobs.
- */
-function WorldName({ world, onFocus }: { world: FleetWorld; onFocus: () => void }) {
-  const { t } = useTranslation();
+/** A monument wave holding its post: what it carries and makes, and when it next loses a ship. */
+function MonumentHold({ title, count, cargo, rate, loss, onPress }: {
+  title: string;
+  count: string;
+  cargo: string;
+  rate: string;
+  loss: string | null;
+  onPress: () => void;
+}) {
+  const own = usePress(onPress);
   return (
-    <button
-      type="button"
-      onClick={onFocus}
-      aria-label={t('fleetPage.focusWorld', { world: world.name })}
-      className="flex min-w-0 flex-1 items-center gap-2 text-left"
-    >
-      <Icon id={world.capital ? 'm-capital' : 'm-colony'} className="size-3.5 shrink-0 text-v2-self" title={t(world.capital ? 'fleetPage.capital' : 'fleetPage.colony')} />
-      <span className="min-w-0 truncate text-caption font-semibold text-v2-ink">{world.name}</span>
-      <Icon id="i-chev" className="size-3 shrink-0 text-v2-ink-3" />
+    <button type="button" {...OWN_SOUND} className="gk-mhold" onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-mhold__coin" aria-hidden="true"><Glyph id="star" /></span>
+      <span className="gk-mhold__text">
+        <span className="gk-mhold__title">{title} · <span className="gk-num">{count}</span></span>
+        <span data-tone="deut" className="gk-sub">{cargo}</span>
+        <span className="gk-sub">{rate}</span>
+        {loss !== null && <span data-tone="hostile" className="gk-sub">{loss}</span>}
+      </span>
+      <Glyph id="next" />
     </button>
   );
 }
 
-/** A world's ships at home, by hull, with its class shape. */
+/**
+ * A WORLD'S NAME, AND THE WAY TO IT. Owner, 2026-10-07: "gezegenlerime tıklayınca tıkladığım
+ * gezegene focus olsun." The head of the card is the door — a thumb's 44 px, the chevron says
+ * so — while the hull chips, the dock count and the room bars keep their own jobs.
+ */
+function WorldDoor({ world, onFocus }: { world: FleetWorld; onFocus: () => void }) {
+  const { t } = useTranslation();
+  const own = usePress(onFocus);
+  return (
+    <button type="button" {...OWN_SOUND} aria-label={t('fleetPage.focusWorld', { world: world.name })} className="gk-world__door"
+      onPointerDown={own.onPointerDown} onClick={own.onClick}>
+      <span className="gk-world__coin" aria-hidden="true"><Glyph id={world.capital ? 'home' : 'colony'} /></span>
+      <span className="gk-world__name">{world.name}</span>
+      <span className="gk-world__kind">{t(world.capital ? 'fleetPage.capital' : 'fleetPage.colony')}</span>
+      <Glyph id="next" />
+    </button>
+  );
+}
+
+/** A world's ships at home, by hull under its class emblem, and the hurt ones' way to the station. */
 function Garrison({ world, aboard, onOpenRepairStation, onFocusWorld, onDock, docking }: {
   world: FleetWorld;
   aboard: boolean;
@@ -325,93 +301,85 @@ function Garrison({ world, aboard, onOpenRepairStation, onFocusWorld, onDock, do
   const damaged = homeMaintenanceRows(world.fleet, world.damage).filter((row) => row.damageBp > 0 || (row.remainderBp ?? 0) > 0);
   const choice = maintenanceChoice(damaged, quantities, 100);
   const total = rows.reduce((n, row) => n + row.count, 0);
+  const radiation = world.workshopRadiation === true;
+  const moveReason = radiation ? t('repairStation.maintenance.radiationShort')
+    : choice.tooMany ? t('repairStation.tooManyShort')
+      : choice.selection === null ? t('repairStation.maintenance.select') : null;
   return (
-    <li className="rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
-      <div className="flex flex-col gap-1.5">
-        {/* Aboard with ships hurt, the ship's own row leads to the station it was pressed to find (player test F-01). */}
-        <WorldName world={world} onFocus={aboard && damaged.length > 0 ? onOpenRepairStation : onFocusWorld} />
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          {total > 0 && <span className="shrink-0 font-v2-mono text-micro text-v2-ink-2">{t('fleetPage.shipsHome', { count: total })}</span>}
-          {world.away > 0 && <span className="shrink-0 font-v2-mono text-micro text-v2-ink-3">{t('fleetPage.away', { count: world.away })}</span>}
-          {/* Why the count is lower than the ships owned: they wait for repair, and one tap opens that station. */}
-          {world.docked > 0 && (
-            <button
-              type="button"
-              onClick={onOpenRepairStation}
-              className="shrink-0 rounded-chip border border-v2-warn/50 px-1.5 py-0.5 font-v2-mono text-micro text-v2-warn"
-            >
-              {t('repairStation.docked', { count: world.docked })}
-            </button>
-          )}
-        </div>
+    <li className="gk-world gk-well">
+      {/* Aboard with ships hurt, the ship's own row leads to the station it was pressed to find (player test F-01). */}
+      <WorldDoor world={world} onFocus={aboard && damaged.length > 0 ? onOpenRepairStation : onFocusWorld} />
+      <div className="gk-world__counts">
+        {total > 0 && <span className="gk-num">{t('fleetPage.shipsHome', { count: total })}</span>}
+        {world.away > 0 && <span className="gk-num" data-tone="away">{t('fleetPage.away', { count: world.away })}</span>}
+        {/* Why the count is lower than the ships owned: they wait for repair, and one tap opens that station. */}
+        {world.docked > 0 && (
+          <Chip onPress={onOpenRepairStation}><Glyph id="repair" />{t('repairStation.docked', { count: world.docked })}</Chip>
+        )}
       </div>
       {rows.length === 0 ? (
-        <p className="mt-1 text-micro text-v2-ink-3">{t('fleetPage.noShips')}</p>
+        <p className="gk-sub">{t('fleetPage.noShips')}</p>
       ) : (
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
+        <p className="gk-garrison">
           {rows.map(({ hull, count }) => (
-            <span
-              key={hull}
-              data-testid="garrison-hull"
-              className="flex items-center gap-1 rounded-chip border border-v2-line bg-v2-raise px-1.5 py-0.5 text-micro text-v2-ink-2"
-            >
-              <ClassEmblem cls={HULLS[hull].cls} className="size-2.5" decorative />
+            <span key={hull} data-testid="garrison-hull" className="gk-garrison__hull">
+              <Emblem cls={HULLS[hull].cls} />
               <span>{hullLabel(hull)}</span>
-              <span className="font-v2-mono text-v2-ink">{count}</span>
+              <span className="gk-num">{count}</span>
             </span>
           ))}
-        </div>
+        </p>
       )}
       {/* A ship's station takes everything hurt at home, so there is nothing to choose and nothing to transfer. */}
-      {damaged.length > 0 && aboard && <section className="mt-2 flex flex-col gap-2 border-t border-v2-line pt-2">
-        <p className="text-micro font-semibold text-v2-warn">{t('repairStation.damagedHeading')}</p>
-        <button type="button" onClick={onOpenRepairStation} className="min-h-9 rounded-control border border-v2-self/40 bg-v2-self/10 px-2 text-caption font-semibold text-v2-self">
-          {t('starter.fleetPage.openStation')}
-        </button>
-      </section>}
-      {damaged.length > 0 && !aboard && <section className="mt-2 flex flex-col gap-2 border-t border-v2-line pt-2">
-        <p className="text-micro font-semibold text-v2-warn">{t('repairStation.damagedHeading')}</p>
-        {world.workshopRadiation && <p className="text-micro text-v2-warn">{t('repairStation.maintenance.radiation')}</p>}
-        <ShipHealthInventory rows={damaged} quantities={quantities} disabled={docking === true || world.workshopRadiation === true}
-          onQuantity={(key, count) => { setQuantities((current) => ({ ...current, [key]: count })); }} />
-        {choice.stale && <button type="button" onClick={() => { setQuantities({}); }} className="text-micro text-v2-warn">{t('repairStation.maintenance.stale')}</button>}
-        {choice.tooMany && <p role="status" className="text-micro text-v2-warn">{t('repairStation.tooMany', { max: SHIP_DAMAGE.repairLotsPerOrder })}</p>}
-        <button type="button" disabled={!onDock || !choice.selection || docking === true || world.workshopRadiation === true} onClick={() => {
-          if (choice.selection?.source === 'HOME') onDock?.(world.id, choice.selection.groups, () => { setQuantities({}); });
-        }} className="min-h-9 rounded-control border border-v2-self/40 bg-v2-self/10 px-2 text-caption font-semibold text-v2-self disabled:opacity-40">
-          {t('repairStation.maintenance.move')}
-        </button>
-      </section>}
+      {damaged.length > 0 && aboard && (
+        <section className="gk-world__hurt">
+          <p className="gk-world__hurt-head"><Glyph id="damaged" />{t('repairStation.damagedHeading')}</p>
+          <GameButton tone="self" wide glyph="repair" onPress={onOpenRepairStation}>{t('starter.fleetPage.openStation')}</GameButton>
+        </section>
+      )}
+      {damaged.length > 0 && !aboard && (
+        <section className="gk-world__hurt">
+          <p className="gk-world__hurt-head"><Glyph id="damaged" />{t('repairStation.damagedHeading')}</p>
+          {radiation && <p data-tone="warn" className="gk-sub">{t('repairStation.maintenance.radiation')}</p>}
+          <ShipHealthInventory rows={damaged} quantities={quantities} disabled={docking === true || radiation}
+            onQuantity={(key, count) => { setQuantities((current) => ({ ...current, [key]: count })); }} />
+          {choice.stale && (
+            <p role="status" data-tone="warn" className="gk-world__stale gk-sub">
+              {t('repairStation.maintenance.stale')}
+              <Chip onPress={() => { setQuantities({}); }}>{t('repairStation.maintenance.clear')}</Chip>
+            </p>
+          )}
+          {onDock && (
+            <GameButton tone="self" wide glyph="repair" disabledReason={moveReason} pending={docking === true}
+              onPress={() => {
+                if (choice.selection?.source === 'HOME') onDock(world.id, choice.selection.groups, () => { setQuantities({}); });
+              }}>
+              {t('repairStation.maintenance.move')}
+            </GameButton>
+          )}
+        </section>
+      )}
     </li>
   );
 }
 
-/** A world's Hangar and ground room, each with its fill, warn when full. */
+/** A world's Hangar and ground room, each on a kit bar that warms when full. */
 function WorldRoom({ world, onFocusWorld }: { world: FleetWorld; onFocusWorld: () => void }) {
   const { t } = useTranslation();
   const line = (kind: 'hangar' | 'ground', label: string, room: { used: number; total: number; full: boolean }, note?: string) => (
-    <div data-room={kind} {...(room.full ? { 'data-full': '' } : {})} className="grid gap-1">
-      <div className="flex items-baseline gap-2">
-        <span className="min-w-0 flex-1 truncate text-micro text-v2-ink-2">{label}</span>
-        {room.full && <span className="shrink-0 text-micro font-semibold uppercase text-v2-warn">{t('fleetPage.full')}</span>}
-        <span className={`shrink-0 font-v2-mono text-caption ${room.full ? 'text-v2-warn' : 'text-v2-ink'}`}>
-          {`${full(room.used)}/${full(room.total)}`}
-        </span>
-      </div>
-      <span aria-hidden="true" className="block h-0.5 rounded-full bg-v2-line">
-        <span
-          className={`block h-full rounded-full ${room.full ? 'bg-v2-warn' : 'bg-v2-self'}`}
-          style={{ width: `${String(room.total > 0 ? Math.min(100, (room.used / room.total) * 100) : 0)}%` }}
-        />
-      </span>
-      {note && <span className="text-micro text-v2-ink-3">{note}</span>}
+    <div data-room={kind} {...(room.full ? { 'data-full': '' } : {})} className="gk-wroom">
+      <p className="gk-wroom__head">
+        <span className="gk-label">{label}</span>
+        {room.full && <span className="gk-wroom__full">{t('fleetPage.full')}</span>}
+        <span className="gk-wroom__figure gk-num">{`${full(room.used)} / ${full(room.total)}`}</span>
+      </p>
+      <ProgressBar value={room.used} max={room.total} tone={room.full ? 'warn' : 'self'} />
+      {note && <p className="gk-sub">{note}</p>}
     </div>
   );
   return (
-    <li className="grid gap-2 rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
-      <div className="flex items-center gap-2">
-        <WorldName world={world} onFocus={onFocusWorld} />
-      </div>
+    <li className="gk-world gk-well">
+      <WorldDoor world={world} onFocus={onFocusWorld} />
       {world.room.hangar && line(
         'hangar',
         t('fleetPage.hangar'),
@@ -426,11 +394,12 @@ function WorldRoom({ world, onFocusWorld }: { world: FleetWorld; onFocusWorld: (
 }
 
 /**
- * THE FLEET PAGE. Spec E4 (docs/ui-v2/gozlemevi.md).
+ * THE FLEET PAGE. Spec E4 (docs/ui-v2/gozlemevi.md), on the game kit since G2-h2 (2026-11-15).
  *
- * The dock's Fleet tab. The flight bays and the Hangar room head it because they
- * decide whether the next launch or the next hull is possible at all; the three
- * views under them are what is up, what is home, and how much room is left.
+ * The dock's Fleet tab. Its head names the world the gauges read and turns red while an
+ * attack comes; the flight bays and the Hangar room decide whether the next launch or the
+ * next hull is possible at all; the three views under them are what is up, what is home, and
+ * how much room is left.
  */
 export function FleetPage({
   tab,
@@ -453,31 +422,52 @@ export function FleetPage({
   aboard = false,
 }: FleetPageProps) {
   const { t } = useTranslation();
+  const active = worlds.find((world) => world.active);
+  const threats = flights.filter((item) => item.incoming).length;
+  const holding = monuments ? monuments.view.waves.filter((wave) => wave.status === 'HOLD') : [];
   return (
     // As tall as what it holds, a page at most (owner, 2026-09-25); a column on a wide screen.
-    <Sheet title={t('dock.fleet')} headerArt={ATMOSPHERE.fleet} onClose={onClose} detents={['fit']} placement="page">
-      <div className="flex flex-col gap-2.5 pt-1">
-        <Segmented
+    <Sheet
+      title={t('dock.fleet')}
+      headerArt={ATMOSPHERE.fleet}
+      onClose={onClose}
+      detents={['fit']}
+      placement="page"
+      kit={{
+        art: artIconSrc(DOCK_ART.fleet),
+        tone: threats > 0 ? 'hostile' : 'self',
+        // The world the gauges read; an attack coming said in words, since the art hides the plate's tone.
+        meta: (
+          <span className="gk-fleet__meta">
+            {active && <span className="gk-fleet__where"><Glyph id={active.capital ? 'home' : 'colony'} />{active.name}</span>}
+            {threats > 0 && <span data-tone="hostile" className="gk-fleet__threat"><Glyph id="siren" />{t('outline.threat', { count: threats })}</span>}
+          </span>
+        ),
+      }}
+    >
+      <div className="gk-fleet">
+        <GameTabs
+          stacked
           label={t('fleetPage.views')}
-          options={[
-            { id: 'air', label: flights.length > 0 ? `${t('fleetPage.air')} · ${String(flights.length)}` : t('fleetPage.air') },
-            { id: 'home', label: t('fleetPage.home') },
-            { id: 'room', label: t('fleetPage.hangar') },
+          tabs={[
+            { id: 'air', label: flights.length > 0 ? `${t('fleetPage.air')} · ${String(flights.length)}` : t('fleetPage.air'), glyph: { id: 'rocket' } },
+            { id: 'home', label: t('fleetPage.home'), glyph: { id: 'home' } },
+            { id: 'room', label: t('fleetPage.hangar'), glyph: { id: 'bay' } },
           ]}
           value={tab}
           onChange={onTab}
         />
         {(bays !== null || hangar !== null) && (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="gk-fleet__gauges">
             {/* Aboard only attacks and outpost raids take a bay; a probe or a Prospector does not (player test B-01). */}
-            {bays && <Room label={t(aboard ? 'starter.fleetPage.bays' : 'fleetPage.bays')} used={bays.used} total={bays.total} />}
-            {hangar && <Room label={t('fleetPage.hangar')} used={hangar.used} total={hangar.total} />}
+            {bays && <Gauge kind="bays" label={t(aboard ? 'starter.fleetPage.bays' : 'fleetPage.bays')} used={bays.used} total={bays.total} />}
+            {hangar && <Gauge kind="hangar" label={t('fleetPage.hangar')} used={hangar.used} total={hangar.total} />}
           </div>
         )}
         {tab === 'air' && (flights.length === 0 ? (
-          <p className="px-1 py-2 text-caption text-v2-ink-3">{t(aboard ? 'starter.fleetPage.emptyAir' : 'fleetPage.emptyAir')}</p>
+          <p className="gk-fleet__empty gk-well"><Glyph id="rocket" /><span>{t(aboard ? 'starter.fleetPage.emptyAir' : 'fleetPage.emptyAir')}</span></p>
         ) : (
-          <ul className="flex flex-col">
+          <ul className="gk-tlist">
             {flights.map((item) => (
               <FlightRow
                 key={item.key}
@@ -491,27 +481,31 @@ export function FleetPage({
           </ul>
         ))}
         {tab === 'air' && support && support.waves.length > 0 && <SupportGroup support={support} now={now} />}
-        {tab === 'air' && monuments && monuments.view.waves.some((wave) => wave.status === 'HOLD') && (
-          <section data-testid="monument-hold-group" className="flex flex-col gap-1.5 border-t border-v2-line pt-2">
-            <h3 className="text-caption font-semibold text-v2-ink">{t('monument.yourWaves')} · {t('monument.status.HOLD')}</h3>
-            {monuments.view.waves.filter((wave) => wave.status === 'HOLD').map((wave) => <button key={wave.id} type="button"
-              onClick={() => { monuments.onFocus(wave.monumentId); }} className="rounded-control border border-v2-line bg-v2-panel p-2.5 text-left">
-              <span className="block text-caption font-semibold text-v2-self">{monumentName(monuments.view.monuments.find((row) => row.id === wave.monumentId)?.ordinal)} · {full(fleetEntries(wave.fleet).reduce((sum, [, count]) => sum + count, 0))}</span>
-              <span className="block text-micro text-v2-deut">{t('monument.cargo', { amount: decimal(wave.deuterium), capacity: decimal(wave.lots.reduce((sum, lot) => sum + lot.cargoCapacity, 0)) })}</span>
-              <span className="block text-micro text-v2-ink-2">{t('monument.ownRate', { rate: decimal(wave.productionPerMinute) })}</span>
-              {wave.nextLossAt && <span className="block text-micro text-v2-hostile">{t('monument.lossAt', { time: countdown(wave.nextLossAt.getTime() - now) })}</span>}
-            </button>)}
+        {tab === 'air' && monuments && holding.length > 0 && (
+          <section data-testid="monument-hold-group" className="gk-fleet__group">
+            <SectionTag aside={<span className="gk-num">{holding.length}</span>}>{`${t('monument.yourWaves')} · ${t('monument.status.HOLD')}`}</SectionTag>
+            {holding.map((wave) => (
+              <MonumentHold
+                key={wave.id}
+                title={monumentName(monuments.view.monuments.find((row) => row.id === wave.monumentId)?.ordinal)}
+                count={full(fleetEntries(wave.fleet).reduce((sum, [, count]) => sum + count, 0))}
+                cargo={t('monument.cargo', { amount: decimal(wave.deuterium), capacity: decimal(wave.lots.reduce((sum, lot) => sum + lot.cargoCapacity, 0)) })}
+                rate={t('monument.ownRate', { rate: decimal(wave.productionPerMinute) })}
+                loss={wave.nextLossAt ? t('monument.lossAt', { time: countdown(wave.nextLossAt.getTime() - now) }) : null}
+                onPress={() => { monuments.onFocus(wave.monumentId); }}
+              />
+            ))}
           </section>
         )}
         {tab === 'home' && (
-          <ul className="flex flex-col gap-1.5">
+          <ul className="gk-fleet__worlds">
             {worlds.map((world) => (
               <Garrison
                 key={world.id}
                 world={world}
                 aboard={aboard}
-                onDock={onDock}
-                docking={docking}
+                {...(onDock ? { onDock } : {})}
+                {...(docking === undefined ? {} : { docking })}
                 onOpenRepairStation={() => { onOpenRepairStation(world.id); }}
                 onFocusWorld={() => { onFocusWorld(world.id); }}
               />
@@ -520,8 +514,9 @@ export function FleetPage({
         )}
         {tab === 'room' && (
           <>
-            <p className="px-1 text-micro leading-snug text-v2-ink-3">{t(aboard ? 'starter.fleetPage.roomRule' : 'fleetPage.roomRule')}</p>
-            <ul className="flex flex-col gap-1.5">
+            <InfoPeek fact={<span className="gk-sub">{t('fleetPage.roomFact')}</span>}
+              rule={<p className="gk-sub">{t(aboard ? 'starter.fleetPage.roomRule' : 'fleetPage.roomRule')}</p>} />
+            <ul className="gk-fleet__worlds">
               {worlds.map((world) => (
                 <WorldRoom key={world.id} world={world} onFocusWorld={() => { onFocusWorld(world.id); }} />
               ))}

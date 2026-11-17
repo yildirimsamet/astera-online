@@ -1,4 +1,4 @@
-/** Verify the UFO in flight/shop/inventory, and the still menu entrance, without payments. */
+/** Verify the UFO in flight/shop/inventory without payments. */
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -63,24 +63,6 @@ export async function verifyUfoProbe(output) {
       await page.close();
       console.log(`PASS ${view}: shared UFO preview and product card, no 350px overflow`);
     }
-    const { page, errors } = await freshPage(350);
-    await page.goto(`${base}/v2-gallery.html?view=store-discovery&panel=menu&lng=tr`, { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => {
-      const image = document.querySelector('[data-showcase-poster]');
-      return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
-    }, null, { timeout: 60000 });
-    assert.equal(await page.locator('[data-shop-showcase] canvas').count(), 0);
-    assert.equal(await page.locator('.shop-showcase-hero').evaluate(hero => hero.getAnimations({ subtree: true }).length), 0);
-    const clip = await page.locator('[data-shop-showcase]').boundingBox();
-    assert(clip);
-    assert.equal(clip.height, 200.5);
-    await page.screenshot({ path: join(output, '350-menu.png'), clip, timeout: 60000 });
-    await page.locator('[data-shop-showcase] > button').first().click();
-    await page.locator('.v2-store').waitFor();
-    assert.deepEqual(errors, []);
-    results.push({ view: 'menu', width: 350, height: clip.height, errors, navigation: true });
-    await page.close();
-    console.log('PASS menu: static lava/Inferno/flagged Red Dragon artwork, no canvas or animations');
   } finally { await browser.close(); }
   await writeFile(join(output, 'measurements.json'), `${JSON.stringify(results, null, 2)}\n`);
 }

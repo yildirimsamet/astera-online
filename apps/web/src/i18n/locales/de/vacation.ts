@@ -38,8 +38,6 @@ export const vacation = {
   "end": "Urlaub beenden",
   "endTitle": "Zu deinen Welten zurückkehren?",
   "endBody": "Der Schutz aller Welten endet sofort. Produktion und pausierte Aufträge laufen weiter. Restzeit wird nicht erstattet.",
-  "endConfirm": "Urlaub beenden",
-  "back": "Im Urlaub bleiben",
   "until": "Geschützt bis {{time}}",
   "paused": "Pausiert — Urlaubsmodus",
   "loading": "Urlaubsdetails werden geladen…",

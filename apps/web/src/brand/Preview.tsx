@@ -23,10 +23,9 @@ function Preview() {
   if (!view) return <LoadingScreen caption="Evrenle bağlantı kuruluyor…" {...(params.get('progress') ? { progress: Number(params.get('progress')) } : {})} />;
   return <InstallProvider><div style={{ minHeight: '100dvh', background: 'var(--color-v2-void)' }}>
       <BrandMasthead />
-      <TopBar commander="Yıldırım" shield={null} now={Date.now()} world={null}
+      <TopBar
         stock={{ alloy: { value: 1270, cap: 5000 }, crystal: { value: 860, cap: 5000 }, deuterium: { value: 240, cap: 1000 } }}
-        bell={{ unseen: 0, urgent: false }} rewards={0} boosted={false}
-        onCommander={noop} onRewards={noop} onWorld={noop} onResource={noop} onBell={noop} />
+        commander={{ initials: 'AO', name: 'Astera' }} onResource={noop} onCommander={noop} />
       <div style={{ padding: 24, fontSize: 13, color: 'var(--color-v2-ink-2)' }}>
         <p style={{ marginBottom: 16 }}>Astera Online · tasarım önizlemesi</p>
         {view === 'install' && <InstallButton />}

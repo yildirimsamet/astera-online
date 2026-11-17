@@ -59,19 +59,18 @@ describe('remembering only transfer return choices', () => {
     await user.click(screen.getByRole('radio', { name: /haulers.*stay/i }));
     await user.click(screen.getByRole('radio', { name: /other ships.*return/i }));
     await user.click(screen.getByRole('button', { name: 'More Courier' }));
-    fireEvent.change(screen.getByRole('slider', { name: /Alloy/i }), { target: { value: '50' } });
-    const speeds = within(first.container.querySelector<HTMLElement>('[data-transfer-pace]')!).getAllByRole('radio');
-    await user.click(speeds[1]!);
+    fireEvent.keyDown(screen.getByRole('slider', { name: /Alloy/i }), { key: 'End' });
+    await user.click(within(first.container.querySelector<HTMLElement>('[data-transfer-pace]')!).getByRole('radio', { name: '75%' }));
     first.unmount();
     open();
     expect(screen.getByRole('radio', { name: /haulers.*stay/i })).toBeChecked();
     expect(screen.getByRole('radio', { name: /other ships.*return/i })).toBeChecked();
     expect(screen.getByRole('textbox', { name: /courier quantity/i })).toHaveValue('0');
-    expect(screen.getByRole('slider', { name: /Alloy/i })).toHaveValue('0');
+    expect(screen.getByRole('slider', { name: /Alloy/i })).toHaveAttribute('aria-valuenow', '0');
     expect(document.querySelector('[data-transfer-pace]')).toBeNull();
     expect(JSON.parse(localStorage.getItem(RETURN_CHOICE_KEY) ?? '{}')).toEqual({ cargoShips: 'STAY', otherShips: 'RETURN' });
     await user.click(screen.getByRole('button', { name: 'More Courier' }));
-    expect(within(document.querySelector<HTMLElement>('[data-transfer-pace]')!).getAllByRole('radio')[0]).toBeChecked();
+    expect(within(document.querySelector<HTMLElement>('[data-transfer-pace]')!).getByRole('radio', { name: 'Full' })).toBeChecked();
   });
 
   it('uses a persisted plan in the next actual order', async () => {
@@ -79,7 +78,7 @@ describe('remembering only transfer return choices', () => {
     mutate.mockReset();
     open();
     await userEvent.setup().click(screen.getByRole('button', { name: 'More Courier' }));
-    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    const commit = screen.getByRole('button', { name: /^transfer\b/i });
     fireEvent.keyDown(commit, { key: 'Enter' });
     fireEvent.keyDown(commit, { key: 'Enter' });
     expect(mutate.mock.calls[0]?.[0]).toMatchObject({ returnPlan: { cargoShips: 'STAY', otherShips: 'RETURN' } });
@@ -136,7 +135,7 @@ describe('world transfer sheet', () => {
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
     expect(document.querySelector('[data-radiation-warning]')).toHaveTextContent(/HP per ship/);
     expect(document.querySelector('[data-radiation-warning]')).toHaveTextContent(/destroys 1 ship/);
-    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    const commit = screen.getByRole('button', { name: /^transfer\b/i });
     fireEvent.keyDown(commit, { key: 'Enter' });
     fireEvent.keyDown(commit, { key: 'Enter' });
     expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ acknowledgeRadiation: true }), expect.anything());
@@ -168,7 +167,7 @@ describe('world transfer sheet', () => {
     );
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
     expect(document.querySelector('[data-radiation-warning]')).toHaveTextContent(/destroys 1 ship/);
-    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    const commit = screen.getByRole('button', { name: /^transfer\b/i });
     fireEvent.keyDown(commit, { key: 'Enter' });
     fireEvent.keyDown(commit, { key: 'Enter' });
     expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ acknowledgeRadiation: true }), expect.anything());
@@ -188,7 +187,7 @@ describe('world transfer sheet', () => {
     );
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
     const commit = () => {
-      const button = screen.getByRole('button', { name: /^transfer$/i });
+      const button = screen.getByRole('button', { name: /^transfer\b/i });
       fireEvent.keyDown(button, { key: 'Enter' });
       fireEvent.keyDown(button, { key: 'Enter' });
     };
@@ -210,7 +209,7 @@ describe('world transfer sheet', () => {
     );
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
     expect(document.querySelector('[data-radiation-warning]')).toBeNull();
-    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    const commit = screen.getByRole('button', { name: /^transfer\b/i });
     fireEvent.keyDown(commit, { key: 'Enter' });
     fireEvent.keyDown(commit, { key: 'Enter' });
     expect(mutate.mock.calls[0]?.[0]).not.toHaveProperty('acknowledgeRadiation');
@@ -248,7 +247,7 @@ describe('world transfer sheet', () => {
       </ToastProvider>,
     );
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
-    expect(screen.getByRole('slider', { name: /Alloy/i })).toHaveAttribute('max', String(HULLS.DART.cargo));
+    expect(screen.getByRole('slider', { name: /Alloy/i })).toHaveAttribute('aria-valuemax', String(HULLS.DART.cargo));
     expect(screen.getByRole('radio', { name: /haulers.*return/i })).toBeChecked();
     expect(screen.getByRole('radio', { name: /other ships.*stay/i })).toBeChecked();
     await user.click(screen.getByRole('button', { name: 'More Courier' }));
@@ -257,7 +256,7 @@ describe('world transfer sheet', () => {
     expect(document.querySelector('[data-transfer-return-eta]')).toBeNull();
     await user.click(screen.getByRole('radio', { name: /haulers.*return/i }));
     await user.click(screen.getByRole('radio', { name: /other ships.*return/i }));
-    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    const commit = screen.getByRole('button', { name: /^transfer\b/i });
     fireEvent.keyDown(commit, { key: 'Enter' });
     fireEvent.keyDown(commit, { key: 'Enter' });
     expect(mutate).toHaveBeenCalledWith(expect.objectContaining({
@@ -298,15 +297,15 @@ describe('world transfer sheet', () => {
     const alloy = screen.getByRole('slider', { name: /Alloy/i });
     // The selected Courier and Dart holds set the slider's cargo ceiling.
     const hold = String(HULLS.COURIER.cargo + HULLS.DART.cargo);
-    expect(alloy).toHaveAttribute('max', hold);
-    fireEvent.change(alloy, { target: { value: hold } });
-    expect(alloy).toHaveValue(hold);
-    const alloyRow = alloy.closest('label');
+    expect(alloy).toHaveAttribute('aria-valuemax', hold);
+    fireEvent.keyDown(alloy, { key: 'End' });
+    expect(alloy).toHaveAttribute('aria-valuenow', hold);
+    const alloyRow = alloy.closest('[data-cargo-row]');
     expect(alloyRow).not.toBeNull();
     expect(alloyRow).toHaveTextContent('Sending');
     expect(alloyRow?.querySelector('[data-spend-amount]')).toHaveTextContent(compact(Number(hold)));
     expect(alloyRow).not.toHaveTextContent('stays here');
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
   });
 
   it('accepts a directly typed hull count and clamps it to the ships at home', async () => {
@@ -367,7 +366,7 @@ describe('world transfer sheet', () => {
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
     expect(
       screen.getByRole('img', {
-        name: new RegExp(`${String(hangar + hullBulk('DART'))} of ${String(hangar)} used`, 'i'),
+        name: new RegExp(`${String(hangar + hullBulk('DART'))} of ${String(hangar)} taken`, 'i'),
       }),
     ).toBeInTheDocument();
     expect(document.querySelector('[data-full]')).not.toBeNull();
@@ -397,7 +396,7 @@ describe('world transfer sheet', () => {
 
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
     expect(document.querySelector('[data-full]')).toBeNull();
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
   });
 
   /**
@@ -455,7 +454,7 @@ describe('world transfer sheet', () => {
       render0({});
 
       for (const resource of [/Alloy/i, /Crystal/i, /Deuterium/i]) {
-        expect(screen.getByRole('slider', { name: resource })).toHaveAttribute('max', '0');
+        expect(screen.getByRole('slider', { name: resource })).toHaveAttribute('aria-valuemax', '0');
       }
     });
 
@@ -531,10 +530,10 @@ describe('what a transfer burns', () => {
     const view = open(30);
     await load(user);
     const deuterium = screen.getByRole('slider', { name: /Deuterium/i });
-    fireEvent.change(deuterium, { target: { value: '30' } });
+    fireEvent.keyDown(deuterium, { key: 'End' });
 
-    expect(Number((deuterium as HTMLInputElement).value)).toBeLessThan(30);
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(Number(deuterium.getAttribute('aria-valuenow'))).toBeLessThan(30);
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
     expect(view.container.querySelector('[data-transfer-fuel]')).toHaveTextContent(/\d/);
     expect(mutate).not.toHaveBeenCalled();
   });
@@ -544,7 +543,7 @@ describe('what a transfer burns', () => {
     open(50_000);
     await load(user);
 
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
   });
 });
 
@@ -628,12 +627,12 @@ describe('the deuterium a transfer spends twice', () => {
       in "offers nothing when the tank cannot even cover the flight".
     */
     const slider = screen.getByRole('slider', { name: /Deuterium/i });
-    fireEvent.change(slider, { target: { value: '400' } });
-    expect(Number((slider as HTMLInputElement).value))
+    fireEvent.keyDown(slider, { key: 'End' });
+    expect(Number(slider.getAttribute('aria-valuenow')))
       .toBe(400 - missionFuel({ COURIER: 1 }, 100, 1, 'HOMEWARD') * 2);
     expect(document.querySelector('[data-transfer-fuel] [data-spend-bar]'))
       .toHaveAttribute('data-short', 'false');
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
   });
 });
 
@@ -668,8 +667,7 @@ describe('the deuterium a transfer may actually load', () => {
     </ToastProvider>,
   );
 
-  const slider = (name: RegExp): HTMLInputElement =>
-    screen.getByRole<HTMLInputElement>('slider', { name });
+  const slider = (name: RegExp): HTMLElement => screen.getByRole('slider', { name });
 
   it('takes the flight off the ceiling, and off no other store', async () => {
     open(5_000);
@@ -677,9 +675,9 @@ describe('the deuterium a transfer may actually load', () => {
 
     const fuel = flight({ ATLAS: 1 });
     expect(fuel).toBeGreaterThan(0);
-    expect(Number(slider(/Deuterium/i).max)).toBe(5_000 - fuel * 2);
+    expect(Number(slider(/Deuterium/i).getAttribute('aria-valuemax'))).toBe(5_000 - fuel * 2);
     // Alloy and crystal do not fly the ship: their ceiling is the store, whole.
-    expect(Number(slider(/Alloy/i).max)).toBe(5_000);
+    expect(Number(slider(/Alloy/i).getAttribute('aria-valuemax'))).toBe(5_000);
   });
 
   /**
@@ -695,12 +693,12 @@ describe('the deuterium a transfer may actually load', () => {
     await user.click(screen.getByRole('button', { name: 'More Atlas' }));
 
     const deuterium = slider(/Deuterium/i);
-    fireEvent.change(deuterium, { target: { value: deuterium.max } });
-    expect(Number(deuterium.value)).toBe(5_000 - flight({ ATLAS: 1 }) * 2);
+    fireEvent.keyDown(deuterium, { key: 'End' });
+    expect(Number(deuterium.getAttribute('aria-valuenow'))).toBe(5_000 - flight({ ATLAS: 1 }) * 2);
 
     await user.click(screen.getByRole('button', { name: 'More Atlas' }));
-    expect(Number(slider(/Deuterium/i).value)).toBe(5_000 - flight({ ATLAS: 2 }) * 2);
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(Number(slider(/Deuterium/i).getAttribute('aria-valuenow'))).toBe(5_000 - flight({ ATLAS: 2 }) * 2);
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
   });
 
   /**
@@ -711,7 +709,7 @@ describe('the deuterium a transfer may actually load', () => {
     open(1, { ATLAS: 4 });
     await userEvent.setup().click(screen.getByRole('button', { name: 'More Atlas' }));
 
-    expect(Number(slider(/Deuterium/i).max)).toBe(0);
+    expect(Number(slider(/Deuterium/i).getAttribute('aria-valuemax'))).toBe(0);
     expect(screen.getByRole('button', { name: /not enough deuterium/i })).toBeDisabled();
   });
 });
@@ -761,15 +759,15 @@ describe('choosing how fast a transfer flies', () => {
     expect(pace.querySelector('[data-pace-saving]')).toHaveTextContent(`${String(fullFuel - fuel)} deuterium saved`);
     const slider = screen.getByRole('slider', { name: /deuterium/i });
     expect(pace.compareDocumentPosition(slider) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(slider).toHaveAttribute('max', String(100 - fuel));
-    fireEvent.change(slider, { target: { value: String(100 - fuel) } });
+    expect(slider).toHaveAttribute('aria-valuemax', String(100 - fuel));
+    fireEvent.keyDown(slider, { key: 'End' });
     await user.click(within(pace).getByRole('radio', { name: 'Full' }));
-    expect(slider).toHaveValue(String(100 - fullFuel));
+    expect(slider).toHaveAttribute('aria-valuenow', String(100 - fullFuel));
     expect(view.container.querySelector('[data-transfer-cargo-adjusted]')).toHaveTextContent(/fuel reserved/i);
     expect(view.container.querySelector('[data-transfer-cargo-adjusted]')).toHaveTextContent(String(100 - fuel));
     expect(view.container.querySelector('[data-transfer-cargo-adjusted]')).toHaveTextContent(String(100 - fullFuel));
     await user.click(within(pace).getByRole('radio', { name: '50%' }));
-    expect(slider).toHaveValue(String(100 - fullFuel));
+    expect(slider).toHaveAttribute('aria-valuenow', String(100 - fullFuel));
   });
 
   it('recalculates savings for return choices and fleet size', async () => {
@@ -809,10 +807,10 @@ describe('choosing how fast a transfer flies', () => {
     await user.type(screen.getByRole('textbox', { name: /courier quantity/i }), '2');
     await user.click(within(view.container.querySelector<HTMLElement>('[data-transfer-pace]')!).getByRole('radio', { name: '50%' }));
     const slider = screen.getByRole('slider', { name: /deuterium/i });
-    fireEvent.change(slider, { target: { value: slider.getAttribute('max') } });
+    fireEvent.keyDown(slider, { key: 'End' });
     view.rerender(renderSheet(far));
     expect(view.container.querySelector('[data-pace-reset]')).toHaveTextContent(/full speed.*flight.*limit/i);
-    expect(slider).toHaveValue('0');
+    expect(slider).toHaveAttribute('aria-valuenow', '0');
     expect(view.container.querySelector('[data-transfer-cargo-adjusted]')).toHaveTextContent(/fuel reserved/i);
     expect(view.container.querySelector('[data-hold-refused]')).toHaveTextContent('Not enough deuterium');
   });
@@ -837,14 +835,15 @@ describe('choosing how fast a transfer flies', () => {
 
     const row = view.container.querySelector<HTMLElement>('[data-transfer-pace]');
     expect(row).toBeTruthy();
-    const rungs = within(row!).getAllByRole('radio');
+    // Slow to fast along the throttle (owner, 2026-11-16); speeds this flight may not take are locked.
+    const rungs = within(row!).getAllByRole('radio').filter((rung) => !(rung as HTMLButtonElement).disabled);
     expect(rungs.length).toBeGreaterThan(1);
-    expect(rungs[0]).toBeChecked();
+    expect(rungs[rungs.length - 1]).toBeChecked();
 
     const eta = view.container.querySelector<HTMLElement>('[data-transfer-eta]')!;
     const atFullSpeed = eta.textContent;
-    await user.click(rungs[rungs.length - 1]!);
-    expect(rungs[rungs.length - 1]).toBeChecked();
+    await user.click(rungs[0]!);
+    expect(rungs[0]).toBeChecked();
     expect(eta.textContent).not.toBe(atFullSpeed);
   });
 
@@ -855,7 +854,7 @@ describe('choosing how fast a transfer flies', () => {
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
     const row = view.container.querySelector<HTMLElement>('[data-transfer-pace]')!;
     expect(row).toHaveTextContent(/cannot be raided/i);
-    expect(row).toHaveTextContent(/less fuel/i);
+    expect(row).toHaveTextContent(/reduces fuel cost/i);
     expect(row).toHaveTextContent(/each slower flight leg must fit within 12 hours/i);
   });
 
@@ -867,7 +866,7 @@ describe('choosing how fast a transfer flies', () => {
     open();
     expect(screen.getByRole('button', { name: /choose a fleet/i })).toBeDisabled();
     await userEvent.setup().click(screen.getByRole('button', { name: 'More Dart' }));
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
     expect(document.querySelector('[data-transfer-commit]')).not.toBeNull();
   });
 
@@ -875,11 +874,9 @@ describe('choosing how fast a transfer flies', () => {
     const user = userEvent.setup();
     const view = open();
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
-    const rungs = within(view.container.querySelector<HTMLElement>('[data-transfer-pace]')!)
-      .getAllByRole('radio');
-    await user.click(rungs[1]!);
+    await user.click(within(view.container.querySelector<HTMLElement>('[data-transfer-pace]')!).getByRole('radio', { name: '75%' }));
     // The commit is held (K4); Enter twice is the keyboard's hold.
-    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    const commit = screen.getByRole('button', { name: /^transfer\b/i });
     fireEvent.keyDown(commit, { key: 'Enter' });
     fireEvent.keyDown(commit, { key: 'Enter' });
 
@@ -927,13 +924,13 @@ describe('the pause after a squadron lands', () => {
 
     act(() => { vi.advanceTimersByTime(3_000); });
     expect(screen.queryByRole('button', { name: /unloading/i })).toBeNull();
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
   });
 
   it('treats a pause already in the past as no pause at all', () => {
     open(-1_000);
     fireEvent.click(screen.getByRole('button', { name: 'More Dart' }));
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer\b/i })).toBeEnabled();
   });
 });
 
@@ -957,6 +954,10 @@ describe('what the sheet promises about the flight', () => {
       </ToastProvider>,
     );
     expect(screen.queryByText(/no recall|one way/i)).toBeNull();
+    // E6 (owner 2026-11-17): the foot says the one fact; the full rule is behind its ⓘ.
+    expect(screen.getByText('Recall it once while in flight.')).toBeInTheDocument();
+    expect(screen.queryByText(/Ground defence cannot move/)).toBeNull();
+    fireEvent.click(within(document.querySelector<HTMLElement>('[data-transfer-rule]')!).getByRole('button', { name: 'What is this?' }));
     expect(screen.getByText(/recalled once while in flight/i)).toBeInTheDocument();
   });
 });

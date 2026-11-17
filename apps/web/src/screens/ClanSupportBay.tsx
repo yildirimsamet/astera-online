@@ -1,25 +1,26 @@
 import { fleetCount, fleetEntries } from '@astera/rules';
 import { useEffect, useState } from 'react';
-import { HonorSoloNotice } from '../ui/HonorSoloNotice.js';
 import { useTranslation } from 'react-i18next';
 import { useClanSupportActions, useSetDefencePosture } from '../api/queries.js';
 import type { ClanSupportWave, PlanetView } from '../api/schemas.js';
+import { Banner, Fold, GameButton, GameHold, Glyph, InfoPeek, TimerRow, Toggle } from '../game-ui/index.js';
 import { describeError } from '../i18n/errors.js';
 import { hullName } from '../i18n/names.js';
+import { supportVerdict } from '../lib/clanAlarm.js';
 import { compact } from '../lib/format.js';
 import { factorLabel, hostFactor } from '../lib/supportFactor.js';
-import { countdown, durationPrecise, useNow } from '../lib/time.js';
-import { supportVerdict } from '../lib/clanAlarm.js';
-import { Toggle } from '../v2/kit/Toggle.js';
+import { clockTime, countdown, durationPrecise, useNow } from '../lib/time.js';
+import { HonorSoloNotice } from '../ui/HonorSoloNotice.js';
 
 /**
- * KLAN SAVUNMA DESTEĞİ ON THE HANGAR PAGE (`docs/clan-defense-support-plan.md`, K1 · K4).
+ * KLAN SAVUNMA DESTEĞİ ON THE HANGAR PAGE (`docs/clan-defense-support-plan.md`, K1 · K4), on the
+ * game kit since G2-h3 (2026-11-15).
  *
  * Two pieces under the Hangar's own room, because the bay IS the Hangar's: the posture
- * card (the retreat and clan support, independent since F1, saved together) and the bay itself —
- * who stands here, who is flying in, and the room it holds, which is this world's own
- * Hangar room. Each answers the four questions where it is read: what the toggle does
- * is the sentence under it, what a wave costs to send back is said before the tap.
+ * card (the retreat and clan support, independent since F1) and the bay itself — who stands
+ * here, who is flying in, and the room it holds, which is this world's own Hangar room. Each
+ * answers the four questions where it is read: what a switch does is the sentence under it,
+ * what a wave costs to send back is written on the hold that sends it.
  */
 
 interface Toggles { escape: boolean; support: boolean }
@@ -30,6 +31,11 @@ export function DefencePostureCard({ planet }: { planet: PlanetView }) {
   return posture ? <PostureCard planet={planet} posture={posture} /> : null;
 }
 
+/**
+ * TWO SWITCHES, EACH THE DECISION ITSELF (G2-h3): flipping one applies it, as a breaker does —
+ * no form to save. Closing the door on waves that stand here sends them home, so that one move
+ * waits on a short hold with the count said above it; Keep leaves the door open.
+ */
 function PostureCard({ planet, posture }: {
   planet: PlanetView;
   posture: NonNullable<PlanetView['defencePosture']>;
@@ -37,71 +43,56 @@ function PostureCard({ planet, posture }: {
   const { t } = useTranslation();
   const save = useSetDefencePosture();
   const [draft, setDraft] = useState<Toggles>({ escape: posture.escape, support: posture.support });
-  const [confirming, setConfirming] = useState(false);
+  /** The posture waiting on the hold. */
+  const [asking, setAsking] = useState<Toggles | null>(null);
   const current = posture.stance ?? posture.posture;
   useEffect(() => {
     setDraft({ escape: posture.escape, support: posture.support });
-    setConfirming(false);
+    setAsking(null);
     // The stored posture is the reset trigger: a save, or another tab's change, lands as a new one.
   }, [current]);
 
   const locked = posture.supportLocked !== null;
-  const dirty = draft.escape !== posture.escape || draft.support !== posture.support;
-  const leaving = posture.support && !draft.support ? (planet.clanSupport?.waves.length ?? 0) : 0;
+  const waves = planet.clanSupport?.waves.length ?? 0;
 
-  const commit = (): void => {
-    save.mutate({ planetId: planet.planet.id, ...draft }, { onSuccess: () => { setConfirming(false); } });
+  const apply = (next: Toggles): void => {
+    setAsking(null);
+    setDraft(next);
+    save.mutate({ planetId: planet.planet.id, ...next }, {
+      onError: () => { setDraft({ escape: posture.escape, support: posture.support }); },
+    });
+  };
+  const flip = (next: Toggles): void => {
+    if (save.isPending) return;
+    if (posture.support && !next.support && waves > 0) { setAsking(next); return; }
+    apply(next);
   };
 
+  const stance = draft.escape && draft.support ? 'ESCAPE_SUPPORT' : draft.escape ? 'ESCAPE' : draft.support ? 'SUPPORT' : 'HOLD';
+  // Set once a season, so it folds (owner review 2026-11-16): the head says where it stands.
   return (
-    <section data-defence-posture="" className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2.5">
-      <HonorSoloNotice />
-      <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('clanSupport.postureTitle')}</p>
-      <div className="flex flex-col gap-1">
-        <Toggle tone="self" checked={draft.escape}
-          onChange={(on) => { setDraft((was) => ({ ...was, escape: on })); setConfirming(false); }}>
-          <span className="block font-semibold">{t('clanSupport.escapeLabel')}</span>
-          <span className="block text-micro text-v2-ink-2">{t('clanSupport.escapeOn')}</span>
-        </Toggle>
-        <Toggle tone="self" checked={draft.support} disabled={locked}
-          onChange={(on) => { setDraft((was) => ({ ...was, support: on })); setConfirming(false); }}>
-          <span className="block font-semibold">{t('clanSupport.supportLabel')}</span>
-          <span className="block text-micro text-v2-ink-2">
-            {locked ? t('clanSupport.supportLocked') : t('clanSupport.supportOn')}
-          </span>
-        </Toggle>
-      </div>
-      {!draft.escape && !draft.support && (
-        <p className="px-1 text-micro text-v2-warn">{t('clanSupport.holdBoth')}</p>
-      )}
+    <Fold data-defence-posture="" glyph="shield" title={t('clanSupport.postureTitle')} sub={t(`clanSupport.postureRead.${stance}`)}>
+      <HonorSoloNotice look="kit" />
+      <Toggle checked={draft.escape} label={t('clanSupport.escapeLabel')} sub={t('clanSupport.escapeOn')}
+        onChange={(on) => { flip({ ...draft, escape: on }); }} />
+      <Toggle checked={draft.support} locked={locked} label={t('clanSupport.supportLabel')}
+        sub={locked ? t('clanSupport.supportLocked') : t('clanSupport.supportOn')}
+        onChange={(on) => { flip({ ...draft, support: on }); }} />
+      {!draft.escape && !draft.support && <p data-tone="warn" className="gk-posture__note">{t('clanSupport.holdBoth')}</p>}
       {draft.escape && draft.support && (
-        <p data-posture-both="" className="px-1 text-micro leading-snug text-v2-self">{t('clanSupport.bothOn')}</p>
+        <p data-posture-both="" data-tone="self" className="gk-posture__note">{t('clanSupport.bothOn')}</p>
       )}
-      {confirming ? (
-        <div className="flex flex-col gap-1.5 rounded-control border border-v2-warn/40 bg-v2-warn/5 px-2.5 py-2">
-          <p className="text-caption text-v2-warn">{t('clanSupport.confirmClose', { count: leaving })}</p>
-          <div className="grid grid-cols-2 gap-1.5">
-            <button type="button" onClick={() => { setConfirming(false); }}
-              className="min-h-9 rounded-control border border-v2-line px-2 text-caption text-v2-ink">
-              {t('clanSupport.keep')}
-            </button>
-            <button type="button" onClick={commit} disabled={save.isPending}
-              className="min-h-9 rounded-control bg-v2-warn px-2 text-caption font-semibold text-v2-deep disabled:opacity-60">
-              {t('clanSupport.confirm')}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex justify-end">
-          <button type="button" disabled={!dirty || save.isPending}
-            onClick={() => { if (leaving > 0) setConfirming(true); else commit(); }}
-            className="min-h-8 min-w-24 rounded-control bg-v2-self px-4 text-caption font-semibold text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-3">
-            {save.isPending ? t('clanSupport.saving') : t('clanSupport.save')}
-          </button>
+      {asking && (
+        <div className="gk-posture__ask">
+          <Banner tone="warn" variant="strip" role={null} title={t('clanSupport.confirmClose', { count: waves })} />
+          <GameHold weight="reversible" size="md" tone="danger" glyph="recall" label={t('clanSupport.confirm')}
+            onCommit={() => { apply(asking); }} />
+          <GameButton tone="ghost" size="sm" onPress={() => { setAsking(null); }}>{t('clanSupport.keep')}</GameButton>
         </div>
       )}
-      {save.isError && <p role="alert" className="text-caption text-v2-warn">{describeError(save.error)}</p>}
-    </section>
+      {save.isPending && <p role="status" className="gk-posture__note">{t('clanSupport.saving')}</p>}
+      {save.isError && <p role="alert" data-tone="warn" className="gk-posture__note">{describeError(save.error)}</p>}
+    </Fold>
   );
 }
 
@@ -120,11 +111,7 @@ export function ClanSupportBay({ planet }: { planet: PlanetView }) {
   if (!supporting && bay.waves.length === 0) {
     // Outside a clan the switch is locked and the card above says why; "turn it on" would be a dead end.
     if (planet.defencePosture?.supportLocked != null) return null;
-    return (
-      <p data-support-bay="closed" className="px-1 text-micro leading-snug text-v2-ink-3">
-        {t('clanSupport.closedEmpty')}
-      </p>
-    );
+    return <p data-support-bay="closed" className="gk-sub gk-sbay__closed">{t('clanSupport.closedEmpty')}</p>;
   }
   const taken = bay.room.used + bay.room.reserved;
   const scale = Math.max(bay.room.total, taken, 1);
@@ -132,48 +119,43 @@ export function ClanSupportBay({ planet }: { planet: PlanetView }) {
   const shown = open ? bay.waves : bay.waves.slice(0, FOLD_AFTER);
   const factor = hostFactor(planet, now);
 
+  const alarmed = (bay.alarms?.length ?? 0) > 0;
+  // Folded to its room and wave count (owner review 2026-11-16); an alarm opens it, it is urgent.
   return (
-    <section data-support-bay="" className="flex flex-col gap-1.5 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2.5">
-      <p className="flex items-center justify-between gap-2">
-        <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('clanSupport.bayTitle')}</span>
-        <span className="font-v2-mono text-caption tabular-nums text-v2-ink">
-          {compact(taken)}<span className="text-v2-ink-3"> / {compact(bay.room.total)}</span>
-        </span>
-      </p>
+    <Fold data-support-bay="" glyph="support" title={t('clanSupport.bayTitle')} open={alarmed}
+      sub={bay.waves.length === 0 ? t('clanSupport.empty') : t('clanSupport.bayWaves', { count: bay.waves.length })}
+      value={`${compact(taken)} / ${compact(bay.room.total)}`}>
       <span role="img" aria-label={t('clanSupport.bayReading', { used: compact(taken), total: compact(bay.room.total) })}
-        className="flex h-2 w-full overflow-hidden rounded-full bg-v2-line">
-        {bay.room.used > 0 && <span data-part="standing" className="h-full bg-v2-self" style={{ width: share(bay.room.used) }} />}
-        {bay.room.reserved > 0 && <span data-part="inbound" className="h-full bg-v2-self/40" style={{ width: share(bay.room.reserved) }} />}
+        className="gk-bar gk-sbay__bar">
+        {bay.room.used > 0 && <span data-part="standing" className="gk-sbay__part" style={{ width: share(bay.room.used) }} />}
+        {bay.room.reserved > 0 && <span data-part="inbound" className="gk-sbay__part" style={{ width: share(bay.room.reserved) }} />}
       </span>
-      <p className="flex gap-3 text-micro text-v2-ink-3">
-        <span className="flex items-center gap-1"><span aria-hidden="true" className="size-2 rounded-full bg-v2-self" />{t('clanSupport.bayLegendStanding')}</span>
-        <span className="flex items-center gap-1"><span aria-hidden="true" className="size-2 rounded-full bg-v2-self/40" />{t('clanSupport.bayLegendInbound')}</span>
+      <p className="gk-sbay__legend">
+        <span className="gk-sbay__key"><span aria-hidden="true" data-part="standing" className="gk-sbay__swatch" />{t('clanSupport.bayLegendStanding')}</span>
+        <span className="gk-sbay__key"><span aria-hidden="true" data-part="inbound" className="gk-sbay__swatch" />{t('clanSupport.bayLegendInbound')}</span>
       </p>
       {bay.alarms?.map((alarm) => <AlarmAnswer key={alarm.id} alarm={alarm} waves={bay.waves} now={now} />)}
-      <p className="text-micro leading-snug text-v2-ink-2">{t('clanSupport.bayHint')}</p>
-      {/* The stakes the host accepted: the factor the standing support puts on its Dominion. */}
-      <p data-support-factor="" className="text-micro leading-snug">
-        <span className="font-v2-mono font-semibold text-v2-ink">
-          {factor === 1
-            ? t('clanSupport.bayFactorNone')
-            : t('clanSupport.bayFactor', { factor: factorLabel(factor) })}
-        </span>
-        <span className="block text-v2-ink-3">{t('clanSupport.bayFactorRule')}</span>
-      </p>
-      {bay.waves.length === 0 ? (
-        <p className="text-caption text-v2-ink-2">{t('clanSupport.empty')}</p>
-      ) : (
-        <ul className="flex flex-col">
+      <p className="gk-sub">{t('clanSupport.bayHint')}</p>
+      {/* The stakes the host accepted: the factor the standing support puts on its Dominion; its rule one press away. */}
+      <div data-support-factor="" className="gk-sbay__factor">
+        <InfoPeek
+          fact={<span className="gk-num">{factor === 1 ? t('clanSupport.bayFactorNone') : t('clanSupport.bayFactor', { factor: factorLabel(factor) })}</span>}
+          rule={<p className="gk-sub">{t('clanSupport.bayFactorRule')}</p>}
+          about={t('clanSupport.bayFactorAbout')}
+        />
+      </div>
+      {bay.waves.length > 0 && (
+        <ul className="gk-tlist">
           {shown.map((wave) => <WaveRow key={wave.id} wave={wave} />)}
         </ul>
       )}
       {!open && bay.waves.length > FOLD_AFTER && (
-        <button type="button" onClick={() => { setOpen(true); }} className="self-start text-micro font-semibold text-v2-self">
+        <GameButton tone="ghost" size="sm" onPress={() => { setOpen(true); }}>
           {t('clanSupport.more', { count: bay.waves.length - FOLD_AFTER })}
-        </button>
+        </GameButton>
       )}
-      <p className="text-micro leading-snug text-v2-ink-3">{t(lifts ? 'clanSupport.ruleLineLift' : 'clanSupport.ruleLine')}</p>
-    </section>
+      <p className="gk-sub">{t(lifts ? 'clanSupport.ruleLineLift' : 'clanSupport.ruleLine')}</p>
+    </Fold>
   );
 }
 
@@ -194,22 +176,22 @@ function AlarmAnswer({ alarm, waves, now }: { alarm: Alarm; waves: readonly Clan
   // A wave already on station is no longer "landing before the raid": it stands guard.
   const standing = first !== undefined && first.arriveAt.getTime() <= now;
   return (
-    <p data-clan-alarm={alarm.id} className="flex items-start gap-2 rounded-control border border-v2-hostile/40 bg-v2-hostile/10 px-2 py-1.5 text-micro leading-snug">
-      <span aria-hidden="true" className="mt-1 size-2 shrink-0 animate-pulse rounded-full bg-v2-hostile" />
-      <span className="min-w-0">
-        <span className="font-semibold text-v2-ink">
+    <p data-clan-alarm={alarm.id} className="gk-sbay__alarm">
+      <Glyph id="siren" />
+      <span className="gk-sbay__alarm-text">
+        <span className="gk-sbay__alarm-seen">
           {t('clanSupport.alarmSeen', { seen: alarm.seen, count: alarm.called })}
         </span>
         {!landed && ' · '}
         {landed ? null : verdict === null
-          ? <span className="text-v2-ink-2">{t('clanSupport.alarmNoAnswer')}</span>
-          : standing ? <span className="text-v2-self">{t('clanSupport.alarmAnswersStanding', { count: answering.length })}</span>
-          : <span className={verdict.inTime ? 'text-v2-self' : 'text-v2-warn'}>
+          ? <span>{t('clanSupport.alarmNoAnswer')}</span>
+          : standing ? <span data-tone="good">{t('clanSupport.alarmAnswersStanding', { count: answering.length })}</span>
+          : <span data-tone={verdict.inTime ? 'good' : 'warn'}>
             {t(verdict.inTime ? 'clanSupport.alarmAnswersInTime' : 'clanSupport.alarmAnswersLate', {
               count: answering.length, time: durationPrecise(verdict.minutes),
             })}
           </span>}
-        <span className="block font-v2-mono text-v2-ink-3">
+        <span className="gk-sbay__alarm-clock gk-num">
           {landed ? t('clanSupport.alarmRaidLanded') : t('clanSupport.alarmRaidIn', { time: countdown(alarm.arriveAt.getTime() - now) })}
         </span>
       </span>
@@ -217,55 +199,48 @@ function AlarmAnswer({ alarm, waves, now }: { alarm: Alarm; waves: readonly Clan
   );
 }
 
+/**
+ * A WAVE AT THIS WORLD, as the Fleet page draws one: the ring runs down its stay (or its flight
+ * in); under it the room it takes, and the short hold that sends it home with its price on it.
+ */
 function WaveRow({ wave }: { wave: ClanSupportWave }) {
   const { t } = useTranslation();
   const now = useNow();
   const actions = useClanSupportActions();
-  const [asking, setAsking] = useState(false);
   const inbound = wave.status === 'OUTBOUND';
-  const when = inbound
-    ? t('clanSupport.arriving', { time: countdown(wave.arriveAt.getTime() - now) })
-    : wave.expiresAt ? t('clanSupport.leftFor', { time: countdown(wave.expiresAt.getTime() - now) }) : '';
   const landing = inbound && wave.arriveAt.getTime() <= now;
+  const ends = inbound ? wave.arriveAt : wave.expiresAt;
+  const from = inbound ? wave.sentAt : (wave.stationedAt ?? wave.arriveAt);
+  const clock = landing ? { waiting: t('clanSupport.landing') }
+    : ends ? { time: countdown(ends.getTime() - now), at: inbound ? t('now.at', { time: clockTime(ends) }) : t('clanSupport.timeLeft') }
+      : {};
   return (
-    <li data-support-wave={wave.id} className="flex flex-col gap-1 border-b border-v2-line/70 py-2 last:border-b-0">
-      <div className="flex items-center gap-2">
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5 text-caption font-semibold text-v2-ink">
-            <span className="truncate">{wave.sender.name}</span>
-            {wave.damaged && (
-              <span className="rounded-chip border border-v2-warn/50 px-1 text-micro font-normal text-v2-warn">{t('clanSupport.damaged')}</span>
-            )}
-          </span>
-          <span className="block truncate text-micro text-v2-ink-2">
-            {fleetEntries(wave.fleet).map(([hull, n]) => `${String(n)} ${hullName(hull)}`).join(' · ')}
-          </span>
-          <span className="block font-v2-mono text-micro text-v2-ink-3">
-            {t('clanSupport.waveMeta', { ships: fleetCount(wave.fleet), bulk: compact(wave.bulk) })}
-            {when && <> · {when}</>}
-          </span>
-        </span>
-        {!asking && !landing && (
-          <button type="button" onClick={() => { setAsking(true); }}
-            aria-label={t('clanSupport.sendBackOf', { name: wave.sender.name })}
-            className="min-h-8 shrink-0 rounded-control border border-v2-line px-2 text-micro text-v2-ink">
-            {t('clanSupport.sendBack')}
-          </button>
-        )}
-      </div>
-      {wave.outOfBand && <p className="text-micro text-v2-warn">{t('clanSupport.outOfBand')}</p>}
-      {asking && (
-        <div className="flex items-center gap-2 rounded-control border border-v2-line bg-v2-deep px-2 py-1.5">
-          <p className="min-w-0 flex-1 text-micro text-v2-ink-2">{t('clanSupport.sendBackConfirm')}</p>
-          <button type="button" onClick={() => { setAsking(false); }} className="text-micro text-v2-ink-3">{t('clanSupport.cancel')}</button>
-          <button type="button" disabled={actions.sendBack.isPending}
-            onClick={() => { actions.sendBack.mutate(wave.id, { onSuccess: () => { setAsking(false); } }); }}
-            className="min-h-8 rounded-control bg-v2-warn px-2 text-micro font-semibold text-v2-deep">
-            {t('clanSupport.sendBack')}
-          </button>
+    <li data-support-wave={wave.id} className="gk-flight">
+      <TimerRow
+        tone="self"
+        glyph="support"
+        remaining={ends ? Math.max(0, ends.getTime() - now) : 0}
+        total={ends ? ends.getTime() - from.getTime() : 0}
+        title={wave.sender.name}
+        detail={fleetEntries(wave.fleet).map(([hull, n]) => `${String(n)} ${hullName(hull)}`).join(' · ')}
+        {...clock}
+      />
+      <p className="gk-flight__more gk-flight__note">
+        <span className="gk-num">{t('clanSupport.waveMeta', { ships: fleetCount(wave.fleet), bulk: compact(wave.bulk) })}</span>
+        {wave.damaged && <span className="gk-sbay__damaged">{t('clanSupport.damaged')}</span>}
+      </p>
+      {wave.outOfBand && <p data-tone="warn" className="gk-flight__more gk-flight__note">{t('clanSupport.outOfBand')}</p>}
+      {!landing && (actions.sendBack.isPending ? (
+        <p role="status" className="gk-flight__more gk-flight__turning">{t('fleetPage.recalling')}</p>
+      ) : (
+        <div className="gk-flight__more">
+          <GameHold weight="reversible" size="md" tone="steel" glyph="recall" label={t('clanSupport.sendBack')}
+            detail={t('clanSupport.sendBackCost')} onCommit={() => { actions.sendBack.mutate(wave.id); }} />
         </div>
+      ))}
+      {actions.sendBack.isError && (
+        <p role="alert" data-tone="warn" className="gk-flight__more gk-flight__note">{describeError(actions.sendBack.error)}</p>
       )}
-      {actions.sendBack.isError && <p role="alert" className="text-micro text-v2-warn">{describeError(actions.sendBack.error)}</p>}
     </li>
   );
 }

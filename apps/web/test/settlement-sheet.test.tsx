@@ -57,14 +57,14 @@ describe('settlement confirmation', () => {
     expect(within(cost!).getByText(new RegExp(
       `${MULTI_WORLD.settlement.charge.alloy.toLocaleString('en-US')} Alloy`,
     ))).toBeInTheDocument();
-    const opens = screen.getByText('Colony opens with').closest('div');
+    const opens = document.querySelector('[data-ending="win"]');
     expect(opens).not.toBeNull();
     const stock = MULTI_WORLD.neutral[1].captureStock;
     expect(opens).toHaveTextContent(new RegExp(`${stock.alloy.toLocaleString('en-US')} Alloy`));
     expect(opens).toHaveTextContent(new RegExp(`${stock.crystal.toLocaleString('en-US')} Crystal`));
     expect(screen.queryByText('Founding cargo')).not.toBeInTheDocument();
-    expect(screen.getByText(/founding cost is spent and the world opens on its tier.s stock/i))
-      .toBeInTheDocument();
+    expect(screen.getByText(/the founding cost is spent; the colony opens with/i)).toBeInTheDocument();
+    expect(screen.getByText(/couriers and the founding cost return; spent fuel does not/i)).toBeInTheDocument();
 
     // A spend that cannot be undone is held, not tapped (K4): a tap alone commits nothing.
     const commit = screen.getByRole('button', { name: /dispatch colony ships/i });
@@ -88,7 +88,8 @@ describe('settlement confirmation', () => {
         onConfirm={vi.fn()}
       />,
     );
-    expect(screen.queryByText('Colony opens with')).not.toBeInTheDocument();
+    expect(screen.queryByText(/the colony opens with:/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/opens on its tier.s stock/i)).toBeInTheDocument();
   });
 
   /**

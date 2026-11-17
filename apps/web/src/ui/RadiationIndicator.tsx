@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import type { TargetRadiation } from '../lib/targetRadiation.js';
 import { decimal } from '../lib/format.js';
 import { countdown } from '../lib/time.js';
+import { Glyph } from '../game-ui/index.js';
 import { Icon } from '../v2/icons.js';
 
 const YELLOW = [247, 205, 79] as const;
@@ -28,6 +29,8 @@ export function RadiationIndicator({ state, variant, now }: {
   if (variant === 'bar') return <div className="radiation-meter" style={style} role="meter"
     aria-label={t('planet.radiationBomb.radiation')} aria-valuemin={0} aria-valuemax={Math.max(50, state.rate)} aria-valuenow={state.rate}
     aria-valuetext={label} title={label}>
+    {/* What it measures, at a glance (owner 2026-11-17, ek-1). */}
+    <span data-radiation-mark aria-hidden="true" className="radiation-meter__mark"><Glyph id="radiation" /></span>
     <div className="radiation-meter__scale" aria-hidden="true">{Array.from({ length: 10 }, (_, i) =>
       <i key={i} className={fraction * 10 > i ? 'is-lit' : ''} />)}</div>
     <span>{label}</span>

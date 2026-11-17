@@ -1,5 +1,6 @@
 import { SEASON } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
+import { Banner } from '../game-ui/surfaces.js';
 import { countdown, useNow } from '../lib/time.js';
 
 /**
@@ -13,6 +14,7 @@ import { countdown, useNow } from '../lib/time.js';
  *
  * Derived from `endsAt` plus the rules constant rather than from a field on the
  * payload, so it cannot disagree with the worker that actually does the rollover.
+ * On the kit since C18: a status banner, the clock its glyph, the wait its title.
  */
 export function NextSeason({
   endsAt,
@@ -27,13 +29,14 @@ export function NextSeason({
 
   const left = endsAt.getTime() + SEASON.afterglowMinutes * 60_000 - now;
   return (
-    <div className={`plate px-2 py-3 text-center ${className}`} role="status">
-      <p className="legend text-crystal">
-        {left > 0
-          ? t('seasonRecap.nextIn', { duration: countdown(left) })
-          : t('seasonRecap.nextNow')}
-      </p>
-      <p className="mt-1 text-caption leading-snug text-dim">{t('seasonRecap.nextWhy')}</p>
+    <div className={`gk ${className}`}>
+      <Banner
+        tone="info"
+        glyph="clock"
+        role="status"
+        title={left > 0 ? t('seasonRecap.nextIn', { duration: countdown(left) }) : t('seasonRecap.nextNow')}
+        body={t('seasonRecap.nextWhy')}
+      />
     </div>
   );
 }

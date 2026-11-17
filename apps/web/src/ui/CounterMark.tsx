@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   COMBAT,
@@ -9,6 +10,7 @@ import {
 } from '@astera/rules';
 import { combatClassLabel } from '../i18n/names.js';
 import { factor } from '../lib/format.js';
+import { Emblem, Glyph as KitGlyph } from '../game-ui/index.js';
 import {
   BulwarkIcon,
   LanceIcon,
@@ -92,12 +94,6 @@ const verdictOf = (attacker: HullClass, defender: HullClass): Verdict => {
   return 'even';
 };
 
-const VERDICT_TONE: Record<Verdict, string> = {
-  strong: 'text-opportunity',
-  weak: 'text-threat-ink',
-  even: 'text-faint',
-  none: 'text-faint',
-};
 
 /**
  * ✓ · = · ✗ — the judgement as a shape, so the colour is never doing it alone. Never a triangle or a
@@ -146,7 +142,7 @@ export function MatchupMark({
     <span
       data-testid="matchup"
       data-matchup={verdict}
-      className={`num inline-flex shrink-0 items-center gap-1 text-micro ${VERDICT_TONE[verdict]}`}
+      className="gk-num gk-mark"
       aria-label={t('counter.matchupLabel', {
         attacker: combatClassLabel(attacker),
         defender: combatClassLabel(defender),
@@ -219,42 +215,23 @@ export function CounterLine({ cls }: { cls: HullClass }) {
 export function CounterCycle({ highlight }: { highlight?: HullClass }) {
   const { t } = useTranslation();
   return (
-    <div
-      className="flex items-stretch gap-1"
-      role="img"
-      aria-label={t('counter.cycleLabel')}
-    >
-      {COMBAT_CLASSES.map((cls, index) => {
-        const Glyph = GLYPH[cls];
-        const current = cls === highlight;
-        return (
-          <div key={cls} className="flex min-w-0 flex-1 items-center gap-1">
-            <div
-              data-rung={cls}
-              {...(current ? { 'data-current': 'true' } : {})}
-              className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-control border px-1 py-2 transition-colors ${
-                current
-                  ? 'border-crystal/45 bg-crystal/10 text-bone'
-                  : 'border-line-soft bg-void/40 text-dim'
-              }`}
-            >
-              <Glyph className="size-5 shrink-0" />
-              <span className="truncate text-micro uppercase tracking-label">
-                {combatClassLabel(cls)}
-              </span>
-            </div>
-            {/*
-              The arrow points at what this rung BEATS, which is the next entry in
-              cycle order — and the last one wraps, which is the whole shape. It is
-              drawn between the cards rather than after them so the loop reads
-              left to right without a return line nobody would follow.
-            */}
-            <span aria-hidden className="shrink-0 text-label text-faint">
-              {index === COMBAT_CLASSES.length - 1 ? '↺' : '▸'}
-            </span>
-          </div>
-        );
-      })}
+    <div className="gk-cycle" role="img" aria-label={t('counter.cycleLabel')}>
+      {COMBAT_CLASSES.map((cls, index) => (
+        <Fragment key={cls}>
+          <span data-rung={cls} {...(cls === highlight ? { 'data-current': 'true' } : {})} className="gk-cycle__rung">
+            <Emblem cls={cls} />
+            <span className="gk-cycle__name">{combatClassLabel(cls)}</span>
+          </span>
+          {/*
+            The arrow points at what this rung BEATS, which is the next entry in cycle
+            order — and the last one wraps, which is the whole shape. It is drawn between
+            the rungs so the loop reads left to right without a return line.
+          */}
+          <span aria-hidden="true" className="gk-cycle__arrow">
+            <KitGlyph id={index === COMBAT_CLASSES.length - 1 ? 'refresh' : 'next'} />
+          </span>
+        </Fragment>
+      ))}
     </div>
   );
 }

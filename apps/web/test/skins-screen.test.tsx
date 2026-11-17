@@ -66,7 +66,7 @@ describe('the skin store', () => {
       expect(screen.getByRole('img', { name: new RegExp(id.replace('planet-', ''), 'i') }))
         .toHaveAttribute('src', `/assets/images/skins/${id}.png`);
     }
-    fireEvent.click(screen.getByRole('button', { name: /recovery shield/i }));
+    fireEvent.click(screen.getByRole('radio', { name: /recovery shield/i }));
     expect(screen.getByTestId('preview')).toHaveTextContent(/:RECOVERY_SHIELD$/);
     expect(screen.queryByRole('button', { name: /apply to orion/i })).not.toBeInTheDocument();
   });

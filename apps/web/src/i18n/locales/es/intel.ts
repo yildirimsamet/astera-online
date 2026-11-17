@@ -7,7 +7,8 @@ export const intel = {
   shelf: {
     label: 'Inteligencia',
     watch: 'Vigilancia',
-    reports: 'Informes',
+    probes: 'Sondas',
+    battles: 'Batallas',
     radar: 'Radar',
   },
   rivals: {
@@ -24,10 +25,7 @@ export const intel = {
     window: 'Ventana {{duration}}',
     empty: 'Aún no sabes nada: un telescopio vigila en vivo, una sonda trae una lectura.',
   },
-  openOrbit: 'Órbita abierta',
-  tabs: {
-    label: 'Informes Intel',
-  },
+  openOrbit: 'Abrir órbita',
   coverage: {
     label: 'Cobertura',
     blind: 'No puedes ver ni un solo planeta',
@@ -38,9 +36,9 @@ export const intel = {
     idleHint_one: '{{count}} está inactiva. Elige un mundo en la galaxia y apúntalo.\nLas ranuras',
     idleHint_other: '{{count}} están inactivas. Elige un mundo en la galaxia y apúntalo.',
     scarcity_one:
-      '{{neighbours}} mundos por ahí y {{count}} ojo para gastar. Mover uno cuesta un tiempo de reutilización, así que elige quién.',
+      "{{neighbours}} mundos fuera y {{count}} ojo. Moverlo cuesta una espera: elige bien.",
     scarcity_other:
-      '{{neighbours}} mundos ahí fuera y {{count}} ojos para gastar. Mover uno cuesta un tiempo de reutilización, así que elige quién.',
+      "{{neighbours}} mundos fuera y {{count}} ojos. Mover uno cuesta una espera: elige bien.",
     oneMore: 'Telescopio L{{level}} observaría uno más.',
     noRadar: 'Y sin radar, no puedes distinguir una amenaza dirigida a ti de otro movimiento.',
   },
@@ -85,6 +83,7 @@ export const intel = {
     accuracyHome: '{{percent}} precisión · la flota estaba en casa',
     accuracyOut: '{{percent}} precisión · la flota estaba fuera',
     scaleNote: 'Cada barra parte de cero: la banda es su estimación, la línea turquesa es tu mundo.',
+    estimateFact: "Las cifras son rangos estimados.",
     estimateNote: 'Estos números son rangos estimados. El valor de la unidad armada excluye el escudo y los naves desarmados.',
     caught: 'lo pillaron\nLa flota',
     /* Two words beside the signal bars, which carry the accuracy themselves. */
@@ -111,11 +110,15 @@ export const intel = {
     origin: '· {{planet}}',
     /** Which of the caller's own worlds the scan landed on. */
     onWorld: '· {{planet}}',
+    hitWorld: 'Mundo escaneado',
     /* Captions beside the two drawn rings; the picture carries the rest. */
     ringSense: 'Hay algo ahí fuera',
     ringWarn: 'Aviso cronometrado',
     /** While the two circles are one, one caption states what the circle does. */
     ringOne: 'Detección y aviso cronometrado',
+    /** C9: the dashed rim the rings are drawn against, and a ring's reach with its unit. */
+    rim: 'Borde de la galaxia',
+    reach: '{{value}} unidades',
     /**
      * THE READING FOR SOMEBODY WHO CANNOT SEE THE RINGS. The two circles carry
      * both figures and the difference between them; this is the same fact in the
@@ -153,11 +156,11 @@ export const reports = {
   enemyRetreated: "{{count}} naves enemigas huyeron y sobrevivieron.",
   turningPointRetreated: "Tras la ronda {{round}} no quedaron naves de guerra combatiendo. Algunas huyeron con vida.",
   heading: 'Informes de batalla',
-  newest: 'más nuevo primero',
+  emptyTitle: "Aún no hay batallas",
   empty:
     'Aún no se ha discutido nada. Una batalla es la única información en este juego que nunca se puede adivinar.',
-  youRaided: 'Has asaltado',
-  raidedBy: 'Asaltado por',
+  youRaided: "Asaltaste a: ",
+  raidedBy: "Asaltado por: ",
   rounds: '{{count}} rondas',
   sheetYouRaided: 'Objetivo: {{opponent}} · {{planet}}',
   sheetYouRaidedPirate: 'Objetivo: {{opponent}}',
@@ -211,7 +214,7 @@ export const reports = {
     held: 'Tenía',
     total: 'Total',
     lost: 'Perdido',
-    returned: 'sobrevivió',
+    returned: 'Sobreviven',
     standing: 'De pie',
     destroyed: 'Destruiste',
     enemyDestroyed: 'Unidades enemigas destruidas',
@@ -286,10 +289,10 @@ export const reports = {
     label: 'AEGIS',
     labelTheirs: 'Escudo de Égida del enemigo',
     labelYours: 'Tu escudo Égida',
-    broken: 'BROKEN',
+    broken: 'ROTO',
     roundedZero: 'REPORTADO 0',
-    damaged: 'DAMAGED',
-    held: 'HELD',
+    damaged: 'DAÑADO',
+    held: 'RESISTIÓ',
     before: 'Antes de la batalla',
     after: 'Después de la batalla',
     note: 'El escudo del planeta sufre daños antes que cualquier unidad defensora.',
@@ -313,6 +316,14 @@ export const reports = {
     incomingForce: 'La flota que te atacó',
     who: '¿Qué pasó con tu fuerza?',
     changed: 'Botín y cambios de puntos',
+  },
+  /** C15: the doors a fight opened, closing its report. */
+  next: {
+    title: "Tu siguiente jugada",
+    source: "Mundo del atacante: {{planet}}",
+    sourceNote: "El asalto vino de aquí",
+    wreck: "Ir a los restos: {{planet}}",
+    wreckNote: "Valen {{amount}}; para quien llegue primero",
   },
   walkoverHeading: 'No había ninguna fuerza defensora aquí.',
   walkoverBody:
@@ -407,13 +418,14 @@ export const reports = {
   strategicSecededAttacker: "La colonia se separó y quedó neutral: ahora no es de nadie.",
   strategicSecededDefender: "Tu colonia se separó y quedó neutral.",
   strategicSecededShort: "colonia separada",
+  strategicDamageShort: "{{amount}} de daño",
   strategicCaptured: 'CAPTURED',
   strategicIneffective: 'INEFFECTIVE',
   strategicIntercepted: 'INTERCEPTED',
   radiationYouAttacked: "Tu bomba de radiación apuntó a ",
   radiationAttackedBy: "Bomba de radiación enviada por ",
-  strategicYouAttacked: 'Tu Estrella de la Muerte apuntada',
-  strategicAttackedBy: 'Estrella de la Muerte enviada por',
+  strategicYouAttacked: "Objetivo de tu Estrella de la Muerte: ",
+  strategicAttackedBy: "Estrella de la Muerte enviada por: ",
   strategicDestroyedInFlight: 'Estrella de la Muerte destruida en vuelo',
   strategicRadarTrigger: 'El mundo objetivo se enfrentó a él después de que cruzó el anillo de intercepción del Radar L3+.',
   strategicTelescopeTrigger: 'El defensor lo enfrentó después de que uno de sus mundos lo identificó a través de la mira del telescopio.',
@@ -427,6 +439,8 @@ export const reports = {
   strategicNoLevelLoss: 'No se perdió ningún edificio o nivel de instrumento.',
   strategicDestroyedOrders: 'Construcción destruida',
   strategicNoOrdersLost: 'No se destruyó ninguna orden de construcción activa.',
+  strategicFleetLost: "Naves y defensas destruidas",
+  strategicBombRules: "Cómo actúa la bomba",
 
   /** A world nobody holds. There is no commander to name. */
   neutralHolder: 'un mundo no reclamado',
@@ -523,7 +537,7 @@ export const reports = {
     sent: 'Enviado',
     held: 'Tenía',
     lost: 'Perdido',
-    left: 'Izquierda',
+    left: 'Quedan',
     rebuilt: 'Reconstruido',
     start: 'Al inicio',
     arrived: 'Llegó',
@@ -559,8 +573,6 @@ export const clarity = {
   unreadable: 'UNREADABLE',
   fleetHome: 'INICIO DE LA FLOTA',
   fleetAway: 'FLOTA LEJOS',
-  backIn: '· de vuelta en {{minutes}}m',
-  unwatched: 'ningún reloj asignado',
 } as const;
 
 /** What you know about another world, and how you know it. */

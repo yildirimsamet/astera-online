@@ -96,7 +96,20 @@ describe('the chat page', () => {
     render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
     const panel = screen.getByRole('dialog', { name: 'Chat' });
     expect(panel).toHaveClass('h-[70dvh]');
-    expect(panel.querySelector('[data-sheet-body]')).toHaveClass('overflow-hidden');
+    // the kit's body says it with the important mark (`overflow-hidden!`); either way the body never scrolls
+    expect(panel.querySelector('[data-sheet-body]')?.className).toMatch(/(^|\s)overflow-hidden!?(\s|$)/);
+  });
+
+  /**
+   * ON THE KIT (C2, 2026-11-14): the two lists the page keeps — players muted on this device, players
+   * blocked — are the kit's round keys in the title, each with its own mark, 44 px to the thumb.
+   */
+  it('keeps the muted and blocked lists behind the kit’s round keys in its title', () => {
+    render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
+    const muted = screen.getByRole('button', { name: 'Muted players' });
+    const blocked = screen.getByRole('button', { name: 'Blocked players' });
+    for (const key of [muted, blocked]) expect(key).toHaveClass('gk-round', 'gk-round--small');
+    expect(muted.querySelector('svg.gk-glyph')).not.toBeNull();
   });
 
   it('opens on the general channel by default', () => {
@@ -133,5 +146,16 @@ describe('the chat page', () => {
     render(<ChatHost onClose={onClose} onFocusPlanet={vi.fn()} />);
     await userEvent.click(screen.getByRole('button', { name: /close/i }));
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+/** S1 (owner 2026-11-16): chat wears the one 48 px head every sheet wears, its two tools beside the title. */
+describe('the chat page head', () => {
+  it('is the kit head with the chat mark, and the mute and block tools inside it', () => {
+    render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
+    const head = screen.getByRole('dialog').querySelector('.gk-sheet__head')!;
+    expect(head).not.toBeNull();
+    expect(head.querySelector('.gk-sheet__art')).toHaveAttribute('src', expect.stringMatching(/hud-chat/));
+    expect(head.querySelectorAll('[data-title-action] .gk-round')).toHaveLength(2);
   });
 });

@@ -122,7 +122,7 @@ createRoot(document.getElementById('root')).render(React.createElement(Demo));
   const box = await locked.boundingBox();
   if (!box || box.x < 0 || box.x + box.width > 350) throw new Error('The locked control leaves the phone width');
   await page.screenshot({ path: `${out}/${language}-locks.png` });
-  await line.click();
+  await line.locator('button').click();
   await page.getByRole('dialog').waitFor();
   await page.screenshot({ path: `${out}/${language}-timers.png` });
   if (errors.length) throw new Error(errors.join('\n'));
