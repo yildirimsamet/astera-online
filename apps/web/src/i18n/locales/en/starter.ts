@@ -165,6 +165,7 @@ export const starter = {
   },
   "tab": {
     "repair": "Repair the {{module}} to open this.",
-    "mainGalaxy": "This opens in the main galaxy."
+    "mainGalaxy": "This opens in the main galaxy.",
+    "report": "Opens with your first probe report."
   }
 };

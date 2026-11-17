@@ -162,6 +162,45 @@ Bölüm bölüm onarım görünümü için modelin bölümlerinin ayrı ayrı "y
 - **S5.** Onarım sırası ve süreleri değişmiyor. Bu plan ilerleme kuralına dokunmaz; yalnızca sunumu değiştirir. Doğru mu anladım, bu sınırda kalalım mı?
 - **S6.** 7 Gün kutusu inişten sonra başlasın mı? Bu, 2026-11-06 planındaki "Yeni Komutan 7 Günü"nün başlangıç anını değiştirir.
 
+### Owner'ın cevabı (2026-11-18)
+
+> "Başlayabilirsin, sana tüm akış, tüm yapı konularında izin veriyorum. İstersen gerekli anlarda internet üzerinden araştırmalarda yapabilirsin. Bu onboarding akışını elinden gelen en iyi şekilde yap. Sana güveniyorum ve tamamen sana bırakıyorum."
+
+Bu yetkiyle verdiğim kararlar:
+
+- **S1:** İ1–İ7 ve §5 uygulanır.
+- **S2:** Her çekim en fazla 3 sn sürer, dokunuş onu atlatır, her çekim yalnızca ilk sefer oynar.
+- **S3:** Shader ve yönetmenlik yolu seçildi; sanatçı gerekmez. Kod okuması bunu doğruladı. 3B gemide zaten şunlar var:
+  - sistem başına ışık (`OwnVessel` bay sprite'ları),
+  - yangın, köz ve kıvılcım (`VesselBurn`),
+  - "uyanış" nabzı (`AwakenPulse`).
+
+  Eksik olan şey, oyuncunun gemiyi o anda görmesi.
+- **S4:** Faz 1–4, Faz 5 bitene kadar bekler. **Deploy yine owner kontrol etmeden yapılmaz.**
+- **S5:** İlerleme kuralları (sıra ve süreler) değişmez.
+- **S6:** 7 Gün kutusu inişten sonra başlar.
+
+### Owner'ın oyununda bulunan hatalar (2026-11-18), düzeltildi
+
+1. **Karakol bayrağı dokunuşu almıyordu.** Ekrandaki karakol bayrağı `pointer-events: none` idi. El bayrağı gösteriyordu ama dokunuş boşluğa düşüyordu. Bayrak artık dokunuşu alıyor.
+2. **İstihbarat sekmesi tanıtımından önce açılıyordu.** Sekme Anten onarımıyla açılıyordu, tanıtım ise ilk raporda geliyordu.
+   - Sekme artık ilk sonda ya da savaş raporuyla açılıyor (`TabLock {kind:'report'}`).
+   - Sonda göndermek Anten'le açık kalıyor.
+3. **Rehber kartı raporu kapatıyordu.** "Rehber kartına yer bırak" kuralı kit öncesi bir sınıfı (`.overflow-y-auto`) hedefliyordu ve boşa düşmüştü. Kural artık `.gk-focus__file`'ı hedefliyor.
+4. **Saldırı planında gemiler aşağıda kalıyordu.**
+   - Saldırı planı açılınca "sondanın raporu" satırı okunmuş sayılıyor (`launchSheet.ts`).
+   - Tempo notu gemilerin altına taşındı.
+5. **İnişte pencereler üst üste biniyordu.**
+   - İniş ödülü penceresi katmansızdı ve olay kartının altında kalıyordu. Artık `fixed inset-0 z-50`.
+   - İlk hafta notu sabit 96 px'teydi ve üst bandın notunun üstüne biniyordu. Artık `--v2-top-h` altında duruyor.
+
+### İlerleme (Faz 5)
+
+| # | Durum | Not |
+|---|---|---|
+| Hatalar 1–5 | yapıldı | Yukarıda |
+| 5.1 Yönetmen | sırada | `Rig`'e `directorShot`: evren uçuşunun kalıbı (`controls.enabled=false`, `towards`, dönüşte eski poz) |
+
 ## 9. Başarı ölçütü
 
 - §1'deki iki izole test aynı yönergelerle yeniden koşulur. Hedefler:

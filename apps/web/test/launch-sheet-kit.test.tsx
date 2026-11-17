@@ -8,6 +8,9 @@ import type { GalaxyPlanet } from '../src/api/schemas.js';
 import { LaunchSheet } from '../src/screens/LaunchSheet.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { planetView } from './fixtures.js';
+import { vesselSchema } from '../src/api/starterSchemas.js';
+import { useLaunchSheet } from '../src/starter/tutorial/launchSheet.js';
+import { wireVessel } from './starterVesselFixture.js';
 
 /**
  * G4-e1 (2026-11-15): THE LAUNCH ON THE GAME KIT. "Pack the wing, read the price, send it."
@@ -74,5 +77,32 @@ describe('the launch on the kit', () => {
     expect(send).toHaveClass('gk-hold');
     expect(send.style.getPropertyValue('--gk-hold-ms')).toBe('1000ms');
     expect(oldPaint(commit)).toEqual([]);
+  });
+});
+
+// Owner play-through 2026-11-18: on the ship the attack's own notes stood over the hulls, and the ships
+// fell below the fold with nothing to say they were there. The ships come first; the notes follow them.
+describe('the launch from a ship', () => {
+  const Planning = () => <span data-testid="planning">{String(useLaunchSheet())}</span>;
+  const openAboard = () => render(<>
+    <LaunchSheet target={{ kind: 'world', world: target }}
+      planet={planetView({ fleet: { DART: 2 }, vessel: vesselSchema.parse(wireVessel({})) }, { deuterium: 50_000 })}
+      onClose={vi.fn()} onLaunched={vi.fn()} />
+    <Planning />
+  </>, { wrapper });
+
+  it('lists the ships before the notes about this galaxy', () => {
+    openAboard();
+    const fleet = document.querySelector('[data-launch-fleet]')!;
+    const tempo = document.querySelector('[data-starter-tempo]')!;
+    expect(fleet.compareDocumentPosition(tempo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('tells the guide a launch is being planned, for as long as it is open', () => {
+    const view = openAboard();
+    expect(screen.getByTestId('planning')).toHaveTextContent('true');
+    view.unmount();
+    render(<Planning />);
+    expect(screen.getByTestId('planning')).toHaveTextContent('false');
   });
 });

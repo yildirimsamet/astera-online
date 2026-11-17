@@ -41,7 +41,7 @@ export function LandingRewards({ onPanel, onDone }: { onPanel: ShellRoute; onDon
     });
   };
   return (
-    <div data-testid="landing-rewards" className="gk">
+    <div data-testid="landing-rewards" className="gk fixed inset-0 z-50">
       <Dialog ribbon={t('starter.landingRewards.ribbon')} tone="good" rays sound="rankup" onBack={close}
         actions={granted
           ? <GameButton tone="self" wide heavy glyph="up" onPress={() => { playSound('tap'); haptic('tap'); close(); onPanel('planet', undefined, undefined, { group: 'grow' }); }}>

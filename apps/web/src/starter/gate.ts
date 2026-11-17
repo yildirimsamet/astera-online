@@ -3,7 +3,7 @@ import { usePlanet } from '../api/queries.js';
 import type { VesselView } from '../api/starterSchemas.js';
 import { DOCK_TABS, type DockTab } from '../lib/dock.js';
 
-export type TabLock = { kind: 'repair'; module: VesselModule } | { kind: 'mainGalaxy' };
+export type TabLock = { kind: 'repair'; module: VesselModule } | { kind: 'report' } | { kind: 'mainGalaxy' };
 
 /** The tabs a repair opens, and the repair the tab names when it is pressed shut. */
 const REPAIRED_TABS: Partial<Record<DockTab, { feature: StarterFeature; module: VesselModule }>> = {
@@ -31,7 +31,11 @@ export function gateOf(vessel: VesselView | undefined): StarterGate {
   const tabLock = (tab: DockTab): TabLock | null => {
     if (tab === 'clan') return { kind: 'mainGalaxy' };
     const door = REPAIRED_TABS[tab];
-    return door && !open(door.feature) ? { kind: 'repair', module: door.module } : null;
+    if (door && !open(door.feature)) return { kind: 'repair', module: door.module };
+    // Intel opens with what fills it (owner play-through 2026-11-18): the antenna sends probes, and the
+    // tab waits for the first report, which is the moment the guide introduces it.
+    if (tab === 'intel' && !vessel.facts.some(fact => fact === 'FIRST_PROBE_REPORT' || fact === 'FIRST_BATTLE_REPORT')) return { kind: 'report' };
+    return null;
   };
   return { aboard: true, open, tabLock, lockedTabs: DOCK_TABS.filter(tab => tabLock(tab) !== null) };
 }

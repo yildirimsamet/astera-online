@@ -80,6 +80,20 @@ describe('the landing reward moment', () => {
     await waitFor(() => { expect(screen.queryByTestId('landing-rewards')).toBeNull(); });
   });
 
+  // Owner play-through 2026-11-18: the moment opened under the galaxy's event card and the top bar's note,
+  // all of it at once. It is a dialog: it stands over the whole screen, alone.
+  it('stands over the whole screen, over the galaxy\'s own cards', async () => {
+    harness({ rewards: waiting(3) });
+    const layer = await screen.findByTestId('landing-rewards');
+    expect(layer).toHaveClass('fixed', 'inset-0', 'z-50');
+  });
+
+  it('puts the first-week note under the top bar and whatever note the bar holds, never over them', async () => {
+    harness({ rewards: waiting(1) });
+    const tip = await screen.findByTestId('landing-tip');
+    expect(tip.className).toContain('top-[calc(var(--v2-top-h,96px)+6px)]');
+  });
+
   it('holds the first-week note back while it is up', async () => {
     harness({ rewards: waiting(3) });
     await screen.findByTestId('landing-rewards');

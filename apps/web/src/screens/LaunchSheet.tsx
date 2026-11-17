@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { TempoNote } from '../starter/TempoNote.js';
+import { setLaunchSheet } from '../starter/tutorial/launchSheet.js';
 import { useTranslation } from 'react-i18next';
 import { RadiationPreview } from '../ui/RadiationPreview.js';
 import {
@@ -96,6 +98,8 @@ export function LaunchSheet({
    */
   onAim?: (at: { x: number; y: number; z: number } | null) => void;
 }) {
+  // The guide reads that an attack is being planned (owner play-through 2026-11-18).
+  useEffect(() => { setLaunchSheet(true); return () => { setLaunchSheet(false); }; }, []);
   const { t } = useTranslation();
   const school = useSchoolPresentation();
   const {
@@ -311,7 +315,6 @@ export function LaunchSheet({
           two strips. The ships scroll under those, not under a paragraph.
         */}
         {!choosing && classReading && <MatchupLine folded wing={sending} reading={classReading} />}
-        {!choosing && <div><TempoNote aboard={planet.vessel !== undefined} beforeLaunch /></div>}
 
         <section data-launch-fleet className="gk-launch__fleet">
           {/*
@@ -352,6 +355,9 @@ export function LaunchSheet({
           <div className="gk-unitgrid">{(lessonOrder ?? order).map(row)}</div>
           {atHome === 0 && <p className="gk-sub">{t('launch.noShips')}</p>}
         </section>
+
+        {/* After the ships (owner play-through 2026-11-18): over them, the notes pushed the hulls below the fold. */}
+        {!choosing && <div><TempoNote aboard={planet.vessel !== undefined} beforeLaunch /></div>}
 
         {pirate && !lesson && <PirateProfitCard forecast={pirateProfit} state={pirateProfitState}
           radiation={radiation?.kind === 'HP' && radiation.doseHp > 0} />}

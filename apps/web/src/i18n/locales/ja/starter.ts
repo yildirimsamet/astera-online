@@ -165,6 +165,7 @@ export const starter = {
   },
   "tab": {
     "repair": "開くには {{module}} を修理してください。",
-    "mainGalaxy": "本銀河で開きます。"
+    "mainGalaxy": "本銀河で開きます。",
+    "report": "最初の探査レポートで開きます。"
   }
 };

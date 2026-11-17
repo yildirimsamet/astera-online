@@ -165,6 +165,7 @@ export const starter = {
   },
   "tab": {
     "repair": "Bunu açmak için {{module}} sistemini onar.",
-    "mainGalaxy": "Bu, ana galakside açılır."
+    "mainGalaxy": "Bu, ana galakside açılır.",
+    "report": "İlk sonda raporunla açılır."
   }
 };

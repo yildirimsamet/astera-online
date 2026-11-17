@@ -44,9 +44,23 @@ describe('the gate', () => {
   });
 
   it('opens a tab when its system is repaired', () => {
-    const gate = gateOf(aboard({ ...openingProgress(), modules: { REFINERY: 1, SURVEY: 1 } }));
-    expect(gate.lockedTabs).toEqual(['fleet', 'clan']);
-    expect(gate.tabLock('intel')).toBeNull();
+    const gate = gateOf(aboard({ ...openingProgress(), modules: { REFINERY: 1, SHIPYARD: 1 } }));
+    expect(gate.lockedTabs).toEqual(['intel', 'clan']);
+    expect(gate.tabLock('fleet')).toBeNull();
+  });
+
+  // Owner play-through 2026-11-18: Intel opened with the antenna, long before the line that introduces
+  // it. The antenna sends probes; the tab opens with what fills it, the first report, and the guide's
+  // "a report came in" is the moment it opens.
+  it('keeps Intel shut past the antenna until the first report comes home, and says so', () => {
+    const antenna = gateOf(aboard({ ...openingProgress(), modules: { REFINERY: 1, SURVEY: 1 } }));
+    expect(antenna.open('intel')).toBe(true);
+    expect(antenna.tabLock('intel')).toEqual({ kind: 'report' });
+    expect(tabLockLine({ kind: 'report' })).toBe('Opens with your first probe report.');
+    for (const fact of ['FIRST_PROBE_REPORT', 'FIRST_BATTLE_REPORT'] as const) {
+      const reported = gateOf(aboard({ ...openingProgress(), modules: { REFINERY: 1, SURVEY: 1 }, facts: [fact] }));
+      expect(reported.tabLock('intel'), fact).toBeNull();
+    }
   });
 
   it('keeps the clan shut for the whole of the ship: it is a promise of the main galaxy', () => {

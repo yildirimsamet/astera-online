@@ -165,6 +165,7 @@ export const starter = {
   },
   "tab": {
     "repair": "Répare {{module}} pour ouvrir ceci.",
-    "mainGalaxy": "Ceci s’ouvre dans la galaxie principale."
+    "mainGalaxy": "Ceci s’ouvre dans la galaxie principale.",
+    "report": "S’ouvre avec ton premier rapport de sonde."
   }
 };

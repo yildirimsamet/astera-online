@@ -4,6 +4,7 @@ import type { TutorialAnswer } from '../src/starter/tutorial/script.js';
 import { StarterTutorialCoach } from '../src/starter/tutorial/StarterTutorialCoach.js';
 import { CARD_AFTER_REVEAL_MS } from '../src/starter/tutorial/sightLesson.js';
 import { setRockReach } from '../src/starter/tutorial/rockReach.js';
+import { setLaunchSheet } from '../src/starter/tutorial/launchSheet.js';
 import { ToastProvider, useToast } from '../src/ui/Toast.js';
 import { clockTime } from '../src/lib/time.js';
 
@@ -645,5 +646,24 @@ describe('closing the guide', () => {
     expect(document.querySelector('[data-school-coach]')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Continue with guide' }));
     expect(document.querySelector('[data-school-coach]')).not.toBeNull();
+  });
+});
+
+// Owner play-through 2026-11-18: the report's line stayed up over the attack plan, took the top of the
+// sheet, and left the ships below the fold. Planning an attack from the report is having read it.
+describe('the probe report\'s line', () => {
+  it('is read once the attack is planned from it, and stays read when the plan is closed', () => {
+    const { ack } = coach({ kind: 'step', id: 'report', step: 'read', marks: [], chapter: 4, strict: false });
+    expect(ack).not.toHaveBeenCalled();
+    act(() => { setLaunchSheet(true); });
+    expect(ack).toHaveBeenCalledWith('report');
+    act(() => { setLaunchSheet(false); });
+  });
+
+  it('leaves every other line alone while a launch is open', () => {
+    act(() => { setLaunchSheet(true); });
+    const { ack } = coach({ kind: 'step', id: 'radarRing', step: 'read', marks: [], chapter: 8, strict: false });
+    expect(ack).not.toHaveBeenCalled();
+    act(() => { setLaunchSheet(false); });
   });
 });

@@ -10,6 +10,7 @@ import { SchoolCoach } from '../../onboarding/flightSchool/SchoolCoach.js';
 import { SchoolPointer } from '../../onboarding/flightSchool/SchoolPointer.js';
 import { moduleName } from '../shipCopy.js';
 import { CORE_CHAPTERS, waitMode, type TutorialStepId } from './script.js';
+import { useLaunchSheet } from './launchSheet.js';
 
 const CHAPTER = {
   1: 'starter.tutorial.chapter.1', 2: 'starter.tutorial.chapter.2', 3: 'starter.tutorial.chapter.3', 4: 'starter.tutorial.chapter.4',
@@ -124,6 +125,9 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
     if (!live || !stepId) return;
     observe('training_scene_visible', { trainingVersion: TRAINING, scene: stepId }, 'live');
   }, [live, stepId]);
+  // Planning the attack from the report is having read it: the line leaves the sheet its room (owner 2026-11-18).
+  const launching = useLaunchSheet();
+  useEffect(() => { if (launching && stepId === 'report') ack('report'); }, [launching, stepId, ack]);
   useEffect(() => {
     setStuck(false);
     if (!live || !stepId || kind === 'read' || kind === 'gesture') return undefined;

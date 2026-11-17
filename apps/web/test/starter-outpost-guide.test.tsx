@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
@@ -48,6 +50,16 @@ describe('the first hunt\'s flags', () => {
     expect(flags[0]?.hasAttribute('data-scene-mark')).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: /Eldeth/ }));
     expect(onSelect).toHaveBeenCalledWith('eldeth');
+  });
+
+  // Owner play-through 2026-11-18: the hand pointed at the flag over the outpost, and a tap there fell
+  // through to empty space, since the flag stands above the world, not on it. Where the hand points opens it.
+  it('takes the tap where the hand points while its outpost is in view, as at the edge', () => {
+    const css = readFileSync(join(import.meta.dirname, '../src/galaxy/outpostGuide.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//gu, '');
+    const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/gu)].map(([, selector = '', body = '']) => ({ selector: selector.trim(), body }));
+    const dropped = rules.filter(rule => rule.selector.startsWith('.outpost-guide') && /pointer-events:\s*none/u.test(rule.body)
+      && !/-mark|-flag|-bearing|-name/u.test(rule.selector));
+    expect(dropped.map(rule => rule.selector)).toEqual([]);
   });
 
   it('flies over the outpost while it is in view, and waits at the edge pointing to it when it is not', () => {

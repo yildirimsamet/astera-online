@@ -179,8 +179,9 @@ export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; 
   // The landing pays first (plan 2026-11-06 §7.1 R1); the first-week note waits until it is closed.
   if (rewards === 'open') return <LandingRewards onPanel={onPanel} onDone={() => { setRewards('done'); }} />;
   if (!tip) return null;
+  // Under the top bar and any note it holds (`--v2-top-h` measures both): two notes never stack (owner 2026-11-18).
   return (
-    <div data-testid="landing-tip" data-tip={tip} role="status" className="gk pointer-events-auto fixed inset-x-3 top-[calc(env(safe-area-inset-top)+96px)] z-[60] mx-auto max-w-[440px]">
+    <div data-testid="landing-tip" data-tip={tip} role="status" className="gk pointer-events-auto fixed inset-x-3 top-[calc(var(--v2-top-h,96px)+6px)] z-[60] mx-auto max-w-[440px]">
       <Banner tone="info" variant="strip" glyph={TIP_GLYPH[tip]} title={t(`starter.landing.tip.${tip}`)}
         action={(
           <button type="button" aria-label={t('starter.landing.dismiss')} onClick={() => { playSound('tap'); haptic('tap'); dismissTip(tip); setTip(null); }}

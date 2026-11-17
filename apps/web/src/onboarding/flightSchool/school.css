@@ -30,7 +30,8 @@
 .school-working i { width:4px; height:4px; border-radius:50%; background:#ddc68c; animation:school-blink 1s ease-in-out infinite; }
 .school-working i:nth-child(2) { animation-delay:.15s; }.school-working i:nth-child(3) { animation-delay:.3s; }
 .school-root [data-sheet-panel] { max-height:calc(100dvh - var(--school-coach-space,230px) - var(--v2-dock-h,64px)); }
-.school-root [data-focus-rail] .overflow-y-auto { max-height:calc(100dvh - var(--school-coach-space,230px) - var(--v2-dock-h,64px) - 100px); }
+/* The focus file under the guide card (owner play-through 2026-11-18: the card covered the report it pointed at). */
+.school-root [data-focus-rail] .gk-focus__file { max-height:min(65dvh, calc(100dvh - var(--school-coach-space,230px) - var(--v2-dock-h,64px) - 76px)); }
 .school-root [data-disc-controls],.school-root [data-context-slot] { display:none; }
 .school-root[data-school-scene=warning] [data-now-float] { position:fixed; top:var(--school-coach-space,230px); }
 .school-root [data-school-note] { position:fixed; z-index:35; bottom:calc(76px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); padding:6px 12px; border:1px solid #87deef50; border-radius:20px; background:#07121ee6; color:#bdeff8; font-size:11px; max-width:90vw; text-align:center; }

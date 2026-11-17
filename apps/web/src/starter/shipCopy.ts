@@ -9,7 +9,9 @@ import type { StepEffect } from './steps.js';
 export { moduleName, shipOnlyModule };
 
 export const tabLockLine = (lock: TabLock): string =>
-  lock.kind === 'mainGalaxy' ? i18n.t('starter.tab.mainGalaxy') : i18n.t('starter.tab.repair', { module: moduleName(lock.module) });
+  lock.kind === 'mainGalaxy' ? i18n.t('starter.tab.mainGalaxy')
+    : lock.kind === 'report' ? i18n.t('starter.tab.report')
+      : i18n.t('starter.tab.repair', { module: moduleName(lock.module) });
 
 /** A module the main game also has keeps the main game's name: what is learned here holds there. */
 
