@@ -107,6 +107,9 @@ const schema = z.object({
     catch { ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid Shopier price JSON' }); return z.NEVER; }
   }).pipe(z.record(z.enum([...COSMETIC_IDS, 'bundle']), z.number().int().positive())
     .refine(items => Object.keys(items).every(id => !cosmeticById(id)?.free), 'Free cosmetics cannot have a price')),
+  /** Crash reports (Sentry, `src/crashReports.ts`): compose passes the api project's DSN; empty sends nothing. */
+  SENTRY_DSN: z.literal('').or(z.string().url().startsWith('https://')).default(''),
+  SENTRY_ENVIRONMENT: z.enum(['production', 'stage']).default('production'),
   /** Bildirim Merkezi push: the Firebase service-account key file, base64. Unset = alerts are recorded, not sent. */
   FCM_SERVICE_ACCOUNT: z.string().default('').transform((value, ctx): ServiceAccount | null => {
     if (!value.trim()) return null;

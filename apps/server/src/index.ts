@@ -1,3 +1,4 @@
+import { init as startSentry } from '@sentry/node';
 import { pino } from 'pino';
 import { buildApp } from './app.js';
 import { ensureMainHonorRankings } from './services/honorActivation.js';
@@ -12,9 +13,13 @@ import { systemClock } from './clock.js';
 import { fcmTransport } from './services/fcm.js';
 import { setPushTransport } from './services/notificationCenter.js';
 import { queueProviderAnalytics } from './services/analyticsServerFacts.js';
+import { serverCrashOptions } from './crashReports.js';
 
 loadDotEnv();
 const env = loadEnv();
+// Crash reports before anything can throw; errors only and nothing about the player (S-4).
+const crashes = serverCrashOptions({ ...env, ASTERA_GIT_COMMIT: process.env.ASTERA_GIT_COMMIT });
+if (crashes) startSentry(crashes);
 const log = pino({ level: env.LOG_LEVEL, redact: ['req.headers.authorization', 'req.headers["x-analytics-visitor"]', 'req.headers.cookie', 'req.body', 'res.headers["set-cookie"]'] });
 const { app, db, worker, bus, rateLimitBackend, mail, close, metrics } = buildApp({ env, logger: log });
 

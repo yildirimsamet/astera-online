@@ -24,6 +24,10 @@ x-api: &api
   environment: &api-environment
     NODE_ENV: production
     ROLE: api
+    # Crash reports (Sentry `api` project, errors only, nothing about the player). The DSN only lets a
+    # process send events; SENTRY_DSN= in .env turns them off. Worker and arena inherit both.
+    SENTRY_DSN: ${SENTRY_DSN-https://1483122da6e0a6177af3b722ae6300e3@o4512426032431104.ingest.de.sentry.io/4512426037739600}
+    SENTRY_ENVIRONMENT: production
     PORT: 3200
     DATABASE_URL: postgres://${POSTGRES_USER:-astera}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-astera}
     DB_POOL_MAX: ${API_DB_POOL_MAX:-8}

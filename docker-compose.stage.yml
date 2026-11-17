@@ -3,6 +3,7 @@
 name: astera-stage
 
 x-stage-environment: &stage-environment
+  SENTRY_ENVIRONMENT: stage
   ACCOUNT_EMAIL_ENABLED: ${ACCOUNT_EMAIL_ENABLED:-false}
   PASSWORD_RECOVERY_ENABLED: ${PASSWORD_RECOVERY_ENABLED:-false}
   MAIL_DELIVERY_ENABLED: ${MAIL_DELIVERY_ENABLED:-false}
