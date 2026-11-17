@@ -128,6 +128,7 @@ export const planet = {
     noRadar: "Yüklü · Radar çemberi devre dışı",
     build: "Mühimmat yükle",
     started: "Mühimmat yükleniyor",
+    short: "Ölüm Yıldızını ya da radyasyon bombasını vurur.",
     hint: "Radar önleme alanına giren veya Teleskop görüşünde tanımlanan bir Ölüm Yıldızını ya da radyasyon bombasını vurur. Her atış, hedef gezegenin bataryasından bir şarj tüketir.",
     colonyHint: "Geçen her Ölüm Yıldızı bu koloniden {{loss}} sadakat götürür ve 1 rastgele arıza çıkarır.",
     noRadarHint:
@@ -261,10 +262,9 @@ export const planet = {
       "Taktik geri çekilme · bu hattın (gemiler ve aktif toplar) {{ratio}} katı güçte ve onu silecek bir akın gemilerini bulamaz · kalkış {{fuel}} Döteryum yakar",
     escapeShort:
       "Taktik geri çekilme · gemilerin bu hattın (gemiler ve aktif toplar) {{ratio}} katı güçteki bir akından kaçardı ama kalkış {{fuel}} Döteryum ister, depoda {{stock}} var",
-    shieldBand: "Kalkan",
+    buildBand: "Savunma yapıları",
     shieldNote:
       "Aegis hasarı birliklerine ulaşmadan önce karşılar. Seviyeler azami kalkanı artırır; yenilenme hızı azami değerin saatte %35’idir.",
-    groundBand: "Yerdekiler (kapasite komuta çekirdeği ile artar)",
     groundNote:
       "Gezegenden ayrılmazlar. Kirpi Sur’a, Zıpkın Akıncıya, Tabya ise Mızrak sınıfına karşı üstünlük kazanır.",
     thornNone:

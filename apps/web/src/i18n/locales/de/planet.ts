@@ -128,6 +128,7 @@ export const planet = {
     noRadar: "Geladen · Radarring ist offline",
     build: "Ladung laden",
     started: "Ladung wird geladen",
+    short: "Stoppt einen Todesstern oder eine Strahlungsbombe.",
     hint: "Stoppt einen Todesstern oder eine Strahlungsbombe im Radar-Abfangring oder bei Identifizierung im Teleskopsichtfeld. Jeder Schuss verbraucht eine Ladung der Batterie des Zielplaneten.",
     colonyHint: "Jeder Todesstern, der durchkommt, kostet diese Kolonie {{loss}} Loyalität und löst 1 zufällige Störung aus.",
     noRadarHint:
@@ -261,10 +262,9 @@ export const planet = {
       "Taktischer Rückzug · ein Angriff mit dem {{ratio}}-Fachen der Stärke dieser Linie (Schiffe und aktive Geschütze), der sie auslöschen würde, findet deine Schiffe nicht mehr vor · der Start verbrennt {{fuel}} Deuterium",
     escapeShort:
       "Taktischer Rückzug · deine Schiffe würden vor dem {{ratio}}-Fachen der Stärke dieser Linie (Schiffe und aktive Geschütze) fliehen, doch der Start braucht {{fuel}} Deuterium und der Tank hält {{stock}}",
-    shieldBand: "Schild",
+    buildBand: "Verteidigungsanlagen",
     shieldNote:
       "Aegis absorbiert Schaden, bevor er deine Einheiten erreicht, und regeneriert jede Stunde 35 % seines Maximums.",
-    groundBand: "Am Boden (Kapazität erhöht sich je nach Kernstufe)",
     /* The figures moved into `CapacityBar`; the band keeps the RULE. */
     groundNote:
       "Bodengeschütze verlassen niemals die Welt. Dornen kontern Bollwerke, Harpunen Plänkler und Bastionen Lanzen.",

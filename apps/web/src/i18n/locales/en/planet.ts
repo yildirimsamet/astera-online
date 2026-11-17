@@ -128,6 +128,7 @@ export const planet = {
     noRadar: "Loaded · Radar ring is offline",
     build: "Load charge",
     started: "Charge loading",
+    short: "Stops a Death Star or a radiation bomb.",
     hint: "Stops one Death Star or radiation bomb at the Radar interception ring or when identified in Telescope sight. Each shot spends one charge from the target planet’s battery.",
     colonyHint: "Every Death Star that gets through costs this colony {{loss}} loyalty and breaks 1 random fault.",
     noRadarHint:
@@ -261,10 +262,9 @@ export const planet = {
       "Tactical retreat · a raid with {{ratio}}× the power of this line (ships and active guns) that would wipe it out finds your ships gone · the lift burns {{fuel}} Deuterium",
     escapeShort:
       "Tactical retreat · your ships would run from a raid with {{ratio}}× the power of this line (ships and active guns), but the lift needs {{fuel}} Deuterium and the tank holds {{stock}}",
-    shieldBand: "Shield",
+    buildBand: "Defences",
     shieldNote:
       "Aegis absorbs damage before it reaches your units and regenerates 35% of its maximum each hour.",
-    groundBand: "On the ground (capacity is increased by core level) ",
     /* The figures moved into `CapacityBar`; the band keeps the RULE. */
     groundNote:
       "Ground guns never leave the world. Thorns counter Bulwarks, Harpoons counter Skirmishers, and Bastions counter Lances.",

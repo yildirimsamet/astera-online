@@ -128,6 +128,7 @@ export const planet = {
     noRadar: "Cargado · El anillo de radar está fuera de línea",
     build: "Cargo de carga",
     started: "Cargando carga",
+    short: "Detiene una Estrella de la Muerte o una bomba de radiación.",
     hint: "Detiene una Estrella de la Muerte o una bomba de radiación en el anillo de intercepción Radar o al identificarla con el Telescopio. Cada disparo consume una carga de la batería del planeta objetivo.",
     colonyHint: "Cada Estrella de la Muerte que pasa le quita {{loss}} de lealtad a esta colonia y provoca 1 avería aleatoria.",
     noRadarHint:
@@ -261,10 +262,9 @@ export const planet = {
       "Retirada táctica · un ataque con {{ratio}}× el poder de esta línea (naves y cañones activos) que la aniquilaría no encuentra tus naves · el despegue quema {{fuel}} de Deuterio",
     escapeShort:
       "Retirada táctica · tus naves huirían de un ataque con {{ratio}}× el poder de esta línea (naves y cañones activos), pero el despegue necesita {{fuel}} de Deuterio y el depósito tiene {{stock}}",
-    shieldBand: "Escudo",
+    buildBand: "Defensas",
     shieldNote:
       "Égida absorbe el daño antes de que llegue a tus unidades y se regenera el 35% de su máximo cada hora.",
-    groundBand: "En tierra (la capacidad aumenta según el nivel central)",
     /* The figures moved into `CapacityBar`; the band keeps the RULE. */
     groundNote:
       "Las armas terrestres nunca abandonan el mundo. Las Espinas contrarrestan Baluartes, los Arpones Hostigadores y los Bastiones Lanzas.",

@@ -129,6 +129,7 @@ export const planet = {
     noRadar: "Chargée · rayon Radar désactivé",
     build: "Charger une munition",
     started: "Chargement de la munition",
+    short: "Arrête une Étoile de la mort ou une bombe radiologique.",
     hint: "Arrête une Étoile de la mort ou une bombe radiologique dans l’anneau d’interception Radar ou après identification au Télescope. Chaque tir consomme une charge de la batterie de la planète ciblée.",
     colonyHint: "Chaque Étoile de la Mort qui passe coûte {{loss}} de loyauté à cette colonie et provoque 1 panne aléatoire.",
     noRadarHint:
@@ -261,11 +262,9 @@ export const planet = {
       "Retraite tactique · un raid de {{ratio}}× la puissance de cette ligne (vaisseaux et canons actifs) qui l’anéantirait ne trouve plus tes vaisseaux · le décollage brûle {{fuel}} Deutérium",
     escapeShort:
       "Retraite tactique · tes vaisseaux fuiraient un raid de {{ratio}}× la puissance de cette ligne (vaisseaux et canons actifs), mais le décollage demande {{fuel}} Deutérium et le réservoir en contient {{stock}}",
-    shieldBand: "Bouclier",
+    buildBand: "Défenses",
     shieldNote:
       "L’Aegis absorbe les dégâts avant qu’ils n’atteignent tes unités. Ses niveaux augmentent le bouclier maximal ; il régénère chaque heure 35 % de sa valeur maximale.",
-    groundBand:
-      "Défenses terrestres (capacité augmentée par le Noyau de Commandement)",
     groundNote:
       "Elles ne quittent jamais la planète. Le Hérisson contre les Remparts, le Harpon les Escarmoucheurs et le Bastion les Lances.",
     thornNone:

@@ -363,10 +363,33 @@ describe('the Base and its Defence tab', () => {
     expect(screen.queryByRole('region', { name: 'Orbit network' })).toBeNull();
   });
 
-  /** The band already names the ground; its room bar under it does not say it a second time. */
-  it('names the ground band once', () => {
+  /**
+   * THE DEFENCE TAB, GATHERED (owner 2026-11-17: "savunma tab'ının UX'i düzeltilmeli, toparlanmalı").
+   * The shield and the guns were two bands, each with a paragraph, the Aegis alone in half a row: one
+   * band now heads all four on one grid of two, and how they work is behind the ground room's ⓘ.
+   */
+  it('heads the shield and the guns with one band, their rules one press away', async () => {
     show('defend');
-    expect(screen.getAllByText(i18n.t('planet.defend.groundBand').trim())).toHaveLength(1);
+    expect(screen.getAllByText(i18n.t('planet.defend.buildBand'))).toHaveLength(1);
+    const room = document.querySelector<HTMLElement>('[data-ground-room]')!;
+    expect(screen.queryByText(i18n.t('planet.defend.shieldNote'))).toBeNull();
+    expect(screen.queryByText(i18n.t('planet.defend.groundNote'))).toBeNull();
+    await userEvent.setup().click(room.querySelector<HTMLElement>('.gk-peek__row button')!);
+    expect(screen.getByText(i18n.t('planet.defend.shieldNote'))).toBeVisible();
+    expect(screen.getByText(i18n.t('planet.defend.groundNote'))).toBeVisible();
+  });
+
+  it('sets the Aegis beside the three guns on one grid of two', () => {
+    show('defend');
+    const parents = ['row-AEGIS', 'row-THORN', 'row-HARPOON', 'row-BASTION'].map((id) => document.getElementById(id)?.parentElement);
+    expect(parents[0]).toBeTruthy();
+    expect(new Set(parents).size).toBe(1);
+  });
+
+  it('says what the battery stops in one line, the rest behind its ⓘ', () => {
+    show('defend');
+    expect(screen.getByText(i18n.t('planet.interceptor.short'))).toBeVisible();
+    expect(screen.queryByText(i18n.t('planet.interceptor.hint'))).toBeNull();
   });
 
   it('leads the Defence tab with firepower, the line, the shield and what a raid can take', () => {

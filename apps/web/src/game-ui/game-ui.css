@@ -17781,3 +17781,10 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
   -webkit-user-select: none;
   cursor: pointer;
 }
+
+/* A strip held at the top of a sheet's body sits flush under the head (owner 2026-11-17): stuck at `top: 0`
+   it stopped under the body's own top padding, and the rows scrolling past showed through that 12 px gap. */
+.gk-sheet__body :is(.gk-tabbar, .gk-lb__search, .gk-clan__tabs) { top: calc(-1 * var(--gk-s3)); }
+/* the ground room's way to grow is a note, its ⓘ the rules of the shield and the guns (owner 2026-11-17) */
+.gk-room__note .gk-peek__row { min-height: 0; }
+.gk-room__note .gk-peek__fact { font-size: var(--gk-t-floor); font-weight: 400; color: var(--gk-ink-2); }

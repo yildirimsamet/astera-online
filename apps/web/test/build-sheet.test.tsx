@@ -1276,6 +1276,8 @@ describe('the room sections', () => {
     expect(document.querySelector('[data-ground-room]')).toHaveTextContent(
       `Command Core ${String(next)} makes it ${compact(groundSlots(6))} → ${compact(groundSlots(next))}`,
     );
+    // How the guns work sits behind the room's ⓘ (owner 2026-11-17).
+    fireEvent.click(document.querySelector<HTMLElement>('[data-ground-room] .gk-peek__row button')!);
     expect(document.querySelector('[data-ground-room]')).toHaveTextContent(/never leave/i);
   });
 

@@ -1507,7 +1507,13 @@ function Defend({
           arriving={supportLandingBefore(planet.clanSupport?.waves ?? [], planet.clanSupport?.alarms, now)} />
       )}
 
-      <Band label={t('planet.defend.shieldBand')} note={t('planet.defend.shieldNote')} />
+      {/*
+        THE DEFENCES, GATHERED (owner 2026-11-17: "savunma tab'ı … toparlanmalı"). The shield and the three
+        guns were two bands, each with a paragraph, the Aegis alone in half a row; one band now heads all
+        four on one grid of two, the ground room over them, and how they work behind the room's ⓘ.
+      */}
+      <Band label={t('planet.defend.buildBand')} />
+      <GroundRoom planet={planet} />
       <div className="grid grid-cols-2 gap-2">
         <InstrumentItemRow
           id="AEGIS"
@@ -1519,7 +1525,6 @@ function Defend({
           flashed={flashed}
           onOpen={onOpen}
         />
-      </div>
 
       {/*
         THREE GUNS COMPLETE THE COUNTER TRIANGLE.
@@ -1529,17 +1534,11 @@ function Defend({
         planet is strong AGAINST is now a choice, and it is the choice an attacker
         has to scout to discover.
       */}
-      <Band label={t('planet.defend.groundBand')} note={t('planet.defend.groundNote')} />
       {/*
         THE GROUND IS A ROOM HERE, NOT A PURCHASE. Owner instruction: the "one
         takes" block belongs on the craft sheet, where a hull is actually being
-        chosen. On a band nobody is shopping — the question is how big this
-        world's battery may be and how much of it is spoken for — so the card
-        drops the block and the per-hull count and states its space as space.
+        chosen; the room above the grid states its space as space.
       */}
-      <GroundRoom planet={planet} />
-
-      <div className="grid grid-cols-2 gap-2">
       <div id="row-THORN">
         <UpgradeRow
           layout="card"
@@ -1780,9 +1779,11 @@ function InterceptorBattery({
                 : t('planet.interceptor.none')}
         {...(loading ? { progress: { share: buildShare(loading, ANTI_STRATEGIC.buildMinutes, now), mark: 'data-charge-progress' as const } } : {})}
       />
-      <p className="gk-sub gk-arm__rule">
-        {t(noRadarProtection ? 'planet.interceptor.noRadarHint' : 'planet.interceptor.hint')}
-      </p>
+      {/* What it stops in one line; the ring, the sight and the charge it spends behind the ⓘ (owner 2026-11-17). */}
+      {noRadarProtection
+        ? <p className="gk-sub gk-arm__rule">{t('planet.interceptor.noRadarHint')}</p>
+        : <div className="gk-arm__rule"><InfoPeek fact={<span className="gk-sub">{t('planet.interceptor.short')}</span>}
+          rule={<p className="gk-sub">{t('planet.interceptor.hint')}</p>} /></div>}
       {/* Why a colony wants one: what every weapon that gets through costs it. */}
       {planet.planet.kind === 'COLONY' && (
         <p data-interceptor-colony className="gk-arm__note"><Glyph id="colony" />
@@ -2639,12 +2640,18 @@ function GroundRoom({ planet }: { planet: PlanetView }) {
             );
           })}
         </p>
-        <p className="gk-sub gk-room__note">
-          {t('roomBar.gunsStay')}
-          {next !== null && (
-            <> {t('roomBar.nextCore', { level: next, from: compact(groundSlots(core)), to: compact(groundSlots(next)) })}</>
-          )}
-        </p>
+        {/* How the shield and the guns work, one press away (owner 2026-11-17); the way the room grows stays said. */}
+        <div className="gk-sub gk-room__note">
+          <InfoPeek
+            fact={next !== null
+              ? t('roomBar.nextCore', { level: next, from: compact(groundSlots(core)), to: compact(groundSlots(next)) })
+              : t('roomBar.gunsStay')}
+            rule={<>
+              <p className="gk-sub">{t('planet.defend.groundNote')}</p>
+              <p className="gk-sub">{t('planet.defend.shieldNote')}</p>
+              <p className="gk-sub">{t('roomBar.gunsStay')}</p>
+            </>} />
+        </div>
       </RoomGauge>
     </div>
   );
