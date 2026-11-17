@@ -4887,10 +4887,12 @@ button:active > .gk-sheet__grab {
   touch-action: pan-y;
   cursor: pointer;
 }
+/* The rail ends where the knob does at either stop (`KNOB_INSET_PX` in controls.tsx: its travel
+   stops half a gripped knob inside the track), so at 0 no sliver of fill shows past the knob. */
 .gk-slider__rail {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 2px;
+  right: 2px;
   top: 50%;
   height: 12px;
   margin-top: -6px;
