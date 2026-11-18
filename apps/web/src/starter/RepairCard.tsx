@@ -1,7 +1,7 @@
 import {
   REPAIR_LADDER, STARTER, missingForStep, moduleStage, type RepairStep, type VesselModule, type VesselProgress,
 } from '@astera/rules';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { compact, full } from '../lib/format.js';
 import { playSound } from '../lib/sound.js';
@@ -63,16 +63,23 @@ function Price({ resource, amount, held }: { resource: 'alloy' | 'crystal'; amou
   );
 }
 
-function PaymentLine({ step, context }: { step: RepairStep; context: RepairContext }) {
+/**
+ * WHY THE BUTTON IS FADED (plan 2026-11-18 §4 İ6): what is short and by how much first, then where it
+ * comes from — the works waiting to be collected, the wait for production, or a system to mend.
+ */
+function PaymentLine({ id, step, context }: { id: string; step: RepairStep; context: RepairContext }) {
   const { t } = useTranslation();
   const { held, income, queueFull } = context;
-  if (queueFull) return <p className="text-micro text-v2-warn">{t('starter.queueFull', { count: STARTER.queues.construction })}</p>;
+  if (queueFull) return <p id={id} className="text-micro text-v2-warn">{t('starter.queueFull', { count: STARTER.queues.construction })}</p>;
   if (held.alloy >= step.alloy && held.crystal >= step.crystal) return null;
+  const what = (['alloy', 'crystal'] as const)
+    .flatMap(resource => (step[resource] > held[resource] ? [`${compact(Math.ceil(step[resource] - held[resource]))} ${t(`vocabulary.resource.${resource}`)}`] : []))
+    .join(', ');
   const minutes = timeToAfford(step, held, income);
   const inWorks = held.alloy + held.bufferAlloy >= step.alloy && held.crystal + held.bufferCrystal >= step.crystal;
   return (
-    <p data-testid="repair-wait" className="text-micro text-v2-warn">
-      {inWorks ? t('starter.collectFirst') : minutes === null ? t('starter.noIncome') : t('starter.affordIn', { time: duration(minutes) })}
+    <p id={id} data-testid="repair-wait" className="text-micro text-v2-warn">
+      {inWorks ? t('starter.collectFirst', { what }) : minutes === null ? t('starter.noIncome', { what }) : t('starter.affordIn', { what, time: duration(minutes) })}
     </p>
   );
 }
@@ -127,18 +134,32 @@ function UnderWay({ readyAt }: { readyAt: Date | undefined }) {
   );
 }
 
-function Action({ step, state, context }: { step: RepairStep; state: StepState; context: RepairContext }) {
+/** The repair a requirement names: the card a lock's "Show" goes to. */
+const stepFor = (module: VesselModule, stage: number): RepairStep | undefined => REPAIR_LADDER.find(row => row.module === module && row.stage === stage);
+
+function Action({ step, state, context, onGo }: { step: RepairStep; state: StepState; context: RepairContext; onGo: ((step: RepairStep) => void) | undefined }) {
   const { t } = useTranslation();
   const settling = useSettling(`${step.module}-${String(step.stage)}`);
+  const why = useId();
   if (state === 'done') return <p className="flex items-center gap-1 text-caption text-v2-self"><Icon id="i-check" className="size-3.5" />{t('starter.state.done')}</p>;
   if (state === 'queued') return <UnderWay readyAt={context.queue.find(order => order.subject === step.module && order.stage === step.stage)?.readyAt} />;
   if (state === 'closed') {
     const missing = missingForStep(context.ahead, step);
     // An event is not bought: say how it comes (player test A-05).
     const how = missing.flatMap((need) => need.kind === 'FACT' ? [t(`starter.factHow.${need.fact}`)] : []);
+    // A repair that comes first is one press away (plan 2026-11-18 §4 İ6): the lock takes the player there.
+    const first = missing.flatMap(need => (need.kind === 'MODULE' ? [stepFor(need.module, need.stage)] : [])).find(row => row !== undefined);
     return (
       <>
-        <p data-testid="repair-missing" className="text-caption leading-snug text-v2-warn">{t('starter.needs', { what: missing.map(requirementLine).join(', ') })}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p data-testid="repair-missing" className="min-w-0 text-caption leading-snug text-v2-warn">{t('starter.needs', { what: missing.map(requirementLine).join(', ') })}</p>
+          {first && onGo && (
+            <button type="button" data-testid="repair-go" onClick={() => { playSound('tab'); onGo(first); }}
+              className="flex min-h-8 shrink-0 items-center gap-0.5 rounded-control border border-v2-self/60 bg-v2-self/10 pl-2.5 pr-1.5 text-micro font-bold uppercase tracking-wider text-v2-self active:bg-v2-self/25">
+              {t('starter.go')}<Icon id="i-chev" className="size-3" />
+            </button>
+          )}
+        </div>
         {how.length > 0 && <p data-testid="repair-how" className="text-micro leading-snug text-v2-ink-2">{how.join(' ')}</p>}
       </>
     );
@@ -155,12 +176,13 @@ function Action({ step, state, context }: { step: RepairStep; state: StepState; 
         data-guide="repair-order"
         data-step={`${step.module}:${String(step.stage)}`}
         disabled={settling || !canOrder(step, context)}
+        aria-describedby={why}
         onClick={() => { context.order(step); }}
         className="min-h-8 w-full rounded-control border border-v2-self/80 bg-gradient-to-b from-v2-self/90 to-v2-self/50 text-caption font-bold uppercase tracking-wider text-v2-void shadow-[0_0_14px_-3px_var(--color-v2-self),inset_0_1px_0_rgba(255,255,255,.35)] disabled:border-v2-line disabled:bg-none disabled:bg-v2-raise disabled:text-v2-ink-3 disabled:shadow-none"
       >
         {t('starter.repair')}
       </button>}
-      <PaymentLine step={step} context={context} />
+      <PaymentLine id={why} step={step} context={context} />
     </>
   );
 }
@@ -251,8 +273,10 @@ function Strip({ steps, shown, context, onShow }: { steps: readonly RepairStep[]
  * ONE REPAIR, AS A MACHINE WORTH FIXING. The picture, the reward before the price, one press; the rest
  * of the system's repairs sit underneath as pictures to look through, so the list never returns.
  */
-export function RepairCard({ shown, system, context, onShow }: {
+export function RepairCard({ shown, system, context, onShow, onGo }: {
   shown: RepairStep; system: RepairStep['system']; context: RepairContext; onShow: (step: RepairStep) => void;
+  /** Shows a repair of any system: where a lock's "Show" takes the player. */
+  onGo?: (step: RepairStep) => void;
 }) {
   const { t } = useTranslation();
   const state = stateOf(shown, context);
@@ -270,7 +294,7 @@ export function RepairCard({ shown, system, context, onShow }: {
             {!shown.required && <span className="text-micro text-v2-ink-3">{t('starter.optional')}</span>}
           </div>
           {state !== 'done' && <Gain step={shown} context={context} />}
-          <Action step={shown} state={state} context={context} />
+          <Action step={shown} state={state} context={context} onGo={onGo} />
         </div>
       </div>
       {isAegisChoice(shown) && (state === 'open' || state === 'closed') && <AegisChoice step={shown} state={state} context={context} />}

@@ -123,6 +123,8 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
   const sky = useMainSky(true);
   const queries = useQueryClient();
   const select = (next: VesselSystem): void => { setSystem(next); setPicked(null); };
+  /** A lock's "Show": the repair that comes first, on its own system's card. */
+  const go = (step: RepairStep): void => { setSystem(step.system); setPicked(step); };
   const context: RepairContext = {
     now: progress,
     ahead,
@@ -180,7 +182,7 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
       <div className="px-3 empty:hidden"><CrateBay crates={vessel.crates} onOpen={() => { openCrates.mutate(undefined, { onError: (error) => { say(describe(error), 'error'); } }); }} /></div>
       <StarterWaitLine queue={vessel.queue} />
       <SystemTabs progress={progress} ahead={ahead} selected={system} onSelect={select} />
-      {shown && <RepairCard shown={shown} system={system} context={context} onShow={setPicked} />}
+      {shown && <RepairCard shown={shown} system={system} context={context} onShow={setPicked} onGo={go} />}
       {system === 'DRIVE' && <MigrationPanel vessel={vessel} onJump={setJumping}
         income={{ alloy: view.planet.alloyPerHour, crystal: view.planet.crystalPerHour, deuterium: view.planet.deuteriumPerHour ?? 0 }} />}
       {jumping && (

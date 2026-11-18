@@ -270,6 +270,20 @@ describe('the ship screen', () => {
       expect(card.queryByRole('button', { name: 'Repair' })).toBeNull();
     });
 
+    // Plan 2026-11-18 §4 İ6: a lock says what comes first and takes the player there.
+    it('say what comes first on a closed card, and take the player to it', () => {
+      show(vessel());
+      fireEvent.click(tab(/survey antenna/i));
+      const card = within(screen.getByTestId('next-repair'));
+      expect(card.getByTestId('repair-missing').textContent).toMatch(/^First: Radar/u);
+      fireEvent.click(card.getByRole('button', { name: 'Show' }));
+      expect(tab(/defence systems/i).getAttribute('aria-selected')).toBe('true');
+      const there = within(screen.getByTestId('next-repair'));
+      expect(there.getByRole('heading', { name: 'Radar' })).toBeTruthy();
+      // The radar waits on the telescope and on a flight: one more step back, then the deed it needs.
+      expect(there.getByTestId('repair-missing').textContent).toMatch(/Telescope/u);
+    });
+
     it('mark a system nothing can be done on yet as locked', () => {
       show(vessel());
       expect(tab(/survey antenna/i).getAttribute('aria-label')).toMatch(/locked/i);
@@ -390,6 +404,15 @@ describe('the ship screen', () => {
     const card = within(screen.getByTestId('next-repair'));
     expect(card.getByRole('button', { name: 'Repair' })).toBeDisabled();
     expect(card.getByTestId('repair-wait').textContent).toMatch(/\d+ ?(s|m|min)/i);
+  });
+
+  // Plan 2026-11-18 §4 İ6: the faded button says what is missing, by how much, before the wait.
+  it('names what a player is short of, and by how much', () => {
+    show(vessel({ alloy: 100, crystal: 20, bufferAlloy: 0 }));
+    const card = within(screen.getByTestId('next-repair'));
+    expect(card.getByTestId('repair-wait').textContent).toMatch(/^\d+ alloy short/u);
+    expect(card.getByTestId('repair-wait').textContent).not.toMatch(/crystal/iu);
+    expect(card.getByRole('button', { name: 'Repair' })).toHaveAccessibleDescription(/alloy short/u);
   });
 
   // Owner playtest 2026-11-09: no button at all until the first Prospector has gone out.
