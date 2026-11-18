@@ -12199,6 +12199,15 @@ button.gk-rcard__door:active {
 .gk-focus__pair > :only-child {
   grid-column: 1 / -1;
 }
+/* A closed attack is a sentence, not a button (owner phone playtest 2026-11-18, item 10): beside the probe it
+   broke into four lines and stretched the probe to twice a button's height. The probe takes the row at a
+   button's height, and the reason sits under it, small, with its lock. */
+.gk-focus__pair:has(> .gk-focus__locked) > * {
+  grid-column: 1 / -1;
+}
+.gk-focus__locked .gk-glyph {
+  color: var(--gk-ink-3);
+}
 .gk-focus__pair .gk-btn {
   padding-inline: 10px;
 }

@@ -880,7 +880,7 @@ export function PlanetFocus({
   /** THE COMMITMENT, drawn in the open dossier and on the closed card alike (the mock). */
   const attackControl = !target.clanmate && (!gate.open(outpostTarget ? 'fleet' : 'attack')
     // A closed attack says why and how it opens (player test A-05, owner K1 2026-11-05).
-    ? <p data-testid="attack-locked" className="gk-inote gk-focus__wide">{t(outpostTarget ? 'starter.outpostLocked' : 'starter.attackLocked')}</p>
+    ? <p data-testid="attack-locked" className="gk-inote gk-focus__wide gk-focus__locked"><Glyph id="lock" />{t(outpostTarget ? 'starter.outpostLocked' : 'starter.attackLocked')}</p>
     : (
       /*
         Marked so a surface outside this panel can point at the commitment: the onboarding
