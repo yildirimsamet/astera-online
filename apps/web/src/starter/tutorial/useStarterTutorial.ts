@@ -11,8 +11,9 @@ import { opportunities, opportunityKey, type Opportunity } from '../opportunitie
 import { canPayDart, timeToAfford } from '../steps.js';
 import { useAdviceMemory } from './adviceMemory.js';
 import { useRockSheet } from './rockSheet.js';
-import { scenePlayedFor, useDirector } from '../director/director.js';
-import { announcedByScene } from '../director/scenes.js';
+import { sceneToCome, scenePlayedFor, useDirector } from '../director/director.js';
+import { JUMP_SCENE, announcedByScene } from '../director/scenes.js';
+import { useLandingSheet } from './landingSheet.js';
 import { sightNow } from './sightLesson.js';
 import { repairWait, tutorialStep, type TutorialInput, type TutorialAnswer, type TutorialStepId, type TutorialView, type TutorialWait } from './script.js';
 import { holdFull } from '../hold.js';
@@ -28,7 +29,7 @@ function readAcked(vesselId: string): string[] {
 }
 
 /** Marks that leave no trace on the ship: pressing them is the step. */
-export const ACK_ON_PRESS: readonly TutorialStepId[] = ['collect', 'collectMine', 'openIntel', 'openReport', 'buildShip'];
+export const ACK_ON_PRESS: readonly TutorialStepId[] = ['collect', 'collectMine', 'openIntel', 'openReport', 'buildShip', 'jumpGo'];
 
 /**
  * Records a pressed mark once the press is over. Recording moves the guide on, and a mark that belongs
@@ -70,6 +71,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   const traffic = useTraffic();
   const intel = useIntel();
   const rockOpen = useRockSheet();
+  const landing = useLandingSheet();
   // Read again as a scene starts or ends: a scene can stand in for a step (the rock's approach).
   useDirector();
   const plan = useMemo(() => (vessel ? vesselToPlanetView(vessel) : null), [vessel]);
@@ -120,6 +122,8 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     noRocks: mining.fieldData?.asteroids.length === 0,
     rockShown: scenePlayedFor(vessel.id, 'rock'),
     sight: sightNow(traffic.data?.contacts ?? [], galaxy.data?.sensors?.[0]),
+    jumpWaiting: sceneToCome(vessel.id, JUMP_SCENE),
+    landing,
     acked: list,
   };
   const answer = tutorialStep(input);

@@ -4,11 +4,12 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
-import { vesselSchema, type MigrationView } from '../src/api/starterSchemas.js';
+import { migrationViewSchema, vesselSchema, type MigrationView } from '../src/api/starterSchemas.js';
 import { compact } from '../src/lib/format.js';
 import { LandingChoice } from '../src/starter/LandingChoice.js';
 import { MigrationPanel } from '../src/starter/MigrationPanel.js';
 import { releaseJump } from '../src/starter/jump.js';
+import { landingSheetOpen } from '../src/starter/tutorial/landingSheet.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { urlOf, wireVessel } from './starterVesselFixture.js';
 
@@ -144,6 +145,17 @@ describe('landing beside an old neighbour', () => {
     expect(radios[1]).toHaveTextContent('Old neighbour Vela is near');
     expect(radios[1]).toHaveAccessibleName(/Old neighbour Vela is near/u);
     expect(radios[0]).not.toHaveTextContent(/Old neighbour/u);
+  });
+});
+
+// Item 24: the landing is the player's own choice; the guide says nothing over it.
+describe('choosing where to land', () => {
+  it('tells the guide it is open, and that it has closed', () => {
+    const { wrap } = harness(view());
+    const { unmount } = render(wrap(<LandingChoice view={migrationViewSchema.parse(view())} onCancel={vi.fn()} onLanded={vi.fn()} />));
+    expect(landingSheetOpen()).toBe(true);
+    unmount();
+    expect(landingSheetOpen()).toBe(false);
   });
 });
 

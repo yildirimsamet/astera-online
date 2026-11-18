@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VESSEL_BAYS, VESSEL_NOSE_TURN, bayWorldPosition, starterShipYaw } from '../src/galaxy/mainSky.js';
 import { VESSEL_LENGTH } from '../src/galaxy/scene.js';
 import { hullSweepAt, nextLook } from '../src/galaxy/hullShift.js';
-import { SCENE_WAIT_MS, SHOT_MAX_MS, directorNow, playScene, reachState, resetDirector, skipBeat, useDirector, type Scene } from '../src/starter/director/director.js';
+import { SCENE_WAIT_MS, SHOT_MAX_MS, directorNow, playScene, reachState, resetDirector, sceneToCome, skipBeat, useDirector, type Scene } from '../src/starter/director/director.js';
 import { DirectorStage, SKIP_HOLD_MS } from '../src/starter/director/DirectorStage.js';
 import { bayView, homeward, returnPose, shotPose } from '../src/starter/director/shotPose.js';
 import i18n from '../src/i18n/index.js';
@@ -72,6 +72,18 @@ describe('the director\'s queue', () => {
     expect(screen.getByTestId('now')).toHaveTextContent('repair:REFINERY/work');
     act(() => { skipBeat(); });
     expect(screen.getByTestId('now')).toHaveTextContent('none');
+  });
+
+  // Item 24: the jump is asked only once its scene has been seen, whether it waits behind another or plays.
+  it('says whether a scene is still to be seen for a ship: waiting its turn or on screen', () => {
+    expect(sceneToCome('ship-1', 'repair:REFINERY')).toBe(false);
+    act(() => { playScene(report, 'ship-1'); playScene(repair, 'ship-1'); });
+    expect(sceneToCome('ship-1', 'repair:REFINERY')).toBe(true);
+    expect(sceneToCome('ship-2', 'repair:REFINERY')).toBe(false);
+    act(() => { skipBeat(); skipBeat(); });
+    expect(sceneToCome('ship-1', 'repair:REFINERY')).toBe(true);
+    act(() => { skipBeat(); });
+    expect(sceneToCome('ship-1', 'repair:REFINERY')).toBe(false);
   });
 });
 

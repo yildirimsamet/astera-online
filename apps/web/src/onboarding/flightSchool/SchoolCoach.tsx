@@ -6,6 +6,8 @@ interface Props {
   /** Where the line stands in its chapters; without it the card counts nothing. */
   progress?: number;
   actionLabel?: string; onAction?: () => void;
+  /** A question's other answer, beside the action (item 24: jump now, or grow first). */
+  altLabel?: string; onAlt?: () => void;
   /** Without one there is no way out: the starter tutorial cannot be skipped (owner 2026-11-06). */
   onExit?: () => void; exitLabel?: string;
   /** How many chapters the counter runs to. */
@@ -22,7 +24,7 @@ export function SchoolCoach(props: Props) {
   return <Dialogue key={props.text} {...props} />;
 }
 
-function Dialogue({ title, text, progress, actionLabel, onAction, onExit, exitLabel, total = 11,
+function Dialogue({ title, text, progress, actionLabel, onAction, altLabel, onAlt, onExit, exitLabel, total = 11,
   revealLabel = 'Show full message', dock = 'top', busy = false, onRevealed, onCardPress }: Props) {
   const letters = Array.from(text);
   const [shown, setShown] = useState(0);
@@ -47,7 +49,7 @@ function Dialogue({ title, text, progress, actionLabel, onAction, onExit, exitLa
   }, [complete, text, letters.length]);
   return <aside ref={ref} data-beat-card data-school-coach data-dock={dock} className="school-coach" aria-label={title}>
     <div className="school-speech" onClick={onCardPress && ((event) => {
-      if (!(event.target instanceof Element && event.target.closest('.school-exit, .school-next'))) onCardPress();
+      if (!(event.target instanceof Element && event.target.closest('.school-exit, .school-next, .school-alt'))) onCardPress();
     })}>
       <div className="school-heading"><span>{title}</span>{progress !== undefined && <span className="school-progress">{progress}/{total}</span>}</div>
       <div className="school-line" data-school-line={text} aria-live="off">
@@ -56,7 +58,12 @@ function Dialogue({ title, text, progress, actionLabel, onAction, onExit, exitLa
       </div>
       <div className="school-actions">
         {onExit ? <button type="button" className="school-exit" onClick={onExit}>{exitLabel}</button> : <span />}
-        {complete && actionLabel && onAction && <button type="button" data-school-next className="school-next" onClick={onAction} disabled={busy}>{actionLabel}<span aria-hidden="true"> →</span></button>}
+        {complete && actionLabel && onAction && (altLabel && onAlt
+          ? <span className="school-choices">
+              <button type="button" data-school-alt className="school-alt" onClick={onAlt} disabled={busy}>{altLabel}</button>
+              <button type="button" data-school-next className="school-next" onClick={onAction} disabled={busy}>{actionLabel}<span aria-hidden="true"> →</span></button>
+            </span>
+          : <button type="button" data-school-next className="school-next" onClick={onAction} disabled={busy}>{actionLabel}<span aria-hidden="true"> →</span></button>)}
         {busy && <span className="school-working" aria-label={title}><i /><i /><i /></span>}
       </div>
     </div>

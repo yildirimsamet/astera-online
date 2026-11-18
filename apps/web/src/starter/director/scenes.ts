@@ -109,6 +109,23 @@ const secondReport = (state: ShipState): Scene => ({
   ],
 });
 
+/** The scene that shows the jump window open (owner phone playtest 2026-11-18, item 24): the guide asks after it. */
+export const JUMP_SCENE = 'jumpReady';
+/**
+ * The drive catches on the hull, then the whole ship is seen, ready to leave. Seen however long the ship's
+ * page stands over the sky: the question about the jump waits for it.
+ */
+const JUMP_READY: Scene = {
+  id: JUMP_SCENE,
+  once: true,
+  keep: true,
+  beats: [
+    { id: 'lit', shot: { kind: 'bay', system: 'DRIVE' }, ms: 2800, line: 'starter.director.jump.lit', sound: 'charge', awaken: { system: 'DRIVE' } },
+    // Pulled back and round: the ship small against the sky it is about to leave.
+    { id: 'away', shot: { kind: 'ship', turn: 0.9, range: 9 }, ms: 2600, line: 'starter.director.jump.away', sound: 'confirm' },
+  ],
+};
+
 const DARK: Scene = {
   id: 'dark',
   once: true,
@@ -117,7 +134,8 @@ const DARK: Scene = {
 
 /** The scenes a change of the ship calls for, in the order they play. */
 export function scenesFor(prev: ShipState | null, next: ShipState, name: (module: string) => string): Scene[] {
-  if (prev === null) return fresh(next) ? [SHIP_REPORT] : [];
+  // A ship met with its window open, and its drive never shown lit, is shown it now (once, on any visit).
+  if (prev === null) return fresh(next) ? [SHIP_REPORT] : jumpWindowOpen(next) ? [JUMP_READY] : [];
   const scenes: Scene[] = [];
   const lookChanged = prev.look !== next.look ? next.look : null;
   for (const step of ROAD) {
@@ -130,6 +148,8 @@ export function scenesFor(prev: ShipState | null, next: ShipState, name: (module
   const furnace = ROAD.find(step => step.module === 'EXTRACTOR');
   if (telescope && furnace && !have(prev, furnace) && have(next, furnace) && !have(next, telescope) && !ordered(next, telescope)) scenes.push(DARK);
   if (!prev.facts.includes('FIRST_BATTLE_REPORT') && next.facts.includes('FIRST_BATTLE_REPORT')) scenes.push(secondReport(next));
+  // After what opened it: the yard's return, its ships, its hull.
+  if (!jumpWindowOpen(prev) && jumpWindowOpen(next)) scenes.push(JUMP_READY);
   return scenes;
 }
 
@@ -188,9 +208,11 @@ const atStage = (module: VesselModule, stage: number): { modules: Partial<Record
 
 /**
  * The scene that announces a system (live play 2026-11-18): the return of the road's repair that opens
- * it. A system an event opens, or one open before the road, has none and keeps its card.
+ * it; the jump's is its own scene (item 24). A system an event opens, or one open before the road, has
+ * none and keeps its card.
  */
 export function sceneAnnouncing(feature: StarterFeature): string | null {
+  if (feature === 'migration') return JUMP_SCENE;
   const step = ROAD.find(row => !isFeatureOpen(atStage(row.module, row.stage - 1), feature) && isFeatureOpen(atStage(row.module, row.stage), feature));
   return step ? `repair:${step.module}:${String(step.stage)}:done` : null;
 }

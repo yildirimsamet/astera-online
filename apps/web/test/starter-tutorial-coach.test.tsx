@@ -136,6 +136,30 @@ describe('the starter tutorial on screen', () => {
     expect(said).not.toMatch(/finish/i);
   });
 
+  // Owner phone playtest 2026-11-18, item 24: the jump is asked, now or later, and either answer is the player's.
+  it('asks whether to jump now or grow first, and takes either answer', () => {
+    const ask = { kind: 'step', id: 'jumpAsk', step: 'read', marks: [], chapter: 9, strict: false } as const;
+    const now = vi.fn();
+    const first = coach(ask, now);
+    fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
+    expect(screen.queryByRole('button', { name: /^next/i })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /jump now/i }));
+    expect(now.mock.calls).toEqual([['jumpAsk']]);
+    first.view.unmount();
+    const later = vi.fn();
+    coach(ask, later);
+    fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
+    fireEvent.click(screen.getByRole('button', { name: /grow first/i }));
+    expect(later.mock.calls).toEqual([['jumpAsk'], ['jumpGo']]);
+  });
+
+  it('sends the commander aboard for the jump without calling it a repair', () => {
+    coach({ kind: 'step', id: 'jumpAsk', step: 'press', marks: ['[data-jump-call]', '[data-guide="dock-base"]'], nav: 'openShip', chapter: 9, strict: false });
+    const said = document.querySelector('[data-school-line]')?.getAttribute('data-school-line') ?? '';
+    expect(said).toMatch(/jump/i);
+    expect(said).not.toMatch(/repair/i);
+  });
+
   /** Review 2026-11-06: an NPC that waits on a control the screen never drew holds the player forever. */
   it('lets go of the controls when the marked one is nowhere for a few seconds, and records where it stuck', () => {
     vi.useFakeTimers();

@@ -34,7 +34,8 @@ type RepairLine = `starter.director.repair.${'work' | 'REFINERY' | 'EXTRACTOR' |
 export type DirectorLine = 'starter.director.shipReport.orbit' | 'starter.director.shipReport.goal' | RepairLine
   | 'starter.director.hull.PATCHED' | 'starter.director.hull.RENEWED' | 'starter.director.dark' | 'starter.director.field' | 'starter.director.rock' | 'starter.director.contact'
   | 'starter.director.probe' | 'starter.director.yardNeed' | 'starter.director.ships.TELESCOPE' | 'starter.director.ships.SHIPYARD'
-  | 'starter.director.report2.round' | 'starter.director.report2.drive' | 'starter.director.report2.ready';
+  | 'starter.director.report2.round' | 'starter.director.report2.drive' | 'starter.director.report2.ready'
+  | 'starter.director.jump.lit' | 'starter.director.jump.away';
 
 export interface Beat {
   id: string;
@@ -54,8 +55,8 @@ export interface Beat {
   yields?: boolean;
   /** Craft the repair handed over: they come out of the cargo bay beside the hull, and dock again. */
   craft?: { hull: HullId; count: number };
-  /** The bay this beat wakes as the camera reaches it, doing its module's own work (the telescope its sphere). */
-  awaken?: { system: VesselSystem; module: VesselModule };
+  /** The bay this beat wakes as the camera reaches it, doing its module's own work (the telescope its sphere), or its system's. */
+  awaken?: { system: VesselSystem; module?: VesselModule };
   /** Ms into the shot when the telescope's own reach opens (owner 2026-11-18, item 19); held until then. */
   reach?: number;
 }
@@ -166,6 +167,10 @@ export function skipBeat(): void {
 
 /** Whether a scene has played for this ship (a beat that depends on it can wait). */
 export const scenePlayedFor = (vesselId: string, sceneId: string): boolean => played(vesselId).includes(sceneId);
+
+/** The scene is still to be seen for this ship: on screen now, or waiting its turn (item 24: the jump is asked after it). */
+export const sceneToCome = (vesselId: string, sceneId: string): boolean =>
+  (now?.vesselId === vesselId && now.scene.id === sceneId) || queue.some(waiting => waiting.vesselId === vesselId && waiting.scene.id === sceneId);
 
 /** Tests and a closed session: nothing plays, nothing waits. */
 export function resetDirector({ keepMemory = false }: { keepMemory?: boolean } = {}): void {

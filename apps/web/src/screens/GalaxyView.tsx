@@ -2081,7 +2081,8 @@ export function GalaxyView({
           {/* A raid on an outpost that ends while the player watches is told here, over the next step (F4f). */}
           {outcome.current && <OutpostOutcome outcome={outcome.current} onDone={outcome.dismiss} onOpenShip={() => { onPanel('planet'); }} onOpenReport={(reportId) => { if (reportId) onPanel('report', 'battles', reportId); else openBattleList(); }} />}
           {/* The way out, over everything else down here: it is what the whole galaxy was for. */}
-          <JumpCall progress={{ modules: ship.modules, facts: ship.facts }} onOpen={() => { onPanel('planet'); }} />
+          {/* It opens the ship at the drive, as it says (item 27: it opened on the repairs while the hold had room). */}
+          <JumpCall progress={{ modules: ship.modules, facts: ship.facts }} onOpen={() => { setRequestedItem(JUMP_ITEM); onPanel('planet'); }} />
           {/* A system that just opened speaks first; once it is read, the next step takes its place. */}
           {nextStep}
         </div>

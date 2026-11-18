@@ -1,4 +1,4 @@
-import { REPAIR_LADDER, type StarterFeature, type VesselFact } from '@astera/rules';
+import { REPAIR_LADDER, jumpWindowOpen, type StarterFeature, type VesselFact } from '@astera/rules';
 import type { StarterTutorialStepId } from '../../api/starterTutorialSteps.js';
 import type { Opportunity } from '../opportunities.js';
 import type { HuntStage } from '../hunt.js';
@@ -43,6 +43,10 @@ export interface TutorialInput {
   rockShown?: boolean;
   /** What the live sky holds: a sensor lesson waits for its subject (plan F6). None means nothing in sight. */
   sight?: SightNow;
+  /** The drive's scene is still to be seen: the jump is asked after it (owner phone playtest 2026-11-18, item 24). */
+  jumpWaiting?: boolean;
+  /** Where to land is being chosen: the player's own decision, spoken over by nothing. */
+  landing?: boolean;
   /** Lines read and marks pressed, on this device. */
   acked: readonly string[];
 }
@@ -76,6 +80,8 @@ interface Step {
   chapter: TutorialChapter;
   /** Where its mark lives; the way there comes first. */
   marks: readonly string[];
+  /** From the galaxy, the way aboard that leads to it, before the dock's own (the jump's call opens the drive). */
+  boarding?: readonly string[];
   /** Recorded by the ship: this step and every one before it in its part are behind the player. */
   reached?: (input: TutorialInput) => boolean;
   /** True right now (the works are empty, the card was read): this step is passed over. */
@@ -111,6 +117,9 @@ const inSight = (what: keyof SightNow) => (i: TutorialInput) => i.view === 'gala
 const CRAFT = '[data-guide="sight-craft"]';
 const hasMined = (i: TutorialInput): boolean => i.mining || i.facts.includes('FIRST_MINING_SENT') || i.facts.includes('FIRST_MINING_RETURN');
 const UNKNOWN = '[data-guide="sight-unknown"]';
+const JUMP_GO = '[data-guide="jump-go"]';
+/** The galaxy's call to the jump (`JumpCall`): it opens the ship at the drive. */
+const JUMP_CALL = '[data-jump-call]';
 
 /** Power, the first collect and the first repair: the one moment the guide holds (N1). */
 const CORE: Part = {
@@ -160,7 +169,7 @@ const FIRST_ROAD: Part = {
     waitFor('waitYard', 'SHIPYARD', 5),
     { id: 'buildShip', kind: 'press', chapter: 5, place: 'ship', marks: ['[data-commit] button', '[data-testid="yard-hull"][data-hull="DART"] button', '#ship-deck-yard'], satisfied: i => seasoned(i) || (!i.canBuildShip && !hasReady(i)) },
     // With the jump open the guide hands over at it (owner phone playtest 2026-11-18, item 13); before, at the ship's share.
-    { id: 'farewell', kind: 'read', chapter: 9, place: 'ship', marks: ['[data-guide="jump-go"]', '[data-testid="ship-repair"]'], satisfied: seasoned },
+    { id: 'farewell', kind: 'read', chapter: 9, place: 'ship', marks: [JUMP_GO, '[data-testid="ship-repair"]'], satisfied: seasoned },
   ],
 };
 
@@ -174,6 +183,21 @@ const MOMENTS: readonly Part[] = [
     strict: false, due: i => hasReady(i) && !i.crates.some(c => c.state === 'opened'),
     steps: [{ id: 'firstCrate', kind: 'press', chapter: 2, place: 'ship', marks: [CRATE] }],
   },
+  // The first haul, when it is home: one press, before the jump is asked.
+  {
+    strict: false, due: i => i.facts.includes('FIRST_MINING_RETURN'),
+    steps: [{ id: 'collectMine', kind: 'press', chapter: 6, place: 'any', marks: [WORKS], satisfied: i => i.works < 1 }],
+  },
+  // THE JUMP, SHOWN AND THEN ASKED (owner phone playtest 2026-11-18, item 24): the yard's work and the open
+  // jump ran into each other. After the drive's scene: now, or grow first? Now puts the hand on the control
+  // that starts it; grow first records both and goes back to the road, which hands over at the jump.
+  {
+    strict: false, due: i => jumpWindowOpen(i) && !seasoned(i),
+    steps: [
+      { id: 'jumpAsk', kind: 'read', chapter: 9, place: 'ship', marks: [JUMP_GO, tab('DRIVE')], boarding: [JUMP_CALL], ready: i => i.jumpWaiting !== true },
+      { id: 'jumpGo', kind: 'press', chapter: 9, place: 'ship', marks: [JUMP_GO, tab('DRIVE')], boarding: [JUMP_CALL] },
+    ],
+  },
   // The report is read where it is drawn (owner playtest 2026-11-07: a list row taught nothing).
   {
     strict: false, due: i => i.facts.includes('FIRST_PROBE_REPORT'),
@@ -182,11 +206,6 @@ const MOMENTS: readonly Part[] = [
       { id: 'openReport', kind: 'press', chapter: 4, place: 'any', marks: ['[data-known="probe"] button, [data-report-open]', '[data-guide="dock-intel"]'] },
       { id: 'report', kind: 'read', chapter: 4, place: 'galaxy', marks: ['[data-dossier-loot]'] },
     ],
-  },
-  // The first haul, when it is home.
-  {
-    strict: false, due: i => i.facts.includes('FIRST_MINING_RETURN'),
-    steps: [{ id: 'collectMine', kind: 'press', chapter: 6, place: 'any', marks: [WORKS], satisfied: i => i.works < 1 }],
   },
   // THE RADAR, ON A REAL CONTACT (plan F6): nothing is made up for a lesson; an empty sky only means
   // it waits, and the road goes on meanwhile. The scout comes to every Radar 1 owner who is there and has flown something.
@@ -220,7 +239,7 @@ function locate(step: Step, input: TutorialInput, strict: boolean): TutorialAnsw
   }
   if (step.place === 'ship' && input.view !== 'ship') {
     return input.view === 'galaxy'
-      ? { ...answer, step: 'press', marks: ['[data-guide="dock-base"]'], nav: 'openShip' }
+      ? { ...answer, step: 'press', marks: [...(step.boarding ?? []), '[data-guide="dock-base"]'], nav: 'openShip' }
       : { ...answer, step: 'press', marks: ['[data-sheet-close]'], nav: 'closePage' };
   }
   if (step.place === 'galaxy' && input.view !== 'galaxy') return { ...answer, step: 'press', marks: ['[data-sheet-close]'], nav: 'closePage' };
@@ -251,6 +270,7 @@ export function tutorialStep(input: TutorialInput): TutorialAnswer {
     const next = input.view === 'other' ? afterCore(input) : null;
     return next?.kind === 'step' ? { ...next, step: 'press', marks: ['[data-sheet-close]'], nav: 'closePage' } : { kind: 'quiet' };
   }
+  if (input.landing === true) return { kind: 'quiet' };
   return afterCore(input);
 }
 

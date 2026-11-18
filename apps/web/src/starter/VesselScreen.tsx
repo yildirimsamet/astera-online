@@ -126,13 +126,15 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem, onFact 
   // The handover is about the ship: it is shown, whichever deck the first ship was built from.
   const lesson = useStarterLesson();
   const handingOver = lesson?.kind === 'step' && lesson.id === 'farewell';
+  // The guide asks about the jump, or points at it, where it is prepared (item 24).
+  const atJump = lesson?.kind === 'step' && (lesson.id === 'jumpAsk' || lesson.id === 'jumpGo');
   // With the jump open the handover is at the drive, where the guide points at the jump (item 13).
   const windowOpen = jumpWindowOpen(progress);
   useEffect(() => {
-    if (!handingOver) return;
+    if (!handingOver && !atJump) return;
     setDeck('repairs');
-    if (windowOpen) { setSystem('DRIVE'); setPicked(null); setAim(true); }
-  }, [handingOver, windowOpen]);
+    if (windowOpen || atJump) { setSystem('DRIVE'); setPicked(null); setAim(true); }
+  }, [handingOver, atJump, windowOpen]);
   useEffect(() => {
     if (focusItem !== JUMP_ITEM) return;
     setDeck('repairs'); setSystem('DRIVE'); setPicked(null); setAim(true);

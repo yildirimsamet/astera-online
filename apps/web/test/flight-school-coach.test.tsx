@@ -28,6 +28,17 @@ describe('commander dialogue', () => {
     view.unmount();
     expect(vi.getTimerCount()).toBe(0);
   });
+  // Item 24: a question has two answers, both shown once the line is read.
+  it('offers a second answer beside the first once the line is read', () => {
+    const yes = vi.fn();
+    const no = vi.fn();
+    render(<SchoolCoach title="Jump" text="Now?" actionLabel="Now" onAction={yes} altLabel="Later" onAlt={no} />);
+    expect(screen.queryByRole('button', { name: 'Later' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show full message' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Later' }));
+    expect(no).toHaveBeenCalledOnce();
+    expect(yes).not.toHaveBeenCalled();
+  });
   /** Owner 2026-11-06: the starter tutorial cannot be left; it counts its own chapters. */
   it('offers no way out when none is given, and counts the chapters it is given', () => {
     render(<SchoolCoach title="Repairs" text="Hi" progress={2} total={5} />);

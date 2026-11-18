@@ -1,9 +1,11 @@
 import { STARTER_CRATES, crateStates, openingProgress, type VesselFact, type VesselProgress } from '@astera/rules';
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { vesselSchema } from '../src/api/starterSchemas.js';
 import { opportunityKey } from '../src/starter/opportunities.js';
 
+import { playScene, resetDirector, skipBeat } from '../src/starter/director/director.js';
+import { setLandingSheet } from '../src/starter/tutorial/landingSheet.js';
 import { COLLECT_MARK } from '../src/starter/tutorial/script.js';
 import { useStarterTutorial } from '../src/starter/tutorial/useStarterTutorial.js';
 import { goalMarks, starterGoal } from '../src/starter/tutorial/visualGoal.js';
@@ -29,7 +31,7 @@ vi.mock('../src/api/queries.js', () => ({
   useIntel: () => ({ data: undefined }),
 }));
 vi.mock('../src/lib/projection.js', () => ({ useProjected: () => state.held }));
-afterEach(() => { localStorage.clear(); state.wire = {}; state.held = none; state.runs = []; });
+afterEach(() => { localStorage.clear(); state.wire = {}; state.held = none; state.runs = []; resetDirector(); setLandingSheet(false); });
 
 const MIN = 60_000;
 /** A ship with these modules and facts; its crates are read off them, opened ones named. */
@@ -66,6 +68,22 @@ describe('the handover and the jump window', () => {
     ship(loop, ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT']);
     expect(tutorial().now().windowOpen).toBe(false);
   });
+
+  // Owner phone playtest 2026-11-18, item 24: shown first, then asked; the landing is the player's alone.
+  it('asks about the jump once the drive\'s scene has been seen, and says nothing while the landing is chosen', () => {
+    ship(loop, ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'], ALL_CRATES, { unlockToAnnounce: null });
+    localStorage.setItem('astera.starter.tutorial.ship-1', JSON.stringify(['openIntel', 'openReport', 'report', 'collectMine']));
+    const shown = tutorial('ship');
+    act(() => { playScene({ id: 'jumpReady', once: true, keep: true, beats: [{ id: 'lit', shot: { kind: 'bay', system: 'DRIVE' }, ms: 2000 }] }, 'ship-1'); });
+    shown.rerender();
+    expect(stepId(shown.now().answer)).not.toBe('jumpAsk');
+    act(() => { skipBeat(); });
+    shown.rerender();
+    expect(stepId(shown.now().answer)).toBe('jumpAsk');
+    act(() => { setLandingSheet(true); });
+    shown.rerender();
+    expect(shown.now().answer).toEqual({ kind: 'quiet' });
+  });
 });
 
 describe('the guide on and off', () => {
@@ -100,7 +118,7 @@ describe('a move the advisor did not recommend', () => {
   // The first loop done and the hold not yet full, so a repair leads and the jump waits (plan 2026-11-13 §5.1).
   const roomLeft = { ...none, alloy: 50_000, crystal: 900 };
   // The road walked, and the report and the haul read when they came.
-  const walkedAll = () => { localStorage.setItem('astera.starter.tutorial.ship-1', JSON.stringify(['farewell', 'openIntel', 'openReport', 'report', 'collectMine'])); };
+  const walkedAll = () => { localStorage.setItem('astera.starter.tutorial.ship-1', JSON.stringify(['farewell', 'jumpAsk', 'jumpGo', 'openIntel', 'openReport', 'report', 'collectMine'])); };
 
   it('counts as progress: nothing is taught about it, it leaves the offers, and the pick stands', () => {
     ship(PAST_ROAD, deeds, ALL_CRATES);

@@ -47,6 +47,8 @@ const DRAWN: readonly (readonly [hook: string, file: string, drawn: string])[] =
   ['data-hull="DART"', 'starter/YardDeck.tsx', 'data-testid="yard-hull" data-hull={id}'],
   ['#ship-deck-yard', 'starter/VesselScreen.tsx', 'tabId={deck => `ship-deck-${deck}`}'],
   ['data-testid="ship-repair"', 'starter/VesselScreen.tsx', 'data-testid="ship-repair"'],
+  // The galaxy's call to the jump: the way aboard to the jump's question (item 24).
+  ['data-jump-call', 'starter/JumpCall.tsx', 'data-jump-call=""'],
   ['data-sheet-close', 'v2/kit/Sheet.tsx', 'data-sheet-close=""'],
   ['data-universe-chip', 'starter/UniverseChip.tsx', 'data-universe-chip=""'],
   ['data-loading-screen', 'shell/LoadingScreen.tsx', '<main data-loading-screen'],

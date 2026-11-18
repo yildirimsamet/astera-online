@@ -9,6 +9,7 @@ import { WorldProvider } from '../src/api/world.js';
 import i18n from '../src/i18n/index.js';
 import { JumpCall } from '../src/starter/JumpCall.js';
 import { VesselScreen } from '../src/starter/VesselScreen.js';
+import { StarterLesson } from '../src/starter/tutorial/visualGoal.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { wireVessel } from './starterVesselFixture.js';
 
@@ -45,6 +46,17 @@ describe('a ship ready to leave', () => {
   it('opens on its repairs while the hold still has room', () => {
     render(wrap(<VesselScreen vessel={ship(repaired, 500, 200)} fetchedAt={Date.now()} />));
     expect(driveTab()).toHaveAttribute('aria-selected', 'false');
+  });
+
+  // Item 24: the guide asks about the jump where it is prepared, whatever the hold.
+  it('opens on the drive while the guide asks about the jump or points at it', () => {
+    for (const id of ['jumpAsk', 'jumpGo'] as const) {
+      const { unmount } = render(wrap(<StarterLesson.Provider value={{ kind: 'step', id, step: 'read', marks: [], chapter: 9, strict: false }}>
+        <VesselScreen vessel={ship(repaired, 500, 200)} fetchedAt={Date.now()} />
+      </StarterLesson.Provider>));
+      expect(driveTab()).toHaveAttribute('aria-selected', 'true');
+      unmount();
+    }
   });
 
   it('calls the player to the jump from the galaxy, and the call opens the ship', () => {

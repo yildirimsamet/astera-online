@@ -23,7 +23,9 @@
 .school-actions { display:flex; gap:8px; align-items:center; justify-content:space-between; min-height:44px; }
 .school-exit { font:inherit; font-size:11px; color:#a0b0bc; min-height:44px; padding-inline:0 8px; text-align:left; }
 .school-next { font:inherit; font-size:13px; font-weight:650; color:#f3dfb0; min-height:44px; padding:4px 0 4px 8px; text-align:right; }
-.school-next:focus-visible,.school-exit:focus-visible { outline:2px solid #87deef; outline-offset:2px; border-radius:4px; }
+.school-choices { display:flex; gap:14px; align-items:center; margin-left:auto; white-space:nowrap; }
+.school-alt { font:inherit; font-size:13px; font-weight:600; color:#a0b0bc; min-height:44px; padding:4px 0; text-align:right; }
+.school-next:focus-visible,.school-exit:focus-visible,.school-alt:focus-visible { outline:2px solid #87deef; outline-offset:2px; border-radius:4px; }
 .school-portrait { position:absolute; z-index:1; right:-5px; bottom:-2px; width:112px; height:150px; max-height:100%; overflow:hidden; mask-image:linear-gradient(#000 85%,transparent); animation:school-hero-enter .4s cubic-bezier(.22,1,.36,1) both,school-breathe 4s ease-in-out .4s infinite; transform-origin:bottom; }
 .school-portrait img { display:block; width:185%; max-width:none; height:auto; margin-top:0; transform:translateX(-24%); }
 .school-working { display:flex; gap:4px; padding:12px; }

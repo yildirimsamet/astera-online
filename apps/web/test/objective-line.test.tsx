@@ -78,6 +78,26 @@ it('uses the officer road for both its short label and its destination, even whe
   fireEvent.click(line);expect(open).toHaveBeenCalledOnce();expect(rock).not.toHaveBeenCalled();
 });
 
+// Owner phone playtest 2026-11-18 (item 27): under the jump's question and the report's lesson the line named the
+// advisor's pick instead, a second voice saying another thing. It names the guide's step and goes there.
+it('names the jump and the report while the guide is on them, and takes the player there', () => {
+  const cases = [['jumpAsk', /jump/i, 'ship'], ['jumpGo', /jump/i, 'ship'], ['openIntel', /report/i, 'reports'], ['report', /report/i, 'reports']] as const;
+  for (const [id, said, to] of cases) {
+    const open = vi.fn(), reports = vi.fn();
+    const goal: StarterGoalValue = { step: { kind: 'step', id, step: 'press', chapter: 9, strict: false, marks: [] }, choice: { kind: 'mine' }, picked: false, guided: true, view: 'galaxy' };
+    const { unmount } = render(<StarterGoal.Provider value={goal}>
+      <ObjectiveLine vessel={vesselSchema.parse(wireVessel({ modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 }, features: ['production', 'telescope', 'intel', 'fleet'] }))}
+        fetchedAt={Date.now()} onOpenShip={open} onOpenReports={reports} onFocusRock={vi.fn()} />
+    </StarterGoal.Provider>);
+    const line = screen.getByTestId('ship-objective');
+    expect(line.textContent, id).toMatch(said);
+    expect(line.textContent, id).not.toContain('Send a Prospector');
+    fireEvent.click(line);
+    expect(to === 'ship' ? open : reports, id).toHaveBeenCalledOnce();
+    unmount();
+  }
+});
+
 // Owner playtest 2026-11-09: while the player is asked to come closer, the line says so and flies nowhere.
 it('asks for the zoom, and is no shortcut past it', () => {
   const goal: StarterGoalValue = { step: { kind: 'step', id: 'zoomRock', step: 'gesture', chapter: 6, strict: false, marks: [] }, choice: { kind: 'mine' }, picked: false, guided: true, view: 'galaxy' };

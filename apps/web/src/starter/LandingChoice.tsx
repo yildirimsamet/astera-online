@@ -11,6 +11,7 @@ import { GameHold } from '../game-ui/index.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { pressJump, releaseJump } from './jump.js';
 import { useMigrate, useMigration } from './queries.js';
+import { setLandingSheet } from './tutorial/landingSheet.js';
 
 /** The emptiest first, so the card always reads from safe to dangerous. */
 const toneOf = (index: number, count: number): 'quiet' | 'mixed' | 'busy' =>
@@ -87,6 +88,11 @@ export function LandingChoice({ view: opened, onCancel, onLanded }: {
   const picked = view.choices.some(choice => choice.index === wanted) ? wanted : view.choices[0]?.index ?? null;
   // The scene is on its way before the press, so the moment of leaving never waits on the network.
   useEffect(() => { void import('../galaxy/MigrationSequence.js'); void import('../galaxy/LiveJump.js'); }, []);
+  // The landing is the player's own choice: the guide waits while it is open (item 24).
+  useEffect(() => {
+    setLandingSheet(true);
+    return () => { setLandingSheet(false); };
+  }, []);
   const name = view.target?.name ?? '';
   return (
     <Sheet

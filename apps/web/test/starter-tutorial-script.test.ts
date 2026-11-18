@@ -168,7 +168,8 @@ describe('the road through the first session (N12)', () => {
   it('has the first ship built at the yard once it stands, then shows what is left of the ship', () => {
     const yard = { EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 };
     const facts = ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'] as const;
-    const read = { acked: ['openIntel', 'openReport', 'report', 'collectMine'] };
+    // The jump was offered and put off ("grow first"): the yard's work goes on (item 24).
+    const read = { acked: ['openIntel', 'openReport', 'report', 'collectMine', 'jumpAsk', 'jumpGo'] };
     expect(at(onRoad({ EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 }, { facts, ...read, queue: [order('SHIPYARD', 1)] }))).toMatchObject({ id: 'waitYard', step: 'wait' });
     expect(at(onRoad(yard, { facts, ...read }))).toMatchObject({ id: 'buildShip', step: 'press', marks: ['[data-commit] button', '[data-testid="yard-hull"][data-hull="DART"] button', '#ship-deck-yard'] });
     expect(at(onRoad(yard, { facts, acked: [...read.acked, 'buildShip'] }))).toMatchObject({ id: 'farewell', step: 'read', marks: ['[data-guide="jump-go"]', '[data-testid="ship-repair"]'] });
@@ -239,7 +240,7 @@ describe('the first-time moments', () => {
   it('never drags a veteran back: past the first haul there is nothing to teach', () => {
     const modules: Record<string, number> = {};
     for (const s of REPAIR_LADDER.slice(0, 10)) modules[s.module] = Math.max(modules[s.module] ?? 0, s.stage);
-    expect(at(base({ modules, facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'], acked: ['report', 'collectMine', 'farewell'], unlockToAnnounce: null, works: 0 }))).toEqual({ kind: 'advise' });
+    expect(at(base({ modules, facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'], acked: ['report', 'collectMine', 'jumpAsk', 'jumpGo', 'farewell'], unlockToAnnounce: null, works: 0 }))).toEqual({ kind: 'advise' });
   });
 
   // A focus panel hides the card on the galaxy: its close is the way to the card (owner playtest 2026-11-07).
@@ -275,13 +276,59 @@ describe('the jump window has the floor', () => {
     expect(at({ ...opened, crates: [], acked: [...read, 'buildShip', 'farewell'] })).toEqual({ kind: 'quiet' });
   });
 
-  it('picks up where it was once the card is closed', () => {
+  it('picks up where it was once the card is closed: it asks about the jump', () => {
     expect(at({ ...opened, unlockToAnnounce: null })).toMatchObject({ id: 'firstCrate' });
-    expect(at({ ...opened, unlockToAnnounce: null, crates: [], acked: [...read, 'buildShip'] })).toMatchObject({ id: 'farewell' });
+    expect(at({ ...opened, unlockToAnnounce: null, crates: [], acked: [...read, 'buildShip'] })).toMatchObject({ id: 'jumpAsk' });
+    expect(at({ ...opened, unlockToAnnounce: null, crates: [], acked: [...read, 'buildShip', 'jumpAsk', 'jumpGo'] })).toMatchObject({ id: 'farewell' });
   });
 
   it('lets no other system\'s card silence it', () => {
     expect(at({ ...opened, unlockToAnnounce: 'research' })).toMatchObject({ kind: 'step', id: 'firstCrate' });
+  });
+});
+
+/**
+ * Owner phone playtest 2026-11-18, item 24: the yard's "build a ship" and the open jump came at once and
+ * ran into each other. The jump is shown first (the drive's scene), then asked: now, or grow first? Now
+ * puts the hand on the control that starts it; later goes back to the yard's work.
+ */
+describe('the jump is shown, then asked', () => {
+  const yard = { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 };
+  const facts = ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'] as const;
+  const read = ['openIntel', 'openReport', 'report', 'collectMine'];
+  const GO = '[data-guide="jump-go"]';
+  const DRIVE = '[data-guide="system-DRIVE"]';
+  const open = awake({ modules: yard, facts, acked: read, view: 'ship' });
+
+  it('asks before the yard\'s work, aboard at the drive with the jump\'s control lit', () => {
+    expect(at(open)).toMatchObject({ kind: 'step', id: 'jumpAsk', step: 'read', strict: false, chapter: 9, marks: [GO, DRIVE] });
+  });
+
+  it('is reached from the galaxy through the call to the jump', () => {
+    expect(at({ ...open, view: 'galaxy' })).toMatchObject({ id: 'jumpAsk', step: 'press', nav: 'openShip', marks: ['[data-jump-call]', '[data-guide="dock-base"]'] });
+  });
+
+  it('waits for the drive\'s scene: until it has been shown the yard\'s work goes on', () => {
+    expect(at({ ...open, jumpWaiting: true })).toMatchObject({ id: 'buildShip' });
+  });
+
+  it('puts the hand on the jump\'s control for a commander who goes now', () => {
+    expect(at({ ...open, acked: [...read, 'jumpAsk'] })).toMatchObject({ id: 'jumpGo', step: 'press', marks: [GO, DRIVE] });
+  });
+
+  it('goes back to the yard for one who grows first, and hands over at the jump after it', () => {
+    const later = { ...open, acked: [...read, 'jumpAsk', 'jumpGo'] };
+    expect(at(later)).toMatchObject({ id: 'buildShip' });
+    expect(at({ ...later, acked: [...later.acked, 'buildShip'] })).toMatchObject({ id: 'farewell', marks: [GO, '[data-testid="ship-repair"]'] });
+  });
+
+  it('says nothing while the landing is chosen', () => {
+    expect(at({ ...open, acked: [...read, 'jumpAsk', 'jumpGo'], landing: true })).toEqual({ kind: 'quiet' });
+  });
+
+  it('asks nothing before the window opens, nor of a ship far past the road', () => {
+    expect(id({ ...open, facts: ['FIRST_MINING_RETURN'] })).not.toMatch(/^jump/u);
+    expect(at({ ...open, modules: { ...yard, SURVEY: 2 } })).toEqual({ kind: 'advise' });
   });
 });
 
@@ -300,7 +347,7 @@ describe('a galaxy with nobody else in sight', () => {
  * subject: the scout's `?`, then the telescope naming it. Nothing is made up for a lesson.
  */
 describe('the radar speaks on a real contact', () => {
-  const late = awake({ modules: { REFINERY: 3, EXTRACTOR: 3, SURVEY: 1, SHIPYARD: 1, TELESCOPE: 1, RADAR: 1 }, facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'], acked: ['report', 'collectMine', 'farewell'] });
+  const late = awake({ modules: { REFINERY: 3, EXTRACTOR: 3, SURVEY: 1, SHIPYARD: 1, TELESCOPE: 1, RADAR: 1 }, facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'], acked: ['report', 'collectMine', 'jumpAsk', 'jumpGo', 'farewell'] });
   const traffic = { traffic: true, unknown: false };
   const blip = { traffic: false, unknown: true };
   it('introduces Radar 1 on the question mark, and only then', () => {

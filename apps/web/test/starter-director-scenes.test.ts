@@ -207,6 +207,39 @@ describe('the scenes after the road\'s first half', () => {
   });
 });
 
+/**
+ * Owner phone playtest 2026-11-18, item 24: the jump opening is shown before it is asked. The drive
+ * catches on the hull, then the whole ship is seen, ready, with where it can go now.
+ */
+describe('the jump, shown as it opens', () => {
+  const open: ShipState = { ...ROAD_DONE, facts: ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'] };
+
+  it('lights the drive on the hull as the window opens, then shows the ship that can leave', () => {
+    const scenes = scenesFor({ ...open, facts: ['FIRST_MINING_RETURN'] }, open, name);
+    const jump = scenes.find(scene => scene.id === 'jumpReady');
+    expect(jump?.beats.map(beat => beat.shot.kind)).toEqual(['bay', 'ship']);
+    expect(jump?.beats[0]).toMatchObject({ shot: { kind: 'bay', system: 'DRIVE' }, line: 'starter.director.jump.lit', sound: 'charge', awaken: { system: 'DRIVE' } });
+    expect(jump?.beats[1]?.line).toBe('starter.director.jump.away');
+    // Seen however long the ship's page stood over the sky: the question waits for it.
+    expect(jump?.keep).toBe(true);
+    for (const beat of jump?.beats ?? []) expect(beat.ms).toBeLessThanOrEqual(3000);
+  });
+
+  it('comes after the yard\'s return when the yard is what opened it', () => {
+    const yardDue: ShipState = { ...open, modules: { ...open.modules, SHIPYARD: 0 } };
+    expect(ids(yardDue, open)).toEqual(['repair:SHIPYARD:1:done', 'jumpReady']);
+  });
+
+  it('is shown to a ship met with its window already open, and never before', () => {
+    expect(ids(null, open)).toEqual(['jumpReady']);
+    expect(ids(open, { ...open, facts: [...open.facts, 'FIRST_OUTPOST_VICTORY'] })).toEqual([]);
+  });
+
+  it('is the scene that announces the jump', () => {
+    expect(sceneAnnouncing('migration')).toBe('jumpReady');
+  });
+});
+
 describe('where the hull welds', () => {
   const order = (subject: string, stage: number, seconds: number, startedAt = 0) => ({ subject, stage, queue: 'CONSTRUCTION' as const, startedAt: new Date(startedAt), readyAt: new Date(startedAt + seconds * 1000) });
   it('welds the bay of a short repair while it runs, and no other', () => {
@@ -238,6 +271,5 @@ describe('which scene announces a system', () => {
     expect(sceneAnnouncing('salvage')).toBeNull();
     expect(sceneAnnouncing('attack')).toBeNull();
     expect(sceneAnnouncing('production')).toBeNull();
-    expect(sceneAnnouncing('migration')).toBeNull();
   });
 });

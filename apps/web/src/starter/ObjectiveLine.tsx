@@ -267,14 +267,18 @@ export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour,
   const id = guide?.id ?? null;
   const waiting = guide?.step === 'wait';
   const wait = id ? repairWait(id, vessel.queue) : null;
+  const jump = id === 'jumpAsk' || id === 'jumpGo';
+  const reading = id === 'openIntel' || id === 'openReport' || id === 'report';
   const short = repair ? moduleName(repair.module)
+    : jump ? t('starter.visual.jump')
+    : reading ? t('starter.visual.report')
     : id === 'mine' ? t('starter.visual.mine')
     : id === 'probe' ? t('starter.visual.probe')
     : id?.toLowerCase().includes('crate') ? t('starter.visual.crate')
     : id?.startsWith('collect') ? t('starter.visual.collect')
     : waiting ? (wait ? duration(Math.max(0, wait.until.getTime() - now) / 60_000) : t('starter.visual.waiting')) : null;
-  const nextTap: Tap = repair || id?.toLowerCase().includes('crate') ? 'ship'
-    : id === 'mine' ? 'rock' : id === 'probe' ? 'neighbour' : id?.startsWith('collect') ? 'up' : null;
+  const nextTap: Tap = repair || jump || id?.toLowerCase().includes('crate') ? 'ship'
+    : reading ? 'reports' : id === 'mine' ? 'rock' : id === 'probe' ? 'neighbour' : id?.startsWith('collect') ? 'up' : null;
   const line = short ? { text: short, tap: nextTap, rest: waiting }
     : id === 'zoomRock' ? { text: t('starter.objective.zoomRock'), tap: null, rest: false } : original;
   const outpost = objective.kind === 'hunt' && (objective.hunt.stage === 'probe' || objective.hunt.stage === 'retry') ? objective.hunt.target : null;

@@ -49,6 +49,8 @@ const SUBJECT: Partial<Record<TutorialStepId, { module: VesselModule; tab: Vesse
   orderSurvey: { module: 'SURVEY', tab: 'SURVEY' },
   orderShipyard: { module: 'SHIPYARD', tab: 'CARGO' },
 };
+/** The jump's own steps: the way aboard to them is the jump, not a repair (item 24). */
+const JUMP_STEPS: readonly TutorialStepId[] = ['jumpAsk', 'jumpGo'];
 const NONE: readonly string[] = [];
 /** A marked control missing this long is not coming: the gate opens rather than hold the player forever. */
 const MARK_MISSING_MS = 4_000;
@@ -330,7 +332,7 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
   const subject = SUBJECT[step.id];
   const text = step.nav
     // A repair is said to be done aboard; other work there (a ship to build, a crate) is no repair.
-    ? t(`starter.tutorial.nav.${step.nav}`, { base: t('dock.base'), ...(step.nav === 'openShip' && !subject ? { context: 'work' } : {}) })
+    ? t(`starter.tutorial.nav.${step.nav}`, { base: t('dock.base'), ...(step.nav !== 'openShip' ? {} : JUMP_STEPS.includes(step.id) ? { context: 'jump' } : !subject ? { context: 'work' } : {}) })
     : t(`starter.tutorial.line.${step.id}`, {
       name: subject ? moduleName(subject.module) : '',
       tab: subject ? t(`starter.systemShort.${subject.tab}`) : '',
@@ -345,7 +347,14 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
   // A mark up in the top bar takes the card to the foot of the screen.
   const dock = marks.some(mark => mark.startsWith('[data-guide="works"]')) ? 'bottom' : 'top';
   const reading = step.step === 'read';
-  const action = reading
+  // The jump is a question (item 24): now puts the hand on its control; grow first leaves it for later.
+  const asking = step.id === 'jumpAsk' && !step.nav;
+  const action = asking
+    ? {
+      actionLabel: t('starter.tutorial.jumpNow'), onAction: () => { playSound('confirm'); haptic('commit'); ack('jumpAsk'); },
+      altLabel: t('starter.tutorial.jumpLater'), onAlt: () => { playSound('confirm'); haptic('tap'); ack('jumpAsk'); ack('jumpGo'); },
+    }
+    : reading
     ? { actionLabel: t('starter.tutorial.next'), onAction: () => { playSound('confirm'); haptic('tap'); ack(step.id); if (step.id === 'report') closeFocus(); } }
     : away ? { actionLabel: t('starter.tutorial.ok'), onAction: () => { haptic('tap'); setSteppedAside(step.id); } } : {};
   // The hand comes after the card, so one pointing into the card is drawn over it (owner playtest 2026-11-07).
