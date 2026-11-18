@@ -150,7 +150,7 @@ Her onarım normal bir üretim emridir: kaynak öder, kuyruğa girer, süre dolu
 
 **Olayla açılanlar.** İlk madencilik dönüşü enkaz alanlarını açar. Karakol baskını, Onarım İstasyonu ve savaş simülatörü Tersane 1 ile açılır; gemilere saldırı Aegis 1 ve ilk savaş raporunu birlikte ister (§3.6, §3.7; owner, 2026-11-08, N2–N3).
 
-**Teleskop 1 ve Radar 1 göç için zorunludur, Aegis 1 değildir** (owner, 2026-11-08, N3). Aegis PvP'nin ve korsan akınının kapısıdır: onaran oyuncu korunur ama hedef olur.
+**Teleskop 1 ve Radar 1 göç için zorunludur, Aegis 1 değildir** (owner, 2026-11-08, N3). Menziller: Teleskop 1 450, Radar 1 750 (owner, 2026-11-18: 600'dü; teleskobun ötesindeki bant 150'den 300'e çıktı). Aegis PvP'nin ve korsan akınının kapısıdır: onaran oyuncu korunur ama hedef olur.
 
 **Parça avı, Motor gövdesi şartları karşılanınca başlar** (§3.5, §3.7 `drive`), gövde onarımını beklemez. Böylece 4 saatlik gövde onarımı sırasında oyuncunun yapacak işi olur. Süre hesabı da buna göre yapıldı.
 
@@ -277,7 +277,7 @@ Az nüfusta oyuncu takılmasın diye, açık parça sayısı her zaman `max(2, m
 
 > **Güncelleme, owner 2026-11-08:** Gözcü artık korsan değil, "Keşif gemisi": gemiye dokunmaz, uzaktan tarar ve gider.
 
-**Radar dersi ve ilk akın.** Radar 1 onarılınca oyuncunun ekranında kısa bir sahne oynar (owner, 2026-11-18): teleskobun mavi küresi, çevresinde radarın yeşil küresi; yeşil bantta bir "?" yandan izlenir, 2 sn'de teleskop küresine girer ve orada ne olduğu görülür; yanından geçip gider. Sahne yalnız oyuncunun istemcisinde kurulur, sunucu gözcü göndermez. "Canlı temas yoksa araç uydurulmaz" kuralı bu ders için owner kararıyla değişti (2026-11-18). Sahne, bize gelselerdi radara girdikleri an kırmızı uyarı alınacağını söyler; oyuncu radarın değerini burada hisseder. Aegis 1'i seçen oyuncuya, kendi ilk seferini (madencilik, sonda veya baskın) gönderdikten sonra (owner, 2026-11-08, N2) ilk gerçek akın gelir. Akın, oyuncunun filosuyla eşit sayıda gelir ve Aegis oyuncuyu korur: 2 Ok + Aegis 1'e gelen 2 Ok %87 boş döner, oyuncu gemilerinin %93'ünü korur. Yine de gemi yok olabilir. Sonraki akınlar seyrektir, bakım penceresine düşmez. Aegis'siz gemiye korsan gelmez; onun ilk savaşı karakoldur.
+**Radar dersi ve ilk akın.** Radar 1 onarılınca oyuncunun ekranında kısa bir sahne oynar (owner, 2026-11-18): teleskobun mavi küresi, çevresinde radarın yeşil küresi; yeşil bantta bir "?" yandan, biraz uzaktan izlenir, 4 sn'de teleskop küresine girer; girişten 500 ms önce kamera ona yaklaşmaya başlar ve girdiği an ne olduğu görülür; yanından geçip gider. Sahne yalnız oyuncunun istemcisinde kurulur, sunucu gözcü göndermez. "Canlı temas yoksa araç uydurulmaz" kuralı bu ders için owner kararıyla değişti (2026-11-18). Sahne, bize gelselerdi radara girdikleri an kırmızı uyarı alınacağını söyler; oyuncu radarın değerini burada hisseder. Aegis 1'i seçen oyuncuya, kendi ilk seferini (madencilik, sonda veya baskın) gönderdikten sonra (owner, 2026-11-08, N2) ilk gerçek akın gelir. Akın, oyuncunun filosuyla eşit sayıda gelir ve Aegis oyuncuyu korur: 2 Ok + Aegis 1'e gelen 2 Ok %87 boş döner, oyuncu gemilerinin %93'ünü korur. Yine de gemi yok olabilir. Sonraki akınlar seyrektir, bakım penceresine düşmez. Aegis'siz gemiye korsan gelmez; onun ilk savaşı karakoldur.
 
 **Görünür kalkış.** Bir komşu göç ettiğinde, galaksideki herkes gökyüzünde parlak bir iz görür. Kalkış panosuna adı düşer.
 
@@ -508,7 +508,7 @@ export const STARTER = {
   opening: { alloy: 930, crystal: 300, deuterium: 0, modules: { REFINERY: 1 }, works: { alloy: 60 } },
   nakedEye: 150,
   telescope: [0, 450, 750, 1100],
-  radar: [0, 600, 1000, 1500],
+  radar: [0, 750, 1000, 1500],   // Radar 1 600 → 750 (owner, 2026-11-18)
   probeSpeed: 790,        // 2369'da 300 birim 9 saniye sürer, uçuş görülemez
   prospectorSpeed: 300,   // kısa mesafede madencilik üretimi ezmesin
   hulls: ['DART', 'PIKE', 'WARDEN', 'COURIER', 'PROSPECTOR'],
@@ -1065,7 +1065,7 @@ Her ölçüt bir testtir. Dosyalar: `packages/rules/test/`, `apps/server/test/`,
 | Korumalı hedefe saldırı reddedilir, onaylı ilk saldırı kalkanı düşürür, göçe hazır ve 14 günlük gemi saldıramaz | `starter-protection-api` | 6 |
 | %95 ve üstü hasarlı gemi saldıramaz, %20'ye kadar hasar ücretsizdir, dock faturası ve süresi doğrudur, savaş enkazı yok olan gemi değerinin %10'udur, 100 kaynağın altında alan oluşmaz | `starter-damage-dock` | 6 |
 | Bütün filosu yok olan oyuncu üretim, Kazıcı ve enkaz yoluyla göçe ulaşır | `starter-no-softlock` | 6 |
-| Gözcü Radar 1 ve oyuncunun kendi ilk seferi sonrası savaşsız döner, ilk akın Aegis 1 sonrası oyuncu aktifken gelir, rapor Saldır'ı açar | `starter-npc-raid` | 7 |
+| Gözcü gönderilmez (2026-11-18, radar dersi istemcide sahnelenir); ilk akın Radar 1, Aegis 1 ve oyuncunun kendi ilk seferi sonrası, oyuncu aktifken gelir, rapor Saldır'ı açar | `starter-npc-raid` | 8 |
 | Rapor ve gönderme ekranı yarı hızı söyler, tekrar izleme açılır | `starter-report` | 6 |
 | Gemi kipinde simülatör ve hedef okuması bu galaksinin tempo ve Aegis değerini kullanır | `starter-simulator` | 6 |
 | Gemi kipinde `outOfBand` yok, kademe ve yerleşme kontrolleri görünmez | `starter-band-ui` | 6 |

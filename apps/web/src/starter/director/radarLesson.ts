@@ -10,8 +10,10 @@ import type { Contact } from '../../api/schemas.js';
  * It is watched from the side, a little far off in the band and closer once it is in sight (owner 2026-11-18).
  */
 export const RADAR_LESSON = {
-  /** From the radar's band into the telescope's sphere. */
-  enterMs: 2000,
+  /** From the radar's edge into the telescope's sphere: long enough to take in what a question mark is (owner 2026-11-18). */
+  enterMs: 4000,
+  /** The camera starts closing in on it this long before it comes into sight, so the change is not missed (owner 2026-11-18). */
+  leadMs: 500,
   /** Held still while the camera comes round to its side, so all of its way in is watched. */
   settleMs: 1200,
   /** Watched inside the telescope's sphere, close. */
@@ -20,16 +22,18 @@ export const RADAR_LESSON = {
   fleet: { DART: 40 } satisfies Fleet,
   /** Its closest pass, a share of the telescope's reach: through the sphere, never at the ship. */
   pass: 0.5,
-  /** Where in the radar's band it is first heard, a share of the way out from the telescope's edge. */
-  band: 0.45,
+  /** Where in the radar's band it is first heard, a share of the way out from the telescope's edge: just inside the radar's. */
+  band: 0.9,
   /** Its pace inside the sphere, a share of the pace it came in at: slow enough to be watched close. */
   cruise: 0.35,
   /** How far above the ship's plane the side shots look from, as a slope: from the side, not from above. */
   lift: 0.35,
   /** Room round what a side shot holds, as a share of it. */
   room: 1.15,
-  /** The shot inside the sphere, as a share of the band's: a slight zoom-in. */
-  closer: 0.55,
+  /** The band's shot stands this much farther back than the band itself: room round both edges (owner 2026-11-18). */
+  far: 1.4,
+  /** The shot inside the sphere, as a share of the band's: in on the question mark as it turns into what it is. */
+  closer: 0.25,
 } as const;
 
 /** The staged contact's id: never a server's, so nothing else can be taken for it. */
@@ -135,16 +139,17 @@ export function lessonSide(flight: LessonFlight): Vec3 {
 }
 
 /**
- * What a side shot holds: the point it looks at and the half-width either side of it. In the band, a little
- * far off, from the telescope's edge where it comes in to the radar's edge straight out from there, the
- * question mark between; in the sight, a little closer, from where it comes in to where it is by the end of
- * its watch.
+ * What a side shot holds: the point it looks at and the half-width either side of it. In the band, from
+ * farther back, the telescope's edge where it comes in and the radar's edge straight out from there, the
+ * question mark between; in the sight, in close, from where it comes in to where it is by the end of its
+ * watch.
  */
 export function lessonFrame(flight: LessonFlight, part: 'band' | 'sight'): { at: Vec3; half: number } {
   const normal = outward(flight);
   const gap = length(flight.centre, flight.out) - length(flight.centre, flight.entry);
   const band = gap / 2;
-  if (part === 'band') return { at: { x: flight.entry.x + normal.x * band, y: flight.entry.y, z: flight.entry.z + normal.z * band }, half: band };
+  const half = band * RADAR_LESSON.far;
+  if (part === 'band') return { at: { x: flight.entry.x + normal.x * band, y: flight.entry.y, z: flight.entry.z + normal.z * band }, half };
   const watched = flight.unitsPerMs * RADAR_LESSON.cruise * RADAR_LESSON.watchMs;
-  return { at: toward(flight.entry, flight.exit, watched / 2), half: Math.max(band * RADAR_LESSON.closer, watched / 2 * RADAR_LESSON.room) };
+  return { at: toward(flight.entry, flight.exit, watched / 2), half: Math.max(half * RADAR_LESSON.closer, watched / 2 * RADAR_LESSON.room) };
 }

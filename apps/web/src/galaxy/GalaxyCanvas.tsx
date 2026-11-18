@@ -727,7 +727,8 @@ export function GalaxyCanvas({
         return {
           key: directing.key, at: () => at, towards: () => towards,
           range: reachRange(frame.half / VIEW.scale, window.innerWidth / Math.max(1, window.innerHeight), GALAXY_FOV),
-          seconds: target.part === 'band' ? RADAR_LESSON.settleMs / 1000 : 1,
+          // In close, half done as it comes into sight.
+          seconds: target.part === 'band' ? RADAR_LESSON.settleMs / 1000 : RADAR_LESSON.leadMs * 2 / 1000,
         };
       }
     }

@@ -34,6 +34,12 @@ describe('the staged contact\'s line', () => {
     }
   });
 
+  it('is heard just inside the radar\'s edge, and takes four seconds to come into the telescope\'s sphere (owner 2026-11-18)', () => {
+    expect(distance(flight.start, sensor.at)).toBeGreaterThan(sensor.identify + (sensor.detect - sensor.identify) * 0.8);
+    expect(RADAR_LESSON.enterMs).toBe(4000);
+    expect(RADAR_LESSON.leadMs).toBe(500);
+  });
+
   it('keeps to the ship\'s own plane', () => {
     for (const point of [flight.start, flight.entry, flight.exit, flight.out]) expect(point.y).toBe(sensor.at.y);
   });
@@ -113,18 +119,18 @@ describe('the side it is watched from (owner 2026-11-18: from the side, a little
     expect(side.y).toBeLessThan(0.5);
   });
 
-  it('holds the radar\'s band a little far off: the telescope\'s edge to one side, the radar\'s to the other, the question mark between', () => {
+  it('holds the radar\'s band from farther back: the telescope\'s edge to one side, the radar\'s to the other, room round both, the question mark between', () => {
     const band = lessonFrame(flight, 'band');
-    expect(distance(band.at, flight.entry)).toBeCloseTo(band.half, 6);
-    expect(distance(band.at, rim)).toBeCloseTo(band.half, 6);
+    const middle = { x: (flight.entry.x + rim.x) / 2, y: flight.entry.y, z: (flight.entry.z + rim.z) / 2 };
+    expect(distance(band.at, middle)).toBeCloseTo(0, 6);
+    expect(band.half).toBeGreaterThan(distance(flight.entry, rim) / 2 * 1.3);
     expect(distance(flight.start, band.at)).toBeLessThan(band.half);
   });
 
-  it('closes in a little as it comes into the telescope\'s sphere, and holds it while it is watched there', () => {
+  it('closes in on it as it comes into the telescope\'s sphere, and holds it while it is watched there', () => {
     const band = lessonFrame(flight, 'band');
     const sight = lessonFrame(flight, 'sight');
-    expect(sight.half).toBeLessThan(band.half);
-    expect(sight.half).toBeGreaterThan(band.half * 0.5);
+    expect(sight.half).toBeLessThan(band.half / 2);
     const watched = along(flight.entry, inside * RADAR_LESSON.watchMs);
     for (const point of [flight.entry, watched]) expect(distance(point, sight.at)).toBeLessThan(sight.half);
   });

@@ -27,8 +27,14 @@ describe('a ship\'s eyes', () => {
   it('feeds the main sensor rule', () => {
     const sphere = vesselSphere(AT, 1, 1);
     expect(sensorZone([sphere], away(450))).toBe('IDENTIFIED');
-    expect(sensorZone([sphere], away(600))).toBe('CONTACT');
-    expect(sensorZone([sphere], away(601))).toBe('NONE');
+    expect(sensorZone([sphere], away(750))).toBe('CONTACT');
+    expect(sensorZone([sphere], away(751))).toBe('NONE');
+  });
+
+  // Owner 2026-11-18 (item 28): the first radar hears a band twice as wide as it was, 300 past the telescope.
+  it('hears a wide band past the first telescope with the first radar', () => {
+    expect(STARTER.radar[1]).toBe(750);
+    expect(STARTER.radar[1] - STARTER.telescope[1]).toBe(300);
   });
 });
 

@@ -269,6 +269,25 @@ describe('the stage', () => {
     expect(screen.getByText('No room')).toBeInTheDocument();
   });
 
+  // Item 28: the camera turns to what is about to happen; the line and its sound come as it happens.
+  it('keeps the shot before\'s line on screen until a shot\'s own line is due, and plays its sound then', () => {
+    vi.useFakeTimers();
+    render(<DirectorStage />);
+    act(() => { playScene({ id: 'lead', once: false, beats: [
+      { id: 'a', shot: { kind: 'wide' }, ms: 1000, line: 'starter.director.radarLesson.caught' },
+      { id: 'b', shot: { kind: 'wide' }, ms: 3000, line: 'starter.director.radarLesson.calm', sound: 'confirm', speakAt: 500 },
+    ] }, 'ship-1'); });
+    const first = screen.getByRole('status');
+    sound.mockClear();
+    act(() => { skipBeat(); });
+    expect(screen.getByRole('status')).toBe(first);
+    expect(screen.getByRole('status')).toHaveTextContent(i18n.t('starter.director.radarLesson.caught'));
+    expect(sound).not.toHaveBeenCalledWith('confirm');
+    act(() => { vi.advanceTimersByTime(520); });
+    expect(screen.getByRole('status')).toHaveTextContent(i18n.t('starter.director.radarLesson.calm'));
+    expect(sound).toHaveBeenCalledWith('confirm');
+  });
+
   it('answers each shot with its sound and a touch', () => {
     render(<DirectorStage />);
     act(() => { playScene({ id: 'cue', once: false, beats: [{ id: 'a', shot: { kind: 'wide' }, ms: 1000, sound: 'charge' }] }, 'ship-1'); });

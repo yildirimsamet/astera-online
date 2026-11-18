@@ -144,12 +144,13 @@ describe('the radar, shown as it comes back', () => {
     expect(lesson()?.beats.map(beat => radarLessonShowsRadar(beat.id))).toEqual([false, true, true, true, true]);
   });
 
-  it('holds the side shot until the camera is round and the question mark has come into sight, then watches it there', () => {
+  it('holds the side shot until the camera is round and the question mark is about to come into sight, closes in on it a moment before, and says what it is as it comes in', () => {
     const caught = lesson()?.beats.find(beat => beat.id === 'caught');
     const seen = lesson()?.beats.find(beat => beat.id === 'seen');
-    expect(caught?.ms).toBe(RADAR_LESSON.settleMs + RADAR_LESSON.enterMs);
-    expect(seen?.ms).toBe(RADAR_LESSON.watchMs);
-    for (const beat of lesson()?.beats ?? []) if (beat.id !== 'caught') expect(beat.ms).toBeLessThanOrEqual(3000);
+    expect(caught?.ms).toBe(RADAR_LESSON.settleMs + RADAR_LESSON.enterMs - RADAR_LESSON.leadMs);
+    expect(seen?.ms).toBe(RADAR_LESSON.leadMs + RADAR_LESSON.watchMs);
+    expect(seen?.speakAt).toBe(RADAR_LESSON.leadMs);
+    for (const beat of lesson()?.beats ?? []) if (beat.id !== 'caught' && beat.id !== 'seen') expect(beat.ms).toBeLessThanOrEqual(3000);
   });
 
   it('is shown once, and not to a ship whose radar was already working', () => {

@@ -64,6 +64,8 @@ export interface Beat {
   awaken?: { system: VesselSystem; module?: VesselModule };
   /** Ms into the shot when the telescope's own reach opens (owner 2026-11-18, item 19); held until then. */
   reach?: number;
+  /** Ms into the shot when its line and sound come; the shot before's line stays until then (item 28: the camera turns to what is about to happen). */
+  speakAt?: number;
 }
 
 export type SpentResource = 'alloy' | 'crystal' | 'deuterium';

@@ -27,7 +27,8 @@ export const STARTER = {
   nakedEye: 150,
   /** By repair stage. The main game's Telescope 1 would see nearly this whole galaxy. */
   telescope: [0, 450, 750, 1100],
-  radar: [0, 600, 1000, 1500],
+  /** Radar 1 hears 300 past the first telescope (owner 2026-11-18, item 28: was 600, a 150 band). */
+  radar: [0, 750, 1000, 1500],
   /** At the main game's 2369 a 300-unit flight lasts 9 seconds and cannot be watched. */
   probeSpeed: 790,
   /** Doubled by the owner 2026-11-08: the first haul is a thing to watch, not to wait for. */

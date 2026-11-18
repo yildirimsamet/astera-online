@@ -132,9 +132,10 @@ export const RADAR_LESSON_SCENE = 'radarLesson';
 const LESSON_SIGHT_OPENS_MS = 1200;
 /**
  * The telescope's sphere close, opening; the radar's around it as the camera pulls back; the question mark
- * in the band between, watched from the side, a little far off, as it comes in; a little closer as it comes
- * into sight, the fleet it turns out to be; and both spheres again, with why no red warning came (owner
- * 2026-11-18: players have to understand it by watching).
+ * in the band between, watched from the side and from farther back, as it comes in over four seconds; the
+ * camera closing in on it half a second before it comes into sight, so the moment it turns into the fleet
+ * it is is not missed; and both spheres again, with why no red warning came (owner 2026-11-18: players have
+ * to understand it by watching).
  */
 const radarShown = (name: (module: string) => string): Scene => ({
   id: RADAR_LESSON_SCENE,
@@ -143,8 +144,9 @@ const radarShown = (name: (module: string) => string): Scene => ({
   beats: [
     { id: 'telescope', shot: { kind: 'reach', reach: 'telescope' }, ms: 3000, reach: LESSON_SIGHT_OPENS_MS, line: 'starter.director.radarLesson.telescope', sound: 'confirm' },
     { id: 'radar', shot: { kind: 'reach', reach: 'radar' }, ms: 3000, line: 'starter.director.radarLesson.radar', sound: 'confirm' },
-    { id: 'caught', shot: { kind: 'pass', part: 'band' }, ms: RADAR_LESSON.settleMs + RADAR_LESSON.enterMs, line: 'starter.director.radarLesson.caught', sound: 'alert' },
-    { id: 'seen', shot: { kind: 'pass', part: 'sight' }, ms: RADAR_LESSON.watchMs, line: 'starter.director.radarLesson.seen', vars: { hull: name('DART'), count: fleetCount(RADAR_LESSON.fleet) }, sound: 'confirm' },
+    { id: 'caught', shot: { kind: 'pass', part: 'band' }, ms: RADAR_LESSON.settleMs + RADAR_LESSON.enterMs - RADAR_LESSON.leadMs, line: 'starter.director.radarLesson.caught', sound: 'alert' },
+    // The camera closes in a moment before it comes into sight; what it is is said as it does.
+    { id: 'seen', shot: { kind: 'pass', part: 'sight' }, ms: RADAR_LESSON.leadMs + RADAR_LESSON.watchMs, speakAt: RADAR_LESSON.leadMs, line: 'starter.director.radarLesson.seen', vars: { hull: name('DART'), count: fleetCount(RADAR_LESSON.fleet) }, sound: 'confirm' },
     { id: 'calm', shot: { kind: 'reach', reach: 'radar' }, ms: 3000, line: 'starter.director.radarLesson.calm' },
   ],
 });
