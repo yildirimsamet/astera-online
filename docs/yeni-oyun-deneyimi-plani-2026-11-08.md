@@ -372,12 +372,12 @@ Owner'ın 15 maddelik listesi. F6'daki "temasta öğret" teleskop dersinin yerin
 - **Keşif gemisi:** gözcü artık korsan değil, "Keşif gemisi". Gemiye `SCOUT_STANDOFF` (200) kadar yaklaşır, uzaktan tarar, döner. Temasında `inbound` yoktur.
 - **İstihbarat kararı:** ilk av sürerken karakol raporlarının üstünde nasıl karşılaştırılacağı yazar; kendi filon sınıf dizisinde işaretlidir; her karakolun Saldır kapısı ve tıklanır adı vardır. Girdileri ve kuralı verir, kazananı söylemez.
 - **Onarım kartı:** bir makinenin kademesi kuyruktayken kart bir sonraki kademeye atlamaz, kalan süreyi gösterir. Başka makineye geçer.
-- **Süreler:** Rafineri 2 ve Kristal Ocağı 1 5 sn; Teleskop 1 ve Radar 1 15 sn. Hat yaması 3,5 sn.
+- **Süreler:** Rafineri 2 ve Kristal Ocağı 1 5 sn; Teleskop 1 ve Radar 1 15 sn, owner telefon playtest 2026-11-18 (madde 18) ile 5 sn. Hat yaması 3,5 sn.
 
 ### Playtest turu 2, owner 2026-11-09
 
 - **Üretim:** gemideki rafineri, kristal ocağı ve döteryum rafinerisi aynı seviyedeki gezegenin 3 katı üretir (`STARTER.outputMult`). Havuz ve depo tavanı da 3 kat olur, yani saat cinsinden aynı kalır. Dört oturumlu oyuncunun çıkışı 1,75 güne indi; `starter-pacing` alt sınırı 1,5 gün.
-- **Tersane 1:** 1 dakika. Owner telefon playtest 2026-11-18 (madde 11): 30 saniye.
+- **Tersane 1:** 1 dakika. Owner telefon playtest 2026-11-18: 30 saniye (madde 11), sonra 10 saniye (madde 18).
 - **İlk karakol yenilgisi:** av, kazanana kadar sürer. İlk kazanılamayan savaş bir kerelik cesaret kasası verir (310 alaşım / 125 kristal, bir Ok eder) ve hedef satırı diğer karakolu adıyla gösterir (`FIRST_OUTPOST_DEFEAT`, `huntLost`, `retry` aşaması).
 - **Evrenden dönüş:** odak yoksa kamera gemiye ve açılış uzaklığına döner.
 - **Gemiye dokunma:** ana galaksideki gibi, ilk dokunuş odaklar, ikincisi gemiyi açar.

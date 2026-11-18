@@ -79,9 +79,10 @@ describe('the first session', () => {
    * tutorial's four repairs run in seconds, in whole seconds, so the guided first session is played
    * through, not waited through.
    */
-  // Owner, phone playtest 2026-11-18 (item 11): the Shipyard's minute was too long; it takes thirty seconds.
-  it('runs the road in seconds: 5 s, 5 s, 15 s, 15 s, 30 s, 30 s', () => {
-    FIRST_SIX.map(s => s.minutes * 60).forEach((seconds, i) => { expect(seconds).toBeCloseTo([5, 5, 15, 15, 30, 30][i]!, 6); });
+  // Owner, phone playtest 2026-11-18: the Shipyard's minute was too long (item 11); then the telescope and
+  // the radar take five seconds and the Shipyard ten (item 18).
+  it('runs the road in seconds: 5 s, 5 s, 5 s, 5 s, 30 s, 10 s', () => {
+    FIRST_SIX.map(s => s.minutes * 60).forEach((seconds, i) => { expect(seconds).toBeCloseTo([5, 5, 5, 5, 30, 10][i]!, 6); });
   });
 
   /** Retention plan §6.1: a ramp, not a cliff. What the Shipyard opens runs up to the first day's hour. */

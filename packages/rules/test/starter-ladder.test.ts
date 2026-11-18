@@ -81,11 +81,12 @@ describe('the repair ladder', () => {
     expect(bill('DEUTERIUM_PLANT', 2)).toEqual([800, 600, 120]);
     expect(bill('SURVEY', 1)).toEqual([250, 120, 0.5]);
     expect(bill('SURVEY', 2)).toEqual([600, 350, 20]);
-    expect(bill('SHIPYARD', 1)).toEqual([800, 300, 30 / 60]);
+    // Owner phone playtest 2026-11-18 (item 18): the first telescope and radar take 5 s, the first yard 10 s.
+    expect(bill('SHIPYARD', 1)).toEqual([800, 300, 10 / 60]);
     expect(bill('HANGAR', 2)).toEqual([1000, 350, 30]);
     // Owner 2026-11-08 (N11): both are used in the first session.
-    expect(bill('TELESCOPE', 1)).toEqual([250, 150, 15 / 60]);
-    expect(bill('RADAR', 1)).toEqual([200, 120, 15 / 60]);
+    expect(bill('TELESCOPE', 1)).toEqual([250, 150, 5 / 60]);
+    expect(bill('RADAR', 1)).toEqual([200, 120, 5 / 60]);
   });
 
   // Plan 2026-11-13 §5.6 (S2): the jump is a window, not a repair, so the drive has none.
