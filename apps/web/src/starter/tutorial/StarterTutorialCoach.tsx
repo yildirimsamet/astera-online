@@ -18,8 +18,7 @@ import { scrollHeld } from '../../lib/scrollHold.js';
 
 const CHAPTER = {
   1: 'starter.tutorial.chapter.1', 2: 'starter.tutorial.chapter.2', 3: 'starter.tutorial.chapter.3', 4: 'starter.tutorial.chapter.4',
-  5: 'starter.tutorial.chapter.5', 6: 'starter.tutorial.chapter.6', 7: 'starter.tutorial.chapter.7', 8: 'starter.tutorial.chapter.8',
-  9: 'starter.tutorial.chapter.9',
+  5: 'starter.tutorial.chapter.5', 6: 'starter.tutorial.chapter.6', 7: 'starter.tutorial.chapter.7', 9: 'starter.tutorial.chapter.9',
 } as const;
 /** The funnel counts these steps under this version (the server's `starterFunnel`). */
 const TRAINING = 'starter-tutorial.v2';

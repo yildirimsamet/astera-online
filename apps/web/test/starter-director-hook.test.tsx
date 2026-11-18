@@ -20,7 +20,7 @@ const ship = (progress: VesselProgress, queue: unknown[] = []) => vesselSchema.p
 const playing = (): string => { const now = directorNow(); return now ? `${now.scene.id}/${now.beat.id}` : 'none'; };
 type Props = Parameters<typeof useStarterScenes>[0];
 const props = (over: Partial<Props>): Props => ({
-  ship: ship(openingProgress()), shipOpen: false, onCloseShip: vi.fn(), nearestRockId: null, unknownContactId: null, probing: false, probeTarget: null, onAwaken: vi.fn(), ...over,
+  ship: ship(openingProgress()), shipOpen: false, onCloseShip: vi.fn(), nearestRockId: null, probing: false, probeTarget: null, onAwaken: vi.fn(), ...over,
 });
 
 /** The ship's changes become scenes (plan 2026-11-18 §5, Faz 5.2–5.6), as the galaxy sees them. */
@@ -136,12 +136,16 @@ describe('the first session, directed', () => {
     expect(view.result.current).toBe(vesselLook({ modules: turn.after, facts: [] }));
   });
 
-  it('turns to the first radar return, and to none before the radar is mended', () => {
-    renderHook(useStarterScenes, { initialProps: props({ ship: ship({ modules: { REFINERY: 2 }, facts: [] }), unknownContactId: 'c-1' }) });
-    expect(playing()).toBe('none');
-    cleanup();
-    renderHook(useStarterScenes, { initialProps: props({ ship: ship({ modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, facts: ['FIRST_MINING_SENT'] }), unknownContactId: 'c-1' }) });
-    expect(playing()).toBe('contact/turn');
+  // Item 28: the radar is shown on its staged contact as it comes back, and a real return is no scene of its own.
+  it('shows the radar\'s lesson after its return, and never turns to a real radar return', () => {
+    const before = ship({ modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }, facts: ['FIRST_MINING_SENT'] });
+    const first = props({ ship: before });
+    const view = renderHook(useStarterScenes, { initialProps: first });
+    act(() => { vi.advanceTimersByTime(FIRST_LOOK_MS); });
+    view.rerender({ ...first, ship: ship({ modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, facts: ['FIRST_MINING_SENT'] }) });
+    expect(playing()).toBe('repair:RADAR:1:done/back');
+    act(() => { skipBeat(); });
+    expect(playing()).toBe('radarLesson/telescope');
   });
 
   // Plan §5 A9: the report coming home is a moment of its own, on the ship it read.

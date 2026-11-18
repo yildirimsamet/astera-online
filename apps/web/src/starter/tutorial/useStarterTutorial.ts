@@ -2,7 +2,7 @@ import type { VesselView } from '../../api/starterSchemas.js';
 import { z } from 'zod';
 import { REPAIR_LADDER, jumpWindowOpen, nextRequiredStep } from '@astera/rules';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { useGalaxy, useIntel, useMining, usePending, usePlanet, useTraffic } from '../../api/queries.js';
+import { useGalaxy, useIntel, useMining, usePending, usePlanet } from '../../api/queries.js';
 import { useProjected } from '../../lib/projection.js';
 import { vesselToPlanetView } from '../adapter.js';
 import { huntStage } from '../hunt.js';
@@ -14,7 +14,6 @@ import { useRockSheet } from './rockSheet.js';
 import { sceneToCome, scenePlayedFor, useDirector } from '../director/director.js';
 import { JUMP_SCENE, announcedByScene } from '../director/scenes.js';
 import { useLandingSheet } from './landingSheet.js';
-import { sightNow } from './sightLesson.js';
 import { repairWait, tutorialStep, type TutorialInput, type TutorialAnswer, type TutorialStepId, type TutorialView, type TutorialWait } from './script.js';
 import { holdFull } from '../hold.js';
 
@@ -68,7 +67,6 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   const pending = usePending();
   const mining = useMining();
   const galaxy = useGalaxy();
-  const traffic = useTraffic();
   const intel = useIntel();
   const rockOpen = useRockSheet();
   const landing = useLandingSheet();
@@ -121,7 +119,6 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     rockOpen,
     noRocks: mining.fieldData?.asteroids.length === 0,
     rockShown: scenePlayedFor(vessel.id, 'rock'),
-    sight: sightNow(traffic.data?.contacts ?? [], galaxy.data?.sensors?.[0]),
     jumpWaiting: sceneToCome(vessel.id, JUMP_SCENE),
     landing,
     acked: list,

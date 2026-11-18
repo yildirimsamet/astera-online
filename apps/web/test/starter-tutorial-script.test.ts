@@ -343,28 +343,13 @@ describe('a galaxy with nobody else in sight', () => {
 });
 
 /**
- * THE RADAR IS TAUGHT ON A REAL CONTACT (plan F6). The lesson waits for the live world to give it a
- * subject: the scout's `?`, then the telescope naming it. Nothing is made up for a lesson.
+ * THE RADAR IS SHOWN, NOT READ OUT (owner phone playtest 2026-11-18, item 28). Its scene teaches it on a
+ * staged contact as it comes back; the guide has no line for a radar return, real or not.
  */
-describe('the radar speaks on a real contact', () => {
+it('says nothing of the radar: its scene has shown it', () => {
   const late = awake({ modules: { REFINERY: 3, EXTRACTOR: 3, SURVEY: 1, SHIPYARD: 1, TELESCOPE: 1, RADAR: 1 }, facts: ['FIRST_PROBE_REPORT', 'FIRST_MINING_RETURN'], acked: ['report', 'collectMine', 'jumpAsk', 'jumpGo', 'farewell'] });
-  const traffic = { traffic: true, unknown: false };
-  const blip = { traffic: false, unknown: true };
-  it('introduces Radar 1 on the question mark, and only then', () => {
-    expect(at(late)).toEqual({ kind: 'advise' });
-    expect(at({ ...late, sight: blip })).toMatchObject({ id: 'radarRing', marks: ['[data-guide="sight-unknown"]'] });
-    expect(at({ ...late, sight: blip, acked: [...late.acked, 'radarRing'] })).toMatchObject({ id: 'radarContact' });
-  });
-  it('closes with the three jobs once the telescope has named what the radar found', () => {
-    const asked = [...late.acked, 'radarRing', 'radarContact'];
-    expect(at({ ...late, sight: blip, acked: asked })).toEqual({ kind: 'advise' });
-    expect(at({ ...late, sight: traffic, acked: asked })).toMatchObject({ id: 'sightTrio', marks: ['[data-guide="sight-craft"]'] });
-    expect(at({ ...late, sight: traffic, acked: [...asked, 'sightTrio'] })).toEqual({ kind: 'advise' });
-  });
-  it('never takes the player off a page: it waits for them to be looking at the sky', () => {
-    expect(at({ ...late, sight: blip, view: 'ship' })).toEqual({ kind: 'advise' });
-    expect(at({ ...late, sight: blip, view: 'other' })).toEqual({ kind: 'advise' });
-  });
+  expect(at(late)).toEqual({ kind: 'advise' });
+  expect(ROAD.map(s => s.id).filter(step => /radar(Ring|Contact)|sightTrio/u.test(step))).toEqual([]);
 });
 
 describe('where the hand goes for a chosen opportunity', () => {

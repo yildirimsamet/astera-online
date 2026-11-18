@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { vesselBattleReports, vesselMissions, vesselNotifications, vessels } from '../src/db/schema.js';
+import { vesselMissions, vesselNotifications, vessels } from '../src/db/schema.js';
 import { sweepStarterWorld } from '../src/services/starter/sites.js';
 import { testDb } from './helpers.js';
 import { starterWorld } from './starterFixture.js';
@@ -33,27 +33,31 @@ describe('pirates at a ship', () => {
     expect(await flights(me.vesselId)).toHaveLength(0);
   });
 
-  it('send a scout once the radar works, to a player who is here, and it turns back without a fight', async () => {
+  /**
+   * OWNER 2026-11-18 (item 28): the radar is shown on a staged contact on the player's own screen as it
+   * comes back. The server sends no scout: a red "coming for you" was the wrong first lesson.
+   */
+  it('send no scout once the radar works: its lesson is staged on the player\'s screen', async () => {
     const me = await aboard(world, 'Me', { SURVEY: 1, RADAR: 1 });
     await flown(me.vesselId);
     await seen(me.vesselId);
     await sweep();
-    const [scout] = await flights(me.vesselId);
-    expect(scout?.kind).toBe('SCOUT');
     await pass(world, 60);
-    expect(await world.f.db.select().from(vesselBattleReports)).toHaveLength(0);
-    const [after] = await flights(me.vesselId);
-    expect(after!.status).toBe('DONE');
+    await seen(me.vesselId);
+    await sweep();
+    expect(await flights(me.vesselId)).toHaveLength(0);
   });
 
-  it('name the scout to a telescope, and only a telescope', async () => {
+  it('still name a scout already on its way to a telescope, and only a telescope', async () => {
     const me = await aboard(world, 'Me', { SURVEY: 1, RADAR: 1 });
-    await flown(me.vesselId);
-    await seen(me.vesselId);
-    await sweep();
-    const [scout] = await flights(me.vesselId);
+    const [ship] = await world.f.db.select().from(vessels).where(eq(vessels.id, me.vesselId));
+    const now = world.f.clock.now();
+    const [scout] = await world.f.db.insert(vesselMissions).values({
+      starterGalaxyId: ship!.starterGalaxyId, ownerVesselId: null, kind: 'SCOUT', targetVesselId: ship!.id,
+      fromX: me.position.x + 300, fromY: me.position.y, fromZ: me.position.z, toX: me.position.x + 200, toY: me.position.y, toZ: me.position.z,
+      fleet: { DART: 1 }, departAt: now, arriveAt: new Date(now.getTime() + 600_000),
+    }).returning();
     interface Pending { pending: { kind: string; raider?: string }[] }
-    await world.f.db.update(vesselMissions).set({ fromX: me.position.x + 300, fromY: me.position.y, fromZ: me.position.z }).where(eq(vesselMissions.id, scout!.id));
     const radarOnly = (await get<Pending>(world, '/api/starter/pending', me.headers)).pending.find(thread => thread.kind === 'incoming');
     expect(radarOnly).toBeDefined();
     expect(radarOnly).not.toHaveProperty('raider');
@@ -62,27 +66,29 @@ describe('pirates at a ship', () => {
     expect(seenThread).toMatchObject({ raider: 'SCOUT' });
   });
 
-  it('send one scout, not one a sweep', async () => {
-    const me = await aboard(world, 'Me', { SURVEY: 1, RADAR: 1 });
+  it('send one raid, not one a sweep', async () => {
+    const me = await aboard(world, 'Me', { SURVEY: 1, RADAR: 1, AEGIS: 1 });
+    await arm(world, me.vesselId, { DART: 2 });
     await flown(me.vesselId);
     await seen(me.vesselId);
     await sweep();
     await sweep();
-    expect(await flights(me.vesselId)).toHaveLength(1);
+    expect((await flights(me.vesselId)).map(flight => flight.kind)).toEqual(['PIRATE']);
   });
 
   /**
    * OWNER 2026-11-08 (N2): the threat follows the player out. A ship that has flown nothing of its own
-   * has given nobody a reason to come and look, so the scout waits for its first run, probe or raid.
+   * has given nobody a reason to come, so the first raid waits for its first run, probe or raid.
    */
-  it('keep the scout away until the ship has flown something of its own', async () => {
-    const me = await aboard(world, 'Me', { SURVEY: 1, RADAR: 1 });
+  it('keep the raid away until the ship has flown something of its own', async () => {
+    const me = await aboard(world, 'Me', { SURVEY: 1, RADAR: 1, AEGIS: 1 });
+    await arm(world, me.vesselId, { DART: 2 });
     await seen(me.vesselId);
     await sweep();
     expect(await flights(me.vesselId)).toHaveLength(0);
     await flown(me.vesselId);
     await sweep();
-    expect((await flights(me.vesselId)).map(flight => flight.kind)).toEqual(['SCOUT']);
+    expect((await flights(me.vesselId)).map(flight => flight.kind)).toEqual(['PIRATE']);
   });
 
   it('wait for a player who is away', async () => {
@@ -99,9 +105,6 @@ describe('pirates at a ship', () => {
     await flown(me.vesselId);
     await seen(me.vesselId);
     await sweep();
-    await pass(world, 60);
-    await seen(me.vesselId);
-    await sweep();
     const raid = (await flights(me.vesselId)).find(flight => flight.kind === 'PIRATE');
     expect(raid?.fleet).toEqual({ DART: 2 });
     await pass(world, 60);
@@ -114,9 +117,6 @@ describe('pirates at a ship', () => {
     const me = await aboard(world, 'Me', { SURVEY: 1, RADAR: 1, AEGIS: 1 });
     await arm(world, me.vesselId, { DART: 2 });
     await flown(me.vesselId);
-    await seen(me.vesselId);
-    await sweep();
-    await pass(world, 60);
     await seen(me.vesselId);
     await sweep();
     await pass(world, 60);

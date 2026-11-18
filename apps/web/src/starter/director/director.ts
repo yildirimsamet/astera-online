@@ -27,15 +27,20 @@ export type ShotTarget =
   /** Pulled far back: the ship alone in the dark. */
   | { kind: 'wide'; range?: number }
   /** Something out in the galaxy, without opening it. */
-  | { kind: 'subject'; focus: Focus; range?: number };
+  | { kind: 'subject'; focus: Focus; range?: number }
+  /** The ship with the whole of its telescope's or its radar's sphere in frame (item 28). */
+  | { kind: 'reach'; reach: 'telescope' | 'radar' }
+  /** The radar lesson's contact from the side, in the radar's band or in the telescope's sphere (`lessonFrame`). */
+  | { kind: 'pass'; part: 'band' | 'sight' };
 
 type RepairLine = `starter.director.repair.${'work' | 'REFINERY' | 'EXTRACTOR' | 'TELESCOPE' | 'RADAR' | 'SURVEY' | 'SHIPYARD'}`;
 /** What a shot may say: the director's own lines (`starter.director`). */
 export type DirectorLine = 'starter.director.shipReport.orbit' | 'starter.director.shipReport.goal' | RepairLine
-  | 'starter.director.hull.PATCHED' | 'starter.director.hull.RENEWED' | 'starter.director.dark' | 'starter.director.field' | 'starter.director.rock' | 'starter.director.contact'
+  | 'starter.director.hull.PATCHED' | 'starter.director.hull.RENEWED' | 'starter.director.dark' | 'starter.director.field' | 'starter.director.rock'
   | 'starter.director.probe' | 'starter.director.yardNeed' | 'starter.director.ships.TELESCOPE' | 'starter.director.ships.SHIPYARD'
   | 'starter.director.report2.round' | 'starter.director.report2.drive' | 'starter.director.report2.ready'
-  | 'starter.director.jump.lit' | 'starter.director.jump.away';
+  | 'starter.director.jump.lit' | 'starter.director.jump.away'
+  | `starter.director.radarLesson.${'telescope' | 'radar' | 'caught' | 'seen' | 'calm'}`;
 
 export interface Beat {
   id: string;

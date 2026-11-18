@@ -291,6 +291,15 @@ export function shellSpread(seconds: number): { scale: number; glow: number } {
   return { scale: 0.05 + 0.95 * (1 - (1 - t) ** 3), glow: 1 + 7 * (1 - t) };
 }
 
+/** The telescope's sphere in a scene that shows it (item 28), as a multiple of its resting faintness: clearly there. */
+export const SHELL_STAGED = 3;
+
+/** How bright the telescope's sphere is drawn, as a multiple of its resting faintness: its opening's bead, or a scene's clear line. */
+export function shellGlow(seconds: number, staged: boolean): number {
+  const opening = seconds < SHELL_SPREAD_SECONDS ? shellSpread(seconds).glow : 1;
+  return Math.max(opening, staged ? SHELL_STAGED : 1);
+}
+
 export const sensorVolumeScale = (radius: number): [number, number, number] => [
   radius,
   radius * VIEW.verticalExaggeration,
@@ -405,10 +414,12 @@ function ReachShell({
   centre,
   radius,
   telescope,
+  staged,
 }: {
   centre: THREE.Vector3;
   radius: number;
   telescope: boolean;
+  staged: boolean;
 }) {
   const material = useRef<THREE.ShaderMaterial>(null);
   const shell = useRef<THREE.Mesh>(null);
@@ -448,13 +459,14 @@ function ReachShell({
     if (age.current < SHELL_SPREAD_SECONDS) {
       // Capped so the long frame that mounts it cannot swallow the opening.
       age.current += Math.min(delta, 0.1);
-      const { scale, glow } = shellSpread(age.current);
+      const { scale } = shellSpread(age.current);
       const [x, y, z] = sensorVolumeScale(radius);
       shell.current?.scale.set(x * scale, y * scale, z * scale);
-      if (live.uStrength) live.uStrength.value = BASE_STRENGTH * glow;
-      if (live.uGrid) live.uGrid.value = BASE_GRID * glow;
       state.invalidate();
     }
+    const glow = shellGlow(age.current, staged);
+    if (live.uStrength) live.uStrength.value = BASE_STRENGTH * glow;
+    if (live.uGrid) live.uGrid.value = BASE_GRID * glow;
     const value = clock.value as number;
     // WRAPPED, so the clock never grows large enough to cost `sin()` its precision.
     // The noise fields are periodic in it, so the wrap is invisible.
@@ -531,10 +543,14 @@ function RadarVolume({
 }
 
 /** Three radio wavefronts broadcast from the active world to its wide Radar edge. */
-function RadarBurst({ centre, radius }: { centre: THREE.Vector3; radius: number }) {
+/** Where a radar's first wave starts: at once when a scene shows it (item 28), else anywhere, so two radars never pulse together. */
+export const burstPhase = (ping: boolean, random: () => number = Math.random): number =>
+  ping ? 0 : random() * RADAR_BURST_INTERVAL_SECONDS;
+
+function RadarBurst({ centre, radius, ping }: { centre: THREE.Vector3; radius: number; ping: boolean }) {
   const waves = useRef<(THREE.Mesh | null)[]>([]);
   const materials = useRef<(THREE.ShaderMaterial | null)[]>([]);
-  const phase = useRef(Math.random() * RADAR_BURST_INTERVAL_SECONDS);
+  const phase = useRef(burstPhase(ping));
   // All three wavefronts share one topology. They are three draw calls, but only
   // one GPU geometry allocation — the active scene stays below its memory cap.
   const geometry = useMemo(() => new THREE.SphereGeometry(1, 28, 16), []);
@@ -766,6 +782,7 @@ export function SensorRings({
   posts,
   showTelescope,
   showRadar,
+  staged = false,
 }: {
   /** Every world the caller controls, with the two radii each of them answers for. */
   posts: readonly ReachRing[];
@@ -780,6 +797,8 @@ export function SensorRings({
    */
   showTelescope: boolean;
   showRadar: boolean;
+  /** A scene is showing the spheres (item 28): the telescope's is drawn clearly, a radar that appears sends its first wave at once. */
+  staged?: boolean;
 }) {
   const shells = useMemo(
     () =>
@@ -805,6 +824,7 @@ export function SensorRings({
           centre={shell.centre}
           radius={shell.radius}
           telescope={shell.telescope}
+          staged={staged}
         />
       ))}
       {showRadar && radars.map((radar) => (
@@ -817,7 +837,7 @@ export function SensorRings({
             grid={0.018 * RADAR_VISIBILITY}
             order={-39}
           />
-          <RadarBurst centre={radar.centre} radius={radar.radius} />
+          <RadarBurst centre={radar.centre} radius={radar.radius} ping={staged} />
           <RadarSweep centre={radar.centre} radius={radar.radius} />
         </group>
       ))}

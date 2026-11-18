@@ -111,7 +111,7 @@ Galaksinin yeri doluysa yeni hesap gemide bekletilmez, doğrudan ana galaksiye g
 |---|---|---|
 | İlk oturum (~20–25 dk) | Prolog, sahiplenme, ilk sonda; kasalar, Rafineri 3, Depo 1, Tersane 1 ve Ocak 3 siparişleri. İlk Kazıcı en yakın asteroide gider, döner ve ganimet toplanır. Ardından veda. | Süren onarım ve sıradaki adımın saati |
 | 1. gün | Keşif anteni 2 Sohbeti açar. Tersane açılır: iki karakol gösterilir, oyuncu sondalar, karşı sınıfı kurar ve ilk baskınını kendisi seçer. Kazıcı asteroide gider. Oyuncu bir asteroidin başkası tarafından boşaltıldığını görür ve "Bunu kim yaptı?" diye sorar. | Onarım, madencilik ve baskın dönüşü |
-| 2. gün | Teleskop çevredeki hareketi görünür kılar. Kendi seferinden sonra Radar, gemiye yaklaşıp dönen bir korsan gözcüsünü gösterir. Aegis isteğe bağlıdır: onaran oyuncuya korsanlar ve diğer gemiler saldırabilir, o da bir savaştan sonra gemilere saldırabilir. 12 saatlik oyuncu kalkanı başlar. | "Kalkanım bitiyor", savaş raporu |
+| 2. gün | Teleskop çevredeki hareketi görünür kılar. Radar 1 onarılınca kısa bir sahne teleskop ve radar kürelerini, radarda "?" olarak duyulup teleskopta filo olarak görülen, yanından geçen bir uçuşu gösterir. Aegis isteğe bağlıdır: onaran oyuncuya korsanlar ve diğer gemiler saldırabilir, o da bir savaştan sonra gemilere saldırabilir. 12 saatlik oyuncu kalkanı başlar. | "Kalkanım bitiyor", savaş raporu |
 | 3. gün | Küçük akınlar, karşılıklı sondalar, ilk rakip. Rapordan "Neden yenildim?" sorusu doğar. Araştırma ve filo kararları anlam kazanır. | Akın sonucu, açılan enkaz |
 | 4–5. gün | Motor gövdesi, itki parçası avı, yakıt. Komşular kalkmaya başlar. | Son parça, son yakıt |
 | Göç | Oyuncu kalkar, ana galaksiye geçer, gezegeni oluşur. | Ana oyun başlar |
@@ -143,7 +143,7 @@ Her onarım normal bir üretim emridir: kaynak öder, kuyruğa girer, süre dolu
 | Kargo ve hangar | Tersane 1 | 800/300 · 3 dk | Keşif anteni 1, Rafineri 3 | Filo, asteroit. Hediye: 1 Kazıcı, 2 Ok |
 | | Hangar 2 | 1000/350 · 30 dk | İlk madencilik dönüşü | Hangar odası 20'den 32'ye, ikinci saldırı yuvası, Araştırma |
 | Savunma sistemleri | Teleskop 1 | 700/500 · 40 dk | Tersane 1 | Trafik, gözlem |
-| | Radar 1 | 500/380 · 1 sa | Teleskop 1 | Uyarı halkası, korsan gözcüsü |
+| | Radar 1 | 500/380 · 1 sa | Teleskop 1 | Uyarı halkası, radar dersi sahnesi |
 | Yıldızlararası motor | Motor gövdesi | 2200/1100 · 4 sa | Rafineri 4, Kristal Ocağı 3, Keşif anteni 2, Hangar 2, Radar 1 | |
 | | İtki montajı | 1800/1200 · 4 sa | 3 itki parçası | Yakıt deposu |
 | | Yakıt | 90 Döteryum | İtki montajı, Döteryum 2 | Göç |
@@ -277,7 +277,7 @@ Az nüfusta oyuncu takılmasın diye, açık parça sayısı her zaman `max(2, m
 
 > **Güncelleme, owner 2026-11-08:** Gözcü artık korsan değil, "Keşif gemisi": gemiye dokunmaz, uzaktan tarar ve gider.
 
-**Korsan gözcüsü ve ilk akın.** Radar 1 bittikten sonra, oyuncu oyundayken küçük bir NPC gözcüsü gemiye yaklaşıp döner, savaş olmaz. Radar uyarır, teleskop içeriğini söyler. Gözcü, oyuncu kendi ilk seferini (madencilik, sonda veya baskın) göndermeden gelmez (owner, 2026-11-08, N2). Oyuncu radarın değerini ilk kez burada hisseder ve "Bu saldırsaydı ne olurdu?" diye sorar. Aegis 1'i seçen oyuncuya ilk gerçek akın gelir. Akın, oyuncunun filosuyla eşit sayıda gelir ve Aegis oyuncuyu korur: 2 Ok + Aegis 1'e gelen 2 Ok %87 boş döner, oyuncu gemilerinin %93'ünü korur. Yine de gemi yok olabilir. Sonraki akınlar seyrektir, bakım penceresine düşmez. Aegis'siz gemiye korsan gelmez; onun ilk savaşı karakoldur.
+**Radar dersi ve ilk akın.** Radar 1 onarılınca oyuncunun ekranında kısa bir sahne oynar (owner, 2026-11-18): teleskobun mavi küresi, çevresinde radarın yeşil küresi; yeşil bantta bir "?" yandan izlenir, 2 sn'de teleskop küresine girer ve orada ne olduğu görülür; yanından geçip gider. Sahne yalnız oyuncunun istemcisinde kurulur, sunucu gözcü göndermez. "Canlı temas yoksa araç uydurulmaz" kuralı bu ders için owner kararıyla değişti (2026-11-18). Sahne, bize gelselerdi radara girdikleri an kırmızı uyarı alınacağını söyler; oyuncu radarın değerini burada hisseder. Aegis 1'i seçen oyuncuya, kendi ilk seferini (madencilik, sonda veya baskın) gönderdikten sonra (owner, 2026-11-08, N2) ilk gerçek akın gelir. Akın, oyuncunun filosuyla eşit sayıda gelir ve Aegis oyuncuyu korur: 2 Ok + Aegis 1'e gelen 2 Ok %87 boş döner, oyuncu gemilerinin %93'ünü korur. Yine de gemi yok olabilir. Sonraki akınlar seyrektir, bakım penceresine düşmez. Aegis'siz gemiye korsan gelmez; onun ilk savaşı karakoldur.
 
 **Görünür kalkış.** Bir komşu göç ettiğinde, galaksideki herkes gökyüzünde parlak bir iz görür. Kalkış panosuna adı düşer.
 
@@ -298,10 +298,11 @@ gelecek geçişler görünmez. Gizli gönderen/hedef/rota uçları yayımlanmaz;
 hareket penceresi sürer. `vessels.sight_since`, gemi o konuma yerleşmeden önceki
 geçişleri hafıza saymayı önler; uyku sonrası yer değişince sıfırlanır. Menziller, uçuş süreleri ve ekonomi değişmez.
 
-İlk Teleskop 1 ve Radar 1 sonrasında, rehber açıksa 7 ve 8. bölümler gerçek
-sensör halkasını ve mevcut hareketi sahnede gösterir. Görülmüş bölümler tekrarlanmaz;
-rehberi kapatma bu bölümleri de kapatır. Canlı temas yoksa bir araç uydurulmaz;
-halka gösterilir ve genel işlev anlatılır. Ana galaksinin ayrı görüş uygulaması bu
+İlk Teleskop 1 sonrasında, rehber açıksa 7. bölüm gerçek sensör halkasını ve mevcut
+hareketi sahnede gösterir. Görülmüş bölüm tekrarlanmaz; rehberi kapatma bu bölümü de
+kapatır. Canlı temas yoksa bir araç uydurulmaz; halka gösterilir ve genel işlev anlatılır.
+Radar 1'in dersi rehber bölümü değil, onarımın ardından oynayan sahnedir (§3.5 "Radar
+dersi ve ilk akın"; owner, 2026-11-18). Ana galaksinin ayrı görüş uygulaması bu
 starter düzeltmesinin kapsamında değiştirilmedi.
 
 ### 3.6 Koruma modeli
@@ -969,7 +970,7 @@ Her aşama TDD ile ilerler: önce testler yazılır ve FAIL görülür, sonra ko
 ### Faz 6: Savaş
 
 - **Hedef:** Küçük savaşlar gerçek, kayıp sınırlı olsun.
-- **İş:** `combat`, karakol muhafızı, `npcRaids` (önce gözcü, Aegis sonrası akın), koruma kuralları, saldırı kilidi (A9), Onarım İstasyonu, savaş enkazı, tekrar izleme, rapor satırı, filo gönderme ekranındaki kural, simülatörün tempo ve Aegis bağlantısı, Aegis tavanı, tier ve geri çekilme kontrollerinin gizlenmesi.
+- **İş:** `combat`, karakol muhafızı, `npcRaids` (Aegis sonrası akın; gözcü 2026-11-18'de kaldırıldı, yerine istemcide radar dersi sahnesi), koruma kuralları, saldırı kilidi (A9), Onarım İstasyonu, savaş enkazı, tekrar izleme, rapor satırı, filo gönderme ekranındaki kural, simülatörün tempo ve Aegis bağlantısı, Aegis tavanı, tier ve geri çekilme kontrollerinin gizlenmesi.
 - **Önce testler:** `starter-combat`, `starter-protection-api`, `starter-damage-dock`, `starter-no-softlock`, `starter-npc-raid`, `starter-report`, `starter-simulator`, `starter-band-ui`.
 - **Çıkış:** Savaş yarı tempoyla çözülür, gemi yok olabilir, hasar ve fatura doğrudur. Filosunu kaybeden oyuncu kilitlenmez. Hedef kaybolursa savaş olmaz. Tekrar teslim ikinci savaş üretmez. Rapor ve gönderme ekranı yarı hızı söyler. Karşı sınıf bilgisi karardan önce görünür. Arayüzde kademe yazmaz.
 

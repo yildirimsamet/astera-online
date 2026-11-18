@@ -8,7 +8,6 @@ export const STARTER_TUTORIAL_STEPS = [
   'orderExtractor', 'orderTelescope', 'waitTelescope', 'telescopeLook', 'zoomRock', 'findRock', 'mine',
   'orderRadar', 'waitRadar', 'orderSurvey', 'waitSurvey', 'probe', 'orderShipyard', 'waitYard', 'buildShip', 'farewell',
   'openCrate', 'firstCrate', 'collectMine', 'jumpAsk', 'jumpGo', 'openIntel', 'openReport', 'report',
-  'radarRing', 'radarContact', 'sightTrio',
 ] as const;
 
 export type StarterTutorialStepId = (typeof STARTER_TUTORIAL_STEPS)[number];

@@ -1,4 +1,3 @@
-import { STARTER, distance } from '@astera/rules';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { vesselMissions, vesselUnits, vessels } from '../src/db/schema.js';
@@ -14,7 +13,7 @@ interface MiningView { asteroids: { id: string }[] }
 /**
  * THE FIRST SESSION'S ROAD, ABOARD (owner 2026-11-08, N12–N13). The telescope is what shows the rocks
  * and hands over the Prospector; the shipyard hands over the first two Darts. The radar's first return
- * has to reach the ring within the session, so a scout starts just outside it.
+ * is staged on the player's own screen (owner 2026-11-18, item 28): the server sends no scout.
  */
 describe('the road on the server', () => {
   let world: StarterWorld;
@@ -52,7 +51,8 @@ describe('the road on the server', () => {
     expect(await home(person.vesselId)).toEqual({ DART: 2 });
   });
 
-  it('starts the first scout just outside the first radar ring', async () => {
+  // Owner 2026-11-18 (item 28): the radar's first return is staged on the player's screen; none is sent.
+  it('sends no scout at the first radar', async () => {
     const person = await aboard(world, 'Pilot', { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 });
     const [ship] = await world.f.db.select().from(vessels).where(eq(vessels.id, person.vesselId));
     const now = world.f.clock.now();
@@ -62,9 +62,7 @@ describe('the road on the server', () => {
     });
     await world.f.db.update(vessels).set({ lastSeenAt: now }).where(eq(vessels.id, ship!.id));
     await sweepStarterWorld(world.f.db, world.f.clock);
-    const [scout] = await world.f.db.select().from(vesselMissions).where(and(eq(vesselMissions.targetVesselId, ship!.id), eq(vesselMissions.kind, 'SCOUT')));
-    const span = distance({ x: scout!.fromX, y: scout!.fromY, z: scout!.fromZ }, ship!);
-    expect(span).toBeGreaterThan(STARTER.radar[1]);
-    expect(span).toBeLessThanOrEqual(STARTER.radar[1] + 150);
+    const scouts = await world.f.db.select().from(vesselMissions).where(and(eq(vesselMissions.targetVesselId, ship!.id), eq(vesselMissions.kind, 'SCOUT')));
+    expect(scouts).toEqual([]);
   });
 });

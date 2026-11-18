@@ -6,7 +6,10 @@ import { lendFocusClose } from '../starter/tutorial/focusClose.js';
 import { useLaunchSheet } from '../starter/tutorial/launchSheet.js';
 import { DirectorStage } from '../starter/director/DirectorStage.js';
 import { useStarterScenes } from '../starter/director/useStarterScenes.js';
-import { weldingBays } from '../starter/director/scenes.js';
+import { RADAR_LESSON_SCENE, radarLessonShowsRadar, weldingBays } from '../starter/director/scenes.js';
+import { useDirector } from '../starter/director/director.js';
+import { RADAR_LESSON_CONTACT } from '../starter/director/radarLesson.js';
+import { useRadarLessonContact } from '../starter/director/useRadarLesson.js';
 import { bottomSurface, selectionGone } from '../starter/bottomSurface.js';
 import { applyCosmeticTrial, type CosmeticTrial } from '../galaxy/cosmeticTrial.js';
 import { CosmeticTrialBar } from './CosmeticTrialBar.js';
@@ -1009,7 +1012,15 @@ export function GalaxyView({
   // is derived from each thread's arrival instant where it is displayed.
   const monumentThreads = useMemo(() => monumentPendingThreads(monumentCatalog.data), [monumentCatalog.data]);
   const threads = useMemo(() => [...pending.data?.pending ?? [], ...monumentThreads], [pending.data, monumentThreads]);
-  const contacts = useMemo(() => (reveal.fleets ? traffic.data?.contacts ?? NO_CONTACTS : NO_CONTACTS), [reveal.fleets, traffic.data]);
+  // The radar's lesson flies a staged contact of this client's own (owner phone playtest 2026-11-18, item 28).
+  const lessonContact = useRadarLessonContact(sensors[0]);
+  const contacts = useMemo(() => {
+    const live = reveal.fleets ? traffic.data?.contacts ?? NO_CONTACTS : NO_CONTACTS;
+    return lessonContact ? [...live, lessonContact] : live;
+  }, [reveal.fleets, traffic.data, lessonContact]);
+  // In the radar's lesson the small sphere that sees opens alone, then the large one that hears comes on round it.
+  const playing = useDirector();
+  const radarLesson = playing?.scene.id === RADAR_LESSON_SCENE ? playing.beat.id : null;
   /* The corner lists pirates the Telescope has identified, including remembered ones.
      Radar-only returns stay anonymous on the disc and outside this named tally. */
   const knownPirates = useMemo(() => knownPirateContacts(contacts), [contacts]);
@@ -1019,7 +1030,6 @@ export function GalaxyView({
   /** THE FIRST SESSION, DIRECTED (plan 2026-11-18 §5): the ship's changes become scenes on the galaxy. */
   const starterRock = useMemo(() => (ship && asteroids.length > 0 ? nearestRock(asteroids, activeWorldPosition, minuteNow) : null),
     [ship, asteroids, activeWorldPosition, minuteNow]);
-  const starterReturn = useMemo(() => contacts.find(contact => contact.kind === 'unknown' && contact.effectOnly !== true)?.id ?? null, [contacts]);
   const awakenBay = useCallback((system: VesselSystem, module?: VesselModule) => { setAwaken((last) => ({ system, ...(module ? { module } : {}), key: (last?.key ?? 0) + 1 })); }, []);
   const welding = useMemo(() => (ship ? weldingBays(ship.queue, now) : []), [ship, now]);
   const starterProbing = (pendingThreads ?? []).some(thread => thread.kind === 'probe');
@@ -1028,7 +1038,7 @@ export function GalaxyView({
     return ship && latest ? { id: latest.targetPlanetId, name: latest.targetName } : null;
   }, [ship, intel.data?.probeReports]);
   const shownLook = useStarterScenes({
-    ship, shipOpen: panel === 'planet', onCloseShip: () => { onPanel(null); }, nearestRockId: starterRock ?? null, unknownContactId: starterReturn,
+    ship, shipOpen: panel === 'planet', onCloseShip: () => { onPanel(null); }, nearestRockId: starterRock ?? null,
     probing: starterProbing, probeTarget: starterProbed, onAwaken: awakenBay,
   });
   const findableTargets = useMemo<GalaxyTarget[]>(() => [
@@ -1175,6 +1185,8 @@ export function GalaxyView({
   }, []);
   const onFocus = useCallback(
     (next: Focus | null) => {
+      // The radar lesson's craft is only shown: there is nothing behind it to open.
+      if (next?.kind === 'contact' && next.id === RADAR_LESSON_CONTACT) return;
       setCosmeticTrial(null);
       if (next) haptic('tap');
       const ownedId = next?.kind === 'planet' ? controlledWorldId(planets, next.id) : null;
@@ -1525,8 +1537,8 @@ export function GalaxyView({
         {...(galaxy.data?.radiation ? { radiation: galaxy.data.radiation } : {})}
         {...(galaxy.data?.hpRadiation ? { hpRadiation: galaxy.data.hpRadiation } : {})}
         {...(galaxy.data?.monuments ? { monuments: galaxy.data.monuments } : {})}
-        showTelescopeReach={showTelescopeReach || sight === 'telescope'}
-        showRadarReach={showRadarReach || sight === 'radar'}
+        showTelescopeReach={showTelescopeReach || sight === 'telescope' || radarLesson !== null}
+        showRadarReach={radarLesson === null ? showRadarReach : radarLessonShowsRadar(radarLesson)}
         {...(activeWorldPosition ? { homePosition: activeWorldPosition } : { homePosition: undefined })}
         activePlanetId={activePlanetId}
         aegisLevel={planet.data?.instruments.AEGIS ?? 0}
@@ -1550,7 +1562,7 @@ export function GalaxyView({
         coachTap={coachTap}
         openWide={openWide ?? false}
         {...(wideDistance !== undefined ? { wideDistance } : {})}
-        {...(frameTelescope || sight !== null ? { sightRadius: Math.max(0, ...sensors.map((post) => sight === 'radar' ? post.detect : post.identify)) / VIEW.scale } : {})}
+        {...(frameTelescope || sight !== null ? { sightRadius: Math.max(0, ...sensors.map((post) => post.identify)) / VIEW.scale } : {})}
         {...(allowFocus ? { allowFocus } : {})}
       />
 

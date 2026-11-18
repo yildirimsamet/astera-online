@@ -13,12 +13,7 @@ const HERE_WITHIN_MS = 10 * 60_000;
 const APPROACH = 1500;
 /** Pirates are an event here, not a tax. */
 const RAID_EVERY_HOURS = 18;
-const SCOUT: Fleet = { DART: 1 };
-/** Just outside the first radar's ring: its return has to reach the player inside the first session (N12). */
-const SCOUT_APPROACH = STARTER.radar[1] + 120;
 const FIRST_RAID_AT_LEAST: Fleet = { DART: 1 };
-/** How close a scout comes before it turns away: near enough to be watched, never at the hull. */
-export const SCOUT_STANDOFF = 200;
 /** Two different fleets, so a first look shows that there is more than one kind of thing out there. */
 const PASSERS: readonly Fleet[] = [{ PIKE: 3, WARDEN: 1 }, { COURIER: 2, DART: 2 }];
 /** Long enough to be watched while the player looks around the ring. */
@@ -26,20 +21,14 @@ const PASSING_MINUTES = 4;
 
 type Galaxy = typeof starterGalaxies.$inferSelect;
 
-function launch(tx: Tx, galaxy: Galaxy, ship: VesselRow, kind: 'SCOUT' | 'PIRATE', fleet: Fleet, now: Date) {
+function launch(tx: Tx, galaxy: Galaxy, ship: VesselRow, fleet: Fleet, now: Date) {
   const to = placeOf(ship);
   const random = seededFrom(ship.id, now.getTime());
   const angle = random() * 2 * Math.PI;
-  const span = kind === 'SCOUT' ? SCOUT_APPROACH : APPROACH;
-  const from: Vec3 = { x: to.x + Math.cos(angle) * span, y: to.y, z: to.z + Math.sin(angle) * span };
-  if (kind === 'SCOUT') {
-    const short = (span - SCOUT_STANDOFF) / span;
-    to.x = from.x + (to.x - from.x) * short;
-    to.z = from.z + (to.z - from.z) * short;
-  }
+  const from: Vec3 = { x: to.x + Math.cos(angle) * APPROACH, y: to.y, z: to.z + Math.sin(angle) * APPROACH };
   const arriveAt = new Date(now.getTime() + travelExact(distance(from, to), fleetSpeed(fleet, {})) * 60_000);
   return tx.insert(vesselMissions).values({
-    starterGalaxyId: galaxy.id, ownerVesselId: null, kind, targetVesselId: ship.id,
+    starterGalaxyId: galaxy.id, ownerVesselId: null, kind: 'PIRATE', targetVesselId: ship.id,
     fromX: from.x, fromY: from.y, fromZ: from.z, toX: to.x, toY: to.y, toZ: to.z,
     fleet, damage: normalizeHpDamage(fleet, []), departAt: now, arriveAt,
   }).returning();
@@ -74,10 +63,11 @@ export async function launchPassersBy(tx: Tx, ship: VesselRow, now: Date): Promi
 }
 
 /**
- * THE FIRST THREATS, IN ORDER, AND ONLY TO SOMEONE WHO IS THERE. Plan §3.5. Radar first: a scout comes
- * and looks, and the player asks what would have happened. It follows the player out (owner
- * 2026-11-08, N2): a ship that has flown nothing of its own is left alone. Aegis next: the first real
- * raid, as large as the fleet it meets. Then rarely.
+ * THE FIRST THREATS, AND ONLY TO SOMEONE WHO IS THERE. Plan §3.5. The radar's own lesson is staged on
+ * the player's screen (owner 2026-11-18, item 28): no scout is sent. The first real raid comes after the
+ * Aegis, as large as the fleet it meets, then rarely. It follows the player out (owner 2026-11-08, N2): a
+ * ship that has flown nothing of its own is left alone. A raid comes only to a working radar, which
+ * warns of it in red as it comes in.
  */
 export async function launchPirates(tx: Tx, galaxy: Galaxy, ships: readonly VesselRow[], now: Date): Promise<void> {
   const here = ships.filter(ship => now.getTime() - ship.lastSeenAt.getTime() <= HERE_WITHIN_MS);
@@ -88,25 +78,20 @@ export async function launchPirates(tx: Tx, galaxy: Galaxy, ships: readonly Vess
       eq(vesselMissions.targetVesselId, ship.id), inArray(vesselMissions.kind, ['SCOUT', 'PIRATE']),
     )).orderBy(desc(vesselMissions.departAt));
     if (flights.some(flight => flight.status === 'OUTBOUND' || flight.status === 'RETURNING')) continue;
-    // Every row a ship owns is its own launch; pirates and scouts belong to nobody.
+    if (moduleStage(progress, 'AEGIS') < 1) continue;
+    // Every row a ship owns is its own launch; pirates (and the scouts of old) belong to nobody.
     const [ventured] = await tx.select({ id: vesselMissions.id }).from(vesselMissions).where(eq(vesselMissions.ownerVesselId, ship.id)).limit(1);
     if (!ventured) continue;
-
-    let mission: Awaited<ReturnType<typeof launch>>[number] | undefined;
-    if (!flights.some(flight => flight.kind === 'SCOUT')) {
-      [mission] = await launch(tx, galaxy, ship, 'SCOUT', SCOUT, now);
-    } else if (moduleStage(progress, 'AEGIS') >= 1) {
-      const last = flights.find(flight => flight.kind === 'PIRATE');
-      const due = !last || now.getTime() - last.departAt.getTime() >= RAID_EVERY_HOURS * 3_600_000;
-      if (!due) continue;
-      const units = await tx.select().from(vesselUnits).where(and(eq(vesselUnits.vesselId, ship.id), eq(vesselUnits.location, 'HOME')));
-      const home: Fleet = {};
-      for (const unit of units) if (unit.count > 0) home[unit.hull] = unit.count;
-      const line = garrisonOf(home, {});
-      // A match in numbers, not a slaughter: Aegis is what is being taught.
-      const count = Math.max(fleetCount(FIRST_RAID_AT_LEAST), Math.min(fleetCount(line), STARTER.hangarRoom[0]));
-      [mission] = await launch(tx, galaxy, ship, 'PIRATE', { DART: count }, now);
-    }
+    const last = flights.find(flight => flight.kind === 'PIRATE');
+    const due = !last || now.getTime() - last.departAt.getTime() >= RAID_EVERY_HOURS * 3_600_000;
+    if (!due) continue;
+    const units = await tx.select().from(vesselUnits).where(and(eq(vesselUnits.vesselId, ship.id), eq(vesselUnits.location, 'HOME')));
+    const home: Fleet = {};
+    for (const unit of units) if (unit.count > 0) home[unit.hull] = unit.count;
+    const line = garrisonOf(home, {});
+    // A match in numbers, not a slaughter: Aegis is what is being taught.
+    const count = Math.max(fleetCount(FIRST_RAID_AT_LEAST), Math.min(fleetCount(line), STARTER.hangarRoom[0]));
+    const [mission] = await launch(tx, galaxy, ship, { DART: count }, now);
     if (!mission) continue;
     await scheduleStarter(tx, { starterGalaxyId: galaxy.id, kind: 'vessel_mission_arrival', refId: mission.id, resolveAt: mission.arriveAt });
     await warnInReach(tx, mission, ship, now);

@@ -8,7 +8,7 @@ import { VESSEL_LENGTH } from '../src/galaxy/scene.js';
 import { hullSweepAt, nextLook } from '../src/galaxy/hullShift.js';
 import { SCENE_WAIT_MS, SHOT_MAX_MS, directorNow, playScene, reachState, resetDirector, sceneToCome, skipBeat, useDirector, type Scene } from '../src/starter/director/director.js';
 import { DirectorStage, SKIP_HOLD_MS } from '../src/starter/director/DirectorStage.js';
-import { bayView, homeward, returnPose, shotPose } from '../src/starter/director/shotPose.js';
+import { bayView, homeward, reachRange, returnPose, shotPose } from '../src/starter/director/shotPose.js';
 import i18n from '../src/i18n/index.js';
 import { ToastProvider, useToast } from '../src/ui/Toast.js';
 
@@ -278,6 +278,17 @@ describe('the stage', () => {
 });
 
 describe('where a shot looks', () => {
+  // Item 28: the radar's scene opens on the whole of its sphere, the telescope's inside it.
+  it('stands back far enough to hold a whole sphere on a phone, with room for the letterbox', () => {
+    for (const aspect of [350 / 812, 1]) {
+      const range = reachRange(10, aspect, 45);
+      const half = Math.min(45 * Math.PI / 360, Math.atan(Math.tan(45 * Math.PI / 360) * aspect));
+      // The sphere's own angular radius, with a margin left over for the bands.
+      expect(Math.asin(10 / range)).toBeLessThan(half * 0.75);
+    }
+    expect(reachRange(20, 0.5, 45)).toBeCloseTo(reachRange(10, 0.5, 45) * 2, 6);
+  });
+
   it('finds a bay on the hull exactly where the model draws it', () => {
     const at: [number, number, number] = [40, 2, -30];
     const offset = { x: 900, y: 0, z: 400 };

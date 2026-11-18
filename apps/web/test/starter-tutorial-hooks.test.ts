@@ -25,8 +25,6 @@ const DRAWN: readonly (readonly [hook: string, file: string, drawn: string])[] =
   ['data-step="', 'starter/RepairCard.tsx', 'data-step={`${step.module}:${String(step.stage)}`}'],
   ['data-guide="system-', 'starter/SystemTabs.tsx', 'data-guide={`system-${system}`}'],
   ['data-guide="sight-rock"', 'galaxy/StarterSightMarks.tsx', "'data-guide':'sight-rock'"],
-  ['data-guide="sight-craft"', 'galaxy/StarterSightMarks.tsx', "'sight-craft'"],
-  ['data-guide="sight-unknown"', 'galaxy/StarterSightMarks.tsx', "'sight-unknown'"],
   ['data-scene-mark', 'galaxy/StarterSightMarks.tsx', 'data-scene-mark=""'],
   ['data-guide="mine"', 'galaxy/FocusPanel.tsx', "'data-guide': 'mine'"],
   ['data-guide="probe"', 'galaxy/FocusPanel.tsx', "'data-guide': 'probe'"],

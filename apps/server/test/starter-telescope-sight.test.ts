@@ -3,8 +3,6 @@ import { and, eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { starterGalaxies, starterSites, vesselBotState, vesselMissions, vessels } from "../src/db/schema.js";
 import { firstRockId, insertRock } from "../src/services/starter/rocks.js";
-import { sweepStarterWorld } from "../src/services/starter/sites.js";
-import { SCOUT_STANDOFF } from "../src/services/starter/npcRaids.js";
 import { testDb } from "./helpers.js";
 import { starterWorld } from "./starterFixture.js";
 import { aboard, enrich, get, pass, post, type StarterWorld } from "./starterShips.js";
@@ -18,7 +16,7 @@ interface Contact { kind: string; fleet?: Record<string, number>; inbound?: bool
 /**
  * WHAT THE FIRST TELESCOPE SHOWS (owner playtest 2026-11-08). Only what lies inside its ring, a few
  * rocks at first so nobody is lost among them, and other fleets crossing it so the player learns what
- * it is for. A scout comes to look, from a distance, and leaves.
+ * it is for. The radar's first return is staged on the player's own screen (item 28).
  */
 describe("the first telescope", () => {
   let world: StarterWorld;
@@ -116,34 +114,21 @@ describe("the first telescope", () => {
   });
 });
 
-describe("a scout at the ship", () => {
+describe("a scout already on its way", () => {
   let world: StarterWorld;
   beforeEach(async () => { world = await starterWorld(); });
   afterEach(async () => { await world.built.close(); });
 
-  const scoutFor = async (modules: Record<string, number>) => {
-    const person = await aboard(world, "Pilot", modules);
+  // Owner 2026-11-18 (item 28): no scout is sent any more; one in flight when this shipped is still told as one.
+  it("is told apart as a scout, not as a pirate coming for the ship", async () => {
+    const person = await aboard(world, "Pilot", { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 });
     const ship = (await world.f.db.select().from(vessels).where(eq(vessels.id, person.vesselId)))[0]!;
     const now = world.f.clock.now();
     await world.f.db.insert(vesselMissions).values({
-      starterGalaxyId: ship.starterGalaxyId, ownerVesselId: ship.id, kind: "MINE", status: "DONE",
-      fromX: ship.x, fromY: ship.y, fromZ: ship.z, toX: ship.x + 100, toY: ship.y, toZ: ship.z, departAt: now, arriveAt: now, orderedAt: now,
+      starterGalaxyId: ship.starterGalaxyId, ownerVesselId: null, kind: "SCOUT", targetVesselId: ship.id,
+      fromX: person.position.x + 300, fromY: person.position.y, fromZ: person.position.z, toX: person.position.x + 200, toY: person.position.y, toZ: person.position.z,
+      fleet: { DART: 1 }, departAt: now, arriveAt: new Date(now.getTime() + 600_000),
     });
-    await world.f.db.update(vessels).set({ lastSeenAt: now }).where(eq(vessels.id, ship.id));
-    await sweepStarterWorld(world.f.db, world.f.clock);
-    const [scout] = await world.f.db.select().from(vesselMissions).where(and(eq(vesselMissions.targetVesselId, ship.id), eq(vesselMissions.kind, "SCOUT")));
-    return { person, ship, scout: scout! };
-  };
-
-  it("stops short of the ship and turns away", async () => {
-    const { ship, scout } = await scoutFor({ REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 });
-    expect(distance({ x: scout.toX, y: scout.toY, z: scout.toZ }, ship)).toBeCloseTo(SCOUT_STANDOFF, 3);
-    expect(distance({ x: scout.fromX, y: scout.fromY, z: scout.fromZ }, ship)).toBeGreaterThan(STARTER.radar[1]);
-  });
-
-  it("is told apart as a scout, not as a pirate coming for the ship", async () => {
-    const { person, scout } = await scoutFor({ REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 });
-    await world.f.db.update(vesselMissions).set({ fromX: person.position.x + 300, fromY: person.position.y, fromZ: person.position.z }).where(eq(vesselMissions.id, scout.id));
     const { contacts } = await get<{ contacts: Contact[] }>(world, "/api/starter/traffic", person.headers);
     const contact = contacts.find(one => one.scout === true);
     expect(contact).toMatchObject({ kind: "fleet", scout: true });

@@ -1,6 +1,6 @@
-import { ALL_HULLS, REPAIR_LADDER, VESSEL_SYSTEMS, isFeatureOpen, jumpWindowOpen, type HullId, type RepairStep, type StarterFeature, type VesselFact, type VesselLook, type VesselModule, type VesselSystem } from '@astera/rules';
-import type { Focus } from '../../galaxy/FocusPanel.js';
+import { ALL_HULLS, REPAIR_LADDER, fleetCount, VESSEL_SYSTEMS, isFeatureOpen, jumpWindowOpen, type HullId, type RepairStep, type StarterFeature, type VesselFact, type VesselLook, type VesselModule, type VesselSystem } from '@astera/rules';
 import { scenePlayedFor, type Beat, type DirectorLine, type Scene } from './director.js';
+import { RADAR_LESSON } from './radarLesson.js';
 
 /**
  * THE FIRST SESSION'S SCENES (plan 2026-11-18 §5). What the ship is, where it is broken and where it is
@@ -126,6 +126,32 @@ const JUMP_READY: Scene = {
   ],
 };
 
+/** The radar shown on its staged contact (owner phone playtest 2026-11-18, item 28). */
+export const RADAR_LESSON_SCENE = 'radarLesson';
+/** The telescope's sphere opens once the camera has pulled back to it. */
+const LESSON_SIGHT_OPENS_MS = 1200;
+/**
+ * The telescope's sphere close, opening; the radar's around it as the camera pulls back; the question mark
+ * in the band between, watched from the side, a little far off, as it comes in; a little closer as it comes
+ * into sight, the fleet it turns out to be; and both spheres again, with why no red warning came (owner
+ * 2026-11-18: players have to understand it by watching).
+ */
+const radarShown = (name: (module: string) => string): Scene => ({
+  id: RADAR_LESSON_SCENE,
+  once: true,
+  keep: true,
+  beats: [
+    { id: 'telescope', shot: { kind: 'reach', reach: 'telescope' }, ms: 3000, reach: LESSON_SIGHT_OPENS_MS, line: 'starter.director.radarLesson.telescope', sound: 'confirm' },
+    { id: 'radar', shot: { kind: 'reach', reach: 'radar' }, ms: 3000, line: 'starter.director.radarLesson.radar', sound: 'confirm' },
+    { id: 'caught', shot: { kind: 'pass', part: 'band' }, ms: RADAR_LESSON.settleMs + RADAR_LESSON.enterMs, line: 'starter.director.radarLesson.caught', sound: 'alert' },
+    { id: 'seen', shot: { kind: 'pass', part: 'sight' }, ms: RADAR_LESSON.watchMs, line: 'starter.director.radarLesson.seen', vars: { hull: name('DART'), count: fleetCount(RADAR_LESSON.fleet) }, sound: 'confirm' },
+    { id: 'calm', shot: { kind: 'reach', reach: 'radar' }, ms: 3000, line: 'starter.director.radarLesson.calm' },
+  ],
+});
+
+/** Whether the radar's sphere is drawn on a shot of its lesson: not while the telescope's opens alone. */
+export const radarLessonShowsRadar = (beat: string): boolean => beat !== 'telescope';
+
 const DARK: Scene = {
   id: 'dark',
   once: true,
@@ -141,7 +167,10 @@ export function scenesFor(prev: ShipState | null, next: ShipState, name: (module
   for (const step of ROAD) {
     if (!isRoadModule(step.module)) continue;
     const roadStep = { ...step, module: step.module };
-    if (!have(prev, step) && have(next, step)) scenes.push(done(roadStep, name, lookChanged));
+    if (!have(prev, step) && have(next, step)) {
+      scenes.push(done(roadStep, name, lookChanged));
+      if (step.module === 'RADAR' && step.stage === 1) scenes.push(radarShown(name));
+    }
     else if (!have(next, step) && !ordered(prev, step) && ordered(next, step)) scenes.push(work(step, name(step.module), next));
   }
   const telescope = ROAD.find(step => step.module === 'TELESCOPE');
@@ -161,13 +190,6 @@ export const rockScene = (asteroidId: string): Scene => ({
     { id: 'field', shot: { kind: 'wide', range: 11 }, ms: 2400, line: 'starter.director.field', sound: 'confirm' },
     { id: 'approach', shot: { kind: 'subject', focus: { kind: 'asteroid', id: asteroidId }, range: 2.4 }, ms: 2800, line: 'starter.director.rock', sound: 'mining' },
   ],
-});
-
-/** The first contact on the radar, turned to (§5 A8): what the antenna will be for. */
-export const contactScene = (focus: Extract<Focus, { kind: 'contact' | 'unknownSignal' }>): Scene => ({
-  id: 'contact',
-  once: true,
-  beats: [{ id: 'turn', shot: { kind: 'subject', focus }, ms: 2800, line: 'starter.director.contact', sound: 'alert' }],
 });
 
 /** The probe's report come home (§5 A9): the camera turns to the ship it read, which is no longer a blank. */

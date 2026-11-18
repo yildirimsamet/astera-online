@@ -2,7 +2,6 @@ import { REPAIR_LADDER, jumpWindowOpen, type StarterFeature, type VesselFact } f
 import type { StarterTutorialStepId } from '../../api/starterTutorialSteps.js';
 import type { Opportunity } from '../opportunities.js';
 import type { HuntStage } from '../hunt.js';
-import type { SightNow } from './sightLesson.js';
 
 /**
  * THE STARTER GUIDE (owner 2026-11-08, N1 and N12). A short core is held: the power card, the first
@@ -10,7 +9,7 @@ import type { SightNow } from './sightLesson.js';
  * order, in the first minutes: crystal, telescope and radar, the rocks and a Prospector, the other
  * ships and a probe, the yard and a ship of one's own, then what the ship still needs to leave. It
  * points and never holds. A few first-time moments speak over it when they happen: a crate, a probe
- * report, a haul, a contact on the sensors. Once it is walked the advisor's list is all that is left.
+ * report, a haul, the jump opening. Once it is walked the advisor's list is all that is left.
  *
  * WHERE THE PLAYER IS COMES FROM THE SHIP. A step whose result the ship records (an order, a module,
  * a fact) is behind them for good, on any phone. Only reading a line and pressing a mark are
@@ -41,8 +40,6 @@ export interface TutorialInput {
   noRocks?: boolean;
   /** The director's camera has come close to a rock already (plan 2026-11-18 §5 A7). */
   rockShown?: boolean;
-  /** What the live sky holds: a sensor lesson waits for its subject (plan F6). None means nothing in sight. */
-  sight?: SightNow;
   /** The drive's scene is still to be seen: the jump is asked after it (owner phone playtest 2026-11-18, item 24). */
   jumpWaiting?: boolean;
   /** Where to land is being chosen: the player's own decision, spoken over by nothing. */
@@ -57,7 +54,7 @@ export type TutorialStepId = StarterTutorialStepId;
 export type TutorialKind = 'read' | 'press' | 'wait' | 'gesture';
 export type TutorialLineId = TutorialStepId;
 /** The card's heading: which part of the ship's story the line belongs to. */
-export type TutorialChapter = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+export type TutorialChapter = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 9;
 export type TutorialNav = 'openShip' | 'closePage' | 'dismissUnlock';
 
 export type TutorialAnswer =
@@ -111,12 +108,7 @@ const OBJECTIVE = '[data-guide="objective"]';
 const hasReady = (i: TutorialInput): boolean => i.crates.some(c => c.state === 'ready');
 /** Hours past the road, on any phone: nothing about the first session is told to this ship again. */
 const seasoned = (i: TutorialInput): boolean => ordered(i, 'SURVEY', 2) || ordered(i, 'HANGAR', 2);
-const noRadar = (i: TutorialInput): boolean => !has(i, 'RADAR', 1);
-/** Only with the sky in front of them: a flight crossing the ring must not pull a player off a page. */
-const inSight = (what: keyof SightNow) => (i: TutorialInput) => i.view === 'galaxy' && i.sight?.[what] === true;
-const CRAFT = '[data-guide="sight-craft"]';
 const hasMined = (i: TutorialInput): boolean => i.mining || i.facts.includes('FIRST_MINING_SENT') || i.facts.includes('FIRST_MINING_RETURN');
-const UNKNOWN = '[data-guide="sight-unknown"]';
 const JUMP_GO = '[data-guide="jump-go"]';
 /** The galaxy's call to the jump (`JumpCall`): it opens the ship at the drive. */
 const JUMP_CALL = '[data-jump-call]';
@@ -205,17 +197,6 @@ const MOMENTS: readonly Part[] = [
       { id: 'openIntel', kind: 'press', chapter: 4, place: 'any', marks: ['[data-guide="dock-intel"]'] },
       { id: 'openReport', kind: 'press', chapter: 4, place: 'any', marks: ['[data-known="probe"] button, [data-report-open]', '[data-guide="dock-intel"]'] },
       { id: 'report', kind: 'read', chapter: 4, place: 'galaxy', marks: ['[data-dossier-loot]'] },
-    ],
-  },
-  // THE RADAR, ON A REAL CONTACT (plan F6): nothing is made up for a lesson; an empty sky only means
-  // it waits, and the road goes on meanwhile. The scout comes to every Radar 1 owner who is there and has flown something.
-  {
-    strict: false, due: i => has(i, 'RADAR', 1),
-    steps: [
-      { id: 'radarRing', kind: 'read', chapter: 8, place: 'galaxy', marks: [UNKNOWN], satisfied: noRadar, ready: inSight('unknown') },
-      { id: 'radarContact', kind: 'read', chapter: 8, place: 'galaxy', marks: [UNKNOWN], satisfied: noRadar, ready: inSight('unknown') },
-      // Closed once the telescope has named a craft in its ring: what the radar asked, answered.
-      { id: 'sightTrio', kind: 'read', chapter: 8, place: 'galaxy', marks: [CRAFT], satisfied: noRadar, ready: inSight('traffic') },
     ],
   },
 ];

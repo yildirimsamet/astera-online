@@ -336,6 +336,7 @@ Her paket TDD ile ilerler. Her kural değişikliğinin aynaları test edilir: ru
     - Starter'da korsan veya gözcü temasına dokunmak hiçbir şey açmıyordu: ana galaksinin korsan paneli starter'da olmayan korsan listesini okur. Gemideyken korsan teması sıradan temas paneliyle açılır (`contactRail`). Bu daha önceden var olan bir hataydı.
   - **350×812 yürüyüşü (gerçek gözcü ve bot sondası):** Radar `?` → iki radar satırı → teleskop satırı → "Uçuşa dokun" → dokunuş "Korsan filosu · Küçük filo" panelini açtı → kapanış satırı. Aegis kartı tam genişlikte, taşma ve sayfa hatası yok. "İzle" satırı yürüyüşte görülmedi (gözcü halkadan çıkmadan vardı); birim testle bağlı.
   - **Not, kapsam dışı:** Bana gelen korsanın temas panelinde "Varışı bilinmiyor" yazıyor; radar varışı biliyor. Mevcut ana oyun metni, raporlandı.
+- **Değişti (owner, 2026-11-18, ilk oturum geri bildirimi madde 28):** Radar dersi artık gerçek gözcüyle öğretilmez. Radar 1 onarımından sonra istemcide sahnelenen bir temasla öğretilir; sunucu gözcü göndermez, korsan akını gözcüye bağlı değildir. Teleskop dersi gerçek temasla sürer. Ayrıntı: `docs/ilk-oturum-geri-bildirim-plani-2026-11-18.md` §8.
 
 ### F7. Motor, yakıt ve geçiş
 - **Plan görünümü:** DT1 ve DT2 erken önerilir, yakıt darboğazı süresiyle birlikte gösterilir; parça avı ve iki motor da aynı görünümde.

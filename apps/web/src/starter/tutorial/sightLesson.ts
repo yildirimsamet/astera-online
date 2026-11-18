@@ -1,15 +1,13 @@
-import { distance, type SensorSphere } from '@astera/rules';
 import { useEffect, useState } from 'react';
-import type { Contact } from '../../api/schemas.js';
 import { haptic } from '../../lib/haptics.js';
 import { playSound } from '../../lib/sound.js';
-import type { TutorialAnswer, TutorialLineId } from './script.js';
+import type { TutorialAnswer } from './script.js';
 
-export function sightLesson(answer: TutorialAnswer | null): 'telescope' | 'radar' | null {
+/** The instrument a line of the guide is about. The radar is shown in its own scene (item 28), not by a line. */
+export function sightLesson(answer: TutorialAnswer | null): 'telescope' | null {
   if (answer?.kind !== 'step' || answer.nav) return null;
   // The Prospector goes out inside the ring that showed its rock.
-  if (answer.id === 'telescopeLook' || answer.id === 'zoomRock' || answer.id === 'findRock' || answer.id === 'mine') return 'telescope';
-  return answer.id.startsWith('radar') || answer.id === 'sightTrio' ? 'radar' : null;
+  return answer.id === 'telescopeLook' || answer.id === 'zoomRock' || answer.id === 'findRock' || answer.id === 'mine' ? 'telescope' : null;
 }
 
 /** The line names the button in the rock's sheet, so the sheet is not left folded over it. */
@@ -26,33 +24,6 @@ export const rockMarks = (answer: TutorialAnswer | null): boolean =>
 /** While the player is asked to come closer, a rock is not yet to be touched (owner playtest 2026-11-09). */
 export const rocksHeld = (answer: TutorialAnswer | null): boolean =>
   answer?.kind === 'step' && answer.id === 'zoomRock' && !answer.nav;
-
-/** Published contacts only. An empty sky stays empty; a hidden fleet is never manufactured for a lesson. */
-export function lessonContact(id: TutorialLineId | undefined, contacts: readonly Contact[], sensor?: SensorSphere): Contact | undefined {
-  const live = contacts.filter(contact=>contact.effectOnly !== true);
-  if (id === 'radarRing' || id === 'radarContact') return live.find(contact=>contact.kind==='unknown');
-  const known = live.filter(contact=>contact.kind!=='unknown');
-  if (id === 'sightTrio') return known.find(contact=>!sensor || distance(contact.from,sensor.at)<=sensor.identify);
-  return undefined;
-}
-
-/** What the live sky holds for a sensor lesson (plan F6): each lesson waits for its own subject. */
-export interface SightNow {
-  /** A craft named inside the telescope's ring. */
-  traffic: boolean;
-  /** A radar return nobody has named yet. */
-  unknown: boolean;
-}
-
-export const NOTHING_IN_SIGHT: SightNow = { traffic: false, unknown: false };
-
-export function sightNow(contacts: readonly Contact[], sensor: SensorSphere | undefined): SightNow {
-  if (!sensor) return NOTHING_IN_SIGHT;
-  return {
-    traffic: lessonContact('sightTrio', contacts, sensor) !== undefined,
-    unknown: lessonContact('radarContact', contacts, sensor) !== undefined,
-  };
-}
 
 /** The ring takes 1.4 s to spread; the rocks land as it ends (owner playtest 2026-11-09) and the fleets a second later. */
 export const REVEAL_ROCKS_MS = 1_400;

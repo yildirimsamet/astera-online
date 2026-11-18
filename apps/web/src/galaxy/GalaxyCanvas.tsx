@@ -8,7 +8,7 @@ import { JUMP_LAYER, type Jump } from '../starter/jump.js';
 import type { JumpWorld } from '../starter/jumpWorld.js';
 import { StarterGlow } from './StarterGlow.js';
 import type { DepartureBeam } from './mainSky.js';
-import { mainOffsetOf, motionPositionAt, type Vec3, type VesselHull, type VesselLook, type VesselModule, type VesselProgress, type VesselSystem } from '@astera/rules';
+import { VIEW, mainOffsetOf, motionPositionAt, type Vec3, type VesselHull, type VesselLook, type VesselModule, type VesselProgress, type VesselSystem } from '@astera/rules';
 import type { MainSky } from '../api/starterSchemas.js';
 import { MainGalaxySky } from './MainGalaxySky.js';
 import { UniverseBalls } from './UniverseBalls.js';
@@ -48,7 +48,8 @@ import type {
 } from '../api/schemas.js';
 import type { Focus } from './FocusPanel.js';
 import { useDirector, useReachState, type ShotTarget } from '../starter/director/director.js';
-import { SHOT_RETURN_SECONDS, bayView, homeward, shotPose, type DirectorShot } from '../starter/director/shotPose.js';
+import { SHOT_RETURN_SECONDS, bayView, homeward, reachRange, shotPose, type DirectorShot } from '../starter/director/shotPose.js';
+import { RADAR_LESSON, lessonBearing, lessonFlight, lessonFrame, lessonSide } from '../starter/director/radarLesson.js';
 import { Monuments } from './Monuments.js';
 import { UnknownSignals } from './UnknownSignals.js';
 import { RadiationIndicator } from '../ui/RadiationIndicator.js';
@@ -706,8 +707,31 @@ export function GalaxyCanvas({
         const at = resolveSubject(target.focus);
         return at ? { key: directing.key, at, range: target.range ?? SHOT_SUBJECT_RANGE, stays: true, seconds: span * 0.7 } : null;
       }
+      case 'reach': {
+        const post = sensors?.[0];
+        const radius = post ? (target.reach === 'radar' ? post.detect : post.identify) / VIEW.scale : 0;
+        if (radius <= 0) return null;
+        return { key: directing.key, at: ship, range: reachRange(radius, window.innerWidth / Math.max(1, window.innerHeight), GALAXY_FOV), seconds: Math.min(1.6, span * 0.6) };
+      }
+      case 'pass': {
+        // The radar lesson's contact from the side (owner 2026-11-18): the line its hook flies, from the same ship.
+        const post = sensors?.[0];
+        if (!post || post.detect <= post.identify) return null;
+        const flight = lessonFlight(post, lessonBearing(directing.vesselId));
+        const frame = lessonFrame(flight, target.part);
+        const side = lessonSide(flight);
+        const lift = side.y * VIEW.verticalExaggeration;
+        const across = Math.hypot(side.x, lift, side.z);
+        const at = toWorld(frame.at);
+        const towards: [number, number, number] = [side.x / across, lift / across, side.z / across];
+        return {
+          key: directing.key, at: () => at, towards: () => towards,
+          range: reachRange(frame.half / VIEW.scale, window.innerWidth / Math.max(1, window.innerHeight), GALAXY_FOV),
+          seconds: target.part === 'band' ? RADAR_LESSON.settleMs / 1000 : 1,
+        };
+      }
     }
-  }, [directing, directorLive, shotHull, home, mainOffset, resolveSubject]);
+  }, [directing, directorLive, shotHull, home, mainOffset, resolveSubject, sensors]);
 
   /**
    * How close the camera is pulled in when it takes a new subject.
@@ -988,9 +1012,10 @@ export function GalaxyCanvas({
             posts={sensors}
             showTelescope={reach === 'open' || (showTelescopeReach && reach === 'free')}
             showRadar={showRadarReach}
+            staged={directing !== null}
           />
         )}
-        {sensors && !universe?.open && <StarterSightMarks sensors={sensors} contacts={contacts} nodes={nodes} asteroids={asteroids} seasonStart={seasonStart}/>}
+        {sensors && !universe?.open && <StarterSightMarks sensors={sensors} asteroids={asteroids} seasonStart={seasonStart}/>}
         <OwnershipFilaments nodes={nodes} selectedId={selectedId} />
         <PlanetField
           nodes={fieldBodies}

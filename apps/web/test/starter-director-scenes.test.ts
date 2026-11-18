@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SHOT_MAX_MS } from '../src/starter/director/director.js';
-import { TELESCOPE_PULL, WORK_GRACE_MS, contactScene, probeScene, rockScene, sceneAnnouncing, scenesFor, weldingBays, yardNeedScene, type ShipState } from '../src/starter/director/scenes.js';
+import { RADAR_LESSON } from '../src/starter/director/radarLesson.js';
+import { RADAR_LESSON_SCENE, TELESCOPE_PULL, radarLessonShowsRadar, WORK_GRACE_MS, probeScene, rockScene, sceneAnnouncing, scenesFor, weldingBays, yardNeedScene, type ShipState } from '../src/starter/director/scenes.js';
 
 /**
  * WHICH SCENE A CHANGE OF THE SHIP CALLS FOR (plan 2026-11-18 §5, Faz 5.2–5.6). The first look at the
@@ -87,7 +88,6 @@ describe('the scenes a ship calls for', () => {
       ...scenesFor(null, opening, name),
       ...scenesFor(opening, { ...opening, queue: [{ subject: 'REFINERY', stage: 2 }] }, name),
       rockScene('rock-1'),
-      contactScene({ kind: 'contact', id: 'c-1' }),
       probeScene({ id: 'ship-2', name: 'Vega' }),
       yardNeedScene(),
       ...scenesFor(ROAD_DONE, { ...ROAD_DONE, facts: ['FIRST_BATTLE_REPORT'] }, name),
@@ -104,10 +104,57 @@ describe('the scenes a ship calls for', () => {
     expect(approach?.shot).toEqual({ kind: 'subject', focus: { kind: 'asteroid', id: 'rock-1' }, range: 2.4 });
   });
 
-  it('comes close to the first rock and to the first contact without opening them', () => {
+  it('comes close to the first rock without opening it', () => {
     expect(rockScene('rock-1').beats.at(-1)?.shot).toEqual({ kind: 'subject', focus: { kind: 'asteroid', id: 'rock-1' }, range: 2.4 });
     expect(rockScene('rock-1').id).toBe('rock');
-    expect(contactScene({ kind: 'unknownSignal', id: 's-1' }).beats[0]?.line).toBe('starter.director.contact');
+  });
+});
+
+/**
+ * Owner phone playtest 2026-11-18, item 28: the radar is shown as it comes back, on a staged contact. The
+ * telescope's sphere close, then the radar's around it; the question mark in the radar's band, the fleet seen
+ * as it comes into the telescope's sphere, and why no red warning came: it is not coming for us.
+ */
+describe('the radar, shown as it comes back', () => {
+  const before: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }, queue: [], look: 'PATCHED', facts: ['FIRST_MINING_SENT'] };
+  const after: ShipState = { ...before, modules: { ...before.modules, RADAR: 1 } };
+  const lesson = () => scenesFor(before, after, name).find(scene => scene.id === RADAR_LESSON_SCENE);
+
+  it('follows the radar\'s own return', () => {
+    expect(ids(before, after)).toEqual(['repair:RADAR:1:done', RADAR_LESSON_SCENE]);
+    expect(lesson()?.once).toBe(true);
+  });
+
+  it('opens the telescope\'s sphere close, pulls back to the radar\'s, watches the question mark from the side, closes in as it comes into sight, and pulls back to both', () => {
+    expect(lesson()?.beats.map(beat => beat.id)).toEqual(['telescope', 'radar', 'caught', 'seen', 'calm']);
+    expect(lesson()?.beats.map(beat => beat.shot)).toEqual([
+      { kind: 'reach', reach: 'telescope' }, { kind: 'reach', reach: 'radar' }, { kind: 'pass', part: 'band' }, { kind: 'pass', part: 'sight' }, { kind: 'reach', reach: 'radar' },
+    ]);
+    expect(lesson()?.beats.map(beat => beat.line)).toEqual([
+      'starter.director.radarLesson.telescope', 'starter.director.radarLesson.radar', 'starter.director.radarLesson.caught',
+      'starter.director.radarLesson.seen', 'starter.director.radarLesson.calm',
+    ]);
+  });
+
+  it('opens the telescope\'s sphere once the camera is there, and the radar\'s only on its own shot', () => {
+    const [blue, green] = lesson()?.beats ?? [];
+    expect(blue?.reach).toBeGreaterThan(0);
+    expect(blue?.reach).toBeLessThan(blue?.ms ?? 0);
+    expect(green?.reach).toBeUndefined();
+    expect(lesson()?.beats.map(beat => radarLessonShowsRadar(beat.id))).toEqual([false, true, true, true, true]);
+  });
+
+  it('holds the side shot until the camera is round and the question mark has come into sight, then watches it there', () => {
+    const caught = lesson()?.beats.find(beat => beat.id === 'caught');
+    const seen = lesson()?.beats.find(beat => beat.id === 'seen');
+    expect(caught?.ms).toBe(RADAR_LESSON.settleMs + RADAR_LESSON.enterMs);
+    expect(seen?.ms).toBe(RADAR_LESSON.watchMs);
+    for (const beat of lesson()?.beats ?? []) if (beat.id !== 'caught') expect(beat.ms).toBeLessThanOrEqual(3000);
+  });
+
+  it('is shown once, and not to a ship whose radar was already working', () => {
+    expect(ids(after, { ...after, facts: [...after.facts, 'FIRST_MINING_RETURN'] })).toEqual([]);
+    expect(ids(null, after)).toEqual([]);
   });
 });
 

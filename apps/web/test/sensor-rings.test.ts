@@ -13,6 +13,9 @@ import {
   TELESCOPE_GLASS_OPACITY,
   TELESCOPE_GRID_OPACITY,
   radarWaveState,
+  burstPhase,
+  SHELL_STAGED,
+  shellGlow,
   SHELL_SPREAD_SECONDS,
   shellSpread,
   radarSweepAngle,
@@ -224,5 +227,30 @@ describe('the telescope shell opening', () => {
   it('rests at the server-accurate radius and its own faint glass', () => {
     expect(shellSpread(SHELL_SPREAD_SECONDS)).toEqual({ scale: 1, glow: 1 });
     expect(shellSpread(99)).toEqual({ scale: 1, glow: 1 });
+  });
+});
+
+/** A radar a scene shows pulses as it appears (item 28); one switched on any other time keeps its own beat. */
+describe('the radar\'s first wave', () => {
+  it('starts at once for a scene', () => {
+    expect(burstPhase(true, () => 0.7)).toBe(0);
+  });
+
+  it('starts anywhere in its interval otherwise, so two radars never pulse together', () => {
+    expect(burstPhase(false, () => 0.5)).toBeCloseTo(RADAR_BURST_INTERVAL_SECONDS / 2, 6);
+  });
+});
+
+/** The telescope's sphere rests barely there; a scene that shows it draws it clearly (item 28: blue inside green). */
+describe('the telescope\'s sphere in a scene', () => {
+  it('rests at its own faintness outside one', () => {
+    expect(shellGlow(SHELL_SPREAD_SECONDS + 5, false)).toBe(1);
+  });
+
+  it('is drawn clearly while a scene shows it, and never dimmer than its opening', () => {
+    expect(SHELL_STAGED).toBeGreaterThan(1);
+    expect(shellGlow(SHELL_SPREAD_SECONDS + 5, true)).toBe(SHELL_STAGED);
+    expect(shellGlow(0, true)).toBe(shellSpread(0).glow);
+    expect(shellGlow(0, false)).toBe(shellSpread(0).glow);
   });
 });

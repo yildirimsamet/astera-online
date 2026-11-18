@@ -3,7 +3,14 @@
  * range, seen from the side the camera already looks from, or swung round it by the shot's turn about
  * the vertical. The height of the view is kept, so a turn reads as a walk round the subject.
  */
+import { sightCameraDistance } from '../../galaxy/follow.js';
+
 type Vec = readonly [number, number, number];
+
+/** Room left round a sphere a shot holds whole: the scene's letterbox covers the top and the foot. */
+const REACH_MARGIN = 1.15;
+/** How far back a shot stands to hold the whole of a sphere this size (item 28: the radar's and the telescope's). */
+export const reachRange = (radius: number, aspect: number, fov: number): number => sightCameraDistance(radius * REACH_MARGIN, fov, aspect);
 
 export interface ShotAim {
   to: Vec;

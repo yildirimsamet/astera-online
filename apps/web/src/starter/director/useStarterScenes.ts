@@ -5,7 +5,7 @@ import { hullName } from '../../i18n/names.js';
 import { moduleName } from '../moduleName.js';
 import { REVEAL_FLEETS_MS } from '../tutorial/sightLesson.js';
 import { playScene, useDirector, type Scene } from './director.js';
-import { contactScene, probeScene, rockScene, scenesFor, yardNeedScene, type ShipState } from './scenes.js';
+import { probeScene, rockScene, scenesFor, yardNeedScene, type ShipState } from './scenes.js';
 
 /** Before the first look is taken: the galaxy's own opening flight settles first. */
 export const FIRST_LOOK_MS = 1_200;
@@ -22,9 +22,9 @@ const asked = (state: ShipState | null, module: string): boolean => state?.queue
 
 /**
  * When a scene's moment has gone (owner 2026-11-18: past moments played in a burst after a page was
- * closed): the repair it shows done, the yard it asks for ordered, the dark lit, the contact gone.
+ * closed): the repair it shows done, the yard it asks for ordered, the dark lit.
  */
-function withMoment(scene: Scene, now: () => { state: ShipState | null; contact: string | null; mined: boolean }): Scene {
+function withMoment(scene: Scene, now: () => { state: ShipState | null; mined: boolean }): Scene {
   const work = /^repair:([A-Z_]+):(\d+):work$/u.exec(scene.id);
   if (work) {
     const [, module = '', stage = '1'] = work;
@@ -33,10 +33,6 @@ function withMoment(scene: Scene, now: () => { state: ShipState | null; contact:
   if (scene.id === 'yardNeed') return { ...scene, stale: () => has(now().state, 'SHIPYARD') || asked(now().state, 'SHIPYARD') };
   if (scene.id === 'dark') return { ...scene, stale: () => has(now().state, 'TELESCOPE') || asked(now().state, 'TELESCOPE') };
   if (scene.id === 'rock') return { ...scene, stale: () => now().mined };
-  if (scene.id === 'contact') {
-    const contact = now().contact;
-    return { ...scene, stale: () => now().contact !== contact };
-  }
   return scene;
 }
 
@@ -47,18 +43,17 @@ const nameOf = (module: string): string => (isModule(module) ? moduleName(module
 /**
  * WHERE THE SHIP'S CHANGES BECOME SCENES (plan 2026-11-18 §5). The ship is read as it changes; a repair
  * of the road ordered from the ship's page closes the page, so it is seen being done on the hull; the
- * first rock is come close to once the telescope's sky has landed, and the first radar return turned to;
- * the yard is shown empty while the probe is out, and the probe's report turned to as it comes home.
+ * first rock is come close to once the telescope's sky has landed; the radar is shown on its staged
+ * contact as it comes back (item 28); the yard is shown empty while the probe is out, and the probe's
+ * report turned to as it comes home.
  */
-export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, unknownContactId, probing, probeTarget, onAwaken }: {
+export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, probing, probeTarget, onAwaken }: {
   ship: VesselView | undefined;
   /** The ship's own page is open over the galaxy. */
   shipOpen: boolean;
   onCloseShip: () => void;
   /** The rock a Prospector would go to first, once the telescope has shown the field. */
   nearestRockId: string | null;
-  /** A radar return nobody has named yet. */
-  unknownContactId: string | null;
   /** A probe of this ship's is out. */
   probing: boolean;
   /** The ship the latest probe report read, once it is home. */
@@ -74,8 +69,8 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, u
   const state = ship ? stateOf(ship) : null;
   const key = state ? JSON.stringify(state) : '';
   const mined = ship ? ship.facts.includes('FIRST_MINING_SENT') || ship.facts.includes('FIRST_MINING_RETURN') : true;
-  const latest = useRef({ state, shipOpen, onCloseShip, contact: unknownContactId, mined });
-  latest.current = { state, shipOpen, onCloseShip, contact: unknownContactId, mined };
+  const latest = useRef({ state, shipOpen, onCloseShip, mined });
+  latest.current = { state, shipOpen, onCloseShip, mined };
   const moment = useRef(() => latest.current);
   /** Asks for a scene, knowing when its moment has gone. */
   const play = useRef((scene: Scene, vesselId: string): boolean => playScene(withMoment(scene, moment.current), vesselId));
@@ -119,12 +114,6 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, u
     const timer = window.setTimeout(() => { play.current(rockScene(nearestRockId), id); }, REVEAL_FLEETS_MS);
     return () => { window.clearTimeout(timer); };
   }, [id, mined, telescope, nearestRockId]);
-
-  const radar = (ship?.modules.RADAR ?? 0) >= 1;
-  useEffect(() => {
-    if (!id || !radar || unknownContactId === null) return;
-    play.current(contactScene({ kind: 'contact', id: unknownContactId }), id);
-  }, [id, radar, unknownContactId]);
 
   const target = probeTarget?.id;
   const targetName = probeTarget?.name;

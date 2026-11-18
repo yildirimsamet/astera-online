@@ -118,3 +118,15 @@ Her adım TDD ile yapılır: önce kırmızı test, sonra kod, sonra yeşil. Ard
 | 26 | Sonda rampası onarımı 10 sn sürsün. | `SURVEY 1` 30 sn. | `seconds(10)`. |
 | 27 | Benzer sorunları tara. | — | Tarama sonucu aşağıda. |
 | 28 | "Bir şey yaklaşıyor" radar açılınca gösterilsin: teleskop (küçük, görüş) ve radar (büyük, bilgi) alanı birlikte; "?" radar alanında görünür, ~2 sn'de teleskop alanına girer, 20 Ok (4 model) olduğu görülür; kırmızı uyarı yok, yerine "bize gelmiyorlar, gelselerdi radara girdikleri an kırmızı uyarı alırdık". Kamera, zoom ve satırlar düzgün kurgulansın. | Sunucu Radar 1 sahibine gemiye doğru 1 Ok'luk izci yolluyor (`npcRaids.ts`), bu yüzden kırmızı "Yaklaşan tehdit" bandı çıkıyor; ders üç okuma adımıyla (`radarRing`, `radarContact`, `sightTrio`) gerçek temasa bağlı. | **Owner kararı (2026-11-18): sahnelenmiş, yalnız istemci; izci kaldırılır.** Radar dönüş sahnesi: kamera iki küreyi gösterecek kadar geri çekilir → "?" cisme döner ("radar bir cisim yakaladı") → cisim teleskop küresine girer, 4 Ok modeli görünür ("artık görüyoruz: 20 Ok") → bilgi satırı. Korsan baskını izciye bağlı olmaktan çıkar. F6 "ders için hiçbir şey uydurulmaz" kuralı bu ders için owner kararıyla değişti. |
+
+### §8 ilerleme
+
+| # | Durum | Commit / not |
+|---|---|---|
+| 23 | bitti, telefonda doğrulanacak | 86f8eba3 tam ekran kökler `--app-h` ile boyutlanır, oyun açıkken sayfa kaymaz. Brave'in alt çubuğu yerelde taklit edilemedi. |
+| 24 | bitti | 278c4d6a pencere açılınca motor sahnesi, ardından gemide Motor'da soru: "Hemen geç" eli `jump-go`ya koyar, "Önce güçlen" tersaneye döner. 350 px'te canlı yüründü. |
+| 25 | bitti | 4139c663 sayfayı tek el kaydırır: rehber konuşurken onarım anı kendi kaydırmasını yapmaz. |
+| 26 | bitti | d35c38c3 Sonda rampası 1 10 sn. |
+| 27 | sürüyor | 278c4d6a SIRADAKİ satırı rehberle çelişiyordu, galaksideki sıçrama çağrısı Rafineri'yi açıyordu; ikisi düzeltildi. |
+| 28 | bitti | Sahne (5 çekim, ~15 sn, basılı tutarak geçilir): (1) kamera geri çekilir, mavi teleskop küresi gemiden yayılır; (2) daha geri, yeşil radar küresi ilk dalgasıyla açılır, "?" yeşil bantta durur; (3) owner'ın ek notu (2026-11-18: "yandan, önce radar küresi içinde hafif uzaktan, teleskopa girişte hafif zoom-in"): kamera "?"'in arkasından ve yanından, teleskop küresinin giriş noktasındaki teğeti boyunca bakar; kadrajda solda mavi kenar, sağda yeşil kenar; kamera yerleşince (1,2 sn) "?" 2 sn'de mavi kenara varır; (4) kenarı geçtiği an Ok ×40 (4 model) olur, kamera %55'e yaklaşır, filo kürenin içinde yavaşlar; (5) iki küre birlikte, "gelselerdi radara girdikleri an kırmızı uyarı alırdık". Sahnedeyken teleskop küresi 3 kat belirgin çizilir (kendi kenar ışığı, yeni parlama yok). Sunucu izci göndermez; korsan akını yalnız Aegis 1 + ilk sefer + 18 saatlik aralığa bağlı. Yolda olan eski izciler eskisi gibi işlenir. 20 Ok istenmişti, ama galaksi her 10 gemiye 1 model çizer: 4 model için 40 Ok kullanıldı (tek sabit, `RADAR_LESSON.fleet`). |
+
