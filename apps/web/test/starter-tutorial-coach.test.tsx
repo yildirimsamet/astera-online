@@ -211,6 +211,9 @@ describe('the starter tutorial on screen', () => {
     </>);
     act(() => { vi.advanceTimersByTime(600); });
     expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ inline: 'center' }));
+    // Once (item 25): pulled back every half second, the page fought a player who scrolled away.
+    act(() => { vi.advanceTimersByTime(3000); });
+    expect(scrollIntoView).toHaveBeenCalledOnce();
   });
 
   it('records each visible tutorial step with the starter version and its scene id', () => {

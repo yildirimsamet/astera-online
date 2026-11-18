@@ -14,6 +14,7 @@ import { useLaunchSheet } from './launchSheet.js';
 import { closeFocus } from './focusClose.js';
 import { useDirecting } from '../director/director.js';
 import { SHOT_HOME_MS } from '../director/shotPose.js';
+import { scrollHeld } from '../../lib/scrollHold.js';
 
 const CHAPTER = {
   1: 'starter.tutorial.chapter.1', 2: 'starter.tutorial.chapter.2', 3: 'starter.tutorial.chapter.3', 4: 'starter.tutorial.chapter.4',
@@ -154,6 +155,7 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
     if (!live || !stepId || kind === 'read' || kind === 'gesture') return undefined;
     const began = Date.now();
     let missingSince: number | null = null;
+    let pulled: Element | null = null;
     let told = false;
     const tell = (code: string): void => {
       if (told) return;
@@ -169,8 +171,8 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
       if (found) {
         missingSince = null;
         setStuck(false);
-        // A thumbnail can sit past the strip's edge: bring it into the strip's view.
-        if (found.matches(THUMB)) found.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+        // A thumbnail can sit past the strip's edge: bring it into the strip's view, once (item 25).
+        if (found.matches(THUMB) && found !== pulled && !scrollHeld()) { pulled = found; found.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }
         return;
       }
       missingSince ??= Date.now();
@@ -184,7 +186,7 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
     let attempts = 0;
     const timer = window.setInterval(() => {
       const target = targets()[0];
-      if (target && !target.closest('[data-scene-mark]')) target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      if (target && !target.closest('[data-scene-mark]') && !scrollHeld()) target.scrollIntoView({ block: 'start', behavior: 'smooth' });
       if (target || ++attempts >= 16) window.clearInterval(timer);
     }, 250);
     return () => { window.clearInterval(timer); };

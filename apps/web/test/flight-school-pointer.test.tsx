@@ -1,6 +1,7 @@
 import { act, render } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { SchoolPointer } from '../src/onboarding/flightSchool/SchoolPointer.js';
+import { holdScroll, releaseScroll } from '../src/lib/scrollHold.js';
 afterEach(() => { vi.useRealTimers(); });
 it('waits for a settled control and never flashes on the previous menu during a transition', () => {
  vi.useFakeTimers();vi.spyOn(performance,'now').mockImplementation(()=>Date.now());
@@ -31,6 +32,22 @@ it('scrolls the sheet body to a clipped target instead of scrolling the entire s
  expect(scroll).toHaveBeenCalled();
  expect(document.querySelector('[data-school-highlight]')).toHaveStyle({visibility:'hidden'});
  view.unmount();body.remove();
+});
+// Owner phone playtest 2026-11-18 (item 25): a moment on screen holds the pointer's scrolling until it is over.
+it('waits while a moment holds the scroll, then brings its target in', () => {
+ vi.useFakeTimers();vi.spyOn(performance,'now').mockImplementation(()=>Date.now());vi.spyOn(window,'requestAnimationFrame').mockImplementation(fn => window.setTimeout(()=>{fn(performance.now());},16));
+ vi.spyOn(window,'cancelAnimationFrame').mockImplementation(id=>{clearTimeout(id);});
+ const body=document.createElement('div');body.dataset.sheetBody='';const button=document.createElement('button');body.append(button);document.body.append(body);
+ vi.spyOn(body,'getBoundingClientRect').mockReturnValue(new DOMRect(0,250,350,180));
+ vi.spyOn(button,'getBoundingClientRect').mockReturnValue(new DOMRect(20,500,100,44));
+ const scroll=vi.fn();body.scrollBy=scroll;
+ holdScroll(1500);
+ const view=render(<SchoolPointer targets={()=>[button]} />);
+ act(()=>{vi.advanceTimersByTime(1400);});
+ expect(scroll).not.toHaveBeenCalled();
+ act(()=>{vi.advanceTimersByTime(400);});
+ expect(scroll).toHaveBeenCalled();
+ view.unmount();body.remove();releaseScroll();
 });
 it('repositions a target when the coach or phone resize reduces the same sheet viewport', () => {
  vi.useFakeTimers();vi.spyOn(performance,'now').mockImplementation(()=>Date.now());

@@ -3,6 +3,7 @@ import { openingProgress, type VesselProgress } from '@astera/rules';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bayCondition, repairMoment, systemPercent } from '../src/starter/shipScreen.js';
 import { GAIN_COUNT_MS, GAIN_SHAKE_MS, ShipHero } from '../src/starter/ShipHero.js';
+import { scrollHeld } from '../src/lib/scrollHold.js';
 
 const sound = vi.hoisted(() => ({ playSound: vi.fn() }));
 const haptics = vi.hoisted(() => ({ haptic: vi.fn() }));
@@ -169,6 +170,34 @@ describe('a repair shown on the ship when the player comes back to it', () => {
     expect(document.querySelector('[data-gain]')).toBeNull();
     act(() => { vi.advanceTimersByTime(3000); });
     expect(scroll).not.toHaveBeenCalled();
+  });
+
+  // Owner phone playtest 2026-11-18 (item 25): the moment and the guide's pointer pulled the page two ways.
+  it('holds the other scrolls while it plays, and leaves the way on to the guide when it speaks', () => {
+    const coach = document.createElement('aside');
+    coach.setAttribute('data-school-coach', '');
+    document.body.append(coach);
+    const view = render(draw(ship({ REFINERY: 2 })));
+    view.rerender(draw(ship(road)));
+    expect(scrollHeld()).toBe(true);
+    act(() => { vi.advanceTimersByTime(GAIN_COUNT_MS + GAIN_SHAKE_MS + 400); });
+    expect(scrollHeld()).toBe(false);
+    expect(scroll).not.toHaveBeenCalled();
+    coach.remove();
+  });
+
+  it('goes on to the control the next step marks, when one is marked', () => {
+    const marked = document.createElement('button');
+    marked.setAttribute('data-starter-next', '');
+    const toMarked = vi.fn();
+    marked.scrollIntoView = toMarked;
+    document.body.append(marked);
+    const view = render(draw(ship({ REFINERY: 2 })));
+    view.rerender(draw(ship(road)));
+    act(() => { vi.advanceTimersByTime(GAIN_COUNT_MS + GAIN_SHAKE_MS + 400); });
+    expect(toMarked).toHaveBeenCalledOnce();
+    expect(scroll).not.toHaveBeenCalled();
+    marked.remove();
   });
 
   it('shows a repair that comes in while the page is open the same way', () => {

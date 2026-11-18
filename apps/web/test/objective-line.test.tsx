@@ -128,7 +128,7 @@ describe('the advisor behind the next-step line', () => {
     expect(rows[1]?.textContent).not.toMatch(/recommended/i);
     expect(rows[0]?.textContent).toContain(String(survey.alloy));
     expect(rows[0]?.textContent).toContain(String(survey.crystal));
-    expect(rows[0]?.textContent).toContain('30s');
+    expect(rows[0]?.textContent).toContain('10s');
     expect(rows[0]?.textContent).toMatch(/opens probes/i);
     expect(sound).toHaveBeenCalled();
   });

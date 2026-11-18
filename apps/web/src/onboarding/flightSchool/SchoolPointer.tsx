@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { scrollHeld } from '../../lib/scrollHold.js';
 import { TutorialHand } from '../TutorialHand.js';
 import { SchoolHighlight } from './SchoolHighlight.js';
 
@@ -47,7 +48,7 @@ export function SchoolPointer({ targets, showHand = true }: { targets: () => rea
         if (target?.hasAttribute('data-scene-mark') !== true) { since = performance.now(); settled.current = null; }
       }
       const queue = target?.hasAttribute('data-queue-lane') === true;
-      if (box && scroll && !fits && attempts < 3 && (queue || (performance.now() - since >= 180 && performance.now() - scrollAt >= 400))) {
+      if (box && scroll && !fits && attempts < 3 && !scrollHeld() && (queue || (performance.now() - since >= 180 && performance.now() - scrollAt >= 400))) {
         scroll.scrollBy({ top: box.top - top, behavior: queue ? 'instant' : 'smooth' }); scrollAt = performance.now(); attempts++;
       }
       // A mark out in the scene is drawn under an open panel; the pointer must not float above it.

@@ -1,6 +1,7 @@
 import { REPAIR_LADDER, type RepairStep } from '@astera/rules';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { haptic } from '../../lib/haptics.js';
+import { scrollHeld } from '../../lib/scrollHold.js';
 import { SchoolPointer } from '../../onboarding/flightSchool/SchoolPointer.js';
 import type { Opportunity } from '../opportunities.js';
 import { ROAD, adviceMarks, type TutorialAnswer, type TutorialStep, type TutorialStepId, type TutorialView } from './script.js';
@@ -97,7 +98,7 @@ export function StarterGoalPulse({ goal, ack }: { goal: StarterGoalValue | null;
       marked.current = next;
       next.setAttribute('data-starter-next', '');
       next.addEventListener('click', clicked);
-      if ('scrollIntoView' in next) next.scrollIntoView({ block: 'nearest' });
+      if ('scrollIntoView' in next && !scrollHeld()) next.scrollIntoView({ block: 'nearest' });
       setHandOn(next);
     };
     refresh();

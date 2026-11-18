@@ -2,6 +2,7 @@ import { VESSEL_SYSTEMS, jumpWindowOpen, vesselHull, vesselLook, type VesselProg
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { haptic } from '../lib/haptics.js';
+import { holdScroll, releaseScroll } from '../lib/scrollHold.js';
 import { playSound } from '../lib/sound.js';
 import { goalRepair, useStarterGoal } from './tutorial/visualGoal.js';
 import { Icon } from '../v2/icons.js';
@@ -106,6 +107,8 @@ function useGains(id: string, shares: Shares): { shown: Shares; gains: readonly 
   }, [id, key]);
   useEffect(() => {
     if (!run) return undefined;
+    // The moment is where the player looks: nothing else moves the page until it is over (item 25).
+    holdScroll(GAIN_COUNT_MS + GAIN_SHAKE_MS + GAIN_REST_MS);
     const counting = window.setInterval(() => { setTick(n => n + 1); }, 30);
     const shake = window.setTimeout(() => {
       window.clearInterval(counting);
@@ -118,9 +121,12 @@ function useGains(id: string, shares: Shares): { shown: Shares; gains: readonly 
       setShaking(false);
       setRun(null);
       rememberShares(id, latest.current);
-      document.querySelector('[data-guide="repair-order"]')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      releaseScroll();
+      // With the guide speaking, its pointer takes the page to what it names (a crate, or the next repair).
+      if (document.querySelector('[data-school-coach]')) return;
+      (document.querySelector('[data-starter-next]') ?? document.querySelector('[data-guide="repair-order"]'))?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }, GAIN_COUNT_MS + GAIN_SHAKE_MS + GAIN_REST_MS);
-    return () => { window.clearInterval(counting); window.clearTimeout(shake); window.clearTimeout(done); };
+    return () => { window.clearInterval(counting); window.clearTimeout(shake); window.clearTimeout(done); releaseScroll(); };
   }, [run, id]);
   if (!run) return { shown: shares, gains: [], shaking };
   const share = Math.min(1, (Date.now() - run.started) / GAIN_COUNT_MS);
