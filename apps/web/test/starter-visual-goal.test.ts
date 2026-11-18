@@ -1,6 +1,6 @@
 import { REPAIR_LADDER } from '@astera/rules';
 import { describe, expect, it } from 'vitest';
-import type { TutorialStep } from '../src/starter/tutorial/script.js';
+import { COLLECT_MARK, type TutorialStep } from '../src/starter/tutorial/script.js';
 import { goalMarks, goalRepair, starterGoal, type StarterGoalValue } from '../src/starter/tutorial/visualGoal.js';
 import { repairGainIcon } from '../src/starter/steps.js';
 
@@ -27,9 +27,9 @@ describe('what the marks follow', () => {
   });
 
   it('points the hand only at what the player picked, and only with the guide on', () => {
-    expect(goalMarks(goal({ picked: true }))).toEqual({ marks: ['[data-guide="works"]'], hand: true });
-    expect(goalMarks(goal({ picked: false }))).toEqual({ marks: ['[data-guide="works"]'], hand: false });
-    expect(goalMarks(goal({ picked: true, guided: false }))).toEqual({ marks: ['[data-guide="works"]'], hand: false });
+    expect(goalMarks(goal({ picked: true }))).toEqual({ marks: [COLLECT_MARK], hand: true });
+    expect(goalMarks(goal({ picked: false }))).toEqual({ marks: [COLLECT_MARK], hand: false });
+    expect(goalMarks(goal({ picked: true, guided: false }))).toEqual({ marks: [COLLECT_MARK], hand: false });
   });
 
   it('takes the way aboard for a repair chosen out on the galaxy, and the card itself aboard', () => {

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { vesselSchema } from '../src/api/starterSchemas.js';
 import { opportunityKey } from '../src/starter/opportunities.js';
 
+import { COLLECT_MARK } from '../src/starter/tutorial/script.js';
 import { useStarterTutorial } from '../src/starter/tutorial/useStarterTutorial.js';
 import { goalMarks, starterGoal } from '../src/starter/tutorial/visualGoal.js';
 import { wireVessel } from './starterVesselFixture.js';
@@ -190,6 +191,6 @@ describe('leaving while a flight is out', () => {
     const t = tutorial().now();
     expect(t.answer).toMatchObject({ kind: 'step', id: 'collectMine' });
     expect(t.offers.map(o => o.kind)).toContain('collect');
-    expect(goalMarks(starterGoal({ ...t, pick: { kind: 'collect' } }, false)).marks).toEqual(['[data-guide="works"]']);
+    expect(goalMarks(starterGoal({ ...t, pick: { kind: 'collect' } }, false)).marks).toEqual([COLLECT_MARK]);
   });
 });

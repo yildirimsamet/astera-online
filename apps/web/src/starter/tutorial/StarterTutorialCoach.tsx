@@ -309,7 +309,7 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
   const away = mode === 'away' && tutorial.wait && !step.nav ? tutorial.wait : null;
   const line = away ? `${text} ${t('starter.tutorial.away', { clock: clockTime(away.until) })}` : text;
   // A mark up in the top bar takes the card to the foot of the screen.
-  const dock = marks.includes('[data-guide="works"]') ? 'bottom' : 'top';
+  const dock = marks.some(mark => mark.startsWith('[data-guide="works"]')) ? 'bottom' : 'top';
   const reading = step.step === 'read';
   const action = reading
     ? { actionLabel: t('starter.tutorial.next'), onAction: () => { playSound('confirm'); haptic('tap'); ack(step.id); } }

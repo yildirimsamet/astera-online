@@ -1,6 +1,6 @@
 import { REPAIR_LADDER, openingProgress, type RepairStep, type StarterFeature } from '@astera/rules';
 import { describe, expect, it } from 'vitest';
-import { ROAD, adviceMarks, repairWait, tutorialStep, waitMode, type TutorialInput } from '../src/starter/tutorial/script.js';
+import { COLLECT_MARK, ROAD, adviceMarks, repairWait, tutorialStep, waitMode, type TutorialInput } from '../src/starter/tutorial/script.js';
 import { starter as de } from '../src/i18n/locales/de/starter.js';
 import { starter as en } from '../src/i18n/locales/en/starter.js';
 import { starter as es } from '../src/i18n/locales/es/starter.js';
@@ -44,7 +44,7 @@ describe('the core: the one moment that is held', () => {
   });
 
   it('then the first collect, which is passed over when the works are empty', () => {
-    expect(at(base(pending(null)))).toMatchObject({ id: 'collect', strict: true, marks: ['[data-guide="works"]'] });
+    expect(at(base(pending(null)))).toMatchObject({ id: 'collect', strict: true, marks: [COLLECT_MARK] });
     expect(id(base({ ...pending(null), works: 0 }))).toBe('orderRefinery');
   });
 
@@ -231,15 +231,8 @@ describe('the first-time moments', () => {
 
   it('asks for the first haul when the Prospector is home, wherever the road has got to', () => {
     const home = awake({ modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, facts: ['FIRST_MINING_RETURN'], works: 100 });
-    expect(at(home)).toMatchObject({ id: 'collectMine', marks: ['[data-guide="works"]'] });
+    expect(at(home)).toMatchObject({ id: 'collectMine', marks: [COLLECT_MARK] });
     expect(id({ ...home, ...ack('collectMine') })).toBe('orderSurvey');
-  });
-
-  // Isolated player test 2026-11-18: the haul's line came back on a new device hours on, over the ship
-  // page's foot. A ship whose yard is ordered has long carried its first haul to the store.
-  it('lets the first haul go once the yard is ordered, on any device', () => {
-    const later = awake({ modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 }, facts: ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'], works: 100, acked: ['openIntel', 'openReport', 'report'] });
-    expect(id(later)).not.toBe('collectMine');
   });
 
   it('never drags a veteran back: past the first haul there is nothing to teach', () => {
@@ -336,7 +329,7 @@ describe('where the hand goes for a chosen opportunity', () => {
   });
 
   it('collects from the works anywhere, and flies from the galaxy', () => {
-    expect(adviceMarks({ kind: 'collect' }, 'ship')).toEqual({ marks: ['[data-guide="works"]'] });
+    expect(adviceMarks({ kind: 'collect' }, 'ship')).toEqual({ marks: [COLLECT_MARK] });
     expect(adviceMarks({ kind: 'probe' }, 'galaxy')).toEqual({ marks: ['[data-guide="probe"]', '[data-guide="objective"]'] });
     expect(adviceMarks({ kind: 'mine' }, 'ship')).toEqual({ marks: ['[data-sheet-close]'], nav: 'closePage' });
   });

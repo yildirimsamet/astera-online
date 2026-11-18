@@ -16,6 +16,8 @@ const DRAWN: readonly (readonly [hook: string, file: string, drawn: string])[] =
   ['data-guide="unlock-try"', 'starter/UnlockMoment.tsx', 'data-guide="unlock-try"'],
   ['data-guide="unlock-dismiss"', 'starter/UnlockMoment.tsx', 'data-guide="unlock-dismiss"'],
   ['data-guide="works"', 'v2/hud/TopBar.tsx', 'data-guide="works"'],
+  // The collect is pressed on the alloy pill inside the works line (isolated player tests 2026-11-18).
+  ['data-pill="alloy"', 'game-ui/readouts.tsx', 'data-pill={item.id}'],
   ['data-guide="crate"', 'starter/CrateBay.tsx', 'data-guide="crate"'],
   ['data-guide="objective"', 'starter/ObjectiveLine.tsx', "'data-guide': 'objective'"],
   ['data-guide="repair-order"', 'starter/RepairCard.tsx', 'data-guide="repair-order"'],

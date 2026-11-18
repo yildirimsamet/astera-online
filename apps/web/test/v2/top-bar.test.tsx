@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { collectState } from '../../src/lib/collect.js';
 import { TopBar, type TopBarProps } from '../../src/v2/hud/TopBar.js';
+import { COLLECT_MARK } from '../../src/starter/tutorial/script.js';
 
 /**
  * THE TOP BAR, ON THE GAME KIT (G1-b, 2026-11-14). Spec B1 (docs/ui-v2/gozlemevi.md).
@@ -179,5 +180,22 @@ describe('the top bar', () => {
     render(<TopBar {...props()} tabs={<nav aria-label="Tabs" />} />);
     const tabs = screen.getByRole('navigation', { name: 'Tabs' });
     expect(tabs.compareDocumentPosition(screen.getByRole('button', { name: /^Commander Yildirim/ })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+/*
+  Isolated player tests 2026-11-18: the guide's hand pointed at the right end of the works line, the
+  hidden deuterium pill's empty place, and two players tapped there with nothing happening. The mark
+  the guide shows for a collect is the alloy pill itself, a button that collects.
+*/
+describe('the guide\'s collect mark', () => {
+  it('is the alloy pill, a button that collects', async () => {
+    const onCollect = vi.fn();
+    render(<TopBar {...props({ works: works({ alloy: 400, crystal: 0, deuterium: 0 }, { onCollect }) })} hidden={['deuterium']} />);
+    const mark = document.querySelector(COLLECT_MARK);
+    expect(mark?.tagName).toBe('BUTTON');
+    expect(mark?.getAttribute('data-pill')).toBe('alloy');
+    await userEvent.click(mark as HTMLElement);
+    expect(onCollect).toHaveBeenCalled();
   });
 });

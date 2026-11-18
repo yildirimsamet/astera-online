@@ -93,7 +93,12 @@ const repair = (module: string, stage: number): string => `[data-guide="repair-o
 /** The repair's thumbnail on the strip: the way to it when the card shows another repair of the tab. */
 const show = (module: string, stage: number): string => `[data-guide="repair-show"][data-step="${module}:${String(stage)}"]`;
 const tab = (system: string): string => `[data-guide="system-${system}"]`;
-const WORKS = '[data-guide="works"]';
+/**
+ * A collect is pressed on the alloy pill itself (isolated player tests 2026-11-18): the works line runs on
+ * under the hidden deuterium pill's empty place, and a hand drawn at its end pointed at nothing.
+ */
+export const COLLECT_MARK = '[data-guide="works"] [data-pill="alloy"]';
+const WORKS = COLLECT_MARK;
 const CRATE = '[data-guide="crate"]';
 const OBJECTIVE = '[data-guide="objective"]';
 const hasReady = (i: TutorialInput): boolean => i.crates.some(c => c.state === 'ready');
@@ -175,11 +180,10 @@ const MOMENTS: readonly Part[] = [
       { id: 'report', kind: 'read', chapter: 4, place: 'galaxy', marks: ['[data-dossier-loot]'] },
     ],
   },
-  // The first haul, when it is home. A ship whose yard is ordered carried it to the store long ago: on a
-  // new device the line would come back hours on, over the ship page's foot (isolated test 2026-11-18).
+  // The first haul, when it is home.
   {
     strict: false, due: i => i.facts.includes('FIRST_MINING_RETURN'),
-    steps: [{ id: 'collectMine', kind: 'press', chapter: 6, place: 'any', marks: [WORKS], satisfied: i => i.works < 1, reached: i => ordered(i, 'SHIPYARD', 1) }],
+    steps: [{ id: 'collectMine', kind: 'press', chapter: 6, place: 'any', marks: [WORKS], satisfied: i => i.works < 1 }],
   },
   // THE RADAR, ON A REAL CONTACT (plan F6): nothing is made up for a lesson; an empty sky only means
   // it waits, and the road goes on meanwhile. The scout comes to every Radar 1 owner who is there and has flown something.
