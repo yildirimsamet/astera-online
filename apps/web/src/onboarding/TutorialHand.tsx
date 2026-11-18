@@ -97,7 +97,7 @@ export function TutorialHand({ targets, bubble, kind = 'action', bounds }: {
   if (kind === 'intro') return <div ref={ref} data-tutorial-intro aria-hidden="true"
     className="pointer-events-none fixed left-0 top-0 z-[60] rounded-control border border-crystal"
     style={{ visibility: 'hidden' }} />;
-  return <div ref={ref} aria-hidden="true"
+  return <div ref={ref} aria-hidden="true" data-tutorial-hand=""
     className="pointer-events-none fixed left-0 top-0 z-[60] size-12 select-none"
     style={{ visibility: 'hidden' }}>
     <style>{`

@@ -1,6 +1,6 @@
 import {
   REPAIR_LADDER, STARTER, afterQueue, jumpWindowOpen, nextRequiredStep, vesselHull, vesselLook,
-  type RepairStep, type VesselProgress, type VesselSystem,
+  type RepairStep, type VesselFact, type VesselProgress, type VesselSystem,
 } from '@astera/rules';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -92,12 +92,14 @@ function DeckSwitch({ vessel, value, onChange }: { vessel: VesselView; value: Sh
  * the player reads "Repair 3/4", since Refinery 4 aboard and Refinery 2 on the first planet would read
  * as a punishment.
  */
-export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
+export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem, onFact }: {
   vessel: VesselView;
   fetchedAt: number;
   /** What the screen was opened for, in the main Base's words: readying a defence or reaching for ships is the yard. */
   focusGroup?: string;
   focusItem?: string;
+  /** A lock's "Show" for an event: the galaxy takes the player to where it is done. */
+  onFact?: (fact: VesselFact) => void;
 }) {
   const { t } = useTranslation();
   const say = useToast();
@@ -184,7 +186,7 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
       <div className="px-3 empty:hidden"><CrateBay crates={vessel.crates} onOpen={() => { openCrates.mutate(undefined, { onError: (error) => { say(describe(error), 'error'); } }); }} /></div>
       <StarterWaitLine queue={vessel.queue} />
       <SystemTabs progress={progress} ahead={ahead} selected={system} onSelect={select} />
-      {shown && <RepairCard shown={shown} system={system} context={context} onShow={setPicked} onGo={go} />}
+      {shown && <RepairCard shown={shown} system={system} context={context} onShow={setPicked} onGo={go} {...(onFact ? { onFact } : {})} />}
       {system === 'DRIVE' && <MigrationPanel vessel={vessel} onJump={setJumping}
         income={{ alloy: view.planet.alloyPerHour, crystal: view.planet.crystalPerHour, deuterium: view.planet.deuteriumPerHour ?? 0 }} />}
       {jumping && (

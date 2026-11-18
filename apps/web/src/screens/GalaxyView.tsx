@@ -51,7 +51,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { keys } from '../api/keys.js';
 import { activeEvents, slotSuggestion } from '../lib/contextSlot.js';
 import { SeasonLockProvider } from '../session/seasonLock.js';
-import { VIEW, hpRadiationApplies, mainOffsetOf, vesselHull, type VesselSystem } from '@astera/rules';
+import { VIEW, hpRadiationApplies, mainOffsetOf, vesselHull, type VesselFact, type VesselSystem } from '@astera/rules';
 import { NextSeason } from '../ui/NextSeason.js';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -1371,6 +1371,17 @@ export function GalaxyView({
     const id = nearestShip(planets, activePlanetId ?? '', activeWorldPosition);
     if (id) focusPlanet(id);
   };
+  const focusRock = (): void => {
+    const minutes = season.data ? (now - season.data.startsAt.getTime()) / 60_000 : 0;
+    const id = nearestRock(asteroids, activeWorldPosition, minutes);
+    if (id) { setFocus({ kind: 'asteroid', id }); setDetail(true); }
+  };
+  /** A lock's "Show" for an event: the ship's page steps aside for the galaxy, at the place it is done. */
+  const goDo = (fact: VesselFact): void => {
+    onPanel(null);
+    if (fact === 'FIRST_MINING_SENT' || fact === 'FIRST_MINING_RETURN') focusRock();
+    else if (fact === 'FIRST_PROBE_REPORT') focusNeighbour();
+  };
   /** Home, the disc's old mark (D163): clear the focus, focus the active world, raise the home signal. */
   const flyHome = (): void => {
     if (activePlanetId === null) return;
@@ -1464,11 +1475,7 @@ export function GalaxyView({
           onFocusOutpost={id => { focusPlanet(id); }}
           onOpenReports={() => { onPanel('intel', 'probes'); }}
           hunt={huntStage(galaxy.data?.planets ?? [], intel.data?.probeReports ?? [], pending.data?.pending ?? [])}
-          onFocusRock={() => {
-            const minutes = season.data ? (now - season.data.startsAt.getTime()) / 60_000 : 0;
-            const id = nearestRock(asteroids, activeWorldPosition, minutes);
-            if (id) { setFocus({ kind: 'asteroid', id }); setDetail(true); }
-          }}
+          onFocusRock={focusRock}
           probing={(pending.data?.pending ?? []).some((thread) => thread.kind === 'probe')}
           mining={(mining.statusData?.runs ?? []).some((run) => run.status !== 'done')}
           // Only once the map has loaded: an unread map is not an empty galaxy.
@@ -2079,7 +2086,7 @@ export function GalaxyView({
           title={planet.data.vessel.name}
           onClose={() => { onPanel(null); }}
         >
-          <VesselScreen vessel={planet.data.vessel} fetchedAt={planet.dataUpdatedAt}
+          <VesselScreen vessel={planet.data.vessel} fetchedAt={planet.dataUpdatedAt} onFact={goDo}
             {...(requestedPlanetGroup ? { focusGroup: requestedPlanetGroup } : {})}
             {...(requestedItem ? { focusItem: requestedItem } : {})} />
         </V2Sheet>

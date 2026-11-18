@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { REPAIR_LADDER, vesselRate, openingProgress, type VesselProgress } from '@astera/rules';
+import { REPAIR_LADDER, vesselRate, openingProgress, type VesselFact, type VesselProgress } from '@astera/rules';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
@@ -19,7 +19,7 @@ import { wireVessel } from './starterVesselFixture.js';
 const step = (module: string, stage: number) => REPAIR_LADDER.find(s => s.module === module && s.stage === stage)!;
 const vessel = (over: Parameters<typeof wireVessel>[0] = {}) => vesselSchema.parse(wireVessel(over));
 
-function show(ship: VesselView, answer: () => Response = () => new Response(JSON.stringify({ vessel: wireVessel() }), { status: 200, headers: { 'content-type': 'application/json' } })) {
+function show(ship: VesselView, answer: () => Response = () => new Response(JSON.stringify({ vessel: wireVessel() }), { status: 200, headers: { 'content-type': 'application/json' } }), props: { onFact?: (fact: VesselFact) => void } = {}) {
   const requests: { path: string; body: unknown }[] = [];
   const fetch: typeof globalThis.fetch = (input, init) => {
     const path = (typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
@@ -32,7 +32,7 @@ function show(ship: VesselView, answer: () => Response = () => new Response(JSON
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const api = new Api({ fetch, authTransport: null });
   const tree = (current: VesselView) => (<QueryClientProvider client={client}><ApiProvider api={api}><WorldProvider><ToastProvider>
-    <VesselScreen vessel={current} fetchedAt={Date.now()} />
+    <VesselScreen vessel={current} fetchedAt={Date.now()} {...props} />
   </ToastProvider></WorldProvider></ApiProvider></QueryClientProvider>);
   const view = render(tree(ship));
   return { requests, client, rerender: (next: VesselView) => { view.rerender(tree(next)); } };
@@ -422,6 +422,15 @@ describe('the ship screen', () => {
     expect(card.queryByRole('button', { name: 'Repair' })).toBeNull();
     expect(card.getByTestId('repair-missing').textContent).toMatch(/Prospector/);
     expect(card.getByTestId('repair-how').textContent).toBe('Send a Prospector to an asteroid.');
+  });
+
+  // Isolated player test 2026-11-18: with the guide closed, a player read "first, your first Prospector flight"
+  // on the radar, did not know where a Prospector was, went round the ship's tabs and quit. The lock takes them to it.
+  it('takes the player out to the thing a repair waits on', () => {
+    const onFact = vi.fn();
+    show(vessel({ progress: { ...openingProgress(), modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 } }, alloy: 5000, crystal: 5000 }), undefined, { onFact });
+    fireEvent.click(within(screen.getByTestId('next-repair')).getByTestId('repair-go'));
+    expect(onFact).toHaveBeenCalledWith('FIRST_MINING_SENT');
   });
 
   it('has the radar button once a Prospector has gone out', () => {

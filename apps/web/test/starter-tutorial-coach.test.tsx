@@ -60,6 +60,19 @@ describe('the starter tutorial on screen', () => {
     await vi.waitFor(() => { expect(ack).toHaveBeenCalledWith('collect'); });
   });
 
+  // Isolated player test 2026-11-18: a held-back press answered with a buzz alone read as "nothing happens";
+  // the player pressed the tab twice more and closed the guide. It is answered where the eye is.
+  it('answers a press it holds back with a refusal, a shake of the card and the hand tapping its mark', () => {
+    vi.useFakeTimers();
+    sound.mockClear();
+    coach({ kind: 'step', id: 'collect', step: 'press', marks: ['[data-guide="works"]'], chapter: 1, strict: true });
+    fireEvent.click(screen.getByText('elsewhere'));
+    expect(sound).toHaveBeenCalledWith('refuse');
+    expect(document.documentElement.hasAttribute('data-guide-nudge')).toBe(true);
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect(document.documentElement.hasAttribute('data-guide-nudge')).toBe(false);
+  });
+
   // F6 walk: recording the step moves the guide on, and a mark that belongs to the step (the craft in
   // the sky) leaves with it. Recorded mid-press, it left before its own handler ran and opened nothing.
   it('records a pressed mark only once the press has done its own work', async () => {
