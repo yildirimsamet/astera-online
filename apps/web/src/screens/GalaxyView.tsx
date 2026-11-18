@@ -1,6 +1,7 @@
 import { useStarterLesson } from '../starter/tutorial/visualGoal.js';
 import { rocksHeld, rockSheetStaysOpen, sightLesson, useTelescopeReveal } from '../starter/tutorial/sightLesson.js';
 import { setRockSheet } from '../starter/tutorial/rockSheet.js';
+import { lendFocusClose } from '../starter/tutorial/focusClose.js';
 import { useLaunchSheet } from '../starter/tutorial/launchSheet.js';
 import { DirectorStage } from '../starter/director/DirectorStage.js';
 import { useStarterScenes } from '../starter/director/useStarterScenes.js';
@@ -1321,6 +1322,8 @@ export function GalaxyView({
     setStrikingConvoy(false);
     setSettlingTargetId(null);
   };
+  // The guide puts the report's card away with this same close (owner 2026-11-18, item 12).
+  useEffect(() => lendFocusClose(close));
 
   // The shell's requests, answered once each (`useRequest`): see `homeRequest`.
   /** K6: the Base's two pages, one switch apart. */

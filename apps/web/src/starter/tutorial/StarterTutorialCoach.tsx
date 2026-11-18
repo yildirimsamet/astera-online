@@ -11,6 +11,7 @@ import { SchoolPointer } from '../../onboarding/flightSchool/SchoolPointer.js';
 import { moduleName } from '../shipCopy.js';
 import { CORE_CHAPTERS, waitMode, type TutorialStepId } from './script.js';
 import { useLaunchSheet } from './launchSheet.js';
+import { closeFocus } from './focusClose.js';
 import { useDirecting } from '../director/director.js';
 
 const CHAPTER = {
@@ -328,7 +329,7 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
   const dock = marks.some(mark => mark.startsWith('[data-guide="works"]')) ? 'bottom' : 'top';
   const reading = step.step === 'read';
   const action = reading
-    ? { actionLabel: t('starter.tutorial.next'), onAction: () => { playSound('confirm'); haptic('tap'); ack(step.id); } }
+    ? { actionLabel: t('starter.tutorial.next'), onAction: () => { playSound('confirm'); haptic('tap'); ack(step.id); if (step.id === 'report') closeFocus(); } }
     : away ? { actionLabel: t('starter.tutorial.ok'), onAction: () => { haptic('tap'); setSteppedAside(step.id); } } : {};
   // The hand comes after the card, so one pointing into the card is drawn over it (owner playtest 2026-11-07).
   return (

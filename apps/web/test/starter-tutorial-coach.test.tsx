@@ -5,6 +5,7 @@ import { StarterTutorialCoach } from '../src/starter/tutorial/StarterTutorialCoa
 import { CARD_AFTER_REVEAL_MS } from '../src/starter/tutorial/sightLesson.js';
 import { setRockReach } from '../src/starter/tutorial/rockReach.js';
 import { setLaunchSheet } from '../src/starter/tutorial/launchSheet.js';
+import { lendFocusClose } from '../src/starter/tutorial/focusClose.js';
 import { ToastProvider, useToast } from '../src/ui/Toast.js';
 import { clockTime } from '../src/lib/time.js';
 import { playScene, resetDirector, type Scene } from '../src/starter/director/director.js';
@@ -708,6 +709,27 @@ describe('the probe report\'s line', () => {
     act(() => { setLaunchSheet(true); });
     expect(ack).toHaveBeenCalledWith('report');
     act(() => { setLaunchSheet(false); });
+  });
+
+  /*
+    Owner, phone playtest 2026-11-18 (item 12): after Next on the report the world's card stayed open, and the
+    player could not tell whether to probe, close it, or what. Next on the report puts the card away; the next
+    line speaks on a clear sky.
+  */
+  it('puts the world\'s card away on Next, and no other line does', () => {
+    const close = vi.fn();
+    const lent = lendFocusClose(close);
+    const first = coach({ kind: 'step', id: 'report', step: 'read', marks: [], chapter: 4, strict: false });
+    fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
+    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+    expect(first.ack).toHaveBeenCalledWith('report');
+    expect(close).toHaveBeenCalledOnce();
+    first.view.unmount();
+    coach({ kind: 'step', id: 'radarRing', step: 'read', marks: [], chapter: 8, strict: false });
+    fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
+    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+    expect(close).toHaveBeenCalledOnce();
+    lent();
   });
 
   it('leaves every other line alone while a launch is open', () => {
