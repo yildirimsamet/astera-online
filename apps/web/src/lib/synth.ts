@@ -6,8 +6,8 @@
 export const SYNTH_CUES = ['switch', 'ignite', 'weld', 'warp', 'claim', 'crate', 'arc'] as const;
 export type SynthCue = (typeof SYNTH_CUES)[number];
 
-/** The furnace roars as long as the prologue's burn (`BURN_MS`, 6 s) and the torch as long as its patch
- * (`PATCH_MS`, 3.5 s), each with a breath after. */
+/** The furnace roars and the torch burns long enough for any moment they serve; the prologue cuts them to
+ * its burn (`BURN_MS`) and its patch (`PATCH_MS`), a breath after each. */
 const SECONDS: Record<SynthCue, number> = { switch: 0.9, ignite: 6.4, weld: 3.9, warp: 2.1, claim: 1.8, crate: 1.5, arc: 0.9 };
 
 /** Mulberry32: a seeded noise, so a cue is identical on every device and every run. */

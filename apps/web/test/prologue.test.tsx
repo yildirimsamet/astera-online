@@ -8,7 +8,9 @@ import { BURN_MS, PATCH_MS, WARP_MS, openPrologue, prologueAct, prologueHeld, pr
 vi.mock('../src/lib/playerAnalytics/runtime.js', async (original) => ({ ...await original<object>(), observe: (...args: unknown[]) => { seen.push(args); } }));
 const seen: unknown[][] = [];
 const heard: string[] = [];
-vi.mock('../src/lib/sound.js', async (original) => ({ ...await original<object>(), playSound: (cue: string) => { heard.push(cue); } }));
+/** How long each cue was let run, when it was cut. */
+const cut = new Map<string, number | undefined>();
+vi.mock('../src/lib/sound.js', async (original) => ({ ...await original<object>(), playSound: (cue: string, options?: { seconds?: number }) => { heard.push(cue); cut.set(cue, options?.seconds); } }));
 // WebGL does not run here; the scene's own checks are visual (tools/visual).
 vi.mock('../src/onboarding/prologue/ShipScene.js', () => ({ default: () => null, preloadShip: () => undefined }));
 // The account sheet is tested on its own; here it only has to hand back what it was given.
@@ -21,7 +23,7 @@ vi.mock('../src/onboarding/ClaimDialog.js', () => ({
 const END = { onClaim: vi.fn(() => Promise.resolve()), onSignIn: vi.fn(), onLeave: vi.fn() };
 
 beforeEach(() => {
-  localStorage.clear(); seen.length = 0; heard.length = 0; vi.useFakeTimers(); vi.clearAllMocks();
+  localStorage.clear(); seen.length = 0; heard.length = 0; cut.clear(); vi.useFakeTimers(); vi.clearAllMocks();
   // jsdom has no pointer capture; the controls ask for it on every press.
   HTMLElement.prototype.setPointerCapture = () => undefined;
 });
@@ -160,6 +162,20 @@ describe('the screen', () => {
     throwSwitch();
     hold('prologue-ignite');
     expect(heard).toEqual(expect.arrayContaining(['switch', 'ignite']));
+  });
+
+  // Item 1 halved the burn and made the patch a beat: the furnace's roar and the torch end with them.
+  it('lets the furnace roar as long as the burn and the torch as long as the patch, no longer', () => {
+    render(<Prologue {...END} />);
+    throwSwitch();
+    hold('prologue-ignite');
+    expect(cut.get('ignite')).toBeGreaterThanOrEqual(BURN_MS / 1000);
+    expect(cut.get('ignite')).toBeLessThanOrEqual(BURN_MS / 1000 + 0.5);
+    wait(BURN_MS);
+    press();
+    weld();
+    expect(cut.get('weld')).toBeGreaterThanOrEqual(PATCH_MS / 1000);
+    expect(cut.get('weld')).toBeLessThanOrEqual(PATCH_MS / 1000 + 0.5);
   });
 
   /**

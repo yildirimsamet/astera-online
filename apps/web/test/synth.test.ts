@@ -67,9 +67,4 @@ describe('a synthesized cue', () => {
   it('sounds the same every time', () => {
     expect(synthesize('switch', 22_050)).toEqual(synthesize('switch', 22_050));
   });
-
-  it('keeps the torch as short as the patch it belongs to', () => {
-    expect(PATCH_MS).toBe(3_500);
-    expect(synthesize('weld', 8000).length / 8000).toBeLessThanOrEqual(PATCH_MS / 1000 + 0.5);
-  });
 });

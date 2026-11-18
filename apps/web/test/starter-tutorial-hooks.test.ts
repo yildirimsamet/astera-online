@@ -30,6 +30,8 @@ const DRAWN: readonly (readonly [hook: string, file: string, drawn: string])[] =
   ['data-scene-mark', 'galaxy/StarterSightMarks.tsx', 'data-scene-mark=""'],
   ['data-guide="mine"', 'galaxy/FocusPanel.tsx', "'data-guide': 'mine'"],
   ['data-guide="probe"', 'galaxy/FocusPanel.tsx', "'data-guide': 'probe'"],
+  // The jump's own press, where the guide hands over (owner phone playtest 2026-11-18, item 13).
+  ['data-guide="jump-go"', 'starter/MigrationPanel.tsx', "marks={{ 'data-guide': 'jump-go' }}"],
   ['data-focus-close', 'galaxy/FocusPanel.tsx', 'data-focus-close=""'],
   ['data-outpost-guide="', 'galaxy/OutpostGuide.tsx', 'data-outpost-guide={node.id}'],
   ['data-outpost-planet="', 'galaxy/OutpostGuide.tsx', 'data-outpost-planet={node.id}'],

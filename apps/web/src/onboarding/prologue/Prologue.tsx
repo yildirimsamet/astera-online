@@ -14,7 +14,7 @@ import { TutorialHand } from '../TutorialHand.js';
 import { prologueTelemetry } from './telemetry.js';
 import './prologue.css';
 import {
-  PROLOGUE_STEPS, clearPrologue, openPrologue, prologueAct, prologueBatch, prologueHeld, prologueHull, prologueLit, prologueShare, prologueStep,
+  BURN_MS, PATCH_MS, PROLOGUE_STEPS, clearPrologue, openPrologue, prologueAct, prologueBatch, prologueHeld, prologueHull, prologueLit, prologueShare, prologueStep,
   prologueTick, refineryRunning, restorePrologue, savePrologue, sensorsListening, type PrologueAction, type PrologueWorld,
 } from './world.js';
 
@@ -25,6 +25,9 @@ export const HOLD_MS = 850;
 export const THROW_MS = 420;
 /** Where the signal burns, as a share of the bridge art; the jump flies at wherever it is drawn. */
 const SIGNAL_AT = { x: '84%', y: '23%' };
+/** The furnace's roar and the torch end with what they belong to (item 1 halved the burn, made the patch a beat). */
+const ROAR_S = BURN_MS / 1000 + 0.3;
+const TORCH_S = PATCH_MS / 1000 + 0.3;
 interface Point { x: string; y: string }
 
 interface Props {
@@ -515,7 +518,7 @@ export function Prologue({ onClaim, onSignIn, onLeave, replay = false }: Props) 
     playSound('arc');
     haptic(next === CRACKS.length ? 'commit' : 'tap');
     setWelds(next);
-    if (next === CRACKS.length) { playSound('weld'); act('patch'); }
+    if (next === CRACKS.length) { playSound('weld', { seconds: TORCH_S }); act('patch'); }
   };
   const travel = () => {
     if (replay) { onLeave(); return; }
@@ -618,7 +621,7 @@ export function Prologue({ onClaim, onSignIn, onLeave, replay = false }: Props) 
         {stage === 'dark' && <Breaker label={t('starter.prologue.action.power')} onThrow={() => { act('power'); }} />}
         {stage === 'powered' && (
           <HoldControl testId="prologue-ignite" label={t('starter.prologue.action.burn')} hint={t('starter.prologue.hint.hold')} tone="#ff9a3d"
-            glyph={<Icon id={SYSTEM_ICON.REFINERY} className="size-6" />} onHeld={() => { playSound('ignite'); haptic('rumble'); act('burn'); }} />
+            glyph={<Icon id={SYSTEM_ICON.REFINERY} className="size-6" />} onHeld={() => { playSound('ignite', { seconds: ROAR_S }); haptic('rumble'); act('burn'); }} />
         )}
         {stage === 'collected' && (
           <WeldControl welds={welds} label={t('starter.prologue.action.patch')} hint={t('starter.prologue.hint.weld')} tone="#7fd6ff"
