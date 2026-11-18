@@ -4,12 +4,22 @@ import {
 } from '@astera/rules';
 import { buildingArt, instrumentArt } from '../ui/assets.js';
 import { RESEARCH_SCENES, cardScene } from '../ui/atmosphere.js';
+import { HERO_PLACEHOLDERS } from './heroPlaceholders.js';
 import type { IconId } from '../v2/icons.js';
 
 const ART = '/assets/images/starter';
 
 export const heroArt = (hull: VesselHull, look: VesselLook): string =>
   `${ART}/hero-${hull.toLowerCase()}-${look.toLowerCase()}.webp`;
+
+/** The painting in two widths: a phone that draws it narrow takes the lighter one (owner phone playtest 2026-11-19). */
+export const heroSrcSet = (hull: VesselHull, look: VesselLook): string =>
+  `${ART}/hero-${hull.toLowerCase()}-${look.toLowerCase()}-720.webp 720w, ${heroArt(hull, look)} 1000w`;
+/** How wide the ship's page draws it: the screen's width, 440 at most. */
+export const HERO_SIZES = '(min-width: 440px) 440px, 100vw';
+/** A blur of the painting, drawn at once until the painting lands. */
+export const heroPlaceholder = (hull: VesselHull, look: VesselLook): string =>
+  HERO_PLACEHOLDERS[`${hull.toLowerCase()}-${look.toLowerCase()}`] ?? '';
 
 /** What no planet has wears the game's nearest scene, never a picture of its own. */
 const BORROWED = {

@@ -270,7 +270,7 @@ describe('the ship screen', () => {
 
     it('shows the ship in its own state', () => {
       show(vessel());
-      expect(screen.getByTestId('ship-hero').querySelector('img')?.getAttribute('src')).toMatch(/hero-[a-z]+-wrecked/);
+      expect(screen.getByTestId('ship-hero').querySelector('img.ship-hero-art')?.getAttribute('src')).toMatch(/hero-[a-z]+-wrecked/);
     });
   });
 

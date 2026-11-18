@@ -6,7 +6,7 @@ import { holdScroll, releaseScroll } from '../lib/scrollHold.js';
 import { playSound } from '../lib/sound.js';
 import { goalRepair, useStarterGoal } from './tutorial/visualGoal.js';
 import { Icon } from '../v2/icons.js';
-import { HERO_BAYS, SYSTEM_ICON, bayCondition, heroArt, repairMoment, systemPercent, type HeroBay, type RepairMoment, type RepairTier } from './shipScreen.js';
+import { HERO_BAYS, HERO_SIZES, SYSTEM_ICON, bayCondition, heroArt, heroPlaceholder, heroSrcSet, repairMoment, systemPercent, type HeroBay, type RepairMoment, type RepairTier } from './shipScreen.js';
 import './shipHero.css';
 
 const LIVE = 'var(--color-v2-self)';
@@ -188,11 +188,15 @@ export function ShipHero({ id, progress, selected, onSelect, compact = false, se
   const moment = useRepairMoment(id, progress);
   const shares = Object.fromEntries(VESSEL_SYSTEMS.map(system => [system, systemPercent(progress, system)])) as Shares;
   const { shown, gains, shaking } = useGains(id, shares);
+  const look = vesselLook(progress);
+  const mask = compact ? '[mask-image:linear-gradient(to_right,transparent,#000_10%,#000_90%,transparent)]' : 'v2-split:[mask-image:linear-gradient(to_right,transparent,#000_12%,#000_88%,transparent)]';
   return (
     <div data-testid="ship-hero" {...(moment ? { 'data-moment': moment.tier } : {})} {...(shaking ? { 'data-shake': '' } : {})} className="shrink-0 overflow-hidden">
       {/* Everything here is percent of the painting, so the frame keeps its shape on any screen. */}
       <div className={`ship-hero-frame relative mx-auto w-full max-w-[440px] ${compact ? 'aspect-[7/4]' : 'aspect-[3/2]'}`}>
-        <img src={heroArt(hull, vesselLook(progress))} alt="" draggable={false} className={`ship-hero-art absolute inset-0 size-full object-cover brightness-125 saturate-110 ${compact ? '[mask-image:linear-gradient(to_right,transparent,#000_10%,#000_90%,transparent)]' : 'v2-split:[mask-image:linear-gradient(to_right,transparent,#000_12%,#000_88%,transparent)]'}`} />
+        {/* A blur of it stands in at once, and the painting is asked for first, in the width it is drawn (owner phone playtest 2026-11-19). */}
+        <img aria-hidden="true" src={heroPlaceholder(hull, look)} alt="" draggable={false} className={`absolute inset-0 size-full object-cover blur-md brightness-125 saturate-110 ${mask}`} />
+        <img src={heroArt(hull, look)} srcSet={heroSrcSet(hull, look)} sizes={HERO_SIZES} fetchPriority="high" decoding="async" alt="" draggable={false} className={`ship-hero-art absolute inset-0 size-full object-cover brightness-125 saturate-110 ${mask}`} />
         {VESSEL_SYSTEMS.map(system => (
           <span key={system} aria-hidden="true" data-bay={system} data-condition={bayCondition(systemPercent(progress, system))}
             {...(moment?.system === system ? { 'data-just': moment.tier } : gains.includes(system) ? { 'data-just': 'routine' } : {})}

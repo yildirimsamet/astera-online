@@ -3,6 +3,7 @@ import { rocksHeld, rockSheetStaysOpen, sightLesson, useTelescopeReveal } from '
 import { useSheetWait } from '../starter/tutorial/sheetWait.js';
 import { setRockSheet } from '../starter/tutorial/rockSheet.js';
 import { setTargetSheet } from '../starter/tutorial/targetSheet.js';
+import { preloadHero } from '../starter/heroPreload.js';
 import { lendFocusClose } from '../starter/tutorial/focusClose.js';
 import { useLaunchSheet } from '../starter/tutorial/launchSheet.js';
 import { DirectorStage } from '../starter/director/DirectorStage.js';
@@ -718,6 +719,9 @@ export function GalaxyView({
   // meanwhile waits for it, the guide's next step and the director's scenes alike (owner phone playtest 2026-11-19).
   const targetOpen = focus !== null && !WATCHING.has(focus.kind);
   useEffect(() => { setTargetSheet(targetOpen); return () => { setTargetSheet(false); }; }, [targetOpen]);
+  // The ship's own painting, fetched while the galaxy is up: there when its page opens (owner phone playtest 2026-11-19).
+  const shipHull = ship ? vesselHull(ship.id) : null;
+  useEffect(() => { if (shipHull) preloadHero(shipHull); }, [shipHull]);
   const [showTelescopeReach, setShowTelescopeReach] = useSensorReach('telescope');
   const [showRadarReach, setShowRadarReach] = useSensorReach('radar');
   const [eventsGuideOpen, setEventsGuideOpen] = useState(false);
