@@ -11,7 +11,7 @@ import { SchoolPointer } from '../../onboarding/flightSchool/SchoolPointer.js';
 import { moduleName } from '../shipCopy.js';
 import { CORE_CHAPTERS, waitMode, type TutorialStepId } from './script.js';
 import { useLaunchSheet } from './launchSheet.js';
-import { useDirector } from '../director/director.js';
+import { useDirecting } from '../director/director.js';
 
 const CHAPTER = {
   1: 'starter.tutorial.chapter.1', 2: 'starter.tutorial.chapter.2', 3: 'starter.tutorial.chapter.3', 4: 'starter.tutorial.chapter.4',
@@ -96,7 +96,7 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
   const step = answer.kind === 'step' ? answer : null;
   const covered = useLoadingCover();
   // The director's scene has the screen (plan 2026-11-18 §4 İ3): the guide speaks after it.
-  const directing = useDirector() !== null;
+  const directing = useDirecting();
   const live = step !== null && !covered && !directing;
   const key = step?.marks.join('|') ?? '';
   const marks = useMemo(() => (key === '' ? NONE : key.split('|')), [key]);

@@ -34,6 +34,14 @@ describe('the scenes a ship calls for', () => {
     expect(work?.beats[0]?.vars).toEqual({ name: 'refinery' });
   });
 
+  // Isolated player test 2026-11-18: a player saw the stores fall from 1,217 to 417 under the letterbox,
+  // never tied it to the repair they had ordered, and quit. The scene says what the repair took.
+  it('says what the repair took from the stores, as it starts', () => {
+    const cost = { alloy: 800, crystal: 300, deuterium: 0 };
+    const [work] = scenesFor(opening, { ...opening, queue: [{ subject: 'REFINERY', stage: 2, cost }] }, name);
+    expect(work?.beats[0]?.spend).toEqual(cost);
+  });
+
   it('shows the repair come back, with what it is for, and the hull\'s new look as a moment of its own', () => {
     const before: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }, queue: [{ subject: 'RADAR', stage: 1 }], look: 'WRECKED', facts: [] };
     const after: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, queue: [], look: 'PATCHED', facts: [] };

@@ -7,6 +7,8 @@ import { setRockReach } from '../src/starter/tutorial/rockReach.js';
 import { setLaunchSheet } from '../src/starter/tutorial/launchSheet.js';
 import { ToastProvider, useToast } from '../src/ui/Toast.js';
 import { clockTime } from '../src/lib/time.js';
+import { playScene, resetDirector, type Scene } from '../src/starter/director/director.js';
+import { DirectorStage } from '../src/starter/director/DirectorStage.js';
 
 vi.mock('../src/onboarding/flightSchool/SchoolPointer.js', () => ({ SchoolPointer: () => <span data-testid="pointer" /> }));
 const observe = vi.hoisted(() => vi.fn());
@@ -678,5 +680,26 @@ describe('the probe report\'s line', () => {
     const { ack } = coach({ kind: 'step', id: 'radarRing', step: 'read', marks: [], chapter: 8, strict: false });
     expect(ack).not.toHaveBeenCalled();
     act(() => { setLaunchSheet(false); });
+  });
+});
+
+/**
+ * Isolated player test 2026-11-18: a repair came back while the ship's page was open. Its scene waited for
+ * the sky, the guide waited for the scene, and the player stood on the page with no hand on the next
+ * repair, pressed beside it three times and quit. The guide gives way only to a scene on the screen.
+ */
+describe('the guide and a scene waiting for the sky', () => {
+  afterEach(() => { resetDirector(); });
+  const back: Scene = { id: 'repair:EXTRACTOR:1:done', once: true, beats: [{ id: 'back', shot: { kind: 'wide' }, ms: 2000 }] };
+  const npc = () => document.querySelector('img[src$="tutorial-npc.png"]');
+
+  it('keeps speaking while the scene waits, and gives way once it is on the screen', () => {
+    coach({ kind: 'step', id: 'orderTelescope', step: 'press', marks: ['[data-guide="repair-order"]'], chapter: 3, strict: false });
+    act(() => { playScene(back, 'ship-1'); });
+    expect(npc()).not.toBeNull();
+    const stage = render(<DirectorStage />);
+    expect(npc()).toBeNull();
+    stage.unmount();
+    expect(npc()).not.toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 import { REPAIR_LADDER, VESSEL_SYSTEMS, isFeatureOpen, jumpWindowOpen, type RepairStep, type StarterFeature, type VesselFact, type VesselLook, type VesselModule, type VesselSystem } from '@astera/rules';
 import type { Focus } from '../../galaxy/FocusPanel.js';
-import { scenePlayedFor, type Scene } from './director.js';
+import { scenePlayedFor, type Beat, type Scene } from './director.js';
 
 /**
  * THE FIRST SESSION'S SCENES (plan 2026-11-18 §5). What the ship is, where it is broken and where it is
@@ -11,7 +11,8 @@ import { scenePlayedFor, type Scene } from './director.js';
  */
 export interface ShipState {
   modules: Readonly<Record<string, number>>;
-  queue: readonly { subject: string; stage: number }[];
+  /** Each order under way, and what it took from the stores when it was given. */
+  queue: readonly { subject: string; stage: number; cost?: NonNullable<Beat['spend']> }[];
   look: VesselLook;
   facts: readonly VesselFact[];
 }
@@ -36,11 +37,13 @@ const SHIP_REPORT: Scene = {
   ],
 };
 
-function work(step: RepairStep, name: string): Scene {
+function work(step: RepairStep, name: string, state: ShipState): Scene {
+  // The stores fall under the letterbox: the shot says where it went (isolated player test 2026-11-18).
+  const cost = state.queue.find(order => order.subject === step.module && order.stage === step.stage)?.cost;
   return {
     id: `repair:${step.module}:${String(step.stage)}:work`,
     once: true,
-    beats: [{ id: 'weld', shot: { kind: 'bay', system: step.system }, ms: 2400, line: 'starter.director.repair.work', vars: { name }, sound: 'weld' }],
+    beats: [{ id: 'weld', shot: { kind: 'bay', system: step.system }, ms: 2400, line: 'starter.director.repair.work', vars: { name }, sound: 'weld', ...(cost ? { spend: cost } : {}) }],
   };
 }
 
@@ -93,7 +96,7 @@ export function scenesFor(prev: ShipState | null, next: ShipState, name: (module
     if (!isRoadModule(step.module)) continue;
     const roadStep = { ...step, module: step.module };
     if (!have(prev, step) && have(next, step)) scenes.push(done(roadStep, name, lookChanged));
-    else if (!have(next, step) && !ordered(prev, step) && ordered(next, step)) scenes.push(work(step, name(step.module)));
+    else if (!have(next, step) && !ordered(prev, step) && ordered(next, step)) scenes.push(work(step, name(step.module), next));
   }
   const telescope = ROAD.find(step => step.module === 'TELESCOPE');
   const furnace = ROAD.find(step => step.module === 'EXTRACTOR');

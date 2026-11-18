@@ -39,7 +39,11 @@ export interface Beat {
   sound?: SoundCue;
   /** Systems named on the hull during the shot. */
   tags?: readonly VesselSystem[];
+  /** What the moment took from the stores, shown under the line: the stores' own art and a minus. */
+  spend?: Readonly<Record<SpentResource, number>>;
 }
+
+export type SpentResource = 'alloy' | 'crystal' | 'deuterium';
 
 export interface Scene { id: string; once: boolean; beats: readonly Beat[] }
 
@@ -126,3 +130,18 @@ export function resetDirector({ keepMemory = false }: { keepMemory?: boolean } =
 export const directorNow = (): Playing | null => now;
 
 export const useDirector = (): Playing | null => useSyncExternalStore(watch, directorNow);
+
+let stages = 0;
+/** The letterbox is mounted over the sky; the returned function takes it down. */
+export function raiseStage(): () => void {
+  stages += 1;
+  notify();
+  return () => { stages -= 1; notify(); };
+}
+const onScreen = (): boolean => now !== null && stages > 0;
+/**
+ * A scene is on the screen, and what would speak over it waits. One waiting for the sky (a page is
+ * open over it) holds nothing back (isolated player test 2026-11-18: the guide waited for a scene that
+ * waited for the ship's page to close, and left the player there with no hand on the next repair).
+ */
+export const useDirecting = (): boolean => useSyncExternalStore(watch, onScreen);

@@ -6,7 +6,7 @@ import { galaxyCover, watchGalaxyCover } from '../lib/galaxyCover.js';
 import { haptic } from '../lib/haptics.js';
 import { playSound } from '../lib/sound.js';
 import { describe, useToast } from '../ui/Toast.js';
-import { useDirector } from './director/director.js';
+import { useDirecting } from './director/director.js';
 import { announcedByScene } from './director/scenes.js';
 import { useMarkUnlockSeen } from './queries.js';
 import { unlockHeld, watchUnlockHold } from './tutorial/unlockHold.js';
@@ -49,7 +49,7 @@ export function UnlockMoment({ vessel, overGalaxy = false, onAwaken, onTry }: {
   const held = useSyncExternalStore(watchUnlockHold, unlockHeld);
   const feature = vessel.unlockToAnnounce;
   // A scene says it first (plan 2026-11-18 §4 İ7); one that has shown the system coming back said it all.
-  const directing = useDirector() !== null;
+  const directing = useDirecting();
   const told = announcedByScene(vessel.id, feature);
   const shown = feature !== null && !(overGalaxy && covered) && !held && !directing && !told;
   const markSeen = seen.mutate;

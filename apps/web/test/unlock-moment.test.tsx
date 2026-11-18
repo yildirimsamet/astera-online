@@ -6,6 +6,7 @@ import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { vesselSchema } from '../src/api/starterSchemas.js';
 import { playScene, resetDirector, skipBeat } from '../src/starter/director/director.js';
+import { DirectorStage } from '../src/starter/director/DirectorStage.js';
 import { UnlockMoment } from '../src/starter/UnlockMoment.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { wireVessel } from './starterVesselFixture.js';
@@ -65,9 +66,12 @@ describe('a system the director has just shown coming back', () => {
   const doneScene = { id: 'repair:TELESCOPE:1:done', once: true, beats: [{ id: 'back', shot: { kind: 'bay' as const, system: 'DEFENCE' as const }, ms: 2600 }] };
 
   it('shows no card while a scene plays', () => {
+    render(<DirectorStage />);
     act(() => { playScene(doneScene, telescope.id); });
-    mount([]);
+    const view = mount([]);
     expect(screen.queryByTestId('unlock-moment')).toBeNull();
+    // Off the screen before the stage: the system is not taken as seen on the way out.
+    view.unmount();
   });
 
   it('needs no card once its scene has played: the system is taken as seen', async () => {
@@ -81,5 +85,26 @@ describe('a system the director has just shown coming back', () => {
   it('still shows its card to a player who was away while it opened', () => {
     mount([]);
     expect(screen.getByTestId('unlock-moment')).toBeInTheDocument();
+  });
+});
+
+// Isolated player test 2026-11-18: a scene waiting for the sky must not silence the ship's page.
+describe('a system coming back while another scene waits for the sky', () => {
+  const report = { id: 'shipReport', once: true, beats: [{ id: 'orbit', shot: { kind: 'wide' as const }, ms: 2000 }] };
+  const aboard = () => {
+    const api = new Api({ fetch: () => Promise.resolve(new Response('{}', { status: 404 })), authTransport: null });
+    const vessel = vesselSchema.parse(wireVessel({ unlockToAnnounce: 'telescope' }));
+    return render(<QueryClientProvider client={new QueryClient()}><ApiProvider api={api}><ToastProvider>
+      <UnlockMoment vessel={vessel} />
+    </ToastProvider></ApiProvider></QueryClientProvider>);
+  };
+
+  it('shows its card on the ship\'s page, and holds it only while the scene is on the screen', () => {
+    act(() => { playScene(report, 'some-ship'); });
+    aboard();
+    expect(screen.getByTestId('unlock-moment')).toBeInTheDocument();
+    const stage = render(<DirectorStage />);
+    expect(screen.queryByTestId('unlock-moment')).toBeNull();
+    stage.unmount();
   });
 });

@@ -119,6 +119,20 @@ describe('the stage', () => {
     expect(css).toMatch(/:root\[data-directing\] \[data-hud-badges\]/u);
   });
 
+  it('shows what a repair took from the stores in the stores\' own art, and nothing that was not spent', () => {
+    render(<DirectorStage />);
+    act(() => { playScene({ id: 'spend', once: false, beats: [{ id: 'weld', shot: { kind: 'wide' }, ms: 2000, spend: { alloy: 800, crystal: 300, deuterium: 0 } }] }, 'ship-1'); });
+    const spent = screen.getByTestId('director-spend');
+    expect([...spent.querySelectorAll('[data-spend]')].map(node => `${node.getAttribute('data-spend') ?? ''}:${node.textContent}`)).toEqual(['alloy:−800', 'crystal:−300']);
+    expect([...spent.querySelectorAll('img')].map(img => img.getAttribute('alt'))).toEqual(['Alloy', 'Crystal']);
+  });
+
+  it('shows no spend on a shot that took nothing', () => {
+    render(<DirectorStage />);
+    act(() => { playScene(report, 'ship-1'); });
+    expect(screen.queryByTestId('director-spend')).toBeNull();
+  });
+
   it('answers each shot with its sound and a touch', () => {
     render(<DirectorStage />);
     act(() => { playScene({ id: 'cue', once: false, beats: [{ id: 'a', shot: { kind: 'wide' }, ms: 1000, sound: 'charge' }] }, 'ship-1'); });

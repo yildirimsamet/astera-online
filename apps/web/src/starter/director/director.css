@@ -7,6 +7,16 @@
 .director-band--top::after { top: 100%; background: linear-gradient(#000, #0000); }
 .director-band--bottom::before { bottom: 100%; background: linear-gradient(#0000, #000); }
 .director-line { max-width: 34ch; margin: 0; color: #f1f4fa; font-size: 17px; line-height: 1.25; text-align: center; text-wrap: balance; text-shadow: 0 0 18px #6fc8ff55; animation: director-line .5s .15s ease-out both; }
+/* What a repair took from the stores (isolated player test 2026-11-18): the stores sit under the top band, so their
+   fall is said here — each figure in its store's art and colour, coming down from the stores' side of the screen. */
+.director-band--bottom { flex-direction: column; gap: 6px; }
+.director-spend { display: flex; gap: 14px; animation: director-spend .5s .3s cubic-bezier(.22, 1, .36, 1) both; }
+.director-spend__item { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-v2-ui); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.director-spend__item img { width: 20px; height: 20px; object-fit: contain; }
+.director-spend__item--alloy { color: var(--gk-alloy-hi); }
+.director-spend__item--crystal { color: var(--gk-crystal); }
+.director-spend__item--deuterium { color: var(--gk-deut); }
+@keyframes director-spend { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
 .director-skip { color: #ffffff73; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
 @keyframes director-top { from { transform: translateY(-100%); } to { transform: none; } }
 @keyframes director-bottom { from { transform: translateY(100%); } to { transform: none; } }

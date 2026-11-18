@@ -2,7 +2,9 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { haptic } from '../../lib/haptics.js';
 import { playSound } from '../../lib/sound.js';
-import { skipBeat, useDirector } from './director.js';
+import { full } from '../../lib/format.js';
+import { RESOURCE_ART } from '../../ui/assets.js';
+import { raiseStage, skipBeat, useDirector, type Beat, type SpentResource } from './director.js';
 import './director.css';
 
 /**
@@ -13,6 +15,7 @@ import './director.css';
 export function DirectorStage() {
   const { t } = useTranslation();
   const now = useDirector();
+  useEffect(() => raiseStage(), []);
   const key = now?.key;
   const ms = now?.beat.ms;
   const cue = now?.beat.sound;
@@ -41,7 +44,28 @@ export function DirectorStage() {
       </div>
       <div data-letterbox="bottom" className="director-band director-band--bottom">
         <p role="status" aria-live="polite" key={now.key} className="director-line gk-display">{line ? t(line, { ...now.beat.vars }) : ''}</p>
+        {now.beat.spend && <Spent key={`spend:${String(now.key)}`} spend={now.beat.spend} />}
       </div>
+    </div>
+  );
+}
+
+const SPENT: readonly SpentResource[] = ['alloy', 'crystal', 'deuterium'];
+const SPENT_NAME = { alloy: 'statusBar.alloyLabel', crystal: 'statusBar.crystalLabel', deuterium: 'statusBar.deuteriumLabel' } as const;
+
+/** What the shot's work took from the stores, each in its own art and colour, a figure leaving the store. */
+function Spent({ spend }: { spend: NonNullable<Beat['spend']> }) {
+  const { t } = useTranslation();
+  const spent = SPENT.filter(resource => spend[resource] >= 1);
+  if (spent.length === 0) return null;
+  return (
+    <div data-testid="director-spend" className="director-spend">
+      {spent.map(resource => (
+        <span key={resource} data-spend={resource} className={`director-spend__item director-spend__item--${resource}`}>
+          <img src={RESOURCE_ART[resource]} alt={t(SPENT_NAME[resource])} />
+          {`−${full(spend[resource])}`}
+        </span>
+      ))}
     </div>
   );
 }
