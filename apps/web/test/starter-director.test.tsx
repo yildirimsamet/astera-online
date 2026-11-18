@@ -7,7 +7,7 @@ import { VESSEL_BAYS, VESSEL_NOSE_TURN, bayWorldPosition, starterShipYaw } from 
 import { VESSEL_LENGTH } from '../src/galaxy/scene.js';
 import { hullSweepAt, nextLook } from '../src/galaxy/hullShift.js';
 import { SCENE_WAIT_MS, SHOT_MAX_MS, playScene, resetDirector, skipBeat, useDirector, type Scene } from '../src/starter/director/director.js';
-import { DirectorStage } from '../src/starter/director/DirectorStage.js';
+import { DirectorStage, SKIP_HOLD_MS } from '../src/starter/director/DirectorStage.js';
 import { bayView, homeward, returnPose, shotPose } from '../src/starter/director/shotPose.js';
 import i18n from '../src/i18n/index.js';
 import { ToastProvider, useToast } from '../src/ui/Toast.js';
@@ -173,13 +173,42 @@ describe('the stage', () => {
     expect(screen.getByTestId('now')).toHaveTextContent('none');
   });
 
-  it('ends the shot on a tap, and takes the tap for itself', () => {
+  // Owner phone playtest 2026-11-18 (item 17): a stray tap ended a shot; a shot ends on a one-second hold.
+  it('ends the shot on a one-second hold, never on a tap, and takes the press for itself', () => {
+    vi.useFakeTimers();
     const under = vi.fn();
     render(<><button type="button" onClick={under}>under</button><DirectorStage /><Probe /></>);
     act(() => { playScene(report, 'ship-1'); });
-    fireEvent.pointerDown(screen.getByTestId('director-stage'));
+    const stage = screen.getByTestId('director-stage');
+    expect(SKIP_HOLD_MS).toBe(1000);
+    fireEvent.pointerDown(stage);
+    act(() => { vi.advanceTimersByTime(SKIP_HOLD_MS - 200); });
+    fireEvent.pointerUp(stage);
+    expect(stage.hasAttribute('data-holding')).toBe(false);
+    act(() => { vi.advanceTimersByTime(600); });
+    expect(screen.getByTestId('now')).toHaveTextContent('shipReport/orbit');
+    fireEvent.pointerDown(stage);
+    expect(stage.hasAttribute('data-holding')).toBe(true);
+    act(() => { vi.advanceTimersByTime(SKIP_HOLD_MS); });
     expect(screen.getByTestId('now')).toHaveTextContent('shipReport/goal');
     expect(under).not.toHaveBeenCalled();
+    expect(screen.getByTestId('director-skip')).toHaveTextContent('Hold to skip');
+  });
+
+  it('runs on shot after shot while the hold goes on, and stops when it is let go', () => {
+    vi.useFakeTimers();
+    render(<><DirectorStage /><Probe /></>);
+    act(() => { playScene(report, 'ship-1'); });
+    const stage = screen.getByTestId('director-stage');
+    fireEvent.pointerDown(stage);
+    act(() => { vi.advanceTimersByTime(SKIP_HOLD_MS); });
+    expect(screen.getByTestId('now')).toHaveTextContent('shipReport/goal');
+    fireEvent.pointerCancel(stage);
+    act(() => { vi.advanceTimersByTime(SKIP_HOLD_MS); });
+    expect(screen.getByTestId('now')).toHaveTextContent('shipReport/goal');
+    fireEvent.pointerDown(stage);
+    act(() => { vi.advanceTimersByTime(SKIP_HOLD_MS); });
+    expect(screen.getByTestId('now')).toHaveTextContent('none');
   });
 
   // Live play 2026-11-18: the galaxy's round buttons and the bell showed between the bands.

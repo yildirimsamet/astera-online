@@ -18,7 +18,13 @@
 .director-spend__item--deuterium { color: var(--gk-deut); }
 @keyframes director-spend { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
 .director-left { color: #ffffffa6; font-size: 12px; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
-.director-skip { color: #ffffff73; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.director-skip { position: relative; display: inline-flex; flex-direction: column; gap: 4px; padding: 6px 10px 5px; border: 1px solid #ffffff1f; border-radius: 3px; color: #ffffff8c; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+/* The hold meter: an edge that fills left to right over the second the press must last; let go and it is gone. */
+.director-skip__meter { height: 2px; background: #ffffff1a; overflow: hidden; }
+.director-skip__meter::before { content: ''; display: block; height: 100%; background: var(--color-v2-self); transform: scaleX(0); transform-origin: left; }
+[data-holding] .director-skip { border-color: color-mix(in srgb, var(--color-v2-self) 60%, transparent); color: #fff; }
+[data-holding] .director-skip__meter::before { animation: director-skip-fill 1s linear forwards; }
+@keyframes director-skip-fill { to { transform: scaleX(1); } }
 @keyframes director-top { from { transform: translateY(-100%); } to { transform: none; } }
 @keyframes director-bottom { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes director-line { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }

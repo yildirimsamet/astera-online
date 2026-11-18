@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { haptic } from '../../lib/haptics.js';
 import { playSound } from '../../lib/sound.js';
@@ -9,10 +9,14 @@ import { useSilenceToasts } from '../../ui/Toast.js';
 import { raiseStage, skipBeat, useDirector, type Beat, type SpentResource } from './director.js';
 import './director.css';
 
+/** How long a press must be held to end a shot (owner phone playtest 2026-11-18, item 17): a stray tap ends nothing. */
+export const SKIP_HOLD_MS = 1000;
+
 /**
  * THE LETTERBOX (plan 2026-11-18 §4 İ3). Black bands close in from the top and the foot, which every
  * player reads as "watch this"; the line is spoken on the lower band; the screen between them is the
- * scene. A tap anywhere ends the shot, and goes no further: nothing under the bands is pressed by it.
+ * scene. A press held anywhere for a second ends the shot, and goes no further: nothing under the bands
+ * is pressed by it. Held on, it runs on shot after shot; the band's meter fills while it is held.
  */
 export function DirectorStage() {
   const { t } = useTranslation();
@@ -28,8 +32,16 @@ export function DirectorStage() {
     const timer = window.setTimeout(() => { skipBeat(); }, ms);
     return () => { window.clearTimeout(timer); };
   }, [key, ms, cue]);
+  const [holding, setHolding] = useState(false);
+  useEffect(() => {
+    if (!holding || key === undefined) return undefined;
+    // Keyed on the shot: a hold that ends one starts timing the next.
+    const timer = window.setTimeout(() => { haptic('thunk'); skipBeat(); }, SKIP_HOLD_MS);
+    return () => { window.clearTimeout(timer); };
+  }, [holding, key]);
   // The galaxy's own buttons step off the screen while a scene plays (director.css).
   const live = now !== null;
+  useEffect(() => { if (!live) setHolding(false); }, [live]);
   useEffect(() => {
     if (!live) return undefined;
     document.documentElement.dataset.directing = '';
@@ -39,11 +51,22 @@ export function DirectorStage() {
   const line = now.beat.line;
   return (
     <div data-testid="director-stage" data-scene={now.scene.id} data-beat={now.beat.id} className="director-stage"
-      onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); skipBeat(); }}
+      {...(holding ? { 'data-holding': '' } : {})}
+      onPointerDown={(event) => {
+        // The stage covers the screen, so the press is let go on it wherever the finger slides.
+        event.preventDefault(); event.stopPropagation();
+        haptic('tap');
+        setHolding(true);
+      }}
+      onPointerUp={() => { setHolding(false); }}
+      onPointerCancel={() => { setHolding(false); }}
       onClick={(event) => { event.stopPropagation(); }}>
       <Quiet />
       <div data-letterbox="top" className="director-band director-band--top">
-        <span className="director-skip">{t('starter.director.skip')}</span>
+        <span data-testid="director-skip" className="director-skip">
+          {t('starter.director.skip')}
+          <span key={now.key} aria-hidden="true" className="director-skip__meter" />
+        </span>
       </div>
       <div data-letterbox="bottom" className="director-band director-band--bottom">
         <p role="status" aria-live="polite" key={now.key} className="director-line gk-display">{line ? t(line, { ...now.beat.vars }) : ''}</p>
@@ -74,7 +97,7 @@ function Spent({ spend }: { spend: NonNullable<Beat['spend']> }) {
   );
 }
 
-/** Work under way says how long is left, so a held shot is a wait with an end, and a tap still skips it. */
+/** Work under way says how long is left, so a held shot is a wait with an end, and a hold still skips it. */
 function Left({ until }: { until: number }) {
   const at = useNow(1_000);
   return <span data-testid="director-left" className="director-left gk-num">{durationPrecise(Math.max(0, until - at) / 60_000)}</span>;
