@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { VesselModule, VesselSystem } from '@astera/rules';
-import { MODULE_ORE, bayReturnOf, flipbookFrame, globeDrawn, sparkAt, sparkColour, strobeOn, sweepTurn, type Ore } from './bayFx.js';
+import { MODULE_ORE, bayReturnOf, flipbookFrame, sparkAt, sparkColour, strobeOn, sweepTurn, type Ore } from './bayFx.js';
 import { EMP_ARC } from './empSchedule.js';
 import { NUKE_SMOKE } from './NukeBlast.js';
 import { BURN_FIRE } from './VesselBurn.js';
@@ -267,84 +267,12 @@ function PowerArcs({ at }: { at: Vec }) {
   );
 }
 
-const GLOBE_VERT = /* glsl */`
-  uniform float uRadius; varying float vY;
-  void main() { vY = position.y / uRadius; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
-const GLOBE_FRAG = /* glsl */`
-  uniform vec3 uColour; uniform float uCut; uniform float uFade;
-  varying float vY;
-  void main() {
-    if (vY < uCut) discard;
-    // The line being drawn runs bright; the sphere behind it holds at a steady line.
-    float lead = 1.0 - smoothstep(0.0, 0.14, vY - uCut);
-    gl_FragColor = vec4(uColour * (0.5 + 0.9 * lead) * uFade, 1.0);
-  }`;
-
-/** Meridians and parallels of a sphere, as line segments. */
-function sphereLines(radius: number): THREE.BufferGeometry {
-  const points: number[] = [];
-  const steps = 48;
-  for (const latitude of [-60, -30, 0, 30, 60]) {
-    const y = Math.sin(latitude * Math.PI / 180) * radius;
-    const ring = Math.cos(latitude * Math.PI / 180) * radius;
-    for (let i = 0; i < steps; i += 1) {
-      const a = (i / steps) * Math.PI * 2, b = ((i + 1) / steps) * Math.PI * 2;
-      points.push(ring * Math.cos(a), y, ring * Math.sin(a), ring * Math.cos(b), y, ring * Math.sin(b));
-    }
-  }
-  for (let m = 0; m < 8; m += 1) {
-    const around = (m / 8) * Math.PI * 2;
-    for (let j = 0; j < steps / 2; j += 1) {
-      const a = -Math.PI / 2 + (j / (steps / 2)) * Math.PI, b = -Math.PI / 2 + ((j + 1) / (steps / 2)) * Math.PI;
-      points.push(Math.cos(a) * Math.cos(around) * radius, Math.sin(a) * radius, Math.cos(a) * Math.sin(around) * radius,
-        Math.cos(b) * Math.cos(around) * radius, Math.sin(b) * radius, Math.cos(b) * Math.sin(around) * radius);
-    }
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
-  return geometry;
-}
-
-/** The telescope wakes: the sphere of sky it sees draws itself round its bay, pole to pole, turns and goes. */
-function GlobeScan({ at, colour }: { at: Vec; colour: string }) {
-  const spin = useRef<THREE.Group>(null);
-  const start = useRef<number | null>(null);
-  const radius = 0.3;
-  const { geometry, material } = useMemo(() => ({
-    geometry: sphereLines(radius),
-    material: new THREE.ShaderMaterial({
-      vertexShader: GLOBE_VERT, fragmentShader: GLOBE_FRAG, transparent: true, depthWrite: false,
-      blending: THREE.AdditiveBlending, toneMapped: false,
-      uniforms: { uColour: { value: new THREE.Color(colour) }, uRadius: { value: radius }, uCut: { value: 1 }, uFade: { value: 0 } },
-    }),
-  }), [colour]);
-  useEffect(() => () => { geometry.dispose(); material.dispose(); }, [geometry, material]);
-  useFrame(({ clock, invalidate }) => {
-    start.current ??= clock.elapsedTime;
-    const t = clock.elapsedTime - start.current;
-    const live = t < RETURN_S;
-    if (live) invalidate();
-    if (spin.current) spin.current.rotation.y = t * 0.7;
-    const cut = material.uniforms.uCut;
-    if (cut) cut.value = 1.02 - 2.04 * globeDrawn(t, RETURN_S);
-    const fade = material.uniforms.uFade;
-    if (fade) fade.value = live ? Math.min(1, t / 0.15, (RETURN_S - t) / 0.5) : 0;
-  });
-  return (
-    <group position={[at[0], at[1], at[2]]}>
-      <group ref={spin}>
-        <lineSegments geometry={geometry} material={material} raycast={() => null} />
-      </group>
-    </group>
-  );
-}
-
 /** A system back on the hull, doing its own work where it sits: its module's where it has one (`bayReturnOf`). */
 export function BayReturnFx({ system, module, at, colour }: { system: VesselSystem; module?: VesselModule | undefined; at: Vec; colour: string }) {
   const work = bayReturnOf(system, module);
   if (work === 'burner') return <BurnerIgnite at={at} ore={(module ? MODULE_ORE[module] : undefined) ?? 'alloy'} />;
   if (work === 'sweep') return <AntennaSweep at={at} colour={colour} />;
-  if (work === 'globe') return <GlobeScan at={at} colour={colour} />;
+  if (work === null) return null;
   return <PowerArcs at={at} />;
 }
 

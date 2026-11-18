@@ -1,5 +1,5 @@
 import type { HullId, VesselModule, VesselSystem } from '@astera/rules';
-import { useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { Focus } from '../../galaxy/FocusPanel.js';
 import type { SoundCue } from '../../lib/sound.js';
 
@@ -21,7 +21,7 @@ export const SCENE_WAIT_MS = 20_000;
 /** What a shot looks at. The galaxy turns it into a place (`shotPose`). */
 export type ShotTarget =
   /** The whole ship, swung round by `turn` radians on the way. */
-  | { kind: 'ship'; turn?: number }
+  | { kind: 'ship'; turn?: number; range?: number; seconds?: number }
   /** One system on the hull, close. */
   | { kind: 'bay'; system: VesselSystem }
   /** Pulled far back: the ship alone in the dark. */
@@ -56,6 +56,8 @@ export interface Beat {
   craft?: { hull: HullId; count: number };
   /** The bay this beat wakes as the camera reaches it, doing its module's own work (the telescope its sphere). */
   awaken?: { system: VesselSystem; module: VesselModule };
+  /** Ms into the shot when the telescope's own reach opens (owner 2026-11-18, item 19); held until then. */
+  reach?: number;
 }
 
 export type SpentResource = 'alloy' | 'crystal' | 'deuterium';
@@ -94,6 +96,7 @@ interface Waiting { scene: Scene; vesselId: string; askedAt: number }
 
 let now: Playing | null = null;
 let nowAskedAt = 0;
+let nowStartedAt = 0;
 let queue: Waiting[] = [];
 let counter = 0;
 let stages = 0;
@@ -115,6 +118,7 @@ function start(scene: Scene, vesselId: string, index: number, askedAt: number): 
   if (!beat) { now = null; return; }
   counter += 1;
   nowAskedAt = askedAt;
+  nowStartedAt = Date.now();
   now = { scene, beat: { ...beat, ms: shotMs(beat) }, index, vesselId, key: counter };
 }
 
@@ -177,6 +181,33 @@ export function resetDirector({ keepMemory = false }: { keepMemory?: boolean } =
 }
 
 export const directorNow = (): Playing | null => now;
+
+/**
+ * THE TELESCOPE'S REACH IN ITS SCENE (owner 2026-11-18, item 19): held while a scene that opens it waits or
+ * pulls back, open from its moment to the scene's end, free otherwise.
+ */
+export function reachState(at: number = Date.now()): 'held' | 'open' | 'free' {
+  if (queue.some(waiting => waiting.scene.beats.some(beat => beat.reach !== undefined))) return 'held';
+  if (!now) return 'free';
+  const opens = now.scene.beats.findIndex(beat => beat.reach !== undefined);
+  if (opens < 0) return 'free';
+  if (opens > now.index) return 'held';
+  if (opens < now.index) return 'open';
+  return at - nowStartedAt >= (now.beat.reach ?? 0) ? 'open' : 'held';
+}
+
+/** The reach's state, drawn again at the moment it opens. */
+export function useReachState(): 'held' | 'open' | 'free' {
+  const playing = useDirector();
+  const [, redraw] = useState(0);
+  const wait = playing?.beat.reach !== undefined ? playing.beat.reach - (Date.now() - nowStartedAt) : 0;
+  useEffect(() => {
+    if (wait <= 0) return undefined;
+    const timer = window.setTimeout(() => { redraw(n => n + 1); }, wait);
+    return () => { window.clearTimeout(timer); };
+  }, [playing?.key, wait]);
+  return reachState();
+}
 
 export const useDirector = (): Playing | null => useSyncExternalStore(watch, directorNow);
 

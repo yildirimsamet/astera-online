@@ -47,7 +47,7 @@ import type {
   UnknownSignalView,
 } from '../api/schemas.js';
 import type { Focus } from './FocusPanel.js';
-import { useDirector, type ShotTarget } from '../starter/director/director.js';
+import { useDirector, useReachState, type ShotTarget } from '../starter/director/director.js';
 import { bayView, homeward, shotPose, type DirectorShot } from '../starter/director/shotPose.js';
 import { Monuments } from './Monuments.js';
 import { UnknownSignals } from './UnknownSignals.js';
@@ -688,6 +688,8 @@ export function GalaxyCanvas({
 
   /** The director's shot, as a place (plan 2026-11-18, Faz 5.1): only aboard, and only on a clear galaxy. */
   const directing = useDirector();
+  // The telescope's reach opens in its own scene, a breath after the camera pulls back (owner item 19).
+  const reach = useReachState();
   const directorLive = starter?.directorLive === true;
   const shotHull = starter?.hull;
   const directorShot = useMemo<DirectorShot | null>(() => {
@@ -696,7 +698,7 @@ export function GalaxyCanvas({
     const span = directing.beat.ms / 1000;
     const ship = (): [number, number, number] => [home[0], home[1], home[2]];
     switch (target.kind) {
-      case 'ship': return { key: directing.key, at: ship, range: SHOT_SHIP_RANGE, turn: target.turn ?? 0, seconds: span * 0.9 };
+      case 'ship': return { key: directing.key, at: ship, range: target.range ?? SHOT_SHIP_RANGE, turn: target.turn ?? 0, seconds: target.seconds ?? span * 0.9 };
       case 'bay': {
         const bay = (): [number, number, number] => bayWorldPosition(shotHull, target.system, home, mainOffset ?? NO_OFFSET);
         return { key: directing.key, at: bay, towards: () => bayView(bay(), home), range: SHOT_BAY_RANGE, seconds: Math.min(1.2, span * 0.5) };
@@ -986,7 +988,7 @@ export function GalaxyCanvas({
         {sensors && sensors.length > 0 && (
           <SensorRings
             posts={sensors}
-            showTelescope={showTelescopeReach}
+            showTelescope={reach === 'open' || (showTelescopeReach && reach === 'free')}
             showRadar={showRadarReach}
           />
         )}

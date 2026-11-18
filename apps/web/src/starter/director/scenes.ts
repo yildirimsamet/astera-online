@@ -70,13 +70,23 @@ function shipsHanded(step: RepairStep & { module: RoadModule }): { hull: HullId;
   return entry && line ? { ...entry, line } : null;
 }
 
+/** The telescope's pull back from the ship (owner 2026-11-18, item 19): a little wider than the whole-ship shot, quickly. */
+export const TELESCOPE_PULL = { range: 7.5, seconds: 1.2 } as const;
+/** The breath between the camera settling and the reach opening. */
+const REACH_BREATH_MS = 500;
+
 function done(step: RepairStep & { module: RoadModule }, name: (module: string) => string, look: VesselLook | null): Scene {
   const ships = shipsHanded(step);
+  const line = { line: `starter.director.repair.${step.module}` as const, vars: { name: name(step.module) }, sound: 'ignite' as const };
+  const reach = TELESCOPE_PULL.seconds * 1000 + REACH_BREATH_MS;
+  const back: Beat = step.module === 'TELESCOPE'
+    ? { id: 'back', shot: { kind: 'ship', range: TELESCOPE_PULL.range, seconds: TELESCOPE_PULL.seconds }, ms: reach + 1800, ...line, reach }
+    : { id: 'back', shot: { kind: 'bay', system: step.system }, ms: 2600, ...line, awaken: { system: step.system, module: step.module } };
   return {
     id: `repair:${step.module}:${String(step.stage)}:done`,
     once: true,
     beats: [
-      { id: 'back', shot: { kind: 'bay', system: step.system }, ms: 2600, line: `starter.director.repair.${step.module}`, vars: { name: name(step.module) }, sound: 'ignite', awaken: { system: step.system, module: step.module } },
+      back,
       // The craft come out of the cargo bay, seen from far enough to watch them, and dock again (OwnVessel).
       ...(ships
         ? [{ id: 'ships', shot: { kind: 'ship' as const, turn: 0.6 }, ms: 4200, line: ships.line, vars: { count: ships.count, hull: name(ships.hull) }, sound: 'launch' as const, craft: { hull: ships.hull, count: ships.count } }]

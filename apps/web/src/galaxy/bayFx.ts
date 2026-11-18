@@ -12,15 +12,14 @@ import type { VesselModule, VesselSystem } from '@astera/rules';
  *   flame and a puff of smoke (`flame-3-6x6.webp`, `sck-smoke-8x8.webp`); the antenna (radar, survey)
  *   sweeps the space round it twice, a hard-edged radar wedge; power arcs through the yard and the hold
  *   (`electric-line-4x4.webp`) with a burst of sparks. Why: the player sees what the system is.
- * - The telescope back (owner phone playtest 2026-11-18, item 7: it is a sphere, and it had the radar's
- *   sweep). In the world: the sphere of sky it sees draws itself round its bay, meridians and parallels,
- *   pole to pole behind a bright leading line, turns once and goes. Assets: hard lines drawn here (the
- *   library's icosphere sheet, `t-icosphere01tex`, is a 2048 px texture for the same look). Why: a
- *   telescope maps the sky as a sphere; the grid closing round the ship says it now sees all around.
+ * - The telescope back (owner phone playtest 2026-11-18, items 7 and 19). In the world: its mirror opens and
+ *   its reach spreads out from the ship. Asset: the game's own sight sphere (`SensorRings` ReachShell), after
+ *   the camera pulls back a little and a breath passes (the director's scene); no bay effect. Why: the player
+ *   sees how far the telescope sees, in the sphere they will use.
  * - A mended bay. A running light that blinks twice and rests, like a ship's navigation strobe: a hard
  *   dot, never a halo. Why: a lit, blinking point says "this part is alive" and costs two frames a blink.
  */
-export type BayReturn = 'burner' | 'sweep' | 'arcs' | 'globe';
+export type BayReturn = 'burner' | 'sweep' | 'arcs';
 
 export const BAY_RETURN: Readonly<Record<VesselSystem, BayReturn>> = {
   REFINERY: 'burner',
@@ -55,18 +54,12 @@ export function sparkColour(heat: number, ore: Ore = 'alloy'): [number, number, 
   return [0.9 * fade, (0.2 + 0.25 * heat / 0.33) * fade, 0.05 * fade];
 }
 
-/** A module whose return is its own, not its system's. */
-const MODULE_RETURN: Partial<Record<VesselModule, BayReturn>> = { TELESCOPE: 'globe' };
+/** A module whose return is no bay effect: the telescope's is its reach opening (item 19). */
+const QUIET_MODULES: ReadonlySet<VesselModule> = new Set<VesselModule>(['TELESCOPE']);
 
-/** What a bay does as it comes back: its module's own work where it has one, else its system's. */
-export const bayReturnOf = (system: VesselSystem, module?: VesselModule): BayReturn =>
-  (module ? MODULE_RETURN[module] : undefined) ?? BAY_RETURN[system];
-
-/** How much of the telescope's sphere is drawn, pole to pole, `t` seconds into a return of `seconds`. */
-export function globeDrawn(t: number, seconds: number): number {
-  const u = Math.min(1, Math.max(0, t / (seconds * 0.45)));
-  return u * u * (3 - 2 * u);
-}
+/** What a bay does as it comes back: nothing for a quiet module, else its system's work. */
+export const bayReturnOf = (system: VesselSystem, module?: VesselModule): BayReturn | null =>
+  module && QUIET_MODULES.has(module) ? null : BAY_RETURN[system];
 
 const fract = (x: number): number => x - Math.floor(x);
 const hash = (n: number): number => fract(Math.sin(n * 127.1 + 311.7) * 43758.5453);

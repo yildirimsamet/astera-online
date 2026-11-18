@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VESSEL_BAYS, VESSEL_NOSE_TURN, bayWorldPosition, starterShipYaw } from '../src/galaxy/mainSky.js';
 import { VESSEL_LENGTH } from '../src/galaxy/scene.js';
 import { hullSweepAt, nextLook } from '../src/galaxy/hullShift.js';
-import { SCENE_WAIT_MS, SHOT_MAX_MS, playScene, resetDirector, skipBeat, useDirector, type Scene } from '../src/starter/director/director.js';
+import { SCENE_WAIT_MS, SHOT_MAX_MS, directorNow, playScene, reachState, resetDirector, skipBeat, useDirector, type Scene } from '../src/starter/director/director.js';
 import { DirectorStage, SKIP_HOLD_MS } from '../src/starter/director/DirectorStage.js';
 import { bayView, homeward, returnPose, shotPose } from '../src/starter/director/shotPose.js';
 import i18n from '../src/i18n/index.js';
@@ -358,3 +358,32 @@ describe('the hull\'s new look', () => {
     expect(nextLook('RENEWED')).toBeNull();
   });
 });
+
+/*
+  Owner phone playtest 2026-11-18 (item 19): the telescope's own reach opens in its scene, a breath after the
+  camera has pulled back; not before it, not while the scene waits its turn.
+*/
+describe('the telescope\'s reach in its scene', () => {
+  const opening: Scene = { id: 'scope', once: false, beats: [
+    { id: 'pull', shot: { kind: 'ship', range: 7, seconds: 1.2 }, ms: 3600, reach: 1700 },
+    { id: 'after', shot: { kind: 'ship' }, ms: 2000 },
+  ] };
+  it('holds the reach while its scene waits and pulls back, opens it a breath after, and lets go when the scene ends', () => {
+    vi.useFakeTimers();
+    expect(reachState()).toBe('free');
+    playScene(report, 'ship-1');
+    playScene(opening, 'ship-1');
+    expect(reachState()).toBe('held');
+    skipBeat(); skipBeat();
+    expect(directorNow()?.scene.id).toBe('scope');
+    vi.advanceTimersByTime(1600);
+    expect(reachState()).toBe('held');
+    vi.advanceTimersByTime(100);
+    expect(reachState()).toBe('open');
+    skipBeat();
+    expect(reachState()).toBe('open');
+    skipBeat();
+    expect(reachState()).toBe('free');
+  });
+});
+

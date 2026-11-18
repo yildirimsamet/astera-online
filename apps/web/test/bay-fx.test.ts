@@ -1,6 +1,6 @@
 import { VESSEL_SYSTEMS } from '@astera/rules';
 import { describe, expect, it } from 'vitest';
-import { BAY_RETURN, MODULE_ORE, bayReturnOf, flipbookFrame, globeDrawn, sparkAt, sparkColour, strobeOn, sweepTurn } from '../src/galaxy/bayFx.js';
+import { BAY_RETURN, MODULE_ORE, bayReturnOf, flipbookFrame, sparkAt, sparkColour, strobeOn, sweepTurn } from '../src/galaxy/bayFx.js';
 
 /**
  * THE SHIP'S OWN EFFECTS (owner 2026-11-18: no round glow; each effect is its event). A weld throws
@@ -13,23 +13,15 @@ describe('what a bay does when its system comes back', () => {
     expect(Object.keys(BAY_RETURN).sort()).toEqual([...VESSEL_SYSTEMS].sort());
   });
   /*
-    Owner, phone playtest 2026-11-18 (item 7): the telescope came back with the radar's sweep, though it is
-    a sphere, and the radar had the same. The telescope's own return is the sphere it sees with; the radar
-    keeps its sweep, and a system with no module named does its system's work.
+    Owner, phone playtest 2026-11-18: the telescope came back with the radar's sweep (item 7), then with a
+    sphere drawn round the hull (item 19). Its return is no bay effect: the camera pulls back and its own
+    reach opens (the director's scene). The radar keeps its sweep; a system with no module does its system's work.
   */
-  it('wakes the telescope as a sphere and leaves the radar its sweep', () => {
-    expect(bayReturnOf('DEFENCE', 'TELESCOPE')).toBe('globe');
+  it('gives the telescope no bay effect, its reach is its return, and leaves the radar its sweep', () => {
+    expect(bayReturnOf('DEFENCE', 'TELESCOPE')).toBeNull();
     expect(bayReturnOf('DEFENCE', 'RADAR')).toBe('sweep');
     expect(bayReturnOf('DEFENCE')).toBe('sweep');
     expect(bayReturnOf('REFINERY', 'EXTRACTOR')).toBe('burner');
-  });
-
-  it('draws the telescope\'s sphere from the pole down, then holds it whole', () => {
-    expect(globeDrawn(0, 2.8)).toBe(0);
-    expect(globeDrawn(0.6, 2.8)).toBeGreaterThan(0);
-    expect(globeDrawn(0.6, 2.8)).toBeLessThan(globeDrawn(1, 2.8));
-    expect(globeDrawn(1.4, 2.8)).toBe(1);
-    expect(globeDrawn(2.8, 2.8)).toBe(1);
   });
 });
 

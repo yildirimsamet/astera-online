@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SHOT_MAX_MS } from '../src/starter/director/director.js';
-import { WORK_GRACE_MS, contactScene, probeScene, rockScene, sceneAnnouncing, scenesFor, weldingBays, yardNeedScene, type ShipState } from '../src/starter/director/scenes.js';
+import { TELESCOPE_PULL, WORK_GRACE_MS, contactScene, probeScene, rockScene, sceneAnnouncing, scenesFor, weldingBays, yardNeedScene, type ShipState } from '../src/starter/director/scenes.js';
 
 /**
  * WHICH SCENE A CHANGE OF THE SHIP CALLS FOR (plan 2026-11-18 §5, Faz 5.2–5.6). The first look at the
@@ -155,12 +155,30 @@ describe('the scenes after the road\'s first half', () => {
     expect(ships?.craft).toEqual({ hull: 'PROSPECTOR', count: 1 });
   });
 
-  // Owner 2026-11-18 (item 7): the bay that comes back does its module's own work, the telescope its sphere.
+  // Owner 2026-11-18 (item 7): the bay that comes back does its module's own work.
   it('wakes the bay of a repair as its module, as the camera reaches it', () => {
+    const before: ShipState = { modules: { REFINERY: 2 }, queue: [{ subject: 'EXTRACTOR', stage: 1 }], look: 'WRECKED', facts: [] };
+    const after: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1 }, queue: [], look: 'WRECKED', facts: [] };
+    const done = scenesFor(before, after, (module) => module.toLowerCase()).find(scene => scene.id === 'repair:EXTRACTOR:1:done');
+    expect(done?.beats[0]?.shot).toEqual({ kind: 'bay', system: 'REFINERY' });
+    expect(done?.beats[0]?.awaken).toEqual({ system: 'REFINERY', module: 'EXTRACTOR' });
+    expect(done?.beats[0]?.reach).toBeUndefined();
+  });
+
+  /*
+    Owner phone playtest 2026-11-18 (item 19): not a sphere drawn round the hull. The camera pulls back a
+    little from the ship, and once it has, a breath later, the telescope's own reach opens.
+  */
+  it('pulls back from the ship as the telescope comes back, and opens its reach half a second after', () => {
     const before: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1 }, queue: [{ subject: 'TELESCOPE', stage: 1 }], look: 'WRECKED', facts: [] };
     const after: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }, queue: [], look: 'WRECKED', facts: [] };
-    const done = scenesFor(before, after, (module) => module.toLowerCase()).find(scene => scene.id === 'repair:TELESCOPE:1:done');
-    expect(done?.beats[0]?.awaken).toEqual({ system: 'DEFENCE', module: 'TELESCOPE' });
+    const back = scenesFor(before, after, name).find(scene => scene.id === 'repair:TELESCOPE:1:done')?.beats[0];
+    expect(back?.id).toBe('back');
+    expect(back?.shot).toEqual({ kind: 'ship', range: TELESCOPE_PULL.range, seconds: TELESCOPE_PULL.seconds });
+    expect(TELESCOPE_PULL.range).toBeGreaterThan(4.4);
+    expect(back?.reach).toBe(TELESCOPE_PULL.seconds * 1000 + 500);
+    expect(back?.awaken).toBeUndefined();
+    expect(back?.ms).toBeGreaterThanOrEqual((back?.reach ?? 0) + 1400);
   });
 
   it('shows the ship again after its first battle: every system named, then the drive still to wake', () => {
