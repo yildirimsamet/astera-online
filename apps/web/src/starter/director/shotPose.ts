@@ -57,6 +57,10 @@ export function returnPose(view: { target: Vec; camera: Vec }, ship: Vec, range:
  * instead of the camera going home and straight back.
  */
 export const SHOT_RETURN_HOLD = 1.6;
+/** The flight back to the player's own view once a scene has ended, seconds. */
+export const SHOT_RETURN_SECONDS = 0.9;
+/** From a scene's end until the camera is the player's view again: the hold, then the flight home. */
+export const SHOT_HOME_MS = Math.round((SHOT_RETURN_HOLD + SHOT_RETURN_SECONDS) * 1000);
 
 /** The flight home once a scene has ended: none when it ended on a subject that stays, or began nowhere. */
 export function homeward(view: { target: Vec; camera: Vec } | null, stays: boolean, ship: Vec, range: number): { pose: ShotPose; hold: number } | null {

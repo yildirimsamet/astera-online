@@ -10,6 +10,7 @@ import { ToastProvider, useToast } from '../src/ui/Toast.js';
 import { clockTime } from '../src/lib/time.js';
 import { playScene, resetDirector, type Scene } from '../src/starter/director/director.js';
 import { DirectorStage } from '../src/starter/director/DirectorStage.js';
+import { SHOT_HOME_MS } from '../src/starter/director/shotPose.js';
 
 vi.mock('../src/onboarding/flightSchool/SchoolPointer.js', () => ({ SchoolPointer: () => <span data-testid="pointer" /> }));
 const observe = vi.hoisted(() => vi.fn());
@@ -281,7 +282,7 @@ describe('the welcome over the power card', () => {
   // Owner playtest 2026-11-09: come closer by hand, then the rock can be touched.
   describe('the zoom before the rock', () => {
     const zoom: Extract<TutorialAnswer, { kind: 'step' }> = { kind: 'step', id: 'zoomRock', step: 'gesture', marks: [], chapter: 6, strict: false };
-    afterEach(() => { act(() => { setRockReach(null); }); sound.mockClear(); });
+    afterEach(() => { act(() => { setRockReach(null); }); sound.mockClear(); resetDirector(); });
     it('shows the pinch, with no hand and no Next to walk past it', () => {
       coach(zoom);
       expect(document.querySelector('[data-pinch-hint]')).not.toBeNull();
@@ -299,6 +300,39 @@ describe('the welcome over the power card', () => {
     it('passes quietly when the view was already close', () => {
       setRockReach('rock-1');
       const { ack } = coach(zoom);
+      expect(ack).toHaveBeenCalledWith('zoomRock');
+      expect(sound).not.toHaveBeenCalled();
+    });
+
+    /*
+      Owner phone playtest 2026-11-18, item 20: the zoom is the player's. The rock scene's close-up left a rock
+      "in reach" as it ended, and the step passed before the camera had flown home and the player had done a thing.
+    */
+    const rockShot: Scene = { id: 'rock', once: true, beats: [{ id: 'rock', shot: { kind: 'wide' }, ms: 2000 }] };
+    const sceneEnds = () => {
+      act(() => { playScene(rockShot, 'ship-1'); });
+      const stage = render(<DirectorStage />);
+      act(() => { setRockReach('rock-1'); });
+      stage.unmount();
+    };
+    it('does not take a scene\'s close-up for the player\'s zoom: it waits for the camera to come home', () => {
+      vi.useFakeTimers();
+      const { ack } = coach(zoom);
+      sceneEnds();
+      expect(ack).not.toHaveBeenCalled();
+      act(() => { setRockReach(null); vi.advanceTimersByTime(SHOT_HOME_MS); });
+      expect(ack).not.toHaveBeenCalled();
+      act(() => { setRockReach('rock-1'); });
+      expect(ack).toHaveBeenCalledWith('zoomRock');
+      expect(sound).toHaveBeenCalledWith('confirm');
+    });
+    it('passes quietly once the camera is home, if the player\'s own view was close', () => {
+      vi.useFakeTimers();
+      const { ack } = coach(zoom);
+      sceneEnds();
+      act(() => { vi.advanceTimersByTime(SHOT_HOME_MS - 1); });
+      expect(ack).not.toHaveBeenCalled();
+      act(() => { vi.advanceTimersByTime(1); });
       expect(ack).toHaveBeenCalledWith('zoomRock');
       expect(sound).not.toHaveBeenCalled();
     });

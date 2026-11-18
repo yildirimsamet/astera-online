@@ -13,6 +13,7 @@ import { CORE_CHAPTERS, waitMode, type TutorialStepId } from './script.js';
 import { useLaunchSheet } from './launchSheet.js';
 import { closeFocus } from './focusClose.js';
 import { useDirecting } from '../director/director.js';
+import { SHOT_HOME_MS } from '../director/shotPose.js';
 
 const CHAPTER = {
   1: 'starter.tutorial.chapter.1', 2: 'starter.tutorial.chapter.2', 3: 'starter.tutorial.chapter.3', 4: 'starter.tutorial.chapter.4',
@@ -43,7 +44,7 @@ const SUBJECT: Partial<Record<TutorialStepId, { module: VesselModule; tab: Vesse
   orderRefinery: { module: 'REFINERY', tab: 'REFINERY' },
   orderExtractor: { module: 'EXTRACTOR', tab: 'REFINERY' },
   orderTelescope: { module: 'TELESCOPE', tab: 'DEFENCE' },
-  orderRadar: { module: 'RADAR', tab: 'DEFENCE' },
+  orderRadar: { module: 'RADAR', tab: 'SURVEY' },
   orderSurvey: { module: 'SURVEY', tab: 'SURVEY' },
   orderShipyard: { module: 'SHIPYARD', tab: 'CARGO' },
 };
@@ -278,8 +279,22 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
     };
   }, [lookId, ack]);
 
+  // A scene's camera flies home after it: until it lands, what is in reach is the director's view, not the
+  // player's (owner phone playtest 2026-11-18, item 20: the rock scene's close-up passed the zoom).
+  const [homeFlight, setHomeFlight] = useState(false);
+  const [wasDirecting, setWasDirecting] = useState(directing);
+  if (wasDirecting !== directing) {
+    setWasDirecting(directing);
+    if (!directing) setHomeFlight(true);
+  }
+  useEffect(() => {
+    if (!homeFlight) return undefined;
+    const landed = window.setTimeout(() => { setHomeFlight(false); }, SHOT_HOME_MS);
+    return () => { window.clearTimeout(landed); };
+  }, [homeFlight]);
+
   // THE ZOOM (owner playtest 2026-11-09): the camera is the answer. Already close, it passes without a word.
-  const zooming = live && kind === 'gesture' && stepId === 'zoomRock';
+  const zooming = live && !homeFlight && kind === 'gesture' && stepId === 'zoomRock';
   const reach = useRockReach();
   const wasFar = useRef(false);
   useEffect(() => {

@@ -48,7 +48,7 @@ import type {
 } from '../api/schemas.js';
 import type { Focus } from './FocusPanel.js';
 import { useDirector, useReachState, type ShotTarget } from '../starter/director/director.js';
-import { bayView, homeward, shotPose, type DirectorShot } from '../starter/director/shotPose.js';
+import { SHOT_RETURN_SECONDS, bayView, homeward, shotPose, type DirectorShot } from '../starter/director/shotPose.js';
 import { Monuments } from './Monuments.js';
 import { UnknownSignals } from './UnknownSignals.js';
 import { RadiationIndicator } from '../ui/RadiationIndicator.js';
@@ -232,8 +232,6 @@ const CRAFT_DISTANCE = 7;
 /** The director's ranges (plan 2026-11-18): the whole ship, one bay on it, the ship alone in the dark, a subject out there. */
 const SHOT_SHIP_RANGE = 4.4;
 const SHOT_BAY_RANGE = 3;
-/** The flight back to the player's own view once a scene has ended. */
-const SHOT_RETURN_SECONDS = 0.9;
 const SHOT_WIDE_RANGE = 26;
 const SHOT_SUBJECT_RANGE = 3.2;
 
