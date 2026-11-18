@@ -295,7 +295,8 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
   if (aside && tutorial.wait) return <AwayChip until={tutorial.wait.until} onOpen={() => { setSteppedAside(null); }} />;
   const subject = SUBJECT[step.id];
   const text = step.nav
-    ? t(`starter.tutorial.nav.${step.nav}`, { base: t('dock.base') })
+    // A repair is said to be done aboard; other work there (a ship to build, a crate) is no repair.
+    ? t(`starter.tutorial.nav.${step.nav}`, { base: t('dock.base'), ...(step.nav === 'openShip' && !subject ? { context: 'work' } : {}) })
     : t(`starter.tutorial.line.${step.id}`, {
       name: subject ? moduleName(subject.module) : '',
       tab: subject ? t(`starter.systemShort.${subject.tab}`) : '',

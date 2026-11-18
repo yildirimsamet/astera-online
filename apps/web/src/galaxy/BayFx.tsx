@@ -217,7 +217,7 @@ function AntennaSweep({ at, colour }: { at: Vec; colour: string }) {
     geometry: new THREE.CircleGeometry(radius, 40, 0, wedge),
     material: new THREE.ShaderMaterial({
       vertexShader: SWEEP_VERT, fragmentShader: SWEEP_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending, toneMapped: false,
+      blending: THREE.AdditiveBlending, forceSinglePass: true, toneMapped: false,
       uniforms: { uColour: { value: new THREE.Color(colour) }, uRadius: { value: radius }, uWedge: { value: wedge }, uFade: { value: 0 } },
     }),
   }), [colour]);

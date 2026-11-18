@@ -871,6 +871,8 @@ export function GalaxyView({
   // Reached by a jump, the player is on their own world under the flight's last frame: open soon.
   const [byJump] = useState(() => { const landing = currentJump(); return landing?.inGame === true && landing.stage === 'reveal'; });
   const covered = useOpeningCover(assets.ready && dataSettled && drawn, undefined, byJump && assets.ready && dataSettled ? JUMP_OPEN_GRACE_MS : null);
+  // A scene waits for the sky: under the opening cover, a sheet or a launch its shots would play to no one.
+  const directorLive = !covered && panel === null && !launchingNow && !trading && !mainRowOpen;
   // A jump's last frame waits over this view until it has drawn whole.
   useEffect(() => { if (!covered) markGameDrawn(); }, [covered]);
   useEffect(() => { if (drawn && !covered) onSceneReady?.(); }, [drawn, covered, onSceneReady]);
@@ -1457,7 +1459,7 @@ export function GalaxyView({
         universe={{ view: universe, open: universeOpen, onLimit: reachUniverseLimit, onOpen: openUniverse, onClose: closeUniverse }}
         watched={watched}
         {...(ship && jump?.inGame && jump.stage === 'flight' && jump.world ? { flight: { jump, world: jump.world } } : {})}
-        {...(ship ? { starter: { hull: vesselHull(ship.id), progress: { modules: ship.modules, facts: ship.facts }, galaxyOrdinal: ship.galaxy.ordinal, mainSky, landmarks: { monuments: mainSkyAnswer?.monuments ?? NO_LANDMARKS, clouds: mainSkyAnswer?.clouds ?? NO_CLOUDS }, beams, onMainGalaxy: () => { setMainRowOpen(true); }, onOpen: () => { onFocus({ kind: 'planet', id: ship.id }); }, awaken, directorLive: panel === null && !launchingNow && !trading && !mainRowOpen, working: weldingBays, look: shownLook } } : {})}
+        {...(ship ? { starter: { hull: vesselHull(ship.id), progress: { modules: ship.modules, facts: ship.facts }, galaxyOrdinal: ship.galaxy.ordinal, mainSky, landmarks: { monuments: mainSkyAnswer?.monuments ?? NO_LANDMARKS, clouds: mainSkyAnswer?.clouds ?? NO_CLOUDS }, beams, onMainGalaxy: () => { setMainRowOpen(true); }, onOpen: () => { onFocus({ kind: 'planet', id: ship.id }); }, awaken, directorLive, working: weldingBays, look: shownLook } } : {})}
         cosmeticAppearance={{ engineId: cosmetics.data?.equipment?.ENGINE,
           probeId: cosmetics.data?.equipment?.PROBE, flagId: cosmetics.data?.clanFlagId ?? undefined,
           shipSkins: cosmetics.data?.equipment?.SHIP }}
@@ -2029,7 +2031,7 @@ export function GalaxyView({
       {/* A selection that draws a card already took the foot (`bottomSurface`); the own ship draws none,
           so a tap on it must not hide the step the guide points at (prod 2026-11-13: 5 of 6 stuck guides). */}
       {/* The director's letterbox, over everything, while the galaxy is clear (plan 2026-11-18 §4 İ3). */}
-      {ship && panel === null && !launchingNow && !trading && !mainRowOpen && <DirectorStage />}
+      {ship && directorLive && <DirectorStage />}
       {ship && bottom === 'starter' && (
         <div data-starter-foot="" className="pointer-events-auto absolute inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20">
           {cornerButtons && <div className="mb-2 flex justify-end">{cornerButtons}</div>}

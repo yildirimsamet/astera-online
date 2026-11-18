@@ -11,7 +11,7 @@ const state = vi.hoisted(() => ({
   runs: [] as { departAt: Date; arriveAt: Date; homeAt: Date | null; status?: string }[],
   planets: undefined as { id: string; firstHunt?: boolean }[] | undefined,
   held: { alloy: 0, crystal: 0, deuterium: 0, bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0 },
-  extra: {} as Record<string, unknown>,
+  extra: {},
 }));
 vi.mock('../src/api/queries.js', () => ({
   usePlanet: () => ({ data: { vessel: vesselSchema.parse(wireVessel({ id: state.ship, ...state.extra })) }, dataUpdatedAt: Date.now() }),

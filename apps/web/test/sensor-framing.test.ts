@@ -88,5 +88,6 @@ describe('opening a sensor volume', () => {
 it('frames a sensor toggle from one place in the galaxy camera', () => {
   const source = readFileSync(resolve(import.meta.dirname, '../src/galaxy/GalaxyCanvas.tsx'), 'utf8');
   expect(source.match(/sensorToggleFrame\(\{/gu)).toHaveLength(1);
-  expect(source).toMatch(/if \(!controls \|\| universeOpen \|\| !\(controls\.object instanceof THREE\.PerspectiveCamera\)\) return;\n\s+const camera = controls\.object;\n\s+const frame = sensorToggleFrame/u);
+  // The copy that stays waits while the universe view is open, and (2026-11-18) while a director's shot holds the camera.
+  expect(source).toMatch(/if \(!controls \|\| sightFramingWaits\(\{ directed: directed\.current, universeOpen, universeRoom \}\) \|\| !\(controls\.object instanceof THREE\.PerspectiveCamera\)\) return;\n\s+const camera = controls\.object;\n\s+const frame = sensorToggleFrame/u);
 });

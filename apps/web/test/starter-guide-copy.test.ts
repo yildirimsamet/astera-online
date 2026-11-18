@@ -47,6 +47,19 @@ describe('the guide\'s lines', () => {
     }
   });
 
+  // Live playthrough 2026-11-18: the second report plays when the battle is fought, with the fleet still
+  // on its way home, and a yard step is no repair.
+  it('say only what is true at that moment', () => {
+    const SAID: readonly (readonly [string, Words, RegExp, RegExp])[] = [
+      ['en', en, /\bback\b|return/iu, /repair/iu], ['tr', tr, /döndü/iu, /onarım/iu], ['de', de, /zurück/iu, /reparier/iu],
+      ['fr', fr, /retour|rentr/iu, /répar/iu], ['es', es, /volv|regres/iu, /repar/iu], ['ja', ja, /戻/u, /修理/u],
+    ];
+    for (const [lang, words, home, mend] of SAID) {
+      expect(words.director.report2.round, lang).not.toMatch(home);
+      expect(words.tutorial.nav.openShip_work, lang).not.toMatch(mend);
+    }
+  });
+
   it('name the same things in every language', () => {
     const base = guide(en);
     for (const words of [tr, de, fr, es, ja]) {

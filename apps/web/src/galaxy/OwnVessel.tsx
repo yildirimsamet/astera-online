@@ -1,6 +1,6 @@
 import { Html, useTexture } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as THREE from 'three';
 import { VESSEL_SYSTEMS, vesselLook, type Vec3, type VesselHull, type VesselLook, type VesselProgress, type VesselSystem } from '@astera/rules';
@@ -9,8 +9,9 @@ import { BayReturnFx, RunningLights, SparkStreaks, WeldFx } from './BayFx.js';
 import { Exhaust, Hull } from './Fleets.js';
 import { HULL_LIGHT } from './flightVisual.js';
 import { HitboxMaterial } from './hitboxDebug.js';
+import { tagLead } from './shipTags.js';
 import { HULL_SHIFT_SECONDS, hullSweepAt, nextLook } from './hullShift.js';
-import { VESSEL_BAYS, VESSEL_NOSE_TURN, damageSpots, starterShipYaw, systemCondition, vesselHitBox, vesselLights, vesselModelFile, type DamageSpot, type VesselLights } from './mainSky.js';
+import { VESSEL_BAYS, VESSEL_NOSE_TURN, damageSpots, starterShipYaw, systemCondition, vesselHitBox, vesselLights, vesselModelFile, type DamageSpot, type SystemCondition, type VesselLights } from './mainSky.js';
 import type { Vec3Tuple } from './scene.js';
 import { YARD_LAUNCH, yardLaunchAt } from './yardLaunch.js';
 import '../starter/director/director.css';
@@ -44,7 +45,7 @@ function HullShift({ hull, from, to, damage, onDone }: {
   const ended = useRef(false);
   const planes = useMemo(() => ({ fresh: [new THREE.Plane()], worn: [new THREE.Plane()] }), []);
   const [, tall, wide] = vesselHitBox(hull);
-  const material = useMemo(() => new THREE.MeshBasicMaterial({ map: lines, color: '#8fe8ff', transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }), [lines]);
+  const material = useMemo(() => new THREE.MeshBasicMaterial({ map: lines, color: '#8fe8ff', transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true, toneMapped: false }), [lines]);
   useEffect(() => () => { material.dispose(); }, [material]);
   useFrame(({ clock, invalidate }) => {
     const group = frame.current;
@@ -84,29 +85,53 @@ const TAG_LAYER: [number, number] = [14, 14];
 /** One name after the other, as a damage-control readout calls them. */
 const TAG_STEP_SECONDS = 0.36;
 
+/** Where a tag's chip stands from its pin, and the lead's angle to it. */
+const tagStyle = (dx: number, dy: number): Record<string, string> => ({
+  '--dx': `${String(dx)}px`, '--dy': `${String(dy)}px`, '--len': `${Math.hypot(dx, dy).toFixed(1)}px`, '--ang': `${Math.atan2(dy, dx).toFixed(3)}rad`,
+});
+const tagSide = (dx: number, dy: number): string => dx < 0 ? 'left' : dx > 0 ? 'right' : dy < 0 ? 'up' : 'down';
+const TAG_AT = new THREE.Vector3();
+
+/** One system named on the hull. Its chip turns to the other side where its own would leave the screen. */
+function SystemTag({ at, system, condition, index }: { at: Vec3Tuple; system: VesselSystem; condition: SystemCondition; index: number }) {
+  const { t } = useTranslation();
+  const tag = useRef<HTMLSpanElement>(null);
+  const [dx, dy] = TAG_OFFSET[system];
+  const lead = useRef(dx);
+  // Drei asks where the pin is on the screen every frame; the answer also says which way the chip fits.
+  const place = useCallback((anchor: THREE.Object3D, camera: THREE.Camera, size: { width: number; height: number }): [number, number] => {
+    const screen = TAG_AT.setFromMatrixPosition(anchor.matrixWorld).project(camera);
+    const x = (screen.x + 1) * size.width / 2;
+    const next = tagLead(x, size.width, dx);
+    if (next !== lead.current && tag.current) {
+      lead.current = next;
+      tag.current.dataset.side = tagSide(next, dy);
+      for (const [name, value] of Object.entries(tagStyle(next, dy))) tag.current.style.setProperty(name, value);
+    }
+    return [x, (1 - screen.y) * size.height / 2];
+  }, [dx, dy]);
+  const style = { ...tagStyle(dx, dy), '--delay': `${(index * TAG_STEP_SECONDS).toFixed(2)}s` } as CSSProperties;
+  return (
+    <Html position={at} zIndexRange={TAG_LAYER} style={{ pointerEvents: 'none' }} calculatePosition={place}>
+      <span ref={tag} className="ship-tag" data-system={system} data-condition={condition} data-side={tagSide(dx, dy)} style={style}>
+        <i className="ship-tag__pin" />
+        <i className="ship-tag__lead" />
+        <span className="ship-tag__chip"><b>{t(`starter.systemShort.${system}`)}</b>{t(`starter.director.condition.${condition}`)}</span>
+      </span>
+    </Html>
+  );
+}
+
 /**
  * THE REPORT'S WORDS ON THE HULL (plan 2026-11-18 §4 İ5): each system named where it is, with what its
  * damage is doing — the same fire, embers or sparks the hull shows — one after another.
  */
 function SystemTags({ hull, lights, tags }: { hull: VesselHull; lights: VesselLights; tags: readonly VesselSystem[] }) {
-  const { t } = useTranslation();
   return (
     <>
-      {tags.map((system, index) => {
-        const condition = systemCondition(lights[system], system);
-        const [dx, dy] = TAG_OFFSET[system];
-        const side = dx < 0 ? 'left' : dx > 0 ? 'right' : dy < 0 ? 'up' : 'down';
-        const style = { '--dx': `${String(dx)}px`, '--dy': `${String(dy)}px`, '--len': `${Math.hypot(dx, dy).toFixed(1)}px`, '--ang': `${Math.atan2(dy, dx).toFixed(3)}rad`, '--delay': `${(index * TAG_STEP_SECONDS).toFixed(2)}s` } as CSSProperties;
-        return (
-          <Html key={system} position={VESSEL_BAYS[hull][system]} zIndexRange={TAG_LAYER} style={{ pointerEvents: 'none' }}>
-            <span className="ship-tag" data-system={system} data-condition={condition} data-side={side} style={style}>
-              <i className="ship-tag__pin" />
-              <i className="ship-tag__lead" />
-              <span className="ship-tag__chip"><b>{t(`starter.systemShort.${system}`)}</b>{t(`starter.director.condition.${condition}`)}</span>
-            </span>
-          </Html>
-        );
-      })}
+      {tags.map((system, index) => (
+        <SystemTag key={system} at={VESSEL_BAYS[hull][system]} system={system} condition={systemCondition(lights[system], system)} index={index} />
+      ))}
     </>
   );
 }

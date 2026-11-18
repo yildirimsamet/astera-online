@@ -399,6 +399,18 @@ describe('the welcome over the power card', () => {
     expect(line).toMatch(/this ship is yours/i);
     expect(line).not.toContain('Try it');
   });
+
+  // Live playthrough 2026-11-18: the yard's step sent the player aboard "for repairs".
+  it('sends the commander aboard for a repair, and for other work without calling it one', () => {
+    const aboard = { step: 'press', marks: ['[data-guide="dock-base"]'], nav: 'openShip', strict: false } as const;
+    const { unmount } = mount({ kind: 'step', id: 'orderShipyard', chapter: 5, ...aboard });
+    expect(document.querySelector('[data-school-line]')?.getAttribute('data-school-line')).toMatch(/repairs/i);
+    unmount();
+    mount({ kind: 'step', id: 'buildShip', chapter: 5, ...aboard });
+    const line = document.querySelector('[data-school-line]')?.getAttribute('data-school-line') ?? '';
+    expect(line).not.toMatch(/repair/i);
+    expect(line).toMatch(/aboard/i);
+  });
 });
 
 /** Owner playtest 2026-11-06: no toast over the NPC's card. A refusal still says the act failed. */

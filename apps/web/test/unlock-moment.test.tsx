@@ -57,7 +57,7 @@ describe('a system coming back on the galaxy', () => {
 describe('a system the director has just shown coming back', () => {
   const telescope = vesselSchema.parse(wireVessel({ unlockToAnnounce: 'telescope' }));
   const mount = (calls: string[]) => {
-    const api = new Api({ fetch: (input) => { calls.push(String(input)); return Promise.resolve(new Response('{}', { status: 404 })); }, authTransport: null });
+    const api = new Api({ fetch: (input) => { calls.push(input instanceof Request ? input.url : String(input)); return Promise.resolve(new Response('{}', { status: 404 })); }, authTransport: null });
     return render(<QueryClientProvider client={new QueryClient()}><ApiProvider api={api}><ToastProvider>
       <UnlockMoment vessel={telescope} overGalaxy />
     </ToastProvider></ApiProvider></QueryClientProvider>);

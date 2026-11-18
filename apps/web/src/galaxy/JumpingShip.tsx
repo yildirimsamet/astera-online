@@ -90,7 +90,7 @@ export function JumpingShip({ hull, look, poseAt, seed = 7 }: {
   const streak = useRef<THREE.Group>(null);
   const streakMaterial = useMemo(() => new THREE.ShaderMaterial({
     vertexShader: STREAK_VERT, fragmentShader: STREAK_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide,
-    blending: THREE.AdditiveBlending, toneMapped: false, uniforms: { uFade: { value: 0 } },
+    blending: THREE.AdditiveBlending, forceSinglePass: true, toneMapped: false, uniforms: { uFade: { value: 0 } },
   }), []);
   useEffect(() => () => { streakMaterial.dispose(); }, [streakMaterial]);
   const state = useRef<JumpingShipState>({ at: new THREE.Vector3(), facing: new THREE.Quaternion(), lever: 0, turbo: 0, vanish: 0 });
