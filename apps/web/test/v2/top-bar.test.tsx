@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { collectState } from '../../src/lib/collect.js';
 import { TopBar, type TopBarProps } from '../../src/v2/hud/TopBar.js';
 import { COLLECT_MARK } from '../../src/starter/tutorial/script.js';
@@ -45,7 +45,6 @@ const props = (over: Partial<TopBarProps> = {}): TopBarProps => ({
 
 const pool = (resource: string) => document.querySelector(`[data-pill="${resource}"] [data-pool]`);
 
-beforeEach(() => { window.localStorage.removeItem('astera:works-tip-v1'); });
 
 describe('the top bar', () => {
   it('reads three resources against their stores, each one press', () => {
@@ -151,22 +150,13 @@ describe('the top bar', () => {
     expect(screen.queryByRole('button', { name: /^Signals/ })).toBeNull();
   });
 
-  it('teaches the press once, the first time production appears, without covering what is under it', async () => {
+  // Owner 2026-11-19: the one-time "tap a resource to collect" note on the galaxy is gone.
+  it('shows no note over the galaxy when production first appears', () => {
+    window.localStorage.clear();
     const first = render(<TopBar {...props({ works: works(empty) })} />);
-    expect(screen.queryByRole('note')).toBeNull();
     first.rerender(<TopBar {...props({ works: works({ alloy: 4, crystal: 0, deuterium: 0 }) })} />);
-    expect(screen.getByRole('note')).toHaveTextContent(/tap a resource/i);
-    expect(window.localStorage.getItem('astera:works-tip-v1')).toBe('seen');
-    await userEvent.click(screen.getByRole('button', { name: /^Crystal/ }));
     expect(screen.queryByRole('note')).toBeNull();
-    first.unmount();
-    render(<TopBar {...props({ works: works({ alloy: 4, crystal: 0, deuterium: 0 }) })} />);
-    expect(screen.queryByRole('note')).toBeNull();
-  });
-
-  it('leaves the lesson to the ship while the ship is still opening resources', () => {
-    render(<TopBar {...props({ works: works({ alloy: 400, crystal: 0, deuterium: 0 }) })} hidden={['deuterium']} />);
-    expect(screen.queryByRole('note')).toBeNull();
+    expect(screen.queryByText(/tap a resource/i)).toBeNull();
   });
 
   it('keeps the works mark inside the header, where the flight school points', () => {
