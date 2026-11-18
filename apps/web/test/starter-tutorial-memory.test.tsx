@@ -4,6 +4,7 @@ import { vesselSchema } from '../src/api/starterSchemas.js';
 import { wireVessel } from './starterVesselFixture.js';
 import { useStarterTutorial } from '../src/starter/tutorial/useStarterTutorial.js';
 import { SCENE_WAIT_MS, playScene, raiseStage, resetDirector, skipBeat } from '../src/starter/director/director.js';
+import { setTargetSheet } from '../src/starter/tutorial/targetSheet.js';
 
 const empty = { alloy: 0, crystal: 0, deuterium: 0, bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0 };
 const state = vi.hoisted(() => ({
@@ -28,7 +29,7 @@ vi.mock('../src/starter/queries.js', async (importActual) => ({
   ...await importActual<Record<string, unknown>>(),
   useMigration: (options?: { enabled?: boolean }) => { state.migrationEnabled.push(options?.enabled); return { data: state.migration }; },
 }));
-afterEach(() => { localStorage.clear(); resetDirector(); state.held = empty; state.ship = 'memory-1'; state.planets = undefined; state.runs = []; state.extra = {}; state.migration = undefined; state.migrationEnabled = []; });
+afterEach(() => { localStorage.clear(); resetDirector(); state.held = empty; state.ship = 'memory-1'; state.planets = undefined; state.runs = []; state.extra = {}; state.migration = undefined; state.migrationEnabled = []; setTargetSheet(false); });
 
 describe('tutorial acknowledgement memory', () => {
   it('reads once per ship, updates on acknowledgement and keeps ships separate', () => {
@@ -140,5 +141,31 @@ describe('the jump the server holds', () => {
     state.migration = { block: null };
     rerender();
     expect(result.current?.jumpBlock).toBeUndefined();
+  });
+});
+
+// Owner phone playtest 2026-11-19: the probe's target was open when the Prospector came home, and the guide
+// had it closed for the salvage card; the probe was then walked again from the start.
+describe('the step in the player\'s hands', () => {
+  const sensors = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 }, facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'] };
+  const PROBE = ['[data-guide="probe"]', '[data-guide="objective"]'];
+
+  it('is kept while a world is open on the galaxy, and given up once it is put down', () => {
+    state.extra = { progress: sensors, unlockToAnnounce: null, crates: [] };
+    const { result, rerender } = renderHook(() => useStarterTutorial('galaxy'));
+    expect(result.current?.answer).toMatchObject({ id: 'probe', marks: PROBE });
+    act(() => { setTargetSheet(true); });
+    state.extra = { progress: sensors, unlockToAnnounce: 'salvage', crates: [] };
+    rerender();
+    expect(result.current?.answer).toMatchObject({ id: 'probe', marks: PROBE });
+    act(() => { setTargetSheet(false); });
+    expect(result.current?.answer).toMatchObject({ id: 'probe', nav: 'dismissUnlock' });
+  });
+
+  it('is not taken up from a world opened before the step came', () => {
+    state.extra = { progress: sensors, unlockToAnnounce: 'salvage', crates: [] };
+    act(() => { setTargetSheet(true); });
+    const { result } = renderHook(() => useStarterTutorial('galaxy'));
+    expect(result.current?.answer).toMatchObject({ id: 'probe', nav: 'dismissUnlock' });
   });
 });

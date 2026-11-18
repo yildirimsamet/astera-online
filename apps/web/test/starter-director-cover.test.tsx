@@ -15,7 +15,7 @@ import { createCosmeticTrialClient } from '../src/v2/gallery/CosmeticTrialGaller
 import { wireVessel } from './starterVesselFixture.js';
 
 const cover = vi.hoisted(() => ({ on: true }));
-const canvas = vi.hoisted(() => vi.fn((props: { starter?: { directorLive?: boolean } }) => { void props; return null; }));
+const canvas = vi.hoisted(() => vi.fn((props: { starter?: { directorLive?: boolean }; onFocus?: (focus: { kind: 'planet'; id: string } | null) => void }) => { void props; return null; }));
 vi.mock('../src/galaxy/GalaxyCanvas.js', () => ({ GalaxyCanvas: canvas }));
 vi.mock('../src/lib/preload.js', () => ({ GALAXY_ASSETS: [], usePreload: () => ({ ready: true, progress: 1 }) }));
 vi.mock('../src/lib/openingCover.js', () => ({ useOpeningCover: () => cover.on }));
@@ -48,5 +48,17 @@ describe('the director and the opening cover', () => {
     rerender(galaxy());
     expect(screen.getByTestId('director-stage').getAttribute('data-scene')).toBe('yardNeed');
     expect(canvas.mock.lastCall?.[0].starter?.directorLive).toBe(true);
+  });
+
+  // Owner phone playtest 2026-11-19: a scene that comes while a world is open would take the camera from it mid-action.
+  it('holds a scene while a world is open in the focus card, and plays it once it is put down', () => {
+    cover.on = false;
+    render(galaxy());
+    act(() => { canvas.mock.lastCall?.[0].onFocus?.({ kind: 'planet', id: 'neighbour-1' }); });
+    act(() => { playScene(yardNeedScene(), 'trial-home'); });
+    expect(screen.queryByTestId('director-stage')).toBeNull();
+    expect(canvas.mock.lastCall?.[0].starter?.directorLive).toBe(false);
+    act(() => { canvas.mock.lastCall?.[0].onFocus?.(null); });
+    expect(screen.getByTestId('director-stage').getAttribute('data-scene')).toBe('yardNeed');
   });
 });

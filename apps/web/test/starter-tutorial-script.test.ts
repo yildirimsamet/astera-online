@@ -288,6 +288,45 @@ describe('the jump window has the floor', () => {
 });
 
 /**
+ * THE STEP IN HAND (owner phone playtest 2026-11-19): the probe's target was open, its button lit, when the
+ * Prospector came home; the guide went to the salvage card, had the target closed, and the probe was walked
+ * again from the start. What comes up while the player is acting on a step waits until it is done or put down.
+ */
+describe('the step in hand', () => {
+  const sensors = { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 };
+  const probe = awake({ modules: sensors, facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'] });
+  const home = { ...probe, unlockToAnnounce: 'salvage' as const, works: 50 };
+
+  it('is where the guide would be anyway', () => {
+    expect(at(probe)).toMatchObject({ id: 'probe', step: 'press', marks: ['[data-guide="probe"]', '[data-guide="objective"]'] });
+    expect(at(home)).not.toMatchObject({ id: 'probe', marks: ['[data-guide="probe"]', '[data-guide="objective"]'] });
+  });
+
+  it('keeps the probe while the haul and the salvage card come home, and moves on once it is sent', () => {
+    expect(at({ ...home, inHand: 'probe' })).toMatchObject({ id: 'probe', step: 'press', marks: ['[data-guide="probe"]', '[data-guide="objective"]'] });
+    expect(at({ ...home, inHand: 'probe' })).not.toHaveProperty('nav');
+    expect(at({ ...home, inHand: 'probe', probing: true })).not.toMatchObject({ id: 'probe' });
+  });
+
+  it('keeps the yard\'s work aboard while the probe report, its crate and the open jump come', () => {
+    const yard = awake({ modules: { ...sensors, SHIPYARD: 1 }, facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'], probing: true, view: 'ship', acked: ['collectMine'] });
+    expect(at(yard)).toMatchObject({ id: 'buildShip' });
+    const report = { ...yard, probing: false, facts: [...yard.facts, 'FIRST_PROBE_REPORT' as const], unlockToAnnounce: 'migration' as const, crates: [{ id: 'c1', state: 'ready' as const }] };
+    expect(at(report)).not.toMatchObject({ id: 'buildShip' });
+    expect(at({ ...report, inHand: 'buildShip' })).toMatchObject({ id: 'buildShip', step: 'press' });
+  });
+
+  it('lets it go once the player is no longer where it is done', () => {
+    expect(at({ ...home, inHand: 'probe', view: 'ship' })).not.toMatchObject({ id: 'probe', marks: ['[data-guide="probe"]', '[data-guide="objective"]'] });
+  });
+
+  it('holds no wait, and nothing of the core', () => {
+    expect(at({ ...awake({ modules: sensors, queue: [order('SURVEY', 1)] }), inHand: 'waitSurvey', works: 50, facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'] })).toMatchObject({ id: 'collectMine' });
+    expect(at(base({ inHand: 'probe' }))).toMatchObject({ id: 'online' });
+  });
+});
+
+/**
  * Owner phone playtest 2026-11-18, item 24: the yard's "build a ship" and the open jump came at once and
  * ran into each other. The jump is shown first (the drive's scene), then asked: now, or grow first? Now
  * puts the hand on the control that starts it; later goes back to the yard's work.

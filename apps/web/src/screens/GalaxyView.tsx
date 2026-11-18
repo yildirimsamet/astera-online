@@ -2,6 +2,7 @@ import { useStarterGoal, useStarterLesson } from '../starter/tutorial/visualGoal
 import { rocksHeld, rockSheetStaysOpen, sightLesson, useTelescopeReveal } from '../starter/tutorial/sightLesson.js';
 import { useSheetWait } from '../starter/tutorial/sheetWait.js';
 import { setRockSheet } from '../starter/tutorial/rockSheet.js';
+import { setTargetSheet } from '../starter/tutorial/targetSheet.js';
 import { lendFocusClose } from '../starter/tutorial/focusClose.js';
 import { useLaunchSheet } from '../starter/tutorial/launchSheet.js';
 import { DirectorStage } from '../starter/director/DirectorStage.js';
@@ -233,6 +234,8 @@ import type { CountryCode } from '@astera/rules';
 const NO_SENSORS: readonly ReachRing[] = [];
 const NO_ROCKS: readonly AsteroidView[] = [];
 const NO_CONTACTS: readonly Contact[] = [];
+/** A focus that follows a flight is watched, not acted on. */
+const WATCHING: ReadonlySet<Focus['kind']> = new Set(['run', 'thread', 'interception', 'interceptionImpact']);
 
 const ClanScreen = lazy(async () => {
   const module = await import('./ClanScreen.jsx');
@@ -711,6 +714,10 @@ export function GalaxyView({
   const sheetHeld = useSheetWait(lesson, focus);
   const rockOpen = focus?.kind === 'asteroid' && !sheetHeld;
   useEffect(() => { setRockSheet(rockOpen); return () => { setRockSheet(false); }; }, [rockOpen]);
+  // A world, rock or other target open in the focus card: the player is acting on it, and what comes up
+  // meanwhile waits for it, the guide's next step and the director's scenes alike (owner phone playtest 2026-11-19).
+  const targetOpen = focus !== null && !WATCHING.has(focus.kind);
+  useEffect(() => { setTargetSheet(targetOpen); return () => { setTargetSheet(false); }; }, [targetOpen]);
   const [showTelescopeReach, setShowTelescopeReach] = useSensorReach('telescope');
   const [showRadarReach, setShowRadarReach] = useSensorReach('radar');
   const [eventsGuideOpen, setEventsGuideOpen] = useState(false);
@@ -880,7 +887,7 @@ export function GalaxyView({
   const [byJump] = useState(() => { const landing = currentJump(); return landing?.inGame === true && landing.stage === 'reveal'; });
   const covered = useOpeningCover(assets.ready && dataSettled && drawn, undefined, byJump && assets.ready && dataSettled ? JUMP_OPEN_GRACE_MS : null);
   // A scene waits for the sky: under the opening cover, a sheet or a launch its shots would play to no one.
-  const directorLive = !covered && panel === null && !launchingNow && !trading && !mainRowOpen;
+  const directorLive = !covered && panel === null && !launchingNow && !trading && !mainRowOpen && !targetOpen;
   // A jump's last frame waits over this view until it has drawn whole.
   useEffect(() => { if (!covered) markGameDrawn(); }, [covered]);
   useEffect(() => { if (drawn && !covered) onSceneReady?.(); }, [drawn, covered, onSceneReady]);

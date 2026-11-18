@@ -44,6 +44,8 @@ export interface TutorialInput {
   jumpWaiting?: boolean;
   /** Why the server holds the jump though the drive is ready: then it is not asked, and the handover says why. */
   jumpBlock?: JumpBlock;
+  /** The step the player is acting on (a world open over the galaxy, or aboard, or on a page): kept until it is done or put down. */
+  inHand?: TutorialStepId;
   /** Where to land is being chosen: the player's own decision, spoken over by nothing. */
   landing?: boolean;
   /** Lines read and marks pressed, on this device. */
@@ -250,6 +252,8 @@ export function tutorialStep(input: TutorialInput): TutorialAnswer {
     const core = nextIn(CORE, input);
     if (core) return core;
   }
+  const held = input.landing === true ? null : stillInHand(input);
+  if (held) return held;
   // The jump window opening is the first session's turn (play-through 2026-11-13): a crate card stood
   // over the ship, and the drive's light was missed. Its card speaks first; the guide resumes after it.
   // The card is drawn out on the galaxy and aboard, never over a page: from one, the way out comes first.
@@ -259,6 +263,20 @@ export function tutorialStep(input: TutorialInput): TutorialAnswer {
   }
   if (input.landing === true) return { kind: 'quiet' };
   return afterCore(input);
+}
+
+/**
+ * THE STEP IN HAND (owner phone playtest 2026-11-19). A note, a crate, a haul, the jump or a report that comes
+ * up while the player is acting on a step waits until the step is done or put down: the guide does not take
+ * the player off it and have it walked again from the start. Only a step to press or to read, where it is done.
+ */
+function stillInHand(input: TutorialInput): TutorialAnswer | null {
+  if (input.inHand === undefined) return null;
+  const part = [FIRST_ROAD, ...MOMENTS].find(row => row.steps.some(step => step.id === input.inHand));
+  if (!part?.due(input)) return null;
+  // The note the player has not come to yet is read after it.
+  const answer = nextIn(part, { ...input, unlockToAnnounce: null });
+  return answer?.kind === 'step' && answer.id === input.inHand && (answer.step === 'press' || answer.step === 'read') && answer.nav === undefined ? answer : null;
 }
 
 /** Past the core: a moment that is due, then the road, else the advisor. */

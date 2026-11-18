@@ -11,6 +11,7 @@ import { opportunities, opportunityKey, type Opportunity } from '../opportunitie
 import { canPayDart, timeToAfford } from '../steps.js';
 import { useAdviceMemory } from './adviceMemory.js';
 import { useRockSheet } from './rockSheet.js';
+import { useTargetSheet } from './targetSheet.js';
 import { sceneToCome, scenePlayedFor, useDirector, useSceneToCome } from '../director/director.js';
 import { JUMP_SCENE, announcedByScene, sceneAnnouncing } from '../director/scenes.js';
 import { useLandingSheet } from './landingSheet.js';
@@ -93,6 +94,10 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   const windowOpen = vessel ? jumpWindowOpen({ modules: vessel.modules, facts: vessel.facts }) : false;
   const migration = useMigration({ enabled: windowOpen });
   const jumpBlock = windowOpen ? jumpBlockOf(migration.data?.block ?? null) : undefined;
+  // The step the player is acting on: aboard, on a page, or with a world open over the galaxy (owner phone playtest 2026-11-19).
+  const targetOpen = useTargetSheet();
+  const engaged = view !== 'galaxy' || targetOpen;
+  const inHand = useRef<{ vesselId: string; id: TutorialStepId } | null>(null);
   const plan = useMemo(() => (vessel ? vesselToPlanetView(vessel) : null), [vessel]);
   const held = useProjected(plan?.planet, planet.dataUpdatedAt, 5_000);
   const [acked, setAcked] = useState<{ id: string; list: string[] } | null>(null);
@@ -145,7 +150,11 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     landing,
     acked: list,
   };
-  const answer = tutorialStep(input);
+  const holding = engaged && inHand.current?.vesselId === vessel.id ? inHand.current.id : undefined;
+  const answer = tutorialStep(holding ? { ...input, inHand: holding } : input);
+  // Taken up as it is shown where it is done; kept while the player is on it, let go once they are not.
+  const atHand = answer.kind === 'step' && (answer.step === 'press' || answer.step === 'read') && !answer.nav;
+  inHand.current = atHand ? { vesselId: vessel.id, id: answer.id } : engaged ? inHand.current : null;
   const offers = opportunities({
     progress: { modules: vessel.modules, facts: vessel.facts },
     queue: vessel.queue,

@@ -80,6 +80,9 @@ describe('the handover and the jump window', () => {
     expect(stepId(shown.now().answer)).not.toBe('jumpAsk');
     act(() => { skipBeat(); });
     shown.rerender();
+    // The line on the screen is read first: one thing at a time (owner phone playtest 2026-11-19).
+    expect(stepId(shown.now().answer)).toBe('farewell');
+    act(() => { shown.now().ack('farewell'); });
     expect(stepId(shown.now().answer)).toBe('jumpAsk');
     act(() => { setLandingSheet(true); });
     shown.rerender();
