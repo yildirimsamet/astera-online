@@ -71,6 +71,22 @@ describe('the jump panel', () => {
     expect(screen.queryByTestId('plan-DRIVE_HULL')).toBeNull();
   });
 
+  // Owner phone playtest 2026-11-18 (item 13): asked for the jump, the panel brings its button into view.
+  it('brings the jump into view when it is what the player came for', async () => {
+    const { wrap } = harness(view());
+    // jsdom lays nothing out and has no scrollIntoView: it is lent for this test.
+    const scroll = vi.fn();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, writable: true, value: scroll });
+    try {
+      render(wrap(<MigrationPanel income={income} vessel={shipWith()} onJump={vi.fn()} aim />));
+      const go = await screen.findByRole('button', { name: /Prepare the jump/u });
+      expect(go.getAttribute('data-guide')).toBe('jump-go');
+      await waitFor(() => { expect(scroll).toHaveBeenCalledTimes(1); });
+    } finally {
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    }
+  });
+
   it('says what the first loop still asks while the drive is not up, and offers no jump', async () => {
     const { wrap } = harness(view({ block: { code: 'MIGRATION_NOT_READY' } }));
     render(wrap(<MigrationPanel income={income} vessel={shipWith({ ...LOOP, facts: ['FIRST_MINING_SENT'] })} onJump={vi.fn()} />));

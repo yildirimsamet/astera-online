@@ -40,6 +40,17 @@ describe('a system coming back on the galaxy', () => {
     expect(tried).toHaveBeenCalledWith('intel');
   });
 
+  // Owner phone playtest 2026-11-18 (item 13): the drive's card shows where the jump is.
+  it('takes the player to the jump from the drive\'s card', () => {
+    const tried = vi.fn();
+    const api = new Api({ fetch: () => Promise.resolve(new Response('{}', { status: 404 })), authTransport: null });
+    render(<QueryClientProvider client={new QueryClient()}><ApiProvider api={api}><ToastProvider>
+      <UnlockMoment vessel={vesselSchema.parse(wireVessel({ unlockToAnnounce: 'migration' }))} overGalaxy onTry={tried} />
+    </ToastProvider></ApiProvider></QueryClientProvider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Show the jump' }));
+    expect(tried).toHaveBeenCalledWith('migration');
+  });
+
   it('waits until the loading cover is gone', async () => {
     const cover = document.createElement('main');
     cover.setAttribute('data-loading-screen', '');

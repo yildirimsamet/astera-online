@@ -21,12 +21,12 @@ export const FEATURE_SYSTEM: Record<StarterFeature, VesselSystem> = {
 /** A feature whose bay wakes as its module, not its system: the telescope's sphere, the radar's sweep (owner 2026-11-18). */
 const FEATURE_MODULE: Partial<Record<StarterFeature, VesselModule>> = { telescope: 'TELESCOPE', radar: 'RADAR' };
 
-/** Only what can be tried there and then gets a "Try it": the works, and a probe at the nearest ship. */
+/** Only what can be tried there and then gets a "Try it": the works, a probe at the nearest ship, and the jump (item 13). */
 const heard = new Set<string>();
 /** Systems taken as seen without a card, once each: a re-render while the answer is on its way asks nothing twice. */
 const quietly = new Set<string>();
 
-const TRY: readonly StarterFeature[] = ['production', 'intel'];
+const TRY: readonly StarterFeature[] = ['production', 'intel', 'migration'];
 
 /**
  * A SYSTEM HAS JUST COME BACK (onboarding design §5.3). A switch thrown somewhere aboard: a thunk, a
@@ -122,7 +122,7 @@ export function UnlockMoment({ vessel, overGalaxy = false, onAwaken, onTry }: {
             onClick={() => { haptic('tap'); close(); onTry?.(feature); }}
             className="min-h-8 rounded-control border border-v2-self bg-v2-self/15 px-4 text-micro font-semibold text-v2-self"
           >
-            {t('starter.unlock.try')}
+            {feature === 'migration' ? t('starter.unlock.showJump') : t('starter.unlock.try')}
           </button>
         )}
       </div>

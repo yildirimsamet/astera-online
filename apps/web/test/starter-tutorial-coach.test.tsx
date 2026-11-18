@@ -123,13 +123,15 @@ describe('the starter tutorial on screen', () => {
     expect(said).not.toMatch(/jump is open/i);
   });
 
-  // Plan 2026-11-13 §4.3: the handover after the first loop is the jump window. It says so, and leaves the when to the player.
+  // Plan 2026-11-13 §4.3: the handover after the first loop is the jump window. It says so, and leaves the when to the player;
+  // owner phone playtest 2026-11-18 (item 13): it names the control that jumps, and says it can wait.
   it('hands over a ship whose jump window is open with the choice, not with work', () => {
     render(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'farewell', step: 'read', marks: [], chapter: 9, strict: false }, ack: vi.fn(), backIn: 0, repaired: 100, windowOpen: true }} />);
     fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
     const said = document.querySelector('[data-school-line]')?.getAttribute('data-school-line');
     expect(said).toMatch(/jump is open/i);
-    expect(said).toMatch(/your call/i);
+    expect(said).toMatch(/Prepare the jump/);
+    expect(said).toMatch(/no rush/i);
     expect(said).not.toMatch(/finish/i);
   });
 

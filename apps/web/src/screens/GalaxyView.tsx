@@ -44,7 +44,7 @@ import { ObjectiveLine } from '../starter/ObjectiveLine.js';
 import { OutpostOutcome, useOutpostOutcome } from '../starter/OutpostOutcome.js';
 import { followLaunch, ownCraft } from '../starter/followLaunch.js';
 import { UnlockMoment } from '../starter/UnlockMoment.js';
-import { VesselScreen } from '../starter/VesselScreen.js';
+import { JUMP_ITEM, VesselScreen } from '../starter/VesselScreen.js';
 import { BaseSwitch, type BaseView } from '../v2/hud/BaseSwitch.js';
 import { arenaCredential } from '../arena/access.js';
 import { useApi } from '../api/context.js';
@@ -1469,7 +1469,11 @@ export function GalaxyView({
   /** The ship's next step: the starter foot's line, and over a followed flight's card while the craft flies. */
   const nextStep = ship
     ? (ship.unlockToAnnounce
-      ? <UnlockMoment vessel={ship} overGalaxy onAwaken={onAwaken} onTry={(feature) => { if (feature === 'intel') focusNeighbour(); }} />
+      ? <UnlockMoment vessel={ship} overGalaxy onAwaken={onAwaken} onTry={(feature) => {
+          if (feature === 'intel') focusNeighbour();
+          // The drive's card shows where the jump is: the ship, at its drive (owner phone playtest 2026-11-18, item 13).
+          if (feature === 'migration') { setRequestedItem(JUMP_ITEM); onPanel('planet'); }
+        }} />
       : <ObjectiveLine
           vessel={ship}
           fetchedAt={planet.dataUpdatedAt}

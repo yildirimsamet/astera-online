@@ -1,5 +1,5 @@
 import { FIRST_SEASON_START, REPAIR_LADDER, STARTER, moduleStage, type VesselProgress } from '@astera/rules';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MigrationView, VesselView } from '../api/starterSchemas.js';
 import { ArtIcon, Banner, GameButton, InfoPeek, ProgressBar, SectionTag, StoreGauge } from '../game-ui/index.js';
@@ -36,9 +36,17 @@ function Outlook({ outlook }: { outlook: JumpOutlook }) {
  * is kept, what stays behind, the season, the action. It gives the inputs, not the answer: leaving early
  * and staying to fill the hold are both fair.
  */
-export function MigrationPanel({ vessel, income, onJump }: { vessel: VesselView; income: HoldIncome; onJump: (view: MigrationView) => void }) {
+export function MigrationPanel({ vessel, income, onJump, aim = false }: {
+  vessel: VesselView; income: HoldIncome; onJump: (view: MigrationView) => void;
+  /** The player came for the jump (owner phone playtest 2026-11-18, item 13): its button is brought into view. */
+  aim?: boolean;
+}) {
   const { t } = useTranslation();
   const { data: view } = useMigration();
+  const callable = view !== undefined && !view.block;
+  useEffect(() => {
+    if (aim && callable) document.querySelector('[data-guide="jump-go"]')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [aim, callable]);
   const now = useNow(30_000);
   const progress: VesselProgress = { modules: vessel.modules, facts: vessel.facts };
   const outlook = view ? jumpOutlook(view.target, now) : null;
@@ -99,7 +107,7 @@ export function MigrationPanel({ vessel, income, onJump }: { vessel: VesselView;
       {outlook && <Outlook outlook={outlook} />}
       {block && <p data-testid="jump-block" className="text-caption leading-snug text-v2-warn">{block.code === 'MIGRATION_SEASON_WAIT' ? t('errors.MIGRATION_SEASON_WAIT', { daysLeft: block.daysLeft }) : t(`errors.${block.code}`)}</p>}
       {view && !view.block && (
-        <GameButton wide tone="self" glyph="rocket" className="jump-call" onPress={() => { onJump(view); }}>{t('starter.jump.go')}</GameButton>
+        <GameButton wide tone="self" glyph="rocket" className="jump-call" marks={{ 'data-guide': 'jump-go' }} onPress={() => { onJump(view); }}>{t('starter.jump.go')}</GameButton>
       )}
     </section>
   );

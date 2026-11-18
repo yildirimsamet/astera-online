@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { REPAIR_LADDER, vesselRate, openingProgress, type VesselFact, type VesselProgress } from '@astera/rules';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,15 +11,22 @@ import { buildingArt, instrumentArt } from '../src/ui/assets.js';
 import { RESEARCH_SCENES, cardScene } from '../src/ui/atmosphere.js';
 import { cardStep, heroArt, moduleArt, pickStep, rateChange, systemArt, systemOpen } from '../src/starter/shipScreen.js';
 import { stepEffects, timeToAfford } from '../src/starter/steps.js';
-import { VesselScreen } from '../src/starter/VesselScreen.js';
+import { JUMP_ITEM, VesselScreen } from '../src/starter/VesselScreen.js';
+import { StarterLesson } from '../src/starter/tutorial/visualGoal.js';
+import type { TutorialAnswer } from '../src/starter/tutorial/script.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { WorldProvider } from '../src/api/world.js';
 import { wireVessel } from './starterVesselFixture.js';
 
 const step = (module: string, stage: number) => REPAIR_LADDER.find(s => s.module === module && s.stage === stage)!;
 const vessel = (over: Parameters<typeof wireVessel>[0] = {}) => vesselSchema.parse(wireVessel(over));
+/** The first loop done: the jump window is open (plan 2026-11-13 §5.1). */
+const LOOP: VesselProgress = {
+  modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 },
+  facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'],
+};
 
-function show(ship: VesselView, answer: () => Response = () => new Response(JSON.stringify({ vessel: wireVessel() }), { status: 200, headers: { 'content-type': 'application/json' } }), props: { onFact?: (fact: VesselFact) => void } = {}) {
+function show(ship: VesselView, answer: () => Response = () => new Response(JSON.stringify({ vessel: wireVessel() }), { status: 200, headers: { 'content-type': 'application/json' } }), props: { onFact?: (fact: VesselFact) => void; focusItem?: string } = {}, lesson: TutorialAnswer | null = null) {
   const requests: { path: string; body: unknown }[] = [];
   const fetch: typeof globalThis.fetch = (input, init) => {
     const path = (typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
@@ -32,7 +39,7 @@ function show(ship: VesselView, answer: () => Response = () => new Response(JSON
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const api = new Api({ fetch, authTransport: null });
   const tree = (current: VesselView) => (<QueryClientProvider client={client}><ApiProvider api={api}><WorldProvider><ToastProvider>
-    <VesselScreen vessel={current} fetchedAt={Date.now()} {...props} />
+    <StarterLesson.Provider value={lesson}><VesselScreen vessel={current} fetchedAt={Date.now()} {...props} /></StarterLesson.Provider>
   </ToastProvider></WorldProvider></ApiProvider></QueryClientProvider>);
   const view = render(tree(ship));
   return { requests, client, rerender: (next: VesselView) => { view.rerender(tree(next)); } };
@@ -115,6 +122,31 @@ describe('an opening worth announcing', () => {
   it('is gone with nothing to announce', () => {
     show(vessel());
     expect(screen.queryByTestId('unlock-moment')).toBeNull();
+  });
+
+  // Owner phone playtest 2026-11-18 (item 13): the drive came back and nothing said where the jump was,
+  // or that it could wait.
+  it('says where the jump is and that it can wait, and shows it there', () => {
+    show(vessel({ progress: LOOP, unlockToAnnounce: 'migration' }));
+    const moment = screen.getByTestId('unlock-moment');
+    expect(moment.textContent).toMatch(/no rush/i);
+    expect(screen.queryByTestId('migration-panel')).toBeNull();
+    fireEvent.click(within(moment).getByRole('button', { name: 'Show the jump' }));
+    expect(screen.getByTestId('migration-panel')).toBeInTheDocument();
+  });
+
+  it('opens on the drive when it is asked for the jump', () => {
+    show(vessel({ progress: LOOP }), undefined, { focusItem: JUMP_ITEM });
+    expect(screen.getByTestId('migration-panel')).toBeInTheDocument();
+  });
+
+  it('hands over at the drive once the jump is open, and on the repairs before', () => {
+    const farewell: TutorialAnswer = { kind: 'step', id: 'farewell', step: 'read', marks: [], chapter: 9, strict: false };
+    show(vessel({ progress: LOOP }), undefined, {}, farewell);
+    expect(screen.getByTestId('migration-panel')).toBeInTheDocument();
+    cleanup();
+    show(vessel({ progress: { ...LOOP, facts: ['FIRST_MINING_SENT'] } }), undefined, {}, farewell);
+    expect(screen.queryByTestId('migration-panel')).toBeNull();
   });
 
   it('tells the server it has been read', async () => {

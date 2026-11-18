@@ -158,7 +158,8 @@ const FIRST_ROAD: Part = {
     orderStep('orderShipyard', 'SHIPYARD', 1, 'CARGO', 5),
     waitFor('waitYard', 'SHIPYARD', 5),
     { id: 'buildShip', kind: 'press', chapter: 5, place: 'ship', marks: ['[data-commit] button', '[data-testid="yard-hull"][data-hull="DART"] button', '#ship-deck-yard'], satisfied: i => seasoned(i) || (!i.canBuildShip && !hasReady(i)) },
-    { id: 'farewell', kind: 'read', chapter: 9, place: 'ship', marks: ['[data-testid="ship-repair"]'], satisfied: seasoned },
+    // With the jump open the guide hands over at it (owner phone playtest 2026-11-18, item 13); before, at the ship's share.
+    { id: 'farewell', kind: 'read', chapter: 9, place: 'ship', marks: ['[data-guide="jump-go"]', '[data-testid="ship-repair"]'], satisfied: seasoned },
   ],
 };
 

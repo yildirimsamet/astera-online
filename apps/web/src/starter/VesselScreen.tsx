@@ -92,6 +92,9 @@ function DeckSwitch({ vessel, value, onChange }: { vessel: VesselView; value: Sh
  * the player reads "Repair 3/4", since Refinery 4 aboard and Refinery 2 on the first planet would read
  * as a punishment.
  */
+/** The item a caller asks for to land the player at the jump (owner phone playtest 2026-11-18, item 13). */
+export const JUMP_ITEM = 'jump';
+
 export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem, onFact }: {
   vessel: VesselView;
   fetchedAt: number;
@@ -111,7 +114,9 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem, onFact 
   const ahead = afterQueue(progress, queuedSteps(vessel));
   // A ship whose hold is full opens where it leaves from (owner playtest 2026-11-09); one with room
   // opens on its repairs, which is how the hold fills (plan 2026-11-13 §4.5).
-  const [system, setSystem] = useState<VesselSystem>(() => jumpWindowOpen(progress) && holdShare(vessel) >= 1 ? 'DRIVE' : nextRequiredStep(progress, queuedSteps(vessel))?.step.system ?? 'REFINERY');
+  // A screen opened for the jump opens on it (owner phone playtest 2026-11-18, item 13).
+  const [system, setSystem] = useState<VesselSystem>(() => focusItem === JUMP_ITEM || (jumpWindowOpen(progress) && holdShare(vessel) >= 1) ? 'DRIVE' : nextRequiredStep(progress, queuedSteps(vessel))?.step.system ?? 'REFINERY');
+  const [aim, setAim] = useState(focusItem === JUMP_ITEM);
   const [picked, setPicked] = useState<RepairStep | null>(null);
   const [jumping, setJumping] = useState<MigrationView | null>(null);
   const [deck, setDeck] = useState<ShipDeck>('repairs');
@@ -121,10 +126,22 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem, onFact 
   // The handover is about the ship: it is shown, whichever deck the first ship was built from.
   const lesson = useStarterLesson();
   const handingOver = lesson?.kind === 'step' && lesson.id === 'farewell';
-  useEffect(() => { if (handingOver) setDeck('repairs'); }, [handingOver]);
+  // With the jump open the handover is at the drive, where the guide points at the jump (item 13).
+  const windowOpen = jumpWindowOpen(progress);
+  useEffect(() => {
+    if (!handingOver) return;
+    setDeck('repairs');
+    if (windowOpen) { setSystem('DRIVE'); setPicked(null); setAim(true); }
+  }, [handingOver, windowOpen]);
+  useEffect(() => {
+    if (focusItem !== JUMP_ITEM) return;
+    setDeck('repairs'); setSystem('DRIVE'); setPicked(null); setAim(true);
+  }, [focusItem]);
   const sky = useMainSky(true);
   const queries = useQueryClient();
-  const select = (next: VesselSystem): void => { setSystem(next); setPicked(null); };
+  const select = (next: VesselSystem): void => { setSystem(next); setPicked(null); setAim(false); };
+  /** The drive's card's "Show the jump", here on the ship. */
+  const showJump = (): void => { select('DRIVE'); setAim(true); };
   /** A lock's "Show": the repair that comes first, on its own system's card. */
   const go = (step: RepairStep): void => { setSystem(step.system); setPicked(step); };
   const context: RepairContext = {
@@ -180,14 +197,14 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem, onFact 
       {!decks && <p data-testid="ship-goal" className="-mt-1 px-3 text-micro leading-snug text-v2-ink-3">{t('starter.goal')}</p>}
       {/* Below the ship's own strip, which tucks under the hero (owner playtest 2026-11-07: a card between
           them was overlapped), and on the screen's one inset, as every other block is. */}
-      <div className="px-3 empty:hidden"><UnlockMoment vessel={vessel} /></div>
+      <div className="px-3 empty:hidden"><UnlockMoment vessel={vessel} onTry={(feature) => { if (feature === 'migration') showJump(); }} /></div>
       <div className="px-3 empty:hidden"><HoldFullMoment vessel={vessel} {...(system === 'DRIVE' ? {} : { onLook: () => { select('DRIVE'); } })} /></div>
       <QuietNotice vessel={vessel} />
       <div className="px-3 empty:hidden"><CrateBay crates={vessel.crates} onOpen={() => { openCrates.mutate(undefined, { onError: (error) => { say(describe(error), 'error'); } }); }} /></div>
       <StarterWaitLine queue={vessel.queue} />
       <SystemTabs progress={progress} ahead={ahead} selected={system} onSelect={select} />
       {shown && <RepairCard shown={shown} system={system} context={context} onShow={setPicked} onGo={go} {...(onFact ? { onFact } : {})} />}
-      {system === 'DRIVE' && <MigrationPanel vessel={vessel} onJump={setJumping}
+      {system === 'DRIVE' && <MigrationPanel vessel={vessel} onJump={setJumping} aim={aim}
         income={{ alloy: view.planet.alloyPerHour, crystal: view.planet.crystalPerHour, deuterium: view.planet.deuteriumPerHour ?? 0 }} />}
       {jumping && (
         <LandingChoice

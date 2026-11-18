@@ -170,7 +170,7 @@ describe('the road through the first session (N12)', () => {
     const read = { acked: ['openIntel', 'openReport', 'report', 'collectMine'] };
     expect(at(onRoad({ EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 }, { facts, ...read, queue: [order('SHIPYARD', 1)] }))).toMatchObject({ id: 'waitYard', step: 'wait' });
     expect(at(onRoad(yard, { facts, ...read }))).toMatchObject({ id: 'buildShip', step: 'press', marks: ['[data-commit] button', '[data-testid="yard-hull"][data-hull="DART"] button', '#ship-deck-yard'] });
-    expect(at(onRoad(yard, { facts, acked: [...read.acked, 'buildShip'] }))).toMatchObject({ id: 'farewell', step: 'read', marks: ['[data-testid="ship-repair"]'] });
+    expect(at(onRoad(yard, { facts, acked: [...read.acked, 'buildShip'] }))).toMatchObject({ id: 'farewell', step: 'read', marks: ['[data-guide="jump-go"]', '[data-testid="ship-repair"]'] });
     expect(at(onRoad(yard, { facts, acked: [...read.acked, 'buildShip', 'farewell'] }))).toEqual({ kind: 'advise' });
     // Walk 2026-11-08: the yard's own crate pays for the first hull, and nothing was sending the player to it.
     const yardCrate = [{ id: 'REFINERY:2', state: 'opened' as const }, { id: 'SHIPYARD:1', state: 'ready' as const }];
