@@ -43,7 +43,7 @@ describe('the first hunt\'s flags', () => {
   it('flies one flag for each of the two, named, and opens the outpost on a tap', () => {
     const onSelect = vi.fn();
     const nodes = planetNodes([outpost('tevis', 'Tevis', 0, true), outpost('ash', 'Ash', 0, false), outpost('eldeth', 'Eldeth', 0, true)], true);
-    render(<OutpostGuides nodes={nodes} elements={{ current: new Map() }} onSelect={onSelect} />);
+    render(<OutpostGuides nodes={nodes} elements={{ current: new Map() }} locks={{ current: new Map() }} onSelect={onSelect} />);
     const flags = screen.getAllByRole('button');
     expect(flags.map(flag => flag.textContent)).toEqual(['Tevis', 'Eldeth']);
     // Out in the scene: the hand points at it, and no frame is drawn round the world under it.
@@ -66,7 +66,7 @@ describe('the first hunt\'s flags', () => {
     const near = document.createElement('button');
     const far = document.createElement('button');
     const nodes = planetNodes([outpost('near', 'Near', 0, true), outpost('far', 'Far', 100_000, true)], true);
-    render(<OutpostGuideTracker nodes={nodes} elements={{ current: new Map([['near', near], ['far', far]]) }} focusedId={null} />);
+    render(<OutpostGuideTracker nodes={nodes} elements={{ current: new Map([['near', near], ['far', far]]) }} locks={{ current: new Map() }} focusedId={null} />);
     frames.at(-1)!({ camera: camera(), size: viewport });
     expect(near.style.visibility).toBe('visible');
     expect(near.dataset.offscreen).toBe('false');
@@ -80,7 +80,7 @@ describe('the first hunt\'s flags', () => {
   it('waits above the bottom of the screen, where the objective line and the tabs are', () => {
     const flag = document.createElement('button');
     const [node] = planetNodes([outpost('low', 'Low', 0, true)], true);
-    render(<OutpostGuideTracker nodes={[{ ...node!, position: [0, -10_000, 0] }]} elements={{ current: new Map([['low', flag]]) }} focusedId={null} />);
+    render(<OutpostGuideTracker nodes={[{ ...node!, position: [0, -10_000, 0] }]} elements={{ current: new Map([['low', flag]]) }} locks={{ current: new Map() }} focusedId={null} />);
     frames.at(-1)!({ camera: camera(), size: viewport });
     expect(flag.dataset.offscreen).toBe('true');
     const [, y] = /translate3d\(([\d.]+)px,([\d.]+)px/.exec(flag.style.transform)?.slice(1).map(Number) ?? [];
@@ -90,8 +90,46 @@ describe('the first hunt\'s flags', () => {
   it('steps aside while its outpost is open, where the outpost\'s own label speaks', () => {
     const flag = document.createElement('button');
     const nodes = planetNodes([outpost('tevis', 'Tevis', 0, true)], true);
-    render(<OutpostGuideTracker nodes={nodes} elements={{ current: new Map([['tevis', flag]]) }} focusedId="tevis" />);
+    render(<OutpostGuideTracker nodes={nodes} elements={{ current: new Map([['tevis', flag]]) }} locks={{ current: new Map() }} focusedId="tevis" />);
     frames.at(-1)!({ camera: camera(), size: viewport });
     expect(flag.style.visibility).toBe('hidden');
+  });
+});
+
+/*
+  Owner, phone playtest 2026-11-18 (item 14): the guide lit the outpost's name, but a tap on the world opens
+  it. The world itself is marked: a lock drawn round its disc, which takes no tap, so the press lands on the
+  world. The flag rides above the disc, clear of it, and only an outpost off the screen is pointed at by its flag.
+*/
+describe('the first hunt\'s lock on the world', () => {
+  it('draws one lock for each of the two, a scene mark that takes no tap', () => {
+    const nodes = planetNodes([outpost('tevis', 'Tevis', 0, true), outpost('ash', 'Ash', 0, false), outpost('eldeth', 'Eldeth', 0, true)], true);
+    render(<OutpostGuides nodes={nodes} elements={{ current: new Map() }} locks={{ current: new Map() }} onSelect={vi.fn()} />);
+    const locks = [...document.querySelectorAll('[data-outpost-planet]')];
+    expect(locks.map(lock => lock.getAttribute('data-outpost-planet'))).toEqual(['tevis', 'eldeth']);
+    expect(locks.every(lock => lock.hasAttribute('data-scene-mark') && lock.getAttribute('aria-hidden') === 'true')).toBe(true);
+    const css = readFileSync(join(import.meta.dirname, '../src/galaxy/outpostGuide.css'), 'utf8');
+    expect(css).toMatch(/\.outpost-lock\s*\{[^}]*pointer-events:\s*none/u);
+  });
+
+  it('sits on the world while it is in view, at least a finger wide, and is gone while it is off the screen or open', () => {
+    const near = document.createElement('span');
+    const far = document.createElement('span');
+    const flag = document.createElement('button');
+    const nodes = planetNodes([outpost('near', 'Near', 0, true), outpost('far', 'Far', 100_000, true)], true);
+    const view = render(<OutpostGuideTracker nodes={nodes} elements={{ current: new Map([['near', flag]]) }} locks={{ current: new Map([['near', near], ['far', far]]) }} focusedId={null} />);
+    frames.at(-1)!({ camera: camera(), size: viewport });
+    expect(near.style.display).toBe('block');
+    expect(near.style.transform).toBe(`translate3d(${String(viewport.width / 2)}px,${String(viewport.height / 2)}px,0) translate(-50%,-50%)`);
+    const size = Number.parseFloat(near.style.width);
+    expect(size).toBeGreaterThanOrEqual(44);
+    expect(near.style.height).toBe(near.style.width);
+    expect(far.style.display).toBe('none');
+    // The flag stands clear above the lock, so the two never cover each other.
+    const [lift] = /translateY\((-?[\d.]+)px\)/u.exec(flag.style.transform)?.slice(1).map(Number) ?? [];
+    expect(lift).toBeLessThanOrEqual(-size / 2);
+    view.rerender(<OutpostGuideTracker nodes={nodes} elements={{ current: new Map([['near', flag]]) }} locks={{ current: new Map([['near', near], ['far', far]]) }} focusedId="near" />);
+    frames.at(-1)!({ camera: camera(), size: viewport });
+    expect(near.style.display).toBe('none');
   });
 });

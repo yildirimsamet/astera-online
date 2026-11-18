@@ -341,7 +341,8 @@ describe('where the hand goes for a chosen opportunity', () => {
   // The first hunt (F4e): the probe button on an open outpost, else that outpost's flag, else the line.
   it('leads a hunt probe to its outpost, and the choice to the line that opens the reports', () => {
     const probe = { kind: 'hunt', hunt: { stage: 'probe', target: 'tevis' }, mining: true } as const;
-    expect(adviceMarks(probe, 'galaxy')).toEqual({ marks: ['[data-guide="probe"]', '[data-outpost-guide="tevis"]', '[data-guide="objective"]'] });
+    // The world itself first, which a tap opens; its flag only while the world is off the screen (owner 2026-11-18, item 14).
+    expect(adviceMarks(probe, 'galaxy')).toEqual({ marks: ['[data-guide="probe"]', '[data-outpost-planet="tevis"]', '[data-outpost-guide="tevis"]', '[data-guide="objective"]'] });
     expect(adviceMarks(probe, 'ship')).toEqual({ marks: ['[data-sheet-close]'], nav: 'closePage' });
     expect(adviceMarks({ kind: 'hunt', hunt: { stage: 'decide' }, mining: false }, 'galaxy')).toEqual({ marks: ['[data-guide="objective"]'] });
     // Reading the reports is where the choice is made: no hand drags the player out of them.

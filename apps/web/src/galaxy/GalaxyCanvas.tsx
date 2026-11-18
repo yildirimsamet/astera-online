@@ -791,6 +791,7 @@ export function GalaxyCanvas({
   const onCompiled = useCallback(() => { setPreparedEpoch(gpu.epoch); }, [gpu.epoch]);
   const signalGuide = useRef<HTMLButtonElement>(null);
   const outpostFlags = useRef(new Map<string, HTMLButtonElement>());
+  const outpostLocks = useRef(new Map<string, HTMLElement>());
 
   return (
     <>
@@ -977,7 +978,7 @@ export function GalaxyCanvas({
         {unknownSignals.length > 0 && <UnknownSignals signals={unknownSignals} focusedId={focus?.kind === 'unknownSignal' ? focus.id : null}
           onSelect={id => { onFocus({ kind: 'unknownSignal', id }); }} />}
         <UnknownSignalGuideTracker signals={unknownSignals} element={signalGuide} />
-        <OutpostGuideTracker nodes={nodes} elements={outpostFlags} focusedId={selectedId} />
+        <OutpostGuideTracker nodes={nodes} elements={outpostFlags} locks={outpostLocks} focusedId={selectedId} />
         {unknownSignalRadar && <SensorRings posts={[{ planetId: unknownSignalRadar.capitalPlanetId, at: unknownSignalRadar.at,
           identify: 0, detect: unknownSignalRadar.range, telescope: false }]} showTelescope={false} showRadar />}
         <Monuments monuments={monuments} planets={nodes} hpRadiation={hpRadiation} focusedId={focus?.kind === 'monument' ? focus.id : null}
@@ -1215,7 +1216,7 @@ export function GalaxyCanvas({
       <HoldRate fps={FLIGHT_FPS} active={anythingInFlight({ pending, runs, contacts })} />
     </Canvas>
     <UnknownSignalGuide signals={unknownSignals} element={signalGuide} onSelect={id => { onFocus({ kind: 'unknownSignal', id }); }} />
-    <OutpostGuides nodes={nodes} elements={outpostFlags} onSelect={id => { onFocus({ kind: 'planet', id }); }} />
+    <OutpostGuides nodes={nodes} elements={outpostFlags} locks={outpostLocks} onSelect={id => { onFocus({ kind: 'planet', id }); }} />
     </>
   );
 }

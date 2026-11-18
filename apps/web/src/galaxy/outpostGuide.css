@@ -13,3 +13,11 @@
 .outpost-guide-name { max-width: 112px; overflow: hidden; font-size: 10px; font-weight: 600; letter-spacing: .06em; line-height: 1.1; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; text-shadow: 0 1px 3px #05070d, 0 0 8px #05070d; }
 .outpost-guide:focus-visible { outline: 1px solid currentColor; outline-offset: 2px; }
 @keyframes outpost-flag-wave { 0%, 100% { transform: skewY(0deg) scaleX(1); } 50% { transform: skewY(-7deg) scaleX(.92); } }
+/* The sensors' lock on the world the guide points at (owner 2026-11-18, item 14): four arcs snap in from wide
+   and settle on the disc, then turn slowly. Strokes only, no glow; the tap goes through it to the world. */
+.outpost-lock { position: absolute; top: 0; left: 0; z-index: 9; display: none; color: var(--color-v2-warn); opacity: 0; pointer-events: none; filter: drop-shadow(0 0 1.5px #05070d); }
+.outpost-lock[data-starter-next] { animation: none; outline: none; opacity: 1; }
+.outpost-lock svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.outpost-lock[data-starter-next] svg { animation: outpost-lock-in .5s cubic-bezier(.2, 1.3, .4, 1) both, outpost-lock-turn 12s linear .5s infinite; }
+@keyframes outpost-lock-in { from { opacity: 0; transform: scale(1.7) rotate(-60deg); } 70% { opacity: 1; } to { opacity: 1; transform: scale(1) rotate(0deg); } }
+@keyframes outpost-lock-turn { to { transform: rotate(90deg); } }

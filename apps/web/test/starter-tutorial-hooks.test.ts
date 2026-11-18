@@ -32,6 +32,7 @@ const DRAWN: readonly (readonly [hook: string, file: string, drawn: string])[] =
   ['data-guide="probe"', 'galaxy/FocusPanel.tsx', "'data-guide': 'probe'"],
   ['data-focus-close', 'galaxy/FocusPanel.tsx', 'data-focus-close=""'],
   ['data-outpost-guide="', 'galaxy/OutpostGuide.tsx', 'data-outpost-guide={node.id}'],
+  ['data-outpost-planet="', 'galaxy/OutpostGuide.tsx', 'data-outpost-planet={node.id}'],
   // The dock is the kit's bottom bar (G1-a): it names each tab's hook, the bar draws it.
   ['data-guide="dock-base"', 'v2/hud/Dock.tsx', 'guide: `dock-${tab}`'],
   ['data-guide="dock-intel"', 'v2/hud/Dock.tsx', 'guide: `dock-${tab}`'],

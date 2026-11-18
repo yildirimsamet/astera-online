@@ -293,9 +293,12 @@ export function adviceMarks(choice: Opportunity, view: TutorialView): { marks: r
   }
 }
 
-/** The first hunt: the probe on an open outpost, else that outpost's flag; the choice is on the line. */
+/**
+ * The first hunt: the probe on an open outpost, else the outpost's world itself, which a tap opens (owner
+ * 2026-11-18), else its flag at the screen's edge; the choice is on the line.
+ */
 function huntMarks(hunt: HuntStage, view: TutorialView): { marks: readonly string[]; nav?: TutorialNav } {
-  if (hunt.stage === 'probe') return outside(view, ['[data-guide="probe"]', `[data-outpost-guide="${hunt.target}"]`, '[data-guide="objective"]']);
+  if (hunt.stage === 'probe') return outside(view, ['[data-guide="probe"]', `[data-outpost-planet="${hunt.target}"]`, `[data-outpost-guide="${hunt.target}"]`, '[data-guide="objective"]']);
   // The reports are where the choice is made: a player reading them is not led out.
   return hunt.stage === 'decide' && view === 'galaxy' ? { marks: ['[data-guide="objective"]'] } : NOWHERE;
 }
