@@ -2,10 +2,10 @@
    Gözlemevi language: ink on panel, hairlines, no glow; teal is the ship's own progress and the one primary button. */
 /* One column that never outgrows the sheet: the bay's canvas carries a pixel width, and an `auto` track
    took it as its minimum, so a canvas sized once at 352 kept the whole desk 18 px past a 334 sheet (S22). */
-.hangar-root { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 0 12px; color: var(--gk-ink); font-family: var(--gk-font-text);
+.hangar-root { display: grid; grid-template-columns: minmax(0, 1fr); gap: 13px; padding: 0 11px; color: var(--gk-ink); font-family: var(--gk-font-text);
   -webkit-tap-highlight-color: transparent; }
 
-.hp-stage { position: relative; height: clamp(220px, 64vw, 380px); overflow: hidden; border-radius: 14px; isolation: isolate;
+.hp-stage { position: relative; height: clamp(198px, 64vw, 342px); overflow: hidden; border-radius: 14px; isolation: isolate;
   background: radial-gradient(120% 90% at 60% 70%, #0b1626 0%, #04080f 60%, #020409 100%);
   box-shadow: inset 0 0 0 1px var(--gk-glass-edge), 0 14px 34px rgba(0,0,0,.45); }
 /* Scrims, so the plate and the hint read over any part of the bay. */
@@ -21,7 +21,7 @@
   background: radial-gradient(70% 60% at 50% 62%, color-mix(in srgb, var(--ship) 16%, transparent), transparent 70%), #03060c; }
 .hp-flat-pad { position: absolute; left: 50%; top: 70%; width: 58%; height: 13%; transform: translate(-50%, -50%); border-radius: 50%;
   border: 1px solid color-mix(in srgb, #b8c8e6 28%, transparent); box-shadow: 0 0 28px color-mix(in srgb, var(--ship) 22%, transparent) inset; }
-.hp-flat-mark { position: relative; width: 72px; height: 72px; color: var(--ship); filter: drop-shadow(0 0 14px color-mix(in srgb, var(--ship) 55%, transparent)); }
+.hp-flat-mark { position: relative; width: 65px; height: 65px; color: var(--ship); filter: drop-shadow(0 0 14px color-mix(in srgb, var(--ship) 55%, transparent)); }
 .hp-flat-mark svg { width: 100%; height: 100%; }
 /* The bay as a still: the same frame the live bay opens on, so the plate and the scrims sit as they do there. */
 /* A still does not turn: no drag hint over it. */
@@ -32,41 +32,41 @@
 @keyframes hp-reveal { from { opacity: 0; filter: brightness(.4); } }
 
 /* The ship's name on the bay: its role in its colour, the name in the kit's type, the level or "preview" as a chip. */
-.gk-hangarplate { position: absolute; z-index: 2; top: 12px; left: 14px; right: 120px; pointer-events: none; text-shadow: 0 1px 10px rgba(0,0,0,.75); }
+.gk-hangarplate { position: absolute; z-index: 2; top: 11px; left: 13px; right: 108px; pointer-events: none; text-shadow: 0 1px 10px rgba(0,0,0,.75); }
 .gk-hangarplate .gk-label { display: block; color: var(--ship, var(--gk-ink-2)); }
-.gk-hangarplate p { margin: 2px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.gk-hangarplate p { margin: 2px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 7px; }
 .gk-hangarplate .gk-display { font-size: var(--gk-t-title); line-height: 1.05; color: var(--gk-ink); }
 .gk-hangarplate .gk-chip { text-shadow: none; animation: hp-pop .5s cubic-bezier(.2, 1.6, .4, 1) both; }
 @keyframes hp-pop { from { transform: scale(.6); opacity: 0; } }
 /* A level bought (F17): a band across the bay with what it gave, in the ship's own colour, then gone. */
-.hp-levelup { position: absolute; z-index: 3; left: 0; right: 0; bottom: 18%; display: grid; justify-items: center; gap: 4px; padding: 10px 12px;
+.hp-levelup { position: absolute; z-index: 3; left: 0; right: 0; bottom: 18%; display: grid; justify-items: center; gap: 4px; padding: 9px 11px;
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--gk-deep) 86%, transparent) 18%, color-mix(in srgb, var(--gk-deep) 86%, transparent) 82%, transparent);
   border-block: 1px solid color-mix(in srgb, var(--ship) 45%, transparent); pointer-events: none;
   animation: hp-levelup 3.2s cubic-bezier(.2, .8, .2, 1) both; }
 .hp-levelup b { font: var(--gk-display-weight) var(--gk-t-body) var(--gk-font-display); font-stretch: var(--gk-display-stretch); letter-spacing: .1em; text-transform: uppercase; color: var(--ship);
   text-shadow: 0 0 14px color-mix(in srgb, var(--ship) 60%, transparent); }
-.hp-levelup span { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 10px; font-size: var(--gk-t-floor); color: var(--gk-ink-2); }
+.hp-levelup span { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 9px; font-size: var(--gk-t-floor); color: var(--gk-ink-2); }
 .hp-levelup i { font-style: normal; }
 .hp-levelup em { font-style: normal; color: var(--gk-self); }
 @keyframes hp-levelup { 0% { opacity: 0; transform: scaleY(.4); } 10% { opacity: 1; transform: none; } 82% { opacity: 1; } to { opacity: 0; } }
-.hp-state { position: absolute; z-index: 2; top: 12px; right: 12px; border-radius: 999px; }
+.hp-state { position: absolute; z-index: 2; top: 11px; right: 11px; border-radius: 999px; }
 
-.hp-drag { position: absolute; z-index: 2; left: 0; right: 0; bottom: 8px; margin: 0; text-align: center; pointer-events: none;
+.hp-drag { position: absolute; z-index: 2; left: 0; right: 0; bottom: 7px; margin: 0; text-align: center; pointer-events: none;
   color: var(--gk-ink-2); text-shadow: 0 1px 6px #000; animation: hp-hint 6s ease-in 2s both; }
-.hp-drag::before { content: '⟲'; margin-right: 6px; }
+.hp-drag::before { content: '⟲'; margin-right: 5px; }
 @keyframes hp-hint { 0%, 70% { opacity: 1; } to { opacity: 0; } }
 
 .hp-wait { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; animation: hp-breathe 1.6s ease-in-out infinite; }
 @keyframes hp-breathe { 50% { opacity: .45; } }
 
-.hp-desk { display: grid; gap: 18px; }
+.hp-desk { display: grid; gap: 16px; }
 /* What this moment is about, before the desk: the first choice, or the Çekirdek a ship waits on. */
 .gk-hangarlead { display: grid; gap: 3px; padding: var(--gk-s2) var(--gk-s3); }
 .gk-hangarlead .gk-display { font-size: var(--gk-t-body); color: var(--gk-ink); }
 .gk-hangarlead[data-tone='warn'] .gk-display { color: var(--gk-warn); }
 
 /* The way in stays at the foot of the sheet while the desk scrolls under it. */
-.hp-dock { position: sticky; bottom: 0; z-index: 3; margin: -4px -12px 0; padding: 12px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+.hp-dock { position: sticky; bottom: 0; z-index: 3; margin: -4px -11px 0; padding: 11px 11px calc(9px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(180deg, transparent, var(--gk-deep) 14px); pointer-events: none; }
 /* Only its buttons take a finger: the faded top edge passes a tap to what shows through it (F5). */
 .hp-dock > * { pointer-events: auto; }
@@ -74,7 +74,7 @@
 /* The class's own colour (its A key in flight): the signature card, its glyphs, the figures' fills. Solid, never a glow. */
 .hp-glyph { display: block; }
 .hp-glyph svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.hp-sig-icon { flex: none; width: 34px; height: 34px; padding: 6px; border-radius: 2px; color: var(--ship);
+.hp-sig-icon { flex: none; width: 31px; height: 31px; padding: 5px; border-radius: 2px; color: var(--ship);
   background: color-mix(in srgb, var(--ship) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ship) 30%, transparent); }
 
 /* G12-d2 (2026-11-16): the ship's desk on the kit. Wells under kit tags; every spend a steel hold. */
@@ -83,56 +83,56 @@
 .gk-deskwell { display: grid; gap: var(--gk-s2); min-width: 0; padding: var(--gk-s2) var(--gk-s3) var(--gk-s3); }
 .gk-deskwell[data-tone='warn'] { border-color: color-mix(in srgb, var(--gk-warn) 45%, var(--gk-glass-edge)); }
 .gk-deskwell p { margin: 0; }
-.gk-deskwell__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.gk-deskwell__head { display: flex; align-items: baseline; justify-content: space-between; gap: 7px; }
 .gk-deskwell__head .gk-display { font-size: var(--gk-t-body); color: var(--gk-ink); }
-.gk-deskwell__price { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.gk-deskwell__price { display: flex; align-items: center; justify-content: space-between; gap: 7px; }
 .gk-deskwell__total { padding-top: var(--gk-s2); border-top: 1px solid var(--gk-glass-edge); }
-.gk-deskwell__dot { margin: 0 6px; }
+.gk-deskwell__dot { margin: 0 5px; }
 .hangar-root .gk-sub b { color: var(--gk-ink); font-weight: 600; }
 .hangar-root .gk-sub[data-tone='warn'], .hangar-root .gk-note[data-tone='warn'] { color: var(--gk-warn); }
 .hangar-root .gk-note[data-tone='self'] { color: var(--gk-self); }
 .gk-shipdesk__points { color: var(--gk-ink-3); }
 .gk-shipdesk__points[data-lit] { color: var(--gk-self); }
-.gk-shipdesk__rules { display: grid; gap: 6px; margin: 0; padding: 0 0 0 14px; list-style: disc; font-size: var(--gk-t-floor); line-height: 1.45; color: var(--gk-ink-2); }
+.gk-shipdesk__rules { display: grid; gap: 5px; margin: 0; padding: 0 0 0 13px; list-style: disc; font-size: var(--gk-t-floor); line-height: 1.45; color: var(--gk-ink-2); }
 
 /* The level: a hexagon in the ship's colour, its number inside, and the bar towards the next. */
 .gk-shiplevel { display: flex; align-items: center; gap: var(--gk-s3); }
-.gk-shiplevel__badge { flex: none; display: grid; place-items: center; width: 36px; height: 40px; font-weight: 700; font-size: var(--gk-t-body); color: var(--gk-ink);
+.gk-shiplevel__badge { flex: none; display: grid; place-items: center; width: 32px; height: 36px; font-weight: 700; font-size: var(--gk-t-body); color: var(--gk-ink);
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
   background: linear-gradient(160deg, color-mix(in srgb, var(--ship) 60%, var(--gk-metal-2)), color-mix(in srgb, var(--ship) 18%, var(--gk-deep))); }
-.gk-shiplevel__track { display: grid; flex: 1; gap: 6px; min-width: 0; }
+.gk-shiplevel__track { display: grid; flex: 1; gap: 5px; min-width: 0; }
 .gk-shiplevel__to { font-family: var(--gk-font-text); font-weight: 500; color: var(--gk-ink-3); }
-.gk-shiplevel__bar { position: relative; height: 6px; overflow: hidden; border-radius: 3px; background: var(--gk-deep); box-shadow: inset 0 0 0 1px var(--gk-glass-edge); }
+.gk-shiplevel__bar { position: relative; height: 5px; overflow: hidden; border-radius: 3px; background: var(--gk-deep); box-shadow: inset 0 0 0 1px var(--gk-glass-edge); }
 .gk-shiplevel__bar > span { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: linear-gradient(90deg, var(--gk-self-lo), var(--gk-self));
   transition: width .3s var(--gk-ease); }
 .gk-shiplevel__bar[data-capped] > span { background: color-mix(in srgb, var(--gk-warn) 70%, transparent); }
 
 /* An ability: the tile picked wears the teal edge; the signature wears the class's colour. */
-.gk-abils { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
-.gk-abil { display: grid; gap: 6px; width: 100%; min-height: var(--gk-hit); padding: 8px; text-align: left; color: var(--gk-ink-2);
+.gk-abils { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin: 0; padding: 0; list-style: none; }
+.gk-abil { display: grid; gap: 5px; width: 100%; min-height: var(--gk-hit); padding: 7px; text-align: left; color: var(--gk-ink-2);
   border: 1px solid var(--gk-metal-edge); border-radius: var(--gk-r-sm); background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
   transition: border-color var(--gk-quick) var(--gk-ease), transform var(--gk-quick) var(--gk-pop); }
 .gk-abil:active { transform: scale(.97); }
 .gk-abil[aria-pressed='true'] { border-color: color-mix(in srgb, var(--gk-self) 70%, transparent);
   background: linear-gradient(180deg, color-mix(in srgb, var(--gk-self) 14%, var(--gk-metal-1)), var(--gk-metal-2)); color: var(--gk-ink); }
 .gk-abil__top { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
-.gk-abil__glyph { width: 20px; height: 20px; }
+.gk-abil__glyph { width: 18px; height: 18px; }
 .gk-abil[data-signature] .gk-abil__glyph { color: var(--ship); }
 .gk-abil__rank { font-size: var(--gk-t-floor); color: var(--gk-ink-3); }
 .gk-abil__name { overflow: hidden; font-size: var(--gk-t-small); font-weight: 600; color: var(--gk-ink); text-overflow: ellipsis; white-space: nowrap; }
 .gk-pips { display: flex; gap: 3px; }
-.gk-pips i { width: 10px; height: 4px; border-radius: 2px; background: var(--gk-glass-edge); }
+.gk-pips i { width: 9px; height: 4px; border-radius: 2px; background: var(--gk-glass-edge); }
 .gk-pips i[data-on] { background: var(--gk-self); }
 
 /* The figures: today solid in the ship's colour, the next level's part breathing in teal. */
-.gk-growth { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; margin: 0; }
+.gk-growth { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px 13px; margin: 0; }
 .gk-growth__row { min-width: 0; }
-.gk-growth__row dt { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; font-size: var(--gk-t-small); }
+.gk-growth__row dt { display: flex; align-items: flex-end; justify-content: space-between; gap: 7px; font-size: var(--gk-t-small); }
 .gk-growth__row dt b { font-weight: 600; color: var(--gk-ink); }
-.gk-growth__name { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--gk-ink-3); }
+.gk-growth__name { display: flex; align-items: center; gap: 5px; min-width: 0; color: var(--gk-ink-3); }
 .gk-growth__name > span { line-height: 1.15; }
-.gk-growth__name svg { width: 14px; height: 14px; flex: none; }
-.gk-growth__bar { position: relative; display: flex; height: 4px; margin: 6px 0 0; overflow: hidden; border-radius: 2px; background: var(--gk-deep); }
+.gk-growth__name svg { width: 13px; height: 13px; flex: none; }
+.gk-growth__bar { position: relative; display: flex; height: 4px; margin: 5px 0 0; overflow: hidden; border-radius: 2px; background: var(--gk-deep); }
 .gk-growth__bar [data-now] { height: 100%; background: color-mix(in srgb, var(--ship) 82%, var(--gk-ink-3)); transition: width .3s var(--gk-ease); }
 .gk-growth__bar [data-next] { min-width: 4px; height: 100%; background: color-mix(in srgb, var(--gk-self) 70%, #fff); box-shadow: 0 0 6px var(--gk-self);
   animation: hp-next 1.6s ease-in-out infinite; }
@@ -141,7 +141,7 @@
 
 /* The class: its tabs lit in the colour of the one looked at, the signature in a well of that colour. */
 .gk-classtabs .gk-tab[aria-selected='true'] { box-shadow: inset 0 -2px 0 var(--ship); }
-.gk-classtabs__sig { width: 16px; height: 16px; }
+.gk-classtabs__sig { width: 14px; height: 14px; }
 .gk-classtabs .gk-tab[aria-selected='false'] .gk-classtabs__sig { opacity: .55; }
 .gk-shipsig { display: flex; align-items: center; gap: var(--gk-s3); padding: var(--gk-s2) var(--gk-s3);
   border-color: color-mix(in srgb, var(--ship) 35%, var(--gk-glass-edge)); }
@@ -150,32 +150,32 @@
 /* The classes side by side: the class looked at has its column lit, the best of a row bright. */
 .gk-compare { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: var(--gk-t-small); }
 .gk-compare th:first-child { width: 30%; }
-.gk-compare th, .gk-compare td { padding: 6px 4px; text-align: center; border-bottom: 1px solid var(--gk-glass-edge); }
+.gk-compare th, .gk-compare td { padding: 5px 4px; text-align: center; border-bottom: 1px solid var(--gk-glass-edge); }
 .gk-compare th[scope='row'] { text-align: left; font-weight: 400; }
 .gk-compare td { font-size: var(--gk-t-floor); color: var(--gk-ink-3); }
 .gk-compare td[data-best] { font-weight: 700; color: var(--gk-ink); }
 .gk-compare [data-own] { background: color-mix(in srgb, var(--ship) 12%, transparent); }
 .gk-compare thead [data-own] { border-radius: 2px 2px 0 0; }
 .gk-compare__ship { display: grid; justify-items: center; gap: 2px; }
-.gk-compare__ship .hp-glyph { width: 14px; height: 14px; color: var(--ship); }
+.gk-compare__ship .hp-glyph { width: 13px; height: 13px; color: var(--ship); }
 .gk-compare__ship > span { max-width: 100%; overflow: hidden; font-size: var(--gk-t-floor); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; color: var(--gk-ink-2); }
-.gk-compare__stat { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--gk-ink-3); }
+.gk-compare__stat { display: flex; align-items: center; gap: 5px; min-width: 0; color: var(--gk-ink-3); }
 .gk-compare__stat > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gk-compare__stat svg { width: 14px; height: 14px; flex: none; }
+.gk-compare__stat svg { width: 13px; height: 13px; flex: none; }
 
 /* The launch plan: a cell aboard is solid teal, a cell the launch buys deuterium-striped, the rest empty. */
-.gk-gauge { display: grid; gap: 6px; }
-.gk-gauge__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: var(--gk-t-small); }
-.gk-gauge__name { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--gk-ink-2); }
+.gk-gauge { display: grid; gap: 5px; }
+.gk-gauge__head { display: flex; align-items: center; justify-content: space-between; gap: 7px; font-size: var(--gk-t-small); }
+.gk-gauge__name { display: flex; align-items: center; gap: 5px; min-width: 0; color: var(--gk-ink-2); }
 .gk-gauge__name b { font-weight: 600; color: var(--gk-ink); }
-.gk-gauge__name svg { width: 14px; height: 14px; flex: none; }
+.gk-gauge__name svg { width: 13px; height: 13px; flex: none; }
 .gk-gauge__price { font-size: var(--gk-t-floor); color: var(--gk-ink-3); }
 .gk-gauge__price[data-paid] { color: var(--gk-deut); }
 .gk-gauge__cells { display: flex; gap: 4px; }
-.gk-loadcell { flex: 1; display: grid; place-items: center; min-height: 32px; padding: 0 4px; font-size: var(--gk-t-floor); color: var(--gk-ink-3);
+.gk-loadcell { flex: 1; display: grid; place-items: center; min-height: 29px; padding: 0 4px; font-size: var(--gk-t-floor); color: var(--gk-ink-3);
   border: 1px solid var(--gk-glass-edge); border-radius: 2px; background: var(--gk-deep); transition: transform var(--gk-quick) var(--gk-pop); }
 .gk-loadcell:active { transform: scale(.95); }
-.gk-loadcell[data-empty] { flex: none; padding: 0 10px; }
+.gk-loadcell[data-empty] { flex: none; padding: 0 9px; }
 .gk-loadcell[data-fill='aboard'] { background: color-mix(in srgb, var(--gk-self) 26%, var(--gk-deep)); color: var(--gk-ink); }
 .gk-loadcell[data-fill='plan'] { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--gk-deut) 24%, transparent) 0 4px, transparent 4px 8px), var(--gk-deep);
   color: var(--gk-ink); }
@@ -183,9 +183,9 @@
 .gk-loadcell:disabled { opacity: .6; }
 
 /* Today's room, per resource in its own colour; a full one dims. */
-.gk-capcells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
-.gk-capcell { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 6px 8px; }
-.gk-capcell img { width: 16px; height: 16px; flex: none; object-fit: contain; }
+.gk-capcells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin: 0; padding: 0; list-style: none; }
+.gk-capcell { display: flex; align-items: center; gap: 5px; min-width: 0; padding: 5px 7px; }
+.gk-capcell img { width: 14px; height: 14px; flex: none; object-fit: contain; }
 .gk-capcell > span { display: grid; min-width: 0; line-height: 1.2; }
 .gk-capcell b { font-size: var(--gk-t-small); font-weight: 700; }
 .gk-capcell[data-kind='alloy'] b { color: var(--gk-alloy-hi); }
@@ -195,16 +195,16 @@
 .gk-capcell[data-full] img { opacity: .4; }
 .gk-capcell small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* The way in: one line of facts, then the one press: lit when it flies, steel when only practice is open. */
-.gk-hangardock__facts { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 0 6px; text-align: center; }
-.gk-hangardock__facts i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--gk-ink-3); }
+.gk-hangardock__facts { display: flex; align-items: center; justify-content: center; gap: 5px; margin: 0 0 5px; text-align: center; }
+.gk-hangardock__facts i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--gk-ink-3); }
 .gk-hangardock__facts i[data-live] { background: var(--gk-self); box-shadow: 0 0 6px var(--gk-self); }
-.gk-hangardock__pair { display: grid; gap: 6px; justify-items: center; }
+.gk-hangardock__pair { display: grid; gap: 5px; justify-items: center; }
 .gk-hangardock__pair > .gk-hold { width: 100%; }
 /* The ship's state on the bay. */
-.gk-shipstate { gap: 6px; }
-.gk-shipstate i { width: 7px; height: 7px; border-radius: 50%; background: var(--gk-ink-3); }
+.gk-shipstate { gap: 5px; }
+.gk-shipstate i { width: 6px; height: 6px; border-radius: 50%; background: var(--gk-ink-3); }
 .gk-shipstate[data-tone='self'] i { background: var(--gk-self); }
 .gk-shipstate[data-tone='warn'] i { background: var(--gk-warn); }
 /* O17 (owner 2026-11-17): the dock reaches the sheet's floor through the body's 24 px foot padding, so nothing
    shows under it, and the button sits 8 px over the edge instead of floating 34 px up. */
-.hp-dock { bottom: calc(-1 * var(--gk-s6)); padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+.hp-dock { bottom: calc(-1 * var(--gk-s6)); padding-bottom: calc(7px + env(safe-area-inset-bottom, 0px)); }

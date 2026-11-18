@@ -1,12 +1,12 @@
 @layer components {
-  .brand-star-mark { color: var(--color-v2-self); font-size: 13px; }
+  .brand-star-mark { color: var(--color-v2-self); font-size: 12px; }
   .brand-masthead {
     position: relative;
     display: flex;
     align-items: center;
-    gap: 10px;
-    height: 27px;
-    padding: env(safe-area-inset-top) 10px 0;
+    gap: 9px;
+    height: 24px;
+    padding: env(safe-area-inset-top) 9px 0;
     box-sizing: content-box;
     isolation: isolate;
     background: linear-gradient(105deg, var(--color-v2-raise), var(--color-v2-deep) 48%, var(--color-v2-void));
@@ -20,17 +20,17 @@
     top: env(safe-area-inset-top);
     bottom: 0;
     left: 0;
-    width: 160px;
+    width: 144px;
     background: linear-gradient(105deg, color-mix(in srgb, var(--color-v2-self) 6%, transparent), transparent);
   }
-  .brand-masthead-lockup { display: flex; flex-shrink: 0; align-items: center; gap: 7px; }
-  .brand-masthead-sigil { width: 19px; height: 19px; color: var(--color-v2-self); }
-  .brand-masthead-wordmark { width: 76px; height: 13px; color: var(--color-v2-ink); }
-  .brand-masthead-online { margin-left: 1px; padding-left: 7px; border-left: 1px solid var(--color-v2-line-hi); font-size: 7px; font-weight: 550; letter-spacing: .18em; text-transform: uppercase; color: var(--color-v2-self); }
+  .brand-masthead-lockup { display: flex; flex-shrink: 0; align-items: center; gap: 6px; }
+  .brand-masthead-sigil { width: 17px; height: 17px; color: var(--color-v2-self); }
+  .brand-masthead-wordmark { width: 68px; height: 12px; color: var(--color-v2-ink); }
+  .brand-masthead-online { margin-left: 1px; padding-left: 6px; border-left: 1px solid var(--color-v2-line-hi); font-size: 7px; font-weight: 550; letter-spacing: .18em; text-transform: uppercase; color: var(--color-v2-self); }
   .brand-masthead-rule { height: 1px; flex: 1; background: linear-gradient(90deg, color-mix(in srgb, var(--color-v2-self) 25%, transparent), transparent); }
   .brand-masthead-address { white-space: nowrap; font-family: var(--font-v2-mono); font-size: 8px; letter-spacing: -.02em; color: var(--color-v2-ink-2); }
   .brand-masthead-address span { color: var(--color-v2-self); }
-  .brand-masthead-with-shop { height: 38px; padding-right: 0; }
+  .brand-masthead-with-shop { height: 34px; padding-right: 0; }
   .brand-masthead-actions { display: flex; flex-shrink: 0; align-items: center; gap: 4px; }
   .brand-masthead-shop {
     display: flex;
@@ -46,8 +46,8 @@
     align-items: center;
     justify-content: center;
     gap: 3px;
-    min-height: 30px;
-    padding: 0 7px;
+    min-height: 27px;
+    padding: 0 6px;
     border: 1px solid color-mix(in srgb, var(--color-v2-premium) 40%, transparent);
     border-radius: var(--radius-control);
     background: linear-gradient(115deg, color-mix(in srgb, var(--color-v2-premium) 13%, var(--color-v2-deep)), var(--color-v2-deep));
@@ -68,7 +68,7 @@
   .brand-masthead-shop:active .brand-masthead-shop-face { transform: translateY(1px); }
   .brand-masthead-wordmark svg, .brand-masthead-sigil svg { display: block; width: 100%; height: 100%; }
   @media (min-width: 700px) {
-    .brand-masthead { padding-inline: 15px; }
+    .brand-masthead { padding-inline: 14px; }
     .brand-masthead-address { font-size: 8px; letter-spacing: .04em; }
   }
 }

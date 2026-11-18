@@ -8,6 +8,7 @@ import { MenuPanel } from '../src/shell/MenuPanel.js';
 import { setMusicEnabled, setMusicVolume, useMusicEnabled } from '../src/lib/music.js';
 import { setFpsMeterEnabled } from '../src/lib/fpsMeter.js';
 import { setEffectsEnabled } from '../src/lib/sound.js';
+import { startUiScale } from '../src/lib/uiScale.js';
 import i18n from '../src/i18n/index.js';
 
 /**
@@ -76,6 +77,38 @@ describe('the settings, on the kit', () => {
     expect(fps).toHaveAttribute('aria-checked', 'false');
     press(fps);
     expect(fps).toHaveAttribute('aria-checked', 'true');
+  });
+
+  /*
+    THE INTERFACE SIZE (owner 2026-11-17): lit plates, one per step the screen can hold, and a
+    tap scales the whole page at once — the plate under the thumb moves with it, so a slider
+    that rescaled under a dragging finger was the wrong control.
+  */
+  it('sizes the whole interface from lit plates, as far as the screen allows', () => {
+    Object.defineProperty(window.screen, 'width', { configurable: true, value: 350 });
+    Object.defineProperty(window.screen, 'height', { configurable: true, value: 760 });
+    Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: 350 });
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('coarse'), media: query, addEventListener: () => undefined, removeEventListener: () => undefined }));
+    document.head.innerHTML = '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">';
+    localStorage.removeItem('astera.uiScale');
+    const stop = startUiScale();
+    try {
+      show();
+      const sizes = screen.getByRole('radiogroup', { name: i18n.t('menu.uiScaleLabel') });
+      expect(sizes).toHaveClass('gk-choices');
+      expect(within(sizes).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['80%', '90%', '100%', '110%']);
+      expect(screen.getByText(i18n.t('menu.uiScaleLimit', { value: 110 }))).toBeInTheDocument();
+      press(within(sizes).getByRole('radio', { name: '110%' }));
+      expect(document.querySelector('meta[name="viewport"]')?.getAttribute('content')).toContain('initial-scale=1.1');
+    } finally {
+      stop();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('does not offer the interface size where the browser cannot set it', () => {
+    show();
+    expect(screen.queryByRole('radiogroup', { name: i18n.t('menu.uiScaleLabel') })).toBeNull();
   });
 
   it('heads the page with the kit’s section tag', () => {

@@ -150,11 +150,11 @@ function AnnouncementComposer() {
           <span aria-hidden className="h-px flex-1 bg-v2-line" />
           <span className="text-micro text-v2-ink-3">{t('community.admin.previewHint')}</span>
         </header>
-        <div className="grid gap-3 xl:grid-cols-[380px_minmax(720px,1fr)]">
-          <PreviewFrame label={t('community.admin.mobilePreview')} widthClass="w-[360px]">
+        <div className="grid gap-3 xl:grid-cols-[380px_minmax(648px,1fr)]">
+          <PreviewFrame label={t('community.admin.mobilePreview')} widthClass="w-[324px]">
             <PreviewAnnouncement title={title} html={html} />
           </PreviewFrame>
-          <PreviewFrame label={t('community.admin.desktopPreview')} widthClass="w-[720px]">
+          <PreviewFrame label={t('community.admin.desktopPreview')} widthClass="w-[648px]">
             <PreviewAnnouncement title={title} html={html} />
           </PreviewFrame>
         </div>

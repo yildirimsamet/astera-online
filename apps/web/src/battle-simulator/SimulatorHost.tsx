@@ -18,8 +18,8 @@ export function SimulatorHost({ source, onClose }: { source?: SimulatorSource; o
   return createPortal(<div role={failed ? 'alert' : 'status'} className="fixed inset-0 z-[170] grid place-content-center gap-3 bg-[#080d18] p-6 text-center text-caption text-v2-ink-2">
     <p>{t(failed ? 'simulator.viewLoadFailed' : 'simulator.stageLoading')}</p>
     <div className="flex justify-center gap-4">
-      {failed && <button type="button" className="min-h-11 text-v2-crystal" onClick={reloadReplayPage}>{t('simulator.reloadGame')}</button>}
-      <button type="button" className="min-h-11 text-v2-ink-2" onClick={onClose}>{t('simulator.close')}</button>
+      {failed && <button type="button" className="min-h-[var(--gk-hit)] text-v2-crystal" onClick={reloadReplayPage}>{t('simulator.reloadGame')}</button>}
+      <button type="button" className="min-h-[var(--gk-hit)] text-v2-ink-2" onClick={onClose}>{t('simulator.close')}</button>
     </div>
   </div>, document.body);
 }

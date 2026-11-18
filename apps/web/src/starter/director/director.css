@@ -1,24 +1,24 @@
 /* The director's letterbox (plan 2026-11-18 §4 İ3): two black bands, the line on the lower one. */
 .director-stage { position: fixed; inset: 0; z-index: 80; touch-action: none; cursor: pointer; }
-.director-band { position: absolute; inset-inline: 0; display: flex; align-items: center; justify-content: center; padding-inline: 16px; background: #000; }
-.director-band--top { top: 0; height: calc(env(safe-area-inset-top) + calc(11 * var(--app-vh))); align-items: flex-end; justify-content: flex-end; padding-bottom: 8px; animation: director-top .45s cubic-bezier(.22, 1, .36, 1) both; }
+.director-band { position: absolute; inset-inline: 0; display: flex; align-items: center; justify-content: center; padding-inline: 14px; background: #000; }
+.director-band--top { top: 0; height: calc(env(safe-area-inset-top) + calc(11 * var(--app-vh))); align-items: flex-end; justify-content: flex-end; padding-bottom: 7px; animation: director-top .45s cubic-bezier(.22, 1, .36, 1) both; }
 .director-band--bottom { bottom: 0; height: calc(env(safe-area-inset-bottom) + calc(15 * var(--app-vh))); padding-bottom: env(safe-area-inset-bottom); animation: director-bottom .45s cubic-bezier(.22, 1, .36, 1) both; }
-.director-band--top::after, .director-band--bottom::before { content: ''; position: absolute; inset-inline: 0; height: 18px; pointer-events: none; }
+.director-band--top::after, .director-band--bottom::before { content: ''; position: absolute; inset-inline: 0; height: 16px; pointer-events: none; }
 .director-band--top::after { top: 100%; background: linear-gradient(#000, #0000); }
 .director-band--bottom::before { bottom: 100%; background: linear-gradient(#0000, #000); }
-.director-line { max-width: 34ch; margin: 0; color: #f1f4fa; font-size: 17px; line-height: 1.25; text-align: center; text-wrap: balance; text-shadow: 0 0 18px #6fc8ff55; animation: director-line .5s .15s ease-out both; }
+.director-line { max-width: 34ch; margin: 0; color: #f1f4fa; font-size: 15px; line-height: 1.25; text-align: center; text-wrap: balance; text-shadow: 0 0 18px #6fc8ff55; animation: director-line .5s .15s ease-out both; }
 /* What a repair took from the stores (isolated player test 2026-11-18): the stores sit under the top band, so their
    fall is said here — each figure in its store's art and colour, coming down from the stores' side of the screen. */
-.director-band--bottom { flex-direction: column; gap: 6px; }
-.director-spend { display: flex; gap: 14px; animation: director-spend .5s .3s cubic-bezier(.22, 1, .36, 1) both; }
-.director-spend__item { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-v2-ui); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
-.director-spend__item img { width: 20px; height: 20px; object-fit: contain; }
+.director-band--bottom { flex-direction: column; gap: 5px; }
+.director-spend { display: flex; gap: 13px; animation: director-spend .5s .3s cubic-bezier(.22, 1, .36, 1) both; }
+.director-spend__item { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-v2-ui); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.director-spend__item img { width: 18px; height: 18px; object-fit: contain; }
 .director-spend__item--alloy { color: var(--gk-alloy-hi); }
 .director-spend__item--crystal { color: var(--gk-crystal); }
 .director-spend__item--deuterium { color: var(--gk-deut); }
-@keyframes director-spend { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
-.director-left { color: #ffffffa6; font-size: 12px; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
-.director-skip { position: relative; display: inline-flex; flex-direction: column; gap: 4px; padding: 6px 10px 5px; border: 1px solid #ffffff1f; border-radius: 3px; color: #ffffff8c; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+@keyframes director-spend { from { opacity: 0; transform: translateY(-11px); } to { opacity: 1; transform: none; } }
+.director-left { color: #ffffffa6; font-size: 11px; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.director-skip { position: relative; display: inline-flex; flex-direction: column; gap: 4px; padding: 5px 9px 5px; border: 1px solid #ffffff1f; border-radius: 3px; color: #ffffff8c; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
 /* The hold meter: an edge that fills left to right over the second the press must last; let go and it is gone. */
 .director-skip__meter { height: 2px; background: #ffffff1a; overflow: hidden; }
 .director-skip__meter::before { content: ''; display: block; height: 100%; background: var(--color-v2-self); transform: scaleX(0); transform-origin: left; }
@@ -27,7 +27,7 @@
 @keyframes director-skip-fill { to { transform: scaleX(1); } }
 @keyframes director-top { from { transform: translateY(-100%); } to { transform: none; } }
 @keyframes director-bottom { from { transform: translateY(100%); } to { transform: none; } }
-@keyframes director-line { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes director-line { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
 /* What the galaxy draws over itself steps off the screen while a scene plays: the shot is the scene. */
 :root[data-directing] [data-galaxy-top-corners],
 :root[data-directing] [data-corner-buttons],
@@ -46,9 +46,9 @@
 .ship-tag[data-condition='burning'], .ship-tag[data-condition='smouldering'] { --tag: #ff8a4c; }
 .ship-tag[data-condition='severed'], .ship-tag[data-condition='sparking'] { --tag: #ffd36b; }
 .ship-tag[data-condition='working'] { --tag: var(--color-v2-ally); }
-.ship-tag__pin { position: absolute; left: -3.5px; top: -3.5px; width: 7px; height: 7px; border: 1.5px solid var(--tag); background: #05080dcc; transform: rotate(45deg) scale(0); animation: ship-tag-pin .16s var(--delay) cubic-bezier(.2, 1.6, .4, 1) both; }
+.ship-tag__pin { position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border: 1.5px solid var(--tag); background: #05080dcc; transform: rotate(45deg) scale(0); animation: ship-tag-pin .16s var(--delay) cubic-bezier(.2, 1.6, .4, 1) both; }
 .ship-tag__lead { position: absolute; left: 0; top: 0; width: var(--len); height: 1px; background: linear-gradient(90deg, var(--tag), color-mix(in srgb, var(--tag) 55%, transparent)); transform-origin: 0 50%; transform: rotate(var(--ang)) scaleX(0); animation: ship-tag-lead .18s calc(var(--delay) + .1s) ease-out both; }
-.ship-tag__chip { position: absolute; left: var(--dx); top: var(--dy); display: flex; flex-direction: column; gap: 1px; padding: 3px 7px 3px 6px; border-left: 2px solid var(--tag); background: linear-gradient(90deg, #05080df0, #05080db8); color: #eef3fa; font-size: 11px; line-height: 1.1; white-space: nowrap; clip-path: inset(0 100% 0 0); animation: ship-tag-chip .22s calc(var(--delay) + .24s) cubic-bezier(.22, 1, .36, 1) both; }
+.ship-tag__chip { position: absolute; left: var(--dx); top: var(--dy); display: flex; flex-direction: column; gap: 1px; padding: 3px 6px 3px 5px; border-left: 2px solid var(--tag); background: linear-gradient(90deg, #05080df0, #05080db8); color: #eef3fa; font-size: 11px; line-height: 1.1; white-space: nowrap; clip-path: inset(0 100% 0 0); animation: ship-tag-chip .22s calc(var(--delay) + .24s) cubic-bezier(.22, 1, .36, 1) both; }
 .ship-tag__chip b { color: var(--tag); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .ship-tag[data-side='right'] .ship-tag__chip { transform: translate(0, -50%); }
 .ship-tag[data-side='left'] .ship-tag__chip { transform: translate(-100%, -50%); border-left: 0; border-right: 2px solid var(--tag); text-align: right; align-items: flex-end; clip-path: inset(0 0 0 100%); }

@@ -14,7 +14,7 @@
   pointer-events: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   /* Coarser than a pixel on a 56 px thumbnail at DPR 2, or it reads as nothing (seen on the gallery). */
-  background-size: 72px;
+  background-size: 65px;
   mix-blend-mode: overlay;
   opacity: 1;
 }
@@ -43,7 +43,7 @@
  */
 .v2-shell {
   /* The kit's bottom bar (G1-a): 40 px art, a 12 px name, its edge and padding (game-ui.css .gk-nav). */
-  --v2-dock-h: calc(69px + env(safe-area-inset-bottom));
+  --v2-dock-h: calc(62px + env(safe-area-inset-bottom));
   /* The top bar and the Now line; the shell measures the real height (`--v2-top-h` inline). */
   --v2-top-h: calc(3rem + env(safe-area-inset-top));
 }
@@ -101,8 +101,8 @@
     content: '';
     position: absolute;
     bottom: 2px;
-    left: calc(50% - 8px);
-    width: 16px;
+    left: calc(50% - 7px);
+    width: 14px;
     height: 1px;
     background: var(--color-v2-self);
   }
@@ -140,45 +140,45 @@
   transition: color .6s ease;
 }
 .radiation-meter__scale { display: flex; gap: 1px; }
-.radiation-meter__scale i { width: 3px; height: 8px; background: color-mix(in srgb, currentColor 14%, transparent); transition: background-color .6s ease, box-shadow .6s ease; }
+.radiation-meter__scale i { width: 3px; height: 7px; background: color-mix(in srgb, currentColor 14%, transparent); transition: background-color .6s ease, box-shadow .6s ease; }
 .radiation-meter__scale .is-lit { background: currentColor; box-shadow: 0 0 5px color-mix(in srgb, currentColor 25%, transparent); }
 .radiation-instrument {
-  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  display: flex; align-items: center; gap: 9px; padding: 7px 9px;
   border: 1px solid color-mix(in srgb, currentColor 24%, transparent); border-radius: 8px;
   background: radial-gradient(ellipse at 12% 70%, color-mix(in srgb, currentColor 8%, transparent), transparent 65%), var(--color-v2-radiation-instrument-ground);
   box-shadow: inset 0 1px color-mix(in srgb, currentColor 6%, transparent); font-family: var(--font-v2-ui, sans-serif);
   transition: color .6s ease;
 }
-.radiation-instrument__dial { width: 112px; flex: 0 0 112px; }
+.radiation-instrument__dial { width: 101px; flex: 0 0 101px; }
 .radiation-instrument__dial svg { display: block; width: 100%; filter: drop-shadow(0 0 4px color-mix(in srgb, currentColor 20%, transparent)); }
 .radiation-instrument__arc { stroke: currentColor; }
 .radiation-instrument__needle { transition: x2 .5s, y2 .5s; }
 .radiation-instrument__reading { min-width: 0; }
 .radiation-instrument__title { font-size: 9px; text-transform: uppercase; letter-spacing: .12em; opacity: .7; }
-.radiation-instrument__reading strong { display: block; font: 600 23px/1.15 var(--font-v2-mono, monospace); color: inherit; }
+.radiation-instrument__reading strong { display: block; font: 600 21px/1.15 var(--font-v2-mono, monospace); color: inherit; }
 .radiation-instrument__reading small { font-size: 10px; font-weight: 400; color: var(--color-v2-radiation-instrument-unit); }
 .radiation-instrument__reading p { margin: 3px 0 0; font-size: 10px; line-height: 1.4; color: var(--color-v2-radiation-instrument-copy); }
-.radiation-instrument__sources { margin-top: 6px; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
-.radiation-instrument__sources summary { cursor: pointer; padding: 7px 0; font-size: 10px; color: var(--color-v2-ink-2); }
+.radiation-instrument__sources { margin-top: 5px; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
+.radiation-instrument__sources summary { cursor: pointer; padding: 6px 0; font-size: 10px; color: var(--color-v2-ink-2); }
 .radiation-instrument__sources summary:focus-visible { outline: 1px solid currentColor; outline-offset: 2px; }
 .radiation-instrument__sources summary span { float: right; font-family: var(--font-v2-mono, monospace); }
-.radiation-instrument__sources ul { display: grid; gap: 6px; max-height: 180px; overflow-y: auto; padding-bottom: 4px; }
-.radiation-instrument__sources li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 6px; font-size: 10px; }
+.radiation-instrument__sources ul { display: grid; gap: 5px; max-height: 162px; overflow-y: auto; padding-bottom: 4px; }
+.radiation-instrument__sources li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 5px; font-size: 10px; }
 .radiation-instrument__sources li strong { font: 500 10px var(--font-v2-mono, monospace); white-space: nowrap; }
 .radiation-instrument__sources li small { grid-column: 1/-1; font-size: 9px; color: var(--color-v2-ink-2); }
 
 
 /* Dev-only art review page. */
-.bomb-preview { margin: 0 auto; max-width: 1280px; padding: 28px; display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 18px; background: var(--color-v2-radiation-preview-ground); min-height: var(--app-h, 100dvh); color: var(--color-v2-radiation-preview-copy); }
+.bomb-preview { margin: 0 auto; max-width: 1152px; padding: 25px; display: grid; grid-template-columns: minmax(0,1fr) 288px; gap: 16px; background: var(--color-v2-radiation-preview-ground); min-height: var(--app-h, 100dvh); color: var(--color-v2-radiation-preview-copy); }
 .bomb-preview > header { grid-column: 1/-1; }
 .bomb-preview > header > span { font: 10px var(--font-v2-mono,monospace); color: var(--color-v2-radiation-preview-heading); letter-spacing: .2em; }
-.bomb-preview h1 { margin: 8px 0; font-size: 32px; }
-.bomb-preview > header p { color: var(--color-v2-radiation-preview-muted); font-size: 12px; }
-.bomb-preview__scene { position: relative; height: 600px; border: 1px solid var(--color-v2-radiation-preview-border); border-radius: 10px; overflow: hidden; background: var(--color-v2-radiation-preview-ground); }
+.bomb-preview h1 { margin: 7px 0; font-size: 29px; }
+.bomb-preview > header p { color: var(--color-v2-radiation-preview-muted); font-size: 11px; }
+.bomb-preview__scene { position: relative; height: 540px; border: 1px solid var(--color-v2-radiation-preview-border); border-radius: 10px; overflow: hidden; background: var(--color-v2-radiation-preview-ground); }
 .bomb-preview__bar { position: absolute; top: 24%; left: 46%; pointer-events: none; }
-.bomb-preview__dial { position: absolute; left: 16px; right: 16px; bottom: 58px; max-width: 340px; }
-.bomb-preview__replay { position: absolute; left: 18px; bottom: 16px; padding: 6px 12px; border: 1px solid var(--color-v2-radiation-preview-button-border); border-radius: 5px; font-size: 12px; background: var(--color-v2-radiation-preview-button-ground); }
-@media(max-width:700px) { .bomb-preview { padding: 12px; grid-template-columns: minmax(0,1fr); gap: 12px; } .bomb-preview__scene { height: 440px; } .bomb-preview h1 { font-size: 25px; } }
+.bomb-preview__dial { position: absolute; left: 14px; right: 14px; bottom: 52px; max-width: 306px; }
+.bomb-preview__replay { position: absolute; left: 16px; bottom: 14px; padding: 5px 11px; border: 1px solid var(--color-v2-radiation-preview-button-border); border-radius: 5px; font-size: 11px; background: var(--color-v2-radiation-preview-button-ground); }
+@media(max-width:700px) { .bomb-preview { padding: 11px; grid-template-columns: minmax(0,1fr); gap: 11px; } .bomb-preview__scene { height: 396px; } .bomb-preview h1 { font-size: 23px; } }
 /* ek-1 (owner 2026-11-17): the radiation mark leads the meter and the monument's radiation line. */
 .radiation-meter__mark { display: inline-grid; flex: none; place-items: center; color: currentColor; }
-.radiation-meter__mark .gk-glyph { width: 11px; height: 11px; }
+.radiation-meter__mark .gk-glyph { width: 10px; height: 10px; }

@@ -160,6 +160,25 @@ export function planetFocusSelection(
   return { activePlanetId: selectedId, transferOriginId: transferOriginForFocus(selectedId, controlledPlanetId) };
 }
 
+/**
+ * THE HOME KEY STEPS THROUGH YOUR WORLDS (owner 2026-11-17). The first press frames the active
+ * world; pressed again while it is framed, the next of your worlds becomes active and is framed,
+ * wrapping after the last. `next` says the active world changes.
+ */
+export function homeKeyTarget(
+  focus: Focus | null,
+  activePlanetId: string | null,
+  worldIds: readonly string[],
+): { planetId: string; next: boolean } | null {
+  if (activePlanetId === null) return null;
+  const framed = focus?.kind === 'planet' && focus.id === activePlanetId;
+  const others = worldIds.filter((id) => id !== activePlanetId);
+  if (!framed || others.length === 0) return { planetId: activePlanetId, next: false };
+  const at = worldIds.indexOf(activePlanetId);
+  const planetId = at === -1 ? worldIds[0] : worldIds[(at + 1) % worldIds.length];
+  return planetId === undefined ? { planetId: activePlanetId, next: false } : { planetId, next: true };
+}
+
 /** An already-active controlled world focuses silently: there is nowhere to transfer to. */
 export function planetFocusRailVisible(
   isOwned: boolean,

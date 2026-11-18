@@ -28,7 +28,7 @@
   background-image: radial-gradient(120% 140% at 0% 50%, color-mix(in oklab, var(--color-v2-warn) 20%, transparent), transparent 60%); }
 .crate-card[data-victory] .crate-legend, .crate-victory-mark { color: var(--color-v2-warn); }
 .crate-card[data-victory] .crate-bay { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-v2-warn) 45%, transparent), inset 0 -12px 20px -10px rgba(255, 204, 77, 0.5); }
-.crate-victory-mark path:last-child { transform-origin: 4.8px 5px; animation: crate-pennant 1.8s ease-in-out infinite; }
+.crate-victory-mark path:last-child { transform-origin: 4px 5px; animation: crate-pennant 1.8s ease-in-out infinite; }
 
 @keyframes crate-pennant { 50% { transform: skewY(-8deg) scaleX(0.92); } }
 @keyframes crate-sheen { 0% { background-position: 130% 0; } 60%, 100% { background-position: -130% 0; } }
@@ -37,8 +37,8 @@
 @keyframes crate-glow { 50% { opacity: 0.95; } }
 @keyframes crate-lid-open {
   0% { transform: translateY(-2px) rotate(0); }
-  60% { transform: translate(6px, -18px) rotate(28deg); opacity: 1; }
-  100% { transform: translate(10px, -22px) rotate(36deg); opacity: 0; }
+  60% { transform: translate(5px, -16px) rotate(28deg); opacity: 1; }
+  100% { transform: translate(9px, -20px) rotate(36deg); opacity: 0; }
 }
 @keyframes crate-burst { 0% { opacity: 0; transform: scale(0.3); } 25% { opacity: 1; } 100% { opacity: 0; transform: scale(1.8); } }
 @keyframes crate-spark {
@@ -46,8 +46,8 @@
   100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.4); }
 }
 @keyframes crate-purse {
-  0% { opacity: 0; transform: translateY(8px); }
+  0% { opacity: 0; transform: translateY(7px); }
   15% { opacity: 1; transform: translateY(0); }
-  75% { opacity: 1; transform: translateY(-10px); }
-  100% { opacity: 0; transform: translateY(-22px); }
+  75% { opacity: 1; transform: translateY(-9px); }
+  100% { opacity: 0; transform: translateY(-20px); }
 }

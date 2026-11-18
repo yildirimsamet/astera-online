@@ -332,6 +332,11 @@ export const menu = {
   fpsOn: "オン",
   fpsOff: "オフ",
   fpsHint: "銀河を1秒間に描画する回数です。値が高いほど動きが滑らかになります。",
+  uiScaleLabel: "UIサイズ",
+  uiScaleValue: "{{value}}%",
+  uiScaleHint: "文字、アイコン、余白がまとめて拡大・縮小します。",
+  uiScaleSystem: "スマートフォンの文字サイズに合わせました。",
+  uiScaleLimit: "この画面では最大{{value}}%です。",
 } as const;
 
 export const leaderboard = {

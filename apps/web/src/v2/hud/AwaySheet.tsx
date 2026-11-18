@@ -207,7 +207,7 @@ function Hero({ row, onDoor }: { row: AwayRow & { kind: 'entry' }; onDoor: (door
       `}</style>
       <span aria-hidden="true" className={`absolute inset-x-0 top-0 h-0.5 origin-left animate-[away-bar_0.8s_ease-out_0.15s_both] ${HERO[look].bar}`} />
       <div className="flex items-start gap-3">
-        <span aria-hidden="true" className={`grid size-11 shrink-0 place-items-center rounded-control border ${HERO[look].mark}`}>
+        <span aria-hidden="true" className={`grid size-[var(--gk-hit)] shrink-0 place-items-center rounded-control border ${HERO[look].mark}`}>
           <Icon id={iconOf(row)} className="size-5" />
         </span>
         <span className="flex min-w-0 flex-1 flex-col items-start">

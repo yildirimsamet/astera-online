@@ -93,7 +93,7 @@ export function MonumentModelsGallery() {
           ))}
         </div>
       </header>
-      <div className="h-[min(70vh,580px)]" data-monument-view="">
+      <div className="h-[min(70vh,522px)]" data-monument-view="">
         <Canvas orthographic camera={{ position: [0, 7, 20], near: 0.1, far: 100 }} gl={{ antialias: true, preserveDrawingBuffer: true }}>
           <color attach="background" args={[colours.background]} />
           <ambientLight intensity={1.3} />

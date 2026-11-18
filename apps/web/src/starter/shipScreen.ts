@@ -15,8 +15,8 @@ export const heroArt = (hull: VesselHull, look: VesselLook): string =>
 /** The painting in two widths: a phone that draws it narrow takes the lighter one (owner phone playtest 2026-11-19). */
 export const heroSrcSet = (hull: VesselHull, look: VesselLook): string =>
   `${ART}/hero-${hull.toLowerCase()}-${look.toLowerCase()}-720.webp 720w, ${heroArt(hull, look)} 1000w`;
-/** How wide the ship's page draws it: the screen's width, 440 at most. */
-export const HERO_SIZES = '(min-width: 440px) 440px, 100vw';
+/** How wide the ship's page draws it: the screen's width, 396 at most. */
+export const HERO_SIZES = '(min-width: 396px) 396px, 100vw';
 /** A blur of the painting, drawn at once until the painting lands. */
 export const heroPlaceholder = (hull: VesselHull, look: VesselLook): string =>
   HERO_PLACEHOLDERS[`${hull.toLowerCase()}-${look.toLowerCase()}`] ?? '';

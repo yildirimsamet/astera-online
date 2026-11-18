@@ -39,7 +39,21 @@ Gerileme işaretleri: döngünün `BUILD → WAIT → COLLECT → UPGRADE` hâli
 
 Mimari, kütüphaneler, sorgular, önbellekleme, bileşenler, dahili API'ler, testler ve küçük, geri alınabilir UX ayrıntıları için kendin karar ver. **Temel döngü, risk/ödül, PvP, sahiplik, sezonlar, ilerleme, kimlik veya kilitli kısıtları değiştirmeden önce owner'a sor.**
 
-Karara bağlanmış konuları yeniden açma; dokümanları sonsuza kadar cilalama; kesinlik bekleyerek işi durdurma veya çalışan sistemleri varsayımsal ihtiyaçlar için yeniden tasarlama.
+Karara bağlanmış konuları owner'a sormadan değiştirme (aşağıdaki kurala bak); dokümanları sonsuza kadar cilalama; kesinlik bekleyerek işi durdurma veya çalışan sistemleri varsayımsal ihtiyaçlar için yeniden tasarlama.
+
+### Kilitli karar = sormadan değiştirme, "asla değişmez" değil (owner, 2026-11-13)
+
+Proje için daha iyisi neyse her konu değişebilir; şartı owner'la konuşmaktır. Plan yaparken "bu konu kilitli, plana buna bağlı kalarak yapmalıyım" diye düşünme: en iyi çözümü tasarla, kilitli bir kararı değiştiriyorsa açıkça işaretle ve owner'a sor:
+
+> "Planda şu madde(ler), şu kilitli kararı (belge/tarih) değiştiriyor. Şu faydaları sağlayacağı için öneriliyor. Değiştirelim mi?"
+
+Onay gelmeden kilitli davranışı uygulamada değiştirme; onay gelirse kararı yöneten belgeyi güncelle.
+
+**Mevcut kurallar fikir eleme filtresi değildir (owner, 2026-11-18).** Bu kural yalnız "kilitli" etiketli kararlar için değil; dokümanlardaki her kural, tasarım ilkesi ("soyulabilirsin, silinemezsin" gibi) ve eski D-numaralı kararlar için de geçerlidir. Beyin fırtınasında ve planda bir fikri "X'i bozar / X'e ters" diyerek eleme. Ölçüt oyuncudur: daha eğlenceli mi, daha çok hırs yaptırıyor mu, daha çok taktik ve akıl oyunu açıyor mu? Fikir mevcut bir kuralla çatışıyorsa bunu ödünleşim olarak sun: hangi kuralı nasıl değiştirir, oyuncuya kazancı ve bedeli ne. Eskiyi değiştirmeden eklenemeyen yeni mekanik bir engel değil, tartışılacak bir seçenektir. Bir sistemin "pratikte işe yaradığını" söylemeden önce kanıtını (ölçüm, playtest) göster; kanıt yoksa varsayım olduğunu yaz. D-numaraları silinmiş `decisions.md`'nin eski referanslarıdır: bir kuralın var olduğunu gösterir, değişmemesi gerektiğini göstermez.
+
+### Akıl hocası ol (owner, 2026-11-11)
+
+Owner oyun yapımında acemidir; sektörün yollarını (hazır asset, mağaza, sanatçı, araç) ve terimleri (model, poly count, shader, VFX…) bilmez. Bir istek geldiğinde önce **en kaliteli yolu** öner: sektör bunu nasıl yapar, nereden alınır (somut link), yaklaşık maliyet ve lisans. Ardından alternatifleri ve bedellerini koy (ör. "almazsan şu yolla yaparız"). İşe başlamadan önce söyle; kendi yapabildiğin yola sessizce girme. Geçen her terimi bir cümleyle, oyundaki karşılığıyla açıkla.
 
 ### Kodlamadan önce düşün
 
@@ -125,6 +139,7 @@ Scroll, dokunma ve ekran değiştirme maliyettir. Karşılaştırılacak on öğ
 - Baştan savma tasarım yapma. Hedef premium AAA kalitesidir; görsellik ve premium hissiyat oyuncuyu etkileyen başlıca unsurlardandır.
 - Her zaman `ui-v2` ilkeleriyle uyumlu, kaliteli, premium ve hayranlık uyandıran tasarımlar üret.
 - Geliştirdiğin, güncellediğin veya düzelttiğin işin tasarım gereksinimlerini asla atlama.
+- **VFX briefi (owner, 2026-11-18):** Efekt yazmadan önce 3 satırlık VFX briefi yazılır ve teslimde gösterilir: o anda dünyada fiziksel olarak ne oluyor, kütüphaneden hangi asset (yol), neden bu olayı anlatıyor. Yumuşak yuvarlak parlama, büyüyen hale ve "her yere uyan" efekt yasaktır.
 - Oyun hareketleri işletim sisteminin hareket tercihinden bağımsızdır. **Yalnız public landing CSS'i**, owner'ın 2026-10-18 tarihli açık erişilebilirlik talebiyle istisnadır. Bkz. `docs/landing-premium-redesign-2026-10-18.md`.
 
 ### 6. Game feel — Biz bir OYUNUZ (owner, 2026-11-06) | Oyuncu deneyimi standardı (çok önemli)!
@@ -248,15 +263,19 @@ Ekonomi/sezon simülasyonları, snowball audit'leri ve benzeri uzun ekonomi ince
 | `docs/review-onboarding.md` | Güncel FlightSchool, gerçek başlangıç ve eski Academy ayrımında; onboarding için ilk referans |
 | `docs/glossary.md` | Terimler için |
 | `docs/komutan-gemisi/README.md` | Komutan Gemisi / Savaş Alanı'na (gerçek zamanlı pilot arenası) dokunurken |
-| `docs/baslangic-galaksisi-plani-2026-11-04.md` | Koloni gemisi, başlangıç galaksileri, prolog ve göçe dokunurken |
+| `docs/baslangic-galaksisi-plani-2026-11-04.md` | Koloni gemisi, başlangıç galaksileri, prolog ve göçe dokunurken || `~/Desktop/Coding/MyProjects/game-assets/AGENTS.md` | Hazır GUI, ikon, VFX, model veya ses ararken (repo dışı ortak kütüphane; çizmeden önce bak) |
 | `docs/yeni-oyuncu-yolculugu-plani-2026-11-13.md` | Yeni oyuncunun ilk oturumu, sıçrama kararı, ilk hafta ve tutunma ölçümüne dokunurken |
 
 Diğer konular için `docs/` klasörüne bak.
 
 **UI/UX yazım kapsamı:** Yeni veya güncellenen UI, oynanış açıklaması, yardım ve Wiki metinlerinde `docs/ux-writing.md` uygulanır. Lore kapsam dışıdır; içindeki işlevsel talimatlar kapsam içindedir. Bu belge yazım standardıdır; mekanikleri kod ve testlerden doğrula.
 
-## 7. İletişim ve son hedef
+## 7. Token optimizasyonu
 
 Gerekmiyorsa çıktı verme. Çıktı gerektiğinde kısa, net, basit ve kullanıcının anlayabileceği şekilde yaz; gereksiz uzatma.
+
+Claude API her istekten sonra 60dk TTL ile caching yapıyor. Bu yüzden dolayı hiç bir işi 55dk'dan fazla bekleme (5dk buffer). Test sonucu, tool call vs. hiç bir şeyi 55dk üzerinde beklemeyeceksin. İşine devam edeceksin. Sonuç gelince bakarsın, boşuna bekleyip cache süresini yakma. Cachelenmiş geçmiş için token ücreti çok daha ucuz.
+
+## 8. Son hedef
 
 > Oyuncuların oyunu kapattıktan sonra “Ne oldu acaba?” diye merak ettiği, AAA+ premium görsel kalitede, optimize edilmiş bir çok oyunculu tarayıcı ve uygulama oyunu geliştir.

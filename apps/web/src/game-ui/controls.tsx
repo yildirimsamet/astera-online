@@ -156,6 +156,20 @@ function LeverStop({ label, checked, onPress, onKeyDown }: {
 }
 
 /**
+ * Half the gripped knob (27 px swelling to ~31 px): its travel stops this far inside each end of
+ * the track, so at 0 or at the top it never hangs over the − or + key beside it (owner
+ * 2026-11-17: a thumb reaching for the knob there pressed the key and the drag never began).
+ */
+const KNOB_INSET_PX = 15;
+const knobTravel = (share: number): string => `calc(${String(KNOB_INSET_PX)}px + (100% - ${String(KNOB_INSET_PX * 2)}px) * ${String(share)})`;
+/** Where a finger stands along the knob's travel, 0 at its first stop and 1 at its last. */
+const alongTravel = (event: PointerEvent<HTMLElement>): number => {
+  const box = event.currentTarget.getBoundingClientRect();
+  const span = box.width - KNOB_INSET_PX * 2;
+  return span <= 0 ? 0 : (event.clientX - box.left - KNOB_INSET_PX) / span;
+};
+
+/**
  * A SLIDER FOR A COUNT: drag the knob, nudge with − and + (hold to run), or send
  * everything with MAX. Ticks as it moves. It may start above zero and move in lots
  * (G4-i1: a trade offers whole lots, and its split has a floor): every way of moving it
@@ -219,17 +233,17 @@ export function Slider({ label, value, max, onChange, readout, min = 0, step = 1
           if (start.current === null) return;
           if (!dragging.current && Math.abs(event.clientX - start.current) < 6) return;
           if (!dragging.current) { dragging.current = true; event.currentTarget.setPointerCapture(event.pointerId); }
-          set(fromTrack(along(event)));
+          set(fromTrack(alongTravel(event)));
         }}
         onPointerUp={(event) => {
-          if (start.current !== null && !dragging.current) set(fromTrack(along(event)));
+          if (start.current !== null && !dragging.current) set(fromTrack(alongTravel(event)));
           start.current = null;
           dragging.current = false;
         }}
         onPointerCancel={() => { start.current = null; dragging.current = false; }}
       >
-        <span className="gk-slider__rail"><span className="gk-slider__fill" style={{ width: `${String(share)}%` }} /></span>
-        <span className="gk-slider__knob" style={{ left: `${String(share)}%` }} />
+        <span className="gk-slider__rail"><span className="gk-slider__fill" style={{ width: knobTravel(share / 100) }} /></span>
+        <span className="gk-slider__knob" style={{ left: knobTravel(share / 100) }} />
       </div>
       <button type="button" className="gk-round gk-round--small" aria-label={t('launch.more', { name: label })} {...more}>
         <span className="gk-round__face"><Glyph id="plus" /></span>

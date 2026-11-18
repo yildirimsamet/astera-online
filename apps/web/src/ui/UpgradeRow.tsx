@@ -582,7 +582,7 @@ export function UpgradeRow({
           flat radial wash. A socket at 74px is a recess with its own pool of
           light, so the object sits IN the plate rather than on top of it.
         */}
-        <div data-art className="socket relative size-[74px] shrink-0 rounded-control">
+        <div data-art className="socket relative size-[67px] shrink-0 rounded-control">
           {art ? (
             <img
               src={art}

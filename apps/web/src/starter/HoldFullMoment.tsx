@@ -49,7 +49,7 @@ export function HoldFullMoment({ vessel, onLook }: { vessel: VesselView; onLook?
         )}
         action={(
           <button type="button" aria-label={t('starter.holdMoment.close')} onClick={() => { playSound('tap'); haptic('tap'); setOpen(false); }}
-            className="-my-2 -mr-1 grid size-11 shrink-0 place-items-center text-v2-ink-2">
+            className="-my-2 -mr-1 grid size-[var(--gk-hit)] shrink-0 place-items-center text-v2-ink-2">
             <Glyph id="close" className="gk-glyph size-4" />
           </button>
         )} />

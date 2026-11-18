@@ -74,7 +74,7 @@ export function StoreBar({
             data-safe=""
             data-safe-cells={String(safeCells)}
             className={`pointer-events-none absolute rounded-cell border ${
-              compact ? '-bottom-[2px] -left-[2px] top-[1px] border-v2-ink/60' : '-bottom-[3px] -left-[3px] top-[9px] border-v2-ink/80'
+              compact ? '-bottom-[2px] -left-[2px] top-[1px] border-v2-ink/60' : '-bottom-[3px] -left-[3px] top-[8px] border-v2-ink/80'
             }`}
             style={{ width: `calc(${run(safeCells)} + ${compact ? '4px' : '6px'})` }}
           />

@@ -49,7 +49,7 @@ export function HonorBenefitsSection({ value }: { value: HonorBenefitsView | nul
   const now = effectTones(value.tier);
   return <section data-honor-benefits className="gk gk-well gk-honorperk" data-tone={value.tier > 0 ? 'good' : value.tier < 0 ? 'hostile' : undefined}>
     <div className="gk-honorperk__head">
-      <HonorBadge tier={value.tier} label={tierName(value.tier)} height={40} />
+      <HonorBadge tier={value.tier} label={tierName(value.tier)} height={36} />
       <div className="gk-honorperk__name">
         <h3 className="gk-label">{t('honorBenefits.title')}</h3>
         <p className="gk-display gk-honorperk__tier">{tierName(value.tier)}</p>
@@ -68,7 +68,7 @@ export function HonorBenefitsSection({ value }: { value: HonorBenefitsView | nul
         {tiers.map(tier => {
           const paint = effectTones(tier);
           return <li key={tier} data-honor-tier={tier} data-current-honor-tier={tier === value.tier ? true : undefined} className="gk-honorperk__rung">
-            <HonorBadge tier={tier} label="" height={26} />
+            <HonorBadge tier={tier} label="" height={23} />
             <span className="gk-honorperk__rungname"><strong>{tierName(tier)}</strong><span className="gk-num">{range(tier)}</span></span>
             <span className="gk-honorperk__rates">{rates(tier).map((percent, index) => <span key={index} className="gk-num gk-honorperk__rate" data-tone={paint[index]}
               aria-label={`${headings[index]} ${t('honorBenefits.percent', { amount: signedPercent(percent) })}`}>

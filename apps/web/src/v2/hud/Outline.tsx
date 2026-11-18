@@ -192,7 +192,7 @@ export function Outline({ now, worlds, flights, queues, onWorld, onFlight, onQue
     <aside
       data-outline=""
       aria-label={t('outline.label')}
-      className="gk gk-desk flex h-full w-[260px] shrink-0 flex-col gap-4 overflow-y-auto"
+      className="gk gk-desk flex h-full w-[234px] shrink-0 flex-col gap-4 overflow-y-auto"
     >
       {worlds.length > 0 && <Part title={t('outline.worlds')} count={worlds.length}>
         <ul className="flex flex-col gap-1.5">

@@ -212,9 +212,9 @@ function Breaker({ label, onThrow }: { label: string; onThrow: () => void }) {
         onPointerUp={up}
         onPointerCancel={() => { drag.current = null; setDragging(false); if (!thrown) setPull(0); }}
         onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); fire(); } }}
-        className="prologue-breaker-track prologue-hold relative h-[84px] w-14 shrink-0 rounded-control border border-black/80"
+        className="prologue-breaker-track prologue-hold relative h-[76px] w-14 shrink-0 rounded-control border border-black/80"
       >
-        <span aria-hidden="true" className="absolute inset-x-[22px] inset-y-2 rounded-full bg-black/80 shadow-[inset_0_0_4px_#000]" />
+        <span aria-hidden="true" className="absolute inset-x-[20px] inset-y-2 rounded-full bg-black/80 shadow-[inset_0_0_4px_#000]" />
         <span aria-hidden="true" className={`prologue-breaker-handle absolute left-1.5 right-1.5 top-1.5 h-7 rounded-cell ${dragging ? 'is-dragging' : ''}`} style={{ transform: `translateY(${String(pull * TRAVEL)}px)` }}>
           <span className="prologue-breaker-cap absolute left-1/2 top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full" />
         </span>
@@ -276,7 +276,7 @@ function HoldControl({ testId, label, hint, tone, glyph, onHeld }: {
         onPointerCancel={stop}
         onContextMenu={(event) => { event.preventDefault(); }}
         onKeyDown={(event: KeyboardEvent) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); complete(); } }}
-        className={`prologue-hold relative grid size-[68px] shrink-0 place-items-center rounded-full ${held ? 'is-held' : ''}`}
+        className={`prologue-hold relative grid size-[61px] shrink-0 place-items-center rounded-full ${held ? 'is-held' : ''}`}
         style={{ color: tone }}
       >
         <span aria-hidden="true" className="prologue-hold-halo absolute inset-0 rounded-full" style={{ boxShadow: `0 0 22px -2px ${tone}` }} />
@@ -326,7 +326,7 @@ function WeldControl({ welds, label, hint, tone, glyph, onWeld }: { welds: numbe
         aria-label={label}
         onClick={onWeld}
         onContextMenu={(event) => { event.preventDefault(); }}
-        className="prologue-hold prologue-tap relative grid size-[68px] shrink-0 place-items-center rounded-full"
+        className="prologue-hold prologue-tap relative grid size-[61px] shrink-0 place-items-center rounded-full"
         style={{ color: tone }}
       >
         <svg aria-hidden="true" viewBox="0 0 64 64" className="absolute inset-0 size-full -rotate-90">
@@ -630,7 +630,7 @@ export function Prologue({ onClaim, onSignIn, onLeave, replay = false }: Props) 
             glyph={<Icon id={SYSTEM_ICON.SURVEY} className="size-6" />} onWeld={weld} />
         )}
         {stage === 'signal' && (
-          <button type="button" data-testid="prologue-action" onClick={travel} className="prologue-action flex min-h-11 items-center justify-center gap-2 rounded-control border border-v2-warn/70 bg-v2-warn/10 px-3 text-body font-semibold text-v2-warn shadow-[0_0_16px_-4px_var(--color-v2-warn)]">
+          <button type="button" data-testid="prologue-action" onClick={travel} className="prologue-action flex min-h-[var(--gk-hit)] items-center justify-center gap-2 rounded-control border border-v2-warn/70 bg-v2-warn/10 px-3 text-body font-semibold text-v2-warn shadow-[0_0_16px_-4px_var(--color-v2-warn)]">
             <span aria-hidden="true">↗</span>{replay ? t('starter.prologue.signal.replayAction') : t('starter.prologue.signal.go')}
           </button>
         )}

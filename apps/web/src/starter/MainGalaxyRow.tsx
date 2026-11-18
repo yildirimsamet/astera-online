@@ -35,7 +35,7 @@ export function MainGalaxyRow({ sky, now, jumpReady, road, onOpenShip, onClose }
   const { t } = useTranslation();
   const days = sky.seasonEndsAt ? Math.max(0, Math.ceil((sky.seasonEndsAt.getTime() - now) / DAY_MS)) : null;
   return (
-    <div data-testid="main-galaxy-row" role="status" className="pointer-events-auto relative mx-auto flex w-full max-w-[440px] flex-col gap-2 overflow-hidden rounded-plate border border-v2-self/40 bg-v2-panel/95 px-3 py-2.5 font-v2-ui shadow-lg animate-[line-in_0.4s_ease-out_both]">
+    <div data-testid="main-galaxy-row" role="status" className="pointer-events-auto relative mx-auto flex w-full max-w-[396px] flex-col gap-2 overflow-hidden rounded-plate border border-v2-self/40 bg-v2-panel/95 px-3 py-2.5 font-v2-ui shadow-lg animate-[line-in_0.4s_ease-out_both]">
       <span aria-hidden="true" className="pointer-events-none absolute -right-10 -top-12 size-36 animate-[ember_4s_ease-in-out_infinite] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--color-v2-self)_35%,transparent),transparent)]" />
       <div className="relative flex items-start gap-2.5">
         <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full border border-v2-self/50 bg-v2-void/60 text-v2-self shadow-[0_0_14px_-4px_var(--color-v2-self)]">

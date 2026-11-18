@@ -53,7 +53,7 @@ export function ArtWell({
   badge?: ReactNode;
 }) {
   const box =
-    size === 'sm' ? 'size-12' : size === 'md' ? 'size-[74px]' : size === 'lg' ? 'size-[104px]' : 'size-[150px]';
+    size === 'sm' ? 'size-12' : size === 'md' ? 'size-[67px]' : size === 'lg' ? 'size-[94px]' : 'size-[135px]';
 
   return (
     <div className={`socket ${TONE[tone]} ${box} shrink-0 ${className}`}>

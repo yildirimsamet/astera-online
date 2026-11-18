@@ -204,6 +204,7 @@ import {
 import {
   focusIdentity,
   focusTapDecision,
+  homeKeyTarget,
   planetFocusRailVisible,
   planetFocusSelection,
 } from '../galaxy/follow.js';
@@ -1419,6 +1420,14 @@ export function GalaxyView({
     focusPlanet(activePlanetId);
     setHomeSignal((n) => n + 1);
   };
+  /** The Home chip (owner 2026-11-17): frames the active world; pressed again, steps to your next world. */
+  const homeKey = (): void => {
+    const target = homeKeyTarget(focus, activePlanetId, worlds.map((world) => world.planet.id).filter((id) => planets.some((planet) => planet.id === id)));
+    if (!target?.next) { flyHome(); return; }
+    close();
+    focusPlanet(target.planetId, 'select');
+    setHomeSignal((n) => n + 1);
+  };
   useRequest(homeRequest, flyHome);
   useRequest(worldsRequest, () => { setWorldsOpen(true); });
   useRequest(centerRequest, () => {
@@ -1643,7 +1652,7 @@ export function GalaxyView({
             {gate.open('telescope') && <div data-sensor-toggles className="pointer-events-none">
               <ViewChip layersOn={showTelescopeReach || (hasRadar && showRadarReach)} onOpen={() => { setViewOpen(true); }} />
             </div>}
-            {showGuidance && <HomeChip onHome={flyHome} aboard={gate.aboard} />}
+            {showGuidance && <HomeChip onHome={homeKey} aboard={gate.aboard} />}
             {!ship && showGuidance && capabilities().webCheckout && <ShopChip onOpen={() => { onPanel('skin-shop'); }} />}
             {showGuidance && <GiftChip waiting={rewardsWaiting} onOpen={() => { onPanel('rewards'); }} />}
             {!ship && bellButton}
@@ -1692,7 +1701,7 @@ export function GalaxyView({
             } } : {})} />
       )}
       {bottom === 'destination' && mainRowOpen && mainSkyAnswer && (
-        <div className="pointer-events-none absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-20">
+        <div className="pointer-events-none absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+76px)] z-20">
           <MainGalaxyRow sky={mainSkyAnswer} now={beamClock} jumpReady={ship?.features.includes('migration') ?? false}
             road={{ repair: ship?.progress.share ?? 0, hold: ship ? holdShare(ship) : 0 }}
             onOpenShip={() => { setMainRowOpen(false); onPanel('planet'); }} onClose={() => { setMainRowOpen(false); }} />
@@ -2021,7 +2030,7 @@ export function GalaxyView({
         })()}
 
       {season.data?.status === 'frozen' && panel === null && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] z-30 mx-auto flex w-full max-w-sm flex-col gap-2 px-2">
+        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(var(--v2-dock-h,86px)+0.5rem)] z-30 mx-auto flex w-full max-w-sm flex-col gap-2 px-2">
           {cornerButtons && <div className="flex justify-end">{cornerButtons}</div>}
           <NextSeason endsAt={season.data.endsAt} />
         </div>
@@ -2029,7 +2038,7 @@ export function GalaxyView({
 
       {/* The bell and the chat still in reach on a galaxy with no slot and no next-season card. */}
       {cornerButtons && !ship && panel === null && !slotShown && season.data?.status !== 'frozen' && (
-        <div className="pointer-events-none absolute bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] right-[var(--gk-gutter)] z-20">{cornerButtons}</div>
+        <div className="pointer-events-none absolute bottom-[calc(var(--v2-dock-h,86px)+0.5rem)] right-[var(--gk-gutter)] z-20">{cornerButtons}</div>
       )}
 
       {/* ── full surfaces, over the live galaxy ─────────────── */}

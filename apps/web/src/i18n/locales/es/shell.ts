@@ -331,6 +331,11 @@ export const menu = {
   fpsOn: 'Sí',
   fpsOff: 'No',
   fpsHint: "Fotogramas que la galaxia dibuja por segundo. Un valor mayor significa un movimiento más fluido.",
+  uiScaleLabel: "Tamaño de interfaz",
+  uiScaleValue: "{{value}} %",
+  uiScaleHint: "Texto, iconos y espacios crecen o se reducen juntos.",
+  uiScaleSystem: "Elegido según el tamaño de letra de tu teléfono.",
+  uiScaleLimit: "Hasta {{value}} % en esta pantalla.",
 } as const;
 
 export const leaderboard = {

@@ -99,7 +99,7 @@ export function Meter({
         <span
           aria-hidden
           data-meter-cap
-          className="absolute -right-0.5 -top-1 h-[9px] w-[3px] rounded-cell border border-bone/80 bg-panel shadow-[0_0_6px_currentColor]"
+          className="absolute -right-0.5 -top-1 h-[8px] w-[3px] rounded-cell border border-bone/80 bg-panel shadow-[0_0_6px_currentColor]"
         />
       )}
     </div>
@@ -133,7 +133,7 @@ export function Progress({
           {ready ? 'READY' : `${String(Math.floor(share * 100))}%`}
         </span>
       </div>
-      <div className="plate-sunk mt-2 h-[6px] overflow-hidden rounded-chip">
+      <div className="plate-sunk mt-2 h-[5px] overflow-hidden rounded-chip">
         <div
           className={`h-full rounded-cell transition-[width] duration-700 ease-out ${
             ready

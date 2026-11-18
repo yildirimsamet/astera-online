@@ -12,6 +12,7 @@ import { VESSEL_NOSE_TURN, vesselModelFile } from '../galaxy/mainSky.js';
 import { SpaceLighting } from '../galaxy/SpaceLighting.js';
 import { useGpuContext } from '../galaxy/gpuContext.js';
 import { QUALITY_PRESETS, useRenderQuality } from '../lib/quality.js';
+import { useScaledDprCap } from '../lib/uiScale.js';
 import { FiniteSceneGuard } from '../galaxy/FiniteSceneGuard.js';
 import { guardBloomRef } from '../galaxy/finiteGuard.js';
 import { battleCameraRange, battlePlanet, battlefieldEnvironment, destructionScale, fitBattleCamera, focusBattleCamera, layoutBattle, retreatDestinations, sampleRetreatPose, shieldIntercept, type BattlePose } from './sceneLayout.js';
@@ -55,12 +56,12 @@ export function BattleStage(props: StageProps) {
 
 function StageAttempt({ retry, ...props }: StageProps & { retry: () => void }) {
   const { t } = useTranslation();
-  const quality = useRenderQuality(), preset = QUALITY_PRESETS[quality], gpu = useGpuContext();
+  const quality = useRenderQuality(), preset = QUALITY_PRESETS[quality], dprCap = useScaledDprCap(preset.dprCap), gpu = useGpuContext();
   useEffect(() => { if (!gpu.live) { props.onSuspend(); props.onUnavailable?.(); } }, [gpu.live, props.onSuspend, props.onUnavailable]);
   const recovery = <div className="sim-stage-message" role="status"><p>{t(gpu.live ? 'simulator.stageFailed' : 'simulator.gpuLost')}</p>
     <button type="button" onClick={retry}>{t('simulator.reopenStage')}</button></div>;
   return <><StageBoundary key={gpu.epoch} onFailure={() => { props.onSuspend(); props.onUnavailable?.(); }} fallback={gpu.live ? recovery : null}>
-    <Canvas className="sim-canvas" frameloop="demand" dpr={[1, preset.dprCap]} camera={{ position: [0, 30, -23], fov: 43, near: .1, far: 600 }}
+    <Canvas className="sim-canvas" frameloop="demand" dpr={[1, dprCap]} camera={{ position: [0, 30, -23], fov: 43, near: .1, far: 600 }}
       gl={{ antialias: false, powerPreference: 'high-performance' }} onPointerMissed={() => { props.onSelect(null); }}
       onCreated={({ gl }) => { gl.outputColorSpace = THREE.SRGBColorSpace; gl.toneMappingExposure = 1.12; gpu.watch(gl.domElement); }}>
       <color attach="background" args={['#050a14']} />

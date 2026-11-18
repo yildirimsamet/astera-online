@@ -5,6 +5,6 @@
 .pinch-hint-up { animation: pinch-hint-up 1.8s cubic-bezier(.4, 0, .2, 1) infinite; }
 .pinch-hint-down { animation: pinch-hint-down 1.8s cubic-bezier(.4, 0, .2, 1) infinite; }
 
-@keyframes pinch-hint-up { 0%, 15% { transform: translate(0, 0); opacity: .55; } 70%, 85% { transform: translate(16px, -16px); opacity: 1; } 100% { transform: translate(0, 0); opacity: .55; } }
-@keyframes pinch-hint-down { 0%, 15% { transform: translate(0, 0); opacity: .55; } 70%, 85% { transform: translate(-16px, 16px); opacity: 1; } 100% { transform: translate(0, 0); opacity: .55; } }
+@keyframes pinch-hint-up { 0%, 15% { transform: translate(0, 0); opacity: .55; } 70%, 85% { transform: translate(14px, -14px); opacity: 1; } 100% { transform: translate(0, 0); opacity: .55; } }
+@keyframes pinch-hint-down { 0%, 15% { transform: translate(0, 0); opacity: .55; } 70%, 85% { transform: translate(-14px, 14px); opacity: 1; } 100% { transform: translate(0, 0); opacity: .55; } }
 @keyframes pinch-hint-arrow { 0%, 25% { opacity: .25; } 70%, 85% { opacity: 1; } 100% { opacity: .25; } }

@@ -52,9 +52,9 @@ function NativeAttachment(props: AttachmentProps & { media: Exclude<ChatMedia, {
   return <div ref={anchor}>
     {source?.key === key ? <AttachmentView {...props} sourceUrl={source.url} autoPlay={props.media.kind === 'video'} />
       : props.media.kind === 'video' && !requested ? <button type="button" onClick={() => { setRequested(true); }}
-        className="my-2 flex min-h-20 w-[min(68vw,360px)] max-w-full items-center justify-center gap-2 rounded-control border border-v2-line-hi bg-v2-deep px-4 text-body text-v2-ink transition-transform hover:border-v2-self/50 active:scale-[0.98]">
+        className="my-2 flex min-h-20 w-[min(68vw,324px)] max-w-full items-center justify-center gap-2 rounded-control border border-v2-line-hi bg-v2-deep px-4 text-body text-v2-ink transition-transform hover:border-v2-self/50 active:scale-[0.98]">
         <Glyph id="next" />{t('chat.media.play')}
-      </button> : <div role="status" className="my-2 flex min-h-20 w-[min(68vw,360px)] max-w-full animate-pulse items-center justify-center rounded-control border border-v2-line-hi bg-v2-deep text-micro text-v2-ink-2">
+      </button> : <div role="status" className="my-2 flex min-h-20 w-[min(68vw,324px)] max-w-full animate-pulse items-center justify-center rounded-control border border-v2-line-hi bg-v2-deep text-micro text-v2-ink-2">
         {t(props.media.kind === 'video' ? 'chat.media.video' : 'chat.media.photo')}
       </div>}
   </div>;
@@ -80,13 +80,13 @@ function AttachmentView({ media, channel, messageId, onLoad, preview = false, so
     return () => { document.removeEventListener('keydown', close, true); opener.current?.focus({ preventScroll: true }); };
   }, [expanded]);
   if (failed) return <p role="status" className="my-2 text-micro text-v2-warn">{t('chat.media.loadFailed')}</p>;
-  const width = preview ? 'w-[min(44vw,240px,calc(32*var(--app-vh)))]' : 'w-[min(68vw,360px)]';
+  const width = preview ? 'w-[min(44vw,216px,calc(32*var(--app-vh)))]' : 'w-[min(68vw,324px)]';
   if (media.kind === 'youtube' && !capabilities().thirdPartyEmbeds) return <div className="my-2 grid max-w-full gap-1 rounded-control border border-v2-line-hi bg-v2-deep px-3 py-2">
-    <a href={`https://www.youtube.com/watch?v=${media.videoId}`} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center text-body text-v2-self underline underline-offset-4">{t('chat.media.openYouTube')}</a>
+    <a href={`https://www.youtube.com/watch?v=${media.videoId}`} target="_blank" rel="noopener noreferrer" className="flex min-h-[var(--gk-hit)] items-center text-body text-v2-self underline underline-offset-4">{t('chat.media.openYouTube')}</a>
     <p className="text-micro leading-relaxed text-v2-ink-2">{t('chat.media.externalNotice')}</p>
   </div>;
   if (media.kind === 'youtube') return <div className="my-2 max-w-full">
-    <div className={`${portrait ? 'w-[min(68vw,240px,calc(18*var(--app-vh)))]' : width} max-w-full overflow-hidden rounded-control border border-v2-line-hi bg-v2-deep`} style={{ aspectRatio: portrait ? '9 / 16' : '16 / 9' }}>
+    <div className={`${portrait ? 'w-[min(68vw,216px,calc(18*var(--app-vh)))]' : width} max-w-full overflow-hidden rounded-control border border-v2-line-hi bg-v2-deep`} style={{ aspectRatio: portrait ? '9 / 16' : '16 / 9' }}>
       <iframe title={t('chat.media.youtube')} src={`https://www.youtube-nocookie.com/embed/${media.videoId}`} loading="lazy"
         className="h-full w-full border-0" referrerPolicy="strict-origin-when-cross-origin" allow="fullscreen; encrypted-media; picture-in-picture" allowFullScreen />
     </div>
@@ -99,7 +99,7 @@ function AttachmentView({ media, channel, messageId, onLoad, preview = false, so
   </video>;
   return <>
     <button ref={opener} type="button" aria-label={t('chat.media.openImage')} className="my-2 block max-w-full overflow-hidden rounded-control border border-v2-line-hi bg-v2-deep transition-transform active:scale-[0.98]" onClick={() => { setExpanded(true); }}>
-      <img src={url} alt={t('chat.media.photo')} loading="lazy" className={`${preview ? 'max-h-[min(8rem,calc(18*var(--app-vh)))] w-auto' : 'max-h-64 w-[min(68vw,320px)]'} max-w-full object-contain`} onLoad={onLoad} onError={() => { setFailed(true); }} />
+      <img src={url} alt={t('chat.media.photo')} loading="lazy" className={`${preview ? 'max-h-[min(8rem,calc(18*var(--app-vh)))] w-auto' : 'max-h-64 w-[min(68vw,288px)]'} max-w-full object-contain`} onLoad={onLoad} onError={() => { setFailed(true); }} />
     </button>
     {expanded ? createPortal(<div className="fixed inset-0 z-[120] flex items-center justify-center bg-v2-deep/95 p-4" onClick={() => { setExpanded(false); }}>
       <div ref={dialog} role="dialog" aria-modal="true" aria-label={t('chat.media.photo')} onClick={event => { event.stopPropagation(); }} className="relative max-h-full max-w-full">

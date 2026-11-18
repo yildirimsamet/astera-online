@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { focusManager, QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { LazyMotion, domMax } from 'motion/react';
 import { lockViewportZoom } from './lib/viewport.js';
+import { startUiScale } from './lib/uiScale.js';
+import { uiScaleHost } from './platform/display.js';
 import { I18nextProvider } from 'react-i18next';
 /**
  * FIRST, AND BEFORE ANYTHING THAT RENDERS. The selected dictionary is ready
@@ -105,6 +107,9 @@ function start(): void {
 
   // Refuses the two zoom gestures the viewport meta and `touch-action` cannot.
   lockViewportZoom();
+  // The player's interface size, before the first frame (`lib/uiScale.ts`).
+  const stopUiScale = startUiScale(uiScaleHost());
+  if (import.meta.hot) import.meta.hot.dispose(stopUiScale);
   // The height the page really has on screen, for every full screen (item 23).
   const stopAppHeight = watchAppHeight();
   if (import.meta.hot) import.meta.hot.dispose(stopAppHeight);

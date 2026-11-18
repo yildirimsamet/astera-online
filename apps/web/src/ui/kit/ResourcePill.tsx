@@ -46,12 +46,12 @@ export function ResourcePill({
   return (
     <div className="plate min-w-0 flex-1 px-2 pb-2 pt-2">
       <div className="flex items-center gap-2">
-        <span className="socket grid size-[30px] shrink-0 place-items-center rounded-control">
+        <span className="socket grid size-[27px] shrink-0 place-items-center rounded-control">
           <img
             src={kind === 'alloy' ? RESOURCE_ART.alloy : RESOURCE_ART.crystal}
             alt=""
             aria-hidden
-            className="socket-art size-[23px] object-contain"
+            className="socket-art size-[21px] object-contain"
           />
         </span>
 

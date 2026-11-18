@@ -163,7 +163,7 @@ function OfferRow({ offer, index, recommended, chosen, held, progress, now, onPi
         onClick={onPick}
         style={{ animationDelay: `${String(index * 60)}ms` }}
         // The lead offer is lit like the kit's own plates; the rest sit in the well.
-        className={`flex min-h-11 w-full items-center gap-2.5 px-2 py-1.5 text-left animate-[line-in_0.3s_ease-out_both] active:scale-[0.98] ${recommended || chosen ? 'gk-cut gk-cut--self' : 'rounded-control border border-v2-line bg-v2-void/40'}`}
+        className={`flex min-h-[var(--gk-hit)] w-full items-center gap-2.5 px-2 py-1.5 text-left animate-[line-in_0.3s_ease-out_both] active:scale-[0.98] ${recommended || chosen ? 'gk-cut gk-cut--self' : 'rounded-control border border-v2-line bg-v2-void/40'}`}
       >
         <span aria-hidden="true" className={`grid size-8 shrink-0 place-items-center rounded-full border ${recommended || chosen ? 'border-v2-self/70 text-v2-self shadow-[0_0_10px_-2px_var(--color-v2-self)]' : 'border-v2-line-hi text-v2-ink-2'}`}>
           <Icon id={offerIcon(offer)} className="size-4" />
@@ -326,7 +326,7 @@ export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour,
         <section data-testid="starter-advice" aria-label={t('starter.advice.title')} className="gk mb-2 animate-[line-in_0.25s_ease-out_both]">
           <Plate bolts className="flex flex-col gap-1 py-1 pl-2 pr-1 shadow-lg">
             <SectionTag aside={(
-              <button type="button" aria-label={t('starter.advice.close')} onClick={() => { playSound('tap'); haptic('tap'); setOpen(false); }} className="-my-2 grid size-11 shrink-0 place-items-center text-v2-ink-2">
+              <button type="button" aria-label={t('starter.advice.close')} onClick={() => { playSound('tap'); haptic('tap'); setOpen(false); }} className="-my-2 grid size-[var(--gk-hit)] shrink-0 place-items-center text-v2-ink-2">
                 <Glyph id="close" className="gk-glyph size-4" />
               </button>
             )}>{t('starter.advice.title')}</SectionTag>

@@ -55,9 +55,9 @@ function SupportRequestForm({ onRecorded }: { onRecorded: (requestId: string, ap
     <form className="mt-3 grid gap-3" onSubmit={event => { event.preventDefault(); void record(); }}>
       <p className="text-caption text-v2-ink-2">{t('accountDeletion.admin.supportDetail')}</p>
       <label className="grid gap-2 text-caption text-v2-ink-2">{t('accountDeletion.admin.supportUsername')}
-        <input value={username} disabled={busy} maxLength={128} autoComplete="off" spellCheck={false} onChange={event => { setUsername(event.target.value); setVerified(false); }} className="h-11 min-w-0 rounded-control border border-v2-line-hi bg-v2-panel px-3 text-caption text-v2-ink outline-none focus:border-v2-self" />
+        <input value={username} disabled={busy} maxLength={128} autoComplete="off" spellCheck={false} onChange={event => { setUsername(event.target.value); setVerified(false); }} className="h-[var(--gk-hit)] min-w-0 rounded-control border border-v2-line-hi bg-v2-panel px-3 text-caption text-v2-ink outline-none focus:border-v2-self" />
       </label>
-      <label className="flex min-h-11 items-start gap-2 text-caption text-v2-ink-2"><input type="checkbox" className="mt-1 size-5 shrink-0 accent-v2-self" checked={verified} disabled={busy} onChange={event => { setVerified(event.target.checked); }} />{t('accountDeletion.admin.supportConfirm')}</label>
+      <label className="flex min-h-[var(--gk-hit)] items-start gap-2 text-caption text-v2-ink-2"><input type="checkbox" className="mt-1 size-5 shrink-0 accent-v2-self" checked={verified} disabled={busy} onChange={event => { setVerified(event.target.checked); }} />{t('accountDeletion.admin.supportConfirm')}</label>
       {problem && <p role="alert" className="text-caption text-v2-warn">{problem}</p>}
       <Button type="submit" disabled={!verified || !username.trim() || busy}>{t('accountDeletion.admin.supportSubmit')}</Button>
     </form>
@@ -105,7 +105,7 @@ function DeletionRow({ request, onCompleted }: { request: Deletion; onCompleted:
     </div>
     <p className="break-all select-all font-v2-mono text-micro text-v2-ink-2">{request.requestId}</p>
     {confirming ? <div className="grid gap-3 rounded-control border border-v2-warn/40 bg-v2-warn/5 p-3">
-      <label className="flex min-h-11 items-start gap-2 text-caption text-v2-ink-2"><input type="checkbox" className="mt-1 size-5 shrink-0 accent-v2-self" disabled={action.busy} checked={verified} onChange={event => { setVerified(event.target.checked); }} />{t('accountDeletion.admin.confirm')}</label>
+      <label className="flex min-h-[var(--gk-hit)] items-start gap-2 text-caption text-v2-ink-2"><input type="checkbox" className="mt-1 size-5 shrink-0 accent-v2-self" disabled={action.busy} checked={verified} onChange={event => { setVerified(event.target.checked); }} />{t('accountDeletion.admin.confirm')}</label>
       <div className="flex flex-wrap justify-end gap-2"><Button variant="ghost" disabled={action.busy} onClick={() => { setConfirming(false); setVerified(false); }}>{t('accountDeletion.admin.cancel')}</Button>
         <Button disabled={!verified || action.busy} onClick={() => { void act(); }}>{t(approved ? 'accountDeletion.admin.confirmComplete' : 'accountDeletion.admin.confirmApprove')}</Button></div>
     </div> : <Button disabled={action.busy} onClick={() => { setConfirming(true); }}>{t(approved ? 'accountDeletion.admin.complete' : 'accountDeletion.admin.approve')}</Button>}

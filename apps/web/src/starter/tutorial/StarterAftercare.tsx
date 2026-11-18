@@ -55,7 +55,7 @@ export function StarterAftercare({ vessel, farewelled, guided }: { vessel: Vesse
     closeHint(true);
   };
   const task = need ? t(`starter.factHow.${need}`) : '';
-  return <aside data-starter-aftercare className="fixed inset-x-3 top-[max(72px,env(safe-area-inset-top))] z-[85] mx-auto flex max-w-md gap-2 rounded-control border border-v2-self/50 bg-v2-deep/95 p-3 font-v2-ui shadow-lg">
+  return <aside data-starter-aftercare className="fixed inset-x-3 top-[max(65px,env(safe-area-inset-top))] z-[85] mx-auto flex max-w-md gap-2 rounded-control border border-v2-self/50 bg-v2-deep/95 p-3 font-v2-ui shadow-lg">
     <img src="/assets/images/general/tutorial-npc.png" alt="" className="size-16 shrink-0 object-contain" />
     <div className="min-w-0 flex-1">
       <p className="text-caption leading-snug text-v2-ink">{offer ? t('starter.tutorial.push') : t('starter.tutorial.hint', { task })}</p>

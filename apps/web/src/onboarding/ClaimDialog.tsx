@@ -143,7 +143,7 @@ export function ClaimDialog({
       <div className="absolute inset-0 bg-v2-void/70" />
 
       <form
-        className="relative max-h-[calc(92*var(--app-vh))] w-full max-w-md overflow-y-auto rounded-t-sheet border border-b-0 border-v2-line bg-v2-panel px-4 pb-[calc(20px+env(safe-area-inset-bottom))] pt-3 font-v2-ui text-v2-ink shadow-2xl sm:rounded-sheet sm:border-b sm:p-6"
+        className="relative max-h-[calc(92*var(--app-vh))] w-full max-w-md overflow-y-auto rounded-t-sheet border border-b-0 border-v2-line bg-v2-panel px-4 pb-[calc(18px+env(safe-area-inset-bottom))] pt-3 font-v2-ui text-v2-ink shadow-2xl sm:rounded-sheet sm:border-b sm:p-6"
         onSubmit={(event) => {
           event.preventDefault();
           submit();
@@ -199,7 +199,7 @@ export function ClaimDialog({
               id={passwordId}
               ref={passwordRef}
               name="password"
-              className={`mt-1 min-h-11 w-full rounded-control border bg-v2-deep px-3 font-v2-ui text-title text-v2-ink placeholder:text-v2-ink-3 outline-none focus-visible:border-v2-self focus-visible:ring-1 focus-visible:ring-v2-self/30 ${problemField === 'password' ? 'border-v2-hostile' : 'border-v2-line-hi'}`}
+              className={`mt-1 min-h-[var(--gk-hit)] w-full rounded-control border bg-v2-deep px-3 font-v2-ui text-title text-v2-ink placeholder:text-v2-ink-3 outline-none focus-visible:border-v2-self focus-visible:ring-1 focus-visible:ring-v2-self/30 ${problemField === 'password' ? 'border-v2-hostile' : 'border-v2-line-hi'}`}
               aria-invalid={problemField === 'password'}
               type="password"
               value={password}
@@ -215,7 +215,7 @@ export function ClaimDialog({
             <div className="mt-2">
               <button
                 type="button"
-                className="flex min-h-11 w-full items-center gap-2 rounded-control border border-v2-line-hi bg-v2-deep px-3 text-left text-caption text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self"
+                className="flex min-h-[var(--gk-hit)] w-full items-center gap-2 rounded-control border border-v2-line-hi bg-v2-deep px-3 text-left text-caption text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self"
                 onClick={() => { setCountryPickerOpen(true); }}
               >
                 <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-2">{t('country.label')}</span>

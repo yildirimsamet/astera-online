@@ -72,7 +72,7 @@ export const FIXTURE_SHELF_NEW: (LegacyAward | null)[] = [
 
 export function LegacyShelfGallery({ set }: { set: 'a' | 'b' | 'c' | 'new' }) {
   const slots = set === 'new' ? FIXTURE_SHELF_NEW : set === 'a' ? FIXTURE_SHELF : set === 'b' ? FIXTURE_SHELF_B : FIXTURE_SHELF_C;
-  return <div className="mx-auto max-w-[480px] p-4"><ShowcaseShelf slots={slots} onOpen={() => undefined} onEmpty={() => undefined} /></div>;
+  return <div className="mx-auto max-w-[432px] p-4"><ShowcaseShelf slots={slots} onOpen={() => undefined} onEmpty={() => undefined} /></div>;
 }
 
 const PLAYER = '00000000-0000-4000-a000-000000000001';

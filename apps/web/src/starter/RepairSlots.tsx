@@ -13,7 +13,7 @@ import { orderLeft } from '../v2/kit/QueueLane.js';
 import { QueueSheet } from '../v2/kit/QueueSheet.js';
 import { moduleArt, orderModule } from './shipScreen.js';
 
-const FRAME = 'size-[52px] shrink-0 rounded-full';
+const FRAME = 'size-[47px] shrink-0 rounded-full';
 
 /**
  * THE THREE REPAIRS THAT CAN RUN AT ONCE, each a ring around the machine being mended. Pressing a

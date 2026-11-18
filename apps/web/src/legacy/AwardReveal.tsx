@@ -166,7 +166,7 @@ function AwardReveal({ queue, live, onSeen, onDone }: {
 
       <div key={`piece-${String(step)}`} className="legacy-reveal-piece relative flex w-full max-w-sm flex-col items-center">
         {piece ? <>
-          <div className="legacy-reveal-stage relative aspect-square w-[min(74vw,320px)]">
+          <div className="legacy-reveal-stage relative aspect-square w-[min(74vw,288px)]">
             {live
               ? <RevealCanvas award={piece} settled={shown} />
               : <AwardPicture award={piece} className="legacy-reveal-picture size-full" />}

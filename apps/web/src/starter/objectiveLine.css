@@ -4,7 +4,7 @@
   and the kit's open arrow where a press takes the player there. A wait rests in plain metal.
 */
 .objective-line {
-  --cut: 8px;
+  --cut: 7px;
   display: flex;
   align-items: stretch;
   width: 100%;
@@ -16,12 +16,12 @@
 }
 .objective-line__press {
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr) auto;
+  grid-template-columns: 23px minmax(0, 1fr) auto;
   align-items: center;
-  column-gap: 8px;
+  column-gap: 7px;
   flex: 1;
   min-width: 0;
-  padding: 5px 10px 5px 8px;
+  padding: 5px 9px 5px 7px;
   text-align: left;
   -webkit-tap-highlight-color: transparent;
 }
@@ -29,14 +29,14 @@ button.objective-line__press:active { transform: translateY(1px) scale(0.99); }
 .objective-line__coin {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 23px;
+  height: 23px;
   border-radius: 50%;
   color: var(--gk-self);
   background: color-mix(in srgb, currentColor 16%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 45%, transparent);
 }
-.objective-line__coin .gk-glyph { width: 15px; height: 15px; }
+.objective-line__coin .gk-glyph { width: 14px; height: 14px; }
 .objective-line[data-rest] .objective-line__coin { color: var(--gk-ink-3); }
 .objective-line__text { display: grid; min-width: 0; }
 .objective-line__eyebrow { color: var(--gk-self); }
@@ -50,7 +50,7 @@ button.objective-line__press:active { transform: translateY(1px) scale(0.99); }
 .objective-line[data-rest] .objective-line__title { color: var(--gk-ink-2); font-weight: 500; }
 .objective-line__gain { color: var(--gk-self); font-weight: 700; white-space: nowrap; }
 .objective-line__open { display: grid; color: var(--gk-self); }
-.objective-line__open .gk-glyph { width: 14px; height: 14px; }
+.objective-line__open .gk-glyph { width: 13px; height: 13px; }
 .objective-line__open--up { color: var(--gk-alloy-hi, var(--gk-self)); animation: objective-line-nudge 1.6s ease-in-out infinite; }
 @keyframes objective-line-nudge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 .objective-line__offers {
@@ -58,14 +58,14 @@ button.objective-line__press:active { transform: translateY(1px) scale(0.99); }
   flex-shrink: 0;
   align-items: center;
   gap: 4px;
-  padding: 0 12px 0 10px;
+  padding: 0 11px 0 9px;
   border-left: 1px solid color-mix(in srgb, var(--gk-self) 28%, transparent);
   color: var(--gk-self);
   font-size: var(--gk-t-small);
   font-weight: 700;
 }
 .objective-line__offers-turn { display: grid; transition: transform 0.2s; }
-.objective-line__offers-turn .gk-glyph { width: 13px; height: 13px; }
+.objective-line__offers-turn .gk-glyph { width: 12px; height: 12px; }
 .objective-line__offers-turn--open { transform: rotate(180deg); }
 /* A new step crosses the plate once: a hard light edge, not a glow. */
 .objective-line__sweep {

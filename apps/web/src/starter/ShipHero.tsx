@@ -193,7 +193,7 @@ export function ShipHero({ id, progress, selected, onSelect, compact = false, se
   return (
     <div data-testid="ship-hero" {...(moment ? { 'data-moment': moment.tier } : {})} {...(shaking ? { 'data-shake': '' } : {})} className="shrink-0 overflow-hidden">
       {/* Everything here is percent of the painting, so the frame keeps its shape on any screen. */}
-      <div className={`ship-hero-frame relative mx-auto w-full max-w-[440px] ${compact ? 'aspect-[7/4]' : 'aspect-[3/2]'}`}>
+      <div className={`ship-hero-frame relative mx-auto w-full max-w-[396px] ${compact ? 'aspect-[7/4]' : 'aspect-[3/2]'}`}>
         {/* A blur of it stands in at once, and the painting is asked for first, in the width it is drawn (owner phone playtest 2026-11-19). */}
         <img aria-hidden="true" src={heroPlaceholder(hull, look)} alt="" draggable={false} className={`absolute inset-0 size-full object-cover blur-md brightness-125 saturate-110 ${mask}`} />
         <img src={heroArt(hull, look)} srcSet={heroSrcSet(hull, look)} sizes={HERO_SIZES} fetchPriority="high" decoding="async" alt="" draggable={false} className={`ship-hero-art absolute inset-0 size-full object-cover brightness-125 saturate-110 ${mask}`} />

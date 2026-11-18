@@ -133,12 +133,12 @@ export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; 
         footer={
           <div className="flex items-center gap-2">
             {/* Watched again only through the map it crosses: without it the scene had nothing to fly in. */}
-            <button type="button" disabled={!world} className="min-h-11 shrink-0 rounded-control border border-v2-line-hi px-3 text-caption text-v2-ink-2 disabled:opacity-40"
+            <button type="button" disabled={!world} className="min-h-[var(--gk-hit)] shrink-0 rounded-control border border-v2-line-hi px-3 text-caption text-v2-ink-2 disabled:opacity-40"
               onClick={() => { if (world) startJump({ shardName: arrival.shardName, hull: arrival.hull, look: 'RENEWED', world, landing: null, start: 0, replay: true }); }}>
               {t('starter.jump.replay')}
             </button>
             <button type="button" onClick={() => { seen.mutate(); }}
-              className="min-h-11 flex-1 rounded-control border border-v2-self bg-gradient-to-b from-v2-self to-v2-self/55 text-body font-bold uppercase tracking-wide text-v2-void">
+              className="min-h-[var(--gk-hit)] flex-1 rounded-control border border-v2-self bg-gradient-to-b from-v2-self to-v2-self/55 text-body font-bold uppercase tracking-wide text-v2-void">
               {t('starter.landing.go')}
             </button>
           </div>
@@ -181,11 +181,11 @@ export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; 
   if (!tip) return null;
   // Under the top bar and any note it holds (`--v2-top-h` measures both): two notes never stack (owner 2026-11-18).
   return (
-    <div data-testid="landing-tip" data-tip={tip} role="status" className="gk pointer-events-auto fixed inset-x-3 top-[calc(var(--v2-top-h,96px)+6px)] z-[60] mx-auto max-w-[440px]">
+    <div data-testid="landing-tip" data-tip={tip} role="status" className="gk pointer-events-auto fixed inset-x-3 top-[calc(var(--v2-top-h,86px)+5px)] z-[60] mx-auto max-w-[396px]">
       <Banner tone="info" variant="strip" glyph={TIP_GLYPH[tip]} title={t(`starter.landing.tip.${tip}`)}
         action={(
           <button type="button" aria-label={t('starter.landing.dismiss')} onClick={() => { playSound('tap'); haptic('tap'); dismissTip(tip); setTip(null); }}
-            className="-my-2 -mr-1 grid size-11 shrink-0 place-items-center text-v2-ink-2">
+            className="-my-2 -mr-1 grid size-[var(--gk-hit)] shrink-0 place-items-center text-v2-ink-2">
             <Glyph id="close" className="gk-glyph size-4" />
           </button>
         )} />

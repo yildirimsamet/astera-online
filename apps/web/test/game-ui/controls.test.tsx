@@ -115,6 +115,39 @@ describe('the slider', () => {
     expect(onChange).toHaveBeenCalledWith(0);
   });
 
+  /*
+    THE KNOB STAYS ON ITS TRACK (owner 2026-11-17). The knob stood centred on its value, so at an
+    end half of it hung over the − or + key beside it: a thumb reaching for the knob pressed the key
+    and the slider would not drag again. Its travel now stops half a gripped knob inside each end,
+    and a finger maps onto that same travel, so the value under the finger is the knob's.
+  */
+  const rect = (track: HTMLElement): void => {
+    track.getBoundingClientRect = () => ({ left: 20, width: 200, top: 0, height: 44, right: 220, bottom: 44, x: 20, y: 0, toJSON: () => ({}) });
+  };
+
+  it('maps a finger onto the knob’s travel, which stops 15 px inside each end', () => {
+    const onChange = vi.fn();
+    render(<Slider label="Dart" value={24} max={40} onChange={onChange} />);
+    const slider = screen.getByRole('slider');
+    rect(slider);
+    for (const [x, value] of [[35, 0], [205, 40], [120, 20], [20, 0], [220, 40]] as const) {
+      // jsdom has no PointerEvent: a mouse event under the pointer's name carries the position.
+      fireEvent(slider, new MouseEvent('pointerdown', { clientX: x, button: 0, bubbles: true }));
+      fireEvent(slider, new MouseEvent('pointerup', { clientX: x, bubbles: true }));
+      expect(onChange).toHaveBeenLastCalledWith(value);
+    }
+  });
+
+  it('keeps the knob inside its track at both ends, clear of the − and + keys', () => {
+    const view = render(<Slider label="Dart" value={0} max={40} onChange={vi.fn()} />);
+    const knob = (): HTMLElement => view.container.querySelector<HTMLElement>('.gk-slider__knob')!;
+    // Compared as the browser writes it back, which reorders a calc's terms.
+    const as = (left: string): string => { const probe = document.createElement('span'); probe.style.left = left; return probe.style.left; };
+    expect(knob().style.left).toBe(as('calc(15px + (100% - 30px) * 0)'));
+    view.rerender(<Slider label="Dart" value={40} max={40} onChange={vi.fn()} />);
+    expect(knob().style.left).toBe(as('calc(15px + (100% - 30px) * 1)'));
+  });
+
   it('does not report a move past the end', () => {
     const onChange = vi.fn();
     render(<Slider label="Dart" value={40} max={40} onChange={onChange} />);

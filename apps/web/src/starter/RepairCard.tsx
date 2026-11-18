@@ -258,9 +258,9 @@ function Strip({ steps, shown, context, onShow }: { steps: readonly RepairStep[]
               data-guide="repair-show"
               data-step={`${step.module}:${String(step.stage)}`}
               onClick={() => { onShow(step); }}
-              className={`relative h-8 w-[54px] shrink-0 -skew-x-12 overflow-hidden rounded-cell border bg-v2-void ${on ? 'border-v2-self shadow-[0_0_6px_var(--color-v2-self)]' : 'border-v2-line'}`}
+              className={`relative h-8 w-[49px] shrink-0 -skew-x-12 overflow-hidden rounded-cell border bg-v2-void ${on ? 'border-v2-self shadow-[0_0_6px_var(--color-v2-self)]' : 'border-v2-line'}`}
             >
-              <img src={moduleArt(step.module, step.stage)} alt="" draggable={false} className={`absolute inset-[-4px] size-[calc(100%+8px)] max-w-none skew-x-12 object-cover ${state === 'closed' ? 'opacity-40 saturate-50' : state === 'done' ? 'opacity-55' : ''}`} />
+              <img src={moduleArt(step.module, step.stage)} alt="" draggable={false} className={`absolute inset-[-4px] size-[calc(100%+7px)] max-w-none skew-x-12 object-cover ${state === 'closed' ? 'opacity-40 saturate-50' : state === 'done' ? 'opacity-55' : ''}`} />
               <span className="absolute right-1 top-0.5 skew-x-12">
                 {state === 'done' && <Icon id="i-check" className="size-2.5 text-v2-self" />}
                 {state === 'queued' && <Icon id="i-hourglass" className="size-2.5 text-v2-self" />}
@@ -291,7 +291,7 @@ export function RepairCard({ shown, system, context, onShow, onGo, onFact }: {
   return (
     <section data-testid="next-repair" aria-label={moduleName(shown.module)} className="mx-3 overflow-hidden rounded-plate border border-v2-line-hi bg-v2-panel">
       <div className="grid grid-cols-[42%_1fr]">
-        <div className="relative min-h-[164px] bg-v2-void">
+        <div className="relative min-h-[148px] bg-v2-void">
           <img src={moduleArt(shown.module, shown.stage)} alt="" draggable={false} className={`absolute inset-0 size-full object-cover ${state === 'closed' ? 'opacity-50 saturate-50' : ''}`} />
           <span aria-hidden="true" className="absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-v2-panel to-transparent" />
         </div>

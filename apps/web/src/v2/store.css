@@ -79,7 +79,7 @@
 @keyframes v2-store-rise {
   0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0; }
   12% { opacity: 0.9; }
-  100% { transform: translate3d(8px, -210px, 0) scale(0.35); opacity: 0; }
+  100% { transform: translate3d(7px, -189px, 0) scale(0.35); opacity: 0; }
 }
 
 .v2-store-star {

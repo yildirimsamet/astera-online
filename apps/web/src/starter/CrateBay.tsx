@@ -27,7 +27,7 @@ function Crate() {
   const id = useId().replace(/:/g, '');
   const body = `crate-body-${id}`, lid = `crate-lid-${id}`, glow = `crate-glow-${id}`, beam = `crate-beam-${id}`;
   return (
-    <svg viewBox="0 0 72 64" className="size-[68px] overflow-visible" aria-hidden="true">
+    <svg viewBox="0 0 72 64" className="size-[61px] overflow-visible" aria-hidden="true">
       {/* Soft edges come from gradients alone: no blur filter (sharp image contract). */}
       <defs>
         <linearGradient id={body} x1="0" y1="0" x2="0" y2="1">
@@ -172,7 +172,7 @@ export function CrateBay({ crates, onOpen }: { crates: readonly CrateBayCrate[];
         className="crate-card relative flex w-full touch-none select-none items-center gap-2.5 overflow-hidden rounded-plate border border-v2-alloy/45 bg-v2-panel py-1.5 pl-1.5 pr-2.5 text-left font-v2-ui text-v2-ink shadow-[0_10px_28px_-12px_rgba(0,0,0,0.8),0_0_22px_-10px_var(--color-v2-alloy)]"
       >
         <span aria-hidden="true" className="crate-sheen pointer-events-none absolute inset-0" />
-        <span className="crate-bay relative grid h-[72px] w-[84px] shrink-0 place-items-center overflow-hidden rounded-control">
+        <span className="crate-bay relative grid h-[65px] w-[76px] shrink-0 place-items-center overflow-hidden rounded-control">
           <Crate />
         </span>
         <span className="relative min-w-0 flex-1">

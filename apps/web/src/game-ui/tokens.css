@@ -103,25 +103,28 @@
   --gk-font-text: 'Saira Variable', system-ui, sans-serif;
   --gk-text-stretch: 96%;
 
-  /* the type scale at 350 px; 12 px is the floor */
-  --gk-t-floor: 12px;
-  --gk-t-small: 13px;
-  --gk-t-body: 14px;
-  --gk-t-lead: 16px;
-  --gk-t-title: 19px;
-  --gk-t-head: 24px;
-  --gk-t-number: 18px;
-  --gk-t-hero: 30px;
+  /* the type scale at 350 px (owner 2026-11-17: every size ×0.9, whole pixels, the hierarchy kept).
+     11 px is the floor for anything read to decide — numbers, times, costs, sentences; only an
+     uppercase, tracked label may stand at 10 px (`--gk-t-tag`). Japanese keeps 12 (below). */
+  --gk-t-tag: 10px;
+  --gk-t-floor: 11px;
+  --gk-t-small: 12px;
+  --gk-t-body: 13px;
+  --gk-t-lead: 14px;
+  --gk-t-title: 17px;
+  --gk-t-head: 22px;
+  --gk-t-number: 16px;
+  --gk-t-hero: 27px;
 
-  /* space: a 4 px step */
+  /* space: the old 4 px steps ×0.9 */
   --gk-s1: 4px;
-  --gk-s2: 8px;
-  --gk-s3: 12px;
-  --gk-s4: 16px;
-  --gk-s5: 20px;
-  --gk-s6: 24px;
-  /* every screen edge (owner 2026-11-12, standard 2.7): 12 px, a deliberate tightness */
-  --gk-gutter: 12px;
+  --gk-s2: 7px;
+  --gk-s3: 11px;
+  --gk-s4: 14px;
+  --gk-s5: 18px;
+  --gk-s6: 22px;
+  /* every screen edge (owner 2026-11-12, standard 2.7; ×0.9 on 2026-11-17): a deliberate tightness */
+  --gk-gutter: 11px;
 
   /* shape */
   --gk-r-sm: 3px;
@@ -141,6 +144,10 @@
 }
 
 html:lang(ja) {
+  /* Kanji close up below 12 px: Japanese keeps the old floor, each step above it one pixel up. */
+  --gk-t-tag: 11px;
+  --gk-t-floor: 12px;
+  --gk-t-small: 13px;
   --gk-font-display: 'Noto Sans CJK JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, system-ui, sans-serif;
   --gk-font-text: 'Noto Sans CJK JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, system-ui, sans-serif;
   --gk-display-stretch: 100%;

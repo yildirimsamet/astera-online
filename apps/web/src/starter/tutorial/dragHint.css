@@ -9,8 +9,8 @@
 
 @keyframes drag-hint-sweep {
   0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-26px); }
-  75% { transform: translateX(26px); }
+  25% { transform: translateX(-23px); }
+  75% { transform: translateX(23px); }
 }
 @keyframes drag-hint-pulse-left { 0%, 50%, 100% { opacity: 0.3; } 25% { opacity: 1; } }
 @keyframes drag-hint-pulse-right { 0%, 50%, 100% { opacity: 0.3; } 75% { opacity: 1; } }

@@ -17,7 +17,7 @@ import { PanelBoundary } from '../../shell/ErrorBoundary.js';
  * foot when the content needs the room, never over it (owner, 2026-10-20).
  */
 const HEIGHT: Record<Detent, string> = {
-  peek: 'max-h-[140px]',
+  peek: 'max-h-[126px]',
   half: 'max-h-[calc(55*var(--app-vh))]',
   /** As tall as what it holds, up to a page: an item sheet over empty space was the report. */
   fit: 'max-h-full',
@@ -41,7 +41,7 @@ type Placement = 'page' | 'dialog' | 'card';
 */
 const FRAME: Record<Placement, { holder: string; scrim: string; panel: string }> = {
   page: {
-    holder: 'justify-end v2-split:left-auto v2-split:w-[440px] v2-desk:w-[min(720px,50vw)]',
+    holder: 'justify-end v2-split:left-auto v2-split:w-[396px] v2-desk:w-[min(648px,50vw)]',
     scrim: 'v2-split:hidden',
     panel: 'v2-split:max-h-full! v2-split:max-w-none! v2-split:rounded-none v2-split:border-t-0',
   },
@@ -226,7 +226,7 @@ export function Sheet({
       className={kitHead
         // S1 (owner 2026-11-16; 54 px since 2026-11-17): inside the one head bar, over its quiet middle — never a row of its own.
         ? `gk-sheet__pull group ${placement === 'page' ? 'v2-split:invisible' : ''}`
-        : `group relative z-10 mx-auto -mb-7 flex h-11 w-16 shrink-0 items-start justify-center ${placement === 'page' ? 'v2-split:invisible' : ''}`}
+        : `group relative z-10 mx-auto -mb-7 flex h-[var(--gk-hit)] w-16 shrink-0 items-start justify-center ${placement === 'page' ? 'v2-split:invisible' : ''}`}
     >
       {/* The bar lights and stretches under the thumb: the pull was felt. */}
       <span aria-hidden="true" className={kit ? 'gk-sheet__grab' : 'mt-1.5 h-1 w-9 rounded-full bg-v2-line-hi transition-[width,background-color] duration-150 group-active:w-12 group-active:bg-v2-ink-2'} />

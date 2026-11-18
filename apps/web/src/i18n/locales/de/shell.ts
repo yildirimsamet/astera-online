@@ -331,6 +331,11 @@ export const menu = {
   fpsOn: 'An',
   fpsOff: 'Aus',
   fpsHint: "Bilder, die die Galaxie pro Sekunde zeichnet. Ein höherer Wert bedeutet flüssigere Bewegung.",
+  uiScaleLabel: "Oberflächengröße",
+  uiScaleValue: "{{value}} %",
+  uiScaleHint: "Text, Symbole und Abstände wachsen oder schrumpfen gemeinsam.",
+  uiScaleSystem: "Nach der Schriftgröße deines Handys gewählt.",
+  uiScaleLimit: "Auf diesem Bildschirm bis {{value}} %.",
 } as const;
 
 export const leaderboard = {
