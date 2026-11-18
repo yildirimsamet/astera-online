@@ -11,8 +11,8 @@ import { scenePlayedFor, type Beat, type Scene } from './director.js';
  */
 export interface ShipState {
   modules: Readonly<Record<string, number>>;
-  /** Each order under way, and what it took from the stores when it was given. */
-  queue: readonly { subject: string; stage: number; cost?: NonNullable<Beat['spend']> }[];
+  /** Each order under way, what it took from the stores when it was given, and when it is done. */
+  queue: readonly { subject: string; stage: number; cost?: NonNullable<Beat['spend']>; readyAt?: Date }[];
   look: VesselLook;
   facts: readonly VesselFact[];
 }
@@ -28,22 +28,31 @@ type RoadModule = 'REFINERY' | 'EXTRACTOR' | 'TELESCOPE' | 'RADAR' | 'SURVEY' | 
 const isRoadModule = (module: string): module is RoadModule =>
   module === 'REFINERY' || module === 'EXTRACTOR' || module === 'TELESCOPE' || module === 'RADAR' || module === 'SURVEY' || module === 'SHIPYARD';
 
+/** The hull's round with every system named on it (owner 2026-11-18: five names want time to be read). */
+export const REPORT_ROUND_MS = 8000;
+/** The ship is read again a moment after the work is due: the shot holds through that read. */
+export const WORK_GRACE_MS = 2500;
+
 const SHIP_REPORT: Scene = {
   id: 'shipReport',
   once: true,
+  keep: true,
   beats: [
-    { id: 'round', shot: { kind: 'ship', turn: 1.7 }, ms: 3000, line: 'starter.director.shipReport.orbit', sound: 'rattle', tags: VESSEL_SYSTEMS },
+    { id: 'round', shot: { kind: 'ship', turn: 1.7 }, ms: REPORT_ROUND_MS, line: 'starter.director.shipReport.orbit', sound: 'rattle', tags: VESSEL_SYSTEMS },
     { id: 'drive', shot: { kind: 'bay', system: 'DRIVE' }, ms: 2600, line: 'starter.director.shipReport.goal', sound: 'charge' },
   ],
 };
 
 function work(step: RepairStep, name: string, state: ShipState): Scene {
+  const order = state.queue.find(row => row.subject === step.module && row.stage === step.stage);
   // The stores fall under the letterbox: the shot says where it went (isolated player test 2026-11-18).
-  const cost = state.queue.find(order => order.subject === step.module && order.stage === step.stage)?.cost;
+  const cost = order?.cost;
+  // The camera stays on the bay until the repair is done, and the bay coming back takes over (owner 2026-11-18).
+  const until = order?.readyAt ? { until: order.readyAt.getTime() + WORK_GRACE_MS, yields: true } : {};
   return {
     id: `repair:${step.module}:${String(step.stage)}:work`,
     once: true,
-    beats: [{ id: 'weld', shot: { kind: 'bay', system: step.system }, ms: 2400, line: 'starter.director.repair.work', vars: { name }, sound: 'weld', ...(cost ? { spend: cost } : {}) }],
+    beats: [{ id: 'weld', shot: { kind: 'bay', system: step.system }, ms: 2400, line: 'starter.director.repair.work', vars: { name }, sound: 'weld', ...(cost ? { spend: cost } : {}), ...until }],
   };
 }
 
@@ -75,8 +84,9 @@ function done(step: RepairStep & { module: RoadModule }, name: (module: string) 
 const secondReport = (state: ShipState): Scene => ({
   id: 'shipReport2',
   once: true,
+  keep: true,
   beats: [
-    { id: 'round', shot: { kind: 'ship', turn: 1.7 }, ms: 3000, line: 'starter.director.report2.round', sound: 'rattle', tags: VESSEL_SYSTEMS },
+    { id: 'round', shot: { kind: 'ship', turn: 1.7 }, ms: REPORT_ROUND_MS, line: 'starter.director.report2.round', sound: 'rattle', tags: VESSEL_SYSTEMS },
     { id: 'drive', shot: { kind: 'bay', system: 'DRIVE' }, ms: 2600, line: jumpWindowOpen(state) ? 'starter.director.report2.ready' : 'starter.director.report2.drive', sound: 'charge', tags: ['DRIVE'] },
   ],
 });

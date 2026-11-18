@@ -1,5 +1,10 @@
 /** About the widest chip a hull tag draws ("kıvılcım atıyor" at 11 px), in CSS pixels. */
 export const TAG_REACH = 90;
+/**
+ * One name after the other, as a damage-control readout calls them, spread over the report's round
+ * (owner 2026-11-18: the names went by too fast to be read).
+ */
+export const TAG_STEP_SECONDS = 1.1;
 /** What a chip keeps clear of the screen's edge. */
 const TAG_MARGIN = 8;
 

@@ -6,10 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VESSEL_BAYS, VESSEL_NOSE_TURN, bayWorldPosition, starterShipYaw } from '../src/galaxy/mainSky.js';
 import { VESSEL_LENGTH } from '../src/galaxy/scene.js';
 import { hullSweepAt, nextLook } from '../src/galaxy/hullShift.js';
-import { SHOT_MAX_MS, playScene, resetDirector, skipBeat, useDirector, type Scene } from '../src/starter/director/director.js';
+import { SCENE_WAIT_MS, SHOT_MAX_MS, playScene, resetDirector, skipBeat, useDirector, type Scene } from '../src/starter/director/director.js';
 import { DirectorStage } from '../src/starter/director/DirectorStage.js';
 import { bayView, homeward, returnPose, shotPose } from '../src/starter/director/shotPose.js';
 import i18n from '../src/i18n/index.js';
+import { ToastProvider, useToast } from '../src/ui/Toast.js';
 
 const sound = vi.hoisted(() => vi.fn());
 vi.mock('../src/lib/sound.js', async (importActual) => ({ ...await importActual<Record<string, unknown>>(), playSound: sound }));
@@ -40,13 +41,14 @@ function Probe() {
 }
 
 describe('the director\'s queue', () => {
-  it('plays a scene beat by beat and holds no shot past three seconds', () => {
+  // Owner 2026-11-18: the report's round of the hull went by too fast; a shot may hold eight seconds.
+  it('plays a scene beat by beat and holds no shot past eight seconds', () => {
     render(<Probe />);
     act(() => { playScene(report, 'ship-1'); });
     expect(screen.getByTestId('now')).toHaveTextContent('shipReport/orbit');
     act(() => { skipBeat(); });
     expect(screen.getByTestId('now')).toHaveTextContent('shipReport/goal');
-    expect(SHOT_MAX_MS).toBe(3000);
+    expect(SHOT_MAX_MS).toBe(8000);
     act(() => { skipBeat(); });
     expect(screen.getByTestId('now')).toHaveTextContent('none');
   });
@@ -70,6 +72,84 @@ describe('the director\'s queue', () => {
     expect(screen.getByTestId('now')).toHaveTextContent('repair:REFINERY/work');
     act(() => { skipBeat(); });
     expect(screen.getByTestId('now')).toHaveTextContent('none');
+  });
+});
+
+/**
+ * Owner 2026-11-18: near the end of the first session the contact, the probe, the yard's work and its
+ * first ships played one after another, moments long past. A scene that waits out of sight keeps for
+ * a while only, and none plays once its moment has gone.
+ */
+describe('a scene that waited out of sight', () => {
+  const at = (ms: number) => { vi.setSystemTime(Date.now() + ms); };
+  const brief: Scene = { id: 'contact', once: true, beats: [{ id: 'turn', shot: { kind: 'wide' }, ms: 2000 }] };
+
+  it('plays when the sky comes back soon after', () => {
+    vi.useFakeTimers();
+    act(() => { playScene(brief, 'ship-1'); });
+    at(3000);
+    render(<><DirectorStage /><Probe /></>);
+    expect(screen.getByTestId('now')).toHaveTextContent('contact/turn');
+  });
+
+  it('is let go when it waited too long', () => {
+    vi.useFakeTimers();
+    act(() => { playScene(brief, 'ship-1'); playScene(repair, 'ship-1'); });
+    at(SCENE_WAIT_MS + 1000);
+    render(<><DirectorStage /><Probe /></>);
+    expect(screen.getByTestId('now')).toHaveTextContent('none');
+  });
+
+  it('keeps a scene that must be seen however long it waited', () => {
+    vi.useFakeTimers();
+    act(() => { playScene({ ...report, keep: true }, 'ship-1'); });
+    at(SCENE_WAIT_MS * 3);
+    render(<><DirectorStage /><Probe /></>);
+    expect(screen.getByTestId('now')).toHaveTextContent('shipReport/orbit');
+  });
+
+  it('counts the wait from when the sky was lost, for a scene that began in sight', () => {
+    vi.useFakeTimers();
+    const stage = render(<DirectorStage />);
+    render(<Probe />);
+    act(() => { playScene(brief, 'ship-1'); });
+    at(SCENE_WAIT_MS * 2);
+    stage.unmount();
+    at(3000);
+    act(() => { render(<DirectorStage />); });
+    expect(screen.getByTestId('now')).toHaveTextContent('contact/turn');
+  });
+
+  it('plays nothing whose moment has passed', () => {
+    render(<><DirectorStage /><Probe /></>);
+    act(() => { playScene(brief, 'ship-1'); playScene({ ...repair, stale: () => true }, 'ship-1'); });
+    act(() => { skipBeat(); });
+    expect(screen.getByTestId('now')).toHaveTextContent('none');
+  });
+});
+
+/** Owner 2026-11-18: the camera stays on a repair until it is done, and the bay comes back without a cut away. */
+describe('a shot held on work under way', () => {
+  const work = (until: number): Scene => ({ id: 'repair:SHIPYARD:1:work', once: false, beats: [{ id: 'weld', shot: { kind: 'bay', system: 'CARGO' }, ms: 2400, until, yields: true }] });
+
+  it('holds until the work is due, past the longest shot, and says how long is left', () => {
+    vi.useFakeTimers();
+    render(<><DirectorStage /><Probe /></>);
+    act(() => { playScene(work(Date.now() + 30_000), 'ship-1'); });
+    act(() => { vi.advanceTimersByTime(20_000); });
+    expect(screen.getByTestId('now')).toHaveTextContent('repair:SHIPYARD:1:work/weld');
+    expect(screen.getByTestId('director-left').textContent).toMatch(/10/u);
+    act(() => { vi.advanceTimersByTime(11_000); });
+    expect(screen.getByTestId('now')).toHaveTextContent('none');
+  });
+
+  it('gives way at once to the scene that shows the work done', () => {
+    vi.useFakeTimers();
+    render(<><DirectorStage /><Probe /></>);
+    act(() => { playScene(work(Date.now() + 30_000), 'ship-1'); });
+    act(() => { vi.advanceTimersByTime(5_000); });
+    act(() => { playScene(repair, 'ship-1'); });
+    expect(screen.getByTestId('now')).toHaveTextContent('repair:REFINERY/work');
   });
 });
 
@@ -131,6 +211,21 @@ describe('the stage', () => {
     render(<DirectorStage />);
     act(() => { playScene(report, 'ship-1'); });
     expect(screen.queryByTestId('director-spend')).toBeNull();
+  });
+
+  // Live play 2026-11-18: "Refinery repaired" dropped over the letterbox while the bay came back, saying
+  // what the scene was showing. News waits off a scene; a refusal still shows.
+  it('keeps news off the screen while a scene plays, and lets a refusal through', () => {
+    function News() {
+      const say = useToast();
+      return <><button type="button" onClick={() => { say('Refinery repaired'); }}>news</button><button type="button" onClick={() => { say('No room', 'error'); }}>refusal</button></>;
+    }
+    render(<ToastProvider><News /><DirectorStage /></ToastProvider>);
+    act(() => { playScene(report, 'ship-1'); });
+    fireEvent.click(screen.getByText('news'));
+    expect(screen.queryByText('Refinery repaired')).toBeNull();
+    fireEvent.click(screen.getByText('refusal'));
+    expect(screen.getByText('No room')).toBeInTheDocument();
   });
 
   it('answers each shot with its sound and a touch', () => {

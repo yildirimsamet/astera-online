@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { TAG_REACH, tagLead } from '../src/galaxy/shipTags.js';
+import { VESSEL_SYSTEMS } from '@astera/rules';
+import { TAG_REACH, TAG_STEP_SECONDS, tagLead } from '../src/galaxy/shipTags.js';
+import { REPORT_ROUND_MS } from '../src/starter/director/scenes.js';
 
 /** Live playthrough 2026-11-18: with the stern to the left the drive's chip ran off the screen. */
 describe('which way a hull tag leads', () => {
@@ -23,5 +25,15 @@ describe('which way a hull tag leads', () => {
 
   it('leaves a tag that stands above or below its pin as it is', () => {
     expect(tagLead(10, width, 0)).toBe(0);
+  });
+});
+
+// Owner 2026-11-18: the report's names went by too fast. They are called over the round, the last
+// one with time left to be read before the shot moves on.
+describe('when the report names each system', () => {
+  it('spreads the names over the round and leaves the last one time to be read', () => {
+    const last = (VESSEL_SYSTEMS.length - 1) * TAG_STEP_SECONDS * 1000;
+    expect(last).toBeGreaterThanOrEqual(REPORT_ROUND_MS * 0.4);
+    expect(REPORT_ROUND_MS - last).toBeGreaterThanOrEqual(3000);
   });
 });

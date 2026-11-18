@@ -4,7 +4,7 @@ import type { VesselView } from '../../api/starterSchemas.js';
 import { hullName } from '../../i18n/names.js';
 import { moduleName } from '../moduleName.js';
 import { REVEAL_FLEETS_MS } from '../tutorial/sightLesson.js';
-import { playScene, useDirector } from './director.js';
+import { playScene, useDirector, type Scene } from './director.js';
 import { contactScene, probeScene, rockScene, scenesFor, yardNeedScene, type ShipState } from './scenes.js';
 
 /** Before the first look is taken: the galaxy's own opening flight settles first. */
@@ -16,6 +16,29 @@ const stateOf = (ship: VesselView): ShipState => ({
   look: vesselLook({ modules: ship.modules, facts: ship.facts }),
   facts: ship.facts,
 });
+
+const has = (state: ShipState | null, module: string, stage = 1): boolean => (state?.modules[module] ?? 0) >= stage;
+const asked = (state: ShipState | null, module: string): boolean => state?.queue.some(order => order.subject === module) ?? false;
+
+/**
+ * When a scene's moment has gone (owner 2026-11-18: past moments played in a burst after a page was
+ * closed): the repair it shows done, the yard it asks for ordered, the dark lit, the contact gone.
+ */
+function withMoment(scene: Scene, now: () => { state: ShipState | null; contact: string | null; mined: boolean }): Scene {
+  const work = /^repair:([A-Z_]+):(\d+):work$/u.exec(scene.id);
+  if (work) {
+    const [, module = '', stage = '1'] = work;
+    return { ...scene, stale: () => has(now().state, module, Number(stage)) };
+  }
+  if (scene.id === 'yardNeed') return { ...scene, stale: () => has(now().state, 'SHIPYARD') || asked(now().state, 'SHIPYARD') };
+  if (scene.id === 'dark') return { ...scene, stale: () => has(now().state, 'TELESCOPE') || asked(now().state, 'TELESCOPE') };
+  if (scene.id === 'rock') return { ...scene, stale: () => now().mined };
+  if (scene.id === 'contact') {
+    const contact = now().contact;
+    return { ...scene, stale: () => now().contact !== contact };
+  }
+  return scene;
+}
 
 const MODULES = new Set<string>(['REFINERY', 'EXTRACTOR', 'DEUTERIUM_PLANT', 'VAULT', 'SURVEY', 'SHIPYARD', 'HANGAR', 'TELESCOPE', 'RADAR', 'AEGIS']);
 const isModule = (module: string): module is VesselModule => MODULES.has(module);
@@ -50,8 +73,12 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, u
   const id = ship?.id;
   const state = ship ? stateOf(ship) : null;
   const key = state ? JSON.stringify(state) : '';
-  const latest = useRef({ state, shipOpen, onCloseShip });
-  latest.current = { state, shipOpen, onCloseShip };
+  const mined = ship ? ship.facts.includes('FIRST_MINING_SENT') || ship.facts.includes('FIRST_MINING_RETURN') : true;
+  const latest = useRef({ state, shipOpen, onCloseShip, contact: unknownContactId, mined });
+  latest.current = { state, shipOpen, onCloseShip, contact: unknownContactId, mined };
+  const moment = useRef(() => latest.current);
+  /** Asks for a scene, knowing when its moment has gone. */
+  const play = useRef((scene: Scene, vesselId: string): boolean => playScene(withMoment(scene, moment.current), vesselId));
   /** The probe's first report came home during this visit: it is turned to once the report itself is here. */
   const [reportHome, setReportHome] = useState(false);
 
@@ -66,7 +93,7 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, u
         const first = latest.current.state ?? now;
         seen.current = { id, state: first };
         setShown(first.look);
-        for (const scene of scenesFor(null, first, nameOf)) playScene(scene, id);
+        for (const scene of scenesFor(null, first, nameOf)) play.current(scene, id);
       }, FIRST_LOOK_MS);
       return () => { window.clearTimeout(timer); };
     }
@@ -78,33 +105,32 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, u
     let turning = false;
     for (const scene of scenes) {
       // The hull keeps its old look for a scene that will show it turning, and only for one that plays.
-      if (playScene(scene, id) && scene.beats.some(beat => beat.id === 'hull')) turning = true;
+      if (play.current(scene, id) && scene.beats.some(beat => beat.id === 'hull')) turning = true;
     }
     if (turning) holding.current = true;
     if (!holding.current) setShown(now.look);
     return undefined;
   }, [id, key]);
 
-  const mined = ship ? ship.facts.includes('FIRST_MINING_SENT') || ship.facts.includes('FIRST_MINING_RETURN') : true;
   const telescope = (ship?.modules.TELESCOPE ?? 0) >= 1;
   useEffect(() => {
     if (!id || mined || !telescope || nearestRockId === null) return undefined;
     // The sky lands first (the reveal), then the camera goes to the rock.
-    const timer = window.setTimeout(() => { playScene(rockScene(nearestRockId), id); }, REVEAL_FLEETS_MS);
+    const timer = window.setTimeout(() => { play.current(rockScene(nearestRockId), id); }, REVEAL_FLEETS_MS);
     return () => { window.clearTimeout(timer); };
   }, [id, mined, telescope, nearestRockId]);
 
   const radar = (ship?.modules.RADAR ?? 0) >= 1;
   useEffect(() => {
     if (!id || !radar || unknownContactId === null) return;
-    playScene(contactScene({ kind: 'contact', id: unknownContactId }), id);
+    play.current(contactScene({ kind: 'contact', id: unknownContactId }), id);
   }, [id, radar, unknownContactId]);
 
   const target = probeTarget?.id;
   const targetName = probeTarget?.name;
   useEffect(() => {
     if (!id || !reportHome || target === undefined || targetName === undefined) return;
-    playScene(probeScene({ id: target, name: targetName }), id);
+    play.current(probeScene({ id: target, name: targetName }), id);
     setReportHome(false);
   }, [id, reportHome, target, targetName]);
 
@@ -113,7 +139,7 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, u
     && !ship.queue.some(order => order.subject === 'SHIPYARD');
   useEffect(() => {
     if (!id || !yardDue) return;
-    playScene(yardNeedScene(), id);
+    play.current(yardNeedScene(), id);
   }, [id, yardDue]);
 
   // The bay of a repair that came back beats as the camera reaches it.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SHOT_MAX_MS } from '../src/starter/director/director.js';
-import { contactScene, probeScene, rockScene, sceneAnnouncing, scenesFor, weldingSystems, yardNeedScene, type ShipState } from '../src/starter/director/scenes.js';
+import { WORK_GRACE_MS, contactScene, probeScene, rockScene, sceneAnnouncing, scenesFor, weldingSystems, yardNeedScene, type ShipState } from '../src/starter/director/scenes.js';
 
 /**
  * WHICH SCENE A CHANGE OF THE SHIP CALLS FOR (plan 2026-11-18 §5, Faz 5.2–5.6). The first look at the
@@ -20,6 +20,9 @@ describe('the scenes a ship calls for', () => {
     expect(report?.beats.map(beat => beat.shot.kind)).toEqual(['ship', 'bay']);
     expect(report?.beats[0]?.tags).toEqual(['REFINERY', 'SURVEY', 'DEFENCE', 'CARGO', 'DRIVE']);
     expect(report?.beats[1]?.shot).toEqual({ kind: 'bay', system: 'DRIVE' });
+    // Owner 2026-11-18: five systems named on the hull want time to be read.
+    expect(report?.beats[0]?.ms).toBe(8000);
+    expect(report?.keep).toBe(true);
   });
 
   it('opens a ship met again further on with nothing: it has seen its report', () => {
@@ -36,6 +39,14 @@ describe('the scenes a ship calls for', () => {
 
   // Isolated player test 2026-11-18: a player saw the stores fall from 1,217 to 417 under the letterbox,
   // never tied it to the repair they had ordered, and quit. The scene says what the repair took.
+  // Owner 2026-11-18: the shot stays on the bay until the repair is done; the done scene takes over from it.
+  it('holds the repair\'s shot until it is due, and lets the done scene cut in', () => {
+    const readyAt = new Date('2026-11-18T10:00:30.000Z');
+    const [work] = scenesFor(opening, { ...opening, queue: [{ subject: 'REFINERY', stage: 2, readyAt }] }, name);
+    expect(work?.beats[0]?.until).toBe(readyAt.getTime() + WORK_GRACE_MS);
+    expect(work?.beats[0]?.yields).toBe(true);
+  });
+
   it('says what the repair took from the stores, as it starts', () => {
     const cost = { alloy: 800, crystal: 300, deuterium: 0 };
     const [work] = scenesFor(opening, { ...opening, queue: [{ subject: 'REFINERY', stage: 2, cost }] }, name);
@@ -134,6 +145,8 @@ describe('the scenes after the road\'s first half', () => {
     expect(report?.beats.map(beat => beat.shot.kind)).toEqual(['ship', 'bay']);
     expect(report?.beats[0]?.tags).toEqual(['REFINERY', 'SURVEY', 'DEFENCE', 'CARGO', 'DRIVE']);
     expect(report?.beats[0]?.line).toBe('starter.director.report2.round');
+    expect(report?.beats[0]?.ms).toBe(8000);
+    expect(report?.keep).toBe(true);
     expect(report?.beats[1]?.shot).toEqual({ kind: 'bay', system: 'DRIVE' });
     expect(report?.beats[1]?.tags).toEqual(['DRIVE']);
     expect(report?.beats[1]?.line).toBe('starter.director.report2.drive');

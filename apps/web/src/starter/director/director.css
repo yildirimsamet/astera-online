@@ -17,6 +17,7 @@
 .director-spend__item--crystal { color: var(--gk-crystal); }
 .director-spend__item--deuterium { color: var(--gk-deut); }
 @keyframes director-spend { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
+.director-left { color: #ffffffa6; font-size: 12px; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
 .director-skip { color: #ffffff73; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
 @keyframes director-top { from { transform: translateY(-100%); } to { transform: none; } }
 @keyframes director-bottom { from { transform: translateY(100%); } to { transform: none; } }

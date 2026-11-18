@@ -9,7 +9,14 @@ import type { SoundCue } from '../../lib/sound.js';
  * by a tap (owner 2026-11-07: never more than ten seconds without the player's hand). A scene plays
  * once for a ship, on any visit; while one plays, the next waits its turn.
  */
-export const SHOT_MAX_MS = 3000;
+export const SHOT_MAX_MS = 8000;
+/** A shot held on work under way never outstays this, whatever the work (owner 2026-11-18: the yard's 30 s). */
+export const HOLD_MAX_MS = 45_000;
+/**
+ * How long a scene keeps while the sky is out of sight (a page open over it). Owner 2026-11-18: moments
+ * long past played in a burst on the way back; a short look away still comes back to its moment.
+ */
+export const SCENE_WAIT_MS = 20_000;
 
 /** What a shot looks at. The galaxy turns it into a place (`shotPose`). */
 export type ShotTarget =
@@ -41,11 +48,23 @@ export interface Beat {
   tags?: readonly VesselSystem[];
   /** What the moment took from the stores, shown under the line: the stores' own art and a minus. */
   spend?: Readonly<Record<SpentResource, number>>;
+  /** Work under way: the shot holds until this moment (ms since the epoch), the time left said on the band. */
+  until?: number;
+  /** Gives way at once to a scene asked while it plays (the work shown done takes over from the work). */
+  yields?: boolean;
 }
 
 export type SpentResource = 'alloy' | 'crystal' | 'deuterium';
 
-export interface Scene { id: string; once: boolean; beats: readonly Beat[] }
+export interface Scene {
+  id: string;
+  once: boolean;
+  beats: readonly Beat[];
+  /** Seen however long it waited out of sight (the ship's reports). */
+  keep?: boolean;
+  /** Its moment has gone (the repair is done, the yard ordered): it is let go unplayed. */
+  stale?: () => boolean;
+}
 
 export interface Playing { scene: Scene; beat: Beat; index: number; vesselId: string; key: number }
 
@@ -67,9 +86,15 @@ function remember(vesselId: string, sceneId: string): void {
   } catch { /* This visit still remembers it: the scene is no longer queued. */ }
 }
 
+interface Waiting { scene: Scene; vesselId: string; askedAt: number }
+
 let now: Playing | null = null;
-let queue: { scene: Scene; vesselId: string }[] = [];
+let nowAskedAt = 0;
+let queue: Waiting[] = [];
 let counter = 0;
+let stages = 0;
+/** When the sky was last lost with something still to show: the wait of what began in sight counts from here. */
+let lostAt: number | null = null;
 const listeners = new Set<() => void>();
 const notify = (): void => { listeners.forEach(listener => { listener(); }); };
 const watch = (listener: () => void): (() => void) => {
@@ -77,17 +102,31 @@ const watch = (listener: () => void): (() => void) => {
   return () => { listeners.delete(listener); };
 };
 
-function start(scene: Scene, vesselId: string, index: number): void {
+const shotMs = (beat: Beat): number => (beat.until === undefined
+  ? Math.min(beat.ms, SHOT_MAX_MS)
+  : Math.min(Math.max(beat.ms, beat.until - Date.now()), HOLD_MAX_MS));
+
+function start(scene: Scene, vesselId: string, index: number, askedAt: number): void {
   const beat = scene.beats[index];
   if (!beat) { now = null; return; }
   counter += 1;
-  now = { scene, beat: { ...beat, ms: Math.min(beat.ms, SHOT_MAX_MS) }, index, vesselId, key: counter };
+  nowAskedAt = askedAt;
+  now = { scene, beat: { ...beat, ms: shotMs(beat) }, index, vesselId, key: counter };
 }
 
+/** The next scene still worth showing; one whose moment has gone is let go. */
 function next(): void {
-  const waiting = queue.shift();
-  if (waiting) start(waiting.scene, waiting.vesselId, 0);
+  let waiting = queue.shift();
+  while (waiting?.scene.stale?.() === true) waiting = queue.shift();
+  if (waiting) start(waiting.scene, waiting.vesselId, 0, waiting.askedAt);
   else now = null;
+}
+
+/** Out of sight past its keep, or past its moment: not shown now, nor ever (it is remembered as asked). */
+function outlived(scene: Scene, askedAt: number, at: number): boolean {
+  if (scene.stale?.() === true) return true;
+  if (scene.keep === true) return false;
+  return at - Math.max(askedAt, lostAt ?? askedAt) > SCENE_WAIT_MS;
 }
 
 /** Ask for a scene. A scene already played for this ship, playing or waiting, asks for nothing. */
@@ -98,8 +137,13 @@ export function playScene(scene: Scene, vesselId: string): boolean {
   if (now?.scene.id === scene.id || queue.some(waiting => waiting.scene.id === scene.id)) return false;
   // Remembered as it is asked for: a scene cut short by a closed app is not owed again.
   if (scene.once) remember(vesselId, scene.id);
-  if (now) queue.push({ scene, vesselId });
-  else start(scene, vesselId, 0);
+  const askedAt = Date.now();
+  if (!now) start(scene, vesselId, 0, askedAt);
+  else {
+    queue.push({ scene, vesselId, askedAt });
+    // Work under way gives way to what it was waiting for (owner 2026-11-18: no cut away between them).
+    if (now.beat.yields === true && now.index + 1 >= now.scene.beats.length) next();
+  }
   notify();
   return true;
 }
@@ -107,7 +151,7 @@ export function playScene(scene: Scene, vesselId: string): boolean {
 /** The shot has run, or a tap ended it. */
 export function skipBeat(): void {
   if (!now) return;
-  if (now.index + 1 < now.scene.beats.length) start(now.scene, now.vesselId, now.index + 1);
+  if (now.index + 1 < now.scene.beats.length) start(now.scene, now.vesselId, now.index + 1, nowAskedAt);
   else next();
   notify();
 }
@@ -119,6 +163,7 @@ export const scenePlayedFor = (vesselId: string, sceneId: string): boolean => pl
 export function resetDirector({ keepMemory = false }: { keepMemory?: boolean } = {}): void {
   now = null;
   queue = [];
+  lostAt = null;
   if (!keepMemory) {
     try {
       Object.keys(window.localStorage).filter(key => key.startsWith('astera.director.')).forEach(key => { window.localStorage.removeItem(key); });
@@ -131,12 +176,24 @@ export const directorNow = (): Playing | null => now;
 
 export const useDirector = (): Playing | null => useSyncExternalStore(watch, directorNow);
 
-let stages = 0;
-/** The letterbox is mounted over the sky; the returned function takes it down. */
+/**
+ * The letterbox is mounted over the sky; the returned function takes it down. Coming back, whatever
+ * waited out of sight too long, or past its moment, is let go first.
+ */
 export function raiseStage(): () => void {
   stages += 1;
+  if (stages === 1) {
+    const at = Date.now();
+    queue = queue.filter(waiting => !outlived(waiting.scene, waiting.askedAt, at));
+    if (now && outlived(now.scene, nowAskedAt, at)) next();
+    lostAt = null;
+  }
   notify();
-  return () => { stages -= 1; notify(); };
+  return () => {
+    stages -= 1;
+    if (stages === 0 && (now !== null || queue.length > 0)) lostAt = Date.now();
+    notify();
+  };
 }
 const onScreen = (): boolean => now !== null && stages > 0;
 /**

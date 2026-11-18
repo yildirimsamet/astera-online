@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { haptic } from '../../lib/haptics.js';
 import { playSound } from '../../lib/sound.js';
 import { full } from '../../lib/format.js';
+import { durationPrecise, useNow } from '../../lib/time.js';
 import { RESOURCE_ART } from '../../ui/assets.js';
+import { useSilenceToasts } from '../../ui/Toast.js';
 import { raiseStage, skipBeat, useDirector, type Beat, type SpentResource } from './director.js';
 import './director.css';
 
@@ -39,12 +41,14 @@ export function DirectorStage() {
     <div data-testid="director-stage" data-scene={now.scene.id} data-beat={now.beat.id} className="director-stage"
       onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); skipBeat(); }}
       onClick={(event) => { event.stopPropagation(); }}>
+      <Quiet />
       <div data-letterbox="top" className="director-band director-band--top">
         <span className="director-skip">{t('starter.director.skip')}</span>
       </div>
       <div data-letterbox="bottom" className="director-band director-band--bottom">
         <p role="status" aria-live="polite" key={now.key} className="director-line gk-display">{line ? t(line, { ...now.beat.vars }) : ''}</p>
         {now.beat.spend && <Spent key={`spend:${String(now.key)}`} spend={now.beat.spend} />}
+        {now.beat.until !== undefined && <Left until={now.beat.until} />}
       </div>
     </div>
   );
@@ -68,4 +72,16 @@ function Spent({ spend }: { spend: NonNullable<Beat['spend']> }) {
       ))}
     </div>
   );
+}
+
+/** Work under way says how long is left, so a held shot is a wait with an end, and a tap still skips it. */
+function Left({ until }: { until: number }) {
+  const at = useNow(1_000);
+  return <span data-testid="director-left" className="director-left gk-num">{durationPrecise(Math.max(0, until - at) / 60_000)}</span>;
+}
+
+/** News waits off a scene (live play 2026-11-18: "repaired" dropped over the bay coming back); a refusal still shows. */
+function Quiet() {
+  useSilenceToasts(true);
+  return null;
 }

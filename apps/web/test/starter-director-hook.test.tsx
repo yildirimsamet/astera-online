@@ -50,6 +50,30 @@ describe('the first session, directed', () => {
     expect(playing()).toBe('repair:REFINERY:2:work/weld');
   });
 
+  // Owner 2026-11-18: moments long past played in a burst; a waiting scene knows when its moment has gone.
+  it('knows when the shot of a repair has outlived the repair', () => {
+    const first = props({});
+    const view = renderHook(useStarterScenes, { initialProps: first });
+    act(() => { vi.advanceTimersByTime(FIRST_LOOK_MS); skipBeat(); skipBeat(); });
+    view.rerender({ ...first, ship: ship(openingProgress(), [order('REFINERY', 2)]) });
+    const work = directorNow();
+    expect(work?.scene.id).toBe('repair:REFINERY:2:work');
+    expect(work?.scene.stale?.()).toBe(false);
+    view.rerender({ ...first, ship: ship({ modules: { REFINERY: 2 }, facts: [] }) });
+    expect(work?.scene.stale?.()).toBe(true);
+  });
+
+  it('knows the empty yard is no news once the yard is ordered', () => {
+    const progress: VesselProgress = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 }, facts: ['FIRST_MINING_SENT'] };
+    const first = props({ ship: ship(progress), probing: true });
+    const view = renderHook(useStarterScenes, { initialProps: first });
+    act(() => { vi.advanceTimersByTime(FIRST_LOOK_MS); });
+    const yard = directorNow();
+    expect(yard?.scene.id).toBe('yardNeed');
+    view.rerender({ ...first, ship: ship(progress, [order('SHIPYARD', 1)]) });
+    expect(yard?.scene.stale?.()).toBe(true);
+  });
+
   it('beats the bay of a repair as the camera reaches it', () => {
     const onAwaken = vi.fn();
     const first = props({ onAwaken, ship: ship(openingProgress(), [order('REFINERY', 2)]) });

@@ -9,7 +9,7 @@ import { BayReturnFx, RunningLights, SparkStreaks, WeldFx } from './BayFx.js';
 import { Exhaust, Hull } from './Fleets.js';
 import { HULL_LIGHT } from './flightVisual.js';
 import { HitboxMaterial } from './hitboxDebug.js';
-import { tagLead } from './shipTags.js';
+import { TAG_STEP_SECONDS, tagLead } from './shipTags.js';
 import { HULL_SHIFT_SECONDS, hullSweepAt, nextLook } from './hullShift.js';
 import { VESSEL_BAYS, VESSEL_NOSE_TURN, damageSpots, starterShipYaw, systemCondition, vesselHitBox, vesselLights, vesselModelFile, type DamageSpot, type SystemCondition, type VesselLights } from './mainSky.js';
 import type { Vec3Tuple } from './scene.js';
@@ -82,8 +82,6 @@ function HullShift({ hull, from, to, damage, onDone }: {
 const TAG_OFFSET: Record<VesselSystem, readonly [number, number]> = { SURVEY: [0, -46], CARGO: [0, 46], REFINERY: [42, -24], DEFENCE: [40, 26], DRIVE: [-44, -10] };
 /** Under the letterbox (z 80) and every sheet, over the galaxy's own labels. */
 const TAG_LAYER: [number, number] = [14, 14];
-/** One name after the other, as a damage-control readout calls them. */
-const TAG_STEP_SECONDS = 0.36;
 
 /** Where a tag's chip stands from its pin, and the lead's angle to it. */
 const tagStyle = (dx: number, dy: number): Record<string, string> => ({
