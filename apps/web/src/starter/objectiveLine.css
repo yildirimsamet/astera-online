@@ -1,0 +1,80 @@
+/*
+  THE NEXT STEP ON THE GALAXY (owner phone playtest 2026-11-18, item 22): the kit's folded strip — the
+  cut plate in the player's colour, a coin for the kind of step, the "Next" label over the step itself,
+  and the kit's open arrow where a press takes the player there. A wait rests in plain metal.
+*/
+.objective-line {
+  --cut: 8px;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 44px;
+  overflow: hidden;
+  font-family: var(--gk-font-text);
+  color: var(--gk-ink);
+  animation: gk-rise var(--gk-settle) var(--gk-pop) both;
+}
+.objective-line__press {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 5px 10px 5px 8px;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+button.objective-line__press:active { transform: translateY(1px) scale(0.99); }
+.objective-line__coin {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--gk-self);
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 45%, transparent);
+}
+.objective-line__coin .gk-glyph { width: 15px; height: 15px; }
+.objective-line[data-rest] .objective-line__coin { color: var(--gk-ink-3); }
+.objective-line__text { display: grid; min-width: 0; }
+.objective-line__eyebrow { color: var(--gk-self); }
+.objective-line__title {
+  font-size: var(--gk-t-small);
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--gk-ink);
+  overflow-wrap: anywhere;
+}
+.objective-line[data-rest] .objective-line__title { color: var(--gk-ink-2); font-weight: 500; }
+.objective-line__gain { color: var(--gk-self); font-weight: 700; white-space: nowrap; }
+.objective-line__open { display: grid; color: var(--gk-self); }
+.objective-line__open .gk-glyph { width: 14px; height: 14px; }
+.objective-line__open--up { color: var(--gk-alloy-hi, var(--gk-self)); animation: objective-line-nudge 1.6s ease-in-out infinite; }
+@keyframes objective-line-nudge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.objective-line__offers {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px 0 10px;
+  border-left: 1px solid color-mix(in srgb, var(--gk-self) 28%, transparent);
+  color: var(--gk-self);
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+}
+.objective-line__offers-turn { display: grid; transition: transform 0.2s; }
+.objective-line__offers-turn .gk-glyph { width: 13px; height: 13px; }
+.objective-line__offers-turn--open { transform: rotate(180deg); }
+/* A new step crosses the plate once: a hard light edge, not a glow. */
+.objective-line__sweep {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 40%;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--gk-self) 22%, transparent) 50%, transparent);
+  animation: objective-line-sweep 1.1s ease-out 1 both;
+}
+@keyframes objective-line-sweep { from { transform: translateX(-100%); } to { transform: translateX(260%); } }

@@ -11,7 +11,7 @@ import { useProjected } from '../lib/projection.js';
 import { playSound } from '../lib/sound.js';
 import { clockTime, duration, durationPrecise, useNow } from '../lib/time.js';
 import { RESOURCE_ART } from '../ui/assets.js';
-import { Glyph, Plate, SectionTag } from '../game-ui/index.js';
+import { Glyph, Plate, SectionTag, type GlyphId } from '../game-ui/index.js';
 import { Icon, type IconId } from '../v2/icons.js';
 import { vesselToPlanetView } from './adapter.js';
 import type { HuntStage } from './hunt.js';
@@ -22,6 +22,7 @@ import { goalRepair, useStarterGoal, useStarterLesson } from './tutorial/visualG
 import { repairWait } from './tutorial/script.js';
 import { repairGainIcon, stepEffects } from './steps.js';
 import { holdFull } from './hold.js';
+import './objectiveLine.css';
 
 const progressOf = (vessel: VesselView) => ({ modules: vessel.modules, facts: vessel.facts });
 
@@ -289,25 +290,29 @@ export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour,
     last.current = key;
   }, [key]);
   if (covered) return null;
+  // The kit's strip (owner phone playtest 2026-11-18, item 22): a coin that says what kind of step it is,
+  // the "Next" label over the step, and the kit's own open arrow where a press takes the player there.
+  const glyph: GlyphId = line.rest ? 'timed' : tap === 'rock' ? 'mine' : tap === 'neighbour' ? 'eye' : tap === 'outpost' ? 'target'
+    : tap === 'reports' ? 'mail' : tap === 'up' ? 'up' : tap === 'ship' ? 'repair' : 'next';
   const body = (
     <>
-      <span aria-hidden="true" className="relative grid size-6 shrink-0 place-items-center">
-        <span className={`absolute inset-0 rounded-full border ${line.rest ? 'border-v2-ink-3/50' : 'animate-[ember_1.8s_ease-in-out_infinite] border-v2-self/70'}`} />
-        <span className={`size-1.5 rounded-full ${line.rest ? 'bg-v2-ink-3' : 'bg-v2-self shadow-[0_0_8px_var(--color-v2-self)]'}`} />
+      <span aria-hidden="true" className="objective-line__coin">
+        {repair ? <Icon id={repairGainIcon(repair)} className="size-4" /> : <Glyph id={glyph} />}
       </span>
-      <span className="min-w-0 flex-1 text-left text-caption leading-snug text-v2-ink">
-        {!line.rest && <span className="v2-legend mr-1.5 text-v2-self">{t('starter.next')}</span>}
-        {line.text}
-        {short && <span className="ml-2 inline-flex items-center gap-1 text-v2-self"><Icon id="i-chev" className="size-3"/><Icon id={repair ? repairGainIcon(repair) : 'i-fleet'} className="size-4"/></span>}
-        {!short && opens?.kind === 'feature' && <span className="ml-1.5 whitespace-nowrap font-semibold text-v2-self">· {t(`starter.feature.${opens.feature}.gain`)}</span>}
+      <span className="objective-line__text">
+        {!line.rest && <span className="gk-label objective-line__eyebrow">{t('starter.next')} </span>}
+        <span className="objective-line__title">
+          {line.text}
+          {!short && opens?.kind === 'feature' && <span className="objective-line__gain"> · {t(`starter.feature.${opens.feature}.gain`)}</span>}
+        </span>
       </span>
-      {tap === 'up' && <Icon id="i-chev" className="size-4 shrink-0 -rotate-90 animate-[nudge_1.6s_ease-in-out_infinite] text-v2-alloy" />}
-      {tap !== null && tap !== 'up' && <Icon id="i-chev" className="size-4 shrink-0 text-v2-self" />}
+      {tap === 'up' && <span aria-hidden="true" className="objective-line__open objective-line__open--up"><Glyph id="up" /></span>}
+      {tap !== null && tap !== 'up' && <span aria-hidden="true" className="objective-line__open"><Glyph id="next" /></span>}
     </>
   );
-  const frame = `relative flex w-full items-stretch overflow-hidden rounded-control border bg-v2-deep/90 font-v2-ui shadow-lg animate-[line-in_0.45s_ease-out_both] ${line.rest ? 'border-v2-line-hi' : 'border-v2-self/40'}`;
-  const inner = 'flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-1.5';
-  const sweep = <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-1/2 animate-[sweep_1.1s_ease-out_1_both] bg-gradient-to-r from-transparent via-v2-self/25 to-transparent" />;
+  const frame = `objective-line gk-cut ${line.rest ? '' : 'gk-cut--self'}`;
+  const inner = 'objective-line__press';
+  const sweep = <span aria-hidden="true" className="objective-line__sweep" />;
   const marks = { 'data-testid': 'ship-objective', 'data-kind': objective.kind, 'data-guide': 'objective', ...(line.rest ? { 'data-rest': '' } : {}) };
   const press = tap === 'ship' ? onOpenShip : tap === 'neighbour' ? onFocusNeighbour : tap === 'rock' ? onFocusRock
     : tap === 'outpost' && onFocusOutpost && outpost ? () => { onFocusOutpost(outpost); } : tap === 'reports' ? onOpenReports : undefined;
@@ -330,7 +335,7 @@ export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour,
           </Plate>
         </section>
       )}
-      <div key={key} className={frame}>
+      <div key={key} className={frame} data-rest={line.rest ? '' : undefined}>
         {sweep}
         {press
           ? <button type="button" {...marks} onClick={() => { haptic('tap'); press(); }} className={inner}>{body}</button>
@@ -338,9 +343,9 @@ export function ObjectiveLine({ vessel, fetchedAt, onOpenShip, onFocusNeighbour,
         {choosing && (
           <button type="button" aria-label={t('starter.advice.open')} aria-expanded={showing}
             onClick={() => { haptic('tap'); setOpen(value => !value); }}
-            className="relative flex shrink-0 items-center gap-1 border-l border-v2-self/25 px-2.5 font-v2-mono text-micro text-v2-self">
-            <Icon id="i-chev" className={`size-3.5 transition-transform duration-200 ${showing ? 'rotate-90' : '-rotate-90'}`} />
-            {rows.length}
+            className="objective-line__offers">
+            <span aria-hidden="true" className={`objective-line__offers-turn ${showing ? 'objective-line__offers-turn--open' : ''}`}><Glyph id="up" /></span>
+            <span className="gk-num">{rows.length}</span>
           </button>
         )}
       </div>
