@@ -1,0 +1,41 @@
+/* THE LANDING'S TWO MOMENTS (owner phone playtest 2026-11-18, item 15): the repairs' reward, then the board.
+   The window scrolls within the screen on a short phone; its ribbon and its presses stay put. */
+.lr-body {
+  display: grid;
+  gap: 10px;
+  max-height: calc(100dvh - 200px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.lr-reward { display: grid; gap: 10px; justify-items: center; text-align: center; }
+/* What is taken, at the size of a prize: the resources' own art on a dark plate between two rules. */
+.lr-purse {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  padding: 8px 14px;
+  border-block: 1px solid color-mix(in srgb, var(--gk-self) 30%, transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--gk-metal-3) 80%, transparent) 20%, color-mix(in srgb, var(--gk-metal-3) 80%, transparent) 80%, transparent);
+}
+.lr-purse__part { display: inline-flex; align-items: center; gap: 6px; font-family: var(--gk-font-display, var(--gk-font-text)); font-size: var(--gk-t-lead); font-weight: 800; }
+.lr-purse__part img { width: 28px; height: 28px; object-fit: contain; }
+.lr-purse__part--alloy { color: var(--gk-alloy-hi); }
+.lr-purse__part--crystal { color: var(--gk-crystal, #8fd3ff); }
+/* Taken: one line over the board, the purse in small. */
+.lr-granted {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+  animation: gk-rise var(--gk-settle) var(--gk-pop) both;
+}
+.lr-granted__mark { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gk-self); color: var(--gk-void, #050912); }
+.lr-granted__mark .gk-glyph { width: 12px; height: 12px; }
+.lr-granted .lr-purse { padding: 0; border: 0; background: none; gap: 10px; }
+.lr-granted .lr-purse__part { font-size: var(--gk-t-small); gap: 3px; }
+.lr-granted .lr-purse__part img { width: 16px; height: 16px; }

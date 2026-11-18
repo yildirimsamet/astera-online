@@ -177,7 +177,7 @@ export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; 
     );
   }
   // The landing pays first (plan 2026-11-06 §7.1 R1); the first-week note waits until it is closed.
-  if (rewards === 'open') return <LandingRewards onPanel={onPanel} onDone={() => { setRewards('done'); }} />;
+  if (rewards === 'open') return <LandingRewards onDone={() => { setRewards('done'); }} />;
   if (!tip) return null;
   // Under the top bar and any note it holds (`--v2-top-h` measures both): two notes never stack (owner 2026-11-18).
   return (

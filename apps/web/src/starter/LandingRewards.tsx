@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClaimAllRewards, useRewards, useWelcome } from '../api/queries.js';
-import { CostLine, Dialog, GameButton } from '../game-ui/index.js';
+import { Dialog, GameButton, Glyph } from '../game-ui/index.js';
+import { compact } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { playSound } from '../lib/sound.js';
+import { RESOURCE_ART } from '../ui/assets.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { WelcomeWeek } from '../screens/WelcomeWeek.js';
-import type { ShellRoute } from '../v2/shell/GameShell.js';
+import './landingRewards.css';
 
 const DAY_MS = 86_400_000;
 const KEY = 'astera:landing-rewards';
@@ -27,24 +29,42 @@ export function useLandingRewardsDue(landedAtMs: number | undefined, nowMs: numb
   return landedAtMs !== undefined && nowMs - landedAtMs < 7 * DAY_MS && (waiting >= 2 || firstBox) && !shownBefore();
 }
 
+interface Purse { alloy: number; crystal: number }
+
+/** What the repairs are worth, in the resources' own art and size: the thing taken, not a line of cost. */
+function PurseRow({ purse, testId }: { purse: Purse; testId: string }) {
+  const { t } = useTranslation();
+  return (
+    <span data-testid={testId} className="lr-purse">
+      {(['alloy', 'crystal'] as const).filter(resource => purse[resource] > 0).map(resource => (
+        <span key={resource} className={`lr-purse__part lr-purse__part--${resource} gk-num`}>
+          <img src={RESOURCE_ART[resource]} alt={t(`vocabulary.resource.${resource}`)} draggable={false} />
+          {compact(purse[resource])}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 /**
- * THE LANDING PAYS (plan 2026-11-06 §7, §7.1 R1). The first-season start earns several tiers at once and a
- * gift icon was all that said so. One moment after the landing card: what the ship's work is worth here,
- * all of it in one move, and where to spend it. The seven commander boxes begin here too, on the same
- * board the reward panel keeps (plan 2026-11-18 S6, 5.8): one window, never a third one after it.
+ * THE LANDING PAYS (plan 2026-11-06 §7, §7.1 R1; plan 2026-11-18 S6). One window after the landing card, and
+ * in it two moments one after the other (owner phone playtest 2026-11-18, item 15: "Take all · 7" read as all
+ * seven boxes with one ready, and "Upgrade" led away from them): first what the ship's repairs are worth
+ * here, taken with one press; then the seven commander boxes, the first ready to open where it stands.
  * Once an account; Later closes it for good.
  */
-export function LandingRewards({ onPanel, onDone }: { onPanel: ShellRoute; onDone: () => void }) {
+export function LandingRewards({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation();
   const say = useToast();
   const { data } = useRewards();
+  const boxes = useWelcome().data?.welcome != null;
   const claimAll = useClaimAllRewards();
-  const [granted, setGranted] = useState<{ alloy: number; crystal: number } | null>(null);
+  const [granted, setGranted] = useState<Purse | null>(null);
   const ready = (data?.chains ?? []).flatMap(chain => chain.tiers).filter(tier => tier.state === 'claimable');
-  // Without tiers to take the board is the whole moment, and the ribbon names it.
-  const tiers = ready.length > 0 || granted !== null;
   const sum = ready.reduce((total, tier) => ({ alloy: total.alloy + tier.alloy, crystal: total.crystal + tier.crystal }), { alloy: 0, crystal: 0 });
-  const close = () => { remember(); onDone(); };
+  // The reward first, while there is one to take; then the board.
+  const rewarding = ready.length > 0 && granted === null;
+  const close = () => { playSound('tap'); haptic('tap'); remember(); onDone(); };
   const take = () => {
     haptic('thunk');
     claimAll.mutate(undefined, {
@@ -52,24 +72,32 @@ export function LandingRewards({ onPanel, onDone }: { onPanel: ShellRoute; onDon
       onError: (error) => { say(describe(error), 'error'); },
     });
   };
+  const ribbon = rewarding || !boxes ? t('starter.landingRewards.ribbon') : t('rewards.welcome.board');
   return (
     <div data-testid="landing-rewards" className="gk fixed inset-0 z-50">
-      <Dialog ribbon={tiers ? t('starter.landingRewards.ribbon') : t('rewards.welcome.board')} tone="good" rays sound="rankup" onBack={close}
-        actions={granted
-          ? <GameButton tone="self" wide heavy glyph="up" onPress={() => { playSound('tap'); haptic('tap'); close(); onPanel('planet', undefined, undefined, { group: 'grow' }); }}>
-              {t('starter.landingRewards.spend')}
-            </GameButton>
-          : <>
-              {tiers && (
-                <GameButton tone="self" wide heavy glyph="crate" pending={claimAll.isPending} onPress={take}>
-                  {t('starter.landingRewards.take', { count: ready.length })}
-                </GameButton>
-              )}
-              <GameButton tone="ghost" wide onPress={() => { playSound('tap'); haptic('tap'); close(); }}>{t('starter.landingRewards.later')}</GameButton>
-            </>}>
-        {tiers && <p className="gk-copy">{granted ? t('starter.landingRewards.spent') : t('starter.landingRewards.body', { count: ready.length })}</p>}
-        {tiers && <CostLine cost={granted ?? sum} />}
-        <WelcomeWeek titled={tiers} />
+      <Dialog ribbon={ribbon} tone="info" rays sound="rankup" onBack={() => { remember(); onDone(); }}
+        actions={rewarding
+          ? <>
+              <GameButton tone="self" wide heavy glyph="crate" pending={claimAll.isPending} onPress={take}>{t('starter.landingRewards.take')}</GameButton>
+              <GameButton tone="ghost" wide onPress={close}>{t('starter.landingRewards.later')}</GameButton>
+            </>
+          : <GameButton tone="ghost" wide onPress={close}>{t(granted ? 'starter.landingRewards.continue' : 'starter.landingRewards.later')}</GameButton>}>
+        <div className="lr-body">
+          {rewarding && (
+            <section className="lr-reward">
+              <p className="gk-copy">{t('starter.landingRewards.body', { count: ready.length })}</p>
+              <PurseRow purse={sum} testId="landing-reward-sum" />
+            </section>
+          )}
+          {granted && (
+            <p data-testid="landing-granted" className="lr-granted">
+              <span className="lr-granted__mark" aria-hidden="true"><Glyph id="check" /></span>
+              <span>{t('starter.landingRewards.spent')}</span>
+              <PurseRow purse={granted} testId="landing-granted-purse" />
+            </p>
+          )}
+          {!rewarding && <WelcomeWeek titled={false} />}
+        </div>
       </Dialog>
     </div>
   );

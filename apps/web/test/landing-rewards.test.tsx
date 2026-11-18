@@ -48,18 +48,23 @@ afterEach(() => { cleanup(); });
  * is worth here, takes it all in one move, and points at the first upgrades to spend it on.
  */
 describe('the landing reward moment', () => {
-  it('says how many rewards wait, takes them in one move, then points at the first upgrades', async () => {
+  // Owner phone playtest 2026-11-18 (item 15): "Take all · 7" read as all seven boxes with one box ready, and
+  // "Upgrade" after it led away from the boxes. The repairs' reward is taken first, with one press that names
+  // no count, and the moment goes on to the boxes; nothing in it leads elsewhere.
+  it('says what the repairs are worth, takes it with one press, then says it is in the stores', async () => {
     const { fetcher, onPanel } = harness({ rewards: waiting(3) });
     const moment = await screen.findByTestId('landing-rewards');
     expect(moment).toHaveTextContent(/3 rewards/u);
     expect(moment).toHaveTextContent('900');
-    fireEvent.click(within(moment).getByRole('button', { name: /Take all · 3/u }));
+    expect(within(moment).queryByRole('button', { name: /Take all/u })).toBeNull();
+    fireEvent.click(within(moment).getByRole('button', { name: 'Take the reward' }));
     await waitFor(() => { expect(claimedAll(fetcher)).toHaveLength(1); });
     expect(haptics.haptic).toHaveBeenCalledWith('thunk');
     await within(moment).findByText(/In your stores/u);
     expect(sound.playSound).toHaveBeenCalledWith('unseal');
-    fireEvent.click(await within(moment).findByRole('button', { name: /Upgrade/u }));
-    expect(onPanel).toHaveBeenCalledWith('planet', undefined, undefined, { group: 'grow' });
+    expect(within(moment).queryByRole('button', { name: /Upgrade/u })).toBeNull();
+    fireEvent.click(within(moment).getByRole('button', { name: 'Continue' }));
+    expect(onPanel).not.toHaveBeenCalled();
     expect(screen.queryByTestId('landing-rewards')).toBeNull();
   });
 
@@ -82,13 +87,17 @@ describe('the landing reward moment', () => {
     await waitFor(() => { expect(screen.queryByTestId('landing-rewards')).toBeNull(); });
   });
 
-  // Plan 2026-11-18 §6 (S6, 5.8): the seven boxes start at the landing, in this same moment, never a window of their own.
-  it('holds the seven boxes too, the first one ready to open where it stands', async () => {
+  // Plan 2026-11-18 §6 (S6, 5.8): the seven boxes start at the landing, in this same moment, never a window of
+  // their own; owner phone playtest 2026-11-18 (item 15): one after the other, the reward first, then the board.
+  it('takes the repairs\' reward first, then shows the seven boxes, the first one ready to open where it stands', async () => {
     harness({ rewards: waiting(3), welcome: firstBox });
     const moment = await screen.findByTestId('landing-rewards');
+    expect(within(moment).queryByTestId('welcome-week')).toBeNull();
+    fireEvent.click(within(moment).getByRole('button', { name: 'Take the reward' }));
     const board = await within(moment).findByTestId('welcome-week');
     expect(within(board).getByTestId('welcome-box-1').dataset.state).toBe('ready');
-    expect(within(moment).getByRole('button', { name: /Take all · 3/u })).toBeInTheDocument();
+    expect(within(moment).getByText(/In your stores/u)).toBeInTheDocument();
+    expect(within(moment).getAllByText(/New Commander · 7 Boxes/u)).toHaveLength(1);
   });
 
   it('comes for the first box alone, with the board as the whole moment', async () => {

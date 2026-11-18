@@ -1,22 +1,23 @@
 /* NEW COMMANDER 7 DAYS: seven supply crates on one board (owner 2026-11-18). Bays, not cards: each crate
-   stands on its own deck; the one to open is framed in alloy; the seventh is the wide gold crate. */
+   stands on its own deck; the one to open is framed in the player's colour, as the press under it is; the
+   seventh is the wide gold crate (owner phone playtest 2026-11-18, item 15: one family of colours, the kit's). */
 .ww {
   position: relative; display: flex; flex-direction: column; gap: 6px; padding: 8px;
-  border: 1px solid color-mix(in oklab, var(--color-v2-alloy) 28%, var(--color-v2-line)); border-radius: 10px;
-  background: linear-gradient(180deg, color-mix(in oklab, var(--color-v2-panel) 90%, var(--color-v2-alloy)), var(--color-v2-deep));
+  border: 1px solid var(--gk-metal-edge, var(--color-v2-line)); border-radius: 10px;
+  background: linear-gradient(180deg, var(--gk-metal-1, var(--color-v2-panel)), var(--gk-metal-3, var(--color-v2-deep)));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 24px -14px rgba(0, 0, 0, 0.8);
   font-family: var(--font-v2-ui); color: var(--color-v2-ink);
 }
 .ww-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.ww-head .v2-legend { color: var(--color-v2-alloy); }
+.ww-head .v2-legend { color: var(--gk-self); }
 .ww-count { font: 600 13px var(--font-v2-mono); color: var(--color-v2-ink-2); font-variant-numeric: tabular-nums; }
-.ww-rule { margin: 0; font-size: 12px; line-height: 1.35; color: var(--color-v2-ink-2); }
+.ww-rule { margin: 0; font-size: 11px; line-height: 1.3; color: var(--color-v2-ink-2); }
 .ww-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 
 /* A bay: a dark recess with a steel rim and a deck plate the crate stands on. */
 .ww-cell, .ww-hit { display: flex; flex-direction: column; align-items: center; }
 .ww-cell {
-  position: relative; min-height: 98px; overflow: hidden; border: 1px solid var(--color-v2-line); border-radius: 8px;
+  position: relative; min-height: 90px; overflow: hidden; border: 1px solid var(--color-v2-line); border-radius: 8px;
   background:
     linear-gradient(180deg, transparent 62%, rgba(255, 255, 255, 0.04) 62%, rgba(0, 0, 0, 0.25) 100%),
     linear-gradient(180deg, #111a29, #0a1019);
@@ -29,7 +30,7 @@
 /* The hold charges the bay from the deck up. */
 .ww-hit::before {
   content: ''; position: absolute; inset: auto 0 0 0; height: 0; pointer-events: none;
-  border-radius: 0 0 7px 7px; background: linear-gradient(0deg, color-mix(in oklab, var(--color-v2-alloy) 34%, transparent), transparent);
+  border-radius: 0 0 7px 7px; background: linear-gradient(0deg, color-mix(in oklab, var(--gk-self) 34%, transparent), transparent);
   transition: height 150ms linear;
 }
 .ww-cell[data-holding] .ww-hit::before { height: 100%; transition-duration: 600ms; }
@@ -41,20 +42,20 @@
   font: 700 12px var(--font-v2-mono); color: var(--color-v2-ink-2); background: rgba(255, 255, 255, 0.07);
   clip-path: polygon(0 0, 100% 0, 78% 100%, 0 100%);
 }
-/* Where the thumb goes: an alloy plate at the foot of the ready bay. */
+/* Where the thumb goes: a plate in the player's colour at the foot of the ready bay. */
 .ww-plate {
   align-self: stretch; margin: 2px -4px -6px; padding: 2px 4px 3px; text-align: center;
   font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
-  color: var(--color-v2-void); background: var(--color-v2-alloy);
+  color: var(--gk-void, var(--color-v2-void)); background: var(--gk-self);
 }
 .ww-check {
   position: absolute; top: 4px; right: 4px; z-index: 2; display: grid; place-items: center; width: 18px; height: 18px;
-  border-radius: 50%; background: var(--color-v2-ally); color: var(--color-v2-void);
+  border-radius: 50%; background: var(--gk-self); color: var(--gk-void, var(--color-v2-void));
 }
 .ww-check .gk-glyph { width: 12px; height: 12px; }
 .ww-cell[data-fresh] .ww-check { animation: ww-stamp 300ms cubic-bezier(0.3, 1.6, 0.5, 1); }
 
-.ww-crate { position: relative; display: block; width: 62px; height: 55px; margin-top: 14px; flex: none; }
+.ww-crate { position: relative; display: block; width: 58px; height: 51px; margin-top: 13px; flex: none; }
 .ww-crate > .ww-body, .ww-crate > .ww-lid { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 .ww-shadow { position: absolute; left: 14%; right: 14%; bottom: 1px; height: 7px; border-radius: 50%; background: rgba(0, 0, 0, 0.55); }
 .ww-lid { transform-origin: 85% 75%; }
@@ -72,7 +73,7 @@
   padding: 1px 6px; border: 1px solid var(--color-v2-line-hi); border-radius: 999px; background: rgba(6, 10, 18, 0.9);
   font: 600 11px var(--font-v2-mono); color: var(--color-v2-ink); white-space: nowrap;
 }
-.ww-wait .gk-glyph { width: 11px; height: 11px; color: var(--color-v2-alloy); }
+.ww-wait .gk-glyph { width: 11px; height: 11px; color: var(--gk-self); }
 
 /* States: an opened crate stands empty and dim; the next waits behind a dashed rim; those ahead sit in shade. */
 .ww-cell[data-state='opened'] { background: linear-gradient(180deg, #0c121c, #080c13); }
@@ -81,30 +82,30 @@
 .ww-cell[data-state='later'] .ww-crate > .ww-body, .ww-cell[data-state='later'] .ww-crate > .ww-lid { filter: brightness(0.78) saturate(0.85); }
 .ww-cell[data-state='waiting'] { border-style: dashed; border-color: var(--color-v2-line-hi); }
 .ww-cell[data-state='ready'], .ww-cell[data-state='opening'] {
-  border-color: var(--color-v2-alloy);
+  border-color: var(--gk-self);
   background:
-    linear-gradient(180deg, color-mix(in oklab, var(--color-v2-alloy) 12%, transparent), transparent 55%),
+    linear-gradient(180deg, color-mix(in oklab, var(--gk-self) 12%, transparent), transparent 55%),
     linear-gradient(180deg, transparent 62%, rgba(255, 255, 255, 0.05) 62%, rgba(0, 0, 0, 0.25) 100%),
     linear-gradient(180deg, #151d2b, #0b111b);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-v2-alloy) 35%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--gk-self) 35%, transparent);
 }
-.ww-cell[data-state='ready'] .ww-num { color: var(--color-v2-alloy); }
+.ww-cell[data-state='ready'] .ww-num { color: var(--gk-void, var(--color-v2-void)); background: var(--gk-self); }
 
 /* The seventh: the wide gold crate on a bay of its own, a hazard band along its deck. */
-.ww-cell[data-big] { grid-column: 1 / -1; min-height: 92px; flex-direction: row; align-items: stretch;
-  border-color: color-mix(in oklab, var(--color-v2-warn) 45%, var(--color-v2-line)); }
+.ww-cell[data-big] { grid-column: 1 / -1; min-height: 86px; flex-direction: row; align-items: stretch;
+  border-color: color-mix(in oklab, var(--gk-gold) 45%, var(--color-v2-line)); }
 .ww-cell[data-big]::after {
   content: ''; position: absolute; inset: auto 0 0 0; height: 4px; pointer-events: none; opacity: 0.55;
-  background: repeating-linear-gradient(135deg, var(--color-v2-warn) 0 6px, #11151b 6px 12px);
+  background: repeating-linear-gradient(135deg, var(--gk-gold) 0 6px, #11151b 6px 12px);
 }
 .ww-cell[data-big] .ww-hit { flex-direction: row; align-items: stretch; }
-.ww-cell[data-big] .ww-crate { width: 118px; height: 83px; margin: 6px 4px 6px 14px; align-self: center; }
+.ww-cell[data-big] .ww-crate { width: 112px; height: 78px; margin: 4px 4px 6px 14px; align-self: center; }
 .ww-cell[data-big] .ww-foot { align-items: flex-start; justify-content: center; margin: 0; padding: 14px 8px 10px 6px; gap: 5px; }
 .ww-cell[data-big] .ww-plate { align-self: flex-start; margin: 2px 0 0; padding: 2px 10px 3px; }
 .ww-cell[data-big] .ww-wait { top: auto; bottom: 12px; left: 72px; }
 .ww-cell[data-big] .ww-holds { flex-direction: row; font-size: 13px; gap: 10px; }
 .ww-cell[data-big] .ww-hold img { width: 16px; height: 16px; }
-.ww-big { display: inline-flex; align-items: baseline; gap: 6px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-v2-warn); }
+.ww-big { display: inline-flex; align-items: baseline; gap: 6px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gk-gold); }
 .ww-big b { font: 800 15px var(--font-v2-mono); }
 
 /* Motion: the lid rattles while it waits for a thumb, lifts under the hold, and flies on the latch. */
@@ -125,7 +126,7 @@
 .ww-cell[data-big] .ww-haul { width: 32px; height: 32px; margin: -16px; }
 .ww-poured {
   position: absolute; top: 30px; left: 50%; z-index: 3; margin: 0; padding: 3px 10px; white-space: nowrap; pointer-events: none;
-  border: 1px solid color-mix(in oklab, var(--color-v2-alloy) 55%, transparent); border-radius: 999px; background: rgba(6, 10, 18, 0.92);
+  border: 1px solid color-mix(in oklab, var(--gk-self) 55%, transparent); border-radius: 999px; background: rgba(6, 10, 18, 0.92);
   font: 600 12px var(--font-v2-mono); color: var(--color-v2-ink); animation: ww-poured 2.6s ease-out forwards;
 }
 
@@ -159,3 +160,43 @@
   80% { opacity: 1; }
   100% { opacity: 0; transform: translate(-50%, -6px); }
 }
+
+/*
+  ALIVE ON THE DECK (owner phone playtest 2026-11-18, item 15). VFX brief:
+  - In the world: the ready crate's two latch lights blink in turn while its lid rattles; the gold crate's
+    lid catches a hard band of light that slides across it; the deck under the crate to open runs a chase
+    of landing lights toward it. Opened crates' decks go dark.
+  - Assets: the Synty crate renders already here (`assets/images/welcome/`), the sheen masked by the crate's
+    own image; the lights are hard 3 px points and a dashed strip, never a soft glow.
+  - Why: what can be opened, and that the seventh is worth more, read before any word.
+*/
+.ww-crate::before, .ww-crate::after {
+  content: ''; position: absolute; z-index: 1; top: 47%; width: 3px; height: 3px; border-radius: 1px;
+  background: color-mix(in srgb, var(--gk-self) 30%, #1a2333); pointer-events: none;
+}
+.ww-crate::before { left: 30%; }
+.ww-crate::after { right: 30%; }
+.ww-cell[data-state='ready'] .ww-crate::before { animation: ww-latch 1.4s steps(1, end) infinite; }
+.ww-cell[data-state='ready'] .ww-crate::after { animation: ww-latch 1.4s steps(1, end) 0.7s infinite; }
+.ww-cell[data-state='opened'] .ww-crate::before, .ww-cell[data-state='opened'] .ww-crate::after,
+.ww-cell[data-state='opening'] .ww-crate::before, .ww-cell[data-state='opening'] .ww-crate::after { display: none; }
+@keyframes ww-latch { 0% { background: var(--gk-self); } 50% { background: color-mix(in srgb, var(--gk-self) 25%, #1a2333); } }
+
+/* The deck's landing lights: a dashed strip that runs toward the crate to open. */
+.ww-cell[data-state='ready']:not([data-big])::after {
+  content: ''; position: absolute; inset: auto 6px 2px; height: 2px; pointer-events: none;
+  background: repeating-linear-gradient(90deg, var(--gk-self) 0 4px, transparent 4px 10px);
+  background-size: 20px 2px; animation: ww-chase 0.9s linear infinite; opacity: 0.85;
+}
+@keyframes ww-chase { to { background-position: 20px 0; } }
+
+/* The gold crate's sheen: a hard band of light across its own shape, every few seconds. */
+.ww-cell[data-big] .ww-sheen {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  -webkit-mask: var(--ww-shape) center / contain no-repeat; mask: var(--ww-shape) center / contain no-repeat;
+  background: linear-gradient(105deg, transparent 42%, rgb(255 240 200 / 0.55) 48%, rgb(255 240 200 / 0.55) 52%, transparent 58%) 0 0 / 300% 100% no-repeat;
+  animation: ww-sheen 4.2s ease-in-out infinite;
+}
+.ww-cell[data-big][data-state='opened'] .ww-sheen { display: none; }
+@keyframes ww-sheen { 0%, 62% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+

@@ -1210,7 +1210,7 @@ function GalleryLandingRewards({ tiers }: { tiers: boolean }) {
     next.setQueryData(keys.welcome, galleryWelcome());
     return next;
   });
-  return <QueryClientProvider client={client}><div className="relative h-dvh bg-v2-void"><LandingRewards onPanel={noop} onDone={noop} /></div></QueryClientProvider>;
+  return <QueryClientProvider client={client}><div className="relative h-dvh bg-v2-void"><LandingRewards onDone={noop} /></div></QueryClientProvider>;
 }
 
 /** `?escort=ready|repair`: the commander ship the raid sheet may take along (Y9); absent, none. */

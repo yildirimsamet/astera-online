@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } f
 import { useTranslation } from 'react-i18next';
 import { useOpenWelcome, useWelcome } from '../api/queries.js';
 import { Glyph } from '../game-ui/index.js';
+import type { CssVars } from '../game-ui/style.js';
 import { compact } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { playSound } from '../lib/sound.js';
@@ -50,6 +51,8 @@ function Holds({ holds, estimate }: { holds: Purse; estimate: boolean }) {
   );
 }
 
+const sheenOf = (lid: string): CssVars => ({ '--ww-shape': `url(${lid})` });
+
 /** The crate itself, body and lid apart so the lid can fly; once opened only the empty body stands. */
 function Crate({ big, opened, opening }: { big: boolean; opened: boolean; opening: boolean }) {
   const art = big ? CRATE.big : CRATE.small;
@@ -58,6 +61,8 @@ function Crate({ big, opened, opening }: { big: boolean; opened: boolean; openin
       <span className="ww-shadow" />
       <img className="ww-body" src={art.body} alt="" draggable={false} />
       {!opened && <img className="ww-lid" src={art.lid} alt="" draggable={false} />}
+      {/* The gold crate's lid catches a band of light, masked to its own shape (welcome.css). */}
+      {big && !opened && <span className="ww-sheen" style={sheenOf(art.lid)} />}
       {opening && (
         <>
           {SPARKS.map((style, i) => <span key={i} className="ww-spark" style={style} />)}
