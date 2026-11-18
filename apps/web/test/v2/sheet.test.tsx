@@ -144,7 +144,7 @@ describe('the sheet', () => {
     expect(dialog.parentElement).not.toHaveClass('top-0');
     expect(dialog).toHaveClass('max-h-full');
     expect(dialog).not.toHaveClass('h-full');
-    expect(dialog.className).not.toMatch(/h-\[92dvh\]/);
+    expect(dialog.className).not.toMatch(/h-\[(92dvh|calc\(92\*var\(--app-vh\)\))\]/);
   });
 
   /**
@@ -340,7 +340,7 @@ describe('the sheet', () => {
     expect(panel).toHaveAttribute('data-detent', 'fit');
     // Up to a page: the room under the top bar (M5), never over it.
     expect(panel).toHaveClass('max-h-full');
-    expect(panel.className).not.toMatch(/(^|\s)h-\[92dvh\]/);
+    expect(panel.className).not.toMatch(/(^|\s)h-\[(92dvh|calc\(92\*var\(--app-vh\)\))\]/);
     expect(panel).toHaveAttribute('aria-modal', 'true');
     expect(document.querySelector('[data-sheet-body]')).toHaveClass('overflow-y-auto');
   });

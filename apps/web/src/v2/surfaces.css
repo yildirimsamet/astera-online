@@ -169,7 +169,7 @@
 
 
 /* Dev-only art review page. */
-.bomb-preview { margin: 0 auto; max-width: 1280px; padding: 28px; display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 18px; background: var(--color-v2-radiation-preview-ground); min-height: 100dvh; color: var(--color-v2-radiation-preview-copy); }
+.bomb-preview { margin: 0 auto; max-width: 1280px; padding: 28px; display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 18px; background: var(--color-v2-radiation-preview-ground); min-height: var(--app-h, 100dvh); color: var(--color-v2-radiation-preview-copy); }
 .bomb-preview > header { grid-column: 1/-1; }
 .bomb-preview > header > span { font: 10px var(--font-v2-mono,monospace); color: var(--color-v2-radiation-preview-heading); letter-spacing: .2em; }
 .bomb-preview h1 { margin: 8px 0; font-size: 32px; }

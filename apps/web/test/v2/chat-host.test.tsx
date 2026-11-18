@@ -95,7 +95,7 @@ describe('the chat page', () => {
   it('keeps a fixed-height panel while the message history owns scrolling', () => {
     render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
     const panel = screen.getByRole('dialog', { name: 'Chat' });
-    expect(panel).toHaveClass('h-[70dvh]');
+    expect(panel).toHaveClass('h-[calc(70*var(--app-vh))]');
     // the kit's body says it with the important mark (`overflow-hidden!`); either way the body never scrolls
     expect(panel.querySelector('[data-sheet-body]')?.className).toMatch(/(^|\s)overflow-hidden!?(\s|$)/);
   });

@@ -21,7 +21,7 @@ function Preview() {
   const [message, setMessage] = useState<'wrong' | 'failed' | null>(params.get('state') === 'wrong' ? 'wrong' : null);
   const [closed, setClosed] = useState(false);
   if (!view) return <LoadingScreen caption="Evrenle bağlantı kuruluyor…" {...(params.get('progress') ? { progress: Number(params.get('progress')) } : {})} />;
-  return <InstallProvider><div style={{ minHeight: '100dvh', background: 'var(--color-v2-void)' }}>
+  return <InstallProvider><div style={{ minHeight: 'var(--app-h, 100dvh)', background: 'var(--color-v2-void)' }}>
       <BrandMasthead />
       <TopBar
         stock={{ alloy: { value: 1270, cap: 5000 }, crystal: { value: 860, cap: 5000 }, deuterium: { value: 240, cap: 1000 } }}

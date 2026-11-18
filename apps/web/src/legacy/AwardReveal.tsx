@@ -176,7 +176,7 @@ function AwardReveal({ queue, live, onSeen, onDone }: {
           <>
             <p className="legacy-reveal-eyebrow gk-label">{t('legacy.reveal.eyebrowMany')}</p>
             <h2 className="legacy-reveal-name gk-display gk-reveal__name">{t('legacy.reveal.restTitle', { count: rest.length })}</h2>
-            <ul className="mt-4 grid max-h-[52dvh] w-full grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">
+            <ul className="mt-4 grid max-h-[calc(52*var(--app-vh))] w-full grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">
               {rest.map((award, index) => (
                 <li key={award.id} data-testid="legacy-reveal-rest-piece" data-rarity={award.rarity}
                   className="legacy-tile legacy-reveal-pop gk-reveal__tile"

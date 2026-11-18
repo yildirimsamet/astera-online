@@ -3,7 +3,7 @@
 .lr-body {
   display: grid;
   gap: 10px;
-  max-height: calc(100dvh - 200px);
+  max-height: calc(var(--app-h, 100dvh) - 200px);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;

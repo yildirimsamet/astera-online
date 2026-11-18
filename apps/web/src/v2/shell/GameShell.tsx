@@ -26,6 +26,7 @@ import { HudDock } from './HudDock.js';
 import { HudTop } from './HudTop.js';
 import { OutlineHost } from './OutlineHost.js';
 import { RecallHost } from '../../brand/RecallHost.js';
+import { useAppScreen } from '../../lib/appHeight.js';
 
 /** Open a page: the panel, its shelf, the report, the row — as the app's router takes it. */
 export type ShellRoute = (
@@ -90,6 +91,7 @@ export interface GameShellProps {
  * 1–5 the tabs, Space the selection, Esc lets go (`shortcutOf`).
  */
 export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet, onFocusCraft, galaxy, isAdmin = false, guideOff = false, onGuideOff }: GameShellProps) {
+  useAppScreen();
   const [bell, setBell] = useState<{ tab: BellTab; justRead: ReadonlySet<string> } | null>(null);
   const [fleetOpen, setFleetOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);

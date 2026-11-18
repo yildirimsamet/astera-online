@@ -28,6 +28,7 @@ import {
   type BeatState,
 } from './script.js';
 import { completeOpening, openWorld, type RehearsalWorld } from './world.js';
+import { useAppScreen } from '../lib/appHeight.js';
 
 /**
  * NINETY SECONDS OF THE REAL GAME, BEFORE THERE IS AN ACCOUNT. D56.
@@ -89,6 +90,7 @@ export function Rehearsal({
   /** Out, without an account. Back to the front door. */
   onLeave: () => void;
 }) {
+  useAppScreen();
   const { t } = useTranslation();
 
   /**

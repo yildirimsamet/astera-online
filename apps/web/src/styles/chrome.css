@@ -1526,7 +1526,7 @@
   [data-chat-host]:has(textarea:focus) > [data-sheet-holder] {
     top: var(--chat-viewport-top, 0px);
     bottom: auto !important;
-    height: var(--chat-viewport-height, 100dvh);
+    height: var(--chat-viewport-height, var(--app-h, 100dvh));
     z-index: 60;
     padding-top: env(safe-area-inset-top, 0px);
   }

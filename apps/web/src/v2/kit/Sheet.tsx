@@ -18,7 +18,7 @@ import { PanelBoundary } from '../../shell/ErrorBoundary.js';
  */
 const HEIGHT: Record<Detent, string> = {
   peek: 'max-h-[140px]',
-  half: 'max-h-[55dvh]',
+  half: 'max-h-[calc(55*var(--app-vh))]',
   /** As tall as what it holds, up to a page: an item sheet over empty space was the report. */
   fit: 'max-h-full',
   /** The room from the top bar's foot to the dock, used only when content needs it. */
@@ -259,7 +259,7 @@ export function Sheet({
         data-detent={detent}
         data-placement={placement}
         data-sheet-panel=""
-        className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col ${floatingHead ? 'h-full' : ''} overflow-hidden ${kit ? 'gk gk-sheet' : 'border border-b-0 border-v2-line bg-v2-panel font-v2-ui'} transition-[height,max-height] duration-300 ease-v2 ${fixedHeight ? 'h-[70dvh] max-h-full' : fill ? 'h-full max-h-full' : HEIGHT[detent]} ${FRAME[placement].panel}`}
+        className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col ${floatingHead ? 'h-full' : ''} overflow-hidden ${kit ? 'gk gk-sheet' : 'border border-b-0 border-v2-line bg-v2-panel font-v2-ui'} transition-[height,max-height] duration-300 ease-v2 ${fixedHeight ? 'h-[calc(70*var(--app-vh))] max-h-full' : fill ? 'h-full max-h-full' : HEIGHT[detent]} ${FRAME[placement].panel}`}
       >
         <div data-sheet-header="" className={`${floatingHead ? 'pointer-events-none absolute inset-x-0 top-0 z-10' : 'shrink-0'} touch-none ${headerArt && !quietTitle && detent !== 'peek' ? 'sheet-art-head' : ''}`} {...(placement === 'card' ? {} : { onPointerDown: onPull })}>
           {headerArt && !quietTitle && detent !== 'peek' && <div data-sheet-art=""><AtmosphereImage art={headerArt} /></div>}

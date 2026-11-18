@@ -5752,7 +5752,7 @@ html:lang(ja) .gk-tab {
   position: relative;
   width: 100%;
   max-width: 430px;
-  min-height: 100dvh;
+  min-height: var(--app-h, 100dvh);
   margin: 0 auto;
   overflow: hidden;
   background: var(--gk-void);
@@ -5782,10 +5782,10 @@ html:lang(ja) .gk-tab {
   left: 0;
   right: 0;
   bottom: 0;
-  height: calc(100dvh - 120px);
+  height: calc(var(--app-h, 100dvh) - 120px);
 }
 .gk-scene__sheet--short {
-  height: calc(100dvh - 190px);
+  height: calc(var(--app-h, 100dvh) - 190px);
 }
 
 .gk-scene__toast {
@@ -5800,7 +5800,7 @@ html:lang(ja) .gk-tab {
   top: 158px;
 }
 .gk-scene__sheet--tall {
-  height: calc(100dvh - 28px);
+  height: calc(var(--app-h, 100dvh) - 28px);
 }
 
 /* The HUD page: resources on top, flights down the side, the world, the menu. */
@@ -5808,7 +5808,7 @@ html:lang(ja) .gk-tab {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  min-height: var(--app-h, 100dvh);
 }
 .gk-scene__rail {
   display: grid;
@@ -9503,7 +9503,7 @@ button.gk-probe__head:active {
   z-index: 160;
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: var(--app-h, 100dvh);
   overflow: hidden;
   padding-top: env(safe-area-inset-top);
   background: var(--gk-deep);
@@ -9620,7 +9620,7 @@ button.gk-probe__head:active {
   gap: var(--gk-s3);
   width: 100%;
   max-width: 36rem;
-  min-height: 100dvh;
+  min-height: var(--app-h, 100dvh);
   margin: 0 auto;
   padding: calc(var(--gk-s5) + env(safe-area-inset-top, 0px)) var(--gk-gutter) calc(var(--gk-s5) + env(safe-area-inset-bottom, 0px));
 }
@@ -12068,7 +12068,7 @@ button.gk-rcard__door:active {
   border-top: 1px solid color-mix(in srgb, var(--gk-ink) 10%, transparent);
 }
 .gk-focus__file {
-  max-height: 65dvh;
+  max-height: calc(65 * var(--app-vh));
   overflow-y: auto;
   overscroll-behavior: contain;
   border-top: 1px solid color-mix(in srgb, var(--gk-ink) 10%, transparent);
@@ -13957,7 +13957,7 @@ button.gk-fact__head:active .gk-fact__line {
   gap: var(--gk-s3);
   width: 100%;
   max-width: 36rem;
-  max-height: min(720px, 92dvh);
+  max-height: min(720px, calc(92 * var(--app-vh)));
   padding: var(--gk-s3);
 }
 .gk-cpick__head {
@@ -14441,7 +14441,7 @@ button.gk-fact__head:active .gk-fact__line {
 /* ── choosing a galaxy (G10, C29) ─────────────────────────────────────────────── */
 
 .gk-servers {
-  min-height: 100dvh;
+  min-height: var(--app-h, 100dvh);
   padding: calc(var(--gk-s5) + env(safe-area-inset-top)) var(--gk-s4) calc(var(--gk-s6) + env(safe-area-inset-bottom));
   background:
     radial-gradient(120% 60% at 50% 0%, color-mix(in srgb, var(--gk-info) 10%, transparent), transparent 70%),
@@ -16086,7 +16086,7 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
   display: grid;
   flex-shrink: 0;
   gap: 10px;
-  max-height: 60dvh;
+  max-height: calc(60 * var(--app-vh));
   overflow-y: auto;
   margin: 8px var(--gk-gutter);
   padding: var(--gk-s3);
@@ -16570,7 +16570,7 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 
 /* ── G13-b (2026-11-16): the sign-in sheet ─────────────────────────────────── */
 .gk-authsheet__scrim { position: absolute; inset: 0; background: color-mix(in srgb, var(--gk-void) 72%, transparent); }
-.gk-authsheet { position: relative; display: grid; gap: var(--gk-s3); width: 100%; max-width: 28rem; max-height: 92dvh; overflow-y: auto;
+.gk-authsheet { position: relative; display: grid; gap: var(--gk-s3); width: 100%; max-width: 28rem; max-height: calc(92 * var(--app-vh)); overflow-y: auto;
   padding: var(--gk-s2) var(--gk-s4) calc(var(--gk-s5) + env(safe-area-inset-bottom, 0px));
   border: 1px solid var(--gk-metal-edge); border-bottom: 0; border-radius: var(--gk-r-lg) var(--gk-r-lg) 0 0;
   background: linear-gradient(180deg, var(--gk-metal-2), var(--gk-deep) 220px); color: var(--gk-ink); font-family: var(--gk-font-text);

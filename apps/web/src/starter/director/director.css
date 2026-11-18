@@ -1,8 +1,8 @@
 /* The director's letterbox (plan 2026-11-18 §4 İ3): two black bands, the line on the lower one. */
 .director-stage { position: fixed; inset: 0; z-index: 80; touch-action: none; cursor: pointer; }
 .director-band { position: absolute; inset-inline: 0; display: flex; align-items: center; justify-content: center; padding-inline: 16px; background: #000; }
-.director-band--top { top: 0; height: calc(env(safe-area-inset-top) + 11dvh); align-items: flex-end; justify-content: flex-end; padding-bottom: 8px; animation: director-top .45s cubic-bezier(.22, 1, .36, 1) both; }
-.director-band--bottom { bottom: 0; height: calc(env(safe-area-inset-bottom) + 15dvh); padding-bottom: env(safe-area-inset-bottom); animation: director-bottom .45s cubic-bezier(.22, 1, .36, 1) both; }
+.director-band--top { top: 0; height: calc(env(safe-area-inset-top) + calc(11 * var(--app-vh))); align-items: flex-end; justify-content: flex-end; padding-bottom: 8px; animation: director-top .45s cubic-bezier(.22, 1, .36, 1) both; }
+.director-band--bottom { bottom: 0; height: calc(env(safe-area-inset-bottom) + calc(15 * var(--app-vh))); padding-bottom: env(safe-area-inset-bottom); animation: director-bottom .45s cubic-bezier(.22, 1, .36, 1) both; }
 .director-band--top::after, .director-band--bottom::before { content: ''; position: absolute; inset-inline: 0; height: 18px; pointer-events: none; }
 .director-band--top::after { top: 100%; background: linear-gradient(#000, #0000); }
 .director-band--bottom::before { bottom: 100%; background: linear-gradient(#0000, #000); }

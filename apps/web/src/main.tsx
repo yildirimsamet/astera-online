@@ -28,6 +28,7 @@ import { ConsentPlacement } from './landing/public/ConsentPlacement.js';
 import { App } from './App.js';
 import { InstallProvider } from './brand/Install.js';
 import { startAndroidBack } from './platform/nativeBack.js';
+import { watchAppHeight } from './lib/appHeight.js';
 import { isAppActive, watchAppActivity } from './platform/activity.js';
 import './styles.css';
 
@@ -104,6 +105,9 @@ function start(): void {
 
   // Refuses the two zoom gestures the viewport meta and `touch-action` cannot.
   lockViewportZoom();
+  // The height the page really has on screen, for every full screen (item 23).
+  const stopAppHeight = watchAppHeight();
+  if (import.meta.hot) import.meta.hot.dispose(stopAppHeight);
   const stopAndroidBack = startAndroidBack();
   if (import.meta.hot) import.meta.hot.dispose(stopAndroidBack);
 

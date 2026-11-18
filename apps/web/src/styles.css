@@ -801,7 +801,19 @@ html:lang(ja) {
       radial-gradient(circle at 86% 64%, rgb(61 206 255 / 7%), transparent 22%),
       linear-gradient(180deg, #050912 0%, #02050b 42%, var(--color-void) 100%);
     background-attachment: fixed;
-    min-height: 100dvh;
+    min-height: var(--app-h, 100dvh);
+  }
+
+  /* One hundredth of the height the page has on screen (item 23): `calc(88 * var(--app-vh))`, never `88dvh`. */
+  :root {
+    --app-vh: calc(var(--app-h, 100dvh) / 100);
+  }
+
+  /* A game screen holds the page still (item 23, `lib/appHeight.ts`): the browser's bars never slide. */
+  html[data-app-screen],
+  html[data-app-screen] body {
+    height: 100%;
+    overflow: hidden;
   }
 
   :focus-visible {
@@ -955,4 +967,12 @@ html:lang(ja) {
         transparent 80%);
     animation: sweep 700ms ease-out;
   }
+}
+
+/* Every full screen is drawn in the height the page has on screen (item 23, `lib/appHeight.ts`). */
+@utility h-dvh {
+  height: var(--app-h, 100dvh);
+}
+@utility min-h-dvh {
+  min-height: var(--app-h, 100dvh);
 }

@@ -380,7 +380,7 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
       [data-academy] [data-disc-controls]{display:none}
       ${world.step < telescopeStep ? '[data-academy] [data-sensor-toggles]{display:none}' : ''}
       ${id === 'research' ? '' : `[data-academy] [id^="row-"]${rowRule}{display:none}`}
-      [data-academy] [data-sheet-panel]{max-height:calc(100dvh - 160px)}
+      [data-academy] [data-sheet-panel]{max-height:calc(var(--app-h, 100dvh) - 160px)}
       [data-academy] [id^="planet-panel-"] ~ *{scroll-margin-top:8px}
       @keyframes academy-continue {0%,100%{transform:scale(1)} 50%{transform:scale(1.12)}}
       [data-academy] [data-hull-family-group]{content-visibility:visible!important;contain-intrinsic-size:none!important}

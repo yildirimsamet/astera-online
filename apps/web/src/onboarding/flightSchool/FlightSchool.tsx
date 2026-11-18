@@ -33,6 +33,7 @@ import { SCHOOL_REVEAL_MS, schoolTelescopeFrame, type SchoolFrame } from './visu
 import { useSchoolTelemetry } from './useSchoolTelemetry.js';
 import type { SchoolTelemetry } from './telemetry.js';
 import { isAppActive } from '../../platform/activity.js';
+import { useAppScreen } from '../../lib/appHeight.js';
 
 interface Props {
   onClaim: (username: string, password: string, progress: readonly ClaimIntent[], country?: CountryCode, policy?: CommunityPolicyConsent) => Promise<void>;
@@ -40,6 +41,7 @@ interface Props {
 }
 
 export function FlightSchool({ replay = false, ...props }: Props) {
+  useAppScreen();
   const [initial] = useState(() => replay ? { world: createSchool(serverNow()), record: { version: 1 as const, startedAt: serverNow(), events: [] } satisfies SchoolRecord } : restoreSchool(serverNow()));
   const [world, setWorld] = useState(initial.world);
   const [prepared, setPrepared] = useState(false);

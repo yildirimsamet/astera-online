@@ -209,7 +209,8 @@ describe('the strike essay is not part of looking at a world', () => {
 describe('the sheet is given the height it was already using', () => {
   // the frame is the kit's since G4-a (2026-11-15): its file's height is in the kit's sheet
   const source = readFileSync('src/game-ui/game-ui.css', 'utf8');
-  const height = /\.gk-focus__file \{[^}]*max-height: (\d+)dvh/;
+  // In hundredths of the height the page has on screen (item 23): `calc(65 * var(--app-vh))`.
+  const height = /\.gk-focus__file \{[^}]*max-height: calc\((\d+) \* var\(--app-vh\)\)/;
 
   it('opens taller than half the screen', () => {
     const found = height.exec(source);

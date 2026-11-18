@@ -17,6 +17,7 @@ import {
   BURN_MS, PATCH_MS, PROLOGUE_STEPS, clearPrologue, openPrologue, prologueAct, prologueBatch, prologueHeld, prologueHull, prologueLit, prologueShare, prologueStep,
   prologueTick, refineryRunning, restorePrologue, savePrologue, sensorsListening, type PrologueAction, type PrologueWorld,
 } from './world.js';
+import { useAppScreen } from '../../lib/appHeight.js';
 
 const ART = '/assets/images/starter/prologue-bridge';
 /** How long a hold control must be held: a deliberate act, never an accident. */
@@ -431,6 +432,7 @@ function Bridge({ lit, burning, signal, diving, origin }: { lit: boolean; burnin
  * signal the ship jumps to — where it is seen from outside for the first time, and claimed.
  */
 export function Prologue({ onClaim, onSignIn, onLeave, replay = false }: Props) {
+  useAppScreen();
   const { t } = useTranslation();
   const [world, setWorld] = useState<PrologueWorld>(() => replay ? openPrologue(Date.now()) : restorePrologue(Date.now()));
   const [now, setNow] = useState(() => Date.now());
