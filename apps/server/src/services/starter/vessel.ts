@@ -139,8 +139,8 @@ async function finishOrder(tx: Tx, vessel: LockedVessel, order: VesselOrderRow):
   await tx.insert(vesselNotifications).values({
     vesselId: row.id, kind: 'REPAIR_DONE', refId: order.id, payload: { module, stage: order.stage, long: !opens && order.readyAt.getTime() - order.startedAt.getTime() >= 15 * 60_000 }, createdAt: order.readyAt,
   }).onConflictDoNothing();
-  // What the ship sees changed: a new reach, or the shipyard's first outposts on the map.
-  await publish(tx, row.id, module === 'SURVEY' || module === 'TELESCOPE' || yard ? 'private:vessel-sight' : 'private:vessel');
+  // What the ship sees changed: a new reach (the radar's too: its lesson plays on it), or the shipyard's first outposts on the map.
+  await publish(tx, row.id, module === 'SURVEY' || module === 'TELESCOPE' || module === 'RADAR' || yard ? 'private:vessel-sight' : 'private:vessel');
 }
 
 /** Everything due, in the order it fell due, and then the works up to now. */

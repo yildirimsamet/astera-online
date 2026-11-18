@@ -85,6 +85,17 @@ describe('the stream of a ship', () => {
     expect(await stream.until(() => stream.frames.includes('private:vessel-sight'))).toBe(true);
   });
 
+  // Review 2026-11-19: the radar's new reach is in the galaxy's read; its lesson plays on it (item 28).
+  it('refreshes sight when the radar completes, at any stage', async () => {
+    const { settleVesselById } = await import('../src/services/starter/vessel.js');
+    await f.db.update(vessels).set({ modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 } }).where(eq(vessels.id, vesselId));
+    const now = f.clock.now();
+    await f.db.insert(vesselOrders).values({ vesselId, queue: 'CONSTRUCTION', subject: 'RADAR', stage: 1, slot: 0, startedAt: new Date(now.getTime() - 5000), readyAt: now, remainingSeconds: 0, cost: { alloy: 0, crystal: 0, deuterium: 0 } });
+    const stream = await connect();
+    await settleVesselById(f.db, vesselId, f.clock);
+    expect(await stream.until(() => stream.frames.includes('private:vessel-sight'))).toBe(true);
+  });
+
   it('opens for an account with a ship and no commander', async () => {
     await connect();
   });
