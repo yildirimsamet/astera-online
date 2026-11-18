@@ -145,8 +145,9 @@ const FIRST_ROAD: Part = {
     waitFor('waitTelescope', 'TELESCOPE', 3),
     // The field is looked through, a rock found by hand, and only then is the Prospector named (owner playtest 2026-11-08).
     { id: 'telescopeLook', kind: 'read', chapter: 7, place: 'galaxy', marks: [], satisfied: i => i.rockShown === true, reached: hasMined },
-    // At the opening distance a rock is a few pixels: it is come closer to by hand first (owner playtest 2026-11-09).
-    { id: 'zoomRock', kind: 'gesture', chapter: 6, place: 'galaxy', marks: [], satisfied: i => i.noRocks === true || i.rockOpen === true || i.rockShown === true, reached: hasMined },
+    // At the opening distance a rock is a few pixels: it is come closer to by hand first (owner playtest 2026-11-09),
+    // even after the director's rock shot (owner phone playtest 2026-11-18, item 20).
+    { id: 'zoomRock', kind: 'gesture', chapter: 6, place: 'galaxy', marks: [], satisfied: i => i.noRocks === true || i.rockOpen === true, reached: hasMined },
     { id: 'findRock', kind: 'press', chapter: 6, place: 'galaxy', marks: ['[data-guide="sight-rock"]', OBJECTIVE], satisfied: i => i.rockOpen === true, reached: hasMined },
     { id: 'mine', kind: 'press', chapter: 6, place: 'galaxy', marks: ['[data-guide="mine"]', OBJECTIVE], reached: hasMined },
     // The server opens the radar with the first send (owner playtest 2026-11-09): the telescope's lesson is behind it.

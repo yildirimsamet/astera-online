@@ -1,5 +1,6 @@
 import { useStarterLesson } from '../starter/tutorial/visualGoal.js';
 import { rocksHeld, rockSheetStaysOpen, sightLesson, useTelescopeReveal } from '../starter/tutorial/sightLesson.js';
+import { useSheetWait } from '../starter/tutorial/sheetWait.js';
 import { setRockSheet } from '../starter/tutorial/rockSheet.js';
 import { lendFocusClose } from '../starter/tutorial/focusClose.js';
 import { useLaunchSheet } from '../starter/tutorial/launchSheet.js';
@@ -702,7 +703,9 @@ export function GalaxyView({
   const sight = sightLesson(lesson);
   const reveal = useTelescopeReveal(lesson);
   const heldRocks = rocksHeld(lesson);
-  const rockOpen = focus?.kind === 'asteroid';
+  // In the lessons that pick a target the camera goes first, and the sheet a breath after (items 20, 21).
+  const sheetHeld = useSheetWait(lesson, focus);
+  const rockOpen = focus?.kind === 'asteroid' && !sheetHeld;
   useEffect(() => { setRockSheet(rockOpen); return () => { setRockSheet(false); }; }, [rockOpen]);
   const [showTelescopeReach, setShowTelescopeReach] = useSensorReach('telescope');
   const [showRadarReach, setShowRadarReach] = useSensorReach('radar');
@@ -1671,7 +1674,7 @@ export function GalaxyView({
             onOpenShip={() => { setMainRowOpen(false); onPanel('planet'); }} onClose={() => { setMainRowOpen(false); }} />
         </div>
       )}
-      {!cosmeticTrial && !coachFocus && focus?.kind === 'planet' && selected && focusedPlanet && showPlanetFocus && !attacking && (
+      {!cosmeticTrial && !coachFocus && !sheetHeld && focus?.kind === 'planet' && selected && focusedPlanet && showPlanetFocus && !attacking && (
         <PlanetFocus
           target={selected}
           planet={focusedPlanet}
@@ -1793,7 +1796,7 @@ export function GalaxyView({
         />
       )}
 
-      {!coachFocus && focus?.kind === 'asteroid' && season.data && (
+      {!coachFocus && !sheetHeld && focus?.kind === 'asteroid' && season.data && (
         <AsteroidFocusHost
           rock={asteroids.find((a) => a.id === focus.id)}
           runs={runs}
