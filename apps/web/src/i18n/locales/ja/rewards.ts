@@ -27,7 +27,18 @@ export const rewards = {
 
   claim: "受け取る",
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
-  welcome: { title: '司令官ボックス {{box}}/{{of}}', wait: '{{name}} · あと{{time}}' },
+  welcome: {
+    board: '新司令官 · 7つのボックス',
+    rule: '各ボックスは首都の生産{{hours}}時間分、最後は{{big}}時間分。開けてから{{gap}}時間後に次が届き、待っていても消えません。',
+    title: '司令官ボックス {{box}}/{{of}}',
+    opened: '開封済み',
+    ready: '受取可',
+    hold: '長押し',
+    wait: 'あと{{time}}',
+    big: '大ボックス',
+    later: '現在の生産量で',
+    poured: '倉庫へ：{{purse}}',
+  },
   takeAll: 'すべて受け取る · {{count}}',
   go: '行く',
   next: '次：{{name}} · あと{{count}}',

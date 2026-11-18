@@ -96,11 +96,12 @@ directory suggests one clan with a free seat, active in the last three days, old
 First-week notes open on a need (first battle report, first raid, first loss, Core 9), the calendar
 only as a fallback.
 
-**New Commander 7 Days (Y3).** Once an account, from the ship's claim through the landing. Not a daily
-login reward and no streak: boxes are counted, a missed day loses nothing, the next is ready 20 hours
-after the last opening. Each holds about an hour of current output (60 % crystal, at least 150 an
-hour), the seventh about three hours; aboard it goes to the ship, landed to the capital's store, where
-it can be raided. Rules: `packages/rules/src/welcomeWeek.ts`.
+**New Commander 7 Days (Y3).** Once an account, from the landing on (owner 2026-11-18, S6: never in
+the starter galaxy; the first box is ready on landing). Not a daily login reward and no streak: boxes
+are counted, a missed day loses nothing, the next is ready 20 hours after the last opening. Each holds
+about an hour of the capital's current output (60 % crystal, at least 150 an hour), the seventh about
+three hours; it goes to the capital's store, where it can be raided. The reward panel and the landing's
+reward moment show all seven as one board. Rules: `packages/rules/src/welcomeWeek.ts`.
 
 ## The loop
 

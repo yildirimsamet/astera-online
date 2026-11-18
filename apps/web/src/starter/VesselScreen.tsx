@@ -35,7 +35,6 @@ import { HoldFullMoment } from './HoldFullMoment.js';
 import { StarterWaitLine } from './tutorial/StarterWaitLine.js';
 import { useStarterLesson } from './tutorial/visualGoal.js';
 import { YardDeck } from './YardDeck.js';
-import { WelcomeBox } from '../screens/WelcomeBox.js';
 
 const progressOf = (vessel: VesselView): VesselProgress => ({ modules: vessel.modules, facts: vessel.facts });
 
@@ -179,8 +178,6 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
       <div className="px-3 empty:hidden"><HoldFullMoment vessel={vessel} {...(system === 'DRIVE' ? {} : { onLook: () => { select('DRIVE'); } })} /></div>
       <QuietNotice vessel={vessel} />
       <div className="px-3 empty:hidden"><CrateBay crates={vessel.crates} onOpen={() => { openCrates.mutate(undefined, { onError: (error) => { say(describe(error), 'error'); } }); }} /></div>
-      {/* The welcome week's box beside the repair crates, only when it is ready (plan 2026-11-06 §7.2). */}
-      <div className="px-3 empty:hidden"><WelcomeBox waiting={false} /></div>
       <StarterWaitLine queue={vessel.queue} />
       <SystemTabs progress={progress} ahead={ahead} selected={system} onSelect={select} />
       {shown && <RepairCard shown={shown} system={system} context={context} onShow={setPicked} />}

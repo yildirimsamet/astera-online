@@ -199,7 +199,10 @@ Bu yetkiyle verdiğim kararlar:
 | # | Durum | Not |
 |---|---|---|
 | Hatalar 1–5 | yapıldı | Yukarıda |
-| 5.1 Yönetmen | sırada | `Rig`'e `directorShot`: evren uçuşunun kalıbı (`controls.enabled=false`, `towards`, dönüşte eski poz) |
+| 5.1–5.5 | yapıldı | `da2e7b82`: yönetmen, gemi raporu, onarım sahneleri, gövde geçişi, karanlık, teleskop alanı ve kayaya yaklaşma |
+| Efektler | yapıldı | Owner 2026-11-18: yumuşak yuvarlak parlama yasak. `b4c5b15e`, `35a6f4b7`, `0b49e353`: her efekt kendi olayı, kütüphaneden, briefli; `softGlow()` silindi; koruma testi `no-glow-sprite.test.ts`. Owner kalan 5 halka/korona kullanımını uygun buldu. |
+| 5.8 7 Gün | yapıldı | S6: sunucu kutuyu yalnız inişten sonra verir. Yedi kutu tek panoda (Synty kasaları, gövde ve kapak ayrı render), hazır kutu basılı tutularak yerinde açılır. Pano iniş ödül anının içinde (ayrı pencere yok) ve Ödüller panelinde: hazırsa en üstte. Galeri: `?view=rewards-ready&welcome=first\|ready\|wait\|last`, `?view=landing-rewards(-box)&welcome=first`. |
+| 5.3 (A13), 5.4, 5.6, 5.7, 5.9, 5.10 | sırada | |
 
 ## 9. Başarı ölçütü
 

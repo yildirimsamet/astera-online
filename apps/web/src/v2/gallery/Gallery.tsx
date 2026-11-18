@@ -99,6 +99,7 @@ import { WikiScreen } from '../../screens/WikiScreen.js';
 import { SkinPreview } from '../../screens/SkinPreview.js';
 import { DonateScreen } from '../../screens/DonateScreen.js';
 import { RewardsScreen } from '../../screens/RewardsScreen.js';
+import { LandingRewards } from '../../starter/LandingRewards.js';
 import { SkinInventoryContent } from '../../screens/SkinInventoryScreen.js';
 import AdminPanel from '../../screens/AdminPanel.js';
 import { PLANET_SKIN_CATALOG, SKIN_COLLECTIONS } from '../../ui/skinCatalog.js';
@@ -1176,11 +1177,40 @@ function GalleryRewards({ state }: { state: string }) {
     });
     next.setQueryData(keys.rewards, { chains: state === 'empty' ? [] : chains, claimable: chains.reduce((sum, chain) => sum + chain.tiers.filter((tier) => tier.state === 'claimable').length, 0) });
     next.setQueryData(keys.planet, planetView({}, { alloy: 5500, crystal: 2500 }));
+    next.setQueryData(keys.welcome, galleryWelcome());
     return next;
   });
   return <QueryClientProvider client={client}><div className="[--v2-top-h:3rem]"><Sheet detents={['full']} kit={{ art: artIconSrc('gift') }} title={t('rewards.title')} eyebrow={t('rewards.eyebrow')} onClose={noop}>
     <RewardsScreen commander="Samet_The_Long_Commander_Name" />
   </Sheet></div></QueryClientProvider>;
+}
+
+/**
+ * `&welcome=first|ready|wait|last`: New Commander 7 Days on the reward panel and the landing's moment
+ * (owner 2026-11-18): the first box on landing, the third ready, the third's wait, the big seventh.
+ */
+function galleryWelcome(): { welcome: { opened: number; box: number | null; readyAt: Date | null; preview: { alloy: number; crystal: number } | null } | null } {
+  const at = new URLSearchParams(window.location.search).get('welcome');
+  const now = Date.now();
+  if (at === 'first') return { welcome: { opened: 0, box: 1, readyAt: new Date(now - 1000), preview: { alloy: 160, crystal: 240 } } };
+  if (at === 'ready') return { welcome: { opened: 2, box: 3, readyAt: new Date(now - 1000), preview: { alloy: 380, crystal: 570 } } };
+  if (at === 'wait') return { welcome: { opened: 3, box: 4, readyAt: new Date(now + 14 * 3_600_000 + 20 * 60_000), preview: { alloy: 380, crystal: 570 } } };
+  if (at === 'last') return { welcome: { opened: 6, box: 7, readyAt: new Date(now - 1000), preview: { alloy: 1_620, crystal: 2_430 } } };
+  return { welcome: null };
+}
+
+/** The landing's reward moment with the first of the seven boxes (`?view=landing-rewards&welcome=first`). */
+function GalleryLandingRewards({ tiers }: { tiers: boolean }) {
+  const [client] = useState(() => {
+    const next = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    const chains = tiers ? [{ ...REWARD_CHAINS[0]!, progress: 3, tiers: REWARD_CHAINS[0]!.tiers.map((tier, index) => ({
+      id: `T:${String(tier.goal)}`, goal: tier.goal, alloy: tier.reward.alloy, crystal: tier.reward.crystal, state: index < 3 ? 'claimable' : 'locked',
+    })) }] : [];
+    next.setQueryData(keys.rewards, { chains, claimable: tiers ? 3 : 0 });
+    next.setQueryData(keys.welcome, galleryWelcome());
+    return next;
+  });
+  return <QueryClientProvider client={client}><div className="relative h-dvh bg-v2-void"><LandingRewards onPanel={noop} onDone={noop} /></div></QueryClientProvider>;
 }
 
 /** `?escort=ready|repair`: the commander ship the raid sheet may take along (Y9); absent, none. */
@@ -1391,6 +1421,7 @@ function Views({ view }: { view: string }) {
   if (view === 'chat' || view.startsWith('chat-')) return <GalleryChat view={view} />;
   if (view === 'feedback' || view.startsWith('announcements')) return <GalleryCommunity view={view} />;
   if (view.startsWith('rewards')) return <GalleryRewards state={view.replace('rewards-', '')} />;
+  if (view === 'landing-rewards' || view === 'landing-rewards-box') return <GalleryLandingRewards tiers={view === 'landing-rewards'} />;
   // The Komutan gemisi hangar; the camera mocks `/arena/hangar` with each state it photographs.
   if (view === 'arena-hangar') return <Sheet bleed detents={['full']} headerArt={ATMOSPHERE.commanderShip} kit={{ art: artIconSrc('cos-ship'), tone: 'self' }} eyebrow="Samet" title="Komutan gemisi" onClose={noop}>
     <BaseSwitch value="ship" onChange={noop} arenaAvailable /><HangarPanel credential={() => Promise.resolve('dev')} onEnter={noop} />

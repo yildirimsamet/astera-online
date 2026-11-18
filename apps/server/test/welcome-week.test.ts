@@ -11,9 +11,9 @@ afterAll(async () => { await (await testDb()).close(); });
 interface Welcome { welcome: { opened: number; box: number | null; readyAt: string | null; preview: { alloy: number; crystal: number } | null } | null }
 
 /**
- * NEW COMMANDER 7 DAYS (plan 2026-11-06 §7.2, Faz 4.9). Once an account, from the ship's claim through the
- * landing; no streak; the next box 20 hours after the last opening; aboard into the ship, landed into the
- * capital's store, where a raid can take it.
+ * NEW COMMANDER 7 DAYS (plan 2026-11-06 §7.2, Faz 4.9). Once an account, from the landing on (plan
+ * 2026-11-18 S6: never in the starter galaxy); no streak; the next box 20 hours after the last opening;
+ * into the capital's store, where a raid can take it.
  */
 describe('the welcome week', () => {
   let world: StarterWorld;
@@ -23,30 +23,41 @@ describe('the welcome week', () => {
   const shipOf = async (id: string) => (await world.f.db.select().from(vessels).where(eq(vessels.id, id)))[0]!;
   const read = (headers: Record<string, string>) => get<Welcome>(world, '/api/welcome', headers);
   const open = (headers: Record<string, string>) => post(world, '/api/welcome/open', headers);
+  /** A commander who has landed: the ship departed, the account holds the seeded capital now. */
+  const landed = async () => {
+    const ship = await aboard(world, 'Landed');
+    await world.f.db.update(vessels).set({ accountId: world.f.accountIds[0]!, status: 'DEPARTED', slotIndex: null }).where(eq(vessels.id, ship.vesselId));
+    return bearer(await TOKENS.issueAccess(world.f.accountIds[0]!));
+  };
 
-  it('opens the first box aboard into the ship, then waits 20 hours, then the next', async () => {
+  it('is not there aboard: the week starts at the landing (S6)', async () => {
     const me = await aboard(world, 'Me');
-    const first = (await read(me.headers)).welcome!;
-    expect(first).toMatchObject({ opened: 0, box: 1, readyAt: world.f.clock.now().toISOString() });
     const before = await shipOf(me.vesselId);
-    const opened = await open(me.headers);
+    expect(await read(me.headers)).toEqual({ welcome: null });
+    expect((await open(me.headers)).json<{ error: string }>().error).toBe('WELCOME_NOT_ELIGIBLE');
+    const after = await shipOf(me.vesselId);
+    expect([after.alloy, after.crystal]).toEqual([before.alloy, before.crystal]);
+  });
+
+  it('has the first box ready on landing, then waits 20 hours, then the next', async () => {
+    const headers = await landed();
+    const first = (await read(headers)).welcome!;
+    expect(first).toMatchObject({ opened: 0, box: 1, readyAt: world.f.clock.now().toISOString() });
+    const opened = await open(headers);
     expect(opened.statusCode).toBe(200);
     expect(opened.json<{ granted: { alloy: number; crystal: number } }>().granted).toEqual(first.preview);
-    const after = await shipOf(me.vesselId);
-    expect(after.alloy - before.alloy).toBeCloseTo(first.preview!.alloy, 6);
-    expect(after.crystal - before.crystal).toBeCloseTo(first.preview!.crystal, 6);
 
-    expect((await open(me.headers)).json<{ error: string }>().error).toBe('WELCOME_NOT_READY');
+    expect((await open(headers)).json<{ error: string }>().error).toBe('WELCOME_NOT_READY');
     world.f.clock.advance(WELCOME_WEEK.gapHours * 60 - 1);
-    expect((await open(me.headers)).statusCode).toBe(409);
+    expect((await open(headers)).statusCode).toBe(409);
     world.f.clock.advance(1);
-    expect((await read(me.headers)).welcome).toMatchObject({ opened: 1, box: 2 });
-    expect((await open(me.headers)).statusCode).toBe(200);
+    expect((await read(headers)).welcome).toMatchObject({ opened: 1, box: 2 });
+    expect((await open(headers)).statusCode).toBe(200);
   });
 
   it('gives one box for two presses at once', async () => {
-    const me = await aboard(world, 'Me');
-    const answers = await Promise.all([open(me.headers), open(me.headers)]);
+    const headers = await landed();
+    const answers = await Promise.all([open(headers), open(headers)]);
     expect(answers.map(answer => answer.statusCode).sort()).toEqual([200, 409]);
     expect((await world.f.db.select().from(welcomeWeek))[0]?.opened).toBe(1);
   });
@@ -58,10 +69,7 @@ describe('the welcome week', () => {
   });
 
   it('after the landing goes into the capital\'s store, and ends with the seventh', async () => {
-    // The ship of a commander who has landed: the account holds the seeded capital now.
-    const ship = await aboard(world, 'Landed');
-    await world.f.db.update(vessels).set({ accountId: world.f.accountIds[0]!, status: 'DEPARTED', slotIndex: null }).where(eq(vessels.id, ship.vesselId));
-    const headers = bearer(await TOKENS.issueAccess(world.f.accountIds[0]!));
+    const headers = await landed();
     const capital = world.f.planetIds[0]!;
     const stock = async () => (await world.f.db.select({ alloy: planets.alloy, crystal: planets.crystal }).from(planets).where(eq(planets.id, capital)))[0]!;
     await world.f.db.update(planets).set({ alloy: 0, crystal: 0 }).where(eq(planets.id, capital));

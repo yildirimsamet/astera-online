@@ -31,3 +31,15 @@ From the owner's asset library, as recorded there (`packs.json`, licence confirm
 | `sck-exhaust-halo.webp` | Mining dig: the cut's glow on the face and the lit hold; wrecked colony ship: the glow of its fires; Command Core level-up: the flash behind the world | `exhaust-halo.png` | Space Combat Kit (v2.8.1) | VSX Games | VSX Games (Unity Asset Store) |
 | `flame-3-6x6.webp` | Wrecked colony ship: the flames over its bays | `flame-style-3.png` | Realistic Fire VFX (v3.5) | Luke Peek | Luke Peek (Unity Asset Store) |
 | `circles-outlines-2x2.webp` | Discovery scan: the reticle that locks on a newly known world | `t-circlesoutlines-2x2.png` | Unique Sci-Fi Pack Vol.1 (v1.3) | Gabriel Aguiar Productions | Gabriel Aguiar (Unity Asset Store) |
+| `scanlines.webp` | Colony ship's new hull: the scan sheet sweeping tail to nose | `spr-fx-militarycombat-comms-scanlines-medium-01.png` | Interface - Military Combat HUD (v1.0.0) | Synty Studios | Synty (Unity Asset Store) |
+| `track-frame.webp` | Another commander's jump far off: the tracking frame locked on it (the bracket mirrored into a pair, the dot as the contact) | `spr-hud-militarycombat-reticle-bracket-medium-01.png`, `spr-hud-militarycombat-reticle-dot-small-01.png` | Interface - Military Combat HUD (v1.0.0) | Synty Studios | Synty (Unity Asset Store) |
+
+## Rendered models (interface)
+
+From the owner's asset library (`packs.json`, licence confirmed by the owner on 2026-11-12). Each model
+was rendered in the game's light as two images, body and lid, cropped alike and saved as WebP.
+
+| Files (`apps/web/public/assets/images/welcome/`) | Used for | Source | Pack | Author | Licence |
+|---|---|---|---|---|---|
+| `crate-small-body.webp`, `crate-small-lid.webp` | New Commander 7 Days: boxes 1–6 | `SM_Prop_Crate_01` with texture `PolygonSciFiSpace_Texture_01_B` | POLYGON Sci-Fi Space (v1.13.1) | Synty Studios | Synty Studios (Unity Asset Store) |
+| `crate-big-body.webp`, `crate-big-lid.webp` | New Commander 7 Days: the seventh box | `SM_Prop_Crate_Wide_01` with texture `PolygonSciFiSpace_Texture_01_A` | POLYGON Sci-Fi Space (v1.13.1) | Synty Studios | Synty Studios (Unity Asset Store) |

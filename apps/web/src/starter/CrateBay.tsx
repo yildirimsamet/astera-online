@@ -106,14 +106,7 @@ function Haul({ resource, amount }: { resource: 'alloy' | 'crystal'; amount: num
  * out over it while the store fills. Every ready crate opens with the one gesture. The first outpost
  * victory's crate (N9) wears its win: a gilded bay, and its own name when it stands alone.
  */
-export function CrateBay({ crates, onOpen, title: named, guide = 'crate' }: {
-  crates: readonly CrateBayCrate[];
-  onOpen: () => void;
-  /** Its own name when the crate is not a repair's (the welcome week's box). */
-  title?: string;
-  /** What the guide finds it by: only the repair crates are the guide's. */
-  guide?: string;
-}) {
+export function CrateBay({ crates, onOpen }: { crates: readonly CrateBayCrate[]; onOpen: () => void }) {
   const { t } = useTranslation();
   const ready = crates.filter(crate => crate.state === 'ready');
   const purse = {
@@ -158,17 +151,17 @@ export function CrateBay({ crates, onOpen, title: named, guide = 'crate' }: {
 
   if (ready.length === 0 && !poured) return null;
   const shown = poured ?? purse;
-  const title = named ?? (shown.victory && shown.alone ? t('starter.crate.victory') : t('starter.crate.title', { count: Math.max(1, ready.length) }));
+  const title = shown.victory && shown.alone ? t('starter.crate.victory') : t('starter.crate.title', { count: Math.max(1, ready.length) });
   const words = `${compact(shown.alloy)} ${t('vocabulary.resource.alloy')}, ${compact(shown.crystal)} ${t('vocabulary.resource.crystal')}`;
   return (
     <div className="relative">
       <button
         type="button"
-        data-guide={guide}
+        data-guide="crate"
         {...(holding ? { 'data-holding': '' } : {})}
         {...(poured ? { 'data-open': '' } : {})}
         {...(shown.victory ? { 'data-victory': '' } : {})}
-        aria-label={named ? `${named}. ${t('starter.crate.open', { purse: words })}` : t('starter.crate.open', { purse: words })}
+        aria-label={t('starter.crate.open', { purse: words })}
         disabled={poured !== null && ready.length === 0}
         onPointerDown={start}
         onPointerUp={stop}

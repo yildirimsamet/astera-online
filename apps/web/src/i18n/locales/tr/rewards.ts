@@ -26,7 +26,18 @@ export const rewards = {
 
   claim: 'Al',
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
-  welcome: { title: 'Komutan kutusu {{box}}/{{of}}', wait: '{{name}} · {{time}} sonra' },
+  welcome: {
+    board: 'Yeni Komutan · 7 Kutu',
+    rule: 'Her kutu başkentinin {{hours}} saatlik üretimi, sonuncusu {{big}} saatlik. Yenisi açtıktan {{gap}} saat sonra hazır; beklerse kaybolmaz.',
+    title: 'Komutan kutusu {{box}}/{{of}}',
+    opened: 'Açıldı',
+    ready: 'Hazır',
+    hold: 'Basılı tut',
+    wait: '{{time}} sonra',
+    big: 'Büyük kutu',
+    later: 'Bugünkü üretimle',
+    poured: 'Depoya: {{purse}}',
+  },
   takeAll: "Tümünü al · {{count}}",
   go: 'Git',
   next: 'Sıradaki: {{name}} · {{count}} kaldı',

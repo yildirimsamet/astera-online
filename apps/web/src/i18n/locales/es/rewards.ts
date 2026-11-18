@@ -27,7 +27,18 @@ export const rewards = {
 
   claim: 'Recoger',
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
-  welcome: { title: 'Caja de comandante {{box}}/{{of}}', wait: '{{name}} · en {{time}}' },
+  welcome: {
+    board: 'Nuevo comandante · 7 cajas',
+    rule: 'Cada caja trae {{hours}} hora de producción de tu capital; la última, {{big}} horas. La siguiente está lista {{gap}} horas después de abrir una, y te espera.',
+    title: 'Caja de comandante {{box}}/{{of}}',
+    opened: 'Abierta',
+    ready: 'Lista',
+    hold: 'Mantén',
+    wait: 'en {{time}}',
+    big: 'Caja grande',
+    later: 'Con la producción de hoy',
+    poured: 'A tu almacén: {{purse}}',
+  },
   takeAll: 'Tomar todo · {{count}}',
   go: 'Ir',
   next: 'Siguiente: {{name}} · faltan {{count}}',

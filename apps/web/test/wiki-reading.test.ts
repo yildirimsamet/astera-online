@@ -14,6 +14,9 @@ describe('Wiki values a new player can interpret', () => {
       expect(text).toContain(String(WELCOME_WEEK.boxes));
       expect(text).toContain(String(FREE_ALERT_DAYS));
       expect(text).toMatch(language === 'en' ? /no streak/iu : /seri yok/iu);
+      // Plan 2026-11-18 S6: the boxes start at the landing; none is opened aboard.
+      expect(text).toMatch(language === 'en' ? /boxes[^"]*from the landing/iu : /kutu[^"]*inişten sonra başlar/iu);
+      expect(text).not.toMatch(language === 'en' ? /claim your ship|aboard it goes/iu : /sahiplendiğin günden|gemideyken gemiye/iu);
       expect(text).not.toMatch(/\bbots?\b/iu);
     }
     const jump = JSON.stringify(getWikiArticle('basics.the-jump')?.sections.en);

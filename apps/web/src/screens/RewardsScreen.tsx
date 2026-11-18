@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { REWARD_CHAIN_IDS, type RewardChainId } from '@astera/rules';
-import { useClaimAllRewards, useClaimReward, usePlanet, useRewards } from '../api/queries.js';
+import { useClaimAllRewards, useClaimReward, usePlanet, useRewards, useWelcome } from '../api/queries.js';
 import { useWorld } from '../api/world.js';
 import type { RewardChainView, RewardTierView } from '../api/schemas.js';
 import { compact, full } from '../lib/format.js';
@@ -13,7 +13,7 @@ import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { Banner, CostLine, EmptyState, GameButton, Glyph, InfoPeek, ProgressBar, RewardPod, artIconSrc, type GlyphId } from '../game-ui/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { nextRewardGoal, rewardGate, type RewardGate } from '../lib/rewardGates.js';
-import { WelcomeBox } from './WelcomeBox.js';
+import { WelcomeWeek } from './WelcomeWeek.js';
 
 const CHAIN_GLYPH: Record<RewardChainId, GlyphId> = {
   PROBE: 'eye', RAID: 'attack', CORE: 'home', SHIPYARD: 'rocket',
@@ -32,6 +32,8 @@ const known = (chain: RewardChainView): chain is KnownChain =>
 export function RewardsScreen({ commander, onGo }: { commander: string; onGo?: (gate: RewardGate) => void }) {
   const { t } = useTranslation();
   const { data, isPending, isError, refetch } = useRewards();
+  const welcome = useWelcome().data?.welcome;
+  const boxReady = welcome?.box != null && welcome.readyAt !== null && welcome.readyAt.getTime() <= Date.now();
   const planet = usePlanet();
   const { capitalPlanetId, worlds } = useWorld();
   const claim = useClaimReward();
@@ -105,6 +107,8 @@ export function RewardsScreen({ commander, onGo }: { commander: string; onGo?: (
   const podChain = pod ? chains.find((chain) => chain.tiers.some((tier) => tier.id === pod.id)) : undefined;
 
   return <div data-v2-rewards className="gk-rewards">
+    {/* A ready commander box is what the gift icon called for: it stands first; a waiting one below (owner 2026-11-18). */}
+    {boxReady && <WelcomeWeek />}
     {pod && <div className="gk-rewards__pod">
       <RewardPod key={pod.id} label={t('rewards.openPod')} opened={opened !== null}
         onOpen={() => { setOpened(pod); onClaim(pod.id); }}>
@@ -129,7 +133,7 @@ export function RewardsScreen({ commander, onGo }: { commander: string; onGo?: (
         <dd className="gk-cmdr__value gk-display gk-num">{full(taken)} / {full(tiers.length)}</dd>
       </div>
     </dl>
-    <WelcomeBox />
+    {!boxReady && <WelcomeWeek />}
     {next && nextGate && onGo && <div data-testid="reward-next">
       <Banner tone="info" variant="strip" glyph={CHAIN_GLYPH[next.chain.id]}
         title={t('rewards.next', { name: t(`rewards.chains.${next.chain.id}.name`), count: next.left })}

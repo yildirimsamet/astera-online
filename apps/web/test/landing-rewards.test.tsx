@@ -19,12 +19,14 @@ type State = 'locked' | 'claimable' | 'claimed';
 const chain = (id: string, states: State[]) => ({ id, metric: 'level', scope: 'season', progress: 3, tiers: states.map((state, i) => ({ id: `${id}:${String(i + 1)}`, goal: i + 1, alloy: 300, crystal: 100, state })) });
 const waiting = (count: number) => ({ chains: [chain('CORE', [...Array<State>(count).fill('claimable'), 'locked'])], claimable: count });
 
-const harness = ({ rewards, daysAgo = 0 }: { rewards: object; daysAgo?: number }) => {
+const firstBox = { welcome: { opened: 0, box: 1, readyAt: new Date(Date.now() - 1000).toISOString(), preview: { alloy: 160, crystal: 240 } } };
+const harness = ({ rewards, daysAgo = 0, welcome = { welcome: null } }: { rewards: object; daysAgo?: number; welcome?: object }) => {
   const taken = { chains: [chain('CORE', ['claimed', 'claimed', 'claimed', 'locked'])], claimable: 0 };
   const fetcher = vi.fn((input: RequestInfo | URL) => {
     const url = urlOf(input);
     const body = url.includes('/api/rewards/claim-all') ? { granted: { alloy: 900, crystal: 300, deuterium: 0 }, count: 3, rewards: taken, planet: planetView() }
       : url.includes('/api/rewards') ? rewards
+        : url.includes('/api/welcome') ? welcome
         : url.includes('/api/reports') ? { reports: [], rivals: [] }
           : { arrival: null, landedAt: new Date(Date.now() - daysAgo * 86_400_000).toISOString() };
     return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } }));
@@ -78,6 +80,30 @@ describe('the landing reward moment', () => {
     cleanup();
     harness({ rewards: waiting(3), daysAgo: 8 });
     await waitFor(() => { expect(screen.queryByTestId('landing-rewards')).toBeNull(); });
+  });
+
+  // Plan 2026-11-18 §6 (S6, 5.8): the seven boxes start at the landing, in this same moment, never a window of their own.
+  it('holds the seven boxes too, the first one ready to open where it stands', async () => {
+    harness({ rewards: waiting(3), welcome: firstBox });
+    const moment = await screen.findByTestId('landing-rewards');
+    const board = await within(moment).findByTestId('welcome-week');
+    expect(within(board).getByTestId('welcome-box-1').dataset.state).toBe('ready');
+    expect(within(moment).getByRole('button', { name: /Take all · 3/u })).toBeInTheDocument();
+  });
+
+  it('comes for the first box alone, with the board as the whole moment', async () => {
+    harness({ rewards: waiting(0), welcome: firstBox });
+    const moment = await screen.findByTestId('landing-rewards');
+    expect(await within(moment).findByTestId('welcome-week')).toBeInTheDocument();
+    expect(within(moment).queryByRole('button', { name: /Take all/u })).toBeNull();
+    // The ribbon names the board, so the board does not say it twice.
+    expect(within(moment).getAllByText(/New Commander · 7 Boxes/u)).toHaveLength(1);
+  });
+
+  it('does not come for a week already begun', async () => {
+    harness({ rewards: waiting(1), welcome: { welcome: { ...firstBox.welcome, opened: 1, box: 2 } } });
+    await screen.findByTestId('landing-tip');
+    expect(screen.queryByTestId('landing-rewards')).toBeNull();
   });
 
   // Owner play-through 2026-11-18: the moment opened under the galaxy's event card and the top bar's note,

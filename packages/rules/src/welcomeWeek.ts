@@ -1,9 +1,9 @@
 /**
- * NEW COMMANDER 7 DAYS (plan 2026-11-06 §7.2, Y3). Once an account, from the ship's claim through the
- * landing. No streak: boxes are counted, not days, and a missed day loses nothing. One box a day at
- * most: the next is ready `gapHours` after the last was opened. Only resources, about an hour of what
- * the commander makes now, crystal-heavy; the seventh about three hours. Aboard it goes to the ship, after
- * the landing to the capital's store — where it can be raided, as every reward can.
+ * NEW COMMANDER 7 DAYS (plan 2026-11-06 §7.2, Y3). Once an account, from the landing on (plan 2026-11-18
+ * S6: never in the starter galaxy). No streak: boxes are counted, not days, and a missed day loses
+ * nothing. One box a day at most: the next is ready `gapHours` after the last was opened. Only
+ * resources, about an hour of what the capital makes now, crystal-heavy; the seventh about three hours.
+ * Into the capital's store — where it can be raided, as every reward can.
  */
 export const WELCOME_WEEK = {
   boxes: 7,

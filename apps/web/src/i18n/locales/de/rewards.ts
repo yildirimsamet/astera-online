@@ -27,7 +27,18 @@ export const rewards = {
 
   claim: 'Abholen',
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
-  welcome: { title: 'Kommandantenkiste {{box}}/{{of}}', wait: '{{name}} · in {{time}}' },
+  welcome: {
+    board: 'Neuer Kommandant · 7 Kisten',
+    rule: 'Jede Kiste enthält {{hours}} Stunde Produktion deiner Hauptwelt, die letzte {{big}} Stunden. Die nächste ist {{gap}} Stunden nach dem Öffnen bereit und wartet auf dich.',
+    title: 'Kommandantenkiste {{box}}/{{of}}',
+    opened: 'Geöffnet',
+    ready: 'Bereit',
+    hold: 'Halten',
+    wait: 'in {{time}}',
+    big: 'Große Kiste',
+    later: 'Bei heutiger Produktion',
+    poured: 'In dein Lager: {{purse}}',
+  },
   takeAll: 'Alle nehmen · {{count}}',
   go: 'Los',
   next: 'Als Nächstes: {{name}} · noch {{count}}',

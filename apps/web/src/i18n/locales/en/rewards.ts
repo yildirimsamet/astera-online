@@ -27,7 +27,18 @@ export const rewards = {
 
   claim: 'Claim',
   /** The supply pod over the list: the next ready payout, opened by a tap (C34). */
-  welcome: { title: 'Commander box {{box}}/{{of}}', wait: '{{name}} · in {{time}}' },
+  welcome: {
+    board: 'New Commander · 7 Boxes',
+    rule: 'Each box holds {{hours}} hour of your capital\'s output, the last {{big}} hours. The next is ready {{gap}} hours after you open one, and it waits for you.',
+    title: 'Commander box {{box}}/{{of}}',
+    opened: 'Opened',
+    ready: 'Ready',
+    hold: 'Hold',
+    wait: 'in {{time}}',
+    big: 'Big box',
+    later: 'At today\'s output',
+    poured: 'To your store: {{purse}}',
+  },
   takeAll: 'Take all · {{count}}',
   go: 'Go',
   next: 'Next: {{name}} · {{count}} to go',
