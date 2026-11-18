@@ -511,6 +511,7 @@ export const STARTER = {
   radar: [0, 750, 1000, 1500],   // Radar 1 600 → 750 (owner, 2026-11-18)
   probeSpeed: 790,        // 2369'da 300 birim 9 saniye sürer, uçuş görülemez
   prospectorSpeed: 300,   // kısa mesafede madencilik üretimi ezmesin
+  firstTrips: { mineOut: 8, mineBack: 10, probe: 12 },   // saniye, yalnız ilk sefer (owner, 2026-11-19)
   hulls: ['DART', 'PIKE', 'WARDEN', 'COURIER', 'PROSPECTOR'],
   hangarRoom: [20, 32, 50], attackBays: [1, 2, 3],
   queues: { construction: 3, yard: 3, dock: 1, research: 1 },
@@ -540,6 +541,7 @@ export const STARTER = {
 - Uçuşlar: Ok 250 birimi 2,75 dakikada, 1000 birimi 11 dakikada gider. En uzak uçuş 33 dakikadır. Kısa oturumda sonucu görmeye uygundur.
 - `minSeparation` 250'dir: çıplak göz (150) hiçbir komşuyu görmez, 30 yuva 900 yarıçapa rahat sığar. `generateGalaxy` ana galaksi sabitlerini okuduğu için `starterSlots` ayrı bir üreticidir.
 - Sonda ve Kazıcı hızları ayrı tutulur, ama istemciye ayna gerekmez: sonda süresi ve Kazıcı hızı (`craftSpeed`) sunucu yanıtından gelir.
+- **İlk seferler kısa ve beklenir (owner, 2026-11-19).** Geminin ilk Kazıcı seferi kayaya en çok 8 sn'de varır, en çok 10 sn'de döner; ilk sondası en çok 12 sn'de gidip döner (`STARTER.firstTrips`, `firstRockMeeting`, `firstTripMinutes`). Sonraki seferler kendi hızındadır; botlar da aynı kurala tabidir. Rehber ilk Kazıcı'yı (`waitMine`) ve ilk sondayı (`waitProbe`) bekletir: uçarken yol sürünce dönüşleri sonraki adımın ortasına düşüyordu (Kazıcı sonda hedefi açıkken döndü). Geri çağrılan sefer veya sonda yollanmayan yalnız gemi beklenmez.
 - Gemi fiyatları ana oyunla aynıdır (Ok 304/121). 6 gemi yaklaşık 10 saatlik üretimdir, filo ile onarım arasında gerçek bir karar doğar.
 - `combat.tempo`, `resolveBattle`'a verilen tek savaş ayarıdır. Aegis'in burada verdiği can `shieldHp(aşama) × tempo ÷ COMBAT.tempo` ile hesaplanır (`vesselAegisHp`): Aegis 1 75, Aegis 2 113. Hasar ve kalkan böylece tek sayıyla birlikte oynar.
 - %95 ve üstü hasarlı gemi savaşamaz, bu mevcut `shipCanFight` sınırıdır.

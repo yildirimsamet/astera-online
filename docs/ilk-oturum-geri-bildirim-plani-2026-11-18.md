@@ -132,6 +132,14 @@ Her adım TDD ile yapılır: önce kırmızı test, sonra kod, sonra yeşil. Ard
 | 28b | bitti | Owner'ın ek notu (2026-11-18): "?" radardan teleskopa 4 sn'de geçer (2 sn'ydi), radar aşamasında kamera daha geride (bant 1,4 kat geniş tutulur), girişten 500 ms önce kamera "?"e yaklaşmaya başlar (1 sn'lik yaklaşma, yarısında giriş), "Teleskobun görüşüne girdi" satırı ve sesi tam giriş anında gelir (`speakAt`; önceki satır o ana kadar ekranda kalır). Radar 1 menzili 600 → 750 (owner seçimi, kural değişikliği: teleskobun ötesindeki bant 150 → 300; Radar 2 ve 3 aynı). |
 
 
+### §8 dördüncü tur (owner 2026-11-19, telefonda)
+
+| # | Owner'ın dediği | Kök neden | Yapılan |
+|---|---|---|---|
+| 29 | Görevler hızlı yapılınca çakışıyor: sonda hedefi açıkken Kazıcı döndü, el "odağı kapat"a atladı, sonda adımı baştan oynandı. Sıçrama hazır olması gibi başka yerlerde de olabilir. | Kazıcının dönüşü (`FIRST_MINING_RETURN`) kurtarma özelliğini açıyor; açılış kartı bekleyince rehber `dismissUnlock` ile odak kartını kapattırıyor. Aynı desen: gemideyken gelen kasa/rapor/sıçrama kartı, odak açıkken başlayan yönetmen sahnesi. | e513b0d8 Oyuncunun elindeki adım bitene ya da bırakılana kadar korunur: odak kartı, gemi veya sayfa açıkken araya giren kart, ganimet, sıçrama veya rapor bekler. Odak kartı açıkken yönetmen sahnesi başlamaz, kamerayı almaz. |
+| 30 | Süre alan her görev (Kazıcı, sonda, filo, onarım) bitince ne oluyor? Çözülemiyorsa bekleme zorunlu olsun ama 15–20 sn'yi geçmesin. | Onarımlar zaten ≤10 sn ve bekleme adımlı; tersane ve ilk akın yolun sonunda, adım koruması kapsıyor. İlk Kazıcı (~1,5–3 dk) ve ilk sonda (~1 dk) her oturumda araya giriyordu. | f6bb9576 İlk Kazıcı ≤8 sn gider, ≤10 sn döner; ilk sonda ≤12 sn gidip döner (sunucu, kural değişikliği). Rehber ikisini bekler (`waitMine`, `waitProbe`, 6 dil). Sonraki seferler kendi hızında. |
+| 31 | Gemi sayfasındaki boyalı gemi resmi geç yükleniyor; siyah çerçeve görünürken sayfa aşağı kayıyor. | Resim yalnız sayfa açılınca isteniyordu (1000 px, ~100 KB); yer tutucu yoktu. | e2c62c6e Oyuncunun kendi gövdesinin üç görünüşü galaksi açıkken önceden indirilir; 24×16 bulanık kopya hemen çizilir; resim öncelikli ve çizildiği genişlikte istenir (telefona 720 px kopya, yarı boyut). |
+
 ### §8 kod incelemesi (2026-11-19)
 
 Owner'ın yaptırdığı incelemenin bulguları kodda tek tek doğrulandı.
