@@ -76,8 +76,22 @@ Her adım TDD ile yapılır: önce kırmızı test, sonra kod, sonra yeşil. Ard
 |---|---|---|
 | Y | bitti | 25934b22: sahne bekleme süresi ve eski sahnelerin düşmesi (16), onarım yakınlaşması bitene kadar (4), rapor turu 8 sn (2). |
 | R | bitti | 983a06fa toplama çerçevesi iki hap (3) · a1642765 gezegen kilidi, ad değil (14) · c91e79db rapor Devam'da kart kapanır (12) · 56c20a7d sonda kartı (10). |
-| K | sırada | |
-| E | sırada | |
-| G | sırada | |
+| K | bitti | 3ac04c25 Tersane 30 sn (11) · f57cfd6f prolog yanma 3 sn, sensörde 3 basış (1). |
+| E | bitti | 41757904 hediye satırı ve yanaşan gemiler (8) · 71c38e26 teleskop küresi (7, madde 19 ile değişecek) · fc221d37 alaşım/kristal renkleri (6). |
+| G | sürüyor | a943a347 hero onarım anı ve ONAR'a kaydırma (5) · sıçrama kartı (13) sürüyor. |
 | Ö | sırada | |
 | A | karar: seçenek A | |
+
+## 7. İkinci tur (owner 2026-11-18, oynarken)
+
+| # | Owner | Kök / not (doğrulanacak) |
+|---|---|---|
+| 17 | Animasyon sahnelerinde "Dokun · geç" yerine basılı tutarak geçilsin: 1 sn basılı tutunca geçsin, yanlışlıkla dokunmanın önüne geçilsin. | `DirectorStage` geçişi tek dokunuşla yapıyor. |
+| 18 | İlk onarımlar: Teleskop 1 → 5 sn, Radar 1 → 5 sn, Tersane 1 → 10 sn. | `packages/rules/src/starter/ladder.ts` süreleri + aynalar (sunucu, sim, testler, plan belgesi). |
+| 19 | Teleskop açılınca gemiyi saran çizgi küre yerine: önce gemiden hafif uzaklaşma, uzaklaşma bitince 500 ms bekleme, sonra gerçek teleskop küresi açılsın. | 71c38e26'daki `GlobeScan` kalkar. Teleskop dönüşü kamerayla ve oyundaki gerçek görüş küresiyle anlatılır. |
+| 20 | Teleskoptan sonraki Kazıcı adımı: oyuncu önce biraz yakınlaştırsın, sonra bir asteroide dokunsun. Dokununca odak sayfası hemen açılmasın: kameranın odaklanma yaklaşmasını izlesin, dokunuştan 500 ms sonra sayfa açılsın. | `zoomRock` / `findRock` adımları; odak sayfası dokunuşta açılıyor. |
+| 21 | Aynısı sonda görevinde: kamera önce hedef gemiye gitsin, 500 ms sonra sayfa açılsın. | Sonda hedefine dokunuş / rehberin hedefi. |
+| 22 | Galaksideki "SIRADAKİ · Radar >" satırı yeni UI kitine göre tasarlansın. | `ObjectiveLine`. |
+
+**Sıra:** G'nin kalanı (13) → 18 → S grubu (17, 19, 20, 21) → 22 → Ö (15) → A (9).
+
