@@ -49,6 +49,8 @@ Proje için daha iyisi neyse her konu değişebilir; şartı owner'la konuşmakt
 
 Onay gelmeden kilitli davranışı uygulamada değiştirme; onay gelirse kararı yöneten belgeyi güncelle.
 
+**Mevcut kurallar fikir eleme filtresi değildir (owner, 2026-11-18).** Bu kural yalnız "kilitli" etiketli kararlar için değil; dokümanlardaki her kural, tasarım ilkesi ("soyulabilirsin, silinemezsin" gibi) ve eski D-numaralı kararlar için de geçerlidir. Beyin fırtınasında ve planda bir fikri "X'i bozar / X'e ters" diyerek eleme. Ölçüt oyuncudur: daha eğlenceli mi, daha çok hırs yaptırıyor mu, daha çok taktik ve akıl oyunu açıyor mu? Fikir mevcut bir kuralla çatışıyorsa bunu ödünleşim olarak sun: hangi kuralı nasıl değiştirir, oyuncuya kazancı ve bedeli ne. Eskiyi değiştirmeden eklenemeyen yeni mekanik bir engel değil, tartışılacak bir seçenektir. Bir sistemin "pratikte işe yaradığını" söylemeden önce kanıtını (ölçüm, playtest) göster; kanıt yoksa varsayım olduğunu yaz. D-numaraları silinmiş `decisions.md`'nin eski referanslarıdır: bir kuralın var olduğunu gösterir, değişmemesi gerektiğini göstermez.
+
 ### Akıl hocası ol (owner, 2026-11-11)
 
 Owner oyun yapımında acemidir; sektörün yollarını (hazır asset, mağaza, sanatçı, araç) ve terimleri (model, poly count, shader, VFX…) bilmez. Bir istek geldiğinde önce **en kaliteli yolu** öner: sektör bunu nasıl yapar, nereden alınır (somut link), yaklaşık maliyet ve lisans. Ardından alternatifleri ve bedellerini koy (ör. "almazsan şu yolla yaparız"). İşe başlamadan önce söyle; kendi yapabildiğin yola sessizce girme. Geçen her terimi bir cümleyle, oyundaki karşılığıyla açıkla.
@@ -267,8 +269,12 @@ Diğer konular için `docs/` klasörüne bak.
 
 **UI/UX yazım kapsamı:** Yeni veya güncellenen UI, oynanış açıklaması, yardım ve Wiki metinlerinde `docs/ux-writing.md` uygulanır. Lore kapsam dışıdır; içindeki işlevsel talimatlar kapsam içindedir. Bu belge yazım standardıdır; mekanikleri kod ve testlerden doğrula.
 
-## 7. İletişim ve son hedef
+## 7. Token optimizasyonu
 
 Gerekmiyorsa çıktı verme. Çıktı gerektiğinde kısa, net, basit ve kullanıcının anlayabileceği şekilde yaz; gereksiz uzatma.
+
+Claude API her istekten sonra 5dk TTL ile caching yapıyor. Bu yüzden dolayı hiç bir işi 270 saniyeden fazla bekleme (30 saniye buffer). Test sonucu, tool call vs. hiç bir şeyi 270sn üzerinde beklemeyeceksin. İşine devam edeceksin. Sonuç gelince bakarsın, boşuna bekleyip cache süresini yakma. Cachelenmiş geçmiş için token ücreti çok daha ucuz.
+
+## 8. Son hedef
 
 > Oyuncuların oyunu kapattıktan sonra “Ne oldu acaba?” diye merak ettiği, AAA+ premium görsel kalitede, optimize edilmiş bir çok oyunculu tarayıcı ve uygulama oyunu geliştir.
