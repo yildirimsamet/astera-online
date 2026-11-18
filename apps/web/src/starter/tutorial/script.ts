@@ -175,10 +175,11 @@ const MOMENTS: readonly Part[] = [
       { id: 'report', kind: 'read', chapter: 4, place: 'galaxy', marks: ['[data-dossier-loot]'] },
     ],
   },
-  // The first haul, when it is home.
+  // The first haul, when it is home. A ship whose yard is ordered carried it to the store long ago: on a
+  // new device the line would come back hours on, over the ship page's foot (isolated test 2026-11-18).
   {
     strict: false, due: i => i.facts.includes('FIRST_MINING_RETURN'),
-    steps: [{ id: 'collectMine', kind: 'press', chapter: 6, place: 'any', marks: [WORKS], satisfied: i => i.works < 1 }],
+    steps: [{ id: 'collectMine', kind: 'press', chapter: 6, place: 'any', marks: [WORKS], satisfied: i => i.works < 1, reached: i => ordered(i, 'SHIPYARD', 1) }],
   },
   // THE RADAR, ON A REAL CONTACT (plan F6): nothing is made up for a lesson; an empty sky only means
   // it waits, and the road goes on meanwhile. The scout comes to every Radar 1 owner who is there and has flown something.

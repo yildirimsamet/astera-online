@@ -235,6 +235,13 @@ describe('the first-time moments', () => {
     expect(id({ ...home, ...ack('collectMine') })).toBe('orderSurvey');
   });
 
+  // Isolated player test 2026-11-18: the haul's line came back on a new device hours on, over the ship
+  // page's foot. A ship whose yard is ordered has long carried its first haul to the store.
+  it('lets the first haul go once the yard is ordered, on any device', () => {
+    const later = awake({ modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 }, facts: ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'], works: 100, acked: ['openIntel', 'openReport', 'report'] });
+    expect(id(later)).not.toBe('collectMine');
+  });
+
   it('never drags a veteran back: past the first haul there is nothing to teach', () => {
     const modules: Record<string, number> = {};
     for (const s of REPAIR_LADDER.slice(0, 10)) modules[s.module] = Math.max(modules[s.module] ?? 0, s.stage);

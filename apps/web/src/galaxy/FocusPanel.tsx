@@ -197,6 +197,7 @@ function Shell({
   children,
   actions,
   peek,
+  above,
   open,
   onToggle,
   onClose,
@@ -214,6 +215,8 @@ function Shell({
   actions?: ReactNode;
   /** What the closed card shows under its header: the mock's glance and its commitments. */
   peek?: ReactNode;
+  /** Over the closed card: the next step a followed flight must not hide (isolated player test 2026-11-18). */
+  above?: ReactNode;
   open: boolean;
   onToggle: () => void;
   onClose: () => void;
@@ -257,6 +260,7 @@ function Shell({
       className="gk gk-focus pointer-events-auto absolute inset-x-0 bottom-[var(--v2-dock-h,0px)] z-20 v2-split:left-auto v2-split:w-80"
       aria-label={t('focus.shellLabel', { title })}
     >
+      {above && !open && <div className="gk-focus__above">{above}</div>}
       <div className={`gk-focus__plate gk-cut${tone === undefined ? '' : ` gk-cut--${tone}`}`}>
         {/* The header. Always present, and the whole control when closed. */}
         <div className="gk-focus__head">
@@ -3061,6 +3065,7 @@ export function RunFocus({
   onToggle,
   onRecall,
   recalling = false,
+  above,
 }: {
   run: MiningRun;
   rock: AsteroidView | undefined;
@@ -3072,6 +3077,8 @@ export function RunFocus({
   onToggle: () => void;
   onRecall?: () => void;
   recalling?: boolean;
+  /** Over the closed card (`Shell`). */
+  above?: ReactNode;
 }) {
   const { t } = useTranslation();
   const returning = run.status === 'returning';
@@ -3083,6 +3090,7 @@ export function RunFocus({
 
   return (
     <Shell
+      above={above}
       glyph="mine"
       tone="self"
       eyebrow={t(
@@ -3173,6 +3181,7 @@ export function ThreadFocus({
   onFocusMonument,
   onRecall,
   recalling = false,
+  above,
 }: {
   thread: PendingThread;
   minutesRemaining: number;
@@ -3182,6 +3191,8 @@ export function ThreadFocus({
   onFocusMonument?: (monumentId: string) => void;
   onRecall?: () => void;
   recalling?: boolean;
+  /** Over the closed card (`Shell`). */
+  above?: ReactNode;
 }) {
   const { t } = useTranslation();
   const composition = thread.fleet ? describeThreadFleet(thread.fleet) : null;
@@ -3192,6 +3203,7 @@ export function ThreadFocus({
 
   return (
     <Shell
+      above={above}
       glyph={thread.kind === 'probe' ? 'eye' : 'rocket'}
       tone="self"
       eyebrow={t(

@@ -1452,6 +1452,30 @@ export function GalaxyView({
    */
   const menuBack = returnsToMenu(panel) ? { onBack: () => { onPanel('menu'); } } : {};
 
+  /** The ship's next step: the starter foot's line, and over a followed flight's card while the craft flies. */
+  const nextStep = ship
+    ? (ship.unlockToAnnounce
+      ? <UnlockMoment vessel={ship} overGalaxy onAwaken={onAwaken} onTry={(feature) => { if (feature === 'intel') focusNeighbour(); }} />
+      : <ObjectiveLine
+          vessel={ship}
+          fetchedAt={planet.dataUpdatedAt}
+          onOpenShip={() => { onPanel('planet'); }}
+          onFocusNeighbour={focusNeighbour}
+          onFocusOutpost={id => { focusPlanet(id); }}
+          onOpenReports={() => { onPanel('intel', 'probes'); }}
+          hunt={huntStage(galaxy.data?.planets ?? [], intel.data?.probeReports ?? [], pending.data?.pending ?? [])}
+          onFocusRock={() => {
+            const minutes = season.data ? (now - season.data.startsAt.getTime()) / 60_000 : 0;
+            const id = nearestRock(asteroids, activeWorldPosition, minutes);
+            if (id) { setFocus({ kind: 'asteroid', id }); setDetail(true); }
+          }}
+          probing={(pending.data?.pending ?? []).some((thread) => thread.kind === 'probe')}
+          mining={(mining.statusData?.runs ?? []).some((run) => run.status !== 'done')}
+          // Only once the map has loaded: an unread map is not an empty galaxy.
+          alone={galaxy.data !== undefined && !hasOtherShip(galaxy.data.planets, ship.id)}
+        />)
+    : null;
+
   return (
     <SeasonLockProvider locked={season.data?.status === 'frozen'} vacation={Boolean(planet.data?.vacationUntil && planet.data.vacationUntil.getTime() > now)}>
     <div className="absolute inset-0 overflow-hidden">
@@ -1853,6 +1877,7 @@ export function GalaxyView({
               : wrecks.find((d) => d.id === run.debrisFieldId);
           return (
             <RunFocus
+              above={nextStep}
               run={run}
               recalling={recallMining.isPending}
               onRecall={() => {
@@ -1887,6 +1912,7 @@ export function GalaxyView({
           if (!thread) return null;
           return (
             <ThreadFocus
+              above={nextStep}
               onFocusMonument={(id) => { setFocus({ kind: 'monument', id }); setDetail(true); setAttacking(false); }}
               thread={thread}
               recalling={recallFlight.isPending}
@@ -2040,26 +2066,7 @@ export function GalaxyView({
           {/* The way out, over everything else down here: it is what the whole galaxy was for. */}
           <JumpCall progress={{ modules: ship.modules, facts: ship.facts }} onOpen={() => { onPanel('planet'); }} />
           {/* A system that just opened speaks first; once it is read, the next step takes its place. */}
-          {ship.unlockToAnnounce
-            ? <UnlockMoment vessel={ship} overGalaxy onAwaken={onAwaken} onTry={(feature) => { if (feature === 'intel') focusNeighbour(); }} />
-            : <ObjectiveLine
-                vessel={ship}
-                fetchedAt={planet.dataUpdatedAt}
-                onOpenShip={() => { onPanel('planet'); }}
-                onFocusNeighbour={focusNeighbour}
-                onFocusOutpost={id => { focusPlanet(id); }}
-                onOpenReports={() => { onPanel('intel', 'probes'); }}
-                hunt={huntStage(galaxy.data?.planets ?? [], intel.data?.probeReports ?? [], pending.data?.pending ?? [])}
-                onFocusRock={() => {
-                  const minutes = season.data ? (now - season.data.startsAt.getTime()) / 60_000 : 0;
-                  const id = nearestRock(asteroids, activeWorldPosition, minutes);
-                  if (id) { setFocus({ kind: 'asteroid', id }); setDetail(true); }
-                }}
-                probing={(pending.data?.pending ?? []).some((thread) => thread.kind === 'probe')}
-                mining={(mining.statusData?.runs ?? []).some((run) => run.status !== 'done')}
-                // Only once the map has loaded: an unread map is not an empty galaxy.
-                alone={galaxy.data !== undefined && !hasOtherShip(galaxy.data.planets, ship.id)}
-              />}
+          {nextStep}
         </div>
       )}
       {panel === 'planet' && planet.data?.vessel && (

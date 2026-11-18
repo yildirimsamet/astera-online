@@ -135,7 +135,9 @@ export function VesselScreen({ vessel, fetchedAt, focusGroup, focusItem }: {
     queue: repairs(vessel),
     order: (step) => {
       repair.mutate({ module: step.module, stage: step.stage }, {
-        onSuccess: () => { setPicked(null); say(t('starter.ordered', { name: moduleName(step.module) })); },
+        // What was just ordered stays on the card, under way: with the guide's card up the toast is held
+        // back, and a card that moved on to another machine said nothing (isolated player test 2026-11-18).
+        onSuccess: () => { setPicked(step); say(t('starter.ordered', { name: moduleName(step.module) })); },
         onError: (error) => { say(describe(error), 'error'); },
       });
     },

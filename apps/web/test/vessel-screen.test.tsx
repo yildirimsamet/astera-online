@@ -511,6 +511,26 @@ describe('the ship screen', () => {
     await waitFor(() => { expect(within(screen.getByTestId('next-repair')).getByRole('button', { name: 'Repair' })).toBeEnabled(); });
   });
 
+  /*
+    Isolated player test 2026-11-18: an optional repair was ordered while the guide's card was up, which
+    drops the "repairing" toast, and the card moved on to another machine with a faded button: the
+    player saw nothing happen and pressed again, three times. What was ordered stays, under way.
+  */
+  it('keeps what was just ordered on the card, under way', async () => {
+    const extractor = { id: 'order-2', queue: 'CONSTRUCTION', subject: 'EXTRACTOR', stage: 2, count: 1,
+      startedAt: '2026-11-04T10:00:00.000Z', readyAt: '2099-11-04T10:01:00.000Z', cost: { alloy: 77, crystal: 58, deuterium: 0 } };
+    const progress: VesselProgress = { ...openingProgress(), modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 } };
+    const { requests, rerender } = show(vessel({ progress, alloy: 400, crystal: 90 }));
+    fireEvent.click(screen.getByRole('tab', { name: /Refinery/ }));
+    fireEvent.click(screen.getByTestId('repair-strip').querySelector('[data-step="EXTRACTOR:2"]')!);
+    expect(screen.getByTestId('next-repair').getAttribute('aria-label')).toMatch(/Crystal/);
+    fireEvent.click(within(screen.getByTestId('next-repair')).getByRole('button', { name: 'Repair' }));
+    await waitFor(() => { expect(requests).toEqual([{ path: '/api/starter/repair', body: { module: 'EXTRACTOR', stage: 2 } }]); });
+    rerender(vessel({ progress, alloy: 323, crystal: 32, queue: [extractor] }));
+    await waitFor(() => { expect(screen.getByTestId('next-repair').getAttribute('aria-label')).toMatch(/Crystal/); });
+    expect(within(screen.getByTestId('next-repair')).getByText(/Ready in/)).toBeTruthy();
+  });
+
   it('reports a refusal in words and leaves the ship as it was', async () => {
     show(vessel(), () => new Response(JSON.stringify({ error: 'INSUFFICIENT_RESOURCES', message: 'x' }), { status: 409, headers: { 'content-type': 'application/json' } }));
     fireEvent.click(within(screen.getByTestId('next-repair')).getByRole('button', { name: 'Repair' }));

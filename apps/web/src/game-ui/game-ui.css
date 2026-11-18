@@ -11959,6 +11959,11 @@ button.gk-rcard__door:active {
 .gk-focus[data-open='false'] {
   padding: 0 10px 8px;
 }
+/* The next step over a closed card that follows a flight: the starter foot's own strip, at its width. */
+.gk-focus__above {
+  max-width: 36rem;
+  margin: 0 auto 8px;
+}
 .gk-focus__plate {
   --cut: 10px;
   max-width: 36rem;

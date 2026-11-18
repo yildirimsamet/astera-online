@@ -97,3 +97,26 @@ describe('calling a flight back on the kit', () => {
     expect(screen.getByText(/380/).closest('.gk-inote')).not.toBeNull();
   });
 });
+
+/*
+  Isolated player test 2026-11-18: with the guide closed, the next-step line was the player's only way
+  on, and the card that follows a launch covered it; the player watched a Prospector fly with "nothing to
+  do" and quit. The line rides above a closed flight card; an open card is the player reading the flight.
+*/
+describe('the next step over a followed flight', () => {
+  const next = <p data-testid="next-step">Repair the Radar</p>;
+
+  it('stands above a closed run or flight card', () => {
+    const { unmount } = render(<RunFocus run={run()} rock={undefined} wreck={undefined} minutesRemaining={9} above={next} {...shell} open={false} />);
+    expect(rail().querySelector('[data-testid="next-step"]')).not.toBeNull();
+    expect(rail().firstElementChild?.contains(screen.getByTestId('next-step'))).toBe(true);
+    unmount();
+    render(<ThreadFocus thread={{ ...thread, kind: 'probe' }} minutesRemaining={10} above={next} {...shell} open={false} />);
+    expect(screen.getByTestId('next-step')).toBeTruthy();
+  });
+
+  it('steps away while the card is open', () => {
+    render(<RunFocus run={run()} rock={undefined} wreck={undefined} minutesRemaining={9} above={next} {...shell} open />);
+    expect(screen.queryByTestId('next-step')).toBeNull();
+  });
+});
