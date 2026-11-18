@@ -71,7 +71,7 @@ function shipsHanded(step: RepairStep & { module: RoadModule }): { hull: HullId;
 }
 
 /** The telescope's pull back from the ship (owner 2026-11-18, item 19): a little wider than the whole-ship shot, quickly. */
-export const TELESCOPE_PULL = { range: 7.5, seconds: 1.2 } as const;
+export const TELESCOPE_PULL = { range: 11, seconds: 1.2 } as const;
 /** The breath between the camera settling and the reach opening. */
 const REACH_BREATH_MS = 500;
 
