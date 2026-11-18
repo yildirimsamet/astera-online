@@ -15,4 +15,28 @@
 :root[data-directing] [data-galaxy-top-corners],
 :root[data-directing] [data-corner-buttons],
 :root[data-directing] [data-now-float],
-:root[data-directing] [data-hud-badges] { opacity: 0; pointer-events: none; transition: opacity .3s ease-out; }
+:root[data-directing] [data-hud-badges],
+:root[data-directing] [data-focus-rail],
+:root[data-directing] [data-outpost-guide],
+:root[data-directing] [data-jump-call],
+:root[data-directing] [data-starter-foot] { opacity: 0; pointer-events: none; transition: opacity .3s ease-out; }
+/*
+  The report's words on the hull (plan 2026-11-18 §4 İ5): a damage-control readout. A hard pin on the bay,
+  a hairline out to a plate naming the system and what its damage does, called one after another. The
+  colour is the damage's own: fire orange, loose wiring amber, a mended system the ally green.
+*/
+.ship-tag { --tag: var(--color-v2-warn); position: absolute; left: 0; top: 0; width: 0; height: 0; font-family: var(--font-v2-ui); }
+.ship-tag[data-condition='burning'], .ship-tag[data-condition='smouldering'] { --tag: #ff8a4c; }
+.ship-tag[data-condition='severed'], .ship-tag[data-condition='sparking'] { --tag: #ffd36b; }
+.ship-tag[data-condition='working'] { --tag: var(--color-v2-ally); }
+.ship-tag__pin { position: absolute; left: -3.5px; top: -3.5px; width: 7px; height: 7px; border: 1.5px solid var(--tag); background: #05080dcc; transform: rotate(45deg) scale(0); animation: ship-tag-pin .16s var(--delay) cubic-bezier(.2, 1.6, .4, 1) both; }
+.ship-tag__lead { position: absolute; left: 0; top: 0; width: var(--len); height: 1px; background: linear-gradient(90deg, var(--tag), color-mix(in srgb, var(--tag) 55%, transparent)); transform-origin: 0 50%; transform: rotate(var(--ang)) scaleX(0); animation: ship-tag-lead .18s calc(var(--delay) + .1s) ease-out both; }
+.ship-tag__chip { position: absolute; left: var(--dx); top: var(--dy); display: flex; flex-direction: column; gap: 1px; padding: 3px 7px 3px 6px; border-left: 2px solid var(--tag); background: linear-gradient(90deg, #05080df0, #05080db8); color: #eef3fa; font-size: 11px; line-height: 1.1; white-space: nowrap; clip-path: inset(0 100% 0 0); animation: ship-tag-chip .22s calc(var(--delay) + .24s) cubic-bezier(.22, 1, .36, 1) both; }
+.ship-tag__chip b { color: var(--tag); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.ship-tag[data-side='right'] .ship-tag__chip { transform: translate(0, -50%); }
+.ship-tag[data-side='left'] .ship-tag__chip { transform: translate(-100%, -50%); border-left: 0; border-right: 2px solid var(--tag); text-align: right; align-items: flex-end; clip-path: inset(0 0 0 100%); }
+.ship-tag[data-side='up'] .ship-tag__chip { transform: translate(-50%, -100%); }
+.ship-tag[data-side='down'] .ship-tag__chip { transform: translate(-50%, 0); }
+@keyframes ship-tag-pin { to { transform: rotate(45deg) scale(1); } }
+@keyframes ship-tag-lead { to { transform: rotate(var(--ang)) scaleX(1); } }
+@keyframes ship-tag-chip { to { clip-path: inset(0 0 0 0); } }

@@ -1,6 +1,6 @@
 import type { VesselSystem } from '@astera/rules';
 import { describe, expect, it } from 'vitest';
-import { VESSEL_BAYS, damageSpots, vesselHitBox, type VesselLights } from '../src/galaxy/mainSky.js';
+import { VESSEL_BAYS, damageSpots, systemCondition, vesselHitBox, type VesselLights } from '../src/galaxy/mainSky.js';
 
 /**
  * THE DAMAGE IS WHERE THE DAMAGE IS (plan 2026-11-08 F8). The ship burned by a share of the whole
@@ -46,4 +46,27 @@ describe('where the ship can be touched', () => {
       expect(width).toBeLessThan(0.7);
     });
   }
+});
+
+// Plan 2026-11-18 §4 İ5: the report names each system's state in words, the same state the hull shows.
+describe('what each system is, in a word', () => {
+  it('names a wreck by what it does: an engine burns, wiring hangs severed', () => {
+    expect(systemCondition(0, 'DRIVE')).toBe('burning');
+    expect(systemCondition(0, 'REFINERY')).toBe('burning');
+    expect(systemCondition(0, 'CARGO')).toBe('severed');
+    expect(systemCondition(0, 'SURVEY')).toBe('severed');
+  });
+  it('names one under repair by what is left of its damage, and a mended one working', () => {
+    expect(systemCondition(0.4, 'DEFENCE')).toBe('smouldering');
+    expect(systemCondition(0.4, 'SURVEY')).toBe('sparking');
+    expect(systemCondition(1, 'DRIVE')).toBe('working');
+    expect(systemCondition(1, 'CARGO')).toBe('working');
+  });
+  it('says what the hull shows: a fire where it burns, sparks where they fly, nothing where it is mended', () => {
+    const lights: VesselLights = { REFINERY: 0.5, SURVEY: 0, DEFENCE: 1, CARGO: 0.3, DRIVE: 0 };
+    const shown = Object.fromEntries(damageSpots(lights).map(spot => [spot.at, spot.kind]));
+    expect(shown).toEqual({ REFINERY: 'ember', SURVEY: 'sparks', CARGO: 'sparks', DRIVE: 'fire' });
+    expect(systemCondition(lights.REFINERY, 'REFINERY')).toBe('smouldering');
+    expect(systemCondition(lights.DEFENCE, 'DEFENCE')).toBe('working');
+  });
 });

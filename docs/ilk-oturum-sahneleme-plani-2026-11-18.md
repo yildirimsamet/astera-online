@@ -202,7 +202,8 @@ Bu yetkiyle verdiğim kararlar:
 | 5.1–5.5 | yapıldı | `da2e7b82`: yönetmen, gemi raporu, onarım sahneleri, gövde geçişi, karanlık, teleskop alanı ve kayaya yaklaşma |
 | Efektler | yapıldı | Owner 2026-11-18: yumuşak yuvarlak parlama yasak. `b4c5b15e`, `35a6f4b7`, `0b49e353`: her efekt kendi olayı, kütüphaneden, briefli; `softGlow()` silindi; koruma testi `no-glow-sprite.test.ts`. Owner kalan 5 halka/korona kullanımını uygun buldu. |
 | 5.8 7 Gün | yapıldı | S6: sunucu kutuyu yalnız inişten sonra verir. Yedi kutu tek panoda (Synty kasaları, gövde ve kapak ayrı render), hazır kutu basılı tutularak yerinde açılır. Pano iniş ödül anının içinde (ayrı pencere yok) ve Ödüller panelinde: hazırsa en üstte. Galeri: `?view=rewards-ready&welcome=first\|ready\|wait\|last`, `?view=landing-rewards(-box)&welcome=first`. |
-| 5.3 (A13), 5.4, 5.6, 5.7, 5.9, 5.10 | sırada | |
+| 5.3 A13, İ5, 5.6 A9–A11 | yapıldı | Gemi raporunda 5 sistem 3B gövdede sözle etiketlenir (yanıyor/tütüyor/kopuk/kıvılcım atıyor/çalışıyor), hull'un gösterdiğiyle aynı. A13: ilk savaş raporundan sonra ikinci rapor; motor satırı sıçrama penceresine göre. A9: sonda raporu gelince kamera sondalanan gemiye döner. A10: sonda yoldayken ve Tersane sıradayken boş kargo bölmesi. A11: Tersane dönünce ilk iki Ok kargo bölmesinden süzülüp yanında durur, sonra uzaklaşır. Sahne sırasında odak kartı, karakol işaretleri, göç şeridi ve alt şerit gizlenir. |
+| 5.4, 5.7, 5.9, 5.10 | sırada | |
 
 ## 9. Başarı ölçütü
 

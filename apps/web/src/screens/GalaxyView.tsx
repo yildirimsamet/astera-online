@@ -1016,7 +1016,15 @@ export function GalaxyView({
   const starterReturn = useMemo(() => contacts.find(contact => contact.kind === 'unknown' && contact.effectOnly !== true)?.id ?? null, [contacts]);
   const awakenBay = useCallback((system: VesselSystem) => { setAwaken((last) => ({ system, key: (last?.key ?? 0) + 1 })); }, []);
   const weldingBays = useMemo(() => (ship ? weldingSystems(ship.queue, now) : []), [ship, now]);
-  const shownLook = useStarterScenes({ ship, shipOpen: panel === 'planet', onCloseShip: () => { onPanel(null); }, nearestRockId: starterRock ?? null, unknownContactId: starterReturn, onAwaken: awakenBay });
+  const starterProbing = (pendingThreads ?? []).some(thread => thread.kind === 'probe');
+  const starterProbed = useMemo(() => {
+    const latest = (intel.data?.probeReports ?? []).reduce<{ targetPlanetId: string; targetName: string; at: Date } | null>((last, report) => (!last || report.at > last.at ? report : last), null);
+    return ship && latest ? { id: latest.targetPlanetId, name: latest.targetName } : null;
+  }, [ship, intel.data?.probeReports]);
+  const shownLook = useStarterScenes({
+    ship, shipOpen: panel === 'planet', onCloseShip: () => { onPanel(null); }, nearestRockId: starterRock ?? null, unknownContactId: starterReturn,
+    probing: starterProbing, probeTarget: starterProbed, onAwaken: awakenBay,
+  });
   const findableTargets = useMemo<GalaxyTarget[]>(() => [
       ...monumentFinderTargets(galaxy.data?.monuments ?? [], t),
       ...outpostFinderTargets(planets, t),
@@ -2023,7 +2031,7 @@ export function GalaxyView({
       {/* The director's letterbox, over everything, while the galaxy is clear (plan 2026-11-18 §4 İ3). */}
       {ship && panel === null && !launchingNow && !trading && !mainRowOpen && <DirectorStage />}
       {ship && bottom === 'starter' && (
-        <div className="pointer-events-auto absolute inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20">
+        <div data-starter-foot="" className="pointer-events-auto absolute inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20">
           {cornerButtons && <div className="mb-2 flex justify-end">{cornerButtons}</div>}
           {/* A raid on an outpost that ends while the player watches is told here, over the next step (F4f). */}
           {outcome.current && <OutpostOutcome outcome={outcome.current} onDone={outcome.dismiss} onOpenShip={() => { onPanel('planet'); }} onOpenReport={(reportId) => { if (reportId) onPanel('report', 'battles', reportId); else openBattleList(); }} />}

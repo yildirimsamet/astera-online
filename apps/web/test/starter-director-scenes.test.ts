@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SHOT_MAX_MS } from '../src/starter/director/director.js';
-import { contactScene, rockScene, sceneAnnouncing, scenesFor, weldingSystems, type ShipState } from '../src/starter/director/scenes.js';
+import { contactScene, probeScene, rockScene, sceneAnnouncing, scenesFor, weldingSystems, yardNeedScene, type ShipState } from '../src/starter/director/scenes.js';
 
 /**
  * WHICH SCENE A CHANGE OF THE SHIP CALLS FOR (plan 2026-11-18 §5, Faz 5.2–5.6). The first look at the
@@ -8,8 +8,10 @@ import { contactScene, rockScene, sceneAnnouncing, scenesFor, weldingSystems, ty
  * comes back; the hull's new look is a moment, never a swap; the dark is shown before the telescope.
  */
 const name = (module: string): string => module.toLowerCase();
-const opening: ShipState = { modules: { REFINERY: 1 }, queue: [], look: 'WRECKED' };
+const opening: ShipState = { modules: { REFINERY: 1 }, queue: [], look: 'WRECKED', facts: [] };
 const ids = (prev: ShipState | null, next: ShipState): string[] => scenesFor(prev, next, name).map(scene => scene.id);
+/** The first road walked to its end, before any of the window's deeds. */
+const ROAD_DONE: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 }, queue: [], look: 'PATCHED', facts: [] };
 
 describe('the scenes a ship calls for', () => {
   it('opens a new ship with its report: the whole hull round, then the drive, the way out', () => {
@@ -21,7 +23,7 @@ describe('the scenes a ship calls for', () => {
   });
 
   it('opens a ship met again further on with nothing: it has seen its report', () => {
-    expect(ids(null, { modules: { REFINERY: 2, EXTRACTOR: 1 }, queue: [], look: 'WRECKED' })).toEqual([]);
+    expect(ids(null, { modules: { REFINERY: 2, EXTRACTOR: 1 }, queue: [], look: 'WRECKED', facts: [] })).toEqual([]);
   });
 
   it('shows a repair of the road where it is done, as it starts', () => {
@@ -33,8 +35,8 @@ describe('the scenes a ship calls for', () => {
   });
 
   it('shows the repair come back, with what it is for, and the hull\'s new look as a moment of its own', () => {
-    const before: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }, queue: [{ subject: 'RADAR', stage: 1 }], look: 'WRECKED' };
-    const after: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, queue: [], look: 'PATCHED' };
+    const before: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }, queue: [{ subject: 'RADAR', stage: 1 }], look: 'WRECKED', facts: [] };
+    const after: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, queue: [], look: 'PATCHED', facts: [] };
     const [done] = scenesFor(before, after, name);
     expect(done?.id).toBe('repair:RADAR:1:done');
     expect(done?.beats.map(beat => beat.line)).toEqual(['starter.director.repair.RADAR', 'starter.director.hull.PATCHED']);
@@ -43,18 +45,18 @@ describe('the scenes a ship calls for', () => {
   });
 
   it('shows only the return of a repair that was ordered and finished while away', () => {
-    expect(ids(opening, { modules: { REFINERY: 2 }, queue: [], look: 'WRECKED' })).toEqual(['repair:REFINERY:2:done']);
+    expect(ids(opening, { modules: { REFINERY: 2 }, queue: [], look: 'WRECKED', facts: [] })).toEqual(['repair:REFINERY:2:done']);
   });
 
   it('leaves the repairs past the road to the ship itself', () => {
-    const road: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 }, queue: [], look: 'PATCHED' };
+    const road: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 }, queue: [], look: 'PATCHED', facts: [] };
     expect(ids(road, { ...road, queue: [{ subject: 'VAULT', stage: 1 }] })).toEqual([]);
     expect(ids(road, { ...road, modules: { ...road.modules, VAULT: 1 } })).toEqual([]);
   });
 
   it('shows the dark once the crystal furnace is back and the telescope is not', () => {
-    const before: ShipState = { modules: { REFINERY: 2 }, queue: [{ subject: 'EXTRACTOR', stage: 1 }], look: 'WRECKED' };
-    const after: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1 }, queue: [], look: 'WRECKED' };
+    const before: ShipState = { modules: { REFINERY: 2 }, queue: [{ subject: 'EXTRACTOR', stage: 1 }], look: 'WRECKED', facts: [] };
+    const after: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1 }, queue: [], look: 'WRECKED', facts: [] };
     expect(ids(before, after)).toEqual(['repair:EXTRACTOR:1:done', 'dark']);
     const [, dark] = scenesFor(before, after, name);
     expect(dark?.beats[0]?.shot).toEqual({ kind: 'wide' });
@@ -67,6 +69,9 @@ describe('the scenes a ship calls for', () => {
       ...scenesFor(opening, { ...opening, queue: [{ subject: 'REFINERY', stage: 2 }] }, name),
       rockScene('rock-1'),
       contactScene({ kind: 'contact', id: 'c-1' }),
+      probeScene({ id: 'ship-2', name: 'Vega' }),
+      yardNeedScene(),
+      ...scenesFor(ROAD_DONE, { ...ROAD_DONE, facts: ['FIRST_BATTLE_REPORT'] }, name),
     ];
     for (const scene of all) for (const beat of scene.beats) expect(beat.ms, `${scene.id}/${beat.id}`).toBeLessThanOrEqual(SHOT_MAX_MS);
     expect(all.every(scene => scene.once)).toBe(true);
@@ -84,6 +89,58 @@ describe('the scenes a ship calls for', () => {
     expect(rockScene('rock-1').beats.at(-1)?.shot).toEqual({ kind: 'subject', focus: { kind: 'asteroid', id: 'rock-1' }, range: 2.4 });
     expect(rockScene('rock-1').id).toBe('rock');
     expect(contactScene({ kind: 'unknownSignal', id: 's-1' }).beats[0]?.line).toBe('starter.director.contact');
+  });
+});
+
+// Plan 2026-11-18 §5 A9–A11 and A13: the probe's report, the yard it calls for, the first ships, the ship again.
+describe('the scenes after the road\'s first half', () => {
+  it('turns to the ship the probe read, by name, without opening it', () => {
+    const scene = probeScene({ id: 'ship-2', name: 'Vega' });
+    expect(scene.id).toBe('probe');
+    expect(scene.beats.map(beat => beat.shot)).toEqual([{ kind: 'subject', focus: { kind: 'planet', id: 'ship-2' } }]);
+    expect(scene.beats[0]?.line).toBe('starter.director.probe');
+    expect(scene.beats[0]?.vars).toEqual({ name: 'Vega' });
+  });
+
+  it('shows the empty yard, where the ships to carry a haul would come from', () => {
+    const [beat] = yardNeedScene().beats;
+    expect(yardNeedScene().id).toBe('yardNeed');
+    expect(beat?.shot).toEqual({ kind: 'bay', system: 'CARGO' });
+    expect(beat?.line).toBe('starter.director.yardNeed');
+  });
+
+  it('sends the first two ships out of the yard as it comes back, after what the yard is for', () => {
+    const before: ShipState = { ...ROAD_DONE, modules: { ...ROAD_DONE.modules, SHIPYARD: 0 }, queue: [{ subject: 'SHIPYARD', stage: 1 }] };
+    const [done] = scenesFor(before, ROAD_DONE, (module) => module.toLowerCase());
+    expect(done?.id).toBe('repair:SHIPYARD:1:done');
+    expect(done?.beats.slice(0, 2).map(beat => beat.id)).toEqual(['back', 'darts']);
+    const darts = done?.beats[1];
+    expect(darts?.shot.kind).toBe('ship');
+    expect(darts?.line).toBe('starter.director.firstShips');
+    expect(darts?.vars).toEqual({ count: 2, hull: 'dart' });
+  });
+
+  it('shows the ship again after its first battle: every system named, then the drive still to wake', () => {
+    const [report] = scenesFor(ROAD_DONE, { ...ROAD_DONE, facts: ['FIRST_BATTLE_REPORT'] }, name);
+    expect(report?.id).toBe('shipReport2');
+    expect(report?.beats.map(beat => beat.shot.kind)).toEqual(['ship', 'bay']);
+    expect(report?.beats[0]?.tags).toEqual(['REFINERY', 'SURVEY', 'DEFENCE', 'CARGO', 'DRIVE']);
+    expect(report?.beats[0]?.line).toBe('starter.director.report2.round');
+    expect(report?.beats[1]?.shot).toEqual({ kind: 'bay', system: 'DRIVE' });
+    expect(report?.beats[1]?.tags).toEqual(['DRIVE']);
+    expect(report?.beats[1]?.line).toBe('starter.director.report2.drive');
+  });
+
+  it('says the drive is ready once the jump window is open', () => {
+    const open: ShipState = { ...ROAD_DONE, facts: ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'] };
+    const [report] = scenesFor(open, { ...open, facts: [...open.facts, 'FIRST_BATTLE_REPORT'] }, name);
+    expect(report?.beats[1]?.line).toBe('starter.director.report2.ready');
+  });
+
+  it('shows the second report once: a battle already reported calls for nothing', () => {
+    const fought: ShipState = { ...ROAD_DONE, facts: ['FIRST_BATTLE_REPORT'] };
+    expect(ids(fought, { ...fought, facts: [...fought.facts, 'FIRST_OUTPOST_VICTORY'] })).toEqual([]);
+    expect(ids(null, fought)).toEqual([]);
   });
 });
 

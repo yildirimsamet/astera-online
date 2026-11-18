@@ -163,7 +163,7 @@ export const starter = {
     "try": "試す",
     "later": "あとで"
   },
-  "director": {"skip": "タップでスキップ", "shipReport": {"orbit": "船は持ちこたえている。だが半分死んでいる。", "goal": "エンジンに火を入れれば、ここを出られる。"}, "repair": {"work": "{{name}}を修理中。", "REFINERY": "{{name}}が稼働：合金が速く流れる。", "EXTRACTOR": "{{name}}が点火：結晶が精密な部品を直す。", "TELESCOPE": "{{name}}が開いた：外が見える。", "RADAR": "{{name}}が聞いている：近づくものは分かる。", "SURVEY": "{{name}}が立った：他の船を読める。", "SHIPYARD": "{{name}}が稼働：自分の船を造れる。"}, "hull": {"PATCHED": "船体がまとまってきた。", "RENEWED": "船がまた輝く。"}, "field": "望遠鏡が開いた。周りは賑やかだ。", "dark": "盲目で飛んでいる。望遠鏡なしでは何も見えない。", "rock": "この岩には鉱石がある。採掘船が持ち帰る。", "contact": "何かが近づいている。正体は分からない。"},
+  "director": {"skip": "タップでスキップ", "shipReport": {"orbit": "船は持ちこたえている。だが半分死んでいる。", "goal": "エンジンに火を入れれば、ここを出られる。"}, "repair": {"work": "{{name}}を修理中。", "REFINERY": "{{name}}が稼働：合金が速く流れる。", "EXTRACTOR": "{{name}}が点火：結晶が精密な部品を直す。", "TELESCOPE": "{{name}}が開いた：外が見える。", "RADAR": "{{name}}が聞いている：近づくものは分かる。", "SURVEY": "{{name}}が立った：他の船を読める。", "SHIPYARD": "{{name}}が稼働：自分の船を造れる。"}, "hull": {"PATCHED": "船体がまとまってきた。", "RENEWED": "船がまた輝く。"}, "field": "望遠鏡が開いた。周りは賑やかだ。", "dark": "盲目で飛んでいる。望遠鏡なしでは何も見えない。", "rock": "この岩には鉱石がある。採掘船が持ち帰る。", "contact": "何かが近づいている。正体は分からない。", "probe": "探査機が戻った。{{name}}はもう謎じゃない。", "yardNeed": "探査機が獲物を探している。運ぶには造船所の船がいる。", "firstShips": "造船所から最初の船が出た：{{hull}} ×{{count}}。これで獲物を運べる。", "report2": {"round": "最初の戦いから戻った。船は今こうだ。", "drive": "エンジンはまだ燃えている。次の修理で目を覚ます。", "ready": "エンジンは準備完了。ジャンプの窓が開いた。"}, "condition": {"burning": "炎上中", "smouldering": "くすぶり", "severed": "断線", "sparking": "火花", "working": "稼働中"}},
   "tab": {
     "repair": "開くには {{module}} を修理してください。",
     "mainGalaxy": "本銀河で開きます。",

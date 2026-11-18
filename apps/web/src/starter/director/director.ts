@@ -25,7 +25,9 @@ export type ShotTarget =
 type RepairLine = `starter.director.repair.${'work' | 'REFINERY' | 'EXTRACTOR' | 'TELESCOPE' | 'RADAR' | 'SURVEY' | 'SHIPYARD'}`;
 /** What a shot may say: the director's own lines (`starter.director`). */
 export type DirectorLine = 'starter.director.shipReport.orbit' | 'starter.director.shipReport.goal' | RepairLine
-  | 'starter.director.hull.PATCHED' | 'starter.director.hull.RENEWED' | 'starter.director.dark' | 'starter.director.field' | 'starter.director.rock' | 'starter.director.contact';
+  | 'starter.director.hull.PATCHED' | 'starter.director.hull.RENEWED' | 'starter.director.dark' | 'starter.director.field' | 'starter.director.rock' | 'starter.director.contact'
+  | 'starter.director.probe' | 'starter.director.yardNeed' | 'starter.director.firstShips'
+  | 'starter.director.report2.round' | 'starter.director.report2.drive' | 'starter.director.report2.ready';
 
 export interface Beat {
   id: string;

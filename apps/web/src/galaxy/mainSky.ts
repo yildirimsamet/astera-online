@@ -119,6 +119,17 @@ export function damageSpots(lights: VesselLights): DamageSpot[] {
   });
 }
 
+/** A system's state as the report says it (plan 2026-11-18 §4 İ5): what its damage on the hull is doing. */
+export type SystemCondition = 'burning' | 'smouldering' | 'severed' | 'sparking' | 'working';
+
+/** The word for what the hull shows: a wreck burns or hangs severed, one under repair smoulders or sparks. */
+export function systemCondition(share: number, system: VesselSystem): SystemCondition {
+  if (share >= 1) return 'working';
+  const fire = WRECK[system].kind === 'fire';
+  if (share <= 0) return fire ? 'burning' : 'severed';
+  return fire ? 'smouldering' : 'sparking';
+}
+
 /** One file per hull and state, sharing an outline and base, so a swap never moves the ship. */
 export const vesselModelFile = (hull: VesselHull, look: VesselLook): string =>
   `/assets/models/vessels/${hull.toLowerCase()}-${look.toLowerCase()}.glb`;

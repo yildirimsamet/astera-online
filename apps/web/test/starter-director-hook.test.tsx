@@ -20,7 +20,7 @@ const ship = (progress: VesselProgress, queue: unknown[] = []) => vesselSchema.p
 const playing = (): string => { const now = directorNow(); return now ? `${now.scene.id}/${now.beat.id}` : 'none'; };
 type Props = Parameters<typeof useStarterScenes>[0];
 const props = (over: Partial<Props>): Props => ({
-  ship: ship(openingProgress()), shipOpen: false, onCloseShip: vi.fn(), nearestRockId: null, unknownContactId: null, onAwaken: vi.fn(), ...over,
+  ship: ship(openingProgress()), shipOpen: false, onCloseShip: vi.fn(), nearestRockId: null, unknownContactId: null, probing: false, probeTarget: null, onAwaken: vi.fn(), ...over,
 });
 
 /** The ship's changes become scenes (plan 2026-11-18 §5, Faz 5.2–5.6), as the galaxy sees them. */
@@ -110,5 +110,52 @@ describe('the first session, directed', () => {
     cleanup();
     renderHook(useStarterScenes, { initialProps: props({ ship: ship({ modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, facts: ['FIRST_MINING_SENT'] }), unknownContactId: 'c-1' }) });
     expect(playing()).toBe('contact/turn');
+  });
+
+  // Plan §5 A9: the report coming home is a moment of its own, on the ship it read.
+  describe('the probe\'s report', () => {
+    const SURVEYED = { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 };
+    const out = ship({ modules: SURVEYED, facts: ['FIRST_MINING_SENT'] });
+    const home = ship({ modules: SURVEYED, facts: ['FIRST_MINING_SENT', 'FIRST_PROBE_REPORT'] });
+    const vega = { id: 'ship-2', name: 'Vega' };
+
+    it('turns to the ship the probe read as its report comes home', () => {
+      const first = props({ ship: out });
+      const view = renderHook(useStarterScenes, { initialProps: first });
+      act(() => { vi.advanceTimersByTime(FIRST_LOOK_MS); });
+      view.rerender({ ...first, ship: home, probeTarget: vega });
+      expect(playing()).toBe('probe/turn');
+      expect(directorNow()?.beat.vars).toEqual({ name: 'Vega' });
+    });
+
+    it('waits for the report itself when the news of it comes first', () => {
+      const first = props({ ship: out });
+      const view = renderHook(useStarterScenes, { initialProps: first });
+      act(() => { vi.advanceTimersByTime(FIRST_LOOK_MS); });
+      view.rerender({ ...first, ship: home });
+      expect(playing()).toBe('none');
+      view.rerender({ ...first, ship: home, probeTarget: vega });
+      expect(playing()).toBe('probe/turn');
+    });
+
+    it('turns to no report read before this visit', () => {
+      renderHook(useStarterScenes, { initialProps: props({ ship: home, probeTarget: vega }) });
+      act(() => { vi.advanceTimersByTime(FIRST_LOOK_MS); });
+      expect(playing()).toBe('none');
+    });
+  });
+
+  // Plan §5 A10: the yard is needed before it is asked for, while the probe is out.
+  it('shows the empty yard while the probe is out and the yard is not ordered', () => {
+    const surveyed = { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 };
+    renderHook(useStarterScenes, { initialProps: props({ ship: ship({ modules: surveyed, facts: ['FIRST_MINING_SENT'] }), probing: true }) });
+    expect(playing()).toBe('yardNeed/yard');
+    cleanup();
+    resetDirector();
+    renderHook(useStarterScenes, { initialProps: props({ ship: ship({ modules: surveyed, facts: ['FIRST_MINING_SENT'] }, [order('SHIPYARD', 1)]), probing: true }) });
+    expect(playing()).toBe('none');
+    cleanup();
+    renderHook(useStarterScenes, { initialProps: props({ ship: ship({ modules: surveyed, facts: ['FIRST_MINING_SENT'] }), probing: false }) });
+    expect(playing()).toBe('none');
   });
 });

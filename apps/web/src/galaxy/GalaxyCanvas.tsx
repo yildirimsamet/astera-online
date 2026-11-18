@@ -1022,7 +1022,8 @@ export function GalaxyCanvas({
         {!starter && <StarterGlow />}
         {starter && mainOffset && <Suspense fallback={null}>
           <MainGalaxySky monuments={starter.landmarks.monuments} clouds={starter.landmarks.clouds} offset={mainOffset} onTap={starter.onMainGalaxy} />
-          {!flight && <OwnVessel at={home} offset={mainOffset} hull={starter.hull} progress={starter.progress} onSelect={starter.onOpen} awaken={starter.awaken} {...(starter.working ? { working: starter.working } : {})} look={starter.look} />}
+          {!flight && <OwnVessel at={home} offset={mainOffset} hull={starter.hull} progress={starter.progress} onSelect={starter.onOpen} awaken={starter.awaken} {...(starter.working ? { working: starter.working } : {})} look={starter.look}
+            cue={directorShot && directing ? { key: directing.key, beat: directing.beat.id, tags: directing.beat.tags } : undefined} />}
           <VesselField ships={leftBehind} offset={mainOffset} onSelect={(id) => { onFocus({ kind: 'planet', id }); }} />
           <DepartureBeams beams={starter.beams} offset={mainOffset} />
         </Suspense>}

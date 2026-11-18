@@ -1,10 +1,11 @@
 import { vesselLook, type VesselLook, type VesselModule, type VesselSystem } from '@astera/rules';
 import { useEffect, useRef, useState } from 'react';
 import type { VesselView } from '../../api/starterSchemas.js';
+import { hullName } from '../../i18n/names.js';
 import { moduleName } from '../moduleName.js';
 import { REVEAL_FLEETS_MS } from '../tutorial/sightLesson.js';
 import { playScene, useDirector } from './director.js';
-import { contactScene, rockScene, scenesFor, type ShipState } from './scenes.js';
+import { contactScene, probeScene, rockScene, scenesFor, yardNeedScene, type ShipState } from './scenes.js';
 
 /** Before the first look is taken: the galaxy's own opening flight settles first. */
 export const FIRST_LOOK_MS = 1_200;
@@ -13,18 +14,20 @@ const stateOf = (ship: VesselView): ShipState => ({
   modules: ship.modules,
   queue: ship.queue,
   look: vesselLook({ modules: ship.modules, facts: ship.facts }),
+  facts: ship.facts,
 });
 
 const MODULES = new Set<string>(['REFINERY', 'EXTRACTOR', 'DEUTERIUM_PLANT', 'VAULT', 'SURVEY', 'SHIPYARD', 'HANGAR', 'TELESCOPE', 'RADAR', 'AEGIS']);
 const isModule = (module: string): module is VesselModule => MODULES.has(module);
-const nameOf = (module: string): string => (isModule(module) ? moduleName(module) : module);
+const nameOf = (module: string): string => (isModule(module) ? moduleName(module) : hullName(module) ?? module);
 
 /**
  * WHERE THE SHIP'S CHANGES BECOME SCENES (plan 2026-11-18 §5). The ship is read as it changes; a repair
  * of the road ordered from the ship's page closes the page, so it is seen being done on the hull; the
- * first rock is come close to once the telescope's sky has landed, and the first radar return turned to.
+ * first rock is come close to once the telescope's sky has landed, and the first radar return turned to;
+ * the yard is shown empty while the probe is out, and the probe's report turned to as it comes home.
  */
-export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, unknownContactId, onAwaken }: {
+export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, unknownContactId, probing, probeTarget, onAwaken }: {
   ship: VesselView | undefined;
   /** The ship's own page is open over the galaxy. */
   shipOpen: boolean;
@@ -33,6 +36,10 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, u
   nearestRockId: string | null;
   /** A radar return nobody has named yet. */
   unknownContactId: string | null;
+  /** A probe of this ship's is out. */
+  probing: boolean;
+  /** The ship the latest probe report read, once it is home. */
+  probeTarget: { id: string; name: string } | null;
   /** The bay of a system that has just come back, beating. */
   onAwaken: (system: VesselSystem) => void;
 }): VesselLook | undefined {
@@ -45,6 +52,8 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, u
   const key = state ? JSON.stringify(state) : '';
   const latest = useRef({ state, shipOpen, onCloseShip });
   latest.current = { state, shipOpen, onCloseShip };
+  /** The probe's first report came home during this visit: it is turned to once the report itself is here. */
+  const [reportHome, setReportHome] = useState(false);
 
   useEffect(() => {
     const now = latest.current.state;
@@ -62,6 +71,7 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, u
       return () => { window.clearTimeout(timer); };
     }
     seen.current = { id, state: now };
+    if (!before.facts.includes('FIRST_PROBE_REPORT') && now.facts.includes('FIRST_PROBE_REPORT')) setReportHome(true);
     const scenes = scenesFor(before, now, nameOf);
     // A repair ordered from the ship's page is watched on the hull: the page steps aside for it.
     if (scenes.some(scene => scene.id.endsWith(':work')) && latest.current.shipOpen) latest.current.onCloseShip();
@@ -89,6 +99,22 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, u
     if (!id || !radar || unknownContactId === null) return;
     playScene(contactScene({ kind: 'contact', id: unknownContactId }), id);
   }, [id, radar, unknownContactId]);
+
+  const target = probeTarget?.id;
+  const targetName = probeTarget?.name;
+  useEffect(() => {
+    if (!id || !reportHome || target === undefined || targetName === undefined) return;
+    playScene(probeScene({ id: target, name: targetName }), id);
+    setReportHome(false);
+  }, [id, reportHome, target, targetName]);
+
+  // The yard is shown empty while the probe it would follow is out, and only before it is asked for.
+  const yardDue = ship !== undefined && probing && (ship.modules.SURVEY ?? 0) >= 1 && (ship.modules.SHIPYARD ?? 0) < 1
+    && !ship.queue.some(order => order.subject === 'SHIPYARD');
+  useEffect(() => {
+    if (!id || !yardDue) return;
+    playScene(yardNeedScene(), id);
+  }, [id, yardDue]);
 
   // The bay of a repair that came back beats as the camera reaches it.
   const playing = useDirector();

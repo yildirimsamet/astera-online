@@ -16,7 +16,7 @@ const DRAWN: readonly (readonly [hook: string, file: string, drawn: string])[] =
   ['data-guide="unlock-try"', 'starter/UnlockMoment.tsx', 'data-guide="unlock-try"'],
   ['data-guide="unlock-dismiss"', 'starter/UnlockMoment.tsx', 'data-guide="unlock-dismiss"'],
   ['data-guide="works"', 'v2/hud/TopBar.tsx', 'data-guide="works"'],
-  ['data-guide="crate"', 'starter/CrateBay.tsx', "guide = 'crate'"],
+  ['data-guide="crate"', 'starter/CrateBay.tsx', 'data-guide="crate"'],
   ['data-guide="objective"', 'starter/ObjectiveLine.tsx', "'data-guide': 'objective'"],
   ['data-guide="repair-order"', 'starter/RepairCard.tsx', 'data-guide="repair-order"'],
   ['data-guide="repair-show"', 'starter/RepairCard.tsx', 'data-guide="repair-show"'],
