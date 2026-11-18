@@ -82,7 +82,8 @@ export const REPAIR_LADDER: readonly RepairStep[] = [
   // Not before the telescope's lesson is over: a Prospector sent to a rock (owner playtest 2026-11-09).
   step('DEFENCE', 'RADAR', 1, 200, 120, seconds(15), true, [needs('TELESCOPE', 1), fact('FIRST_MINING_SENT')]),
   step('SURVEY', 'SURVEY', 1, 250, 120, seconds(30), true, [needs('RADAR', 1)]),
-  step('CARGO', 'SHIPYARD', 1, 800, 300, 1, true, [needs('SURVEY', 1)], { fleet: { DART: 2 } }),
+  // Owner, phone playtest 2026-11-18 (item 11): a minute was too long for the last repair of the guided road.
+  step('CARGO', 'SHIPYARD', 1, 800, 300, seconds(30), true, [needs('SURVEY', 1)], { fleet: { DART: 2 } }),
 
   // The rest of the ship opens with the yard, and all of it is the player's choice (plan 2026-11-13 §5.1):
   // the first loop above opens the jump window; what follows grows the works and fills the hold.

@@ -377,7 +377,7 @@ Owner'ın 15 maddelik listesi. F6'daki "temasta öğret" teleskop dersinin yerin
 ### Playtest turu 2, owner 2026-11-09
 
 - **Üretim:** gemideki rafineri, kristal ocağı ve döteryum rafinerisi aynı seviyedeki gezegenin 3 katı üretir (`STARTER.outputMult`). Havuz ve depo tavanı da 3 kat olur, yani saat cinsinden aynı kalır. Dört oturumlu oyuncunun çıkışı 1,75 güne indi; `starter-pacing` alt sınırı 1,5 gün.
-- **Tersane 1:** 1 dakika.
+- **Tersane 1:** 1 dakika. Owner telefon playtest 2026-11-18 (madde 11): 30 saniye.
 - **İlk karakol yenilgisi:** av, kazanana kadar sürer. İlk kazanılamayan savaş bir kerelik cesaret kasası verir (310 alaşım / 125 kristal, bir Ok eder) ve hedef satırı diğer karakolu adıyla gösterir (`FIRST_OUTPOST_DEFEAT`, `huntLost`, `retry` aşaması).
 - **Evrenden dönüş:** odak yoksa kamera gemiye ve açılış uzaklığına döner.
 - **Gemiye dokunma:** ana galaksideki gibi, ilk dokunuş odaklar, ikincisi gemiyi açar.
