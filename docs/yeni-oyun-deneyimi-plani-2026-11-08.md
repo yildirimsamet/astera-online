@@ -372,7 +372,7 @@ Owner'ın 15 maddelik listesi. F6'daki "temasta öğret" teleskop dersinin yerin
 - **Keşif gemisi:** gözcü artık korsan değil, "Keşif gemisi". Gemiye `SCOUT_STANDOFF` (200) kadar yaklaşır, uzaktan tarar, döner. Temasında `inbound` yoktur.
 - **İstihbarat kararı:** ilk av sürerken karakol raporlarının üstünde nasıl karşılaştırılacağı yazar; kendi filon sınıf dizisinde işaretlidir; her karakolun Saldır kapısı ve tıklanır adı vardır. Girdileri ve kuralı verir, kazananı söylemez.
 - **Onarım kartı:** bir makinenin kademesi kuyruktayken kart bir sonraki kademeye atlamaz, kalan süreyi gösterir. Başka makineye geçer.
-- **Süreler:** Rafineri 2 ve Kristal Ocağı 1 5 sn; Teleskop 1 ve Radar 1 15 sn, owner telefon playtest 2026-11-18 (madde 18) ile 5 sn. Hat yaması 3,5 sn.
+- **Süreler:** Rafineri 2 ve Kristal Ocağı 1 5 sn; Teleskop 1 ve Radar 1 15 sn, owner telefon playtest 2026-11-18 (madde 18) ile 5 sn. Sonda rampası 1 30 sn, owner 2026-11-18 (madde 26) ile 10 sn. Hat yaması 3,5 sn.
 
 ### Playtest turu 2, owner 2026-11-09
 

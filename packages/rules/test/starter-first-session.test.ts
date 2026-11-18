@@ -81,8 +81,8 @@ describe('the first session', () => {
    */
   // Owner, phone playtest 2026-11-18: the Shipyard's minute was too long (item 11); then the telescope and
   // the radar take five seconds and the Shipyard ten (item 18).
-  it('runs the road in seconds: 5 s, 5 s, 5 s, 5 s, 30 s, 10 s', () => {
-    FIRST_SIX.map(s => s.minutes * 60).forEach((seconds, i) => { expect(seconds).toBeCloseTo([5, 5, 5, 5, 30, 10][i]!, 6); });
+  it('runs the road in seconds: 5 s, 5 s, 5 s, 5 s, 10 s, 10 s', () => {
+    FIRST_SIX.map(s => s.minutes * 60).forEach((seconds, i) => { expect(seconds).toBeCloseTo([5, 5, 5, 5, 10, 10][i]!, 6); });
   });
 
   /** Retention plan §6.1: a ramp, not a cliff. What the Shipyard opens runs up to the first day's hour. */

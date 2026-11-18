@@ -79,7 +79,8 @@ describe('the repair ladder', () => {
     expect(bill('REFINERY', 4)).toEqual([886, 111, 60]);
     expect(bill('DEUTERIUM_PLANT', 1)).toEqual([400, 300, 60]);
     expect(bill('DEUTERIUM_PLANT', 2)).toEqual([800, 600, 120]);
-    expect(bill('SURVEY', 1)).toEqual([250, 120, 0.5]);
+    // Owner 2026-11-18, item 26: the probe launcher's first repair is ten seconds.
+    expect(bill('SURVEY', 1)).toEqual([250, 120, 10 / 60]);
     expect(bill('SURVEY', 2)).toEqual([600, 350, 20]);
     // Owner phone playtest 2026-11-18 (item 18): the first telescope and radar take 5 s, the first yard 10 s.
     expect(bill('SHIPYARD', 1)).toEqual([800, 300, 10 / 60]);
