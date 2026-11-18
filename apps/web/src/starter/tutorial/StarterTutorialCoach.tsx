@@ -87,14 +87,14 @@ let nudging = 0;
 /**
  * A press the guide holds back is answered where the eye is (isolated player test 2026-11-18: a buzz alone
  * read as "nothing happens", and the player closed the guide): the card shakes its head and the hand taps
- * its mark twice (school.css).
+ * its mark twice. A press on the card itself asks where: the hand taps its mark (school.css).
  */
-function nudge(): void {
+function nudge(kind: 'refuse' | 'point'): void {
   const root = document.documentElement;
   delete root.dataset.guideNudge;
-  // Read between the two writes, so a second refusal plays the shake again.
+  // Read between the two writes, so a second press plays it again.
   void root.offsetWidth;
-  root.dataset.guideNudge = '';
+  root.dataset.guideNudge = kind;
   window.clearTimeout(nudging);
   nudging = window.setTimeout(() => { delete root.dataset.guideNudge; }, 700);
 }
@@ -123,7 +123,7 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
     }
     return [];
   }, [marks]);
-  const refuse = useCallback(() => { haptic('warn'); playSound('refuse'); nudge(); }, []);
+  const refuse = useCallback(() => { haptic('warn'); playSound('refuse'); nudge('refuse'); }, []);
 
   // THE FAIL-SAFE (review 2026-11-06). Strict is not a trap: a press whose mark the screen never draws,
   // or a wait far past its time, lets go of the controls and says where it stuck. The line stays up.
@@ -344,6 +344,7 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
         dock={dock}
         busy={step.step === 'wait' && !away}
         revealLabel={t('starter.tutorial.reveal')}
+        {...(step.step === 'press' ? { onCardPress: () => { haptic('tap'); nudge('point'); } } : {})}
         onExit={() => { playSound('confirm'); haptic('tap'); setConfirmSkip(true); }}
         exitLabel={t('starter.tutorial.skip.link')}
         {...action}

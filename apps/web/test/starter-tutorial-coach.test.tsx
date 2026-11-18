@@ -68,8 +68,30 @@ describe('the starter tutorial on screen', () => {
     coach({ kind: 'step', id: 'collect', step: 'press', marks: ['[data-guide="works"]'], chapter: 1, strict: true });
     fireEvent.click(screen.getByText('elsewhere'));
     expect(sound).toHaveBeenCalledWith('refuse');
-    expect(document.documentElement.hasAttribute('data-guide-nudge')).toBe(true);
+    expect(document.documentElement.dataset.guideNudge).toBe('refuse');
     act(() => { vi.advanceTimersByTime(1000); });
+    expect(document.documentElement.hasAttribute('data-guide-nudge')).toBe(false);
+  });
+
+  const cardLine = (): Element => {
+    const line = document.querySelector('.school-line');
+    if (!line) throw new Error('the card has no line');
+    return line;
+  };
+
+  // Isolated player test 2026-11-18, round 6: a player read the chapter count "1/2" as pages, pressed the
+  // card for the next one, saw nothing and quit. A card pressed on a step that is a press points at its mark.
+  it('points the hand at its mark when its card is pressed, and only on a press step', () => {
+    vi.useFakeTimers();
+    sound.mockClear();
+    const { view } = coach({ kind: 'step', id: 'collect', step: 'press', marks: ['[data-guide="works"]'], chapter: 1, strict: true });
+    fireEvent.click(cardLine());
+    expect(document.documentElement.dataset.guideNudge).toBe('point');
+    expect(sound).not.toHaveBeenCalledWith('refuse');
+    act(() => { vi.advanceTimersByTime(1000); });
+    view.unmount();
+    coach({ kind: 'step', id: 'radarRing', step: 'read', marks: [], chapter: 8, strict: false });
+    fireEvent.click(cardLine());
     expect(document.documentElement.hasAttribute('data-guide-nudge')).toBe(false);
   });
 

@@ -12,6 +12,8 @@ interface Props {
   total?: number;
   revealLabel?: string; dock?: 'top' | 'bottom'; busy?: boolean;
   onRevealed?: () => void;
+  /** The card itself pressed (not its buttons): a player asking where to go. */
+  onCardPress?: () => void;
 }
 
 /** Each message owns its timer. Revealing a line and doing its action are
@@ -21,7 +23,7 @@ export function SchoolCoach(props: Props) {
 }
 
 function Dialogue({ title, text, progress, actionLabel, onAction, onExit, exitLabel, total = 11,
-  revealLabel = 'Show full message', dock = 'top', busy = false, onRevealed }: Props) {
+  revealLabel = 'Show full message', dock = 'top', busy = false, onRevealed, onCardPress }: Props) {
   const letters = Array.from(text);
   const [shown, setShown] = useState(0);
   const ref = useRef<HTMLElement>(null);
@@ -44,7 +46,9 @@ function Dialogue({ title, text, progress, actionLabel, onAction, onExit, exitLa
     return () => { window.clearInterval(timer); };
   }, [complete, text, letters.length]);
   return <aside ref={ref} data-beat-card data-school-coach data-dock={dock} className="school-coach" aria-label={title}>
-    <div className="school-speech">
+    <div className="school-speech" onClick={onCardPress && ((event) => {
+      if (!(event.target instanceof Element && event.target.closest('.school-exit, .school-next'))) onCardPress();
+    })}>
       <div className="school-heading"><span>{title}</span>{progress !== undefined && <span className="school-progress">{progress}/{total}</span>}</div>
       <div className="school-line" data-school-line={text} aria-live="off">
         <p aria-hidden={!complete}>{letters.slice(0, shown).join('')}<span aria-hidden="true" className={complete ? 'school-cursor school-cursor-done' : 'school-cursor'} /></p>

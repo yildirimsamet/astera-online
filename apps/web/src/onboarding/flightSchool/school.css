@@ -65,8 +65,8 @@
 @media (min-width:700px) { .school-line::before {font-size:16px;} }
 @media (max-height:650px) { .school-line::before {font-size:15px;line-height:1.45;} }
 
-/* A press the guide holds back (isolated player test 2026-11-18): the card shakes its head, the hand taps its mark twice. */
-:root[data-guide-nudge] .school-coach .school-speech { animation: school-refuse .36s cubic-bezier(.36, .07, .19, .97) both; }
+/* A press the guide holds back (isolated player test 2026-11-18): the card shakes its head, the hand taps its mark twice; a press on the card only sends the hand. */
+:root[data-guide-nudge='refuse'] .school-coach .school-speech { animation: school-refuse .36s cubic-bezier(.36, .07, .19, .97) both; }
 :root[data-guide-nudge] [data-tutorial-hand] img { animation: school-hand-nudge .3s ease-in-out 2; }
 @keyframes school-refuse { 15%, 85% { transform: translateX(-2px); } 30%, 70% { transform: translateX(4px); } 50% { transform: translateX(-5px); } }
 @keyframes school-hand-nudge { 0%, 100% { transform: none; } 45% { transform: translate(-7px, -7px) scale(1.12); } 70% { transform: translate(1px, 1px) scale(.94); } }
