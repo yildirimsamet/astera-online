@@ -392,11 +392,12 @@ describe('the welcome over the power card', () => {
     expect(document.querySelector('[data-drag-hint]')).toBeNull();
   });
 
-  it('greets the commander and names the power card in one line', () => {
+  // Plan 2026-11-18 §4 İ4: the line says what is at stake; the mark, not the words, shows the control.
+  it('greets the commander in one line, and leaves the power card to its mark', () => {
     mount();
     const line = document.querySelector('[data-school-line]')?.getAttribute('data-school-line') ?? '';
     expect(line).toMatch(/this ship is yours/i);
-    expect(line).toContain('Try it');
+    expect(line).not.toContain('Try it');
   });
 });
 

@@ -75,7 +75,6 @@ const THIRD_PERSON = new Set<string>([
   'starter.objective.underwayProbe',
   'starter.outlook.seasonClosed',
   'starter.plan.optional',
-  'starter.tutorial.line.collectMine',
   'trade.fleetsave',
   'unknownSignal.resourceResult',
   'vocabulary.building.SHIPYARD.detail',
