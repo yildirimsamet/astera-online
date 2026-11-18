@@ -1,4 +1,4 @@
-import type { StarterFeature, VesselSystem } from '@astera/rules';
+import type { StarterFeature, VesselModule, VesselSystem } from '@astera/rules';
 import { useEffect, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { VesselView } from '../api/starterSchemas.js';
@@ -17,6 +17,9 @@ export const FEATURE_SYSTEM: Record<StarterFeature, VesselSystem> = {
   telescope: 'DEFENCE', radar: 'DEFENCE', defence: 'DEFENCE', attack: 'DEFENCE', deuterium: 'REFINERY',
   migration: 'DRIVE',
 };
+
+/** A feature whose bay wakes as its module, not its system: the telescope's sphere, the radar's sweep (owner 2026-11-18). */
+const FEATURE_MODULE: Partial<Record<StarterFeature, VesselModule>> = { telescope: 'TELESCOPE', radar: 'RADAR' };
 
 /** Only what can be tried there and then gets a "Try it": the works, and a probe at the nearest ship. */
 const heard = new Set<string>();
@@ -38,7 +41,7 @@ export function UnlockMoment({ vessel, overGalaxy = false, onAwaken, onTry }: {
   vessel: VesselView;
   overGalaxy?: boolean;
   /** The ship turns to face the camera and the bay pulses. */
-  onAwaken?: (system: VesselSystem) => void;
+  onAwaken?: (system: VesselSystem, module?: VesselModule) => void;
   /** "Try it": the galaxy takes the player to it (the nearest ship, for a probe). */
   onTry?: (feature: StarterFeature) => void;
 }) {
@@ -61,6 +64,7 @@ export function UnlockMoment({ vessel, overGalaxy = false, onAwaken, onTry }: {
     markSeen(feature, { onError: () => { quietly.delete(key); } });
   }, [feature, told, directing, vessel.id, markSeen]);
   const system = feature ? FEATURE_SYSTEM[feature] : null;
+  const module = feature ? FEATURE_MODULE[feature] : undefined;
   useEffect(() => {
     if (!shown || !system) return;
     // Not under the loading cover: the switch and the lit bay are for the player to see.
@@ -73,11 +77,12 @@ export function UnlockMoment({ vessel, overGalaxy = false, onAwaken, onTry }: {
         playSound('switch');
         haptic('thunk');
       }
-      onAwaken?.(system);
+      if (module) onAwaken?.(system, module);
+      else onAwaken?.(system);
     };
     fire();
     return () => { window.clearTimeout(timer); };
-  }, [shown, system, onAwaken, vessel.id, feature]);
+  }, [shown, system, module, onAwaken, vessel.id, feature]);
   if (!feature || !shown || !system) return null;
   const tryable = TRY.includes(feature);
   const close = () => {

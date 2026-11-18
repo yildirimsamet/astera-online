@@ -3,7 +3,7 @@ import { StrictMode } from 'react';
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { vesselSchema } from '../src/api/starterSchemas.js';
-import { directorNow, resetDirector, skipBeat } from '../src/starter/director/director.js';
+import { directorNow, playScene, resetDirector, skipBeat } from '../src/starter/director/director.js';
 import { FIRST_LOOK_MS, useStarterScenes } from '../src/starter/director/useStarterScenes.js';
 import { REVEAL_FLEETS_MS } from '../src/starter/tutorial/sightLesson.js';
 import i18n from '../src/i18n/index.js';
@@ -25,6 +25,14 @@ const props = (over: Partial<Props>): Props => ({
 
 /** The ship's changes become scenes (plan 2026-11-18 §5, Faz 5.2–5.6), as the galaxy sees them. */
 describe('the first session, directed', () => {
+  // Owner 2026-11-18 (item 7): the bay a beat wakes does its module's work: the telescope its own sphere.
+  it('wakes the bay a beat names, with its module', () => {
+    const onAwaken = vi.fn();
+    renderHook(useStarterScenes, { initialProps: props({ onAwaken }) });
+    act(() => { playScene({ id: 'probe-back', once: false, beats: [{ id: 'back', shot: { kind: 'bay', system: 'DEFENCE' }, ms: 2600, awaken: { system: 'DEFENCE', module: 'TELESCOPE' } }] }, 'v1'); });
+    expect(onAwaken).toHaveBeenCalledWith('DEFENCE', 'TELESCOPE');
+  });
+
   it('shows a new ship its report once the galaxy\'s opening flight has landed', () => {
     renderHook(useStarterScenes, { initialProps: props({}) });
     expect(playing()).toBe('none');
@@ -81,7 +89,7 @@ describe('the first session, directed', () => {
     act(() => { vi.advanceTimersByTime(FIRST_LOOK_MS); });
     view.rerender({ ...first, ship: ship({ modules: { REFINERY: 2 }, facts: [] }) });
     expect(playing()).toBe('repair:REFINERY:2:done/back');
-    expect(onAwaken).toHaveBeenCalledWith('REFINERY');
+    expect(onAwaken).toHaveBeenCalledWith('REFINERY', 'REFINERY');
   });
 
   it('comes close to the first rock once the telescope\'s sky has landed, and not after the first dig', () => {

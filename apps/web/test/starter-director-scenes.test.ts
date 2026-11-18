@@ -155,6 +155,14 @@ describe('the scenes after the road\'s first half', () => {
     expect(ships?.craft).toEqual({ hull: 'PROSPECTOR', count: 1 });
   });
 
+  // Owner 2026-11-18 (item 7): the bay that comes back does its module's own work, the telescope its sphere.
+  it('wakes the bay of a repair as its module, as the camera reaches it', () => {
+    const before: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1 }, queue: [{ subject: 'TELESCOPE', stage: 1 }], look: 'WRECKED', facts: [] };
+    const after: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }, queue: [], look: 'WRECKED', facts: [] };
+    const done = scenesFor(before, after, (module) => module.toLowerCase()).find(scene => scene.id === 'repair:TELESCOPE:1:done');
+    expect(done?.beats[0]?.awaken).toEqual({ system: 'DEFENCE', module: 'TELESCOPE' });
+  });
+
   it('shows the ship again after its first battle: every system named, then the drive still to wake', () => {
     const [report] = scenesFor(ROAD_DONE, { ...ROAD_DONE, facts: ['FIRST_BATTLE_REPORT'] }, name);
     expect(report?.id).toBe('shipReport2');

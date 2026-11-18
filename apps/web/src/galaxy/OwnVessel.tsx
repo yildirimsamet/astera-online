@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as THREE from 'three';
-import { VESSEL_SYSTEMS, vesselLook, type Vec3, type VesselHull, type VesselLook, type VesselProgress, type VesselSystem } from '@astera/rules';
+import { VESSEL_SYSTEMS, vesselLook, type Vec3, type VesselHull, type VesselLook, type VesselModule, type VesselProgress, type VesselSystem } from '@astera/rules';
 import { HULL_MODEL } from '../ui/assets.js';
 import { BayReturnFx, RunningLights, SparkStreaks, WeldFx } from './BayFx.js';
 import { Exhaust, Hull } from './Fleets.js';
@@ -218,7 +218,7 @@ export function OwnVessel({ at, offset, hull, progress, onSelect, awaken, workin
   progress: VesselProgress;
   onSelect: () => void;
   /** A system that just came back; a new key beats again. */
-  awaken?: { system: VesselSystem; key: number } | undefined;
+  awaken?: { system: VesselSystem; module?: VesselModule; key: number } | undefined;
   /** Systems with a short repair under way: their bays weld. */
   working?: readonly VesselSystem[];
   /** The look to show, held back until its moment (the director's hull shot); the repairs' own look otherwise. */
@@ -260,7 +260,7 @@ export function OwnVessel({ at, offset, hull, progress, onSelect, awaken, workin
           : <Suspense fallback={null}><VesselBody file={vesselModelFile(hull, look)} hull={hull} damage={damage} /></Suspense>}
         <RunningLights lights={running} />
         <Suspense fallback={null}>
-          {awaken && <BayReturnFx key={awaken.key} system={awaken.system} at={VESSEL_BAYS[hull][awaken.system]} colour={BAY_COLOUR[awaken.system]} />}
+          {awaken && <BayReturnFx key={awaken.key} system={awaken.system} module={awaken.module} at={VESSEL_BAYS[hull][awaken.system]} colour={BAY_COLOUR[awaken.system]} />}
           {working.map(system => <WeldFx key={system} at={VESSEL_BAYS[hull][system]} />)}
           {launch?.live === true && <CraftHandover key={launch.key} hull={hull} craft={launch.craft} onDone={() => { setLaunch({ ...launch, live: false }); }} />}
         </Suspense>

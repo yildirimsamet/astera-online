@@ -1,4 +1,4 @@
-import type { HullId, VesselSystem } from '@astera/rules';
+import type { HullId, VesselModule, VesselSystem } from '@astera/rules';
 import { useSyncExternalStore } from 'react';
 import type { Focus } from '../../galaxy/FocusPanel.js';
 import type { SoundCue } from '../../lib/sound.js';
@@ -54,6 +54,8 @@ export interface Beat {
   yields?: boolean;
   /** Craft the repair handed over: they come out of the cargo bay beside the hull, and dock again. */
   craft?: { hull: HullId; count: number };
+  /** The bay this beat wakes as the camera reaches it, doing its module's own work (the telescope its sphere). */
+  awaken?: { system: VesselSystem; module: VesselModule };
 }
 
 export type SpentResource = 'alloy' | 'crystal' | 'deuterium';

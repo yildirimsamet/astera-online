@@ -52,7 +52,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { keys } from '../api/keys.js';
 import { activeEvents, slotSuggestion } from '../lib/contextSlot.js';
 import { SeasonLockProvider } from '../session/seasonLock.js';
-import { VIEW, hpRadiationApplies, mainOffsetOf, vesselHull, type VesselFact, type VesselSystem } from '@astera/rules';
+import { VIEW, hpRadiationApplies, mainOffsetOf, vesselHull, type VesselFact, type VesselModule, type VesselSystem } from '@astera/rules';
 import { NextSeason } from '../ui/NextSeason.js';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -772,11 +772,11 @@ export function GalaxyView({
   const [settlingTargetId, setSettlingTargetId] = useState<string | null>(null);
   const [homeSignal, setHomeSignal] = useState(0);
   /** A system that just came back: the camera goes home and its bay beats (onboarding design §5.3). */
-  const [awaken, setAwaken] = useState<{ system: VesselSystem; key: number } | undefined>(undefined);
+  const [awaken, setAwaken] = useState<{ system: VesselSystem; module?: VesselModule; key: number } | undefined>(undefined);
   /** The galaxy is clear for the director (plan 2026-11-18, Faz 5.1): no page, launch or trade over it. */
   const launchingNow = useLaunchSheet();
-  const onAwaken = useCallback((system: VesselSystem) => {
-    setAwaken((last) => ({ system, key: (last?.key ?? 0) + 1 }));
+  const onAwaken = useCallback((system: VesselSystem, module?: VesselModule) => {
+    setAwaken((last) => ({ system, ...(module ? { module } : {}), key: (last?.key ?? 0) + 1 }));
     setHomeSignal((n) => n + 1);
   }, []);
   const [centerSignal, setCenterSignal] = useState(0);
@@ -1017,7 +1017,7 @@ export function GalaxyView({
   const starterRock = useMemo(() => (ship && asteroids.length > 0 ? nearestRock(asteroids, activeWorldPosition, minuteNow) : null),
     [ship, asteroids, activeWorldPosition, minuteNow]);
   const starterReturn = useMemo(() => contacts.find(contact => contact.kind === 'unknown' && contact.effectOnly !== true)?.id ?? null, [contacts]);
-  const awakenBay = useCallback((system: VesselSystem) => { setAwaken((last) => ({ system, key: (last?.key ?? 0) + 1 })); }, []);
+  const awakenBay = useCallback((system: VesselSystem, module?: VesselModule) => { setAwaken((last) => ({ system, ...(module ? { module } : {}), key: (last?.key ?? 0) + 1 })); }, []);
   const weldingBays = useMemo(() => (ship ? weldingSystems(ship.queue, now) : []), [ship, now]);
   const starterProbing = (pendingThreads ?? []).some(thread => thread.kind === 'probe');
   const starterProbed = useMemo(() => {

@@ -76,7 +76,7 @@ function done(step: RepairStep & { module: RoadModule }, name: (module: string) 
     id: `repair:${step.module}:${String(step.stage)}:done`,
     once: true,
     beats: [
-      { id: 'back', shot: { kind: 'bay', system: step.system }, ms: 2600, line: `starter.director.repair.${step.module}`, vars: { name: name(step.module) }, sound: 'ignite' },
+      { id: 'back', shot: { kind: 'bay', system: step.system }, ms: 2600, line: `starter.director.repair.${step.module}`, vars: { name: name(step.module) }, sound: 'ignite', awaken: { system: step.system, module: step.module } },
       // The craft come out of the cargo bay, seen from far enough to watch them, and dock again (OwnVessel).
       ...(ships
         ? [{ id: 'ships', shot: { kind: 'ship' as const, turn: 0.6 }, ms: 4200, line: ships.line, vars: { count: ships.count, hull: name(ships.hull) }, sound: 'launch' as const, craft: { hull: ships.hull, count: ships.count } }]

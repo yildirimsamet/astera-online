@@ -8,7 +8,7 @@ import { JUMP_LAYER, type Jump } from '../starter/jump.js';
 import type { JumpWorld } from '../starter/jumpWorld.js';
 import { StarterGlow } from './StarterGlow.js';
 import type { DepartureBeam } from './mainSky.js';
-import { mainOffsetOf, motionPositionAt, type Vec3, type VesselHull, type VesselLook, type VesselProgress, type VesselSystem } from '@astera/rules';
+import { mainOffsetOf, motionPositionAt, type Vec3, type VesselHull, type VesselLook, type VesselModule, type VesselProgress, type VesselSystem } from '@astera/rules';
 import type { MainSky } from '../api/starterSchemas.js';
 import { MainGalaxySky } from './MainGalaxySky.js';
 import { UniverseBalls } from './UniverseBalls.js';
@@ -249,7 +249,7 @@ export interface GalaxyCanvasProps {
   watched?: readonly WatchedFlight[];
   /** This ship's own jump, flown here from where it stands (owner, 2026-11-09). The view hands it the camera. */
   flight?: { jump: Jump; world: JumpWorld };
-  starter?: { hull: VesselHull; progress: VesselProgress; galaxyOrdinal: number; mainSky: readonly Vec3[]; beams: readonly DepartureBeam[]; onMainGalaxy: () => void; landmarks: Pick<MainSky, 'monuments' | 'clouds'>; onOpen: () => void; awaken?: { system: VesselSystem; key: number } | undefined;
+  starter?: { hull: VesselHull; progress: VesselProgress; galaxyOrdinal: number; mainSky: readonly Vec3[]; beams: readonly DepartureBeam[]; onMainGalaxy: () => void; landmarks: Pick<MainSky, 'monuments' | 'clouds'>; onOpen: () => void; awaken?: { system: VesselSystem; module?: VesselModule; key: number } | undefined;
     /** The galaxy is clear for the director's scenes (plan 2026-11-18, Faz 5.1): nothing is open over it. */
     directorLive?: boolean;
     /** The hull's look as the director shows it: held back until its own shot (plan 2026-11-18 §5). */

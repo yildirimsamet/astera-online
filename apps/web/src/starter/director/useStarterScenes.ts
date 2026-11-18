@@ -64,7 +64,7 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, u
   /** The ship the latest probe report read, once it is home. */
   probeTarget: { id: string; name: string } | null;
   /** The bay of a system that has just come back, beating. */
-  onAwaken: (system: VesselSystem) => void;
+  onAwaken: (system: VesselSystem, module?: VesselModule) => void;
 }): VesselLook | undefined {
   const seen = useRef<{ id: string; state: ShipState } | null>(null);
   /** The look the hull shows: kept as it was while a scene that will show it turning waits for its shot. */
@@ -146,7 +146,7 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, u
   const playing = useDirector();
   const beat = playing?.beat;
   useEffect(() => {
-    if (beat?.id === 'back' && beat.shot.kind === 'bay') onAwaken(beat.shot.system);
+    if (beat?.awaken) onAwaken(beat.awaken.system, beat.awaken.module);
     if (beat?.id === 'hull') {
       holding.current = false;
       setShown(latest.current.state?.look ?? null);
