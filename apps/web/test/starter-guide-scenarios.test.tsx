@@ -31,6 +31,7 @@ vi.mock('../src/api/queries.js', () => ({
   useIntel: () => ({ data: undefined }),
 }));
 vi.mock('../src/lib/projection.js', () => ({ useProjected: () => state.held }));
+vi.mock('../src/starter/queries.js', async (importActual) => ({ ...await importActual<Record<string, unknown>>(), useMigration: () => ({ data: undefined }) }));
 afterEach(() => { localStorage.clear(); state.wire = {}; state.held = none; state.runs = []; resetDirector(); setLandingSheet(false); });
 
 const MIN = 60_000;

@@ -81,7 +81,7 @@ function useLoadingCover(): boolean {
 }
 
 /** What the card needs of the tutorial: the step, its clocks, and the way to record a line read. */
-type CoachTutorial = Pick<StarterTutorial, 'answer' | 'ack' | 'backIn' | 'wait' | 'repaired' | 'windowOpen'>;
+type CoachTutorial = Pick<StarterTutorial, 'answer' | 'ack' | 'backIn' | 'wait' | 'repaired' | 'windowOpen' | 'jumpBlock'>;
 
 /**
  * The guide is optional; unmounting it releases every effect that owns a control. Declining it goes
@@ -339,7 +339,8 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
       repair: t('starter.repair'),
       intel: t('dock.intel'),
       percent: tutorial.repaired ?? 0,
-      ...(step.id === 'farewell' && tutorial.windowOpen ? { context: 'open' } : {}),
+      // The jump open, or what holds it (code review 2026-11-19).
+      ...(step.id === 'farewell' && tutorial.windowOpen ? { context: tutorial.jumpBlock ?? 'open' } : {}),
     });
   const away = mode === 'away' && tutorial.wait && !step.nav ? tutorial.wait : null;
   const line = away ? `${text} ${t('starter.tutorial.away', { clock: clockTime(away.until) })}` : text;

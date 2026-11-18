@@ -14,7 +14,9 @@ import { useRockSheet } from './rockSheet.js';
 import { sceneToCome, scenePlayedFor, useDirector, useSceneToCome } from '../director/director.js';
 import { JUMP_SCENE, announcedByScene, sceneAnnouncing } from '../director/scenes.js';
 import { useLandingSheet } from './landingSheet.js';
-import { repairWait, tutorialStep, type TutorialInput, type TutorialAnswer, type TutorialStepId, type TutorialView, type TutorialWait } from './script.js';
+import { useMigration } from '../queries.js';
+import type { MigrationView } from '../../api/starterSchemas.js';
+import { repairWait, tutorialStep, type JumpBlock, type TutorialInput, type TutorialAnswer, type TutorialStepId, type TutorialView, type TutorialWait } from './script.js';
 import { holdFull } from '../hold.js';
 
 /** Remembered only on this device; the ship itself carries everything else. */
@@ -54,11 +56,23 @@ export interface StarterTutorial {
   repaired?: number;
   /** The jump window is open (plan 2026-11-13 §5.1): the handover gives the player the choice, not more work. */
   windowOpen?: boolean;
+  /** What holds the open jump, as the drive's panel says it: the handover says why. */
+  jumpBlock?: JumpBlock;
   /** When the work a wait step is for is done, and how long it runs in all. */
   wait?: TutorialWait;
   vessel?: VesselView;
   ack: (id: TutorialStepId) => void;
 }
+
+/** The panel's reason as the guide says it; one it does not name (the road not done) is the window's own. */
+const jumpBlockOf = (block: MigrationView['block']): JumpBlock | undefined => {
+  switch (block?.code) {
+    case 'MIGRATION_FLEET_OUT': return 'fleet';
+    case 'MIGRATION_SEASON_WAIT': return 'season';
+    case 'NO_FRONTIER': return 'frontier';
+    default: return undefined;
+  }
+};
 
 /** The tutorial's step for the ship on screen; nothing at all when there is no ship. */
 export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
@@ -75,6 +89,10 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   // The card of a system its scene will show waits for that scene; one let go unseen asks for the card again.
   const announcing = vessel?.unlockToAnnounce ? sceneAnnouncing(vessel.unlockToAnnounce) : null;
   const announcingToCome = useSceneToCome(vessel?.id ?? '', announcing);
+  // The drive's panel is asked why the jump is held only once its window is open.
+  const windowOpen = vessel ? jumpWindowOpen({ modules: vessel.modules, facts: vessel.facts }) : false;
+  const migration = useMigration({ enabled: windowOpen });
+  const jumpBlock = windowOpen ? jumpBlockOf(migration.data?.block ?? null) : undefined;
   const plan = useMemo(() => (vessel ? vesselToPlanetView(vessel) : null), [vessel]);
   const held = useProjected(plan?.planet, planet.dataUpdatedAt, 5_000);
   const [acked, setAcked] = useState<{ id: string; list: string[] } | null>(null);
@@ -123,6 +141,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     noRocks: mining.fieldData?.asteroids.length === 0,
     rockShown: scenePlayedFor(vessel.id, 'rock'),
     jumpWaiting: sceneToCome(vessel.id, JUMP_SCENE),
+    ...(jumpBlock ? { jumpBlock } : {}),
     landing,
     acked: list,
   };
@@ -146,6 +165,6 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   const wait = waiting === null ? null : repairWait(waiting, vessel.queue);
   return {
     answer, view, offers, ...(pick ? { pick } : {}), backIn, ack, vessel, farewelled: list.includes('farewell'),
-    repaired: Math.round(vessel.progress.share * 100), windowOpen: jumpWindowOpen({ modules: vessel.modules, facts: vessel.facts }), ...(wait ? { wait } : {}),
+    repaired: Math.round(vessel.progress.share * 100), windowOpen, ...(jumpBlock ? { jumpBlock } : {}), ...(wait ? { wait } : {}),
   };
 }

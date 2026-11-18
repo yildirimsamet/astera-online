@@ -12,6 +12,8 @@ const state = vi.hoisted(() => ({
   planets: undefined as { id: string; firstHunt?: boolean }[] | undefined,
   held: { alloy: 0, crystal: 0, deuterium: 0, bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0 },
   extra: {},
+  migration: undefined as { block: { code: string; flying?: number; daysLeft?: number } | null } | undefined,
+  migrationEnabled: [] as (boolean | undefined)[],
 }));
 vi.mock('../src/api/queries.js', () => ({
   usePlanet: () => ({ data: { vessel: vesselSchema.parse(wireVessel({ id: state.ship, ...state.extra })) }, dataUpdatedAt: Date.now() }),
@@ -22,7 +24,11 @@ vi.mock('../src/api/queries.js', () => ({
   useTraffic: () => ({ data: undefined }),
 }));
 vi.mock('../src/lib/projection.js', () => ({ useProjected: () => state.held }));
-afterEach(() => { localStorage.clear(); resetDirector(); state.held = empty; state.ship = 'memory-1'; state.planets = undefined; state.runs = []; state.extra = {}; });
+vi.mock('../src/starter/queries.js', async (importActual) => ({
+  ...await importActual<Record<string, unknown>>(),
+  useMigration: (options?: { enabled?: boolean }) => { state.migrationEnabled.push(options?.enabled); return { data: state.migration }; },
+}));
+afterEach(() => { localStorage.clear(); resetDirector(); state.held = empty; state.ship = 'memory-1'; state.planets = undefined; state.runs = []; state.extra = {}; state.migration = undefined; state.migrationEnabled = []; });
 
 describe('tutorial acknowledgement memory', () => {
   it('reads once per ship, updates on acknowledgement and keeps ships separate', () => {
@@ -109,5 +115,30 @@ describe('a system the director has shown coming back', () => {
     expect(result.current?.answer).toMatchObject({ nav: 'dismissUnlock' });
     act(() => { lower(); });
     vi.useRealTimers();
+  });
+});
+
+// Code review 2026-11-19: the guide asked "jump now?" while the drive's panel held the jump and drew no control.
+describe('the jump the server holds', () => {
+  const open = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1, SHIPYARD: 1 }, facts: ['FIRST_MINING_RETURN', 'FIRST_PROBE_REPORT'] };
+
+  it('hears why from the drive\'s panel once the window is open, and only then asks the panel', () => {
+    state.extra = { progress: { modules: { REFINERY: 2 }, facts: [] } };
+    const { result, rerender } = renderHook(() => useStarterTutorial('ship'));
+    expect(state.migrationEnabled.every(enabled => enabled === false)).toBe(true);
+    state.extra = { progress: open };
+    state.migration = { block: { code: 'MIGRATION_FLEET_OUT', flying: 1 } };
+    rerender();
+    expect(state.migrationEnabled.at(-1)).toBe(true);
+    expect(result.current?.jumpBlock).toBe('fleet');
+    expect(result.current?.answer).not.toMatchObject({ id: 'jumpAsk' });
+    for (const [code, block] of [['MIGRATION_SEASON_WAIT', 'season'], ['NO_FRONTIER', 'frontier']] as const) {
+      state.migration = { block: { code, daysLeft: 3 } };
+      rerender();
+      expect(result.current?.jumpBlock).toBe(block);
+    }
+    state.migration = { block: null };
+    rerender();
+    expect(result.current?.jumpBlock).toBeUndefined();
   });
 });

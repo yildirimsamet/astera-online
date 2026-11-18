@@ -42,9 +42,9 @@ export function useMarkUnlockSeen() {
   });
 }
 
-export function useMigration() {
+export function useMigration({ enabled = true }: { enabled?: boolean } = {}) {
   const api = useApi();
-  return useQuery({ queryKey: keys.migration, queryFn: ({ signal }) => api.vesselMigration({ signal }) });
+  return useQuery({ queryKey: keys.migration, queryFn: ({ signal }) => api.vesselMigration({ signal }), enabled });
 }
 
 export function useMigrate() {

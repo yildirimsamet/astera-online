@@ -136,6 +136,18 @@ describe('the starter tutorial on screen', () => {
     expect(said).not.toMatch(/finish/i);
   });
 
+  // Code review 2026-11-19: with the jump held, the handover says why instead of pointing at a control that is not drawn.
+  it('hands over a ship whose jump is held with the reason, not the open jump', () => {
+    for (const [jumpBlock, reason] of [['fleet', /fleet/i], ['season', /season/i], ['frontier', /galax/i]] as const) {
+      const view = render(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'farewell', step: 'read', marks: [], chapter: 9, strict: false }, ack: vi.fn(), backIn: 0, repaired: 100, windowOpen: true, jumpBlock }} />);
+      fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
+      const said = document.querySelector('[data-school-line]')?.getAttribute('data-school-line');
+      expect(said).toMatch(reason);
+      expect(said).not.toMatch(/jump is open|Prepare the jump/i);
+      view.unmount();
+    }
+  });
+
   // Owner phone playtest 2026-11-18, item 24: the jump is asked, now or later, and either answer is the player's.
   it('asks whether to jump now or grow first, and takes either answer', () => {
     const ask = { kind: 'step', id: 'jumpAsk', step: 'read', marks: [], chapter: 9, strict: false } as const;

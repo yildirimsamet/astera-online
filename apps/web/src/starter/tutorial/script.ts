@@ -42,6 +42,8 @@ export interface TutorialInput {
   rockShown?: boolean;
   /** The drive's scene is still to be seen: the jump is asked after it (owner phone playtest 2026-11-18, item 24). */
   jumpWaiting?: boolean;
+  /** Why the server holds the jump though the drive is ready: then it is not asked, and the handover says why. */
+  jumpBlock?: JumpBlock;
   /** Where to land is being chosen: the player's own decision, spoken over by nothing. */
   landing?: boolean;
   /** Lines read and marks pressed, on this device. */
@@ -49,6 +51,9 @@ export interface TutorialInput {
 }
 
 export type TutorialStepId = StarterTutorialStepId;
+
+/** What holds a ready drive (code review 2026-11-19): a fleet still out, a season closing, no galaxy with room. */
+export type JumpBlock = 'fleet' | 'season' | 'frontier';
 
 /** read: a line and Next · press: the mark is the next move · wait: nothing to press while it runs · gesture: the scene answers it. */
 export type TutorialKind = 'read' | 'press' | 'wait' | 'gesture';
@@ -184,7 +189,8 @@ const MOMENTS: readonly Part[] = [
   // jump ran into each other. After the drive's scene: now, or grow first? Now puts the hand on the control
   // that starts it; grow first records both and goes back to the road, which hands over at the jump.
   {
-    strict: false, due: i => jumpWindowOpen(i) && !seasoned(i),
+    // Asked only when it can be taken: a held jump has no control to put the hand on (code review 2026-11-19).
+    strict: false, due: i => jumpWindowOpen(i) && !seasoned(i) && i.jumpBlock === undefined,
     steps: [
       { id: 'jumpAsk', kind: 'read', chapter: 9, place: 'ship', marks: [JUMP_GO, tab('DRIVE')], boarding: [JUMP_CALL], ready: i => i.jumpWaiting !== true },
       { id: 'jumpGo', kind: 'press', chapter: 9, place: 'ship', marks: [JUMP_GO, tab('DRIVE')], boarding: [JUMP_CALL] },

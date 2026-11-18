@@ -38,7 +38,7 @@ describe('the guide\'s lines', () => {
 
   it('never name the button to press: the mark already shows it', () => {
     const PRESS: readonly (readonly [string, Words, RegExp])[] = [
-      ['en', en, /\b(tap|press|click)\b/iu], ['tr', tr, /düğme|dokun/iu], ['de', de, /\btipp/iu],
+      ['en', en, /\b(tap|press|click)\b/iu], ['tr', tr, /düğme|dokun|(?<!\p{L})bas(?!\p{L})/iu], ['de', de, /\btipp/iu],
       ['fr', fr, /\btouche\b/iu], ['es', es, /\btoca\b/iu], ['ja', ja, /タップ/u],
     ];
     for (const [lang, words, press] of PRESS) {

@@ -326,6 +326,19 @@ describe('the jump is shown, then asked', () => {
     expect(at({ ...open, acked: [...read, 'jumpAsk', 'jumpGo'], landing: true })).toEqual({ kind: 'quiet' });
   });
 
+  // Code review 2026-11-19: a fleet out, a closing season or a full frontier holds the jump, and the drive's
+  // panel then draws no control to press; the guide asks nothing and its handover says why.
+  it('asks nothing while the server holds the jump: the yard\'s work goes on and the handover follows', () => {
+    for (const jumpBlock of ['fleet', 'season', 'frontier'] as const) {
+      expect(at({ ...open, jumpBlock })).toMatchObject({ id: 'buildShip' });
+      expect(at({ ...open, jumpBlock, acked: [...read, 'buildShip'] })).toMatchObject({ id: 'farewell' });
+    }
+  });
+
+  it('asks once the hold lifts, even after the handover was read', () => {
+    expect(at({ ...open, acked: [...read, 'buildShip', 'farewell'] })).toMatchObject({ id: 'jumpAsk' });
+  });
+
   it('asks nothing before the window opens, nor of a ship far past the road', () => {
     expect(id({ ...open, facts: ['FIRST_MINING_RETURN'] })).not.toMatch(/^jump/u);
     expect(at({ ...open, modules: { ...yard, SURVEY: 2 } })).toEqual({ kind: 'advise' });
@@ -450,10 +463,12 @@ it('has a line in every language for each step it speaks, and none for a step it
   const ids = ROAD.map(step => step.id).sort();
   const chapters = [...new Set(ROAD.map(step => String(step.chapter)))].sort();
   for (const starter of [en, tr, de, fr, es, ja]) {
-    // The handover has a second line for a ship whose jump window is open (plan 2026-11-13 §4.3), as an i18next context.
+    // The handover has more lines for a ship whose jump window is open (plan 2026-11-13 §4.3), as i18next contexts:
+    // the jump open, or why it is held (code review 2026-11-19).
+    const HANDOVER = ['farewell_open', 'farewell_fleet', 'farewell_season', 'farewell_frontier'];
     const lines = Object.keys(starter.tutorial.line);
-    expect(lines.filter(key => key !== 'farewell_open').sort()).toEqual(ids);
-    expect(lines).toContain('farewell_open');
+    expect(lines.filter(key => !HANDOVER.includes(key)).sort()).toEqual(ids);
+    for (const key of HANDOVER) expect(lines).toContain(key);
     expect(Object.keys(starter.tutorial.chapter).sort()).toEqual(chapters);
   }
 });
