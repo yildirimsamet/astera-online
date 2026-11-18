@@ -205,7 +205,9 @@ Bu yetkiyle verdiğim kararlar:
 | 5.3 A13, İ5, 5.6 A9–A11 | yapıldı | Gemi raporunda 5 sistem 3B gövdede sözle etiketlenir (yanıyor/tütüyor/kopuk/kıvılcım atıyor/çalışıyor), hull'un gösterdiğiyle aynı. A13: ilk savaş raporundan sonra ikinci rapor; motor satırı sıçrama penceresine göre. A9: sonda raporu gelince kamera sondalanan gemiye döner. A10: sonda yoldayken ve Tersane sıradayken boş kargo bölmesi. A11: Tersane dönünce ilk iki Ok kargo bölmesinden süzülüp yanında durur, sonra uzaklaşır. Sahne sırasında odak kartı, karakol işaretleri, göç şeridi ve alt şerit gizlenir. |
 | 5.4 | yapıldı | Rehber ve yönetmen satırları 6 dilde yeniden yazıldı: en fazla 12 kelime, neden → ne → sonuç, hiçbir dilde düğme adı ya da "dokun" yok (işaret yeri gösterir). Koruma: `starter-guide-copy.test.ts` (uzunluk, düğme adı, her dilde aynı değişkenler). |
 | 5.7 | yapıldı | Kilitli kart "Önce X" der; yanındaki "Göster" o onarımın kartını açar (başka sistemdeyse o sisteme geçer). Soluk ONAR'ın altındaki satır önce neyin ne kadar eksik olduğunu söyler ("54 alaşım eksik · yaklaşık 18 dk içinde birikir"), düğmenin erişilebilir açıklaması da odur. Kazıcı dönüşüne bağlı tahmin eklenmedi: gemi ekranı uçuş verisini bilmiyor. |
-| 5.9, 5.10 | sırada | |
+| 5.9 | ölçüldü, değişiklik gerekmedi | Prod build (`vite build` + `vite preview`, 350×760, masaüstü GPU, ısınmış önbellek): yeniden yüklemede siyah kare yok. 0–3,6 sn markalı yükleme ekranı (yörünge logosu, "Galaksi bilgileri yükleniyor" → "Oyun görünümü hazırlanıyor"), 3,8 sn'de gemi ve galaksi. Not: ilk ~0,3 sn'lik satır sayfanın URL diliyle gelir ("/" İngilizce), Türk oyuncuya "Preparing the game" görünür; herkese açık sayfa işi, kapsam dışı. S22'de ölçülmedi. |
+| İ7 | değerlendirildi | Tek ödül anı 5.8'deki birleşik iniş anıyla sağlandı. Kasa kuralları ilerleme kuralı olduğu için (S5) değiştirilmedi. |
+| 5.10 | sürüyor | |
 
 ## 9. Başarı ölçütü
 
