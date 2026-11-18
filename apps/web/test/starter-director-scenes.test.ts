@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SHOT_MAX_MS } from '../src/starter/director/director.js';
-import { WORK_GRACE_MS, contactScene, probeScene, rockScene, sceneAnnouncing, scenesFor, weldingSystems, yardNeedScene, type ShipState } from '../src/starter/director/scenes.js';
+import { WORK_GRACE_MS, contactScene, probeScene, rockScene, sceneAnnouncing, scenesFor, weldingBays, yardNeedScene, type ShipState } from '../src/starter/director/scenes.js';
 
 /**
  * WHICH SCENE A CHANGE OF THE SHIP CALLS FOR (plan 2026-11-18 §5, Faz 5.2–5.6). The first look at the
@@ -192,15 +192,17 @@ describe('the scenes after the road\'s first half', () => {
 describe('where the hull welds', () => {
   const order = (subject: string, stage: number, seconds: number, startedAt = 0) => ({ subject, stage, queue: 'CONSTRUCTION' as const, startedAt: new Date(startedAt), readyAt: new Date(startedAt + seconds * 1000) });
   it('welds the bay of a short repair while it runs, and no other', () => {
-    expect(weldingSystems([order('TELESCOPE', 1, 15)], 5_000)).toEqual(['DEFENCE']);
-    expect(weldingSystems([order('TELESCOPE', 1, 15)], 16_000)).toEqual([]);
+    expect(weldingBays([order('TELESCOPE', 1, 15)], 5_000)).toEqual([{ system: 'DEFENCE', module: 'TELESCOPE' }]);
+    expect(weldingBays([order('TELESCOPE', 1, 15)], 16_000)).toEqual([]);
   });
   // A repair of hours would keep the galaxy drawing every frame for hours: it shows its clock instead.
   it('leaves a repair of more than two minutes still', () => {
-    expect(weldingSystems([order('REFINERY', 4, 3600)], 5_000)).toEqual([]);
+    expect(weldingBays([order('REFINERY', 4, 3600)], 5_000)).toEqual([]);
   });
-  it('names a system once however many of its repairs run, and ignores the yard', () => {
-    expect(weldingSystems([order('REFINERY', 2, 5), order('EXTRACTOR', 1, 5), { ...order('DART', 1, 5), queue: 'YARD' as const }], 1_000)).toEqual(['REFINERY']);
+  // Owner 2026-11-18 (item 6): the bay names the module it welds, so a crystal repair throws crystal sparks.
+  it('names a bay once however many of its repairs run, with the first module it welds, and ignores the yard', () => {
+    expect(weldingBays([order('EXTRACTOR', 1, 5), order('REFINERY', 2, 5), { ...order('DART', 1, 5), queue: 'YARD' as const }], 1_000))
+      .toEqual([{ system: 'REFINERY', module: 'EXTRACTOR' }]);
   });
 });
 

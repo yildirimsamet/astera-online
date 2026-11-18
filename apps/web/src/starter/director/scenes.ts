@@ -157,15 +157,17 @@ export const yardNeedScene = (): Scene => ({
 /** A repair longer than this shows its clock, not a torch: the galaxy would otherwise draw every frame for hours. */
 const WELD_UP_TO_MS = 120_000;
 
-/** The systems whose bays weld right now (plan 2026-11-18 §4 İ2): a short repair under way, once each. */
-export function weldingSystems(queue: readonly { subject: string; stage: number; queue: string; startedAt: Date; readyAt: Date }[], nowMs: number): VesselSystem[] {
-  const systems = queue.flatMap(order => {
+/** The bays that weld right now (plan 2026-11-18 §4 İ2): a short repair under way, once each, with what it repairs. */
+export function weldingBays(queue: readonly { subject: string; stage: number; queue: string; startedAt: Date; readyAt: Date }[], nowMs: number): { system: VesselSystem; module: VesselModule }[] {
+  const bays = new Map<VesselSystem, VesselModule>();
+  for (const order of queue) {
     const span = order.readyAt.getTime() - order.startedAt.getTime();
-    if (order.queue !== 'CONSTRUCTION' || span > WELD_UP_TO_MS || order.readyAt.getTime() <= nowMs) return [];
+    if (order.queue !== 'CONSTRUCTION' || span > WELD_UP_TO_MS || order.readyAt.getTime() <= nowMs) continue;
     const step = REPAIR_LADDER.find(row => row.module === order.subject && row.stage === order.stage);
-    return step ? [step.system] : [];
-  });
-  return [...new Set(systems)];
+    // One weld to a bay: the first repair at it names what it burns (a crystal repair throws crystal sparks).
+    if (step && !bays.has(step.system)) bays.set(step.system, step.module);
+  }
+  return [...bays].map(([system, module]) => ({ system, module }));
 }
 
 const atStage = (module: VesselModule, stage: number): { modules: Partial<Record<VesselModule, number>>; facts: [] } => {

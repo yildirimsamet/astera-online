@@ -30,6 +30,31 @@ export const BAY_RETURN: Readonly<Record<VesselSystem, BayReturn>> = {
   CARGO: 'arcs',
 };
 
+/**
+ * WHAT A REPAIR BURNS (owner phone playtest 2026-11-18, item 6). The refinery makes alloy and the crystal
+ * furnace crystal; their welds and their burners wear that resource's colours. Other repairs keep the
+ * welder's own white-to-orange.
+ */
+export type Ore = 'alloy' | 'crystal';
+export const MODULE_ORE: Partial<Record<VesselModule, Ore>> = { REFINERY: 'alloy', EXTRACTOR: 'crystal' };
+
+/**
+ * A spark's colour as it cools, heat 1 to 0, additive (so it fades to nothing): alloy runs white, yellow,
+ * orange, a dull red; crystal runs white, cyan, crystal blue, a deep blue.
+ */
+export function sparkColour(heat: number, ore: Ore = 'alloy'): [number, number, number] {
+  if (ore === 'crystal') {
+    if (heat > 0.66) { const u = (heat - 0.66) / 0.34; return [0.7 + 0.3 * u, 0.95 + 0.05 * u, 1]; }
+    if (heat > 0.33) { const u = (heat - 0.33) / 0.33; return [(0.2 + 0.5 * u) * 0.85, (0.62 + 0.33 * u) * 0.85, 0.85]; }
+    const fade = heat / 0.33 * 0.7;
+    return [0.08 * fade, (0.25 + 0.37 * heat / 0.33) * fade, 0.9 * fade];
+  }
+  if (heat > 0.66) return [1, 0.92 + 0.08 * (heat - 0.66) / 0.34, 0.6 + 0.4 * (heat - 0.66) / 0.34];
+  if (heat > 0.33) return [0.85, (0.45 + 0.47 * (heat - 0.33) / 0.33) * 0.85, (0.12 + 0.48 * (heat - 0.33) / 0.33) * 0.85];
+  const fade = heat / 0.33 * 0.7;
+  return [0.9 * fade, (0.2 + 0.25 * heat / 0.33) * fade, 0.05 * fade];
+}
+
 /** A module whose return is its own, not its system's. */
 const MODULE_RETURN: Partial<Record<VesselModule, BayReturn>> = { TELESCOPE: 'globe' };
 

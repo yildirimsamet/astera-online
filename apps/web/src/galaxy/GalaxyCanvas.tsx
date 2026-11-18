@@ -254,8 +254,8 @@ export interface GalaxyCanvasProps {
     directorLive?: boolean;
     /** The hull's look as the director shows it: held back until its own shot (plan 2026-11-18 §5). */
     look?: VesselLook | undefined;
-    /** Systems with a short repair under way: their bays weld. */
-    working?: readonly VesselSystem[] };
+    /** Bays with a short repair under way, and what each repairs: they weld in its colours. */
+    working?: readonly { system: VesselSystem; module: VesselModule }[] };
   unknownSignals?: readonly UnknownSignalView[];
   /** F2 Klan Alarmı: clanmate worlds under a raid still in the air, from the reader's bell. */
   clanAlarms?: readonly ActiveClanAlarm[];

@@ -219,8 +219,8 @@ export function OwnVessel({ at, offset, hull, progress, onSelect, awaken, workin
   onSelect: () => void;
   /** A system that just came back; a new key beats again. */
   awaken?: { system: VesselSystem; module?: VesselModule; key: number } | undefined;
-  /** Systems with a short repair under way: their bays weld. */
-  working?: readonly VesselSystem[];
+  /** Bays with a short repair under way, and what each repairs: they weld in its colours. */
+  working?: readonly { system: VesselSystem; module: VesselModule }[];
   /** The look to show, held back until its moment (the director's hull shot); the repairs' own look otherwise. */
   look?: VesselLook | undefined;
   /** The director's shot while it plays over the galaxy. */
@@ -261,7 +261,7 @@ export function OwnVessel({ at, offset, hull, progress, onSelect, awaken, workin
         <RunningLights lights={running} />
         <Suspense fallback={null}>
           {awaken && <BayReturnFx key={awaken.key} system={awaken.system} module={awaken.module} at={VESSEL_BAYS[hull][awaken.system]} colour={BAY_COLOUR[awaken.system]} />}
-          {working.map(system => <WeldFx key={system} at={VESSEL_BAYS[hull][system]} />)}
+          {working.map(bay => <WeldFx key={bay.system} at={VESSEL_BAYS[hull][bay.system]} module={bay.module} />)}
           {launch?.live === true && <CraftHandover key={launch.key} hull={hull} craft={launch.craft} onDone={() => { setLaunch({ ...launch, live: false }); }} />}
         </Suspense>
         {cue?.tags && <SystemTags key={cue.key} hull={hull} lights={lights} tags={cue.tags} />}

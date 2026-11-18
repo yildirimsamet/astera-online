@@ -1,6 +1,6 @@
 import { VESSEL_SYSTEMS } from '@astera/rules';
 import { describe, expect, it } from 'vitest';
-import { BAY_RETURN, bayReturnOf, flipbookFrame, globeDrawn, sparkAt, strobeOn, sweepTurn } from '../src/galaxy/bayFx.js';
+import { BAY_RETURN, MODULE_ORE, bayReturnOf, flipbookFrame, globeDrawn, sparkAt, sparkColour, strobeOn, sweepTurn } from '../src/galaxy/bayFx.js';
 
 /**
  * THE SHIP'S OWN EFFECTS (owner 2026-11-18: no round glow; each effect is its event). A weld throws
@@ -30,6 +30,31 @@ describe('what a bay does when its system comes back', () => {
     expect(globeDrawn(0.6, 2.8)).toBeLessThan(globeDrawn(1, 2.8));
     expect(globeDrawn(1.4, 2.8)).toBe(1);
     expect(globeDrawn(2.8, 2.8)).toBe(1);
+  });
+});
+
+/*
+  Owner, phone playtest 2026-11-18 (item 6): an alloy repair burns in alloy's colours, a crystal repair in
+  crystal's. The refinery's sparks cool from white through yellow to orange; the crystal furnace's from white
+  through cyan to crystal blue.
+*/
+describe('the colour of a repair', () => {
+  it('knows which repairs are alloy and which crystal', () => {
+    expect(MODULE_ORE.REFINERY).toBe('alloy');
+    expect(MODULE_ORE.EXTRACTOR).toBe('crystal');
+    expect(MODULE_ORE.TELESCOPE).toBeUndefined();
+  });
+
+  it('cools an alloy spark to orange and a crystal spark to blue', () => {
+    for (const heat of [0.5, 0.2]) {
+      const [ar, , ab] = sparkColour(heat, 'alloy');
+      const [cr, , cb] = sparkColour(heat, 'crystal');
+      expect(ar).toBeGreaterThan(ab);
+      expect(cb).toBeGreaterThan(cr);
+    }
+    // Both are born white-hot.
+    expect(Math.min(...sparkColour(1, 'alloy'))).toBeGreaterThan(0.9);
+    expect(Math.min(...sparkColour(1, 'crystal'))).toBeGreaterThan(0.9);
   });
 });
 

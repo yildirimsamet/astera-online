@@ -5,7 +5,7 @@ import { lendFocusClose } from '../starter/tutorial/focusClose.js';
 import { useLaunchSheet } from '../starter/tutorial/launchSheet.js';
 import { DirectorStage } from '../starter/director/DirectorStage.js';
 import { useStarterScenes } from '../starter/director/useStarterScenes.js';
-import { weldingSystems } from '../starter/director/scenes.js';
+import { weldingBays } from '../starter/director/scenes.js';
 import { bottomSurface, selectionGone } from '../starter/bottomSurface.js';
 import { applyCosmeticTrial, type CosmeticTrial } from '../galaxy/cosmeticTrial.js';
 import { CosmeticTrialBar } from './CosmeticTrialBar.js';
@@ -1018,7 +1018,7 @@ export function GalaxyView({
     [ship, asteroids, activeWorldPosition, minuteNow]);
   const starterReturn = useMemo(() => contacts.find(contact => contact.kind === 'unknown' && contact.effectOnly !== true)?.id ?? null, [contacts]);
   const awakenBay = useCallback((system: VesselSystem, module?: VesselModule) => { setAwaken((last) => ({ system, ...(module ? { module } : {}), key: (last?.key ?? 0) + 1 })); }, []);
-  const weldingBays = useMemo(() => (ship ? weldingSystems(ship.queue, now) : []), [ship, now]);
+  const welding = useMemo(() => (ship ? weldingBays(ship.queue, now) : []), [ship, now]);
   const starterProbing = (pendingThreads ?? []).some(thread => thread.kind === 'probe');
   const starterProbed = useMemo(() => {
     const latest = (intel.data?.probeReports ?? []).reduce<{ targetPlanetId: string; targetName: string; at: Date } | null>((last, report) => (!last || report.at > last.at ? report : last), null);
@@ -1493,7 +1493,7 @@ export function GalaxyView({
         universe={{ view: universe, open: universeOpen, onLimit: reachUniverseLimit, onOpen: openUniverse, onClose: closeUniverse }}
         watched={watched}
         {...(ship && jump?.inGame && jump.stage === 'flight' && jump.world ? { flight: { jump, world: jump.world } } : {})}
-        {...(ship ? { starter: { hull: vesselHull(ship.id), progress: { modules: ship.modules, facts: ship.facts }, galaxyOrdinal: ship.galaxy.ordinal, mainSky, landmarks: { monuments: mainSkyAnswer?.monuments ?? NO_LANDMARKS, clouds: mainSkyAnswer?.clouds ?? NO_CLOUDS }, beams, onMainGalaxy: () => { setMainRowOpen(true); }, onOpen: () => { onFocus({ kind: 'planet', id: ship.id }); }, awaken, directorLive, working: weldingBays, look: shownLook } } : {})}
+        {...(ship ? { starter: { hull: vesselHull(ship.id), progress: { modules: ship.modules, facts: ship.facts }, galaxyOrdinal: ship.galaxy.ordinal, mainSky, landmarks: { monuments: mainSkyAnswer?.monuments ?? NO_LANDMARKS, clouds: mainSkyAnswer?.clouds ?? NO_CLOUDS }, beams, onMainGalaxy: () => { setMainRowOpen(true); }, onOpen: () => { onFocus({ kind: 'planet', id: ship.id }); }, awaken, directorLive, working: welding, look: shownLook } } : {})}
         cosmeticAppearance={{ engineId: cosmetics.data?.equipment?.ENGINE,
           probeId: cosmetics.data?.equipment?.PROBE, flagId: cosmetics.data?.clanFlagId ?? undefined,
           shipSkins: cosmetics.data?.equipment?.SHIP }}

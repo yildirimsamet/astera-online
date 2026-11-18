@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { VesselModule, VesselSystem } from '@astera/rules';
-import { bayReturnOf, flipbookFrame, globeDrawn, sparkAt, strobeOn, sweepTurn } from './bayFx.js';
+import { MODULE_ORE, bayReturnOf, flipbookFrame, globeDrawn, sparkAt, sparkColour, strobeOn, sweepTurn, type Ore } from './bayFx.js';
 import { EMP_ARC } from './empSchedule.js';
 import { NUKE_SMOKE } from './NukeBlast.js';
 import { BURN_FIRE } from './VesselBurn.js';
@@ -39,18 +39,11 @@ const showFrame = (sheet: THREE.Texture, frame: number, cols: number, rows: numb
   sheet.offset.set((frame % cols) / cols, 1 - (Math.floor(frame / cols) + 1) / rows);
 };
 
-/** White to yellow to orange to a dull red as a spark cools; additive, so it fades to nothing. */
-function heatColour(heat: number, out: THREE.Color): THREE.Color {
-  if (heat > 0.66) return out.setRGB(1, 0.92 + 0.08 * (heat - 0.66) / 0.34, 0.6 + 0.4 * (heat - 0.66) / 0.34);
-  if (heat > 0.33) return out.setRGB(1, 0.45 + 0.47 * (heat - 0.33) / 0.33, 0.12 + 0.48 * (heat - 0.33) / 0.33).multiplyScalar(0.85);
-  return out.setRGB(0.9, 0.2 + 0.25 * heat / 0.33, 0.05).multiplyScalar(heat / 0.33 * 0.7);
-}
-
 /**
  * Sparks thrown off the hull as straight streaks that slow and cool. `stream` throws them for as long
  * as it is drawn (a weld); otherwise one burst, `delay` seconds in.
  */
-export function SparkStreaks({ at, count, stream = false, delay = 0, seed = 1 }: { at: Vec; count: number; stream?: boolean; delay?: number; seed?: number }) {
+export function SparkStreaks({ at, count, stream = false, delay = 0, seed = 1, ore = 'alloy' }: { at: Vec; count: number; stream?: boolean; delay?: number; seed?: number; ore?: Ore }) {
   const start = useRef<number | null>(null);
   const { geometry, material, heads } = useMemo(() => {
     const g = new THREE.BufferGeometry();
@@ -85,7 +78,7 @@ export function SparkStreaks({ at, count, stream = false, delay = 0, seed = 1 }:
       live = true;
       position.setXYZ(i * 2, at[0] + head.at[0], at[1] + head.at[1], at[2] + head.at[2]);
       position.setXYZ(i * 2 + 1, at[0] + tail.at[0], at[1] + tail.at[1], at[2] + tail.at[2]);
-      heatColour(head.heat, colour);
+      colour.setRGB(...sparkColour(head.heat, ore));
       tint.setXYZ(i * 2, colour.r, colour.g, colour.b);
       tint.setXYZ(i * 2 + 1, colour.r * 0.2, colour.g * 0.2, colour.b * 0.2);
     }
@@ -123,14 +116,14 @@ export function ArcFlicker({ at, size, seed = 0, until = Infinity }: { at: Vec; 
   return <sprite ref={sprite} position={[at[0], at[1], at[2]]} scale={size} material={material} raycast={() => null} />;
 }
 
-/** The weld's molten point: a hard white-hot dot that flickers with the arc, never a halo. */
-function MoltenPoint({ at }: { at: Vec }) {
+/** The weld's molten point: a hard white-hot dot that flickers with the arc, never a halo; crystal burns cold-white. */
+function MoltenPoint({ at, ore }: { at: Vec; ore: Ore }) {
   const { geometry, material } = useMemo(() => {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([at[0], at[1], at[2]]), 3));
-    const m = new THREE.PointsMaterial({ size: HEAD_PX * 1.6, sizeAttenuation: false, color: '#fff2c8', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+    const m = new THREE.PointsMaterial({ size: HEAD_PX * 1.6, sizeAttenuation: false, color: ore === 'crystal' ? '#e4f6ff' : '#fff2c8', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
     return { geometry: g, material: m };
-  }, [at]);
+  }, [at, ore]);
   useEffect(() => () => { geometry.dispose(); material.dispose(); }, [geometry, material]);
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
@@ -139,29 +132,51 @@ function MoltenPoint({ at }: { at: Vec }) {
   return <points geometry={geometry} material={material} frustumCulled={false} raycast={() => null} />;
 }
 
-/** A repair under way at its bay: the welder's arc, its molten point and its sparks. */
-export function WeldFx({ at }: { at: Vec }) {
+/** A repair under way at its bay: the welder's arc, its molten point and its sparks, in what it repairs' colours. */
+export function WeldFx({ at, module }: { at: Vec; module: VesselModule }) {
+  const ore = MODULE_ORE[module] ?? 'alloy';
   return (
     <>
       <ArcFlicker at={at} size={0.22} />
       <ArcFlicker at={at} size={0.16} seed={0.53} />
-      <MoltenPoint at={at} />
-      <SparkStreaks at={at} count={26} stream />
+      <MoltenPoint at={at} ore={ore} />
+      <SparkStreaks at={at} count={26} stream ore={ore} />
     </>
   );
 }
 
+/**
+ * The flame sheet's own orange, or its light turned to a tint (the crystal furnace burns blue): the sheet's
+ * brightness kept, its colour replaced, white where it is hottest. One cheap line in the sprite's shader.
+ */
+function flameMaterial(map: THREE.Texture, tint: string | null): THREE.SpriteMaterial {
+  const material = new THREE.SpriteMaterial({ map, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  if (tint === null) return material;
+  const colour = new THREE.Color(tint);
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uTint = { value: colour };
+    shader.fragmentShader = `uniform vec3 uTint;\n${shader.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      float luma = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
+      diffuseColor.rgb = mix(uTint * luma * 1.7, vec3(luma), smoothstep(0.72, 1.0, luma));`)}`;
+  };
+  material.customProgramCacheKey = () => `flame-tint-${tint}`;
+  return material;
+}
+
+/** What each ore's burner burns: the sheet's own flame for alloy, crystal blue for crystal. */
+const FLAME_TINT: Record<Ore, string | null> = { alloy: null, crystal: '#5cc8ff' };
+
 /** The refinery's burner catches: a jet of flame rises from the bay with a puff of smoke, then settles. */
-function BurnerIgnite({ at }: { at: Vec }) {
+function BurnerIgnite({ at, ore }: { at: Vec; ore: Ore }) {
   const flame = useSheet(BURN_FIRE, 6, 6);
   const smoke = useSheet(NUKE_SMOKE, 8, 8);
   const jet = useRef<THREE.Sprite>(null);
   const puff = useRef<THREE.Sprite>(null);
   const start = useRef<number | null>(null);
   const materials = useMemo(() => ({
-    jet: new THREE.SpriteMaterial({ map: flame, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+    jet: flameMaterial(flame, FLAME_TINT[ore]),
     puff: new THREE.SpriteMaterial({ map: smoke, color: '#5c5852', transparent: true, depthWrite: false }),
-  }), [flame, smoke]);
+  }), [flame, smoke, ore]);
   useEffect(() => () => { materials.jet.dispose(); materials.puff.dispose(); }, [materials]);
   useFrame(({ clock, invalidate }) => {
     start.current ??= clock.elapsedTime;
@@ -327,7 +342,7 @@ function GlobeScan({ at, colour }: { at: Vec; colour: string }) {
 /** A system back on the hull, doing its own work where it sits: its module's where it has one (`bayReturnOf`). */
 export function BayReturnFx({ system, module, at, colour }: { system: VesselSystem; module?: VesselModule | undefined; at: Vec; colour: string }) {
   const work = bayReturnOf(system, module);
-  if (work === 'burner') return <BurnerIgnite at={at} />;
+  if (work === 'burner') return <BurnerIgnite at={at} ore={(module ? MODULE_ORE[module] : undefined) ?? 'alloy'} />;
   if (work === 'sweep') return <AntennaSweep at={at} colour={colour} />;
   if (work === 'globe') return <GlobeScan at={at} colour={colour} />;
   return <PowerArcs at={at} />;
