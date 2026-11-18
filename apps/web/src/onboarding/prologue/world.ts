@@ -14,9 +14,10 @@ export type PrologueAction = 'power' | 'burn' | 'collect' | 'patch' | 'travel' |
 
 export interface PrologueWorld { stage: PrologueStage; since: number }
 
-/** Long enough to see a thing happen, too short to be waiting. */
-export const BURN_MS = 6_000;
-export const PATCH_MS = 3_500;
+/** Long enough to see a thing happen, too short to be waiting: halved by the owner (phone playtest 2026-11-18). */
+export const BURN_MS = 3_000;
+/** The player welds the line crack by crack (owner 2026-11-18); after the third it only settles. */
+export const PATCH_MS = 1_200;
 /** The jump to the signal: long enough to feel the distance, short enough not to wait for it. */
 export const WARP_MS = 1_800;
 

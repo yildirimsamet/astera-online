@@ -225,8 +225,8 @@ function Breaker({ label, onThrow }: { label: string; onThrow: () => void }) {
  * A CONTROL THAT IS HELD, not tapped: the ring fills under the thumb, letting go early lets it drain.
  * The ignition, the weld and the claim each wear their own colour and glyph.
  */
-function HoldControl({ testId, label, hint, tone, glyph, onHeld, onHolding }: {
-  testId: string; label: string; hint: string; tone: string; glyph: ReactNode; onHeld: () => void; onHolding?: (holding: boolean) => void;
+function HoldControl({ testId, label, hint, tone, glyph, onHeld }: {
+  testId: string; label: string; hint: string; tone: string; glyph: ReactNode; onHeld: () => void;
 }) {
   const [share, setShare] = useState(0);
   const [held, setHeld] = useState(false);
@@ -236,9 +236,8 @@ function HoldControl({ testId, label, hint, tone, glyph, onHeld, onHolding }: {
     if (timer.current) clearInterval(timer.current);
     timer.current = null;
     setHeld(false);
-    onHolding?.(false);
     if (!done.current) setShare(0);
-  }, [onHolding]);
+  }, []);
   useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
   const complete = () => {
     if (done.current) return;
@@ -252,7 +251,6 @@ function HoldControl({ testId, label, hint, tone, glyph, onHeld, onHolding }: {
     event.currentTarget.setPointerCapture(event.pointerId);
     const began = Date.now();
     setHeld(true);
-    onHolding?.(true);
     haptic('tap');
     timer.current = setInterval(() => {
       const next = Math.min(1, (Date.now() - began) / HOLD_MS);
@@ -289,6 +287,57 @@ function HoldControl({ testId, label, hint, tone, glyph, onHeld, onHolding }: {
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-body font-semibold leading-tight" style={{ color: tone }}>{label}</span>
         <span className="text-micro text-v2-ink-2">{hint}</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * THE SENSOR LINE'S THREE CRACKS (owner phone playtest 2026-11-18, item 1): not a hold but three taps,
+ * each one a repair. Placed on the satellite as the card frames it: the dish, the body, the panel arm.
+ */
+const CRACKS = [{ left: '34%', top: '40%' }, { left: '57%', top: '50%' }, { left: '74%', top: '64%' }] as const;
+
+/** A crack in the line: a fault that flickers until the torch closes it, then a seam that cools. */
+function WeldSeam({ at, done, next }: { at: { left: string; top: string }; done: boolean; next: boolean }) {
+  return (
+    <span aria-hidden="true" data-weld={done ? 'done' : 'open'} className={`prologue-seam ${done ? 'is-done' : next ? 'is-next' : ''}`} style={at}>
+      <svg viewBox="-12 -7 24 14" className="overflow-visible">
+        <path d="M-11 -2L-6 2L-2 -4L2 3L6 -2L11 1" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
+/**
+ * THE TORCH, TAPPED (owner 2026-11-18): each tap is one weld. The ring is cut in three, one third for
+ * each crack, and fills as the seams close; the face punches in under the finger.
+ */
+function WeldControl({ welds, label, hint, tone, glyph, onWeld }: { welds: number; label: string; hint: string; tone: string; glyph: ReactNode; onWeld: () => void }) {
+  return (
+    <div className="prologue-rise flex flex-row-reverse items-center gap-3">
+      <button
+        type="button"
+        data-testid="prologue-weld"
+        aria-label={label}
+        onClick={onWeld}
+        onContextMenu={(event) => { event.preventDefault(); }}
+        className="prologue-hold prologue-tap relative grid size-[68px] shrink-0 place-items-center rounded-full"
+        style={{ color: tone }}
+      >
+        <svg aria-hidden="true" viewBox="0 0 64 64" className="absolute inset-0 size-full -rotate-90">
+          {CRACKS.map((_, index) => (
+            <circle key={index} cx="32" cy="32" r="27" pathLength={300} fill="none" strokeWidth={index < welds ? 3.5 : 3} strokeLinecap="round"
+              stroke={index < welds ? 'currentColor' : 'rgba(255,255,255,0.14)'} strokeDasharray="88 212" strokeDashoffset={-(index * 100 + 6)} />
+          ))}
+        </svg>
+        <span key={welds} className="prologue-hold-core prologue-tap-core grid size-12 place-items-center rounded-full border border-current/50 bg-gradient-to-b from-white/10 to-black/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_6px_14px_-4px_#000]">
+          {glyph}
+        </span>
+      </button>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="text-body font-semibold leading-tight" style={{ color: tone }}>{label}</span>
+        <span className="text-micro text-v2-ink-2">{hint} <span className="font-v2-mono text-v2-ink">{welds}/{CRACKS.length}</span></span>
       </div>
     </div>
   );
@@ -386,7 +435,7 @@ export function Prologue({ onClaim, onSignIn, onLeave, replay = false }: Props) 
   const [telemetry] = useState(() => prologueTelemetry(replay));
   const [hull] = useState(prologueHull);
   const [flying, setFlying] = useState(false);
-  const [welding, setWelding] = useState(false);
+  const [welds, setWelds] = useState(0);
   /** Where the jump flies: the signal as drawn, measured when it is pressed (main and bridge frames). */
   const [origin, setOrigin] = useState<{ main: Point; stage: Point }>({ main: SIGNAL_AT, stage: SIGNAL_AT });
   const mainRef = useRef<HTMLElement>(null);
@@ -457,6 +506,16 @@ export function Prologue({ onClaim, onSignIn, onLeave, replay = false }: Props) 
     setFlying(true);
     setTimeout(() => { setFlying(false); }, 900);
     act('collect');
+  };
+
+  /** One tap, one crack closed; the third holds the line (owner 2026-11-18). */
+  const weld = () => {
+    if (stage !== 'collected' || welds >= CRACKS.length) return;
+    const next = welds + 1;
+    playSound('arc');
+    haptic(next === CRACKS.length ? 'commit' : 'tap');
+    setWelds(next);
+    if (next === CRACKS.length) { playSound('weld'); act('patch'); }
   };
   const travel = () => {
     if (replay) { onLeave(); return; }
@@ -545,11 +604,10 @@ export function Prologue({ onClaim, onSignIn, onLeave, replay = false }: Props) 
         )}
         {(stage === 'collected' || stage === 'patching') && (
           // The whole satellite, dish to panels: the band a short card keeps is set on its body.
-          <Machine art={moduleArt('SURVEY', 1)} name={t('starter.prologue.feed')} share={prologueShare(world, now) * (stage === 'patching' ? 1 : 0)} figure={null} burning={false} tall focus="50% 26%">
-            {(welding || stage === 'patching') && <>
-              <Torch at={{ left: '50%', top: '42%' }} />
-              <Sparks count={14} at={{ left: '50%', top: '42%' }} key={Math.floor(now / 500)} />
-            </>}
+          <Machine art={moduleArt('SURVEY', 1)} name={t('starter.prologue.feed')} share={stage === 'patching' ? 1 : welds / CRACKS.length} figure={null} burning={false} tall focus="50% 26%">
+            {CRACKS.map((at, index) => <WeldSeam key={index} at={at} done={index < welds} next={stage === 'collected' && index === welds} />)}
+            {stage === 'collected' && welds < CRACKS.length && <Torch at={CRACKS[welds] ?? CRACKS[0]} />}
+            {welds > 0 && <Sparks count={14} at={CRACKS[welds - 1] ?? CRACKS[0]} key={welds} />}
           </Machine>
         )}
         <div className="flex flex-col gap-1">
@@ -563,9 +621,8 @@ export function Prologue({ onClaim, onSignIn, onLeave, replay = false }: Props) 
             glyph={<Icon id={SYSTEM_ICON.REFINERY} className="size-6" />} onHeld={() => { playSound('ignite'); haptic('rumble'); act('burn'); }} />
         )}
         {stage === 'collected' && (
-          <HoldControl testId="prologue-weld" label={t('starter.prologue.action.patch')} hint={t('starter.prologue.hint.weld')} tone="#7fd6ff"
-            glyph={<Icon id={SYSTEM_ICON.SURVEY} className="size-6" />} onHolding={(on) => { setWelding(on); if (on) playSound('arc'); }}
-            onHeld={() => { playSound('weld'); haptic('commit'); act('patch'); }} />
+          <WeldControl welds={welds} label={t('starter.prologue.action.patch')} hint={t('starter.prologue.hint.weld')} tone="#7fd6ff"
+            glyph={<Icon id={SYSTEM_ICON.SURVEY} className="size-6" />} onWeld={weld} />
         )}
         {stage === 'signal' && (
           <button type="button" data-testid="prologue-action" onClick={travel} className="prologue-action flex min-h-11 items-center justify-center gap-2 rounded-control border border-v2-warn/70 bg-v2-warn/10 px-3 text-body font-semibold text-v2-warn shadow-[0_0_16px_-4px_var(--color-v2-warn)]">

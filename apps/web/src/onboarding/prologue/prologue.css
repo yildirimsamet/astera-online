@@ -137,3 +137,15 @@
 @keyframes prologue-ring { 0% { opacity: 0; transform: scale(0.2); } 25% { opacity: 1; } 100% { opacity: 0; transform: scale(14); } }
 @keyframes prologue-whiteout { 0% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes prologue-arrive { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* The sensor line's cracks (owner 2026-11-18, item 1): a fault that flickers red until the torch closes it,
+   then a seam that flashes white-hot and cools to steel. Lines only, no glow disc. */
+.prologue-seam { position: absolute; width: 26px; height: 16px; color: #ff5a4a; transform: translate(-50%, -50%); filter: drop-shadow(0 0 1px #000); pointer-events: none; animation: prologue-fault 0.9s steps(2, jump-none) infinite; }
+.prologue-seam svg { display: block; width: 100%; height: 100%; }
+.prologue-seam.is-next { color: #ff7a5c; animation-duration: 0.45s; }
+.prologue-seam.is-done { animation: prologue-seam-cool 1.4s ease-out forwards; }
+.prologue-tap { touch-action: manipulation; }
+.prologue-tap-core { animation: prologue-tap-punch 0.22s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes prologue-fault { 0% { opacity: 1; } 50% { opacity: .35; } 100% { opacity: 1; } }
+@keyframes prologue-seam-cool { 0% { color: #ffffff; } 25% { color: #ffd27a; } 60% { color: #ff9a3d; } 100% { color: #9fb3c8; opacity: .85; } }
+@keyframes prologue-tap-punch { 0% { transform: scale(.86); } 100% { transform: scale(1); } }

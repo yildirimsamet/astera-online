@@ -42,6 +42,15 @@ const hold = (id: string) => {
   fireEvent.pointerDown(screen.getByTestId(id));
   wait(HOLD_MS);
 };
+/** One tap of the torch: down and up, as a finger does it. */
+const tap = (id: string) => {
+  const control = screen.getByTestId(id);
+  fireEvent.pointerDown(control);
+  fireEvent.pointerUp(control);
+  fireEvent.click(control);
+};
+/** The sensor line's three welds (owner phone playtest 2026-11-18, item 1). */
+const weld = () => { for (let crack = 0; crack < 3; crack += 1) tap('prologue-weld'); };
 
 describe('the handbook', () => {
   it('lists its rules and can play the opening again without an account', () => {
@@ -69,6 +78,15 @@ describe('the road', () => {
     const burning = prologueAct(prologueAct(openPrologue(0), 'power', 0), 'burn', 10);
     expect(prologueTick(burning, 10 + BURN_MS - 1).stage).toBe('burning');
     expect(prologueTick(burning, 10 + BURN_MS).stage).toBe('batch');
+  });
+
+  /*
+    Owner phone playtest 2026-11-18 (item 1): the furnace caught too slowly; half the time. The welds are the
+    player's own work now, so the line only settles after the third: a beat, not a wait.
+  */
+  it('catches the furnace in three seconds and settles the welded line in a beat', () => {
+    expect(BURN_MS).toBe(3_000);
+    expect(PATCH_MS).toBeLessThanOrEqual(1_500);
   });
 
   it('ends on what the server will build, played or skipped', () => {
@@ -129,7 +147,7 @@ describe('the screen', () => {
     press();
     expect(stage()).toBe('collected');
     expect(screen.getByTestId('prologue-holds').textContent).toContain(String(STARTER.opening.alloy));
-    hold('prologue-weld');
+    weld();
     expect(stage()).toBe('patching');
     wait(PATCH_MS);
     expect(stage()).toBe('signal');
@@ -144,21 +162,47 @@ describe('the screen', () => {
     expect(heard).toEqual(expect.arrayContaining(['switch', 'ignite']));
   });
 
-  /** Owner playtest 2026-11-06: a modern tool, not a hammer, and a weld heard until the patch holds. */
-  it('strikes the arc on the hold and keeps the torch sounding through the patch', () => {
+  /**
+   * Owner playtest 2026-11-06: a modern tool, not a hammer. Owner phone playtest 2026-11-18 (item 1): not a
+   * hold but three taps, each one a repair. Each tap strikes the arc on the next crack and leaves a seam;
+   * the third holds the line.
+   */
+  it('welds the sensor line crack by crack, one tap each, and holds it on the third', () => {
     render(<Prologue {...END} />);
     throwSwitch();
     hold('prologue-ignite');
     wait(BURN_MS);
     press();
     heard.length = 0;
-    fireEvent.pointerDown(screen.getByTestId('prologue-weld'));
+    const seams = () => document.querySelectorAll('[data-weld="done"]').length;
+    expect(document.querySelectorAll('[data-weld]')).toHaveLength(3);
+    expect(seams()).toBe(0);
+    tap('prologue-weld');
     expect(heard).toEqual(['arc']);
     expect(screen.getByTestId('prologue-torch')).toBeTruthy();
     expect(screen.queryByTestId('prologue-hammer')).toBeNull();
-    wait(HOLD_MS);
+    expect(seams()).toBe(1);
+    expect(stage()).toBe('collected');
+    tap('prologue-weld');
+    expect(seams()).toBe(2);
+    expect(stage()).toBe('collected');
+    tap('prologue-weld');
+    expect(seams()).toBe(3);
     expect(stage()).toBe('patching');
-    expect(heard).toEqual(['arc', 'weld']);
+    expect(heard).toEqual(['arc', 'arc', 'arc', 'weld']);
+  });
+
+  it('takes a long press on the torch as one weld, not three', () => {
+    render(<Prologue {...END} />);
+    throwSwitch();
+    hold('prologue-ignite');
+    wait(BURN_MS);
+    press();
+    hold('prologue-weld');
+    fireEvent.pointerUp(screen.getByTestId('prologue-weld'));
+    fireEvent.click(screen.getByTestId('prologue-weld'));
+    expect(document.querySelectorAll('[data-weld="done"]')).toHaveLength(1);
+    expect(stage()).toBe('collected');
   });
 
   /** Owner playtest 2026-11-07: a commander can stall at the first batch; the hand points at Collect. */
