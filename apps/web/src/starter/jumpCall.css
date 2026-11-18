@@ -11,3 +11,8 @@
 }
 @keyframes jump-call-sweep { 0%, 35% { transform: translateX(-100%); } 75%, 100% { transform: translateX(100%); } }
 @keyframes jump-call-ping { from { transform: scale(1); opacity: .8; } to { transform: scale(1.8); opacity: 0; } }
+/* Quiet while the guide leads elsewhere (items 24, 27): no sweep, no ping, a dimmer edge; still there, still pressable. */
+.jump-call[data-quiet] { box-shadow: none; border-color: color-mix(in srgb, var(--color-v2-self) 35%, transparent); }
+.jump-call[data-quiet]::after { animation: none; opacity: 0; }
+.jump-call[data-quiet] .jump-call-beacon::before { animation: none; opacity: 0; }
+

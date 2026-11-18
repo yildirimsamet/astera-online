@@ -1,4 +1,4 @@
-import { useStarterLesson } from '../starter/tutorial/visualGoal.js';
+import { useStarterGoal, useStarterLesson } from '../starter/tutorial/visualGoal.js';
 import { rocksHeld, rockSheetStaysOpen, sightLesson, useTelescopeReveal } from '../starter/tutorial/sightLesson.js';
 import { useSheetWait } from '../starter/tutorial/sheetWait.js';
 import { setRockSheet } from '../starter/tutorial/rockSheet.js';
@@ -31,7 +31,7 @@ import type { MainSky } from '../api/starterSchemas.js';
 import { mainSkyPoints } from '../galaxy/mainSky.js';
 import { gateOf } from '../starter/gate.js';
 import { UniverseChip } from '../starter/UniverseChip.js';
-import { JumpCall } from '../starter/JumpCall.js';
+import { JumpCall, jumpCallQuiet } from '../starter/JumpCall.js';
 import { useDepartures, useInbound, useMainSky, useUniverse } from '../starter/queries.js';
 import { departuresWatched, inboundWatched } from '../galaxy/watchedFlights.js';
 import { currentJump, markGameDrawn, useJump } from '../starter/jump.js';
@@ -703,6 +703,7 @@ export function GalaxyView({
    * is no saved preference; unavailable storage falls back to this visit's state.
    */
   const lesson = useStarterLesson();
+  const starterGoal = useStarterGoal();
   const sight = sightLesson(lesson);
   const reveal = useTelescopeReveal(lesson);
   const heldRocks = rocksHeld(lesson);
@@ -2094,7 +2095,8 @@ export function GalaxyView({
           {outcome.current && <OutpostOutcome outcome={outcome.current} onDone={outcome.dismiss} onOpenShip={() => { onPanel('planet'); }} onOpenReport={(reportId) => { if (reportId) onPanel('report', 'battles', reportId); else openBattleList(); }} />}
           {/* The way out, over everything else down here: it is what the whole galaxy was for. */}
           {/* It opens the ship at the drive, as it says (item 27: it opened on the repairs while the hold had room). */}
-          <JumpCall progress={{ modules: ship.modules, facts: ship.facts }} onOpen={() => { setRequestedItem(JUMP_ITEM); onPanel('planet'); }} />
+          {/* Quiet while the guide leads elsewhere: one order at a time (items 24, 27). */}
+          <JumpCall progress={{ modules: ship.modules, facts: ship.facts }} quiet={jumpCallQuiet(starterGoal)} onOpen={() => { setRequestedItem(JUMP_ITEM); onPanel('planet'); }} />
           {/* A system that just opened speaks first; once it is read, the next step takes its place. */}
           {nextStep}
         </div>

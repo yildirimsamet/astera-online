@@ -20,7 +20,7 @@ export const starter = {
   "deck": {"label": "Gemi bölümleri", "repairs": "Onarım", "yard": "Tersane", "research": "Araştırma"},
   "yard": {"against": "Karşı", "queue": "Tersane sırası", "dockRule": "İstasyon ana fiyatın %{{percent}} kadarını alır.", "dockHurt": "{{count}} gemi İstasyon bekliyor", "dockGo": "{{count}} gemiyi onar"},
   "board": {"title": "Kalkış panosu", "empty": "Henüz kimse göç etmedi. İlk sen olabilirsin.", "ago": "{{time}} önce"},
-  "jumpCall": {"title": "Göçe hazır", "line": "Ana galaksi seni bekliyor. Motor’u aç."},
+  "jumpCall": {"title": "Göçe hazır", "line": "Ana galaksi seni bekliyor. Motor’u aç.", "later": "Ne zaman istersen ana galaksiye geçebilirsin."},
   "mainRow": {"facts": "{{worlds}} dünya. Sezon {{days}} gün sonra bitiyor.", "waiting": "Yeni sezon yolda.", "repair": "İlk onarımları bitir, bir maden seferi ve bir sonda raporu al: motor bir sıçramaya yetecek kadar uyanır.", "ready": "Motor hazır. İstediğin an sıçrayabilirsin; ambarın ne kadar doluysa o kadar güçlü inersin.", "eyebrow": "Hedefin", "story": "Resif filoyu dağıtmadan önce gittiğiniz yer. Asıl yolculuk burada başlıyor: tutulacak dünyalar, rakipler, klanlar, kazanılacak bir sezon.", "legRepair": "Çıkışa hazırlık", "legHold": "Ambar", "go": "Gemiye git"},
   "plan": {"optional": "{{count}} isteğe bağlı onarım kaldı. Yalnız bu gemide işe yarar: başkentin kendi binalarıyla başlar."},
   "outlook": {"noFrontier": "Şu an hiçbir galakside yer yok. Gemin burada oynamaya devam eder; yer açılınca göç açılır.", "seasonClosed": "Bu sezon artık gemi almıyor: {{days}} gün sonra bitiyor. Gemin yeni sezona iner; hazır gemiye sezon açılınca haber veririz. O zamana kadar karakollar ve onarımlar burada kazandırır."},

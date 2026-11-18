@@ -7,7 +7,7 @@ import { ApiProvider } from '../src/api/context.js';
 import { vesselSchema } from '../src/api/starterSchemas.js';
 import { WorldProvider } from '../src/api/world.js';
 import i18n from '../src/i18n/index.js';
-import { JumpCall } from '../src/starter/JumpCall.js';
+import { JumpCall, jumpCallQuiet } from '../src/starter/JumpCall.js';
 import { VesselScreen } from '../src/starter/VesselScreen.js';
 import { StarterLesson } from '../src/starter/tutorial/visualGoal.js';
 import { ToastProvider } from '../src/ui/Toast.js';
@@ -71,3 +71,41 @@ describe('a ship ready to leave', () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
+/**
+ * ONE ORDER AT A TIME (owner phone playtest 2026-11-18, items 24 and 27). Once the player has chosen to grow
+ * first, the guide leads on (the report, the yard's ship) while the call stays where it is: quiet, an option
+ * and not an order, so the guide's line and the next-step line are the only things saying what to do.
+ */
+describe('the call to the jump while the guide leads elsewhere', () => {
+  it('is quiet while the guide speaks of anything but the jump', () => {
+    expect(jumpCallQuiet({ guided: true, step: { id: 'openReport' } })).toBe(true);
+    expect(jumpCallQuiet({ guided: true, step: { id: 'buildShip' } })).toBe(true);
+  });
+
+  it('calls as before while the guide is on the jump, is off, or has nothing left to say', () => {
+    expect(jumpCallQuiet({ guided: true, step: { id: 'jumpAsk' } })).toBe(false);
+    expect(jumpCallQuiet({ guided: true, step: { id: 'jumpGo' } })).toBe(false);
+    expect(jumpCallQuiet({ guided: false, step: { id: 'openReport' } })).toBe(false);
+    expect(jumpCallQuiet({ guided: true, step: null })).toBe(false);
+    expect(jumpCallQuiet(null)).toBe(false);
+  });
+
+  it('says when quiet that the jump waits for the player, and still opens the ship', () => {
+    const onOpen = vi.fn();
+    render(<JumpCall progress={repaired} onOpen={onOpen} quiet />);
+    const call = screen.getByRole('button', { name: /jump/iu });
+    expect(call).toHaveAttribute('data-quiet', '');
+    expect(screen.getByText(i18n.t('starter.jumpCall.later'))).toBeInTheDocument();
+    expect(screen.queryByText(i18n.t('starter.jumpCall.line'))).toBeNull();
+    fireEvent.click(call);
+    expect(onOpen).toHaveBeenCalledOnce();
+  });
+
+  it('gives the order when it calls', () => {
+    render(<JumpCall progress={repaired} onOpen={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /jump/iu })).not.toHaveAttribute('data-quiet');
+    expect(screen.getByText(i18n.t('starter.jumpCall.line'))).toBeInTheDocument();
+  });
+});
+

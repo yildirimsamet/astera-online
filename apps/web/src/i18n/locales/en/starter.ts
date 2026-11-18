@@ -20,7 +20,7 @@ export const starter = {
   "deck": {"label": "Ship decks", "repairs": "Repairs", "yard": "Shipyard", "research": "Research"},
   "yard": {"against": "Against", "queue": "Yard queue", "dockRule": "The Station charges {{percent}}% of the main price.", "dockHurt": "{{count}} ships need the Station", "dockGo": "Repair {{count}} ships"},
   "board": {"title": "Departures", "empty": "Nobody has made the jump yet. You could be first.", "ago": "{{time}} ago"},
-  "jumpCall": {"title": "Ready to jump", "line": "The main galaxy is waiting. Open the drive."},
+  "jumpCall": {"title": "Ready to jump", "line": "The main galaxy is waiting. Open the drive.", "later": "Move to the main galaxy whenever you choose."},
   "mainRow": {"facts": "{{worlds}} worlds. The season ends in {{days}} days.", "waiting": "A new season is on its way.", "repair": "Finish the first repairs, one mining run and one probe report: the drive wakes for one jump.", "ready": "The drive is ready. Jump whenever you like; a fuller hold lands you stronger.", "eyebrow": "Your destination", "story": "Where the fleet was bound before the reef broke it up. The real journey starts here: worlds to hold, rivals, clans, a season to win.", "legRepair": "Ready to leave", "legHold": "Hold", "go": "Go to the ship"},
   "plan": {"optional": "{{count}} optional repairs left. They help only aboard: your capital starts with its own buildings."},
   "outlook": {"noFrontier": "No galaxy has room right now. Your ship plays on here, and the jump opens when a place does.", "seasonClosed": "This season takes no more ships: it ends in {{days}} days. Your ship lands in the next season, and a ready ship hears when it opens. Until then, outposts and repairs still pay here."},
