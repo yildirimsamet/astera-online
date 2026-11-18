@@ -185,17 +185,19 @@ describe('the top bar', () => {
 
 /*
   Isolated player tests 2026-11-18: the guide's hand pointed at the right end of the works line, the
-  hidden deuterium pill's empty place, and two players tapped there with nothing happening. The mark
-  the guide shows for a collect is the alloy pill itself, a button that collects.
+  hidden deuterium pill's empty place, and two players tapped there with nothing happening. Owner,
+  phone playtest the same day (item 3): the frame took the alloy pill alone, though every pill drawn
+  there collects. The mark is the pill row; it spans the pills drawn and each of them collects.
 */
 describe('the guide\'s collect mark', () => {
-  it('is the alloy pill, a button that collects', async () => {
+  it('spans the pill row, and every pill drawn in it collects', async () => {
     const onCollect = vi.fn();
     render(<TopBar {...props({ works: works({ alloy: 400, crystal: 0, deuterium: 0 }, { onCollect }) })} hidden={['deuterium']} />);
     const mark = document.querySelector(COLLECT_MARK);
-    expect(mark?.tagName).toBe('BUTTON');
-    expect(mark?.getAttribute('data-pill')).toBe('alloy');
-    await userEvent.click(mark as HTMLElement);
-    expect(onCollect).toHaveBeenCalled();
+    expect(mark?.hasAttribute('data-guide-span')).toBe(true);
+    const drawn = [...(mark?.querySelectorAll<HTMLElement>(':scope > [data-pill]:not([data-hidden])') ?? [])];
+    expect(drawn.map(pill => [pill.tagName, pill.dataset.pill])).toEqual([['BUTTON', 'alloy'], ['BUTTON', 'crystal']]);
+    await userEvent.click(drawn[1]!);
+    expect(onCollect).toHaveBeenCalledTimes(1);
   });
 });

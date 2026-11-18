@@ -101,3 +101,28 @@ it('shows a short production countdown immediately instead of spending it on a s
  act(()=>{vi.advanceTimersByTime(32);});expect(scroll).toHaveBeenCalledWith({top:-460,behavior:'instant'});
  view.unmount();body.remove();
 });
+
+/*
+  Owner, phone playtest 2026-11-18 (item 3): the collect frame sat on the alloy pill alone, though the
+  crystal pill beside it collects as well. A mark that spans a row frames the controls drawn in it,
+  never the empty place kept for one left out.
+*/
+it('frames the drawn controls of a spanning mark and leaves the kept empty place out', () => {
+ vi.useFakeTimers();vi.spyOn(performance,'now').mockImplementation(()=>Date.now());
+ vi.spyOn(window,'requestAnimationFrame').mockImplementation(fn=>window.setTimeout(()=>{fn(performance.now());},16));
+ vi.spyOn(window,'cancelAnimationFrame').mockImplementation(id=>{clearTimeout(id);});
+ const row=document.createElement('div');row.setAttribute('data-guide-span','');
+ const alloy=document.createElement('button'),crystal=document.createElement('button'),kept=document.createElement('span');
+ alloy.dataset.pill='alloy';crystal.dataset.pill='crystal';kept.dataset.pill='deuterium';kept.setAttribute('data-hidden','');
+ row.append(alloy,crystal,kept);document.body.append(row);
+ vi.spyOn(row,'getBoundingClientRect').mockReturnValue(new DOMRect(0,0,294,52));
+ vi.spyOn(alloy,'getBoundingClientRect').mockReturnValue(new DOMRect(24,4,78,44));
+ vi.spyOn(crystal,'getBoundingClientRect').mockReturnValue(new DOMRect(118,4,78,44));
+ vi.spyOn(kept,'getBoundingClientRect').mockReturnValue(new DOMRect(212,7,78,38));
+ const view=render(<SchoolPointer targets={()=>[row]} />);
+ act(()=>{vi.advanceTimersByTime(250);});
+ const ring=document.querySelector<HTMLElement>('[data-school-highlight]');
+ expect(ring).toHaveStyle({visibility:'visible',width:'180px',height:'52px'});
+ expect(ring?.style.transform).toBe('translate3d(20px,0px,0)');
+ view.unmount();row.remove();
+});

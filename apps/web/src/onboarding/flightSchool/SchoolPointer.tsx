@@ -2,6 +2,17 @@ import { useCallback, useEffect, useRef } from 'react';
 import { TutorialHand } from '../TutorialHand.js';
 import { SchoolHighlight } from './SchoolHighlight.js';
 
+/** A mark spanning a row (the works pills) is framed round the controls drawn in it,
+ * never round the empty place kept for one left out (owner, phone playtest 2026-11-18). */
+function boxOf(target: Element): DOMRect {
+  const parts = target.hasAttribute('data-guide-span')
+    ? [...target.querySelectorAll(':scope > :not([data-hidden])')].map(part => part.getBoundingClientRect()).filter(part => part.width > 0 && part.height > 0)
+    : [];
+  if (parts.length === 0) return target.getBoundingClientRect();
+  const left = Math.min(...parts.map(part => part.left)), top = Math.min(...parts.map(part => part.top));
+  return new DOMRect(left, top, Math.max(...parts.map(part => part.right)) - left, Math.max(...parts.map(part => part.bottom)) - top);
+}
+
 /** One settled target for both marks. Only its own sheet scrolls, and a control
  * clipped by that sheet is never treated as a visible target. */
 export function SchoolPointer({ targets, showHand = true }: { targets: () => readonly Element[]; showHand?: boolean }) {
@@ -15,7 +26,7 @@ export function SchoolPointer({ targets, showHand = true }: { targets: () => rea
     let frame = 0, candidate: Element | null = null, since = 0, previous = '', scrollAt = 0, attempts = 0;
     const paint = () => {
       const target = document.querySelector('[data-loading-screen]') ? null : targets().at(-1) ?? null;
-      const box = target?.getBoundingClientRect();
+      const box = target ? boxOf(target) : undefined;
       const body = target?.closest<HTMLElement>('[data-sheet-body], [data-sheet-scroll]');
       const rail = target?.closest<HTMLElement>('[data-focus-rail]')?.querySelector<HTMLElement>('.overflow-y-auto');
       const scroll = body ?? (rail?.contains(target) ? rail : null);

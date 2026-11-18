@@ -30,18 +30,18 @@ it('leaves the officer as the only pointing source while its card is visible', (
 
 /** Plan F3 (N1): the player picks, and the hand shows only the pick, on the alloy pill (2026-11-18). */
 it('draws the hand only for what the player picked, with the guide on', () => {
-  const view = render(<><div data-guide="works"><button type="button" data-pill="alloy" /></div><StarterGoalPulse goal={goal()} ack={vi.fn()} /></>);
+  const view = render(<><div data-guide="works"><div data-guide-span=""><button type="button" data-pill="alloy" /></div></div><StarterGoalPulse goal={goal()} ack={vi.fn()} /></>);
   expect(document.querySelector('[data-starter-next]')).not.toBeNull();
   expect(view.queryByTestId('pointer')).toBeNull();
-  view.rerender(<><div data-guide="works"><button type="button" data-pill="alloy" /></div><StarterGoalPulse goal={goal({ picked: true })} ack={vi.fn()} /></>);
+  view.rerender(<><div data-guide="works"><div data-guide-span=""><button type="button" data-pill="alloy" /></div></div><StarterGoalPulse goal={goal({ picked: true })} ack={vi.fn()} /></>);
   expect(view.getByTestId('pointer')).toBeTruthy();
-  view.rerender(<><div data-guide="works"><button type="button" data-pill="alloy" /></div><StarterGoalPulse goal={goal({ picked: true, guided: false })} ack={vi.fn()} /></>);
+  view.rerender(<><div data-guide="works"><div data-guide-span=""><button type="button" data-pill="alloy" /></div></div><StarterGoalPulse goal={goal({ picked: true, guided: false })} ack={vi.fn()} /></>);
   expect(view.queryByTestId('pointer')).toBeNull();
 });
 
 it('takes a press on a pick as nothing for the guide to record', () => {
   const ack = vi.fn();
-  render(<><div data-guide="works"><button type="button" data-pill="alloy">works</button></div><StarterGoalPulse goal={goal({ picked: true })} ack={ack} /></>);
+  render(<><div data-guide="works"><div data-guide-span=""><button type="button" data-pill="alloy">works</button></div></div><StarterGoalPulse goal={goal({ picked: true })} ack={ack} /></>);
   fireEvent.click(document.querySelector('[data-starter-next]')!);
   expect(ack).not.toHaveBeenCalled();
 });

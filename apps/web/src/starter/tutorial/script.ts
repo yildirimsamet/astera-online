@@ -94,10 +94,11 @@ const repair = (module: string, stage: number): string => `[data-guide="repair-o
 const show = (module: string, stage: number): string => `[data-guide="repair-show"][data-step="${module}:${String(stage)}"]`;
 const tab = (system: string): string => `[data-guide="system-${system}"]`;
 /**
- * A collect is pressed on the alloy pill itself (isolated player tests 2026-11-18): the works line runs on
- * under the hidden deuterium pill's empty place, and a hand drawn at its end pointed at nothing.
+ * A collect is the pill row: every pill drawn there collects, and the frame spans them (owner, phone
+ * playtest 2026-11-18). The works line runs on under the hidden deuterium pill's empty place, which the
+ * frame leaves out, so the hand never points at nothing (isolated player tests the same day).
  */
-export const COLLECT_MARK = '[data-guide="works"] [data-pill="alloy"]';
+export const COLLECT_MARK = '[data-guide="works"] [data-guide-span]';
 const WORKS = COLLECT_MARK;
 const CRATE = '[data-guide="crate"]';
 const OBJECTIVE = '[data-guide="objective"]';

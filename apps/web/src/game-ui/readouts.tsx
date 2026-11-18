@@ -284,7 +284,7 @@ function HudPill({ item }: { item: HudResource }) {
  */
 export function ResourceHud({ items, end }: { items: readonly HudResource[]; end?: ReactNode }) {
   return (
-    <div className="gk-hud">
+    <div className="gk-hud" data-guide-span="">
       {items.map((item) => (item.hidden
         ? <span key={item.id} className="gk-res" data-pill={item.id} data-hidden="" aria-hidden="true" />
         : <HudPill key={item.id} item={item} />))}
