@@ -46,6 +46,14 @@
 .ship-bay[data-just='big'] { width: 42%; background: radial-gradient(closest-side, #fff, rgb(127 182 255 / 0.85) 30%, rgb(70 120 255 / 0.3) 62%, transparent); animation: ship-bay-ignite 2.3s ease-out forwards; }
 .ship-bay[data-just='big']::before { border-color: #bcd8ff; animation: ship-bay-ring-wide 1.3s ease-out forwards; }
 
+/* A part repaired while the page was away (owner 2026-11-18, item 5): its mark lifts with a hard ring while
+   its share counts up, then the whole ship gives one light, short shake. */
+[data-mark][data-gain] > span:first-child { box-shadow: 0 0 0 2px var(--color-v2-self); animation: ship-mark-gain 0.9s cubic-bezier(.2, 1.4, .4, 1); }
+[data-mark][data-gain] [data-percent] { color: var(--color-v2-ink); font-weight: 700; }
+[data-shake] .ship-hero-frame { animation: ship-hero-nudge 0.32s ease-in-out; }
+@keyframes ship-mark-gain { 0% { transform: scale(1); } 30% { transform: scale(1.22); } 100% { transform: scale(1); } }
+@keyframes ship-hero-nudge { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-2px, 0); } 50% { transform: translate(2px, -1px); } 75% { transform: translate(-1px, 1px); } }
+
 /* The engines take the whole ship: a surge of light and one short shudder, then rest. */
 [data-moment='big'] .ship-hero-art { animation: ship-hero-surge 2.3s ease-out; }
 [data-moment='big'] .ship-hero-frame { animation: ship-hero-shudder 0.55s linear 0.62s; }

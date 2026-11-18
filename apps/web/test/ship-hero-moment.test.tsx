@@ -1,8 +1,8 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { openingProgress, type VesselProgress } from '@astera/rules';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { bayCondition, repairMoment } from '../src/starter/shipScreen.js';
-import { ShipHero } from '../src/starter/ShipHero.js';
+import { bayCondition, repairMoment, systemPercent } from '../src/starter/shipScreen.js';
+import { GAIN_COUNT_MS, GAIN_SHAKE_MS, ShipHero } from '../src/starter/ShipHero.js';
 
 const sound = vi.hoisted(() => ({ playSound: vi.fn() }));
 const haptics = vi.hoisted(() => ({ haptic: vi.fn() }));
@@ -112,5 +112,70 @@ describe('the ship on screen', () => {
     expect(moment()).toBe('big');
     expect(sound.playSound).toHaveBeenCalledWith('ignite', { seconds: 2.5 });
     expect(haptics.haptic).toHaveBeenCalledWith('rumble');
+  });
+});
+
+/*
+  Owner, phone playtest 2026-11-18 (item 5): after a repair the ship's page showed nothing of it. The page is
+  stepped aside while the repair is shown on the galaxy, so the change lands while it is closed. The ship
+  remembers what was last seen on it: the part repaired is lit, its share counts up from what was seen, the
+  ship gives one light, short shake, and the page goes on to the next Repair.
+*/
+describe('a repair shown on the ship when the player comes back to it', () => {
+  const draw = (progress: VesselProgress) => <ShipHero id="ship-2" progress={progress} selected="REFINERY" onSelect={() => undefined} />;
+  const mark = (system: string) => document.querySelector(`[data-mark="${system}"]`);
+  const shown = (system: string) => mark(system)?.querySelector('[data-percent]')?.textContent;
+  let next: HTMLButtonElement;
+  let scroll: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    vi.useFakeTimers(); window.localStorage.clear(); haptics.haptic.mockClear();
+    next = document.createElement('button');
+    next.setAttribute('data-guide', 'repair-order');
+    scroll = vi.fn();
+    next.scrollIntoView = scroll;
+    document.body.append(next);
+  });
+  afterEach(() => { cleanup(); next.remove(); vi.useRealTimers(); });
+
+  it('lights the repaired part, counts its share up from what was seen, shakes once, then goes on to the next repair', () => {
+    const before = ship({ REFINERY: 2 }), after = ship(road);
+    render(draw(before));
+    cleanup();
+    render(draw(after));
+    expect(mark('REFINERY')?.hasAttribute('data-gain')).toBe(true);
+    expect(mark('DRIVE')?.hasAttribute('data-gain')).toBe(false);
+    expect(shown('REFINERY')).toBe(`${String(systemPercent(before, 'REFINERY'))}%`);
+    act(() => { vi.advanceTimersByTime(GAIN_COUNT_MS + 50); });
+    expect(shown('REFINERY')).toBe(`${String(systemPercent(after, 'REFINERY'))}%`);
+    expect(screen.getByTestId('ship-hero').hasAttribute('data-shake')).toBe(true);
+    expect(haptics.haptic).toHaveBeenCalledWith('tap');
+    expect(scroll).not.toHaveBeenCalled();
+    act(() => { vi.advanceTimersByTime(GAIN_SHAKE_MS + 300); });
+    expect(scroll).toHaveBeenCalledOnce();
+    expect(mark('REFINERY')?.hasAttribute('data-gain')).toBe(false);
+    expect(screen.getByTestId('ship-hero').hasAttribute('data-shake')).toBe(false);
+    // Seen now: the next look shows it as it is.
+    cleanup();
+    render(draw(after));
+    expect(mark('REFINERY')?.hasAttribute('data-gain')).toBe(false);
+  });
+
+  it('shows nothing on the first look at a ship, nor for a part that did not grow', () => {
+    expect(systemPercent(ship(road), 'REFINERY')).toBeGreaterThan(systemPercent(ship({ REFINERY: 2 }), 'REFINERY'));
+    render(draw(ship({ REFINERY: 2 })));
+    expect(document.querySelector('[data-gain]')).toBeNull();
+    cleanup();
+    render(draw(ship({ REFINERY: 2 })));
+    expect(document.querySelector('[data-gain]')).toBeNull();
+    act(() => { vi.advanceTimersByTime(3000); });
+    expect(scroll).not.toHaveBeenCalled();
+  });
+
+  it('shows a repair that comes in while the page is open the same way', () => {
+    const view = render(draw(ship({ REFINERY: 2 })));
+    view.rerender(draw(ship(road)));
+    expect(mark('REFINERY')?.hasAttribute('data-gain')).toBe(true);
+    act(() => { vi.advanceTimersByTime(GAIN_COUNT_MS + GAIN_SHAKE_MS + 400); });
+    expect(scroll).toHaveBeenCalledOnce();
   });
 });

@@ -58,8 +58,80 @@ function useRepairMoment(id: string, progress: VesselProgress): RepairMoment | n
   return moment;
 }
 
-function Mark({ system, percent, selected, onSelect, bay, next }: {
-  system: VesselSystem; percent: number; selected: boolean; onSelect: () => void; bay: HeroBay; next: boolean;
+/** The part repaired counts up through this, shakes the ship this long, and rests a breath (owner 2026-11-18, item 5). */
+export const GAIN_COUNT_MS = 900;
+export const GAIN_SHAKE_MS = 320;
+const GAIN_REST_MS = 200;
+
+type Shares = Record<VesselSystem, number>;
+const seenKey = (id: string) => `astera.starter.heroSeen.${id}`;
+
+/** What the player last saw of each part, on this device; null on a first look or a record that will not read. */
+function seenShares(id: string): Shares | null {
+  try {
+    const raw: unknown = JSON.parse(window.localStorage.getItem(seenKey(id)) ?? 'null');
+    if (typeof raw !== 'object' || raw === null) return null;
+    const seen = Object.fromEntries(VESSEL_SYSTEMS.map(system => [system, (raw as Record<string, unknown>)[system]]));
+    return VESSEL_SYSTEMS.every(system => typeof seen[system] === 'number') ? seen as Shares : null;
+  } catch {
+    return null;
+  }
+}
+
+function rememberShares(id: string, shares: Shares): void {
+  try { window.localStorage.setItem(seenKey(id), JSON.stringify(shares)); } catch { /* the moment may play again */ }
+}
+
+/**
+ * THE REPAIR SHOWN ON THE SHIP (owner phone playtest 2026-11-18, item 5). The page steps aside while a
+ * repair is shown on the galaxy, so the change lands while it is closed. The ship remembers what was last
+ * seen on it: a part that grew is lit and counts up from there, the ship gives one light, short shake, and
+ * the page goes on to the next Repair. A first look, or nothing grown, shows the ship as it is.
+ */
+function useGains(id: string, shares: Shares): { shown: Shares; gains: readonly VesselSystem[]; shaking: boolean } {
+  const key = VESSEL_SYSTEMS.map(system => shares[system]).join(',');
+  const last = useRef<Shares | null>(null);
+  const latest = useRef(shares);
+  latest.current = shares;
+  const [run, setRun] = useState<{ from: Shares; gains: VesselSystem[]; started: number } | null>(null);
+  const [shaking, setShaking] = useState(false);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const now = latest.current;
+    const seen = last.current ?? seenShares(id) ?? now;
+    last.current = now;
+    const gains = VESSEL_SYSTEMS.filter(system => now[system] > seen[system]);
+    if (gains.length === 0) { rememberShares(id, now); return; }
+    setRun({ from: seen, gains, started: Date.now() });
+  }, [id, key]);
+  useEffect(() => {
+    if (!run) return undefined;
+    const counting = window.setInterval(() => { setTick(n => n + 1); }, 30);
+    const shake = window.setTimeout(() => {
+      window.clearInterval(counting);
+      setTick(n => n + 1);
+      setShaking(true);
+      haptic('tap');
+      playSound('tick');
+    }, GAIN_COUNT_MS);
+    const done = window.setTimeout(() => {
+      setShaking(false);
+      setRun(null);
+      rememberShares(id, latest.current);
+      document.querySelector('[data-guide="repair-order"]')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, GAIN_COUNT_MS + GAIN_SHAKE_MS + GAIN_REST_MS);
+    return () => { window.clearInterval(counting); window.clearTimeout(shake); window.clearTimeout(done); };
+  }, [run, id]);
+  if (!run) return { shown: shares, gains: [], shaking };
+  const share = Math.min(1, (Date.now() - run.started) / GAIN_COUNT_MS);
+  const shown = Object.fromEntries(VESSEL_SYSTEMS.map(system => [system, run.gains.includes(system)
+    ? Math.round(run.from[system] + (shares[system] - run.from[system]) * share)
+    : shares[system]])) as Shares;
+  return { shown, gains: run.gains, shaking };
+}
+
+function Mark({ system, percent, selected, onSelect, bay, next, gain }: {
+  system: VesselSystem; percent: number; selected: boolean; onSelect: () => void; bay: HeroBay; next: boolean; gain: boolean;
 }) {
   const { t } = useTranslation();
   const lit = percent > 0 || next;
@@ -70,6 +142,8 @@ function Mark({ system, percent, selected, onSelect, bay, next }: {
       aria-label={t(`starter.system.${system}`)}
       aria-pressed={selected}
       onClick={onSelect}
+      data-mark={system}
+      {...(gain ? { 'data-gain': '' } : {})}
       style={{ left: `${String(bay.markX)}%`, top: `${String(bay.markY)}%` }}
       className={`absolute flex min-h-8 -translate-y-1/2 items-center gap-1 ${bay.words === 'left' ? 'flex-row-reverse' : ''}`}
     >
@@ -84,7 +158,7 @@ function Mark({ system, percent, selected, onSelect, bay, next }: {
       </span>
       <span className={`flex flex-col text-micro leading-tight [text-shadow:0_1px_3px_#000,0_0_8px_#000] ${bay.words === 'left' ? 'items-end' : 'items-start'}`}>
         <span className="font-medium text-v2-ink">{t(`starter.systemShort.${system}`)}</span>
-        <span className="font-v2-mono" style={{ color: lit ? tone : 'var(--color-v2-ink-2)' }}>{percent}%</span>
+        <span data-percent="" className="font-v2-mono" style={{ color: lit ? tone : 'var(--color-v2-ink-2)' }}>{percent}%</span>
       </span>
     </button>
   );
@@ -106,14 +180,16 @@ export function ShipHero({ id, progress, selected, onSelect, compact = false, se
   const bays = HERO_BAYS[hull];
   const next = goalRepair(useStarterGoal())?.system;
   const moment = useRepairMoment(id, progress);
+  const shares = Object.fromEntries(VESSEL_SYSTEMS.map(system => [system, systemPercent(progress, system)])) as Shares;
+  const { shown, gains, shaking } = useGains(id, shares);
   return (
-    <div data-testid="ship-hero" {...(moment ? { 'data-moment': moment.tier } : {})} className="shrink-0 overflow-hidden">
+    <div data-testid="ship-hero" {...(moment ? { 'data-moment': moment.tier } : {})} {...(shaking ? { 'data-shake': '' } : {})} className="shrink-0 overflow-hidden">
       {/* Everything here is percent of the painting, so the frame keeps its shape on any screen. */}
       <div className={`ship-hero-frame relative mx-auto w-full max-w-[440px] ${compact ? 'aspect-[7/4]' : 'aspect-[3/2]'}`}>
         <img src={heroArt(hull, vesselLook(progress))} alt="" draggable={false} className={`ship-hero-art absolute inset-0 size-full object-cover brightness-125 saturate-110 ${compact ? '[mask-image:linear-gradient(to_right,transparent,#000_10%,#000_90%,transparent)]' : 'v2-split:[mask-image:linear-gradient(to_right,transparent,#000_12%,#000_88%,transparent)]'}`} />
         {VESSEL_SYSTEMS.map(system => (
           <span key={system} aria-hidden="true" data-bay={system} data-condition={bayCondition(systemPercent(progress, system))}
-            {...(moment?.system === system ? { 'data-just': moment.tier } : {})}
+            {...(moment?.system === system ? { 'data-just': moment.tier } : gains.includes(system) ? { 'data-just': 'routine' } : {})}
             {...(sealed && system === 'CARGO' ? { 'data-sealed': '' } : {})}
             className="ship-bay" style={{ left: `${String(bays[system].x)}%`, top: `${String(bays[system].y)}%` }} />
         ))}
@@ -131,8 +207,8 @@ export function ShipHero({ id, progress, selected, onSelect, compact = false, se
           return <span key={system} aria-hidden="true" className="absolute size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: `${String(bay.x)}%`, top: `${String(bay.y)}%`, background: tone, boxShadow: `0 0 6px ${tone}` }} />;
         })}
         {VESSEL_SYSTEMS.map(system => (
-          <Mark key={system} system={system} percent={systemPercent(progress, system)} selected={selected === system}
-            onSelect={() => { onSelect(system); }} bay={bays[system]} next={next === system} />
+          <Mark key={system} system={system} percent={shown[system]} selected={selected === system}
+            onSelect={() => { onSelect(system); }} bay={bays[system]} next={next === system} gain={gains.includes(system)} />
         ))}
       </div>
     </div>
