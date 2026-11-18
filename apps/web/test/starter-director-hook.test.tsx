@@ -3,7 +3,7 @@ import { StrictMode } from 'react';
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { vesselSchema } from '../src/api/starterSchemas.js';
-import { directorNow, playScene, resetDirector, skipBeat } from '../src/starter/director/director.js';
+import { SCENE_WAIT_MS, directorNow, playScene, raiseStage, resetDirector, skipBeat } from '../src/starter/director/director.js';
 import { FIRST_LOOK_MS, useStarterScenes } from '../src/starter/director/useStarterScenes.js';
 import { REVEAL_FLEETS_MS } from '../src/starter/tutorial/sightLesson.js';
 import i18n from '../src/i18n/index.js';
@@ -108,15 +108,19 @@ describe('the first session, directed', () => {
   });
 
   // Owner 2026-11-18: "gemi birden parlamış cillop gibi olmuş bile" — the hull changed under the player's hands.
-  it('keeps the hull as it was while the bay comes back, and changes it on the hull\'s own shot', () => {
+  /** The road's first repair that changes the hull's look: the modules before it and after. */
+  const firstTurn = (): { before: Record<string, number>; after: Record<string, number> } => {
     let modules: Record<string, number> = { ...openingProgress().modules };
-    let turn: { before: Record<string, number>; after: Record<string, number> } | null = null;
     for (const step of REPAIR_LADDER.filter(row => row.required)) {
       const next = { ...modules, [step.module]: step.stage };
-      if (vesselLook({ modules: next, facts: [] }) !== vesselLook({ modules, facts: [] })) { turn = { before: modules, after: next }; break; }
+      if (vesselLook({ modules: next, facts: [] }) !== vesselLook({ modules, facts: [] })) return { before: modules, after: next };
       modules = next;
     }
-    if (!turn) throw new Error('the first road never changes the hull');
+    throw new Error('the first road never changes the hull');
+  };
+
+  it('keeps the hull as it was while the bay comes back, and changes it on the hull\'s own shot', () => {
+    const turn = firstTurn();
     const first = props({ ship: ship({ modules: turn.before, facts: [] }) });
     const view = renderHook(useStarterScenes, { initialProps: first });
     act(() => { vi.advanceTimersByTime(FIRST_LOOK_MS); });
@@ -134,6 +138,23 @@ describe('the first session, directed', () => {
     view.rerender({ ...first, ship: ship({ modules: turn.after, facts: [] }) });
     expect(playing()).toBe('none');
     expect(view.result.current).toBe(vesselLook({ modules: turn.after, facts: [] }));
+  });
+
+  // Code review 2026-11-19: a scene let go unseen (it waited out of sight too long) held the old hull for good.
+  it('lets the hull take its look when the scene that would have turned it is let go unseen', () => {
+    const turn = firstTurn();
+    const first = props({ ship: ship({ modules: turn.before, facts: [] }) });
+    const view = renderHook(useStarterScenes, { initialProps: first });
+    act(() => { vi.advanceTimersByTime(FIRST_LOOK_MS); });
+    // Back while a page is open over the sky: the scene waits for it.
+    view.rerender({ ...first, ship: ship({ modules: turn.after, facts: [] }) });
+    expect(view.result.current).toBe(vesselLook({ modules: turn.before, facts: [] }));
+    act(() => { vi.advanceTimersByTime(SCENE_WAIT_MS + 1000); });
+    let lower = (): void => undefined;
+    act(() => { lower = raiseStage(); });
+    expect(playing()).toBe('none');
+    expect(view.result.current).toBe(vesselLook({ modules: turn.after, facts: [] }));
+    act(() => { lower(); });
   });
 
   // Item 28: the radar is shown on its staged contact as it comes back, and a real return is no scene of its own.

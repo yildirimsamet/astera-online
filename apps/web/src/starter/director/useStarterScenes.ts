@@ -4,7 +4,7 @@ import type { VesselView } from '../../api/starterSchemas.js';
 import { hullName } from '../../i18n/names.js';
 import { moduleName } from '../moduleName.js';
 import { REVEAL_FLEETS_MS } from '../tutorial/sightLesson.js';
-import { playScene, useDirector, type Scene } from './director.js';
+import { playScene, useDirector, useSceneToCome, type Scene } from './director.js';
 import { probeScene, rockScene, scenesFor, yardNeedScene, type ShipState } from './scenes.js';
 
 /** Before the first look is taken: the galaxy's own opening flight settles first. */
@@ -64,7 +64,9 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, p
   const seen = useRef<{ id: string; state: ShipState } | null>(null);
   /** The look the hull shows: kept as it was while a scene that will show it turning waits for its shot. */
   const [shown, setShown] = useState<VesselLook | null>(null);
-  const holding = useRef(false);
+  /** The scene that will show the hull turning, while it is still to play. */
+  const holding = useRef<string | null>(null);
+  const [holdFor, setHoldFor] = useState<string | null>(null);
   const id = ship?.id;
   const state = ship ? stateOf(ship) : null;
   const key = state ? JSON.stringify(state) : '';
@@ -97,13 +99,13 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, p
     const scenes = scenesFor(before, now, nameOf);
     // A repair ordered from the ship's page is watched on the hull: the page steps aside for it.
     if (scenes.some(scene => scene.id.endsWith(':work')) && latest.current.shipOpen) latest.current.onCloseShip();
-    let turning = false;
+    let turning: string | null = null;
     for (const scene of scenes) {
       // The hull keeps its old look for a scene that will show it turning, and only for one that plays.
-      if (play.current(scene, id) && scene.beats.some(beat => beat.id === 'hull')) turning = true;
+      if (play.current(scene, id) && scene.beats.some(beat => beat.id === 'hull')) turning = scene.id;
     }
-    if (turning) holding.current = true;
-    if (!holding.current) setShown(now.look);
+    if (turning !== null) { holding.current = turning; setHoldFor(turning); }
+    if (holding.current === null) setShown(now.look);
     return undefined;
   }, [id, key]);
 
@@ -134,13 +136,17 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, p
   // The bay of a repair that came back beats as the camera reaches it.
   const playing = useDirector();
   const beat = playing?.beat;
+  // The hull turns on its own shot, or at once if that scene is let go unseen (code review 2026-11-19).
+  const turnComing = useSceneToCome(id ?? '', holdFor);
   useEffect(() => {
     if (beat?.awaken) onAwaken(beat.awaken.system, beat.awaken.module);
-    if (beat?.id === 'hull') {
-      holding.current = false;
-      setShown(latest.current.state?.look ?? null);
-    }
   }, [beat, onAwaken]);
+  useEffect(() => {
+    if (holdFor === null || (turnComing && beat?.id !== 'hull')) return;
+    holding.current = null;
+    setHoldFor(null);
+    setShown(latest.current.state?.look ?? null);
+  }, [beat, holdFor, turnComing]);
 
   // A change not read yet keeps the look the hull had: the scene that shows it decides when it turns.
   return state ? (shown ?? state.look) : undefined;

@@ -82,11 +82,14 @@ export interface Scene {
 
 export interface Playing { scene: Scene; beat: Beat; index: number; vesselId: string; key: number }
 
+/** The scenes asked for a ship: none is asked again. */
 const MEMORY = (vesselId: string): string => `astera.director.${vesselId}`;
+/** The scenes that were on the screen (a shot of theirs ran out or was tapped through), not only asked for (code review 2026-11-19). */
+const SEEN = (vesselId: string): string => `astera.director.seen.${vesselId}`;
 
-function played(vesselId: string): string[] {
+function recalled(key: string): string[] {
   try {
-    const raw = window.localStorage.getItem(MEMORY(vesselId));
+    const raw = window.localStorage.getItem(key);
     const parsed: unknown = raw === null ? [] : JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
   } catch {
@@ -94,11 +97,14 @@ function played(vesselId: string): string[] {
   }
 }
 
-function remember(vesselId: string, sceneId: string): void {
+function remember(key: string, sceneId: string): void {
   try {
-    window.localStorage.setItem(MEMORY(vesselId), JSON.stringify([...new Set([...played(vesselId), sceneId])]));
+    const known = recalled(key);
+    if (!known.includes(sceneId)) window.localStorage.setItem(key, JSON.stringify([...known, sceneId]));
   } catch { /* This visit still remembers it: the scene is no longer queued. */ }
 }
+
+const played = (vesselId: string): string[] => recalled(MEMORY(vesselId));
 
 interface Waiting { scene: Scene; vesselId: string; askedAt: number }
 
@@ -138,7 +144,7 @@ function next(): void {
   else now = null;
 }
 
-/** Out of sight past its keep, or past its moment: not shown now, nor ever (it is remembered as asked). */
+/** Out of sight past its keep, or past its moment: not shown now, nor ever (it is remembered as asked, not as seen). */
 function outlived(scene: Scene, askedAt: number, at: number): boolean {
   if (scene.stale?.() === true) return true;
   if (scene.keep === true) return false;
@@ -152,7 +158,7 @@ export function playScene(scene: Scene, vesselId: string): boolean {
   if (scene.once && played(vesselId).includes(scene.id)) return false;
   if (now?.scene.id === scene.id || queue.some(waiting => waiting.scene.id === scene.id)) return false;
   // Remembered as it is asked for: a scene cut short by a closed app is not owed again.
-  if (scene.once) remember(vesselId, scene.id);
+  if (scene.once) remember(MEMORY(vesselId), scene.id);
   const askedAt = Date.now();
   if (!now) start(scene, vesselId, 0, askedAt);
   else {
@@ -167,17 +173,25 @@ export function playScene(scene: Scene, vesselId: string): boolean {
 /** The shot has run, or a tap ended it. */
 export function skipBeat(): void {
   if (!now) return;
+  remember(SEEN(now.vesselId), now.scene.id);
   if (now.index + 1 < now.scene.beats.length) start(now.scene, now.vesselId, now.index + 1, nowAskedAt);
   else next();
   notify();
 }
 
-/** Whether a scene has played for this ship (a beat that depends on it can wait). */
+/** Whether a scene has played for this ship, or been let go (a beat that depends on it can wait). */
 export const scenePlayedFor = (vesselId: string, sceneId: string): boolean => played(vesselId).includes(sceneId);
+
+/** Whether a scene was on the screen for this ship: one let go unseen said nothing. */
+export const sceneSeenFor = (vesselId: string, sceneId: string): boolean => recalled(SEEN(vesselId)).includes(sceneId);
 
 /** The scene is still to be seen for this ship: on screen now, or waiting its turn (item 24: the jump is asked after it). */
 export const sceneToCome = (vesselId: string, sceneId: string): boolean =>
   (now?.vesselId === vesselId && now.scene.id === sceneId) || queue.some(waiting => waiting.vesselId === vesselId && waiting.scene.id === sceneId);
+
+/** `sceneToCome`, drawn again the moment the scene ends or is let go. */
+export const useSceneToCome = (vesselId: string, sceneId: string | null): boolean =>
+  useSyncExternalStore(watch, () => sceneId !== null && sceneToCome(vesselId, sceneId));
 
 /** Tests and a closed session: nothing plays, nothing waits. */
 export function resetDirector({ keepMemory = false }: { keepMemory?: boolean } = {}): void {

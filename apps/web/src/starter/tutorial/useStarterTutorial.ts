@@ -11,8 +11,8 @@ import { opportunities, opportunityKey, type Opportunity } from '../opportunitie
 import { canPayDart, timeToAfford } from '../steps.js';
 import { useAdviceMemory } from './adviceMemory.js';
 import { useRockSheet } from './rockSheet.js';
-import { sceneToCome, scenePlayedFor, useDirector } from '../director/director.js';
-import { JUMP_SCENE, announcedByScene } from '../director/scenes.js';
+import { sceneToCome, scenePlayedFor, useDirector, useSceneToCome } from '../director/director.js';
+import { JUMP_SCENE, announcedByScene, sceneAnnouncing } from '../director/scenes.js';
 import { useLandingSheet } from './landingSheet.js';
 import { repairWait, tutorialStep, type TutorialInput, type TutorialAnswer, type TutorialStepId, type TutorialView, type TutorialWait } from './script.js';
 import { holdFull } from '../hold.js';
@@ -72,6 +72,9 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
   const landing = useLandingSheet();
   // Read again as a scene starts or ends: a scene can stand in for a step (the rock's approach).
   useDirector();
+  // The card of a system its scene will show waits for that scene; one let go unseen asks for the card again.
+  const announcing = vessel?.unlockToAnnounce ? sceneAnnouncing(vessel.unlockToAnnounce) : null;
+  const announcingToCome = useSceneToCome(vessel?.id ?? '', announcing);
   const plan = useMemo(() => (vessel ? vesselToPlanetView(vessel) : null), [vessel]);
   const held = useProjected(plan?.planet, planet.dataUpdatedAt, 5_000);
   const [acked, setAcked] = useState<{ id: string; list: string[] } | null>(null);
@@ -106,8 +109,8 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     modules: vessel.modules,
     facts: vessel.facts,
     queue: vessel.queue,
-    // A system seen coming back in its scene has been announced: its card is closing itself.
-    unlockToAnnounce: announcedByScene(vessel.id, vessel.unlockToAnnounce) ? null : vessel.unlockToAnnounce,
+    // A system seen coming back in its scene has been announced: its card is closing itself; one still to be shown waits for it.
+    unlockToAnnounce: announcedByScene(vessel.id, vessel.unlockToAnnounce) || announcingToCome ? null : vessel.unlockToAnnounce,
     works: held.bufferAlloy,
     canPayNext: backIn === 0,
     canBuildShip: canPayDart(held),

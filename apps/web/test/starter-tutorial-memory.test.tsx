@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { vesselSchema } from '../src/api/starterSchemas.js';
 import { wireVessel } from './starterVesselFixture.js';
 import { useStarterTutorial } from '../src/starter/tutorial/useStarterTutorial.js';
-import { playScene, resetDirector, skipBeat } from '../src/starter/director/director.js';
+import { SCENE_WAIT_MS, playScene, raiseStage, resetDirector, skipBeat } from '../src/starter/director/director.js';
 
 const empty = { alloy: 0, crystal: 0, deuterium: 0, bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0 };
 const state = vi.hoisted(() => ({
@@ -94,5 +94,20 @@ describe('a system the director has shown coming back', () => {
     act(() => { playScene({ id: 'repair:TELESCOPE:1:done', once: true, beats: [{ id: 'back', shot: { kind: 'wide' }, ms: 100 }] }, 'memory-1'); skipBeat(); });
     rerender();
     expect(result.current?.answer).not.toMatchObject({ nav: 'dismissUnlock' });
+  });
+
+  // Code review 2026-11-19: a scene let go unseen said nothing; its card is asked for again.
+  it('waits for the scene while it waits for the sky, and asks for the card once it is let go unseen', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    state.extra = { unlockToAnnounce: 'telescope', progress: { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }, facts: [] } };
+    const { result } = renderHook(() => useStarterTutorial('galaxy'));
+    act(() => { playScene({ id: 'repair:TELESCOPE:1:done', once: true, beats: [{ id: 'back', shot: { kind: 'wide' }, ms: 100 }] }, 'memory-1'); });
+    expect(result.current?.answer).not.toMatchObject({ nav: 'dismissUnlock' });
+    vi.setSystemTime(Date.now() + SCENE_WAIT_MS + 1000);
+    let lower = (): void => undefined;
+    act(() => { lower = raiseStage(); });
+    expect(result.current?.answer).toMatchObject({ nav: 'dismissUnlock' });
+    act(() => { lower(); });
+    vi.useRealTimers();
   });
 });

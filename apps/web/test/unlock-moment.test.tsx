@@ -5,14 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { vesselSchema } from '../src/api/starterSchemas.js';
-import { playScene, resetDirector, skipBeat } from '../src/starter/director/director.js';
+import { SCENE_WAIT_MS, playScene, resetDirector, skipBeat } from '../src/starter/director/director.js';
 import { DirectorStage } from '../src/starter/director/DirectorStage.js';
 import { UnlockMoment } from '../src/starter/UnlockMoment.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { wireVessel } from './starterVesselFixture.js';
 
 beforeEach(() => { localStorage.clear(); resetDirector(); });
-afterEach(() => { cleanup(); resetDirector(); document.querySelectorAll('[data-loading-screen]').forEach((node) => { node.remove(); }); });
+afterEach(() => { cleanup(); vi.useRealTimers(); resetDirector(); document.querySelectorAll('[data-loading-screen]').forEach((node) => { node.remove(); }); });
 
 function show(onAwaken: () => void, unlockToAnnounce = 'intel') {
   const api = new Api({ fetch: () => Promise.resolve(new Response('{}', { status: 404 })), authTransport: null });
@@ -98,6 +98,28 @@ describe('a system the director has just shown coming back', () => {
     mount(calls);
     expect(screen.queryByTestId('unlock-moment')).toBeNull();
     await waitFor(() => { expect(calls.some(url => url.includes('/api/starter/unlocks/seen'))).toBe(true); });
+  });
+
+  // Code review 2026-11-19: a scene asked for was taken as said, and one let go unseen took the card with it.
+  it('holds its card, and tells the server nothing, while its scene waits for the sky', async () => {
+    act(() => { playScene(doneScene, telescope.id); });
+    const calls: string[] = [];
+    mount(calls);
+    expect(screen.queryByTestId('unlock-moment')).toBeNull();
+    await new Promise((resolve) => { setTimeout(resolve, 50); });
+    expect(calls.some(url => url.includes('/api/starter/unlocks/seen'))).toBe(false);
+  });
+
+  it('shows its card when its scene waited out of sight too long and was let go unseen', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    act(() => { playScene(doneScene, telescope.id); });
+    const calls: string[] = [];
+    mount(calls);
+    expect(screen.queryByTestId('unlock-moment')).toBeNull();
+    vi.setSystemTime(Date.now() + SCENE_WAIT_MS + 1000);
+    render(<DirectorStage />);
+    expect(screen.getByTestId('unlock-moment')).toBeInTheDocument();
+    expect(calls.some(url => url.includes('/api/starter/unlocks/seen'))).toBe(false);
   });
 
   it('still shows its card to a player who was away while it opened', () => {

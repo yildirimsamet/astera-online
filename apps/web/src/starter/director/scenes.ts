@@ -1,5 +1,5 @@
 import { ALL_HULLS, REPAIR_LADDER, fleetCount, VESSEL_SYSTEMS, isFeatureOpen, jumpWindowOpen, type HullId, type RepairStep, type StarterFeature, type VesselFact, type VesselLook, type VesselModule, type VesselSystem } from '@astera/rules';
-import { scenePlayedFor, type Beat, type DirectorLine, type Scene } from './director.js';
+import { sceneSeenFor, type Beat, type DirectorLine, type Scene } from './director.js';
 import { RADAR_LESSON } from './radarLesson.js';
 
 /**
@@ -241,8 +241,8 @@ export function sceneAnnouncing(feature: StarterFeature): string | null {
   return step ? `repair:${step.module}:${String(step.stage)}:done` : null;
 }
 
-/** The system has been seen coming back on the hull: its card would only say it again. */
+/** The system has been seen coming back on the hull: its card would only say it again. One let go unseen said nothing (code review 2026-11-19). */
 export function announcedByScene(vesselId: string, feature: StarterFeature | null): boolean {
   const scene = feature ? sceneAnnouncing(feature) : null;
-  return scene !== null && scenePlayedFor(vesselId, scene);
+  return scene !== null && sceneSeenFor(vesselId, scene);
 }
