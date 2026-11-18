@@ -1,6 +1,6 @@
-import { REPAIR_LADDER, VESSEL_SYSTEMS, isFeatureOpen, jumpWindowOpen, type RepairStep, type StarterFeature, type VesselFact, type VesselLook, type VesselModule, type VesselSystem } from '@astera/rules';
+import { ALL_HULLS, REPAIR_LADDER, VESSEL_SYSTEMS, isFeatureOpen, jumpWindowOpen, type HullId, type RepairStep, type StarterFeature, type VesselFact, type VesselLook, type VesselModule, type VesselSystem } from '@astera/rules';
 import type { Focus } from '../../galaxy/FocusPanel.js';
-import { scenePlayedFor, type Beat, type Scene } from './director.js';
+import { scenePlayedFor, type Beat, type DirectorLine, type Scene } from './director.js';
 
 /**
  * THE FIRST SESSION'S SCENES (plan 2026-11-18 §5). What the ship is, where it is broken and where it is
@@ -56,10 +56,18 @@ function work(step: RepairStep, name: string, state: ShipState): Scene {
   };
 }
 
-/** What a repair hands over with it: the yard's first ships (plan §5 A11). */
-function shipsHanded(step: RepairStep): { hull: string; count: number } | null {
-  const [entry] = Object.entries(step.grants?.fleet ?? {}).filter(([, count]) => count > 0);
-  return entry ? { hull: entry[0], count: entry[1] } : null;
+/**
+ * What a repair hands over with it (plan §5 A11), and how it is said: the telescope's Prospector, found in
+ * the cargo bay; the yard's first ships (owner phone playtest 2026-11-18, item 8: both were the yard's).
+ */
+const HANDED_LINE: Partial<Record<RoadModule, DirectorLine>> = { TELESCOPE: 'starter.director.ships.TELESCOPE', SHIPYARD: 'starter.director.ships.SHIPYARD' };
+function shipsHanded(step: RepairStep & { module: RoadModule }): { hull: HullId; count: number; line: DirectorLine } | null {
+  const [entry] = ALL_HULLS.flatMap(hull => {
+    const count = step.grants?.fleet?.[hull] ?? 0;
+    return count > 0 ? [{ hull, count }] : [];
+  });
+  const line = HANDED_LINE[step.module];
+  return entry && line ? { ...entry, line } : null;
 }
 
 function done(step: RepairStep & { module: RoadModule }, name: (module: string) => string, look: VesselLook | null): Scene {
@@ -69,9 +77,9 @@ function done(step: RepairStep & { module: RoadModule }, name: (module: string) 
     once: true,
     beats: [
       { id: 'back', shot: { kind: 'bay', system: step.system }, ms: 2600, line: `starter.director.repair.${step.module}`, vars: { name: name(step.module) }, sound: 'ignite' },
-      // The first ships leave the yard, seen from far enough to watch them go (OwnVessel's launch).
+      // The craft come out of the cargo bay, seen from far enough to watch them, and dock again (OwnVessel).
       ...(ships
-        ? [{ id: 'darts', shot: { kind: 'ship' as const, turn: 0.6 }, ms: 3000, line: 'starter.director.firstShips' as const, vars: { count: ships.count, hull: name(ships.hull) }, sound: 'launch' as const }]
+        ? [{ id: 'ships', shot: { kind: 'ship' as const, turn: 0.6 }, ms: 4200, line: ships.line, vars: { count: ships.count, hull: name(ships.hull) }, sound: 'launch' as const, craft: { hull: ships.hull, count: ships.count } }]
         : []),
       ...(look === 'PATCHED' || look === 'RENEWED'
         ? [{ id: 'hull', shot: { kind: 'ship' as const, turn: 0.9 }, ms: 2600, line: `starter.director.hull.${look}` as const, sound: 'rankup' as const }]

@@ -1,4 +1,4 @@
-import type { VesselSystem } from '@astera/rules';
+import type { HullId, VesselSystem } from '@astera/rules';
 import { useSyncExternalStore } from 'react';
 import type { Focus } from '../../galaxy/FocusPanel.js';
 import type { SoundCue } from '../../lib/sound.js';
@@ -33,7 +33,7 @@ type RepairLine = `starter.director.repair.${'work' | 'REFINERY' | 'EXTRACTOR' |
 /** What a shot may say: the director's own lines (`starter.director`). */
 export type DirectorLine = 'starter.director.shipReport.orbit' | 'starter.director.shipReport.goal' | RepairLine
   | 'starter.director.hull.PATCHED' | 'starter.director.hull.RENEWED' | 'starter.director.dark' | 'starter.director.field' | 'starter.director.rock' | 'starter.director.contact'
-  | 'starter.director.probe' | 'starter.director.yardNeed' | 'starter.director.firstShips'
+  | 'starter.director.probe' | 'starter.director.yardNeed' | 'starter.director.ships.TELESCOPE' | 'starter.director.ships.SHIPYARD'
   | 'starter.director.report2.round' | 'starter.director.report2.drive' | 'starter.director.report2.ready';
 
 export interface Beat {
@@ -52,6 +52,8 @@ export interface Beat {
   until?: number;
   /** Gives way at once to a scene asked while it plays (the work shown done takes over from the work). */
   yields?: boolean;
+  /** Craft the repair handed over: they come out of the cargo bay beside the hull, and dock again. */
+  craft?: { hull: HullId; count: number };
 }
 
 export type SpentResource = 'alloy' | 'crystal' | 'deuterium';

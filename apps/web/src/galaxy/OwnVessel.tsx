@@ -7,13 +7,14 @@ import { VESSEL_SYSTEMS, vesselLook, type Vec3, type VesselHull, type VesselLook
 import { HULL_MODEL } from '../ui/assets.js';
 import { BayReturnFx, RunningLights, SparkStreaks, WeldFx } from './BayFx.js';
 import { Exhaust, Hull } from './Fleets.js';
-import { HULL_LIGHT } from './flightVisual.js';
+import { HULL_LIGHT, HULL_VISUAL_SCALE } from './flightVisual.js';
 import { HitboxMaterial } from './hitboxDebug.js';
 import { TAG_STEP_SECONDS, tagLead } from './shipTags.js';
 import { HULL_SHIFT_SECONDS, hullSweepAt, nextLook } from './hullShift.js';
 import { VESSEL_BAYS, VESSEL_NOSE_TURN, damageSpots, starterShipYaw, systemCondition, vesselHitBox, vesselLights, vesselModelFile, type DamageSpot, type SystemCondition, type VesselLights } from './mainSky.js';
 import type { Vec3Tuple } from './scene.js';
 import { YARD_LAUNCH, yardLaunchAt } from './yardLaunch.js';
+import type { Beat } from '../starter/director/director.js';
 import '../starter/director/director.css';
 import { VESSEL_LENGTH } from './scene.js';
 import { markHit, wasTap } from './tap.js';
@@ -135,29 +136,34 @@ function SystemTags({ hull, lights, tags }: { hull: VesselHull; lights: VesselLi
 }
 
 /*
-  VFX brief (plan 2026-11-18 §5 A11).
-  - In the world: the mended yard's first two Darts slide out of the cargo bay under the hull, swing round
-    to hold station beside the ship nose forward, then burn away ahead of it.
-  - Assets: the game's own Dart (`HULL_MODEL.DART`, the hull every Dart flies with) and the jets every craft
-    burns in flight (`Exhaust`, premium-v2 thruster grunge).
-  - Why: what a yard makes is ships; your own first ships leaving your own hull is "your first ships".
+  VFX brief (plan 2026-11-18 §5 A11; owner phone playtest 2026-11-18, item 8).
+  - In the world: the craft a repair hands over (the telescope's Prospector, the yard's two Darts) slide out
+    of the cargo bay under the hull, swing round to hold station beside the ship nose forward, turn about,
+    and slide back into the bay where they are kept.
+  - Assets: the game's own hull models (`HULL_MODEL[hull]`, what each craft flies with) and the jets every
+    craft burns in flight (`Exhaust`, premium-v2 thruster grunge).
+  - Why: these are your ships and they stay with you; a craft burning away left the player asking where it went.
 */
-/** A Dart beside the colony ship, in its model units: about a tenth of its length. */
+/** A Dart beside the colony ship, in its model units: about a tenth of its length; other hulls by their scale. */
 const DART_SIZE = 0.11;
 /** The second leaves a moment after the first. */
 const LAUNCH_STAGGER = 0.35;
+/** Two stations beside the hull at most; more craft than that are counted on the line. */
+const STATIONS = 2;
 
-function YardLaunch({ hull, onDone }: { hull: VesselHull; onDone: () => void }) {
+function CraftHandover({ hull, craft, onDone }: { hull: VesselHull; craft: Craft; onDone: () => void }) {
   const ships = useRef<(THREE.Group | null)[]>([]);
   const start = useRef<number | null>(null);
   const ended = useRef(false);
   const ahead = useMemo(() => new THREE.Vector3(), []);
   const bay = VESSEL_BAYS[hull].CARGO;
+  const size = DART_SIZE * HULL_VISUAL_SCALE[craft.hull] / HULL_VISUAL_SCALE.DART;
   // Stations beside the hull, clear of it on either side, a little below.
   const slots = useMemo<Vec3Tuple[]>(() => {
     const [, tall, wide] = vesselHitBox(hull);
-    return [[0.3, -tall * 0.35, wide / 2 + 0.1], [0.18, -tall * 0.45, -(wide / 2 + 0.1)]];
-  }, [hull]);
+    const both: Vec3Tuple[] = [[0.3, -tall * 0.35, wide / 2 + 0.1], [0.18, -tall * 0.45, -(wide / 2 + 0.1)]];
+    return both.slice(0, Math.max(1, Math.min(STATIONS, craft.count)));
+  }, [hull, craft.count]);
   useFrame(({ clock, invalidate }) => {
     start.current ??= clock.elapsedTime;
     const t = clock.elapsedTime - start.current;
@@ -165,7 +171,8 @@ function YardLaunch({ hull, onDone }: { hull: VesselHull; onDone: () => void }) 
       const ship = ships.current[index];
       if (!ship) return;
       const own = t - index * LAUNCH_STAGGER;
-      ship.visible = own >= 0;
+      // Out of sight before it leaves the bay and once it is back inside it.
+      ship.visible = own >= 0 && own < YARD_LAUNCH.total - 0.05;
       const { at, facing } = yardLaunchAt(bay, slot, own);
       ship.position.set(at[0], at[1], at[2]);
       ahead.set(at[0] + facing[0], at[1] + facing[1], at[2] + facing[2]);
@@ -179,8 +186,8 @@ function YardLaunch({ hull, onDone }: { hull: VesselHull; onDone: () => void }) 
     <>
       {slots.map((slot, index) => (
         <group key={slot.join()} ref={(node) => { ships.current[index] = node; }} visible={false}>
-          <Hull url={HULL_MODEL.DART} scale={DART_SIZE} glow={HULL_LIGHT.DART.glow} focused={false} />
-          <Exhaust url={HULL_MODEL.DART} colour={HULL_LIGHT.DART.flame} scale={DART_SIZE} />
+          <Hull url={HULL_MODEL[craft.hull]} scale={size} glow={HULL_LIGHT[craft.hull].glow} focused={false} />
+          <Exhaust url={HULL_MODEL[craft.hull]} colour={HULL_LIGHT[craft.hull].flame} scale={size} />
         </group>
       ))}
     </>
@@ -188,7 +195,8 @@ function YardLaunch({ hull, onDone }: { hull: VesselHull; onDone: () => void }) 
 }
 
 /** What the director's shot asks of the hull: the names to show, and the beat (the yard's launch). */
-export interface VesselCue { key: number; beat: string; tags: readonly VesselSystem[] | undefined }
+type Craft = NonNullable<Beat['craft']>;
+export interface VesselCue { key: number; beat: string; tags: readonly VesselSystem[] | undefined; craft?: Craft | undefined }
 
 const BAY_COLOUR: Record<VesselSystem, string> = {
   REFINERY: '#ffb46a',
@@ -227,10 +235,9 @@ export function OwnVessel({ at, offset, hull, progress, onSelect, awaken, workin
   const [drawn, setDrawn] = useState(look);
   const [shift, setShift] = useState<{ from: VesselLook; to: VesselLook } | null>(null);
   if (look !== drawn) { setShift({ from: drawn, to: look }); setDrawn(look); }
-  // The yard's first ships go once per shot of them, and fly their whole way out past its end.
-  const [launch, setLaunch] = useState<{ key: number; live: boolean } | null>(null);
-  const launchKey = cue?.beat === 'darts' ? cue.key : null;
-  if (launchKey !== null && launch?.key !== launchKey) setLaunch({ key: launchKey, live: true });
+  // The handed-over craft go once per shot of them, and fly their whole way out and back past its end.
+  const [launch, setLaunch] = useState<{ key: number; live: boolean; craft: Craft } | null>(null);
+  if (cue?.craft && launch?.key !== cue.key) setLaunch({ key: cue.key, live: true, craft: cue.craft });
   useEffect(() => {
     const next = nextLook(look);
     if (next) preloadVessel(vesselModelFile(hull, next));
@@ -255,7 +262,7 @@ export function OwnVessel({ at, offset, hull, progress, onSelect, awaken, workin
         <Suspense fallback={null}>
           {awaken && <BayReturnFx key={awaken.key} system={awaken.system} at={VESSEL_BAYS[hull][awaken.system]} colour={BAY_COLOUR[awaken.system]} />}
           {working.map(system => <WeldFx key={system} at={VESSEL_BAYS[hull][system]} />)}
-          {launch?.live === true && <YardLaunch key={launch.key} hull={hull} onDone={() => { setLaunch({ key: launch.key, live: false }); }} />}
+          {launch?.live === true && <CraftHandover key={launch.key} hull={hull} craft={launch.craft} onDone={() => { setLaunch({ ...launch, live: false }); }} />}
         </Suspense>
         {cue?.tags && <SystemTags key={cue.key} hull={hull} lights={lights} tags={cue.tags} />}
       </group>

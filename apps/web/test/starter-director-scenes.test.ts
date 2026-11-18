@@ -128,15 +128,31 @@ describe('the scenes after the road\'s first half', () => {
     expect(beat?.line).toBe('starter.director.yardNeed');
   });
 
-  it('sends the first two ships out of the yard as it comes back, after what the yard is for', () => {
+  /*
+    Owner, phone playtest 2026-11-18 (item 8): the telescope's own Prospector was announced as the yard's
+    first ships, and the ships flew off for good ("gemilerim nereye gidiyor?"). Each repair that hands over
+    craft says what it handed and where it is kept; the craft shown are those, and they dock again.
+  */
+  it('shows the yard\'s first two ships as it comes back, kept in the cargo bay', () => {
     const before: ShipState = { ...ROAD_DONE, modules: { ...ROAD_DONE.modules, SHIPYARD: 0 }, queue: [{ subject: 'SHIPYARD', stage: 1 }] };
     const [done] = scenesFor(before, ROAD_DONE, (module) => module.toLowerCase());
     expect(done?.id).toBe('repair:SHIPYARD:1:done');
-    expect(done?.beats.slice(0, 2).map(beat => beat.id)).toEqual(['back', 'darts']);
-    const darts = done?.beats[1];
-    expect(darts?.shot.kind).toBe('ship');
-    expect(darts?.line).toBe('starter.director.firstShips');
-    expect(darts?.vars).toEqual({ count: 2, hull: 'dart' });
+    expect(done?.beats.slice(0, 2).map(beat => beat.id)).toEqual(['back', 'ships']);
+    const ships = done?.beats[1];
+    expect(ships?.shot.kind).toBe('ship');
+    expect(ships?.line).toBe('starter.director.ships.SHIPYARD');
+    expect(ships?.vars).toEqual({ count: 2, hull: 'dart' });
+    expect(ships?.craft).toEqual({ hull: 'DART', count: 2 });
+  });
+
+  it('shows the telescope\'s Prospector as its own, found in the cargo bay, never as the yard\'s', () => {
+    const before: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1 }, queue: [{ subject: 'TELESCOPE', stage: 1 }], look: 'WRECKED', facts: [] };
+    const after: ShipState = { modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }, queue: [], look: 'WRECKED', facts: [] };
+    const done = scenesFor(before, after, (module) => module.toLowerCase()).find(scene => scene.id === 'repair:TELESCOPE:1:done');
+    const ships = done?.beats.find(beat => beat.id === 'ships');
+    expect(ships?.line).toBe('starter.director.ships.TELESCOPE');
+    expect(ships?.vars).toEqual({ count: 1, hull: 'prospector' });
+    expect(ships?.craft).toEqual({ hull: 'PROSPECTOR', count: 1 });
   });
 
   it('shows the ship again after its first battle: every system named, then the drive still to wake', () => {
