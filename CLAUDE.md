@@ -273,7 +273,7 @@ Diğer konular için `docs/` klasörüne bak.
 
 Gerekmiyorsa çıktı verme. Çıktı gerektiğinde kısa, net, basit ve kullanıcının anlayabileceği şekilde yaz; gereksiz uzatma.
 
-Claude API her istekten sonra 5dk TTL ile caching yapıyor. Bu yüzden dolayı hiç bir işi 270 saniyeden fazla bekleme (30 saniye buffer). Test sonucu, tool call vs. hiç bir şeyi 270sn üzerinde beklemeyeceksin. İşine devam edeceksin. Sonuç gelince bakarsın, boşuna bekleyip cache süresini yakma. Cachelenmiş geçmiş için token ücreti çok daha ucuz.
+Claude API her istekten sonra 60dk TTL ile caching yapıyor. Bu yüzden dolayı hiç bir işi 55dk'dan fazla bekleme (5dk buffer). Test sonucu, tool call vs. hiç bir şeyi 55dk üzerinde beklemeyeceksin. İşine devam edeceksin. Sonuç gelince bakarsın, boşuna bekleyip cache süresini yakma. Cachelenmiş geçmiş için token ücreti çok daha ucuz.
 
 ## 8. Son hedef
 
