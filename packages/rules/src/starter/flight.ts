@@ -1,7 +1,7 @@
 import type { CombatRound } from '../combat.js';
 import { fleetEntries, HULLS } from '../hulls.js';
 import { shipRepairCost, shipRepairMinutes } from '../damage.js';
-import { orbitPosition, type OrbitElements } from '../galaxy.js';
+import { orbitPosition, type Interception, type OrbitElements } from '../galaxy.js';
 import { mulberry32 } from '../rng.js';
 import type { HpDamageLot } from '../radiationHp.js';
 import { distance } from '../travel.js';
@@ -28,6 +28,19 @@ export function starterAsteroidOrbit(seed: number): OrbitElements {
     inclination: (random() - 0.5) * Math.PI,
     ascendingNode: random() * 2 * Math.PI,
   };
+}
+
+/**
+ * THE GUIDED ROAD'S FIRST FLIGHTS ARE WATCHED, NOT WAITED FOR (owner phone playtest 2026-11-19). The road
+ * waits for the first Prospector and the first probe; a flight past its cap is flown in the cap.
+ */
+export const firstTripMinutes = (minutes: number, capSeconds: number): number => Math.min(minutes, capSeconds / 60);
+
+/** The first Prospector meets its rock within its cap: where the rock is then, when the plain meeting is later. */
+export function firstRockMeeting(hit: Interception, orbit: OrbitElements, nowMinutes: number): Interception {
+  const cap = firstTripMinutes(hit.flightMinutes, STARTER.firstTrips.mineOut);
+  if (cap === hit.flightMinutes) return hit;
+  return { flightMinutes: cap, meetsAtMinutes: nowMinutes + cap, at: orbitPosition(orbit, nowMinutes + cap) };
 }
 
 /** What a telescope shows of the rocks: the nearest few inside its ring. */

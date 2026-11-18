@@ -89,10 +89,13 @@ describe('the road through the first session (N12)', () => {
     expect(id(onRoad({ EXTRACTOR: 1, TELESCOPE: 1 }, { view: 'galaxy' }))).toBe('telescopeLook');
   });
 
-  it('asks for the radar once the Prospector has been sent, and waits for it before the antenna', () => {
+  // Owner phone playtest 2026-11-19: the first Prospector is watched home first (it came home in the middle of the probe).
+  it('asks for the radar once the first Prospector is home, and waits for it before the antenna', () => {
     const sent = { EXTRACTOR: 1, TELESCOPE: 1 };
-    expect(at(onRoad(sent, { mining: true }))).toMatchObject({ id: 'orderRadar', marks: marksOf('RADAR', 1, 'SURVEY') });
-    expect(at(onRoad(sent, { mining: true, queue: [order('RADAR', 1)] }))).toMatchObject({ id: 'waitRadar', step: 'wait' });
+    const home = { facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'] as const };
+    expect(at(onRoad(sent, { mining: true, facts: ['FIRST_MINING_SENT'] }))).toMatchObject({ id: 'waitMine', step: 'wait' });
+    expect(at(onRoad(sent, home))).toMatchObject({ id: 'orderRadar', marks: marksOf('RADAR', 1, 'SURVEY') });
+    expect(at(onRoad(sent, { ...home, queue: [order('RADAR', 1)] }))).toMatchObject({ id: 'waitRadar', step: 'wait' });
     expect(id(onRoad({ ...sent, RADAR: 1 }, { mining: true }))).toBe('orderSurvey');
   });
 
@@ -141,7 +144,7 @@ describe('the road through the first session (N12)', () => {
       expect(at(open({ ...looked, rockOpen: false }))).toMatchObject({ id: 'findRock' });
     });
     it('is over with the first flight, on any phone', () => {
-      expect(id(open({ mining: true }))).toBe('orderRadar');
+      expect(id(open({ mining: true }))).toBe('waitMine');
       expect(id(open({ facts: ['FIRST_MINING_RETURN'] }))).toBe('orderRadar');
     });
     it('closes the note and the page before it speaks', () => {
@@ -152,7 +155,7 @@ describe('the road through the first session (N12)', () => {
     });
   });
 
-  it('does not wait on the flight: the antenna is next while the Prospector is out', () => {
+  it('holds back no ship whose radar is in already: the antenna is next while the Prospector is out', () => {
     expect(at(onRoad({ EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, { mining: true }))).toMatchObject({ id: 'orderSurvey', marks: marksOf('SURVEY', 1, 'SURVEY') });
     expect(at(onRoad({ EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1 }, { mining: true, queue: [order('SURVEY', 1)] }))).toMatchObject({ id: 'waitSurvey', step: 'wait' });
   });
@@ -161,7 +164,8 @@ describe('the road through the first session (N12)', () => {
     const antenna = { EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 };
     const flown = { mining: true, view: 'galaxy' as const };
     expect(at(onRoad(antenna, flown))).toMatchObject({ id: 'probe', step: 'press', marks: ['[data-guide="probe"]', '[data-guide="objective"]'] });
-    expect(at(onRoad(antenna, { ...flown, probing: true }))).toMatchObject({ id: 'orderShipyard', nav: 'openShip' });
+    // Owner phone playtest 2026-11-19: its report is waited for before the yard (it came in the middle of the yard).
+    expect(at(onRoad(antenna, { ...flown, probing: true }))).toMatchObject({ id: 'waitProbe', step: 'wait' });
     expect(id(onRoad(antenna, { ...flown, alone: true }))).toBe('orderShipyard');
   });
 
@@ -284,6 +288,45 @@ describe('the jump window has the floor', () => {
 
   it('lets no other system\'s card silence it', () => {
     expect(at({ ...opened, unlockToAnnounce: 'research' })).toMatchObject({ kind: 'step', id: 'firstCrate' });
+  });
+});
+
+/**
+ * THE FIRST FLIGHTS ARE WAITED FOR (owner phone playtest 2026-11-19): the first Prospector came home in the
+ * middle of the probe, and the first report in the middle of the yard. The road waits for each, and the server
+ * flies each within fifteen to twenty seconds (`STARTER.firstTrips`).
+ */
+describe('the first flights, waited for', () => {
+  const sensors = { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 };
+  const sent = awake({ modules: { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1 }, facts: ['FIRST_MINING_SENT'], mining: true });
+
+  it('watches the first Prospector home before the next repair, then its haul is stored', () => {
+    expect(at(sent)).toMatchObject({ id: 'waitMine', step: 'wait', chapter: 6 });
+    const home = { ...sent, mining: false, facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'] as const };
+    expect(id({ ...home, works: 50 })).toBe('collectMine');
+    expect(id({ ...home, works: 0 })).toBe('orderRadar');
+  });
+
+  it('goes on when the Prospector was called back with nothing, or the radar was ordered anyway', () => {
+    expect(id({ ...sent, mining: false })).toBe('orderRadar');
+    expect(id({ ...sent, queue: [order('RADAR', 1)] })).toBe('waitRadar');
+  });
+
+  it('waits for the first probe\'s report before the yard, then the report is read', () => {
+    const probing = awake({ modules: sensors, facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'], probing: true });
+    expect(at(probing)).toMatchObject({ id: 'waitProbe', step: 'wait', chapter: 4 });
+    expect(id({ ...probing, probing: false, facts: [...probing.facts, 'FIRST_PROBE_REPORT'] })).toBe('openIntel');
+  });
+
+  it('waits for no probe that was never sent: a ship alone goes on to the yard', () => {
+    expect(id(awake({ modules: sensors, facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'], alone: true }))).toBe('orderShipyard');
+  });
+
+  it('lets the player look round while either flies: neither is held', () => {
+    for (const input of [sent, awake({ modules: sensors, facts: ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN'], probing: true })]) {
+      for (const view of ['galaxy', 'ship', 'other'] as const) expect(at({ ...input, view })).not.toHaveProperty('nav');
+    }
+    expect(waitMode(null)).toBe('roam');
   });
 });
 

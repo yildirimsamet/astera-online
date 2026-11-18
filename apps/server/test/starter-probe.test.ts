@@ -35,7 +35,8 @@ describe('sending a probe', () => {
     const other = await aboard(world, 'Other');
     await placeShip(world, me.vesselId, { x: 0 });
     await placeShip(world, other.vesselId, { x: 395 });
-    await world.f.db.update(vessels).set({ alloy: 500, crystal: 500 }).where(eq(vessels.id, me.vesselId));
+    // Past its first report: the first probe flies within the guided road's cap (below).
+    await world.f.db.update(vessels).set({ alloy: 500, crystal: 500, facts: ['FIRST_PROBE_REPORT'] }).where(eq(vessels.id, me.vesselId));
     const answer = await fly(me.headers, other.vesselId);
     expect(answer.statusCode).toBe(200);
     const { arriveAt, flightMinutes } = answer.json<{ arriveAt: string; flightMinutes: number }>();
@@ -53,6 +54,27 @@ describe('sending a probe', () => {
     expect(after.probeReports).toHaveLength(1);
     expect(after.probeReports[0]).toMatchObject({ targetPlanetId: other.vesselId, targetName: 'Other' });
     expect(await notes(me.vesselId)).toContain('PROBE_REPORT');
+  });
+
+  // Owner phone playtest 2026-11-19: the guided road waits for the first probe's report, so it is home within
+  // fifteen to twenty seconds however far its target; once a report is in, probes fly at their own pace.
+  it('flies the first probe there and back within the first trip\'s seconds, and later ones at this galaxy\'s speed', async () => {
+    const me = await scout();
+    const other = await aboard(world, 'Other');
+    await placeShip(world, me.vesselId, { x: 0 });
+    await placeShip(world, other.vesselId, { x: 800 });
+    await enrich(world, me.vesselId, 5000, 5000, 0);
+    const first = await fly(me.headers, other.vesselId);
+    expect(first.statusCode).toBe(200);
+    expect(2 * first.json<{ flightMinutes: number }>().flightMinutes * 60).toBeLessThanOrEqual(STARTER.firstTrips.probe + 1e-9);
+    await pass(world, STARTER.firstTrips.probe / 60 + 0.01);
+    expect((await get<Intel>(world, '/api/starter/intel', me.headers)).probeReports).toHaveLength(1);
+    const [ship] = await world.f.db.select().from(vessels).where(eq(vessels.id, me.vesselId));
+    expect(ship!.facts).toContain('FIRST_PROBE_REPORT');
+    world.f.clock.advance(PROBE.retargetCooldownMinutes + 60);
+    const later = await fly(me.headers, other.vesselId);
+    expect(later.statusCode).toBe(200);
+    expect(later.json<{ flightMinutes: number }>().flightMinutes).toBeCloseTo(travelExact(800, STARTER.probeSpeed), 2);
   });
 
   /** Plan F4 (the first hunt): an outpost's report says it is one, and reads its guard's classes. */

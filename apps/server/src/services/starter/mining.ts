@@ -1,5 +1,5 @@
 import {
-  PROSPECTOR, STARTER, distance, interceptOrbit, isFeatureOpen, moduleStage, orbitPosition, orbitSeedOf, prospectorHoldMult, rocksInSight, starterAsteroidOrbit, travelExact, vesselSphere,
+  PROSPECTOR, STARTER, distance, firstRockMeeting, firstTripMinutes, interceptOrbit, isFeatureOpen, moduleStage, orbitPosition, orbitSeedOf, prospectorHoldMult, rocksInSight, starterAsteroidOrbit, travelExact, vesselSphere,
   type Resources, type Vec3,
 } from '@astera/rules';
 import { and, eq, gt, inArray, isNull, or } from 'drizzle-orm';
@@ -160,8 +160,11 @@ export const launchVesselMining = (db: Db, accountId: string, asteroidId: string
     if (stockOf(site) <= 0) throw new GameError('ASTEROID_EMPTY', 'That rock has already been stripped', 409);
     const nowMinutes = minutesSince(vessel.epoch, vessel.now);
     const expires = site.expiresAt ? minutesSince(vessel.epoch, site.expiresAt) : nowMinutes;
-    const hit = interceptOrbit(placeOf(vessel.row), STARTER.prospectorSpeed, starterAsteroidOrbit(orbitSeedOf(site.id)), expires, nowMinutes);
-    if (!hit) throw new GameError('CANNOT_INTERCEPT', 'It will drift off before your craft could reach it', 409);
+    const orbit = starterAsteroidOrbit(orbitSeedOf(site.id));
+    const plain = interceptOrbit(placeOf(vessel.row), STARTER.prospectorSpeed, orbit, expires, nowMinutes);
+    if (!plain) throw new GameError('CANNOT_INTERCEPT', 'It will drift off before your craft could reach it', 409);
+    // The guided road waits for the first one: it is watched, never waited for (owner phone playtest 2026-11-19).
+    const hit = vessel.row.facts.includes('FIRST_MINING_SENT') ? plain : firstRockMeeting(plain, orbit, nowMinutes);
     const arriveAt = new Date(vessel.epoch.getTime() + hit.meetsAtMinutes * 60_000);
     return sendCraft(tx, vessel, clock, { site, rock: true, to: hit.at, arriveAt }, craft);
   });
@@ -221,7 +224,10 @@ export async function resolveMiningLanding(tx: Tx, mission: MissionRow, clock: C
         ...(emptied && site.kind === 'WRECK' && !site.respawnAt ? { respawnAt: new Date(now.getTime() + STARTER.sites.wrecks.respawnMinutes * 60_000) } : {}),
       }).where(eq(starterSites.id, site.id));
     }
-    const homeAt = new Date(mission.arriveAt.getTime() + travelExact(distance({ x: mission.toX, y: mission.toY, z: mission.toZ }, { x: mission.fromX, y: mission.fromY, z: mission.fromZ }), STARTER.prospectorSpeed * PROSPECTOR.returnSpeedFactor) * 60_000);
+    const back = travelExact(distance({ x: mission.toX, y: mission.toY, z: mission.toZ }, { x: mission.fromX, y: mission.fromY, z: mission.fromZ }), STARTER.prospectorSpeed * PROSPECTOR.returnSpeedFactor);
+    // The first haul comes home within its cap, as it went out within its own (owner phone playtest 2026-11-19).
+    const first = owner !== undefined && !owner.row.facts.includes('FIRST_MINING_RETURN');
+    const homeAt = new Date(mission.arriveAt.getTime() + (first ? firstTripMinutes(back, STARTER.firstTrips.mineBack) : back) * 60_000);
     const claimed = await tx.update(vesselMissions).set({ status: 'RETURNING', returnAt: homeAt, cargo, dug: true })
       .where(and(eq(vesselMissions.id, mission.id), eq(vesselMissions.status, 'OUTBOUND'))).returning({ id: vesselMissions.id });
     if (claimed.length === 0) return;

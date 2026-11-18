@@ -33,6 +33,12 @@ export const STARTER = {
   probeSpeed: 790,
   /** Doubled by the owner 2026-11-08: the first haul is a thing to watch, not to wait for. */
   prospectorSpeed: 600,
+  /**
+   * The guided road waits for its first Prospector and its first probe, so each flies at most these many
+   * seconds (owner phone playtest 2026-11-19: never a minute, fifteen to twenty seconds at most); later flights
+   * keep their own pace. The probe's is there and back: its report is read once it is home.
+   */
+  firstTrips: { mineOut: 8, mineBack: 10, probe: 12 },
   hulls: ['DART', 'PIKE', 'WARDEN', 'COURIER', 'PROSPECTOR'],
   hangarRoom: [20, 32, 50],
   attackBays: [1, 2, 3],

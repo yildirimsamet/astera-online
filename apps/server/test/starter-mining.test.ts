@@ -1,4 +1,4 @@
-import { PROSPECTOR, STARTER, moduleStage, orbitPosition, orbitSeedOf, starterAsteroidOrbit } from '@astera/rules';
+import { PROSPECTOR, STARTER, moduleStage, orbitPosition, orbitSeedOf, starterAsteroidOrbit, type VesselFact } from '@astera/rules';
 import { eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { miningLaunchSchema, miningSchema } from '../../web/src/api/schemas.js';
@@ -20,7 +20,7 @@ describe('digging and salvage aboard', () => {
   beforeEach(async () => { world = await starterWorld(); });
   afterEach(async () => { await world.built.close(); });
 
-  const ready = async (modules: Record<string, number> = MINER, facts: ('FIRST_MINING_RETURN')[] = []) => {
+  const ready = async (modules: Record<string, number> = MINER, facts: VesselFact[] = []) => {
     const me = await aboard(world, 'Me', modules);
     await arm(world, me.vesselId, { PROSPECTOR: 2 });
     await world.f.db.update(vessels).set({ facts }).where(eq(vessels.id, me.vesselId));
@@ -71,6 +71,42 @@ describe('digging and salvage aboard', () => {
     expect(left!.alloy + left!.crystal + left!.deuterium).toBeLessThan(site.alloy + site.crystal + site.deuterium);
     const [mission] = await world.f.db.select().from(vesselMissions).where(eq(vesselMissions.ownerVesselId, me.vesselId));
     expect(mission!.status).toBe('DONE');
+  });
+
+  // Owner phone playtest 2026-11-19: the guided road waits for the first Prospector, so it is home within
+  // fifteen to twenty seconds however far its rock; later runs keep their own pace.
+  describe('the first run', () => {
+    /** The ship five hundred units from where the rock is now: a minute's flight out at the plain pace. */
+    const farFrom = async (vesselId: string, site: { id: string }) => {
+      const [galaxy] = await world.f.db.select().from(starterGalaxies);
+      const at = orbitPosition(starterAsteroidOrbit(orbitSeedOf(site.id)), (world.f.clock.now().getTime() - galaxy!.epoch.getTime()) / 60_000);
+      await world.f.db.update(vessels).set({ x: at.x + 500, y: at.y, z: at.z }).where(eq(vessels.id, vesselId));
+    };
+    const launch = async (headers: Record<string, string>, site: { id: string }) => {
+      const answer = await post(world, '/api/starter/mining/launch', headers, { asteroidId: opaque(site.id), craft: 1 });
+      expect(answer.statusCode).toBe(200);
+      return new Date(answer.json<{ arriveAt: string }>().arriveAt).getTime() - world.f.clock.now().getTime();
+    };
+
+    it('reaches its rock and comes home within the first trip\'s seconds', async () => {
+      const me = await ready();
+      const site = await rock();
+      await farFrom(me.vesselId, site);
+      expect(await launch(me.headers, site)).toBeLessThanOrEqual(STARTER.firstTrips.mineOut * 1000);
+      await pass(world, STARTER.firstTrips.mineOut / 60);
+      const [flight] = await world.f.db.select().from(vesselMissions).where(eq(vesselMissions.ownerVesselId, me.vesselId));
+      expect(flight!.status).toBe('RETURNING');
+      expect(flight!.returnAt!.getTime() - flight!.arriveAt.getTime()).toBeLessThanOrEqual(STARTER.firstTrips.mineBack * 1000);
+      await pass(world, STARTER.firstTrips.mineBack / 60);
+      expect((await ship(me.vesselId)).facts).toContain('FIRST_MINING_RETURN');
+    });
+
+    it('is the only one: a ship that has sent and brought home one flies at its own pace', async () => {
+      const me = await ready(MINER, ['FIRST_MINING_SENT', 'FIRST_MINING_RETURN']);
+      const site = await rock();
+      await farFrom(me.vesselId, site);
+      expect(await launch(me.headers, site)).toBeGreaterThan(30_000);
+    });
   });
 
   // The radar waits on the first send, so a ship that has yet to send one is never left with no rock in reach.

@@ -15,10 +15,15 @@ interface Pending { pending: { kind: string; id?: string; targetName: string; ar
 describe('traffic in this galaxy', () => {
   let world: StarterWorld;
   const contacts = async (headers: Record<string, string>) => (await get<Traffic>(world, '/api/starter/traffic', headers)).contacts;
+  /** Past its first report, so its probes fly at this galaxy's pace, not the guided road's first-trip cap. */
+  const seasoned = async <T extends { vesselId: string }>(ship: T): Promise<T> => {
+    await world.f.db.update(vessels).set({ facts: ['FIRST_PROBE_REPORT'] }).where(eq(vessels.id, ship.vesselId));
+    return ship;
+  };
   /** A probe crossing near `watcher`, flown between two others. */
   const flight = async (watcherModules: Record<string, number>, x: number) => {
     const watcher = await aboard(world, 'Watcher', { SURVEY: 1, ...watcherModules });
-    const sender = await aboard(world, 'Sender', { SURVEY: 1 });
+    const sender = await seasoned(await aboard(world, 'Sender', { SURVEY: 1 }));
     const target = await aboard(world, 'Target');
     await placeShip(world, watcher.vesselId, { x: 0 });
     await placeShip(world, sender.vesselId, { x, z: -600 });
@@ -71,7 +76,7 @@ describe('traffic in this galaxy', () => {
   it('draws a probe coming for you on your radar, and only there', async () => {
     const me = await aboard(world, 'Me', { RADAR: 1 });
     const blind = await aboard(world, 'Blind');
-    const sender = await aboard(world, 'Sender', { SURVEY: 1 });
+    const sender = await seasoned(await aboard(world, 'Sender', { SURVEY: 1 }));
     await placeShip(world, me.vesselId, { x: 0 });
     await placeShip(world, blind.vesselId, { x: 0, z: 900 });
     await placeShip(world, sender.vesselId, { x: 500 });

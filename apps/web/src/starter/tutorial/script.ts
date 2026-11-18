@@ -140,9 +140,9 @@ const orderStep = (id: TutorialStepId, module: string, stage: number, system: st
 const waitFor = (id: TutorialStepId, module: string, chapter: TutorialChapter): Step => ({ id, kind: 'wait', chapter, place: 'any', marks: [], reached: i => has(i, module, 1) });
 
 /**
- * THE FIRST SESSION'S ROAD (owner 2026-11-08, N12). The server opens these repairs in this order; a
- * flight never stops it, so the antenna goes on while the Prospector is out and the yard while the
- * probe is.
+ * THE FIRST SESSION'S ROAD (owner 2026-11-08, N12). The server opens these repairs in this order. The first
+ * Prospector and the first probe are waited for, each flown within fifteen to twenty seconds: going on while
+ * they flew, their return broke into the next steps (owner phone playtest 2026-11-19).
  */
 const FIRST_ROAD: Part = {
   strict: false,
@@ -158,12 +158,16 @@ const FIRST_ROAD: Part = {
     { id: 'zoomRock', kind: 'gesture', chapter: 6, place: 'galaxy', marks: [], satisfied: i => i.noRocks === true || i.rockOpen === true, reached: hasMined },
     { id: 'findRock', kind: 'press', chapter: 6, place: 'galaxy', marks: ['[data-guide="sight-rock"]', OBJECTIVE], satisfied: i => i.rockOpen === true, reached: hasMined },
     { id: 'mine', kind: 'press', chapter: 6, place: 'galaxy', marks: ['[data-guide="mine"]', OBJECTIVE], reached: hasMined },
+    // Watched home with its haul; nothing to wait for once no run is out (one called back).
+    { id: 'waitMine', kind: 'wait', chapter: 6, place: 'any', marks: [], satisfied: i => !i.mining, reached: i => i.facts.includes('FIRST_MINING_RETURN') },
     // The server opens the radar with the first send (owner playtest 2026-11-09): the telescope's lesson is behind it.
     orderStep('orderRadar', 'RADAR', 1, 'SURVEY', 3),
     waitFor('waitRadar', 'RADAR', 3),
     orderStep('orderSurvey', 'SURVEY', 1, 'SURVEY', 4),
     waitFor('waitSurvey', 'SURVEY', 4),
     { id: 'probe', kind: 'press', chapter: 4, place: 'galaxy', marks: ['[data-guide="probe"]', OBJECTIVE], satisfied: i => i.alone === true, reached: i => i.probing || i.facts.includes('FIRST_PROBE_REPORT') },
+    // Its report is read before the yard; nothing to wait for once no probe is out (a ship alone sent none).
+    { id: 'waitProbe', kind: 'wait', chapter: 4, place: 'any', marks: [], satisfied: i => !i.probing, reached: i => i.facts.includes('FIRST_PROBE_REPORT') },
     orderStep('orderShipyard', 'SHIPYARD', 1, 'CARGO', 5),
     waitFor('waitYard', 'SHIPYARD', 5),
     { id: 'buildShip', kind: 'press', chapter: 5, place: 'ship', marks: ['[data-commit] button', '[data-testid="yard-hull"][data-hull="DART"] button', '#ship-deck-yard'], satisfied: i => seasoned(i) || (!i.canBuildShip && !hasReady(i)) },

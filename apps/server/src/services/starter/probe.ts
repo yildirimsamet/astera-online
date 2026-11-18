@@ -1,5 +1,5 @@
 import {
-  PROBE, STARTER, bearingBetween, classReading, combatValue, computeLoot, detectChance, distance, fuzzBand, garrisonOf, moduleStage,
+  PROBE, STARTER, bearingBetween, firstTripMinutes, classReading, combatValue, computeLoot, detectChance, distance, fuzzBand, garrisonOf, moduleStage,
   partitionCombatFleet, repairProgress, seededFrom, travelExact, unarmedCount, vaultProtects, vesselEconomyInput,
   vesselProbeAccuracy, STARTER_PVP_BALANCE, fleetCount, type Fleet, type HpDamageLots,
 } from '@astera/rules';
@@ -53,7 +53,9 @@ export const launchVesselProbe = (db: Db, accountId: string, targetId: string, c
     }
     vessel.row = { ...vessel.row, alloy: vessel.row.alloy - PROBE.alloy, crystal: vessel.row.crystal - PROBE.crystal };
 
-    const flightMinutes = travelExact(distance(placeOf(vessel.row), target.at), STARTER.probeSpeed);
+    const plain = travelExact(distance(placeOf(vessel.row), target.at), STARTER.probeSpeed);
+    // The guided road waits for the first report: it is home within its cap, there and back (owner phone playtest 2026-11-19).
+    const flightMinutes = vessel.row.facts.includes('FIRST_PROBE_REPORT') ? plain : firstTripMinutes(plain, STARTER.firstTrips.probe / 2);
     const arriveAt = new Date(vessel.now.getTime() + flightMinutes * 60_000);
     const [mission] = await tx.insert(vesselMissions).values({
       starterGalaxyId: vessel.row.starterGalaxyId,
