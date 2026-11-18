@@ -416,14 +416,20 @@ describe('the five systems, as the ship screen counts them', () => {
   });
 
   it('does not count an optional repair', () => {
-    const progress: VesselProgress = { ...openingProgress(), modules: { SURVEY: 3 } };
-    expect(systemProgress(progress, 'SURVEY')).toEqual({ done: 1, total: 1 });
+    const progress: VesselProgress = { ...openingProgress(), modules: { RADAR: 1, SURVEY: 3 } };
+    expect(systemProgress(progress, 'SURVEY')).toEqual({ done: 2, total: 2 });
   });
 
-  it('counts the telescope and the radar on the defence, and leaves the shield to the player', () => {
-    expect(systemProgress(openingProgress(), 'DEFENCE')).toEqual({ done: 0, total: 2 });
-    expect(systemProgress({ ...openingProgress(), modules: { AEGIS: 1 } }, 'DEFENCE')).toEqual({ done: 0, total: 2 });
-    expect(systemProgress({ ...openingProgress(), modules: { TELESCOPE: 1, RADAR: 1 } }, 'DEFENCE')).toEqual({ done: 2, total: 2 });
+  it('counts the telescope on the defence, and leaves the shield to the player', () => {
+    expect(systemProgress(openingProgress(), 'DEFENCE')).toEqual({ done: 0, total: 1 });
+    expect(systemProgress({ ...openingProgress(), modules: { AEGIS: 1 } }, 'DEFENCE')).toEqual({ done: 0, total: 1 });
+    expect(systemProgress({ ...openingProgress(), modules: { TELESCOPE: 1, RADAR: 1 } }, 'DEFENCE')).toEqual({ done: 1, total: 1 });
+  });
+
+  it('mends the radar on the survey antenna, beside the probe launcher (owner 2026-11-18, item 9)', () => {
+    expect(REPAIR_LADDER.filter(s => s.module === 'RADAR').map(s => s.system)).toEqual(['SURVEY', 'SURVEY', 'SURVEY']);
+    expect(systemProgress(openingProgress(), 'SURVEY')).toEqual({ done: 0, total: 2 });
+    expect(systemProgress({ ...openingProgress(), modules: { RADAR: 1 } }, 'SURVEY')).toEqual({ done: 1, total: 2 });
   });
 
   it('finishes every system on a finished ship', () => {

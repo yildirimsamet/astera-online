@@ -77,10 +77,10 @@ Her adım TDD ile yapılır: önce kırmızı test, sonra kod, sonra yeşil. Ard
 | Y | bitti | 25934b22: sahne bekleme süresi ve eski sahnelerin düşmesi (16), onarım yakınlaşması bitene kadar (4), rapor turu 8 sn (2). |
 | R | bitti | 983a06fa toplama çerçevesi iki hap (3) · a1642765 gezegen kilidi, ad değil (14) · c91e79db rapor Devam'da kart kapanır (12) · 56c20a7d sonda kartı (10). |
 | K | bitti | 3ac04c25 Tersane 30 sn (11) · f57cfd6f prolog yanma 3 sn, sensörde 3 basış (1). |
-| E | bitti | 41757904 hediye satırı ve yanaşan gemiler (8) · 71c38e26 teleskop küresi (7, madde 19 ile değişecek) · fc221d37 alaşım/kristal renkleri (6). |
-| G | sürüyor | a943a347 hero onarım anı ve ONAR'a kaydırma (5) · sıçrama kartı (13) sürüyor. |
-| Ö | sırada | |
-| A | karar: seçenek A | |
+| E | bitti | 41757904 hediye satırı ve yanaşan gemiler (8) · 71c38e26 teleskop küresi (7; 19 ile yerini gerçek menzil aldı) · fc221d37 alaşım/kristal renkleri (6). |
+| G | bitti | a943a347 hero onarım anı ve ONAR'a kaydırma (5) · 1f1374b0 sıçrama kartı, "Sıçramayı göster", acele yok satırı (13). |
+| Ö | bitti | 772f1603 önce onarım ödülü ("Ödülü al"), sonra pano; "Tümünü al · 7" ve "Yükselt" kalktı; kit renkleri, kısa ekrana sığma, canlı kutular (15). |
+| A | bitti | Radar Keşif sistemine geçti (Radar 1–3), modeldeki anteni onarır ve süpürmesi orada döner; "Keşif anteni" modülü "Sonda rampası" oldu (6 dil); Savunma'da teleskop + Aegis kaldı; bekleme ve seyir defteri satırları buna göre (9). |
 
 ## 7. İkinci tur (owner 2026-11-18, oynarken)
 
@@ -94,4 +94,16 @@ Her adım TDD ile yapılır: önce kırmızı test, sonra kod, sonra yeşil. Ard
 | 22 | Galaksideki "SIRADAKİ · Radar >" satırı yeni UI kitine göre tasarlansın. | `ObjectiveLine`. |
 
 **Sıra:** G'nin kalanı (13) → 18 → S grubu (17, 19, 20, 21) → 22 → Ö (15) → A (9).
+
+### §7 ilerleme
+
+| # | Durum | Commit / not |
+|---|---|---|
+| 17 | bitti | 2b50e514 sahne 1 sn basılı tutarak geçilir, bant sayacı dolar. |
+| 18 | bitti | 321722a1 Teleskop 1 ve Radar 1 5 sn, Tersane 1 10 sn. |
+| 19 | bitti | eb014b1e, e44ccfc6 kamera gemiden 11 birime çekilir, 500 ms sonra gerçek teleskop küresi açılır; çizgi küre silindi. |
+| 20 | bitti | bbcdce80 yaklaşma adımı yönetmen çekiminden sonra da sorulur; kayanın sayfası dokunuştan 500 ms sonra açılır. |
+| 21 | bitti | bbcdce80 sonda hedefinin sayfası kamera vardıktan 500 ms sonra (1 sn) açılır. |
+| 22 | bitti | ac3f98ea SIRADAKİ satırı kitin şeridi: kesik plaka, sikke, etiket, açma oku. |
+| — | düzeltme | 1a119ab8 veda ve gemi satırları 12 kelime sınırına indi (8, 13'ün gerilemesi). |
 

@@ -153,7 +153,9 @@ describe('the lights aboard', () => {
   it('lights a system as far as its first-loop repairs go', () => {
     expect(vesselLights({ ...openingProgress(), modules: { REFINERY: 1 } }).REFINERY).toBeCloseTo(1 / 3);
     expect(vesselLights({ ...openingProgress(), modules: { REFINERY: 2, EXTRACTOR: 1 } }).REFINERY).toBe(1);
-    expect(vesselLights({ ...openingProgress(), modules: { TELESCOPE: 1 } }).DEFENCE).toBe(0.5);
+    expect(vesselLights({ ...openingProgress(), modules: { TELESCOPE: 1 } }).DEFENCE).toBe(1);
+    // The radar mends the antenna (owner 2026-11-18, item 9): half the survey bay.
+    expect(vesselLights({ ...openingProgress(), modules: { RADAR: 1 } }).SURVEY).toBe(0.5);
   });
 });
 

@@ -14,10 +14,10 @@ import { wireVessel } from './starterVesselFixture.js';
 beforeEach(() => { localStorage.clear(); resetDirector(); });
 afterEach(() => { cleanup(); resetDirector(); document.querySelectorAll('[data-loading-screen]').forEach((node) => { node.remove(); }); });
 
-function show(onAwaken: () => void) {
+function show(onAwaken: () => void, unlockToAnnounce = 'intel') {
   const api = new Api({ fetch: () => Promise.resolve(new Response('{}', { status: 404 })), authTransport: null });
   render(<QueryClientProvider client={new QueryClient()}><ApiProvider api={api}><ToastProvider>
-    <UnlockMoment vessel={vesselSchema.parse(wireVessel({ unlockToAnnounce: 'intel' }))} overGalaxy onAwaken={onAwaken} />
+    <UnlockMoment vessel={vesselSchema.parse(wireVessel({ unlockToAnnounce }))} overGalaxy onAwaken={onAwaken} />
   </ToastProvider></ApiProvider></QueryClientProvider>);
 }
 
@@ -28,6 +28,13 @@ describe('a system coming back on the galaxy', () => {
     show(awaken);
     await waitFor(() => { expect(awaken).toHaveBeenCalledWith('SURVEY'); });
     expect(awaken).toHaveBeenCalledTimes(1);
+  });
+
+  // Owner 2026-11-18, item 9: the radar mends the antenna, so its sweep runs there.
+  it('wakes the antenna for the radar', async () => {
+    const awaken = vi.fn();
+    show(awaken, 'radar');
+    await waitFor(() => { expect(awaken).toHaveBeenCalledWith('SURVEY', 'RADAR'); });
   });
 
   it('takes the player to what opened when "Try it" is pressed', () => {

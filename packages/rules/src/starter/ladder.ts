@@ -80,7 +80,8 @@ export const REPAIR_LADDER: readonly RepairStep[] = [
   step('REFINERY', 'EXTRACTOR', 1, 44, 33, seconds(5), true, [needs('REFINERY', 2)]),
   step('DEFENCE', 'TELESCOPE', 1, 250, 150, seconds(5), true, [needs('EXTRACTOR', 1)], { fleet: { PROSPECTOR: 1 } }),
   // Not before the telescope's lesson is over: a Prospector sent to a rock (owner playtest 2026-11-09).
-  step('DEFENCE', 'RADAR', 1, 200, 120, seconds(5), true, [needs('TELESCOPE', 1), fact('FIRST_MINING_SENT')]),
+  // The radar mends the antenna on the hull, beside the probe launcher (owner 2026-11-18, item 9).
+  step('SURVEY', 'RADAR', 1, 200, 120, seconds(5), true, [needs('TELESCOPE', 1), fact('FIRST_MINING_SENT')]),
   step('SURVEY', 'SURVEY', 1, 250, 120, seconds(30), true, [needs('RADAR', 1)]),
   // Owner, phone playtest 2026-11-18 (item 11): a minute was too long for the last repair of the guided road.
   step('CARGO', 'SHIPYARD', 1, 800, 300, seconds(10), true, [needs('SURVEY', 1)], { fleet: { DART: 2 } }),
@@ -108,8 +109,8 @@ export const REPAIR_LADDER: readonly RepairStep[] = [
   step('CARGO', 'HANGAR', 3, 2000, 700, 180, false, [needs('EXTRACTOR', 2)]),
   step('DEFENCE', 'TELESCOPE', 2, 1500, 1100, 120, false, [needs('EXTRACTOR', 2)]),
   step('DEFENCE', 'TELESCOPE', 3, 2600, 1900, 240, false, [needs('EXTRACTOR', 3)]),
-  step('DEFENCE', 'RADAR', 2, 1000, 760, 120, false, [needs('EXTRACTOR', 2)]),
-  step('DEFENCE', 'RADAR', 3, 1800, 1300, 180, false, [needs('EXTRACTOR', 2)]),
+  step('SURVEY', 'RADAR', 2, 1000, 760, 120, false, [needs('EXTRACTOR', 2)]),
+  step('SURVEY', 'RADAR', 3, 1800, 1300, 180, false, [needs('EXTRACTOR', 2)]),
   step('DEFENCE', 'AEGIS', 2, 504, 379, 90, false),
 ];
 

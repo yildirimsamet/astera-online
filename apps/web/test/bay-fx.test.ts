@@ -19,7 +19,7 @@ describe('what a bay does when its system comes back', () => {
   */
   it('gives the telescope no bay effect, its reach is its return, and leaves the radar its sweep', () => {
     expect(bayReturnOf('DEFENCE', 'TELESCOPE')).toBeNull();
-    expect(bayReturnOf('DEFENCE', 'RADAR')).toBe('sweep');
+    expect(bayReturnOf('SURVEY', 'RADAR')).toBe('sweep');
     expect(bayReturnOf('DEFENCE')).toBe('sweep');
     expect(bayReturnOf('REFINERY', 'EXTRACTOR')).toBe('burner');
   });

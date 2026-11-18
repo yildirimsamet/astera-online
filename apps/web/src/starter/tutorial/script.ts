@@ -151,7 +151,7 @@ const FIRST_ROAD: Part = {
     { id: 'findRock', kind: 'press', chapter: 6, place: 'galaxy', marks: ['[data-guide="sight-rock"]', OBJECTIVE], satisfied: i => i.rockOpen === true, reached: hasMined },
     { id: 'mine', kind: 'press', chapter: 6, place: 'galaxy', marks: ['[data-guide="mine"]', OBJECTIVE], reached: hasMined },
     // The server opens the radar with the first send (owner playtest 2026-11-09): the telescope's lesson is behind it.
-    orderStep('orderRadar', 'RADAR', 1, 'DEFENCE', 3),
+    orderStep('orderRadar', 'RADAR', 1, 'SURVEY', 3),
     waitFor('waitRadar', 'RADAR', 3),
     orderStep('orderSurvey', 'SURVEY', 1, 'SURVEY', 4),
     waitFor('waitSurvey', 'SURVEY', 4),

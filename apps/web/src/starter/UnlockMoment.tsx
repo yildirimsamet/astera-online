@@ -14,7 +14,7 @@ import { unlockHeld, watchUnlockHold } from './tutorial/unlockHold.js';
 /** The system whose repair brought the feature back: the bay that lights up on the ship. */
 export const FEATURE_SYSTEM: Record<StarterFeature, VesselSystem> = {
   production: 'REFINERY', intel: 'SURVEY', fleet: 'CARGO', chat: 'SURVEY', salvage: 'CARGO', research: 'CARGO',
-  telescope: 'DEFENCE', radar: 'DEFENCE', defence: 'DEFENCE', attack: 'DEFENCE', deuterium: 'REFINERY',
+  telescope: 'DEFENCE', radar: 'SURVEY', defence: 'DEFENCE', attack: 'DEFENCE', deuterium: 'REFINERY',
   migration: 'DRIVE',
 };
 

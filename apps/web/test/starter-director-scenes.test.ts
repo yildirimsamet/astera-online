@@ -59,7 +59,7 @@ describe('the scenes a ship calls for', () => {
     const [done] = scenesFor(before, after, name);
     expect(done?.id).toBe('repair:RADAR:1:done');
     expect(done?.beats.map(beat => beat.line)).toEqual(['starter.director.repair.RADAR', 'starter.director.hull.PATCHED']);
-    expect(done?.beats[0]?.shot).toEqual({ kind: 'bay', system: 'DEFENCE' });
+    expect(done?.beats[0]?.shot).toEqual({ kind: 'bay', system: 'SURVEY' });
     expect(done?.beats[1]?.shot.kind).toBe('ship');
   });
 

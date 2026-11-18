@@ -113,7 +113,7 @@ describe('a queued repair, on the surfaces that list orders', () => {
   });
 
   it('names a module only a ship has', () => {
-    expect(buildOrderLabel(order('SURVEY'))).toBe('Survey antenna');
+    expect(buildOrderLabel(order('SURVEY'))).toBe('Probe launcher');
   });
 
   it('keeps the main name for a module the main game has', () => {
@@ -127,7 +127,7 @@ describe('a queued repair, on the surfaces that list orders', () => {
 
 describe('what a locked tab says', () => {
   it('names the repair', () => {
-    expect(tabLockLine({ kind: 'repair', module: 'SURVEY' })).toContain('Survey antenna');
+    expect(tabLockLine({ kind: 'repair', module: 'SURVEY' })).toContain('Probe launcher');
   });
 
   it('promises the clan for the main galaxy', () => {

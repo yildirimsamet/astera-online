@@ -91,7 +91,7 @@ describe('the road through the first session (N12)', () => {
 
   it('asks for the radar once the Prospector has been sent, and waits for it before the antenna', () => {
     const sent = { EXTRACTOR: 1, TELESCOPE: 1 };
-    expect(at(onRoad(sent, { mining: true }))).toMatchObject({ id: 'orderRadar', marks: marksOf('RADAR', 1, 'DEFENCE') });
+    expect(at(onRoad(sent, { mining: true }))).toMatchObject({ id: 'orderRadar', marks: marksOf('RADAR', 1, 'SURVEY') });
     expect(at(onRoad(sent, { mining: true, queue: [order('RADAR', 1)] }))).toMatchObject({ id: 'waitRadar', step: 'wait' });
     expect(id(onRoad({ ...sent, RADAR: 1 }, { mining: true }))).toBe('orderSurvey');
   });

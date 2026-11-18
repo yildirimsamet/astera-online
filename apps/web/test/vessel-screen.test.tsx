@@ -291,14 +291,15 @@ describe('the ship screen', () => {
       show(vessel());
       fireEvent.click(tab(/survey antenna/i));
       expect(tab(/survey antenna/i).getAttribute('aria-selected')).toBe('true');
-      expect(within(screen.getByTestId('next-repair')).getAllByText('Survey antenna').length).toBeGreaterThan(0);
+      // The radar mends the antenna (owner 2026-11-18, item 9): it is the system's first repair.
+      expect(within(screen.getByTestId('next-repair')).getByRole('heading', { name: 'Radar' })).toBeTruthy();
     });
 
     it('say what a closed system needs, by name, and offer no button', () => {
       show(vessel());
       fireEvent.click(tab(/survey antenna/i));
       const card = within(screen.getByTestId('next-repair'));
-      expect(card.getByTestId('repair-missing').textContent).toMatch(/Radar/);
+      expect(card.getByTestId('repair-missing').textContent).toMatch(/Telescope/);
       expect(card.queryByRole('button', { name: 'Repair' })).toBeNull();
     });
 
@@ -307,13 +308,13 @@ describe('the ship screen', () => {
       show(vessel());
       fireEvent.click(tab(/survey antenna/i));
       const card = within(screen.getByTestId('next-repair'));
-      expect(card.getByTestId('repair-missing').textContent).toMatch(/^First: Radar/u);
+      expect(card.getByTestId('repair-missing').textContent).toMatch(/^First: Telescope/u);
       fireEvent.click(card.getByRole('button', { name: 'Show' }));
       expect(tab(/defence systems/i).getAttribute('aria-selected')).toBe('true');
       const there = within(screen.getByTestId('next-repair'));
-      expect(there.getByRole('heading', { name: 'Radar' })).toBeTruthy();
-      // The radar waits on the telescope and on a flight: one more step back, then the deed it needs.
-      expect(there.getByTestId('repair-missing').textContent).toMatch(/Telescope/u);
+      expect(there.getByRole('heading', { name: 'Telescope' })).toBeTruthy();
+      // The telescope waits on the crystal works: one more step back.
+      expect(there.getByTestId('repair-missing').textContent).toMatch(/Crystal/u);
     });
 
     it('mark a system nothing can be done on yet as locked', () => {
@@ -335,7 +336,8 @@ describe('the ship screen', () => {
     it('are all there to look at, done and to come', () => {
       show(vessel());
       fireEvent.click(tab(/survey antenna/i));
-      expect(strip().getAllByRole('button')).toHaveLength(3);
+      // Radar 1–3 and the probe launcher 1–3 (item 9).
+      expect(strip().getAllByRole('button')).toHaveLength(6);
     });
 
     it('open on the card when pressed, optional ones marked', () => {
@@ -473,7 +475,7 @@ describe('the ship screen', () => {
   it('tells them to go and do the thing when a repair waits on an event, not on money', () => {
     const progress: VesselProgress = {
       ...openingProgress(),
-      modules: { REFINERY: 4, EXTRACTOR: 3, SURVEY: 1, VAULT: 1, SHIPYARD: 1, TELESCOPE: 1, RADAR: 1, AEGIS: 1, DEUTERIUM_PLANT: 2 },
+      modules: { REFINERY: 4, EXTRACTOR: 3, SURVEY: 1, VAULT: 1, SHIPYARD: 1, TELESCOPE: 1, RADAR: 3, AEGIS: 1, DEUTERIUM_PLANT: 2 },
     };
     show(vessel({ progress, alloy: 5000, crystal: 5000 }));
     // Past the first loop the antenna's next repair is a choice, and it waits on a probe report.
@@ -586,14 +588,17 @@ describe('what a system shows', () => {
   // Owner playtest 2026-11-08: the card showed Antenna 2 while Antenna 1 was the one being built.
   it('stays on the stage under way rather than jumping to the next one of that machine', () => {
     const survey = REPAIR_LADDER.find(s => s.module === 'SURVEY' && s.stage === 1)!;
-    const ahead = { ...opening, modules: { ...opening.modules, SURVEY: 1 } };
+    const ahead = { ...opening, modules: { ...opening.modules, RADAR: 1, SURVEY: 1 } };
     expect(cardStep('SURVEY', ahead, [survey])).toMatchObject({ module: 'SURVEY', stage: 1 });
   });
 
+  // Owner 2026-11-18, item 9: the radar mends the antenna, so it is the survey system's first repair.
   it('goes on to another machine, which can be ordered while this one runs', () => {
-    const telescope = REPAIR_LADDER.find(s => s.module === 'TELESCOPE' && s.stage === 1)!;
-    const ahead = { ...opening, modules: { ...opening.modules, EXTRACTOR: 1, REFINERY: 2, TELESCOPE: 1 } };
-    expect(cardStep('DEFENCE', ahead, [telescope])).toMatchObject({ module: 'RADAR', stage: 1 });
+    const radar = REPAIR_LADDER.find(s => s.module === 'RADAR' && s.stage === 1)!;
+    const sent: VesselProgress = { ...opening, modules: { ...opening.modules, EXTRACTOR: 1, REFINERY: 2, TELESCOPE: 1 }, facts: ['FIRST_MINING_SENT'] };
+    expect(cardStep('SURVEY', sent, [])).toMatchObject({ module: 'RADAR', stage: 1 });
+    const ahead: VesselProgress = { ...sent, modules: { ...sent.modules, RADAR: 1 } };
+    expect(cardStep('SURVEY', ahead, [radar])).toMatchObject({ module: 'SURVEY', stage: 1 });
   });
 
   it('picks the repair that can be ordered now, before those it cannot', () => {
@@ -601,7 +606,7 @@ describe('what a system shows', () => {
   });
 
   it('falls back to the first still to come when none can be ordered', () => {
-    expect(pickStep('SURVEY', opening)).toMatchObject({ module: 'SURVEY', stage: 1 });
+    expect(pickStep('SURVEY', opening)).toMatchObject({ module: 'RADAR', stage: 1 });
   });
 
   it('prefers a repair the jump needs over an optional one', () => {

@@ -61,7 +61,7 @@ describe('what a ship is told', () => {
   const say = (kind: string, payload: unknown) => describeNotification({ id: 'n', kind, payload, seen: false, at }, at.getTime());
 
   it('names the repair that finished', () => {
-    expect(say('REPAIR_DONE', { module: 'SURVEY', stage: 1 })).toContain('Survey');
+    expect(say('REPAIR_DONE', { module: 'SURVEY', stage: 1 })).toContain('Probe launcher');
   });
 
   it('says a probe report is in, and where from', () => {
