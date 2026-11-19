@@ -489,7 +489,9 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
     const body = z.object({
       originPlanetId: z.string().uuid(),
       level: BOMB_LEVEL,
-      target: z.object({ kind: z.enum(['PLANET', 'MONUMENT']), id: z.string().uuid() }).strict(),
+      target: z.object({ kind: z.enum(['PLANET', 'MONUMENT']), id: z.string().uuid(),
+        /** Ay S45: the world's moon instead of its planet. */
+        body: z.enum(['PLANET', 'MOON']).optional() }).strict(),
       acknowledgeShieldLoss: z.boolean().optional(),
     }).strict().parse(req.body);
     const key = z.string().min(8).max(128).parse(req.headers['idempotency-key']);

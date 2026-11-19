@@ -1,5 +1,5 @@
 import { and, asc, eq, gt, gte, inArray, isNull, lt, lte, or } from 'drizzle-orm';
-import { hpRadiationApplies, TRAVEL, type HpRadiationSource } from '@astera/rules';
+import { hpRadiationApplies, TRAVEL, type HpRadiationSource, type WorldBody } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
 import { hpRadiationSources, monuments, seasons } from '../db/schema.js';
 import { monumentMotionStart, motionOfMonument } from './monumentMotion.js';
@@ -23,10 +23,11 @@ function sourceWindows(row: typeof hpRadiationSources.$inferSelect, cutover?: Da
 }
 
 /** Parked fleets only need their own target's overlapping history, served by its index. */
+/** A world's moon is its own target (Ay S45): every reader sees the planet's sources unless it asks for the moon's. */
 export async function hpSourcesForTarget(tx: Queryable, season: typeof seasons.$inferSelect,
-  target: { kind: 'PLANET' | 'MONUMENT'; id: string }, from: Date, until: Date): Promise<HpRadiationSource[]> {
+  target: { kind: 'PLANET' | 'MONUMENT'; id: string }, from: Date, until: Date, body: WorldBody = 'PLANET'): Promise<HpRadiationSource[]> {
   const rows = await tx.select().from(hpRadiationSources).where(and(eq(hpRadiationSources.seasonId, season.id),
-    eq(hpRadiationSources.anchorKind, target.kind), eq(hpRadiationSources.anchorId, target.id),
+    eq(hpRadiationSources.anchorKind, target.kind), eq(hpRadiationSources.anchorId, target.id), eq(hpRadiationSources.body, body),
     lt(hpRadiationSources.activeFrom, until), or(isNull(hpRadiationSources.activeUntil), gt(hpRadiationSources.activeUntil, from))));
   return targetSourcesFrom(season, rows);
 }
@@ -55,7 +56,9 @@ interface HpSourceScope {
 export async function hpSourcesForSeason(tx: Queryable, seasonId: string, scope: HpSourceScope = {}): Promise<HpRadiationSource[]> {
   const [season] = await tx.select().from(seasons).where(eq(seasons.id, seasonId));
   if (!season) return [];
+  // A moon's sources wear only the moon's standing ships (Ay S45); no flight or monument passes through them.
   const rows = await tx.select().from(hpRadiationSources).where(and(eq(hpRadiationSources.seasonId, seasonId),
+    eq(hpRadiationSources.body, 'PLANET'),
     scope.from === undefined ? undefined : or(isNull(hpRadiationSources.activeUntil), gt(hpRadiationSources.activeUntil, scope.from)),
     scope.until === undefined ? undefined : lt(hpRadiationSources.activeFrom, scope.until),
     scope.targets === undefined ? undefined : or(eq(hpRadiationSources.origin, 'ENVIRONMENT'),

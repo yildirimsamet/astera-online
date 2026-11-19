@@ -912,7 +912,7 @@ export async function resolveTransfer(
   }
   await clearReservedFleet(tx, mission);
   const onMoon = fleetCount(staying) > 0 && landingBodyOf(mission) === 'MOON'
-    && await landOnMoon(tx, { planetId: target.id, ownerPlayerId: mission.ownerPlayerId, fleet: staying, damage: damageWithin(staying) });
+    && await landOnMoon(tx, { planetId: target.id, ownerPlayerId: mission.ownerPlayerId, fleet: staying, damage: damageWithin(staying), at: now });
   if (fleetCount(staying) > 0 && !onMoon) {
     await landShips(tx, {
       planetId: target.id,

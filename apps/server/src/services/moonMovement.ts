@@ -18,6 +18,7 @@ import type { Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import { missions, moonMoves, moons, notifications, planets, units } from '../db/schema.js';
 import { publish, publishShard } from '../stream/bus.js';
+import { settlePlanetRadiationAt } from './planetRadiation.js';
 import { schedule } from '../worker/queue.js';
 import { arrivalPending, assertNoArrivalPending, readHomeHealth, selectHomeDispatch, writeHomeHealth } from './homeHealth.js';
 import { assertMoonTarget, seasonHasMoons } from './moon.js';
@@ -117,6 +118,8 @@ export async function landMoonMove(tx: Tx, moveId: string, now: Date): Promise<v
   }
 
   await tx.delete(units).where(and(eq(units.planetId, move.toPlanetId), eq(units.location, hopLocation(move.id))));
+  // The world's dose is closed first, so ships just landing pay only from now (Ay S45).
+  await settlePlanetRadiationAt(tx, landingPlanetId, now);
   await placeAt(tx, landingPlanetId, move.ownerPlayerId, bodyLocation(destination), move.fleet, move.damage);
   await tx.update(moonMoves).set({ status }).where(eq(moonMoves.id, move.id));
   await publishWatchChanges(tx, [...new Set([move.toPlanetId, landingPlanetId])]);
@@ -139,9 +142,11 @@ export async function moonDockRoom(tx: Queryable, planetId: string): Promise<num
  * Station: the wounded keep their wounds up there.
  */
 export async function landOnMoon(
-  tx: Tx, input: { planetId: string; ownerPlayerId: string; fleet: Fleet; damage: readonly HpDamageLot[] | null },
+  tx: Tx, input: { planetId: string; ownerPlayerId: string; fleet: Fleet; damage: readonly HpDamageLot[] | null; at: Date },
 ): Promise<boolean> {
   if (hangarLoad(input.fleet) > await moonDockRoom(tx, input.planetId)) return false;
+  // The moon's dose is closed first, so the ships landing pay only from now (Ay S45).
+  await settlePlanetRadiationAt(tx, input.planetId, input.at);
   await placeAt(tx, input.planetId, input.ownerPlayerId, MOON_LOCATION, input.fleet, input.damage ?? []);
   return true;
 }
@@ -350,6 +355,7 @@ async function finishJump(tx: Tx, move: MoonMove, now: Date): Promise<void> {
   const selected = selectHomeDispatch(standing.fleet, standing.damage, moved);
   await setUnits(tx, move.fromPlanetId, subtract(standing.fleet, moved), MOON_LOCATION, move.ownerPlayerId);
   await writeHomeHealth(tx, move.fromPlanetId, selected.remaining, selected.remainingDamage, 'MOON');
+  await settlePlanetRadiationAt(tx, move.toPlanetId, now);
   await placeAt(tx, move.toPlanetId, move.ownerPlayerId, MOON_LOCATION, moved, selected.selectedDamage);
   await settle('LANDED', selected.selectedDamage);
   // The arrival flash, for everybody (S32).

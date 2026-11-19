@@ -2403,6 +2403,8 @@ export const hpRadiationSources = pgTable('hp_radiation_sources', {
   seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
   anchorKind: text('anchor_kind').$type<'ZONE' | 'PLANET' | 'MONUMENT'>().notNull(),
   anchorId: uuid('anchor_id'),
+  /** Ay S45: a PLANET-anchored source wears the planet's ships or, as MOON, only its moon's. */
+  body: text('body').$type<WorldBody>().notNull().default('PLANET'),
   x: doublePrecision('x').notNull(),
   y: doublePrecision('y').notNull(),
   z: doublePrecision('z').notNull(),
@@ -2434,6 +2436,7 @@ export const hpRadiationSources = pgTable('hp_radiation_sources', {
   check('hp_radiation_sources_level_check', sql`${t.radiationLevel} IS NULL OR (${t.radiationLevel} IN (1, 2, 3) AND ${t.mode} = 'EMIT')`),
   check('hp_radiation_sources_origin_check', sql`(${t.origin} = 'ENVIRONMENT' AND ${t.bombFlightId} IS NULL)
     OR (${t.origin} = 'BOMB' AND ${t.mode} = 'EMIT' AND ${t.radiationLevel} IS NOT NULL AND ${t.anchorKind} <> 'ZONE' AND ${t.activeUntil} IS NOT NULL)`),
+  check('hp_radiation_sources_body_check', sql`${t.body} = 'PLANET' OR (${t.body} = 'MOON' AND ${t.anchorKind} = 'PLANET')`),
   check('hp_radiation_sources_anchor_check', sql`(${t.anchorKind} = 'ZONE' AND ${t.anchorId} IS NULL)
     OR (${t.anchorKind} IN ('PLANET', 'MONUMENT') AND ${t.anchorId} IS NOT NULL)`),
   check('hp_radiation_sources_window_check', sql`${t.activeUntil} IS NULL OR ${t.activeUntil} >= ${t.activeFrom}`),
@@ -2457,6 +2460,8 @@ export const radiationBombFlights = pgTable('radiation_bomb_flights', {
   ownerPlayerId: uuid('owner_player_id').notNull().references(() => players.id),
   originPlanetId: uuid('origin_planet_id').notNull().references(() => planets.id),
   targetKind: text('target_kind').$type<'PLANET' | 'MONUMENT'>().notNull(),
+  /** Ay S45: a bomb on a world hits its planet or its moon, never both. */
+  targetBody: text('target_body').$type<WorldBody>().notNull().default('PLANET'),
   targetPlanetId: uuid('target_planet_id').references(() => planets.id),
   targetMonumentId: uuid('target_monument_id').references(() => monuments.id),
   level: integer('level').$type<RadiationBombLevel>().notNull(),
@@ -2479,6 +2484,7 @@ export const radiationBombFlights = pgTable('radiation_bomb_flights', {
   check('radiation_bomb_flights_level_check', sql`${t.level} IN (1, 2, 3)`),
   check('radiation_bomb_flights_target_check', sql`(${t.targetKind} = 'PLANET' AND ${t.targetPlanetId} IS NOT NULL AND ${t.targetMonumentId} IS NULL)
     OR (${t.targetKind} = 'MONUMENT' AND ${t.targetMonumentId} IS NOT NULL AND ${t.targetPlanetId} IS NULL)`),
+  check('radiation_bomb_flights_body_check', sql`${t.targetBody} = 'PLANET' OR (${t.targetBody} = 'MOON' AND ${t.targetKind} = 'PLANET')`),
   check('radiation_bomb_flights_status_check', sql`${t.status} IN ('OUTBOUND', 'HIT', 'INTERCEPTED', 'INEFFECTIVE')`),
   check('radiation_bomb_flights_window_check', sql`${t.arriveAt} > ${t.departAt}`),
   check('radiation_bomb_flights_resolution_check', sql`(${t.status} = 'OUTBOUND' AND ${t.resolvedAt} IS NULL)

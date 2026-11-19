@@ -1844,7 +1844,7 @@ async function settleReturn(
     its dock has room and the world is still the commander's; anything else comes down on the planet.
   */
   const toMoon = landingBodyOf(mission) === 'MOON' && destinationPlanetId === homePlanetId
-    && await landOnMoon(tx, { planetId: destinationPlanetId, ownerPlayerId: mission.ownerPlayerId, fleet: returning, damage: flown.damage });
+    && await landOnMoon(tx, { planetId: destinationPlanetId, ownerPlayerId: mission.ownerPlayerId, fleet: returning, damage: flown.damage, at });
   // The Repair Station judges whatever the wing carried out of its battle. Kalıcı gemi hasarı.
   const dockReport = toMoon ? { autoRepaired: [], docked: [] } : await landShips(tx, {
     planetId: destinationPlanetId,
