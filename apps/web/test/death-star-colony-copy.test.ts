@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ApiError } from '../src/api/client.js';
-import type { NotificationView } from '../src/api/schemas.js';
+import { reportsSchema, type NotificationView } from '../src/api/schemas.js';
 import { describeError } from '../src/i18n/errors.js';
 import i18n from '../src/i18n/index.js';
 import { describeNotification } from '../src/lib/notifications.js';
@@ -75,5 +75,32 @@ describe('the battery refusals, in the player’s language', () => {
     expect(said).toMatch(/Radar/);
     expect(said).toMatch(/3/);
     expect(said).not.toMatch(/Raise the Radar first/);
+  });
+});
+
+/** Ay F7 (S19, S35): a Death Star aimed at a moon cracks it or breaks it; the bell and the report say which. */
+describe('a Death Star on a moon, in the bell', () => {
+  it('says the moon cracked and its gate and scan are shut', () => {
+    const line = say('death_star_result', { outcome: 'MOON_CRACKED', targetPlanetId: 'p9' });
+    expect(line).toMatch(/moon cracked/i);
+    expect(line).toMatch(/3 hours/i);
+  });
+
+  it('says the moon broke apart', () => {
+    expect(say('death_star_result', { outcome: 'MOON_DESTROYED', targetPlanetId: 'p9' })).toMatch(/moon broke apart/i);
+  });
+});
+
+describe('a Death Star on a moon, in the reports', () => {
+  it('reads a cracked and a broken moon', () => {
+    const base = {
+      kind: 'STRATEGIC', id: 'r1', missionId: 'm1', at: AT.toISOString(), attacking: true, opponentName: 'Vela',
+      opponentPlanet: 'Vela-3', opponentPlanetId: 'p9', yourPlanet: 'Home', damage: 0, destroyedFleet: {},
+      destroyedResources: { alloy: 0, crystal: 0, deuterium: 0 }, levelChanges: [], destroyedOrders: [],
+      shieldDestroyed: 0, loyalty: null, trigger: null,
+    };
+    for (const outcome of ['MOON_CRACKED', 'MOON_DESTROYED']) {
+      expect(reportsSchema.shape.reports.element.safeParse({ ...base, outcome }).success, outcome).toBe(true);
+    }
   });
 });

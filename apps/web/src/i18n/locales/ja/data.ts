@@ -614,6 +614,8 @@ export const notifications = {
     FIRST_STRIKE: "EMP 衝撃 · イージス が排出されました。地上防衛は1時間オフライン",
     CAPTURED: "デス・スター 衝撃・コロニー捕獲",
     INEFFECTIVE: "デス・スター 影響・影響なし",
+    MOON_CRACKED: "デス・スター 衝撃・月に亀裂。ゲートとスキャンは3時間停止",
+    MOON_DESTROYED: "デス・スター 衝撃・月が砕け散りました",
   },
   colonyCaptured: "コロニーは確保されました · 占領保護は有効です",
   colonyAbandoned: "{{planet}}を放棄しました · 植民地は中立になりました",

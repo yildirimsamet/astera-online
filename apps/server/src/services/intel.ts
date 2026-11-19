@@ -1270,7 +1270,7 @@ export async function resolveProbe(
     own so no band above moves, and whether a hop was under way. The rarity becomes the observer's memory.
   */
   const moon = await seasonHasMoons(tx, target.seasonId)
-    ? await probeMoon(tx, target.id, (count) => fuzzBand(count, accuracy, seededFrom(mission.id, 0x300_f1e)))
+    ? await probeMoon(tx, target.id, (count) => fuzzBand(count, accuracy, seededFrom(mission.id, 0x300_f1e)), now)
     : undefined;
   const silhouette = outside
     ? {

@@ -686,6 +686,8 @@ export const notifications = {
     FIRST_STRIKE: 'EMP darbesi · Aegis sıfırlandı; yer savunmaları 1 saat kapalı',
     CAPTURED: 'Ölüm Yıldızı darbesi · koloni ele geçirildi',
     INEFFECTIVE: 'Ölüm Yıldızı darbesi · etkisiz kaldı',
+    MOON_CRACKED: 'Ölüm Yıldızı darbesi · ay çatladı; kapısı ve Gözcü’sü 3 saat kapalı',
+    MOON_DESTROYED: 'Ölüm Yıldızı darbesi · ay parçalandı',
   },
   colonyCaptured: 'Koloni kuruldu · işgal koruması aktif',
   colonyAbandoned: "{{planet}} kolonisini terk ettin · gezegen artık tarafsız",

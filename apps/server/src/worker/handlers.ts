@@ -393,7 +393,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         the event already fired and this mission never reached here in flight.
       */
       if (await interceptOwedShot(tx, mission, clock.now())) return;
-      const result = await applyDeathStarStrike(tx, mission, clock.now());
+      const result = await applyDeathStarStrike(tx, mission, clock.now(), adminUsernames);
       const outcome = result.outcome;
       await tx.insert(strategicImpacts).values({
         seasonId: mission.seasonId,
@@ -456,7 +456,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         .select({ name: planets.name, kind: planets.kind })
         .from(planets)
         .where(eq(planets.id, mission.targetPlanetId));
-      if (impactWorld) {
+      // A moon's crack is not galaxy news; its breaking is written by `explodeMoon` (V49).
+      if (impactWorld && mission.targetBody === 'PLANET' && outcome !== 'MOON_CRACKED' && outcome !== 'MOON_DESTROYED') {
         await recordGalaxyEvent(tx, {
           seasonId: mission.seasonId,
           kind: 'death_star_impact',
@@ -498,6 +499,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       });
 
       await publishShard(tx, mission.seasonId, outcome === 'CAPTURED' ? 'control' : 'impact');
+      if (mission.targetBody === 'MOON') await publishShard(tx, mission.seasonId, 'moons');
       return;
     }
 

@@ -324,6 +324,8 @@ const STRATEGIC_OUTCOME = {
   CAPTURED: 'reports.strategicCaptured',
   INEFFECTIVE: 'reports.strategicIneffective',
   INTERCEPTED: 'reports.strategicIntercepted',
+  MOON_CRACKED: 'reports.strategicMoonCracked',
+  MOON_DESTROYED: 'reports.strategicMoonDestroyed',
 } as const;
 
 /** A strike read from your side: yours landed or was stopped, theirs hit you or was stopped. */

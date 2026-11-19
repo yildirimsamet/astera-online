@@ -686,6 +686,8 @@ export const notifications = {
     FIRST_STRIKE: 'Impact EMP · Aegis vidée ; défenses terrestres désactivées pendant 1 heure',
     CAPTURED: 'Impact de l\'Étoile de la Mort · colonie capturée',
     INEFFECTIVE: 'Impact de l\'Étoile de la Mort · aucun effet',
+    MOON_CRACKED: 'Impact de l\'Étoile de la Mort · lune fissurée ; sa porte et son scan fermés 3 heures',
+    MOON_DESTROYED: 'Impact de l\'Étoile de la Mort · la lune a volé en éclats',
   },
   colonyCaptured: 'Colonie sécurisée · la protection de l\'occupation est active',
   colonyAbandoned: "Tu as abandonné {{planet}} · la colonie est désormais neutre",

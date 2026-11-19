@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { HONOR_LAUNCH_VERSION, honorFleetValue, honorTacticalSide } from '@astera/rules';
+import { HONOR_LAUNCH_VERSION, honorFleetValue, honorTacticalSide, type Fleet } from '@astera/rules';
 import type { Tx } from '../db/client.js';
 import { honorCommitments, honorSeasons } from '../db/schema.js';
 import { commitHonor, honorCommitmentSchema, type HonorCommitment } from './honorCommitment.js';
@@ -59,6 +59,27 @@ export async function settleEmpHonor(tx: Tx, input: {
       loyaltyLost: input.effective ? input.loyaltyLost : 0 });
     evidence.tactical = [{ actor: intent.attack[0]!.id, enemy: target.id, base: effect.gain, pressureFifths: effect.pressureFifths }];
   }
+  deferHonor(tx, input.seasonId, evidence);
+}
+
+/**
+ * A BROKEN MOON'S DEAD COUNT AS A BATTLE'S KILLS (Ay S35). The ships that died with it are written as the
+ * holder's battle loss, so the fair-fight pool scores them for the striker exactly as it scores a battle;
+ * the weapon itself is no loss here, as at any other hit. A neutral moon has no holder and scores nothing.
+ */
+export async function settleMoonBreakHonor(tx: Tx, input: {
+  seasonId: string; id: string; at: Date; defender: string | null; destroyed: Fleet;
+}) {
+  const ready = await strategicHonorIntent(tx, input.seasonId, input.id);
+  if (!ready) return;
+  const { intent, config } = ready;
+  const evidence = strategicHonorEvidence(intent, input.id, input.at);
+  if (intent.defence[0]?.id !== input.defender) {
+    evidence.eligible = false; evidence.exclusion = 'TARGET_CHANGED';
+  }
+  const value = honorFleetValue(config.catalogue, input.destroyed);
+  evidence.defence = evidence.defence.map((member) => member.id === input.defender
+    ? { ...member, loss: value, combatLoss: value } : member);
   deferHonor(tx, input.seasonId, evidence);
 }
 

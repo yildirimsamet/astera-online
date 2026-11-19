@@ -3197,7 +3197,7 @@ const strategicBattleReport = z.object({
   opponentPlanetId: z.string().nullable(),
   yourPlanet: z.string(),
   yourPlanetId: z.string().nullable().optional(),
-  outcome: z.enum(['FIRST_STRIKE', 'CAPTURED', 'INEFFECTIVE', 'INTERCEPTED']),
+  outcome: z.enum(['FIRST_STRIKE', 'CAPTURED', 'INEFFECTIVE', 'INTERCEPTED', 'MOON_CRACKED', 'MOON_DESTROYED']),
   damage: z.number(),
   destroyedFleet: fleet,
   destroyedResources: resources,

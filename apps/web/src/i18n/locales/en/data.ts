@@ -614,6 +614,8 @@ export const notifications = {
     FIRST_STRIKE: 'EMP impact · Aegis drained; ground defences offline for 1 hour',
     CAPTURED: 'Death Star impact · colony captured',
     INEFFECTIVE: 'Death Star impact · no effect',
+    MOON_CRACKED: 'Death Star impact · moon cracked; its gate and scan are shut for 3 hours',
+    MOON_DESTROYED: 'Death Star impact · the moon broke apart',
   },
   colonyCaptured: 'Colony secured · occupation protection is active',
   colonyAbandoned: "You abandoned {{planet}} · the colony is now neutral",

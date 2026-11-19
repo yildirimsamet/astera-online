@@ -614,6 +614,8 @@ export const notifications = {
     FIRST_STRIKE: 'Impacto EMP · Égida agotada; defensas terrestres desactivadas durante 1 hora',
     CAPTURED: 'Impacto de la Estrella de la Muerte · colonia capturada',
     INEFFECTIVE: 'Impacto de la Estrella de la Muerte · sin efecto',
+    MOON_CRACKED: 'Impacto de la Estrella de la Muerte · luna agrietada; su puerta y su escaneo cerrados 3 horas',
+    MOON_DESTROYED: 'Impacto de la Estrella de la Muerte · la luna se hizo pedazos',
   },
   colonyCaptured: 'Colonia asegurada · la protección de ocupación está activa',
   colonyAbandoned: "Has abandonado {{planet}} · la colonia ahora es neutral",

@@ -412,7 +412,7 @@ const unlocked = z.object({
 });
 
 const strategicResult = z.object({
-  outcome: z.enum(['FIRST_STRIKE', 'CAPTURED', 'INEFFECTIVE']),
+  outcome: z.enum(['FIRST_STRIKE', 'CAPTURED', 'INEFFECTIVE', 'MOON_CRACKED', 'MOON_DESTROYED']),
   targetPlanetId: z.string(),
   /** A colony's loyalty before and after the hit (owner, 2026-10-01); absent off a colony. */
   loyalty: z.object({ before: z.number(), after: z.number() }).optional(),

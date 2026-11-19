@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, gt, lt, notInArray, or } from 'drizzle-orm';
+import type { MoonRarity } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import {
@@ -43,6 +44,8 @@ export interface GalaxyEventPayloadByKind {
     trigger?: 'RADAR' | 'TELESCOPE';
   };
   control_transfer: { planetName: string; commanderName: string };
+  /** Ay V18: a broken moon is public news, with its rarity — the public crack count already told it. */
+  moon_destroyed: { planetName: string; rarity: MoonRarity };
   galaxy_event_started: GalaxyEventLifecyclePayload;
   galaxy_event_ended: GalaxyEventLifecyclePayload;
 }

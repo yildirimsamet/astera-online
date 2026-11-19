@@ -1339,6 +1339,7 @@ export type GalaxyEventLifecyclePayload =
 
 export type GalaxyEventPayload =
   | { planetName: string; commanderName: string }
+  | { planetName: string; rarity: MoonRarity }
   | { planetName: string; commanderName: string; tier: number }
   | { planetName: string; tier: number; claimUntil: string }
   | {
@@ -3714,7 +3715,7 @@ export const strategicImpacts = pgTable('strategic_impacts', {
   defenderPlayerId: uuid('defender_player_id').references(() => players.id),
   targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
   outcome: text('outcome')
-    .$type<'FIRST_STRIKE' | 'CAPTURED' | 'INEFFECTIVE' | 'INTERCEPTED'>()
+    .$type<'FIRST_STRIKE' | 'CAPTURED' | 'INEFFECTIVE' | 'INTERCEPTED' | 'MOON_CRACKED' | 'MOON_DESTROYED'>()
     .notNull(),
   damage: real('damage').notNull().default(0),
   destroyedFleet: jsonb('destroyed_fleet').$type<Fleet>().notNull().default({}),
@@ -4238,6 +4239,8 @@ export const debrisFields = pgTable('debris_fields', {
   missionId: uuid('mission_id').references(() => missions.id),
   /** The pirate raid that made it. NULL on every world battle. D150. */
   pirateRaidId: uuid('pirate_raid_id').references((): AnyPgColumn => pirateRaids.id),
+  /** Ay §4.2: drawn beside the moon when a moon broke. Drawing only; the field is still collected at the world. */
+  body: text('body').$type<WorldBody>().notNull().default('PLANET'),
   alloy: real('alloy').notNull(),
   crystal: real('crystal').notNull(),
   deuterium: real('deuterium').notNull().default(0),
@@ -4251,6 +4254,7 @@ export const debrisFields = pgTable('debris_fields', {
   index('debris_season_idx').on(t.seasonId, t.createdAt),
   index('debris_planet_idx').on(t.planetId),
   index('debris_pirate_raid_idx').on(t.pirateRaidId),
+  check('debris_fields_body_check', sql`${t.body} in ('PLANET', 'MOON')`),
   /**
    * Exactly one anchor, and it is a constraint rather than a convention.
    *

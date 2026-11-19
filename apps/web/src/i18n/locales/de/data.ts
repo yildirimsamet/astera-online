@@ -614,6 +614,8 @@ export const notifications = {
     FIRST_STRIKE: 'EMP-Einschlag · Aegis entladen; Bodenverteidigungen 1 Stunde offline',
     CAPTURED: 'Einschlag des Todessterns · Kolonie erobert',
     INEFFECTIVE: 'Einschlag des Todessterns · keine Auswirkung',
+    MOON_CRACKED: 'Einschlag des Todessterns · Mond gerissen; Tor und Scan 3 Stunden gesperrt',
+    MOON_DESTROYED: 'Einschlag des Todessterns · der Mond ist zerbrochen',
   },
   colonyCaptured: 'Kolonie gesichert · Besatzungsschutz ist aktiv',
   colonyAbandoned: "Du hast {{planet}} aufgegeben · die Kolonie ist jetzt neutral",

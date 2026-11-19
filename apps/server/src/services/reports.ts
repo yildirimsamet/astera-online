@@ -398,7 +398,7 @@ export interface StrategicReportView {
   opponentPlanetId: string | null;
   yourPlanet: string;
   yourPlanetId: string | null;
-  outcome: 'FIRST_STRIKE' | 'CAPTURED' | 'INEFFECTIVE' | 'INTERCEPTED';
+  outcome: 'FIRST_STRIKE' | 'CAPTURED' | 'INEFFECTIVE' | 'INTERCEPTED' | 'MOON_CRACKED' | 'MOON_DESTROYED';
   damage: number;
   destroyedFleet: Fleet;
   destroyedResources: Resources;

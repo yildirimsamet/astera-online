@@ -503,6 +503,8 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       targetPlanetId: z.string().uuid(),
       /** The same acknowledgement the raid lane takes, for the same reason. D183. */
       acknowledgeShieldLoss: z.boolean().optional(),
+      /** Ay S19: strike the world's moon instead. */
+      targetBody: z.enum(['PLANET', 'MOON']).optional(),
     }).strict().parse(req.body);
     const owner = await ownedPlanet(app.db, req.accountId!, body.originPlanetId);
     return launchDeathStar(
@@ -513,6 +515,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       owner.playerId,
       body.acknowledgeShieldLoss ?? false,
       app.adminUsernames,
+      body.targetBody,
     );
   });
 
