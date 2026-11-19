@@ -19,6 +19,7 @@ import {
   signalFamily,
   signalGlyph,
   signalOutcome,
+  supportLostWithColony,
   type SignalFamily,
   type SignalGlyph,
 } from '../lib/notifications.js';
@@ -501,7 +502,7 @@ function Event({
   const line = describeNotification(event, now);
   if (!line) return null;
   const family = signalFamily(event);
-  const destination = DESTINATION[event.kind];
+  const destination = supportLostWithColony(event) ? undefined : DESTINATION[event.kind];
   const age = staleness((now - event.at.getTime()) / 60_000);
   const subject = notificationIdentity(event);
 

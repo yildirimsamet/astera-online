@@ -1772,6 +1772,27 @@
       "when": 1794941062336,
       "tag": "0252_welcome_week",
       "breakpoints": true
+    },
+    {
+      "idx": 253,
+      "version": "7",
+      "when": 1795080390858,
+      "tag": "0253_moons",
+      "breakpoints": true
+    },
+    {
+      "idx": 254,
+      "version": "7",
+      "when": 1795081301822,
+      "tag": "0254_moon_move_event",
+      "breakpoints": true
+    },
+    {
+      "idx": 255,
+      "version": "7",
+      "when": 1795084146433,
+      "tag": "0255_moon_moves",
+      "breakpoints": true
     }
   ]
 }

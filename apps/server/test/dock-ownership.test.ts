@@ -50,9 +50,21 @@ describe('the dock when a colony changes hands', () => {
   const dockRows = (planetId: string) =>
     f.db.select().from(units).where(and(eq(units.planetId, planetId), like(units.location, 'dock:%')));
 
-  it('flies a seceding colony\'s docked ships to its commander\'s capital, still theirs', async () => {
+  /** S19c (owner 2026-11-18): a colony lost to loyalty takes its dock with it. */
+  it('loses a seceding colony\'s docked ships with the world', async () => {
     await dock(colony, owner, { BALLISTA: 2 });
     expect(await f.db.transaction((tx) => secedeColony(tx, colony, f.clock.now(), randomUUID()))).toBe(true);
+
+    expect(await dockLotsOf(f.db, colony)).toEqual([]);
+    expect(await dockLotsOf(f.db, capital)).toEqual([]);
+    expect(await dockRows(colony)).toEqual([]);
+    expect(await dockRows(capital)).toEqual([]);
+    expect(await f.db.select().from(shipDamageLots)).toEqual([]);
+  });
+
+  it('flies an abandoned colony\'s docked ships to its commander\'s capital, still theirs', async () => {
+    await dock(colony, owner, { BALLISTA: 2 });
+    expect(await f.db.transaction((tx) => secedeColony(tx, colony, f.clock.now(), randomUUID(), 'ABANDONED'))).toBe(true);
 
     expect(await dockLotsOf(f.db, colony)).toEqual([]);
     expect(await dockLotsOf(f.db, capital)).toMatchObject([{ hull: 'BALLISTA', count: 2, damageBp: 6500 }]);
@@ -72,7 +84,7 @@ describe('the dock when a colony changes hands', () => {
     await setLevel(f.db, colony, 'SHIPYARD', 4);
     await grant(f.db, colony, 200_000, 100_000);
     await startRepair(f.db, colony, { all: true }, f.clock, owner);
-    expect(await f.db.transaction((tx) => secedeColony(tx, colony, f.clock.now(), randomUUID()))).toBe(true);
+    expect(await f.db.transaction((tx) => secedeColony(tx, colony, f.clock.now(), randomUUID(), 'ABANDONED'))).toBe(true);
 
     const [lot] = await f.db.select().from(shipDamageLots);
     expect(lot).toMatchObject({ planetId: capital, repairOrderId: null });

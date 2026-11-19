@@ -1,3 +1,4 @@
+import { MOON_LOCATION, PLANET_LOCATION } from './unitLocation.js';
 import { observeHonorOwner } from './honorReference.js';
 import { recordLegacyColonyLoss } from './legacyEvents.js';
 import { and, eq, inArray, like, ne, sql } from 'drizzle-orm';
@@ -12,6 +13,8 @@ import {
   minutesUntilLoyaltyZero,
   nextLoyaltyMilestone,
   dockLocation,
+  fleetCount,
+  type Fleet,
 } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
 import {
@@ -29,7 +32,8 @@ import { schedule } from '../worker/queue.js';
 import type { Handler } from '../worker/handlers.js';
 import { loadLocked } from './planet.js';
 import { revalidateClanWarTargetPlanet } from './clanWar.js';
-import { releaseSupportForWorldChange } from './clanSupport.js';
+import { loseSupportAtWorld, releaseSupportForWorldChange } from './clanSupport.js';
+import { recordShipLoss } from './shipLossStats.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
 import { notify } from './notifications.js';
 import { prepareMonumentOriginChange, reanchorMonumentOrigin } from './monumentOwnership.js';
@@ -224,66 +228,91 @@ export async function secedeColony(
   if (cause === 'SECESSION') await recordLegacyColonyLoss(tx, planetId, owner, notificationRefId);
 
   /*
-    THE FLEET COMES HOME AND THE GUNS DO NOT. Owner's design, and the line is
-    *"the fleet is the bet"*: a commander loses ships to a battle they chose, never to a
-    world quietly changing hands. Emplacements are bolted to the ground they defend, so
-    they secede with it and become the caretaker's garrison.
+    WHAT HAPPENS TO THE FLEET DEPENDS ON HOW THE WORLD WAS LOST. Owner 2026-11-18 (S19c):
 
-    ONLY `home` ROWS ARE TOUCHED. A fleet in the air is stored against its origin with
-    its mission as the location, and it still belongs to its commander — `safeHomePlanet`
-    is what lands it somewhere that is still theirs. Confiscating it here would destroy
-    a fleet mid-flight for a reason its owner could not have seen.
+    · SECESSION — loyalty ran out. The mobile fleet standing on the colony and the ships
+      waiting in its Repair Station are LOST with it. Neglecting a colony is a risk the
+      commander can see coming (the loyalty gauge warns them), so it carries a price.
+    · ABANDONED — the commander let it go on purpose. The fleet comes home exactly as
+      before: giving a world up is a decision, never a punishment.
+
+    Either way the guns are bolted to the ground and stay as the caretaker's garrison, and
+    ONLY standing rows are touched. A fleet in the air is stored against its origin with its
+    mission as the location and still belongs to its commander — `safeHomePlanet` lands it
+    somewhere that is still theirs (V22, owner 2026-11-19: the existing landing rule).
   */
+  // Both bodies: a fleet standing on the world's moon shares the planet fleet's fate (§6.16).
   const standing = await tx.select().from(units)
-    .where(and(eq(units.planetId, planetId), eq(units.location, 'home')));
+    .where(and(eq(units.planetId, planetId), inArray(units.location, [PLANET_LOCATION, MOON_LOCATION])));
   const mobile = standing.filter((row) => !HULLS[row.hull].ground && row.count > 0);
-  if (mobile.length > 0) {
-    /*
-      THE CAPITAL, READ HERE RATHER THAN THROUGH `ownership.capitalPlanet`.
-
-      That module now imports `faults`, which imports this one — and a three-module cycle
-      that happens to work because every entry point is a hoisted function declaration is
-      a cycle waiting for somebody to add a const. The query is four lines and this is the
-      only thing in the file that wanted it.
-    */
-    const [home] = await tx.select({ id: planets.id }).from(planets)
-      .where(and(eq(planets.controllerPlayerId, owner), eq(planets.kind, 'CAPITAL')));
-    if (!home) return false;
-    for (const row of mobile) {
-      await tx.insert(units)
-        .values({ planetId: home.id, ownerPlayerId: owner, hull: row.hull, location: 'home', count: row.count, damage: row.damage })
-        .onConflictDoUpdate({
-          target: [units.planetId, units.hull, units.location],
-          set: { count: sql`${units.count} + ${row.count}`, damage: sql`${units.damage} || ${JSON.stringify(row.damage)}::jsonb` },
-        });
-    }
-    await tx.delete(units).where(and(
-      eq(units.planetId, planetId),
-      eq(units.location, 'home'),
-      inArray(units.hull, mobile.map((row) => row.hull)),
-    ));
-  }
-  /*
-    THE REPAIR STATION GOES WITH THE FLEET. Kalıcı gemi hasarı (plan D7): a damaged ship
-    waiting for repair is the commander's fleet too, so it lands in their capital's dock
-    with its damage — never left behind for the caretaker. A repair running here is
-    cancelled below with the rest of the world's queue, and the lot simply waits again.
-  */
-  const docked = await tx.select({ location: units.location }).from(units)
+  const docked = await tx.select().from(units)
     .where(and(eq(units.planetId, planetId), like(units.location, dockLocation('%'))));
-  if (docked.length > 0) {
-    const [home] = await tx.select({ id: planets.id }).from(planets)
-      .where(and(eq(planets.controllerPlayerId, owner), eq(planets.kind, 'CAPITAL')));
-    if (!home) return false;
-    await tx.update(units).set({ planetId: home.id })
-      .where(and(eq(units.planetId, planetId), like(units.location, dockLocation('%'))));
-    // Waiting again, and tied to no order of the world left behind: a link kept to this
-    // world's (cancelled) order would block the day its queue is cleared.
-    await tx.update(shipDamageLots).set({ planetId: home.id, repairOrderId: null })
-      .where(eq(shipDamageLots.planetId, planetId));
+  const lost: Fleet = {};
+  if (cause === 'SECESSION') {
+    for (const row of [...mobile, ...docked]) {
+      if (row.count > 0) lost[row.hull] = (lost[row.hull] ?? 0) + row.count;
+    }
+    if (mobile.length > 0) {
+      await tx.delete(units).where(and(
+        eq(units.planetId, planetId),
+        inArray(units.location, [PLANET_LOCATION, MOON_LOCATION]),
+        inArray(units.hull, mobile.map((row) => row.hull)),
+      ));
+    }
+    if (docked.length > 0) {
+      await tx.delete(units)
+        .where(and(eq(units.planetId, planetId), like(units.location, dockLocation('%'))));
+    }
+    // The damage ledger of ships that no longer exist; their repair orders close with the queue below.
+    await tx.delete(shipDamageLots).where(eq(shipDamageLots.planetId, planetId));
+    await recordShipLoss(tx, { seasonId: world.seasonId, playerId: owner, sourcePlanetId: planetId, fleet: lost, now });
+  } else {
+    if (mobile.length > 0) {
+      /*
+        THE CAPITAL, READ HERE RATHER THAN THROUGH `ownership.capitalPlanet`.
+
+        That module now imports `faults`, which imports this one — and a three-module cycle
+        that happens to work because every entry point is a hoisted function declaration is
+        a cycle waiting for somebody to add a const. The query is four lines and this is the
+        only thing in the file that wanted it.
+      */
+      const [home] = await tx.select({ id: planets.id }).from(planets)
+        .where(and(eq(planets.controllerPlayerId, owner), eq(planets.kind, 'CAPITAL')));
+      if (!home) return false;
+      for (const row of mobile) {
+        await tx.insert(units)
+          .values({ planetId: home.id, ownerPlayerId: owner, hull: row.hull, location: PLANET_LOCATION, count: row.count, damage: row.damage })
+          .onConflictDoUpdate({
+            target: [units.planetId, units.hull, units.location],
+            set: { count: sql`${units.count} + ${row.count}`, damage: sql`${units.damage} || ${JSON.stringify(row.damage)}::jsonb` },
+          });
+      }
+      await tx.delete(units).where(and(
+        eq(units.planetId, planetId),
+        inArray(units.location, [PLANET_LOCATION, MOON_LOCATION]),
+        inArray(units.hull, mobile.map((row) => row.hull)),
+      ));
+    }
+    /*
+      THE REPAIR STATION GOES WITH THE FLEET. Kalıcı gemi hasarı (plan D7): a damaged ship
+      waiting for repair is the commander's fleet too, so it lands in their capital's dock
+      with its damage — never left behind for the caretaker. A repair running here is
+      cancelled below with the rest of the world's queue, and the lot simply waits again.
+    */
+    if (docked.length > 0) {
+      const [home] = await tx.select({ id: planets.id }).from(planets)
+        .where(and(eq(planets.controllerPlayerId, owner), eq(planets.kind, 'CAPITAL')));
+      if (!home) return false;
+      await tx.update(units).set({ planetId: home.id })
+        .where(and(eq(units.planetId, planetId), like(units.location, dockLocation('%'))));
+      // Waiting again, and tied to no order of the world left behind: a link kept to this
+      // world's (cancelled) order would block the day its queue is cleared.
+      await tx.update(shipDamageLots).set({ planetId: home.id, repairOrderId: null })
+        .where(eq(shipDamageLots.planetId, planetId));
+    }
   }
   await tx.update(units).set({ ownerPlayerId: null })
-    .where(and(eq(units.planetId, planetId), eq(units.location, 'home')));
+    .where(and(eq(units.planetId, planetId), eq(units.location, PLANET_LOCATION)));
 
   // The actor's figures become an immutable segment, exactly as a conquest closes them.
   if (world.statsOwnerPlayerId !== null) {
@@ -405,7 +434,7 @@ export async function secedeColony(
     // One LOSS, not one planet for all time. The same event may be redelivered and
     // must dedupe; the same world may legitimately be lost again after recapture.
     refId: notificationRefId,
-    payload: { planetId, planetName: world.name, cause },
+    payload: { planetId, planetName: world.name, cause, ...(cause === 'SECESSION' ? { lostShips: fleetCount(lost) } : {}) },
   });
 
   /*
@@ -415,6 +444,7 @@ export async function secedeColony(
   await revalidateClanWarTargetPlanet(tx, planetId, now);
   // Klan Savunma Desteği: nobody is left to defend; waves from here re-anchor.
   await reanchorMonumentOrigin(tx, planetId);
+  if (cause === 'SECESSION') await loseSupportAtWorld(tx, { planetId, planetName: world.name, now });
   await releaseSupportForWorldChange(tx, { planetId, now });
   await observeHonorOwner(tx, owner, now);
   return true;

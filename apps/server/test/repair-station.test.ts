@@ -237,14 +237,26 @@ describe('the Repair Station', () => {
     expect(after.alloy - before.alloy).toBeCloseTo(Math.floor(order!.cost.alloy * BUILD.cancelRefund), 6);
   });
 
-  it('lets the ships wait again in the capital when their colony secedes mid-repair', async () => {
+  it('lets the ships wait again in the capital when their colony is abandoned mid-repair', async () => {
+    const colony = mine;
+    const owner = f.playerIds[1]!;
+    await f.db.update(planets).set({ kind: 'COLONY', controllerPlayerId: owner }).where(eq(planets.id, colony));
+    const [id] = await dock([lot('BALLISTA', 1, 6400)], colony, owner);
+    await startRepair(f.db, colony, { lotIds: [id!] }, f.clock, owner);
+    expect(await f.db.transaction((tx) => secedeColony(tx, colony, f.clock.now(), randomUUID(), 'ABANDONED'))).toBe(true);
+    expect(await dockLotsOf(f.db, f.planetIds[1]!)).toMatchObject([{ id, repairing: false }]);
+  });
+
+  /** S19c: the dock is the colony's; ships waiting in it are lost with the world. */
+  it('loses the ships under repair when their colony secedes', async () => {
     const colony = mine;
     const owner = f.playerIds[1]!;
     await f.db.update(planets).set({ kind: 'COLONY', controllerPlayerId: owner }).where(eq(planets.id, colony));
     const [id] = await dock([lot('BALLISTA', 1, 6400)], colony, owner);
     await startRepair(f.db, colony, { lotIds: [id!] }, f.clock, owner);
     expect(await f.db.transaction((tx) => secedeColony(tx, colony, f.clock.now(), randomUUID()))).toBe(true);
-    expect(await dockLotsOf(f.db, f.planetIds[1]!)).toMatchObject([{ id, repairing: false }]);
+    expect(await dockLotsOf(f.db, f.planetIds[1]!)).toEqual([]);
+    expect(await dockLotsOf(f.db, colony)).toEqual([]);
   });
 
   it('prices every waiting lot on the planet view, before anybody pays', async () => {

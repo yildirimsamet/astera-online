@@ -12,6 +12,7 @@ import {
   buildings,
   commanderTransfers,
   missions,
+  moons,
   neutralPlanetState,
   notifications,
   planets,
@@ -274,6 +275,30 @@ describe('deleting an account at the player’s request', () => {
     expect(restored!.x).toBe(colony.x);
     expect(restored!.y).toBe(colony.y);
     expect(restored!.z).toBe(colony.z);
+  });
+
+  /**
+   * S56 (ay planı, owner 2026-11-19): a colony's moon stays in its slot as a new prize; the capital's goes with it.
+   * Kept: rarity, origin, cracks, last hit, closure. Reset: the gate charge (V19).
+   */
+  it('leaves a colony’s moon on the caretaker world that replaces it, and takes the capital’s', async () => {
+    const colony = await capture(3);
+    const hitAt = new Date(f.clock.now().getTime() - 3_600_000);
+    const closedUntil = new Date(f.clock.now().getTime() + 7_200_000);
+    await f.db.insert(moons).values([
+      { planetId: colony.id, rarity: 'EPIC', origin: 'BATTLE', cracks: 2, lastHitAt: hitAt, closedUntil,
+        gateReadyAt: new Date(f.clock.now().getTime() + 600_000), visualSeed: 77, bornAt: hitAt },
+      { planetId: leaver, rarity: 'COMMON', origin: 'BUILT', visualSeed: 78, bornAt: hitAt },
+    ]);
+
+    await deleteAccount(f.db, f.clock, username);
+
+    const [restored] = await f.db.select({ id: planets.id }).from(planets)
+      .where(and(eq(planets.seasonId, f.seasonId), eq(planets.slotIndex, colony.slotIndex)));
+    const all = await f.db.select().from(moons);
+    expect(all).toHaveLength(1);
+    expect(all[0]).toEqual({ planetId: restored!.id, rarity: 'EPIC', origin: 'BATTLE', cracks: 2, lastHitAt: hitAt,
+      closedUntil, gateReadyAt: null, visualSeed: 77, bornAt: hitAt, bornMissionId: null });
   });
 
   it('re-seeds the returned world from the season’s own generator', async () => {

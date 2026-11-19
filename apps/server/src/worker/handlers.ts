@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from '../services/unitLocation.js';
 import { prepareBattleReplay, persistBattleReplay } from '../services/battleReplay.js';
 import { shipReadyNotice } from '../services/arenaReady.js';
 import { finishArenaTeamSeason } from '../services/arenaTeams.js';
@@ -236,6 +237,7 @@ import { isHostileMission } from '../services/flight.js';
 import { resolveNeutralCensus } from '../services/season.js';
 import { onMonumentArrival, onMonumentLoss, onMonumentProbe, onMonumentRespawn } from './monumentHandlers.js';
 import { onPlanetRadiationBoundary, onRadiationBombArrival, onRadiationBombIntercept, onRadiationBombInterceptImpact } from './radiationBombHandlers.js';
+import { landMoonMove } from '../services/moonMovement.js';
 
 export interface HandlerContext {
   db: Db;
@@ -1013,7 +1015,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         ? standing
         : (hostOutcome.survivors[hull] ?? 0) + (result.defenceSalvage[hull] ?? 0);
     }
-    await setUnits(tx, defender.planetId, defenderHome, 'home');
+    await setUnits(tx, defender.planetId, defenderHome, PLANET_LOCATION);
     /*
       KALICI GEMİ HASARI. Owner decision K1, 2026-09-29.
 
@@ -2642,6 +2644,12 @@ async function freezeSeason(
               (stats.competition.shipsBuiltByHull[hull] ?? 0) + count;
             stats.competition.shipsBuilt += count;
           }
+          // Lost with a seceding colony (S43): a loss on the record, never a battle.
+          for (const [hull, count] of fleetEntries(row.telemetry.shipsLost ?? {})) {
+            if (HULLS[hull].ground || count <= 0) continue;
+            stats.competition.shipsLostByHull[hull] = (stats.competition.shipsLostByHull[hull] ?? 0) + count;
+            stats.competition.shipsLost += count;
+          }
         }
         for (const run of miningByPlayer.get(player.playerId) ?? []) {
           if (run.targetKind !== 'asteroid' || run.homeAt === null) continue;
@@ -3246,6 +3254,10 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   paid_alert: async ({ db, clock }, event) => {
     if (!event.refId) throw new Error('paid_alert without refId');
     await settlePaidAlert(db, clock, event.refId);
+  },
+  moon_move_land: async ({ db }, event) => {
+    if (!event.refId) throw new Error('moon_move_land without move');
+    await db.transaction((tx) => landMoonMove(tx, event.refId!, event.resolveAt));
   },
   strategic_intercept: onStrategicIntercept,
   strategic_intercept_impact: onStrategicInterceptImpact,

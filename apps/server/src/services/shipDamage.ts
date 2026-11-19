@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import {
   dockLocation,
@@ -158,7 +159,7 @@ export function dockView(lots: readonly DockedLot[], yard: number, tech: TechLev
 
 async function homeOf(tx: Tx, planetId: string): Promise<Fleet> {
   const rows = await tx.select().from(units)
-    .where(and(eq(units.planetId, planetId), eq(units.location, 'home')));
+    .where(and(eq(units.planetId, planetId), eq(units.location, PLANET_LOCATION)));
   const out: Fleet = {};
   for (const row of rows) if (row.count > 0) out[row.hull] = row.count;
   return out;
@@ -194,7 +195,7 @@ export async function landHpShips(tx: Tx, input: Omit<Landing, 'damage'> & { dam
   const home = await readHomeHealth(tx, input.planetId);
   const merged = home.fleet;
   for (const [hull, count] of fleetEntries(landing.home)) merged[hull] = (merged[hull] ?? 0) + count;
-  await setUnits(tx, input.planetId, merged, 'home', input.ownerPlayerId);
+  await setUnits(tx, input.planetId, merged, PLANET_LOCATION, input.ownerPlayerId);
   await writeHomeHealth(tx, input.planetId, merged, [...home.damage, ...landing.damage]);
   return { autoRepaired: landing.autoRepaired, docked: landing.docked };
 }
@@ -217,7 +218,7 @@ export async function releaseRepairedLots(
   for (const row of rows) merged[row.hull] = (merged[row.hull] ?? 0) + row.count;
   await tx.delete(units).where(and(eq(units.planetId, input.planetId), inArray(units.location, locations)));
   await tx.delete(shipDamageLots).where(inArray(shipDamageLots.id, lots.map((lot) => lot.id)));
-  await setUnits(tx, input.planetId, merged, 'home', input.ownerPlayerId);
+  await setUnits(tx, input.planetId, merged, PLANET_LOCATION, input.ownerPlayerId);
 }
 
 /**

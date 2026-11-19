@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { dispatchProvenance } from './commandOrigin.js';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import {
@@ -493,7 +494,7 @@ export async function launchAttack(
     for (const [hull, n] of Object.entries(requested) as [HullId, number][]) {
       remaining[hull] = (remaining[hull] ?? 0) - n;
     }
-    await setUnits(tx, originPlanetId, remaining, 'home');
+    await setUnits(tx, originPlanetId, remaining, PLANET_LOCATION);
     await setUnits(tx, originPlanetId, requested, mission!.id);
     // Burned in the same transaction the ships leave in. T6.
     if (fuel > 0) {

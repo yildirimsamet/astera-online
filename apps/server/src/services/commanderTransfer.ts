@@ -1,7 +1,9 @@
+import { awaySql } from './unitLocation.js';
+import { landMoonShips, moonMovePending, moveMoon } from './moon.js';
 import { createNeutralWorld } from './season.js';
 import { randomUUID } from 'node:crypto';
-import { and, asc, eq, gt, inArray, isNull, ne, notInArray, notLike, or, sql } from 'drizzle-orm';
-import { CLAN, DEBRIS, INACTIVITY_MS, MULTI_WORLD, dockLocation, generateGalaxy, silentSpaceDue, waitingColonySlots, selectNeutralSlots, neutralOpeningOrder, hashSeed } from '@astera/rules';
+import { and, asc, eq, gt, inArray, isNull, ne, notInArray, or, sql } from 'drizzle-orm';
+import { CLAN, DEBRIS, INACTIVITY_MS, MULTI_WORLD, generateGalaxy, silentSpaceDue, waitingColonySlots, selectNeutralSlots, neutralOpeningOrder, hashSeed } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
 import { accounts, buildOrders, clanMemberships, clanRequests, clans, honorObservations, honorSeasons,
@@ -162,11 +164,12 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
         or(eq(unknownSignals.playerId, playerId), inArray(unknownSignals.originPlanetId, ids)),
       )).limit(1);
       if (signalFlight) defer('FLIGHT');
+      if (await moonMovePending(tx, playerId, ids)) defer('FLIGHT');
       const [foreign] = await tx.select({ id: units.planetId }).from(units).where(and(gt(units.count, 0), or(
         // A docked ship stands on its world and moves with it: it is not away (Kalıcı gemi hasarı).
         and(inArray(units.planetId, ids), or(
           ne(units.ownerPlayerId, playerId),
-          and(ne(units.location, 'home'), notLike(units.location, dockLocation('%'))),
+          awaySql(units.location),
         )),
         and(eq(units.ownerPlayerId, playerId), notInArray(units.planetId, ids)),
       ))).limit(1);
@@ -272,6 +275,8 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
         await tx.update(mainVacancies).set({ consumedAt: now, consumedReason: 'RETURN' }).where(inArray(mainVacancies.id, [...(capitalAddress ? [capitalAddress.id] : []), ...colonyAddresses.map(v => v.id)]));
         await tx.update(returnApplications).set({ status: 'COMPLETED', closedAt: now, updatedAt: now, closedReason: 'RETURNED' }).where(eq(returnApplications.id, applicationId));
       }
+      // Nobody stays on a moon through a transfer: Silent Space has no gates (V20).
+      await landMoonShips(tx, ordered.map((world) => world.id));
       for (let i = 0; i < ordered.length; i++) {
         const slot = slots[i]!;
         await tx.update(planets).set({ seasonId: target.id, slotIndex: slot.index, x: slot.x, y: slot.y, z: slot.z }).where(eq(planets.id, ordered[i]!.id));
@@ -279,6 +284,8 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       for (let i = 0; i < replacements.length; i++) {
         const former = colonies[i]!;
         await tx.update(planets).set({ seasonId: source.id, slotIndex: former.slotIndex, x: former.x, y: former.y, z: former.z }).where(eq(planets.id, replacements[i]!.id));
+        // The moon stays in its MAIN slot (S56): the returning colony that takes the address takes it.
+        await moveMoon(tx, replacements[i]!.id, colonies[i]!.id);
       }
       if (!returning && colonies.length > 0) {
         const originals = neutralOpeningOrder(
@@ -291,11 +298,13 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
             ? originals.filter((neutral) => neutral.tier === original.tier)
               .findIndex((neutral) => neutral.slot.index === original.slot.index) + 1
             : colony.slotIndex;
-          await createNeutralWorld(tx, source.id, {
+          const neutralId = await createNeutralWorld(tx, source.id, {
             tier: original?.tier ?? 1,
             profileSeed: original?.profileSeed ?? (hashSeed(source.seed, colony.slotIndex) & 0x7fffffff),
             slot: { index: colony.slotIndex, x: colony.x, y: colony.y, z: colony.z },
           }, now, originalNumber);
+          // A colony's moon stays in its slot as a new prize (S56); the capital's travels with the capital row.
+          await moveMoon(tx, colony.id, neutralId);
         }
       }
       await tx.update(players).set({ seasonId: target.id, homeShardId: player.homeShardId ?? source.shardId,

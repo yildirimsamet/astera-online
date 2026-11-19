@@ -29,6 +29,7 @@ import { requireAuth } from './auth.js';
 import { galaxyFactsAt } from '../services/galaxyFacts.js';
 import { activeClanMembership } from '../services/clanCombat.js';
 import { GameError } from '../services/planet.js';
+import { moonsSeenBy, seasonHasMoons } from '../services/moon.js';
 
 /**
  * THE GALAXY, AS EVERYBODY SEES IT PLUS WHAT YOU HAVE EARNED.
@@ -126,7 +127,16 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
       && sensors.some(post => post.telescope && distance(post.at, world.position) <= post.identify),
     ).map(world => world.id), now);
 
+    // Absent, not empty, in a galaxy without moons (E13).
+    const moonView = await seasonHasMoons(app.db, self.seasonId)
+      ? await moonsSeenBy(app.db, self.seasonId, new Set(worlds.map((world) => world.id)), (id) => {
+        const world = worlds.find((candidate) => candidate.id === id);
+        return world !== undefined && resolves(world);
+      }, (id) => remembered.get(id)?.silhouette.moonRarity)
+      : null;
+
     return {
+      ...(moonView ? { moons: moonView } : {}),
       /** Radyasyon (plan F9): public, like the worlds — every commander flies through the same sky. */
       radiation,
       radiationModel,

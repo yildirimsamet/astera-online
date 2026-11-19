@@ -1,3 +1,4 @@
+import { isAway } from './unitLocation.js';
 import { commanderPvpBalance } from './pvpBalance.js';
 import { and, asc, desc, eq, gt, inArray, isNull, lte, ne, or } from 'drizzle-orm';
 import {
@@ -35,7 +36,6 @@ import {
   silentSpaceDueAt,
   type BuildingId,
   type Fleet,
-  dockLocation,
   clanDefenseApplies,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
@@ -240,7 +240,7 @@ export function buildPlanetView(data: PlanetViewData) {
   const fleetAway: Fleet = {};
   for (const row of unitRows) {
     owned[row.hull] = (owned[row.hull] ?? 0) + row.count;
-    if (row.count > 0 && row.location !== 'home' && !row.location.startsWith(dockLocation(''))) {
+    if (row.count > 0 && isAway(row.location)) {
       fleetAway[row.hull] = (fleetAway[row.hull] ?? 0) + row.count;
     }
   }

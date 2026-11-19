@@ -89,14 +89,43 @@ describe('a host world changing hands', () => {
     expect(world!.posture).toBe('ESCAPE_SUPPORT');
   });
 
-  it('does the same when the colony secedes', async () => {
+  /** S42 (owner 2026-11-18): a wave standing on a colony that secedes is lost with it. */
+  it('loses a wave standing on a colony that secedes, and tells its sender', async () => {
     const f = await supportWorld(5, 15_602);
     await formClan(f, 0, [1]);
     const host = await colony(f, 4, 1);
     await open(f, 4, 1);
     const { wave } = await send(f, 0, 0, 4, { DART: 10 });
     await landAll(f);
+    const { unitLocation } = await waveOf(f, wave.id);
     await f.db.transaction((tx) => secedeColony(tx, host, f.clock.now(), crypto.randomUUID()));
+    expect(await waveOf(f, wave.id)).toMatchObject({ status: 'LOST' });
+    expect(await f.db.select().from(units).where(eq(units.location, unitLocation))).toEqual([]);
+    const notes = await f.db.select().from(notifications).where(and(
+      eq(notifications.playerId, f.playerIds[0]!), eq(notifications.kind, 'clan_support_result')));
+    expect(notes.map((note) => note.payload)).toContainEqual(expect.objectContaining({
+      grade: 'COLONY_LOST', hostPlanetId: host, lost: 10, survived: 0,
+    }));
+  });
+
+  it('turns a wave still flying to a seceding colony home', async () => {
+    const f = await supportWorld(5, 15_604);
+    await formClan(f, 0, [1]);
+    const host = await colony(f, 4, 1);
+    await open(f, 4, 1);
+    const { wave } = await send(f, 0, 0, 4, { DART: 10 });
+    await f.db.transaction((tx) => secedeColony(tx, host, f.clock.now(), crypto.randomUUID()));
+    expect(await waveOf(f, wave.id)).toMatchObject({ status: 'RETURNING', returnReason: 'WORLD_CHANGED' });
+  });
+
+  it('still sends a standing wave home when its host colony is abandoned', async () => {
+    const f = await supportWorld(5, 15_605);
+    await formClan(f, 0, [1]);
+    const host = await colony(f, 4, 1);
+    await open(f, 4, 1);
+    const { wave } = await send(f, 0, 0, 4, { DART: 10 });
+    await landAll(f);
+    await f.db.transaction((tx) => secedeColony(tx, host, f.clock.now(), crypto.randomUUID(), 'ABANDONED'));
     expect(await waveOf(f, wave.id)).toMatchObject({ status: 'RETURNING', returnReason: 'WORLD_CHANGED' });
   });
 });

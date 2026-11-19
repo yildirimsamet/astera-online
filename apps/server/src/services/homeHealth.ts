@@ -1,25 +1,30 @@
+import { bodyLocation } from './unitLocation.js';
 import { and, eq, inArray, lte, ne, or, sql } from 'drizzle-orm';
-import { normalizeHpDamage, splitHealthFleet, type Fleet, type HpDamageLot, type HpDamageLots } from '@astera/rules';
+import { normalizeHpDamage, splitHealthFleet, type Fleet, type HpDamageLot, type HpDamageLots, type WorldBody } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
 import { clanWarMissions, missions, planets, units } from '../db/schema.js';
 import { GameError } from './planet.js';
 
-/** units remains the population authority; damage annotates a subset of each home row. */
-export async function readHomeHealth(tx: Queryable, planetId: string): Promise<{ fleet: Fleet; damage: HpDamageLot[] }> {
-  const rows = await tx.select().from(units).where(and(eq(units.planetId, planetId), eq(units.location, 'home')));
+/** units remains the population authority; damage annotates a subset of each standing row. */
+export async function readHomeHealth(
+  tx: Queryable, planetId: string, body: WorldBody = 'PLANET',
+): Promise<{ fleet: Fleet; damage: HpDamageLot[] }> {
+  const rows = await tx.select().from(units).where(and(eq(units.planetId, planetId), eq(units.location, bodyLocation(body))));
   const fleet: Fleet = {};
   for (const row of rows) if (row.count > 0) fleet[row.hull] = row.count;
   return { fleet, damage: normalizeHpDamage(fleet, rows.flatMap((row) => row.damage)) };
 }
 
 /** Caller owns the planet lock and updates physical counts in the same transaction. */
-export async function writeHomeHealth(tx: Tx, planetId: string, fleet: Fleet, damage: HpDamageLots): Promise<void> {
+export async function writeHomeHealth(
+  tx: Tx, planetId: string, fleet: Fleet, damage: HpDamageLots, body: WorldBody = 'PLANET',
+): Promise<void> {
   const normalized = normalizeHpDamage(fleet, damage);
   const byHull: Record<string, HpDamageLot[]> = {};
   for (const lot of normalized) (byHull[lot.hull] ??= []).push({ hull: lot.hull, count: lot.count,
     damageBp: lot.damageBp, remainderBp: lot.remainderBp ?? 0 });
   const next = sql`coalesce(${JSON.stringify(byHull)}::jsonb -> ${units.hull}::text, '[]'::jsonb)`;
-  await tx.update(units).set({ damage: next }).where(and(eq(units.planetId, planetId), eq(units.location, 'home'),
+  await tx.update(units).set({ damage: next }).where(and(eq(units.planetId, planetId), eq(units.location, bodyLocation(body)),
     sql`${units.damage} is distinct from ${next}`));
 }
 
@@ -31,6 +36,13 @@ export async function writeHomeHealth(tx: Tx, planetId: string, fleet: Fleet, da
  * at arrival for the same reason. Own and clanmates' flights are not hostile.
  */
 export async function assertNoArrivalPending(tx: Queryable, planetId: string, now: Date): Promise<void> {
+  if (await arrivalPending(tx, planetId, now)) {
+    throw new GameError('ARRIVAL_PENDING', 'A battle has begun at this world; its fleet can leave once it ends', 409);
+  }
+}
+
+/** K12's reading, answered rather than thrown: a hop landing waits behind it (E2). */
+export async function arrivalPending(tx: Queryable, planetId: string, now: Date): Promise<boolean> {
   const [due] = await tx.select({ id: missions.id }).from(missions)
     .innerJoin(planets, eq(planets.id, missions.targetPlanetId))
     .leftJoin(clanWarMissions, eq(clanWarMissions.missionId, missions.id))
@@ -41,7 +53,7 @@ export async function assertNoArrivalPending(tx: Queryable, planetId: string, no
       ne(missions.ownerPlayerId, planets.controllerPlayerId),
       or(inArray(missions.kind, ['attack', 'death_star']), eq(clanWarMissions.leg, 'COMBINED_ATTACK')),
     )).limit(1);
-  if (due) throw new GameError('ARRIVAL_PENDING', 'A battle has begun at this world; its fleet can leave once it ends', 409);
+  return due !== undefined;
 }
 
 /**

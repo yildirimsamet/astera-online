@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { dispatchProvenance } from './commandOrigin.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { recordPlayerLegacyFact } from './legacyEvents.js';
@@ -120,7 +121,7 @@ async function reserveFleet(
     }
     remaining[hull] = (remaining[hull] ?? 0) - count;
   }
-  await setUnits(tx, originPlanetId, remaining, 'home', ownerPlayerId);
+  await setUnits(tx, originPlanetId, remaining, PLANET_LOCATION, ownerPlayerId);
   await setUnits(tx, originPlanetId, fleet, missionId, ownerPlayerId);
 }
 

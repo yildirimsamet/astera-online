@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { and, asc, eq, gt, inArray, lt, lte, or } from 'drizzle-orm';
 import { HULLS, applyHpDose, dockLocation, firstHpLossAtMs, hpRadiationRateProfile, segmentsExposureHp,
   type Fleet, type HpDamageLot, type HpDamageLots, type HpRadiationSource, type TechLevels } from '@astera/rules';
@@ -122,11 +123,11 @@ export async function projectPlanetRadiation(tx: Queryable, planet: Planet, seas
   const rows = inventory.map(row => {
     if (row.count <= 0 || HULLS[row.hull].ground || row.hull === 'PROSPECTOR') return row;
     const lot = row.location.startsWith('dock:') ? byId.get(row.location.slice('dock:'.length)) : undefined;
-    if (row.location !== 'home' && !lot) return row;
+    if (row.location !== PLANET_LOCATION && !lot) return row;
     const damage = lot ? [{ hull: row.hull, count: row.count, damageBp: lot.damageBp, remainderBp: lot.remainderBp }] : row.damage;
     const outcome = applyHpDose({ [row.hull]: row.count }, damage, dose, tech);
     const count = outcome.fleet[row.hull] ?? 0;
-    if (row.location === 'home' && count < row.count) lostHome = true;
+    if (row.location === PLANET_LOCATION && count < row.count) lostHome = true;
     if (lot && outcome.lots[0]) dock.set(lot.id, outcome.lots[0]);
     const next = { ...row, count, damage: outcome.lots };
     changed ||= count !== row.count || JSON.stringify(next.damage) !== JSON.stringify(row.damage);
@@ -158,7 +159,7 @@ export async function persistPlanetRadiation(tx: Tx, planet: Planet, season: Sea
   for (const row of inventory) {
     if (row.count <= 0 || HULLS[row.hull].ground || row.hull === 'PROSPECTOR' || !row.ownerPlayerId) continue;
     const dock = row.location.startsWith('dock:') ? docksById.get(row.location.slice(5)) : undefined;
-    if (row.location !== 'home' && !dock) continue;
+    if (row.location !== PLANET_LOCATION && !dock) continue;
     const health = owners.get(row.ownerPlayerId) ?? { fleet: {}, damage: [] };
     health.fleet[row.hull] = (health.fleet[row.hull] ?? 0) + row.count;
     health.damage.push(...(dock ? [{ hull: row.hull, count: row.count, damageBp: dock.damageBp, remainderBp: dock.remainderBp }] : row.damage));
@@ -273,7 +274,7 @@ export async function schedulePlanetRadiation(tx: Tx, planet: Planet, season: Se
   const fleet: Fleet = {};
   const damage: HpDamageLot[] = [];
   for (const row of rows) {
-    if (row.count <= 0 || HULLS[row.hull].ground || (row.location !== 'home' && !docks.has(row.location))) continue;
+    if (row.count <= 0 || HULLS[row.hull].ground || (row.location !== PLANET_LOCATION && !docks.has(row.location))) continue;
     fleet[row.hull] = (fleet[row.hull] ?? 0) + row.count;
     const lot = docks.get(row.location);
     damage.push(...(lot ? [{ hull: row.hull, count: row.count, damageBp: lot.damageBp, remainderBp: lot.remainderBp }] : row.damage));

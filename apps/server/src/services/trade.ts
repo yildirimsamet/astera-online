@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { dispatchProvenance } from './commandOrigin.js';
 import { and, eq } from 'drizzle-orm';
 import {
@@ -375,7 +376,7 @@ export async function launchTrade(
     for (const [hull, count] of fleetEntries(requested)) {
       remaining[hull] = (remaining[hull] ?? 0) - count;
     }
-    await setUnits(tx, planetId, remaining, 'home');
+    await setUnits(tx, planetId, remaining, PLANET_LOCATION);
     await setUnits(tx, planetId, requested, tradeLocation(run.id));
 
     // The offer and the fuel leave together, in one write, so no intermediate

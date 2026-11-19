@@ -83,6 +83,7 @@ import { GameError } from './planet.js';
 import { busy, commanderRows, demolish } from './reclaim.js';
 import { reconcileClanPlayerReclaim } from './clan.js';
 import { createNeutralWorld } from './season.js';
+import { carryMoon, moonsOf } from './moon.js';
 
 export interface DeleteAccountResult {
   /** The public display name, so the operator can read back who was removed. */
@@ -332,6 +333,8 @@ async function eraseAccount(tx: Tx, clock: Clock, found: Pick<typeof accounts.$i
     now,
     activeCutoff: new Date(now.getTime() - SERVERS.idleDays * 24 * 60 * 60_000),
   });
+  // Read before the rows go: a colony's moon stays in its slot as a new prize (S56); the capital's goes with it.
+  const colonyMoons = await moonsOf(tx, worlds.filter((world) => world.kind === 'COLONY').map((world) => world.id));
   await demolish(tx, planetIds, player.id, rows);
 
   /**
@@ -345,7 +348,9 @@ async function eraseAccount(tx: Tx, clock: Clock, found: Pick<typeof accounts.$i
     if (world.kind !== 'COLONY') continue;
     const original = originalNeutral(player.seed, world.slotIndex);
     if (!original) continue;
-    await createNeutralWorld(tx, player.seasonId, original.neutral, now, original.number);
+    const neutralId = await createNeutralWorld(tx, player.seasonId, original.neutral, now, original.number);
+    const moon = colonyMoons.find((row) => row.planetId === world.id);
+    if (moon) await carryMoon(tx, moon, neutralId);
     coloniesReturned.push(world.name);
   }
 

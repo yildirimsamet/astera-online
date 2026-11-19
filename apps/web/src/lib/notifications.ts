@@ -153,8 +153,11 @@ const supportDeparted = z.object({
   hostPlanetName: z.string(),
 });
 const supportResult = z.object({
-  /** The raid's grade, which is the raider's: REPELLED is the line holding. */
-  grade: z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']),
+  /**
+   * The raid's grade, which is the raider's: REPELLED is the line holding. COLONY_LOST is no
+   * raid at all: the host colony seceded and the wave standing there fell with it (S42).
+   */
+  grade: z.enum(['DECISIVE', 'PARTIAL', 'REPELLED', 'COLONY_LOST']),
   hostPlanetName: z.string(),
   lost: z.number().int().nonnegative(),
   survived: z.number().int().nonnegative(),
@@ -418,7 +421,12 @@ const strategicResult = z.object({
 const colonyEvent = z.object({ targetPlanetId: z.string() });
 
 /** A secession (`loyalty.ts`) names the world it lost; older rows may not. */
-const colonySeceded = z.object({ planetName: z.string().optional(), cause: z.string().optional() });
+const colonySeceded = z.object({
+  planetName: z.string().optional(),
+  cause: z.string().optional(),
+  /** Ships standing on the colony and in its dock, lost with it (S19c). */
+  lostShips: z.number().int().nonnegative().optional(),
+});
 const wasAbandoned = (notification: NotificationView): boolean => {
   if (notification.kind !== 'colony_lost') return false;
   const parsed = colonySeceded.safeParse(notification.payload);
@@ -609,10 +617,19 @@ export function notificationBattleOutcome(notification: NotificationView): Battl
   }
   if (notification.kind === 'clan_support_result') {
     const result = supportResult.safeParse(notification.payload);
-    return result.success ? battleOutcome({ attacking: false, grade: result.data.grade,
-      survivors: result.data.survived, losses: result.data.lost }) : 'neutral';
+    if (!result.success) return 'neutral';
+    if (result.data.grade === 'COLONY_LOST') return 'loss';
+    return battleOutcome({ attacking: false, grade: result.data.grade,
+      survivors: result.data.survived, losses: result.data.lost });
   }
   return null;
+}
+
+/** A wave lost with a seceding colony: no battle report exists to open (S42). */
+export function supportLostWithColony(notification: NotificationView): boolean {
+  if (notification.kind !== 'clan_support_result') return false;
+  const parsed = supportResult.safeParse(notification.payload);
+  return parsed.success && parsed.data.grade === 'COLONY_LOST';
 }
 
 /** Native target payloads cannot be treated as historical planet-shaped news. */
@@ -1390,9 +1407,11 @@ export function describeNotification(notification: NotificationView, now: number
           ? i18n.t('notifications.colonyAbandoned', { planet })
           : i18n.t('notifications.colonyAbandonedUnnamed');
       }
-      return planet
+      const line = planet
         ? i18n.t('notifications.colonyLost', { planet })
         : i18n.t('notifications.colonyLostUnnamed');
+      const lost = parsed.success ? parsed.data.lostShips ?? 0 : 0;
+      return lost > 0 ? `${line} · ${i18n.t('notifications.colonyLostShips', { count: lost })}` : line;
     }
 
     case 'settlement_lost': {
@@ -1498,6 +1517,9 @@ export function describeNotification(notification: NotificationView, now: number
       const parsed = supportResult.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('clanSupport.noticeFallback');
       const { hostPlanetName, lost, survived } = parsed.data;
+      if (parsed.data.grade === 'COLONY_LOST') {
+        return i18n.t('clanSupport.noticeColonyLost', { world: hostPlanetName, count: lost });
+      }
       return `${i18n.t(`clanSupport.verdict.${parsed.data.grade}`)} · ${i18n.t('clanSupport.noticeResult', { world: hostPlanetName, lost, kept: survived })}`;
     }
     case 'clan_support_lifted': {

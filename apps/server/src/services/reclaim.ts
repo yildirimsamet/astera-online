@@ -68,6 +68,7 @@ import {
 import { prepareClanReclaimMonuments, reconcileClanPlayerReclaim } from './clan.js';
 import { addDominionCounters } from './dominion.js';
 import { hasMonumentActivity, removeTerminalMonumentWaves } from './monumentLifecycle.js';
+import { moonMovePending } from './moon.js';
 
 /**
  * RECLAIMING THE SEAT OF A COMMANDER WHO STOPPED COMING BACK. Owner instruction.
@@ -308,6 +309,7 @@ export async function busy(
     if (bomb) return true;
   }
   if (await hasMonumentActivity(tx, playerId, planetIds)) return true;
+  if (await moonMovePending(tx, playerId, planetIds)) return true;
   const [flight] = await tx
     .select({ id: missions.id })
     .from(missions)

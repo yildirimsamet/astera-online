@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { prepareBattleReplay, persistBattleReplay } from './battleReplay.js';
 import { refreshPlanetAegis, syncPlanetAegis } from './planetAegis.js';
 import { and, eq, inArray, isNull, lte, or } from 'drizzle-orm';
@@ -141,7 +142,7 @@ async function setNeutralFleet(tx: Tx, planetId: string, fleet: Fleet, damage: H
       planetId,
       ownerPlayerId: null,
       hull,
-      location: 'home',
+      location: PLANET_LOCATION,
       count,
       damage: hullDamage,
     }).onConflictDoUpdate({
@@ -154,7 +155,7 @@ async function setNeutralFleet(tx: Tx, planetId: string, fleet: Fleet, damage: H
   if (absent.length > 0) {
     await tx.delete(units).where(and(
       eq(units.planetId, planetId),
-      eq(units.location, 'home'),
+      eq(units.location, PLANET_LOCATION),
       inArray(units.hull, absent),
     ));
   }

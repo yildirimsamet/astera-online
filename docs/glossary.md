@@ -197,6 +197,10 @@ devastated by a Death Star, and cannot be abandoned or captured.
 Death Star strike. A commander may retain up to three, with new acquisition capacity derived
 from their capital's Command Core.
 
+**Secession** — A colony whose loyalty reaches zero turns neutral. The fleet standing on it, the
+ships in its Repair Station and clanmates' support standing there are lost with it; fleets in
+flight land at a world the owner still holds. Abandoning a colony on purpose brings its fleet home.
+
 **Neutral world** — One of seventeen deterministic, shared-stock worlds created with a v2
 season. It has no commander, grants no Dominion and is never replaced after capture.
 

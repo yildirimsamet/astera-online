@@ -841,8 +841,9 @@ export const faults = {
   loyalty: {
     title: "Bu dünyanın sadakati",
     battleLoss: "Hafif yenilgi −15 · ağır yenilgi −30 · Ölüm Yıldızı −{{strike}}",
-    why_one: "{{count}} arıza yüzünden düşüyor. Sıfırda koloniyi kaybedersin.",
-    why_other: "{{count}} arıza yüzünden düşüyor. Sıfırda koloniyi kaybedersin.",
+    why_one: "{{count}} arıza yüzünden düşüyor. Sıfırda koloniyi ve üzerindeki filoyu kaybedersin.",
+    why_other: "{{count}} arıza yüzünden düşüyor. Sıfırda koloniyi ve üzerindeki filoyu kaybedersin.",
+    stake: "Sıfırda koloni kopar: üzerindeki filo ve onarımdaki gemiler onunla gider. Havadaki filolar başkente iner.",
     bar: "%{{value}}",
     left: "{{time}} kaldı",
   },

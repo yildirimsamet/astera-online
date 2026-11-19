@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { prepareBattleReplay, persistBattleReplay } from './battleReplay.js';
 import { commanderPvpBalance } from './pvpBalance.js';
 import { and, eq } from 'drizzle-orm';
@@ -373,7 +374,7 @@ export async function resolveClanWarBattle(
       ? standing
       : (hostOutcome.survivors[hull] ?? 0) + (result.defenceSalvage[hull] ?? 0);
   }
-  await setUnits(tx, defender.planetId, defenderHome, 'home');
+  await setUnits(tx, defender.planetId, defenderHome, PLANET_LOCATION);
   /*
     KALICI GEMİ HASARI, as in the raid lane: the defender's part-hit ships are judged on
     the spot, each wave carries its own home on its own return leg.

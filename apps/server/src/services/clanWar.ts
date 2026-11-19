@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { settlePlanetRadiationAt } from './planetRadiation.js';
 import { assertLandsOutsideMaintenance } from './maintenanceWindow.js';
 import { commitHonor } from './honorCommitment.js';
@@ -1800,7 +1801,7 @@ export async function sendClanWarContribution(
   for (const [hull, n] of Object.entries(input.fleet) as [HullId, number][]) {
     remaining[hull] = (remaining[hull] ?? 0) - n;
   }
-  await setUnits(tx, context.origin.planetId, remaining, 'home');
+  await setUnits(tx, context.origin.planetId, remaining, PLANET_LOCATION);
   await setUnits(tx, context.origin.planetId, input.fleet, unitLocation);
 
   if (context.fuel > 0) {

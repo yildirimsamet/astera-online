@@ -935,6 +935,8 @@ export const clanSupportQuoteSchema = z.object({
   seasonClipped: z.boolean(),
   personalHangar: z.object({ used: z.number(), total: z.number() }),
   senderShieldUntil: z.coerce.date().nullable(),
+  /** The host colony's loyalty, rounded up; null on a capital. Lost with it at zero (S42). */
+  hostLoyalty: z.number().nullable().default(null),
 });
 export type ClanSupportQuote = z.infer<typeof clanSupportQuoteSchema>;
 

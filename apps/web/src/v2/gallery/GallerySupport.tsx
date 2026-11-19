@@ -102,7 +102,7 @@ function SendSheet({ alarm = false }: { alarm?: boolean }) {
       refusals: [], arriveAt: iso(18), travelMinutes: 18, returnMinutes: 18, fuel: 412,
       bays: { used: 2, total: 5 }, hostRoom: { used: 192, reserved: 40, total: 470, after: 312 },
       band: { ok: true, mine: 3, theirs: 3 }, stationUntil: iso(12 * 60 + 18), seasonClipped: false,
-      personalHangar: { used: 612, total: 810 }, senderShieldUntil: null,
+      personalHangar: { used: 612, total: 810 }, senderShieldUntil: null, hostLoyalty: 37,
     }), { status: 200, headers: { 'content-type': 'application/json' } })),
   }));
   const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }));

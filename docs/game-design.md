@@ -458,6 +458,13 @@ A defending colony loses 30 loyalty on a decisive defeat and 15 on a partial def
 even below the Core fault gate. A repelled attack costs no loyalty. Loyalty cannot fall
 below zero; at zero the colony secedes.
 
+**What a secession costs (owner 2026-11-18, S19c/S42/S43).** The mobile fleet standing on the
+colony and every ship in its Repair Station are destroyed with it; clanmates' support waves
+standing there are lost and their senders told. Ground guns stay as the caretaker's garrison.
+Fleets in the air are untouched and land at the owner's nearest still-held world through
+`safeHomePlanet` (V22). The loss scores no Dominion or Honor but shows in the season record.
+Voluntary abandonment keeps the old rule: the fleet and the dock move to the capital.
+
 Starting any building upgrade protects only that colony against all new faults for
 at least 12 hours, including attack-induced faults. Each accepted building order
 renews this window immediately; completion is not required. Existing faults still
