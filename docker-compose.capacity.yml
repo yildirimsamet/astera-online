@@ -57,6 +57,7 @@ services:
     image: postgres:16-alpine
     mem_limit: 4g
     mem_reservation: 1g
+    shm_size: 512m
     environment:
       POSTGRES_USER: astera_capacity
       POSTGRES_PASSWORD: capacity_only

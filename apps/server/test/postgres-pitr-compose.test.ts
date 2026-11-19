@@ -18,6 +18,7 @@ const postgresConfig = z.object({ services: z.object({ postgres: z.object({
   build: z.object({ context: z.string() }).optional(),
   command: z.array(z.string()).nullish(),
   environment: z.record(z.string(), z.string().nullable()),
+  shm_size: z.coerce.number().optional(),
 }) }) });
 const secrets = {
   PGBACKREST_REPO1_S3_BUCKET: 'fixture-bucket', PGBACKREST_REPO1_S3_ENDPOINT: 'fixture-account.r2.cloudflarestorage.com',
@@ -81,4 +82,26 @@ it('never archives stage or hands it the production repository keys', () => {
   expect(settings.get('archive_mode') ?? 'off').toBe('off');
   expect(settings.has('archive_command')).toBe(false);
   for (const name of Object.keys(secrets)) expect(service.environment[name] ?? '').toBe('');
+});
+
+/*
+  /dev/shm IS WHERE POSTGRES KEEPS ITS DYNAMIC SHARED MEMORY, and Docker gives a container 64 MB of it.
+  Production filled it (2026-11-15: /api/galaxy/events answered 500 for hours; the owner's agent found
+  63.6 of 64 MB used and remounted 512 MB live with nsenter, which the next recreate undid). Measured
+  2026-11-19: 70 segments, 69.6 MB in use — over the default before any parallel query asks for more.
+  512 MB is the live value: seven times today's use, and a ceiling inside the 4 GB container limit.
+*/
+const SHM_512M = 512 * 1024 * 1024;
+
+it('gives production PostgreSQL 512 MB of /dev/shm, not Docker’s 64 MB default', () => {
+  expect(postgres(false).service.shm_size).toBe(SHM_512M);
+});
+
+it('stage merges the same shared-memory size', () => {
+  expect(postgres(true).service.shm_size).toBe(SHM_512M);
+});
+
+it('the capacity rig’s PostgreSQL has production’s /dev/shm, so a load test meets the same wall', () => {
+  const capacity = readFileSync(resolve(root, 'docker-compose.capacity.yml'), 'utf8');
+  expect(capacity).toMatch(/^ {2}postgres:\n(?: {4}.*\n)*? {4}shm_size: 512m$/m);
 });
