@@ -56,3 +56,15 @@ describe('the probe’s readings', () => {
       'safe-area top', 'safe-area bottom', 'standalone', 'iOS']) expect(text).toContain(label);
   });
 });
+
+/*
+  WHAT THE PROBE SHOWED (2026-11-19, iOS 18.7, home screen). With `black-translucent` the web layer reaches
+  the bottom of an 844 px screen, but `innerHeight`, `100dvh` and `position: fixed; bottom: 0` all stop at
+  797 — 47 px, the status bar, short — so the game, drawn in `--app-h` = innerHeight, left an empty band
+  under its dock. With `black` (XR, 896 px screen) the layer starts under an opaque bar and every height
+  (848) ends at its bottom. The game installs with the opaque bar.
+*/
+it('installs the game with the opaque status bar, whose heights match the screen', () => {
+  const doc = new DOMParser().parseFromString(read('index.html'), 'text/html');
+  expect(doc.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.getAttribute('content')).toBe('black');
+});
