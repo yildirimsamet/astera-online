@@ -1800,6 +1800,20 @@
       "when": 1795098646144,
       "tag": "0256_mission_bodies",
       "breakpoints": true
+    },
+    {
+      "idx": 257,
+      "version": "7",
+      "when": 1795104481508,
+      "tag": "0257_moon_gate_enums",
+      "breakpoints": true
+    },
+    {
+      "idx": 258,
+      "version": "7",
+      "when": 1795104493964,
+      "tag": "0258_moon_gate",
+      "breakpoints": true
     }
   ]
 }

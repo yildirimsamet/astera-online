@@ -184,8 +184,10 @@ export const eventKind = pgEnum('event_kind', [
   'arena_ship_ready',
   /** A Bildirim Merkezi push due now: charge the wallet, then send. 2026-10-30. */
   'paid_alert',
-  /** A planet ↔ moon hop lands (ay planı §6.6). */
+  /** A planet ↔ moon hop lands, or a Moon Gate jump ends its opening (ay planı §6.6, §6.11). */
   'moon_move_land',
+  /** A moon's gate has charged again (§6.11); told to the moon's holder if nothing moved it since. */
+  'moon_gate_ready',
 ]);
 /**
  * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
@@ -302,6 +304,8 @@ export const notificationKind = pgEnum('notification_kind', [
    * support: the host's own warning, copied to every mature member of a level-2 clan.
    */
   'clan_alarm',
+  /** Ay §6.11: a moon's gate has charged and can jump again. */
+  'moon_gate_ready',
 ]);
 export type NotificationKind = (typeof notificationKind.enumValues)[number];
 
@@ -6051,17 +6055,23 @@ export const moonMoves = pgTable('moon_moves', {
   id: uuid('id').primaryKey().defaultRandom(),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
   ownerPlayerId: uuid('owner_player_id').notNull().references(() => players.id),
-  kind: text('kind').$type<'HOP_UP' | 'HOP_DOWN'>().notNull(),
+  kind: text('kind').$type<'HOP_UP' | 'HOP_DOWN' | 'JUMP'>().notNull(),
   fromPlanetId: uuid('from_planet_id').notNull().references(() => planets.id, { onDelete: 'cascade' }),
   toPlanetId: uuid('to_planet_id').notNull().references(() => planets.id, { onDelete: 'cascade' }),
   fleet: jsonb('fleet').$type<Fleet>().notNull(),
   damage: jsonb('damage').$type<HpDamageLot[]>().notNull().default([]),
   departAt: timestamp('depart_at', { withTimezone: true }).notNull(),
   arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),
-  status: text('status').$type<'PENDING' | 'LANDED' | 'RETURNED'>().notNull().default('PENDING'),
+  /**
+   * PENDING → LANDED; RETURNED when the fleet came down somewhere else (V36); a JUMP is CANCELLED when the far
+   * moon or world is gone (E6, V8: ships stay, fuel stays spent) and LOST when nobody was left to carry (E4).
+   */
+  status: text('status').$type<'PENDING' | 'LANDED' | 'RETURNED' | 'CANCELLED' | 'LOST'>().notNull().default('PENDING'),
+  /** Only a JUMP pays fuel; a hop is free (S49). */
+  fuelPaid: real('fuel_paid').notNull().default(0),
 }, (t) => [
-  check('moon_moves_kind_check', sql`${t.kind} in ('HOP_UP', 'HOP_DOWN')`),
-  check('moon_moves_status_check', sql`${t.status} in ('PENDING', 'LANDED', 'RETURNED')`),
+  check('moon_moves_kind_check', sql`${t.kind} in ('HOP_UP', 'HOP_DOWN', 'JUMP')`),
+  check('moon_moves_status_check', sql`${t.status} in ('PENDING', 'LANDED', 'RETURNED', 'CANCELLED', 'LOST')`),
   // Reclaim and account deletion read a commander's moves; every key into a commander has its own index.
   index('moon_moves_owner_idx').on(t.ownerPlayerId),
   index('moon_moves_from_pending_idx').on(t.fromPlanetId).where(sql`${t.status} = 'PENDING'`),

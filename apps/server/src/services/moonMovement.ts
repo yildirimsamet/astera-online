@@ -1,10 +1,15 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   MOBILE_HULLS,
   MOON,
+  distance,
   dockFree,
   fleetCount,
+  fleetEntries,
+  gateChargeMs,
   hangarLoad,
+  jumpCapacity,
+  jumpFuel,
   type Fleet,
   type HpDamageLot,
   type WorldBody,
@@ -17,7 +22,10 @@ import { schedule } from '../worker/queue.js';
 import { arrivalPending, assertNoArrivalPending, readHomeHealth, selectHomeDispatch, writeHomeHealth } from './homeHealth.js';
 import { assertMoonTarget, seasonHasMoons } from './moon.js';
 import { lockWorlds, safeHomePlanet } from './ownership.js';
-import { GameError, assertWorldOperational, loadLocked, setUnits } from './planet.js';
+import { assertFuel } from './fuel.js';
+import { landingBlock } from './movement.js';
+import { notify } from './notifications.js';
+import { GameError, assertWorldOperational, loadLocked, saveResources, setUnits } from './planet.js';
 import { MOON_LOCATION, bodyLocation, hopLocation } from './unitLocation.js';
 import { publishWatchChanges } from './watchEvents.js';
 
@@ -33,7 +41,7 @@ export type MoonMove = typeof moonMoves.$inferSelect;
 
 const KIND = { UP: 'HOP_UP', DOWN: 'HOP_DOWN' } as const;
 const ORIGIN: Record<HopDirection, WorldBody> = { UP: 'PLANET', DOWN: 'MOON' };
-const DESTINATION: Record<MoonMove['kind'], WorldBody> = { HOP_UP: 'MOON', HOP_DOWN: 'PLANET' };
+const DESTINATION: Record<MoonMove['kind'], WorldBody> = { HOP_UP: 'MOON', HOP_DOWN: 'PLANET', JUMP: 'MOON' };
 
 export async function hopFleet(
   db: Db, playerId: string, planetId: string, direction: HopDirection, requested: Readonly<Record<string, number>>, clock: Clock,
@@ -47,14 +55,7 @@ export async function hopFleet(
     const [moon] = await tx.select().from(moons).where(eq(moons.planetId, planetId));
     if (!moon) throw new GameError('NO_MOON', 'This world has no moon', 409);
 
-    const fleet: Fleet = {};
-    for (const [hull, n] of Object.entries(requested)) {
-      if (n <= 0) continue;
-      const mobile = MOBILE_HULLS.find((id) => id === hull);
-      if (!mobile) throw new GameError('HULL_CANNOT_HOP', 'Emplacements and Prospectors stay on the planet', 400);
-      fleet[mobile] = n;
-    }
-    if (fleetCount(fleet) === 0) throw new GameError('EMPTY_FLEET', 'Send at least one ship', 400);
+    const fleet = mobileFleet(requested);
     const kind = KIND[direction];
     const [pending] = await tx.select({ id: moonMoves.id }).from(moonMoves)
       .where(and(eq(moonMoves.fromPlanetId, planetId), eq(moonMoves.kind, kind), eq(moonMoves.status, 'PENDING'))).limit(1);
@@ -68,6 +69,7 @@ export async function hopFleet(
     }
 
     const standing = await readHomeHealth(tx, planetId, origin);
+    assertAvailable(origin === 'MOON' ? remainderOf(standing.fleet, await reservedOnMoon(tx, planetId)) : standing.fleet, fleet);
     const selected = selectHomeDispatch(standing.fleet, standing.damage, fleet);
     await setUnits(tx, planetId, subtract(standing.fleet, fleet), bodyLocation(origin), playerId);
     await writeHomeHealth(tx, planetId, selected.remaining, selected.remainingDamage, origin);
@@ -86,11 +88,12 @@ export async function hopFleet(
 
 /** The hop lands. Battles first (E2); a vanished moon lands on the planet; a lost world lands at the owner's safe home. */
 export async function landMoonMove(tx: Tx, moveId: string, now: Date): Promise<void> {
-  const [peek] = await tx.select({ planetId: moonMoves.toPlanetId }).from(moonMoves).where(eq(moonMoves.id, moveId));
+  const [peek] = await tx.select({ from: moonMoves.fromPlanetId, to: moonMoves.toPlanetId }).from(moonMoves).where(eq(moonMoves.id, moveId));
   if (!peek) return;
-  await lockWorlds(tx, [peek.planetId], { requireLive: false });
+  await lockWorlds(tx, [peek.from, peek.to], { requireLive: false });
   const [move] = await tx.select().from(moonMoves).where(eq(moonMoves.id, moveId)).for('update');
   if (move?.status !== 'PENDING') return;
+  if (move.kind === 'JUMP') { await finishJump(tx, move, now); return; }
   const [world] = await tx.select().from(planets).where(eq(planets.id, move.toPlanetId));
   let destination = DESTINATION[move.kind];
   let status: MoonMove['status'] = 'LANDED';
@@ -146,7 +149,7 @@ export async function landOnMoon(
 /** Bulk already on its way up to this moon: it holds dock room from the moment it leaves (§6.5). */
 async function inboundLoad(tx: Queryable, planetId: string): Promise<number> {
   const rows = await tx.select({ fleet: moonMoves.fleet }).from(moonMoves)
-    .where(and(eq(moonMoves.toPlanetId, planetId), eq(moonMoves.kind, 'HOP_UP'), eq(moonMoves.status, 'PENDING')));
+    .where(and(eq(moonMoves.toPlanetId, planetId), inArray(moonMoves.kind, ['HOP_UP', 'JUMP']), eq(moonMoves.status, 'PENDING')));
   return rows.reduce((sum, row) => sum + hangarLoad(row.fleet), 0);
 }
 
@@ -212,4 +215,147 @@ export async function retargetAttack(
     }
     return view(body);
   });
+}
+
+/** Mobile hulls only, positive counts only; anything else is refused (S37). */
+function mobileFleet(requested: Readonly<Record<string, number>>): Fleet {
+  const fleet: Fleet = {};
+  for (const [hull, n] of Object.entries(requested)) {
+    if (n <= 0) continue;
+    const mobile = MOBILE_HULLS.find((id) => id === hull);
+    if (!mobile) throw new GameError('HULL_CANNOT_HOP', 'Emplacements and Prospectors stay on the planet', 400);
+    fleet[mobile] = n;
+  }
+  if (fleetCount(fleet) === 0) throw new GameError('EMPTY_FLEET', 'Send at least one ship', 400);
+  return fleet;
+}
+
+/** A raid or transfer leaving the moon may not take ships a pending jump holds (§4.1). */
+export async function assertMoonShipsFree(tx: Queryable, planetId: string, standing: Fleet, fleet: Fleet): Promise<void> {
+  assertAvailable(remainderOf(standing, await reservedOnMoon(tx, planetId)), fleet);
+}
+
+/** Everything in `from` with `take` removed (unlike `subtract`, which answers only for the hulls taken). */
+function remainderOf(from: Fleet, take: Fleet): Fleet {
+  const out: Fleet = { ...from };
+  for (const [hull, n] of fleetEntries(take)) out[hull] = (out[hull] ?? 0) - n;
+  return out;
+}
+
+function assertAvailable(available: Fleet, fleet: Fleet): void {
+  for (const [hull, n] of fleetEntries(fleet)) {
+    if ((available[hull] ?? 0) < n) throw new GameError('NOT_ENOUGH_SHIPS', `Not enough ${hull} here`, 400, { hull });
+  }
+}
+
+/**
+ * SHIPS THE GATE HAS TAKEN (§4.1). During its ten-second opening a jump's ships still stand on the departure
+ * moon — they fight there (E4) — but nothing else may leave with them.
+ */
+export async function reservedOnMoon(tx: Queryable, planetId: string): Promise<Fleet> {
+  const rows = await tx.select({ fleet: moonMoves.fleet }).from(moonMoves)
+    .where(and(eq(moonMoves.fromPlanetId, planetId), eq(moonMoves.kind, 'JUMP'), eq(moonMoves.status, 'PENDING')));
+  const reserved: Fleet = {};
+  for (const row of rows) for (const [hull, n] of fleetEntries(row.fleet)) reserved[hull] = (reserved[hull] ?? 0) + n;
+  return reserved;
+}
+
+/**
+ * THE MOON GATE (S3, S12, S17, S18, S46, S49; plan §6.11). Between two of the commander's own moons: both
+ * gates open and uncharged, the smaller moon is the bottleneck, the far world's Hangar has room, and the
+ * departure planet pays the route's one-leg transfer fuel. Both gates start charging at once; the ships
+ * cross when the ten-second opening ends.
+ */
+export async function jumpFleet(
+  db: Db, playerId: string, fromPlanetId: string, toPlanetId: string, requested: Readonly<Record<string, number>>, clock: Clock,
+): Promise<MoonMove> {
+  if (fromPlanetId === toPlanetId) throw new GameError('SAME_MOON', 'Choose another of your moons', 400);
+  const fleet = mobileFleet(requested);
+  return db.transaction(async (tx) => {
+    await lockWorlds(tx, [fromPlanetId, toPlanetId]);
+    const origin = await loadLocked(tx, fromPlanetId, clock);
+    if (origin.playerId !== playerId) throw new GameError('PLANET_NOT_OWNED', 'This world is not yours', 403);
+    assertWorldOperational(origin);
+    const [target] = await tx.select().from(planets).where(eq(planets.id, toPlanetId));
+    if (target?.controllerPlayerId !== playerId) throw new GameError('PLANET_NOT_OWNED', 'That world is not yours', 403);
+    if (target.seasonId !== origin.seasonId) throw new GameError('CROSS_SEASON', 'Another galaxy', 403);
+    if (!await seasonHasMoons(tx, origin.seasonId)) throw new GameError('MOONS_DISABLED', 'This galaxy has no moons', 409);
+    const pair = await tx.select().from(moons).where(inArray(moons.planetId, [fromPlanetId, toPlanetId]));
+    const here = pair.find((moon) => moon.planetId === fromPlanetId);
+    const there = pair.find((moon) => moon.planetId === toPlanetId);
+    if (!here || !there) throw new GameError('NO_MOON', 'Both worlds need a moon', 409);
+    const now = origin.now;
+    for (const gate of [here, there]) {
+      if (gate.closedUntil && gate.closedUntil > now) throw new GameError('GATE_CLOSED', 'A struck moon’s gate is shut', 409);
+      if (gate.gateReadyAt && gate.gateReadyAt > now) throw new GameError('GATE_CHARGING', 'A gate is still charging', 409);
+    }
+    await assertNoArrivalPending(tx, fromPlanetId, now, 'MOON');
+    const standing = await readHomeHealth(tx, fromPlanetId, 'MOON');
+    assertAvailable(remainderOf(standing.fleet, await reservedOnMoon(tx, fromPlanetId)), fleet);
+    if (hangarLoad(fleet) > jumpCapacity(here.rarity, await moonDockRoom(tx, toPlanetId))) {
+      throw new GameError('GATE_CAPACITY', 'The smaller moon cannot take this fleet in one jump', 409);
+    }
+    const blocked = await landingBlock(tx, toPlanetId, fleet);
+    if (blocked) throw new GameError(blocked.code, blocked.message, 409, blocked.params);
+    const fuel = jumpFuel(fleet, distance(origin, target));
+    assertFuel(fuel, origin.deuterium, 0);
+    await saveResources(tx, fromPlanetId, { alloy: origin.alloy, crystal: origin.crystal, deuterium: origin.deuterium - fuel });
+
+    const arriveAt = new Date(now.getTime() + MOON.gateOpenSeconds * 1_000);
+    const [move] = await tx.insert(moonMoves).values({
+      seasonId: origin.seasonId, ownerPlayerId: playerId, kind: 'JUMP', fromPlanetId, toPlanetId,
+      fleet, fuelPaid: fuel, departAt: now, arriveAt,
+    }).returning();
+    await schedule(tx, { seasonId: origin.seasonId, kind: 'moon_move_land', refId: move!.id, resolveAt: arriveAt });
+    for (const gate of [here, there]) {
+      const readyAt = new Date(now.getTime() + gateChargeMs(gate.rarity));
+      await tx.update(moons).set({ gateReadyAt: readyAt }).where(eq(moons.planetId, gate.planetId));
+      await schedule(tx, { seasonId: origin.seasonId, kind: 'moon_gate_ready', refId: gate.planetId, resolveAt: readyAt });
+    }
+    await publishWatchChanges(tx, [fromPlanetId, toPlanetId]);
+    return move!;
+  });
+}
+
+/**
+ * THE OPENING ENDS (§6.11, E4, E6, V8). Both worlds are locked. A far moon or world that is gone or no longer
+ * the commander's cancels it: the ships stay, the fuel stays spent. A raid due on either moon is fought
+ * first. Then whoever of the taken ships still stands crosses, with their own wounds.
+ */
+async function finishJump(tx: Tx, move: MoonMove, now: Date): Promise<void> {
+  const worlds = await tx.select({ id: planets.id, controller: planets.controllerPlayerId }).from(planets)
+    .where(inArray(planets.id, [move.fromPlanetId, move.toPlanetId]));
+  const pair = await tx.select({ planetId: moons.planetId }).from(moons).where(inArray(moons.planetId, [move.fromPlanetId, move.toPlanetId]));
+  const holds = (id: string) => worlds.find((world) => world.id === id)?.controller === move.ownerPlayerId;
+  const hasMoon = (id: string) => pair.some((moon) => moon.planetId === id);
+  const settle = async (status: MoonMove['status'], damage: readonly HpDamageLot[] = []) => {
+    await tx.update(moonMoves).set({ status, damage: [...damage] }).where(eq(moonMoves.id, move.id));
+    await publishWatchChanges(tx, [move.fromPlanetId, move.toPlanetId]);
+  };
+  if (!hasMoon(move.fromPlanetId) || !holds(move.fromPlanetId)) { await settle('LOST'); return; }
+  if (!hasMoon(move.toPlanetId) || !holds(move.toPlanetId)) { await settle('CANCELLED'); return; }
+  if (await arrivalPending(tx, move.fromPlanetId, now, 'MOON') || await arrivalPending(tx, move.toPlanetId, now, 'MOON')) {
+    await schedule(tx, { seasonId: move.seasonId, kind: 'moon_move_land', refId: move.id, resolveAt: new Date(now.getTime() + 1_000) });
+    return;
+  }
+  const standing = await readHomeHealth(tx, move.fromPlanetId, 'MOON');
+  const moved: Fleet = {};
+  for (const [hull, n] of fleetEntries(move.fleet)) {
+    const left = Math.min(n, standing.fleet[hull] ?? 0);
+    if (left > 0) moved[hull] = left;
+  }
+  if (fleetCount(moved) === 0) { await settle('LOST'); return; }
+  const selected = selectHomeDispatch(standing.fleet, standing.damage, moved);
+  await setUnits(tx, move.fromPlanetId, subtract(standing.fleet, moved), MOON_LOCATION, move.ownerPlayerId);
+  await writeHomeHealth(tx, move.fromPlanetId, selected.remaining, selected.remainingDamage, 'MOON');
+  await placeAt(tx, move.toPlanetId, move.ownerPlayerId, MOON_LOCATION, moved, selected.selectedDamage);
+  await settle('LANDED', selected.selectedDamage);
+}
+
+/** A gate has charged (§6.11). Only if nothing re-armed it since, and only to whoever holds the moon now. */
+export async function announceGateReady(tx: Tx, planetId: string, readyAt: Date): Promise<void> {
+  const [row] = await tx.select({ readyAt: moons.gateReadyAt, holder: planets.controllerPlayerId, name: planets.name })
+    .from(moons).innerJoin(planets, eq(planets.id, moons.planetId)).where(eq(moons.planetId, planetId));
+  if (!row?.holder || row.readyAt?.getTime() !== readyAt.getTime()) return;
+  await notify(tx, { playerId: row.holder, kind: 'moon_gate_ready', payload: { planetId, planetName: row.name }, at: readyAt, refId: planetId });
 }

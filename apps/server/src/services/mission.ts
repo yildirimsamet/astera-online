@@ -66,6 +66,7 @@ import { assertRadiationSafe } from './radiation.js';
 import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
 import { readHomeHealth, takeHomeHealth } from './homeHealth.js';
 import { assertMoonTarget } from './moon.js';
+import { assertMoonShipsFree } from './moonMovement.js';
 import { commitHonor } from './honorCommitment.js';
 import { commitLegacyAttack } from './legacyEvents.js';
 import { attachAdmiral, prepareAdmiral } from './admiral.js';
@@ -179,6 +180,7 @@ export async function launchAttack(
     const source = originBody === 'MOON'
       ? await readHomeHealth(tx, originPlanetId, 'MOON')
       : { fleet: origin.homeFleet, damage: origin.homeDamage };
+    if (originBody === 'MOON') await assertMoonShipsFree(tx, originPlanetId, source.fleet, requested);
 
     for (const [hull, n] of Object.entries(requested) as [HullId, number][]) {
       if ((source.fleet[hull] ?? 0) < n) {

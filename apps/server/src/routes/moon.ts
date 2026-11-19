@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAuth } from './auth.js';
-import { hopFleet, retargetAttack } from '../services/moonMovement.js';
+import { hopFleet, jumpFleet, retargetAttack } from '../services/moonMovement.js';
 import { commanderForAccount, ownedPlanet } from '../services/ownership.js';
 
 /**
@@ -20,6 +20,15 @@ export function registerMoonRoutes(app: FastifyInstance): void {
     const owner = await ownedPlanet(app.db, req.accountId!, planetId);
     const move = await hopFleet(app.db, owner.playerId, owner.planetId, body.direction, body.fleet, app.clock);
     return { id: move.id, kind: move.kind, fleet: move.fleet, departAt: move.departAt, arriveAt: move.arriveAt };
+  });
+
+  /** The Moon Gate (§6.11): jump a fleet from this world's moon to another of the caller's moons. */
+  app.post('/api/planets/:planetId/moon/jump', { preHandler: requireAuth }, async (req) => {
+    const { planetId } = z.object({ planetId: z.string().uuid() }).strict().parse(req.params);
+    const body = z.object({ toPlanetId: z.string().uuid(), fleet: hopBody.shape.fleet }).strict().parse(req.body);
+    const owner = await ownedPlanet(app.db, req.accountId!, planetId);
+    const move = await jumpFleet(app.db, owner.playerId, owner.planetId, body.toPlanetId, body.fleet, app.clock);
+    return { id: move.id, kind: move.kind, fleet: move.fleet, fuelPaid: move.fuelPaid, departAt: move.departAt, arriveAt: move.arriveAt };
   });
 
   /** S13: switch an own raid in the air between the world's planet and its moon (§6.8). */

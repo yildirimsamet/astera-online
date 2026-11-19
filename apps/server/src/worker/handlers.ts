@@ -237,7 +237,7 @@ import { isHostileMission } from '../services/flight.js';
 import { resolveNeutralCensus } from '../services/season.js';
 import { onMonumentArrival, onMonumentLoss, onMonumentProbe, onMonumentRespawn } from './monumentHandlers.js';
 import { onPlanetRadiationBoundary, onRadiationBombArrival, onRadiationBombIntercept, onRadiationBombInterceptImpact } from './radiationBombHandlers.js';
-import { landMoonMove, landOnMoon, landingBodyOf } from '../services/moonMovement.js';
+import { announceGateReady, landMoonMove, landOnMoon, landingBodyOf } from '../services/moonMovement.js';
 import { moonsOf } from '../services/moon.js';
 import { readHomeHealth, writeHomeHealth } from '../services/homeHealth.js';
 import { settleEmptyMoon } from '../services/moonBattle.js';
@@ -3299,6 +3299,11 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   moon_move_land: async ({ db }, event) => {
     if (!event.refId) throw new Error('moon_move_land without move');
     await db.transaction((tx) => landMoonMove(tx, event.refId!, event.resolveAt));
+  },
+  moon_gate_ready: async ({ db }, event) => {
+    if (!event.refId) throw new Error('moon_gate_ready without refId');
+    const planetId = event.refId;
+    await db.transaction((tx) => announceGateReady(tx, planetId, event.resolveAt));
   },
   strategic_intercept: onStrategicIntercept,
   strategic_intercept_impact: onStrategicInterceptImpact,

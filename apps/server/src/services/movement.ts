@@ -76,7 +76,7 @@ import { techOf } from './researchState.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
 import { readHomeHealth, selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
 import { assertMoonTarget } from './moon.js';
-import { landOnMoon, landingBodyOf, moonDockRoom } from './moonMovement.js';
+import { assertMoonShipsFree, landOnMoon, landingBodyOf, moonDockRoom } from './moonMovement.js';
 import { withdrawRaidWarning } from './notifications.js';
 
 const EMPTY: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
@@ -331,6 +331,7 @@ export async function launchTransfer(
     const source = originBody === 'MOON'
       ? await readHomeHealth(tx, originPlanetId, 'MOON')
       : { fleet: origin.homeFleet, damage: origin.homeDamage };
+    if (originBody === 'MOON') await assertMoonShipsFree(tx, originPlanetId, source.fleet, fleet);
     if (targetBody === 'MOON') {
       await assertMoonTarget(tx, target);
       // Room in the dock at launch (S50); one that fills meanwhile sends the wing to the planet on landing.
