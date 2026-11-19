@@ -47,26 +47,60 @@ describe('the spheres the fog opens', () => {
     effect.dispose();
   });
 
+  const seeing = (effect: SpaceFogEffect) => {
+    const camera = new THREE.PerspectiveCamera();
+    effect.mainCamera = camera;
+    return camera;
+  };
+
   it('is fed from the shared source and counts what it was given', () => {
     const effect = new SpaceFogEffect();
-    fogSource.set([sphere(100, 250), sphere(500, 80)]);
+    const camera = seeing(effect);
+    fogSource.set(camera, [sphere(100, 250), sphere(500, 80)]);
     effect.update(null as never, null as never, 0.016);
     expect(number(effect, 'uCount')).toBe(2);
     const first = vectors(effect, 'uSphere')[0]!;
     expect(first.w).toBeCloseTo(250 / VIEW.scale, 12);
     expect(first.x).toBeCloseTo(100 / VIEW.scale, 12);
-    fogSource.set(null);
+    fogSource.set(camera, null);
     effect.update(null as never, null as never, 0.016);
     expect(number(effect, 'uCount')).toBe(0);
     effect.dispose();
   });
 
+  it('keeps each canvas to its own spheres: another map mounting or unmounting changes nothing', () => {
+    const real = new SpaceFogEffect();
+    const realCamera = seeing(real);
+    fogSource.set(realCamera, [sphere(0, 100)]);
+    const preview = new THREE.PerspectiveCamera();
+    fogSource.set(preview, null);
+    fogSource.set(preview, [sphere(900, 10)]);
+    fogSource.set(preview, null);
+    real.update(null as never, null as never, 0.016);
+    expect(number(real, 'uCount')).toBe(1);
+    fogSource.set(realCamera, null);
+    real.dispose();
+  });
+
+  it('follows a change of spheres on the same canvas', () => {
+    const effect = new SpaceFogEffect();
+    const camera = seeing(effect);
+    fogSource.set(camera, [sphere(0, 100)]);
+    effect.update(null as never, null as never, 0.016);
+    fogSource.set(camera, [sphere(0, 100), sphere(500, 80), sphere(900, 60)]);
+    effect.update(null as never, null as never, 0.016);
+    expect(number(effect, 'uCount')).toBe(3);
+    fogSource.set(camera, null);
+    effect.dispose();
+  });
+
   it('never holds more than the shader has room for', () => {
     const effect = new SpaceFogEffect();
-    fogSource.set(Array.from({ length: MAX_FOG_SPHERES + 4 }, (_, index) => sphere(index * 900, 100 + index)));
+    const camera = seeing(effect);
+    fogSource.set(camera, Array.from({ length: MAX_FOG_SPHERES + 4 }, (_, index) => sphere(index * 900, 100 + index)));
     effect.update(null as never, null as never, 0.016);
     expect(number(effect, 'uCount')).toBe(MAX_FOG_SPHERES);
-    fogSource.set(null);
+    fogSource.set(camera, null);
     effect.dispose();
   });
 });

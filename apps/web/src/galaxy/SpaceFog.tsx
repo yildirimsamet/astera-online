@@ -14,10 +14,11 @@ export const SpaceFog = wrapEffect(SpaceFogEffect);
  */
 export function SpaceFogSource({ sensors }: { sensors: readonly Pick<SensorSphere, 'at' | 'identify'>[] | undefined }) {
   const invalidate = useThree(state => state.invalidate);
+  const camera = useThree(state => state.camera);
   useEffect(() => {
-    fogSource.set(sensors ?? null);
+    fogSource.set(camera, sensors ?? null);
     invalidate();
-    return () => { fogSource.set(null); };
-  }, [sensors, invalidate]);
+    return () => { fogSource.set(camera, null); };
+  }, [sensors, camera, invalidate]);
   return null;
 }

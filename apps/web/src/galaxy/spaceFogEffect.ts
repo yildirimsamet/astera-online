@@ -5,22 +5,24 @@ import { paintRadiationVolume } from './radiationVolume.js';
 import { FOG, MAX_FOG_SPHERES, SOFT_STEPS, fogSpheres, type FogSphere } from './spaceFog.js';
 
 /**
- * THE OPEN SPHERES, HANDED FROM THE GALAXY TO THE EFFECT.
+ * THE OPEN SPHERES, HANDED FROM THE GALAXY TO THE EFFECT, ONE LIST PER CANVAS.
  *
- * The effect lives inside the composer, which the scene rebuilds on a resolution or a
- * restored context; the sensors live in the screen. One pointer and one galaxy, so a
- * small module is the honest shape (`tap.ts` is the same). `null` is "no data yet",
- * which fogs nothing: a first frame must not veil a map whose eyes have not arrived.
+ * The effect lives inside the composer, which the scene rebuilds on a resolution or a restored
+ * context; the sensors live in the screen. They meet at the CAMERA: every canvas has its own, and the
+ * composer hands that camera to the effect. A single shared list was the first draft and it was wrong
+ * in a way that is easy to miss: the target-map preview and the galleries are galaxies too, and one of
+ * them mounting or unmounting would have cleared the real map's fog. No entry means "no data yet",
+ * which fogs nothing, so a first frame never veils a map whose eyes have not arrived.
  */
-let current: readonly FogSphere[] = [];
-let version = 0;
+interface Open { spheres: readonly FogSphere[]; version: number }
+const open = new WeakMap<THREE.Camera, Open>();
+let versions = 0;
 export const fogSource = {
-  set(posts: readonly Pick<SensorSphere, 'at' | 'identify'>[] | null): void {
-    current = posts ? fogSpheres(posts) : [];
-    version += 1;
+  set(camera: THREE.Camera, posts: readonly Pick<SensorSphere, 'at' | 'identify'>[] | null): void {
+    if (posts === null) open.delete(camera);
+    else open.set(camera, { spheres: fogSpheres(posts), version: versions += 1 });
   },
-  spheres: (): readonly FogSphere[] => current,
-  version: (): number => version,
+  read: (camera: THREE.Camera | null): Open | undefined => (camera ? open.get(camera) : undefined),
 };
 
 /** Where the drift clock turns over: long enough to never repeat visibly, short enough for float precision. */
@@ -140,7 +142,7 @@ const fragment = /* glsl */ `
  */
 export class SpaceFogEffect extends Effect {
   private camera: THREE.Camera | null = null;
-  private applied = -1;
+  private applied: Open | undefined;
   private readonly spheres = Array.from({ length: MAX_FOG_SPHERES }, () => new THREE.Vector4());
   private readonly volume = paintRadiationVolume();
 
@@ -181,12 +183,13 @@ export class SpaceFogEffect extends Effect {
       const step = Number.isFinite(deltaTime) && deltaTime > 0 ? deltaTime : 0;
       clock.value = ((clock.value as number) + step) % CLOCK_WRAP;
     }
-    if (this.applied !== fogSource.version()) {
-      this.applied = fogSource.version();
-      const open = fogSource.spheres();
-      open.forEach((sphere, index) => { this.spheres[index]?.set(...sphere.centre, sphere.radius); });
+    const wanted = fogSource.read(this.camera);
+    if (wanted?.version !== this.applied?.version) {
+      this.applied = wanted;
+      const list = wanted?.spheres ?? [];
+      list.forEach((sphere, index) => { this.spheres[index]?.set(...sphere.centre, sphere.radius); });
       const count = u.get('uCount');
-      if (count) count.value = open.length;
+      if (count) count.value = list.length;
     }
   }
 
