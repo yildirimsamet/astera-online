@@ -65,11 +65,13 @@ export async function arrivalPending(tx: Queryable, planetId: string, now: Date,
  * fleet leaving a world passes here, which is why K12 is enforced here: a new kind of
  * launch cannot forget it, as `now` is required.
  */
-export async function takeHomeHealth(tx: Tx, planetId: string, fleet: Fleet, now: Date, combatOnly = false): Promise<HpDamageLot[]> {
-  await assertNoArrivalPending(tx, planetId, now);
-  const home = await readHomeHealth(tx, planetId);
+export async function takeHomeHealth(
+  tx: Tx, planetId: string, fleet: Fleet, now: Date, combatOnly = false, body: WorldBody = 'PLANET',
+): Promise<HpDamageLot[]> {
+  await assertNoArrivalPending(tx, planetId, now, body);
+  const home = await readHomeHealth(tx, planetId, body);
   const selected = selectHomeDispatch(home.fleet, home.damage, fleet, combatOnly);
-  await writeHomeHealth(tx, planetId, selected.remaining, selected.remainingDamage);
+  await writeHomeHealth(tx, planetId, selected.remaining, selected.remainingDamage, body);
   return selected.selectedDamage;
 }
 

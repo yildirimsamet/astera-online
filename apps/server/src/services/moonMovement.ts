@@ -18,7 +18,7 @@ import { arrivalPending, assertNoArrivalPending, readHomeHealth, selectHomeDispa
 import { assertMoonTarget, seasonHasMoons } from './moon.js';
 import { lockWorlds, safeHomePlanet } from './ownership.js';
 import { GameError, assertWorldOperational, loadLocked, setUnits } from './planet.js';
-import { bodyLocation, hopLocation } from './unitLocation.js';
+import { MOON_LOCATION, bodyLocation, hopLocation } from './unitLocation.js';
 import { publishWatchChanges } from './watchEvents.js';
 
 /**
@@ -64,8 +64,7 @@ export async function hopFleet(
     // K12 holds only the body the attack reached (E3): a raid due on the moon keeps the moon's ships.
     await assertNoArrivalPending(tx, planetId, world.now, origin);
     if (direction === 'UP') {
-      const room = dockFree(moon.rarity, hangarLoad((await readHomeHealth(tx, planetId, 'MOON')).fleet), await inboundLoad(tx, planetId));
-      if (hangarLoad(fleet) > room) throw new GameError('DOCK_FULL', 'The moon’s dock has no room for this fleet', 409);
+      if (hangarLoad(fleet) > await moonDockRoom(tx, planetId)) throw new GameError('DOCK_FULL', 'The moon’s dock has no room for this fleet', 409);
     }
 
     const standing = await readHomeHealth(tx, planetId, origin);
@@ -118,6 +117,30 @@ export async function landMoonMove(tx: Tx, moveId: string, now: Date): Promise<v
   await placeAt(tx, landingPlanetId, move.ownerPlayerId, bodyLocation(destination), move.fleet, move.damage);
   await tx.update(moonMoves).set({ status }).where(eq(moonMoves.id, move.id));
   await publishWatchChanges(tx, [...new Set([move.toPlanetId, landingPlanetId])]);
+}
+
+/** The body a leg comes down on: its target, or the body it left when it was turned around (S34). */
+export const landingBodyOf = (leg: { recalledAt: Date | null; originBody: WorldBody; targetBody: WorldBody }): WorldBody =>
+  leg.recalledAt !== null ? leg.originBody : leg.targetBody;
+
+/** Free dock on this moon, in hangar bulk, after what stands on it and what is hopping up to it (S12). */
+export async function moonDockRoom(tx: Queryable, planetId: string): Promise<number> {
+  const [moon] = await tx.select({ rarity: moons.rarity }).from(moons).where(eq(moons.planetId, planetId));
+  if (!moon) return 0;
+  return dockFree(moon.rarity, hangarLoad((await readHomeHealth(tx, planetId, 'MOON')).fleet), await inboundLoad(tx, planetId));
+}
+
+/**
+ * A FLIGHT COMES DOWN ON THE MOON (S34, S50, V9) when the moon still stands and its dock has room for the
+ * whole wing; otherwise it returns false and the caller lands it on the planet. A moon has no Repair
+ * Station: the wounded keep their wounds up there.
+ */
+export async function landOnMoon(
+  tx: Tx, input: { planetId: string; ownerPlayerId: string; fleet: Fleet; damage: readonly HpDamageLot[] | null },
+): Promise<boolean> {
+  if (hangarLoad(input.fleet) > await moonDockRoom(tx, input.planetId)) return false;
+  await placeAt(tx, input.planetId, input.ownerPlayerId, MOON_LOCATION, input.fleet, input.damage ?? []);
+  return true;
 }
 
 /** Bulk already on its way up to this moon: it holds dock room from the moment it leaves (§6.5). */

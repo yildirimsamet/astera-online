@@ -1,4 +1,4 @@
-import { PLANET_LOCATION } from './unitLocation.js';
+import { bodyLocation } from './unitLocation.js';
 import { dispatchProvenance } from './commandOrigin.js';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import {
@@ -64,7 +64,7 @@ import { prepareClanAttack, recordClanAttack } from './clanCombat.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
 import { assertRadiationSafe } from './radiation.js';
 import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
-import { takeHomeHealth } from './homeHealth.js';
+import { readHomeHealth, takeHomeHealth } from './homeHealth.js';
 import { assertMoonTarget } from './moon.js';
 import { commitHonor } from './honorCommitment.js';
 import { commitLegacyAttack } from './legacyEvents.js';
@@ -137,6 +137,8 @@ export async function launchAttack(
   admiral = false,
   /** Which body of the target world the raid is aimed at (Ay S2/S6); switchable until it lands (S13). */
   targetBody: WorldBody = 'PLANET',
+  /** The body the wing leaves from (S34): a moon's ships raid as the planet's do; fuel is the planet's (S49). */
+  originBody: WorldBody = 'PLANET',
 ): Promise<LaunchResult> {
   if (originPlanetId === targetPlanetId) {
     throw new GameError('SELF_ATTACK', 'You cannot attack your own planet');
@@ -173,13 +175,17 @@ export async function launchAttack(
     const origin = await loadLocked(tx, originPlanetId, clock, { expectedPlayerId });
     assertWorldOperational(origin);
     assertOutsideSilentSpace(origin);
+    if (originBody === 'MOON') await assertMoonTarget(tx, { id: originPlanetId, seasonId: origin.seasonId, kind: origin.kind });
+    const source = originBody === 'MOON'
+      ? await readHomeHealth(tx, originPlanetId, 'MOON')
+      : { fleet: origin.homeFleet, damage: origin.homeDamage };
 
     for (const [hull, n] of Object.entries(requested) as [HullId, number][]) {
-      if ((origin.homeFleet[hull] ?? 0) < n) {
+      if ((source.fleet[hull] ?? 0) < n) {
         throw new GameError('NOT_ENOUGH_SHIPS', `Not enough ${hull} at home`, 400, { hull });
       }
     }
-    try { splitHealthFleet(origin.homeFleet, origin.homeDamage, requested, true); }
+    try { splitHealthFleet(source.fleet, source.damage, requested, true); }
     catch (error) {
       if (!(error instanceof RangeError)) throw error;
       throw new GameError('NOT_ENOUGH_COMBAT_READY_SHIPS', 'Ships at 5% HP or below cannot join a combat mission', 409);
@@ -426,7 +432,7 @@ export async function launchAttack(
     await assertRadiationSafe(tx, {
       seasonId: origin.seasonId, from: origin, to: target, departAt: origin.now, arriveAt,
       fleet: requested, tech, acknowledged: acknowledgeRadiation,
-      damage: splitHealthFleet(origin.homeFleet, origin.homeDamage, requested, true).selectedDamage,
+      damage: splitHealthFleet(source.fleet, source.damage, requested, true).selectedDamage,
       path: [
         { from: origin, to: target, startMs: origin.now.getTime(), endMs: arriveAt.getTime() },
         { from: target, to: target, startMs: arriveAt.getTime(), endMs: resolveAt.getTime() },
@@ -472,6 +478,7 @@ export async function launchAttack(
         originPlanetId,
         targetPlanetId,
         fleet: requested,
+        originBody,
         targetBody,
         distance: dist,
         pace: chosenPace,
@@ -494,13 +501,13 @@ export async function launchAttack(
     }
 
     // Move the ships off the home stack, in the same transaction.
-    const carriedDamage = await takeHomeHealth(tx, originPlanetId, requested, origin.now, true);
+    const carriedDamage = await takeHomeHealth(tx, originPlanetId, requested, origin.now, true, originBody);
     await tx.update(missions).set({ damage: carriedDamage.length ? carriedDamage : null }).where(eq(missions.id, mission!.id));
-    const remaining: Fleet = { ...origin.homeFleet };
+    const remaining: Fleet = { ...source.fleet };
     for (const [hull, n] of Object.entries(requested) as [HullId, number][]) {
       remaining[hull] = (remaining[hull] ?? 0) - n;
     }
-    await setUnits(tx, originPlanetId, remaining, PLANET_LOCATION);
+    await setUnits(tx, originPlanetId, remaining, bodyLocation(originBody));
     await setUnits(tx, originPlanetId, requested, mission!.id);
     // Burned in the same transaction the ships leave in. T6.
     if (fuel > 0) {

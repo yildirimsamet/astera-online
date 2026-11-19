@@ -462,6 +462,9 @@ export async function resolveNeutralBattle(
       ownerPlayerId: mission.ownerPlayerId,
       originPlanetId: mission.targetPlanetId,
       targetPlanetId: mission.originPlanetId,
+      // Back to the body it left (Ay S34).
+      originBody: mission.targetBody,
+      targetBody: mission.originBody,
       fleet: result.attackerSurvivors,
       loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
       salvage: lifted ? salvage : null,
@@ -520,6 +523,8 @@ export async function returnAttackUntouched(
     ownerPlayerId: mission.ownerPlayerId,
     originPlanetId: mission.targetPlanetId,
     targetPlanetId: mission.originPlanetId,
+    originBody: mission.targetBody,
+    targetBody: mission.originBody,
     fleet,
     loot: { alloy: 0, crystal: 0, deuterium: 0 },
     // Whatever the wing already carried (radiation) goes home with it.

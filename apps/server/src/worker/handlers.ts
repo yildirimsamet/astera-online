@@ -237,7 +237,7 @@ import { isHostileMission } from '../services/flight.js';
 import { resolveNeutralCensus } from '../services/season.js';
 import { onMonumentArrival, onMonumentLoss, onMonumentProbe, onMonumentRespawn } from './monumentHandlers.js';
 import { onPlanetRadiationBoundary, onRadiationBombArrival, onRadiationBombIntercept, onRadiationBombInterceptImpact } from './radiationBombHandlers.js';
-import { landMoonMove } from '../services/moonMovement.js';
+import { landMoonMove, landOnMoon, landingBodyOf } from '../services/moonMovement.js';
 import { moonsOf } from '../services/moon.js';
 import { readHomeHealth, writeHomeHealth } from '../services/homeHealth.js';
 import { settleEmptyMoon } from '../services/moonBattle.js';
@@ -1579,6 +1579,9 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
           ownerPlayerId: mission.ownerPlayerId,
           originPlanetId: mission.targetPlanetId,
           targetPlanetId: mission.originPlanetId,
+          // Back between the same two bodies it flew out between (S34).
+          originBody: mission.targetBody,
+          targetBody: mission.originBody,
           fleet: result.attackerSurvivors,
           loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
           // Beside the loot, never inside it: wreck is Wealth, not an exchange. D200.
@@ -1834,8 +1837,14 @@ async function settleReturn(
   await finishAdmiralLeg(tx, at, 'mission', mission.id, fleetCount(returning));
   // Nothing landed: the hold went with the last ship, and `radiation_lost` said so.
   if (fleetCount(returning) === 0 && fleetCount(dosed.destroyed) > 0) return;
+  /*
+    AY S34: HOME TO THE BODY IT LEFT. A wing that left from the moon lands back on it while the moon stands,
+    its dock has room and the world is still the commander's; anything else comes down on the planet.
+  */
+  const toMoon = landingBodyOf(mission) === 'MOON' && destinationPlanetId === homePlanetId
+    && await landOnMoon(tx, { planetId: destinationPlanetId, ownerPlayerId: mission.ownerPlayerId, fleet: returning, damage: flown.damage });
   // The Repair Station judges whatever the wing carried out of its battle. Kalıcı gemi hasarı.
-  const dockReport = await landShips(tx, {
+  const dockReport = toMoon ? { autoRepaired: [], docked: [] } : await landShips(tx, {
     planetId: destinationPlanetId,
     ownerPlayerId: mission.ownerPlayerId,
     fleet: returning,
