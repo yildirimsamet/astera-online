@@ -35,19 +35,23 @@ export async function writeHomeHealth(
  * out after the attack arrived and leave nothing to fight; the attacker's recall closes
  * at arrival for the same reason. Own and clanmates' flights are not hostile.
  */
-export async function assertNoArrivalPending(tx: Queryable, planetId: string, now: Date): Promise<void> {
-  if (await arrivalPending(tx, planetId, now)) {
+export async function assertNoArrivalPending(tx: Queryable, planetId: string, now: Date, body: WorldBody = 'PLANET'): Promise<void> {
+  if (await arrivalPending(tx, planetId, now, body)) {
     throw new GameError('ARRIVAL_PENDING', 'A battle has begun at this world; its fleet can leave once it ends', 409);
   }
 }
 
-/** K12's reading, answered rather than thrown: a hop landing waits behind it (E2). */
-export async function arrivalPending(tx: Queryable, planetId: string, now: Date): Promise<boolean> {
+/**
+ * K12's reading, answered rather than thrown: a hop landing waits behind it (E2). By body (Ay §6.1): a raid
+ * due on the moon holds the moon's ships, never the planet's, and the other way round.
+ */
+export async function arrivalPending(tx: Queryable, planetId: string, now: Date, body: WorldBody = 'PLANET'): Promise<boolean> {
   const [due] = await tx.select({ id: missions.id }).from(missions)
     .innerJoin(planets, eq(planets.id, missions.targetPlanetId))
     .leftJoin(clanWarMissions, eq(clanWarMissions.missionId, missions.id))
     .where(and(
       eq(missions.targetPlanetId, planetId),
+      eq(missions.targetBody, body),
       eq(missions.status, 'in_flight'),
       lte(missions.arriveAt, now),
       ne(missions.ownerPlayerId, planets.controllerPlayerId),

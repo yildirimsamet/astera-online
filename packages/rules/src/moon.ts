@@ -26,6 +26,8 @@ export const MOON = {
   rulesetVersion: 20,
   /** Planet ↔ moon hop: airborne, counted nowhere, free (S13, S37, S49). */
   hopSeconds: 90,
+  /** An attacker's planet ↔ moon switches stand this far apart (V2); the last one closes at arrival (S13). */
+  retargetSpacingSeconds: 5,
   /** The gate opening: ships still stand on the departure moon until it ends (§3.4). */
   gateOpenSeconds: 10,
   scanCost: { deuterium: 30 },

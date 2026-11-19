@@ -22,7 +22,7 @@ import {
   uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import type { HpDamageLots, MigrationCargo, MoonRarity, StarterBattleRecord } from '@astera/rules';
+import type { HpDamageLots, MigrationCargo, MoonRarity, StarterBattleRecord, WorldBody } from '@astera/rules';
 import type {
   BattleReplayData,
   CombatRound,
@@ -1977,7 +1977,18 @@ export const missions = pgTable('missions', {
   damage: jsonb('damage').$type<HpDamageLot[]>(),
   /** Last HP interval paid on this physical leg; null on legacy rows. */
   radiationSettledAt: timestamp('radiation_settled_at', { withTimezone: true }),
+  /**
+   * WHICH BODY OF EACH WORLD THE LEG LEAVES AND REACHES (Ay, S2/S6/S34). A world with a moon is
+   * two bodies, and a raid picks one. `PLANET` on every row before moons and in every galaxy
+   * without them, so no reader of this table has to know moons exist.
+   */
+  originBody: text('origin_body').$type<WorldBody>().notNull().default('PLANET'),
+  targetBody: text('target_body').$type<WorldBody>().notNull().default('PLANET'),
+  /** The attacker's last switch between planet and moon (S13); the next waits `MOON.retargetSpacingSeconds` (V2). */
+  retargetedAt: timestamp('retargeted_at', { withTimezone: true }),
 }, (t) => [
+  check('missions_origin_body_check', sql`${t.originBody} in ('PLANET', 'MOON')`),
+  check('missions_target_body_check', sql`${t.targetBody} in ('PLANET', 'MOON')`),
   index('missions_analytics_order_idx').on(t.orderedAt).where(sql`${t.commandSource} = 'manual_http' AND ${t.analyticsVisitHash} IS NOT NULL`),
   index('missions_analytics_visit_idx').on(t.analyticsVisitHash).where(sql`${t.analyticsVisitHash} IS NOT NULL`),
   index('missions_status_arrive_idx').on(t.status, t.arriveAt),
@@ -2777,6 +2788,12 @@ export const battleReports = pgTable('battle_reports', {
     (): AnyPgColumn => clanWarOperations.id,
   ),
   targetKind: text('target_kind').$type<'PLAYER' | 'NEUTRAL' | 'PIRATE'>().notNull().default('PLAYER'),
+  /**
+   * THE BODY THE BATTLE WAS FOUGHT FOR (Ay, S2/S6). A moon battle has no ground, no Aegis and no
+   * loot; a MOON report with no rounds is the empty moon (S31), which still counts toward the
+   * personal raid cooldown like any raid that arrived.
+   */
+  targetBody: text('target_body').$type<WorldBody>().notNull().default('PLANET'),
   grade: text('grade').$type<Grade>().notNull(),
   rounds: jsonb('rounds').$type<CombatRound[]>().notNull(),
   loot: jsonb('loot').$type<Resources>().notNull(),
@@ -2939,6 +2956,7 @@ export const battleReports = pgTable('battle_reports', {
   defenderCount: integer('defender_count').notNull().default(1),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
+  check('battle_reports_target_body_check', sql`${t.targetBody} in ('PLANET', 'MOON')`),
   // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
   index('reports_target_planet_idx').on(t.targetPlanetId),
   index('reports_defender_idx').on(t.defenderPlayerId, t.createdAt),

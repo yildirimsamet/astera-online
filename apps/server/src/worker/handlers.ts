@@ -1,4 +1,4 @@
-import { PLANET_LOCATION } from '../services/unitLocation.js';
+import { MOON_LOCATION, PLANET_LOCATION } from '../services/unitLocation.js';
 import { prepareBattleReplay, persistBattleReplay } from '../services/battleReplay.js';
 import { shipReadyNotice } from '../services/arenaReady.js';
 import { finishArenaTeamSeason } from '../services/arenaTeams.js';
@@ -238,6 +238,9 @@ import { resolveNeutralCensus } from '../services/season.js';
 import { onMonumentArrival, onMonumentLoss, onMonumentProbe, onMonumentRespawn } from './monumentHandlers.js';
 import { onPlanetRadiationBoundary, onRadiationBombArrival, onRadiationBombIntercept, onRadiationBombInterceptImpact } from './radiationBombHandlers.js';
 import { landMoonMove } from '../services/moonMovement.js';
+import { moonsOf } from '../services/moon.js';
+import { readHomeHealth, writeHomeHealth } from '../services/homeHealth.js';
+import { settleEmptyMoon } from '../services/moonBattle.js';
 
 export interface HandlerContext {
   db: Db;
@@ -829,6 +832,15 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       });
       return;
     }
+    /*
+      AY: A RAID AIMED AT THE MOON (S2/S6, plan §6.9). If the moon broke up on the way, or the world fell
+      neutral (nobody holds its moon, V42), there is nothing to fight and the wing turns home whole.
+    */
+    const onMoon = flown.targetBody === 'MOON';
+    if (onMoon && (targetWorld.kind === 'NEUTRAL' || (await moonsOf(tx, [mission.targetPlanetId])).length === 0)) {
+      await returnAttackUntouched(tx, flown, clock);
+      return;
+    }
     if (targetWorld.kind === 'NEUTRAL') {
       await resolveNeutralBattle(tx, flown, clock, season.rulesetVersion);
       /**
@@ -855,7 +867,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       world and before any clan or player row — the one order (`defenderLine.ts`). An admin
       among their commanders makes the battle unscored: their ships set the host's factor.
     */
-    const stationWaves = await lockStationsAt(tx, {
+    // Clan support stands on the planet line only and never climbs to the moon (S29).
+    const stationWaves: Awaited<ReturnType<typeof lockStationsAt>> = onMoon ? [] : await lockStationsAt(tx, {
       hostPlanetId: mission.targetPlanetId,
       rulesetVersion: season.rulesetVersion,
     });
@@ -930,8 +943,20 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       one line up, for exactly the same reason.
     */
     const defenceDark = !defenceOnline(defender.faults, defender.empUntil, defender.now);
-    const homePartition = partitionCombatFleet(defender.homeFleet, defender.homeDamage);
-    const defenders = garrisonOf(homePartition.eligible, defenceDark ? {} : defender.ground);
+    /*
+      AY: ONLY THE MOON'S SHIPS (S21). No ground guns, no Aegis, no support; the planet's fleet is a
+      different body and stays out of it, as the moon's fleet stays out of a planet battle.
+    */
+    const moonLine = onMoon ? await readHomeHealth(tx, defender.planetId, 'MOON') : null;
+    const lineFleet = moonLine?.fleet ?? defender.homeFleet;
+    const lineDamage = moonLine?.damage ?? defender.homeDamage;
+    const groundLine = onMoon || defenceDark ? {} : defender.ground;
+    const homePartition = partitionCombatFleet(lineFleet, lineDamage);
+    const defenders = garrisonOf(homePartition.eligible, groundLine);
+    if (onMoon && fleetCount(defenders) === 0) {
+      await settleEmptyMoon(tx, { mission: flown, defender, attackingFleet, clock });
+      return;
+    }
     /*
       TAKTİK GERİ ÇEKİLME. Owner decision, 2026-09-23 (`escape.ts`).
 
@@ -960,12 +985,13 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       line: defenders,
       homeDamage: homePartition.damage.filter((lot) => !NON_COMBATANT_HULLS.includes(lot.hull)),
       maintenance: true,
-      shield: defenceDark ? 0 : defender.shield,
+      shield: defenceDark || onMoon ? 0 : defender.shield,
       rng: () => seededFrom(missionId),
       defender: { tech: defenderTech },
       deuterium: defender.deuterium,
-      // From ruleset 15 the world's posture decides; before it, the season's rule.
-      escape: escapeAllowed(season.rulesetVersion, defender.defencePosture),
+      // From ruleset 15 the world's posture decides; before it, the season's rule. The moon is the
+      // last stop: no Tactical Retreat from it (S55).
+      escape: !onMoon && escapeAllowed(season.rulesetVersion, defender.defencePosture),
       minimumCombatShips: fleetEscapeMinimumApplies(season.rulesetVersion)
         ? ESCAPE.minimumCombatShips : 0,
       support: stations.map((station) => station.stack),
@@ -992,7 +1018,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
 
     // Defender: survivors, plus whatever salvages out of the wreckage.
     const defenderHome: Fleet = {};
-    for (const [hull, standing] of fleetEntries(defender.homeFleet)) {
+    for (const [hull, standing] of fleetEntries(lineFleet)) {
       /**
        * A CRAFT THAT NEVER ENTERED THE BATTLE IS CARRIED ACROSS BY HAND.
        *
@@ -1010,12 +1036,12 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         ? standing
         : (hostOutcome.survivors[hull] ?? 0) + (homePartition.excluded[hull] ?? 0);
     }
-    for (const [hull, standing] of fleetEntries(defender.ground)) {
+    for (const [hull, standing] of fleetEntries(onMoon ? {} : defender.ground)) {
       defenderHome[hull] = defenceDark
         ? standing
         : (hostOutcome.survivors[hull] ?? 0) + (result.defenceSalvage[hull] ?? 0);
     }
-    await setUnits(tx, defender.planetId, defenderHome, PLANET_LOCATION);
+    await setUnits(tx, defender.planetId, defenderHome, onMoon ? MOON_LOCATION : PLANET_LOCATION);
     /*
       KALICI GEMİ HASARI. Owner decision K1, 2026-09-29.
 
@@ -1027,13 +1053,12 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     const attackerDamage = damageRule ? result.attackerDamage : [];
     // The whole line's, for the report; host and support wounds stay with their owners.
     const defenderDamage = damageRule ? result.defenderDamage : [];
-    const defenderDock = await dockDamaged(tx, {
-      planetId: defender.planetId,
-      ownerPlayerId: defender.playerId,
-      lots: damageRule ? [...hostOutcome.survivorDamage, ...defender.homeDamage.filter((lot) =>
-        NON_COMBATANT_HULLS.includes(lot.hull) || (escaped[lot.hull] ?? 0) > 0 || !shipCanFight(lot))] : [],
-      at: defender.now,
-    });
+    const survivorLots = damageRule ? [...hostOutcome.survivorDamage, ...lineDamage.filter((lot) =>
+      NON_COMBATANT_HULLS.includes(lot.hull) || (escaped[lot.hull] ?? 0) > 0 || !shipCanFight(lot))] : [];
+    // A moon has no Repair Station: its wounded stay on it, as hopped ships do (V9).
+    let defenderDock: Awaited<ReturnType<typeof dockDamaged>> = { autoRepaired: [], docked: [] };
+    if (onMoon) await writeHomeHealth(tx, defender.planetId, defenderHome, survivorLots, 'MOON');
+    else defenderDock = await dockDamaged(tx, { planetId: defender.planetId, ownerPlayerId: defender.playerId, lots: survivorLots, at: defender.now });
     await settleStations(tx, { stations: fought, outcomes: result.defenders, damageRule, now: defender.now, battle: escortedBattle('defence', result) });
 
     /**
@@ -1051,12 +1076,13 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       what the raider can take is what the tank held after. `resolveRaid` already
       refused the lift to a tank that could not pay it, so this never goes negative.
     */
-    const exposedStock = {
+    // A moon holds no stores: a moon battle takes nothing home (S21).
+    const exposedStock = onMoon ? { alloy: 0, crystal: 0, deuterium: 0 } : {
       alloy: defender.alloy,
       crystal: defender.crystal,
       deuterium: defender.deuterium - liftFuel,
     };
-    const exposedBuffer = {
+    const exposedBuffer = onMoon ? { alloy: 0, crystal: 0, deuterium: 0 } : {
       alloy: defender.bufferAlloy,
       crystal: defender.bufferCrystal,
       deuterium: defender.bufferDeuterium,
@@ -1115,7 +1141,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       > loot.alloy + loot.crystal + loot.deuterium;
     const shieldAbsorbed = result.rounds.reduce((sum, round) => sum + round.shieldAbsorbed, 0);
 
-    await saveResources(tx, defender.planetId, {
+    if (!onMoon) await saveResources(tx, defender.planetId, {
       alloy: defender.alloy - loot.fromStock.alloy,
       crystal: defender.crystal - loot.fromStock.crystal,
       deuterium: exposedStock.deuterium - loot.fromStock.deuterium,
@@ -1170,7 +1196,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       Idempotent through `claimMission` above: a redelivered arrival never gets here, and
       the draw is seeded from the mission so a replayed resolution breaks the same things.
     */
-    const colonyFaults = recovery.earned
+    // A moon battle leaves the planet's buildings alone (V44), as a Death Star on the moon does (S36).
+    const colonyFaults = recovery.earned && !onMoon
       ? await breakFaults(tx, {
         seasonId: mission.seasonId,
         planetId: defender.planetId,
@@ -1317,6 +1344,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       defenderPlayerId: defender.playerId,
       targetPlanetId: defender.planetId,
       targetKind: 'PLAYER',
+      targetBody: flown.targetBody,
       admirals: [...reportAdmirals('attack', escort), ...stationAdmirals(fought)],
       defenderCount,
       grade: result.grade,
@@ -1368,7 +1396,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     }).returning({ id: battleReports.id });
     if (!reportRow) throw new Error('battle report insert returned no row');
     await persistBattleReplay(tx, { source: { kind: 'BATTLE', id: reportRow.id }, seasonId: mission.seasonId, capture: replayCapture, result,
-      context: { environment: 'PLANET', aegisCapacity: shieldHp(defender.effectiveInstruments.AEGIS ?? 0), defenceOffline: defenceDark, escape: raid.escape, control: null }, at: defender.now });
+      context: { environment: onMoon ? 'MOON' : 'PLANET', aegisCapacity: onMoon ? 0 : shieldHp(defender.effectiveInstruments.AEGIS ?? 0), defenceOffline: defenceDark, escape: raid.escape, control: null }, at: defender.now });
     await notifyLiftedSupporters(tx, {
       missionId,
       hostPlanetId: defender.planetId,
@@ -1663,6 +1691,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
             }
           : {}),
         grade: result.grade,
+        ...(onMoon ? { targetBody: 'MOON' } : {}),
         lootAlloy: loot.alloy,
         lootCrystal: loot.crystal,
         lootDeuterium: loot.deuterium,
@@ -1689,6 +1718,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       kind: 'raid_result',
       payload: {
         grade: result.grade,
+        ...(onMoon ? { targetBody: 'MOON' } : {}),
         targetPlanetId: defender.planetId,
         targetUsername: defenderIdentity?.username ?? 'someone',
         targetPlanetName: defender.name,
@@ -1753,7 +1783,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
           sent: outcome.sent, active: outcome.sent, losses: outcome.losses,
           rebuilt: host ? result.defenceSalvage : {}, lootLost: host ? loot : nothing };
       }),
-      shieldCapacity: shieldHp(defender.effectiveInstruments.AEGIS ?? 0), shieldAbsorbed: result.shieldProtectedArmed ?? 0,
+      shieldCapacity: onMoon ? 0 : shieldHp(defender.effectiveInstruments.AEGIS ?? 0), shieldAbsorbed: result.shieldProtectedArmed ?? 0,
     });
     await settleLegacyAttack(tx, { seasonId: mission.seasonId, sourceKey: `world:${mission.id}`,
       defenders: [defender.playerId, ...supporterIds], at: defender.now });
@@ -2026,6 +2056,8 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
          * move the garrison. The pending strip carries the same fact.
          */
         targetPlanetName: target.name,
+        // Ay S24: "incoming · to your MOON". The defender's own body, like the world's name above.
+        ...(mission.targetBody === 'MOON' ? { targetBody: 'MOON' } : {}),
         // L4 buys a coarse mass band. Exact composition (and therefore any exact
         // count derivable from it) begins at L5.
         ...(radarLevel >= 4 ? { mass: massClass(mission.fleet) } : {}),

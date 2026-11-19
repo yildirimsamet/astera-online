@@ -11,10 +11,11 @@ import {
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
-import { moonMoves, moons, planets, units } from '../db/schema.js';
+import { missions, moonMoves, moons, notifications, planets, units } from '../db/schema.js';
+import { publish } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { arrivalPending, assertNoArrivalPending, readHomeHealth, selectHomeDispatch, writeHomeHealth } from './homeHealth.js';
-import { seasonHasMoons } from './moon.js';
+import { assertMoonTarget, seasonHasMoons } from './moon.js';
 import { lockWorlds, safeHomePlanet } from './ownership.js';
 import { GameError, assertWorldOperational, loadLocked, setUnits } from './planet.js';
 import { bodyLocation, hopLocation } from './unitLocation.js';
@@ -60,8 +61,8 @@ export async function hopFleet(
     if (pending) throw new GameError('HOP_PENDING', 'A hop this way is already under way', 409);
 
     const origin = ORIGIN[direction];
-    // K12 holds only the body the attack reached (E3); today every attack reaches the planet.
-    if (origin === 'PLANET') await assertNoArrivalPending(tx, planetId, world.now);
+    // K12 holds only the body the attack reached (E3): a raid due on the moon keeps the moon's ships.
+    await assertNoArrivalPending(tx, planetId, world.now, origin);
     if (direction === 'UP') {
       const room = dockFree(moon.rarity, hangarLoad((await readHomeHealth(tx, planetId, 'MOON')).fleet), await inboundLoad(tx, planetId));
       if (hangarLoad(fleet) > room) throw new GameError('DOCK_FULL', 'The moon’s dock has no room for this fleet', 409);
@@ -102,13 +103,14 @@ export async function landMoonMove(tx: Tx, moveId: string, now: Date): Promise<v
     destination = 'PLANET';
     status = 'RETURNED';
   } else {
-    if (destination === 'PLANET' && await arrivalPending(tx, move.toPlanetId, now)) {
-      await schedule(tx, { seasonId: move.seasonId, kind: 'moon_move_land', refId: move.id, resolveAt: new Date(now.getTime() + 1_000) });
-      return;
-    }
     if (destination === 'MOON' && (await tx.select({ id: moons.planetId }).from(moons).where(eq(moons.planetId, move.toPlanetId))).length === 0) {
       destination = 'PLANET';
       status = 'RETURNED';
+    }
+    // E2: a battle due on the body it lands on is fought first; the hop comes down a second later.
+    if (await arrivalPending(tx, move.toPlanetId, now, destination)) {
+      await schedule(tx, { seasonId: move.seasonId, kind: 'moon_move_land', refId: move.id, resolveAt: new Date(now.getTime() + 1_000) });
+      return;
     }
   }
 
@@ -144,4 +146,47 @@ function subtract(from: Fleet, take: Fleet): Fleet {
   const out: Fleet = {};
   for (const [hull, n] of Object.entries(take) as [keyof Fleet, number][]) out[hull] = (from[hull] ?? 0) - n;
   return out;
+}
+
+/**
+ * THE ATTACKER SWITCHES THE RAID BETWEEN PLANET AND MOON (S13, plan §6.8). Open until the arrival
+ * instant — the battle begins there, and so does K12 (E1: the row is locked, a millisecond before is
+ * accepted, the instant itself is not). Single raids only (V7); switches stand five seconds apart (V2).
+ *
+ * A defender whose radar already caught the raid is told at once: the strip and the timed warning read
+ * the body from this row. One that has not been warned hears nothing (S24).
+ */
+export async function retargetAttack(
+  db: Db, playerId: string, missionId: string, body: WorldBody, clock: Clock,
+): Promise<{ id: string; targetBody: WorldBody; arriveAt: Date }> {
+  return db.transaction(async (tx) => {
+    const now = clock.now();
+    const [mission] = await tx.select().from(missions).where(eq(missions.id, missionId)).for('update');
+    if (!mission) throw new GameError('NOT_FOUND', 'That flight no longer exists', 404);
+    if (mission.ownerPlayerId !== playerId) throw new GameError('PLANET_NOT_OWNED', 'That is not your flight', 403);
+    if (mission.kind !== 'attack' || mission.status !== 'in_flight' || mission.recalledAt !== null || mission.parentMissionId !== null) {
+      throw new GameError('NOT_RETARGETABLE', 'Only a raid on its way out can switch between planet and moon', 409);
+    }
+    if (now >= mission.arriveAt) throw new GameError('RETARGET_CLOSED', 'The battle has already begun', 409);
+    const view = (targetBody: WorldBody) => ({ id: mission.id, targetBody, arriveAt: mission.arriveAt });
+    if (body === mission.targetBody) return view(body);
+    if (mission.retargetedAt && now.getTime() - mission.retargetedAt.getTime() < MOON.retargetSpacingSeconds * 1_000) {
+      throw new GameError('RETARGET_TOO_SOON', 'Hold the course a moment before switching again', 409);
+    }
+    const [target] = await tx.select({ id: planets.id, seasonId: planets.seasonId, kind: planets.kind, controllerPlayerId: planets.controllerPlayerId })
+      .from(planets).where(eq(planets.id, mission.targetPlanetId));
+    if (!target) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
+    if (body === 'MOON') await assertMoonTarget(tx, target);
+    await tx.update(missions).set({ targetBody: body, retargetedAt: now }).where(eq(missions.id, mission.id));
+
+    if (target.controllerPlayerId) {
+      const [warned] = await tx.select({ id: notifications.id }).from(notifications).where(and(
+        eq(notifications.playerId, target.controllerPlayerId),
+        eq(notifications.kind, 'incoming_fleet'),
+        eq(notifications.refId, mission.id),
+      )).limit(1);
+      if (warned) await publish(tx, target.controllerPlayerId, 'retarget');
+    }
+    return view(body);
+  });
 }

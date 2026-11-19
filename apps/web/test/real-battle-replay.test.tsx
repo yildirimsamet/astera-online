@@ -47,6 +47,11 @@ describe('frozen real battle presentation', () => {
     expect(battleReplayResponseSchema.safeParse(duplicate).success).toBe(false);
   });
 
+  it('reads the replay of a battle fought for a moon (Ay F3b)', () => {
+    const data = { ...frozen(), environment: 'MOON' as const, aegisCapacity: 0 };
+    expect(battleReplayResponseSchema.parse({ viewer: 'ATTACK', replay: data }).replay.environment).toBe('MOON');
+  });
+
   it('stages a fight over a colony ship around that ship (player test I-04)', () => {
     // Only the hull, which anyone can see; how far its repairs have come is a probe's to read.
     const data = { ...frozen(), environment: 'VESSEL' as const, vessel: { hull: 'SEED' as const } };

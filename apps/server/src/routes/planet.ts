@@ -88,6 +88,8 @@ const RESEARCH = zodEnum(RESEARCH_PROJECT_IDS);
 const launchBody = z.object({
   originPlanetId: z.string().uuid().optional(),
   targetPlanetId: z.string().uuid(),
+  /** Ay S2/S6: the planet or its moon. Omitted is the planet, as every launch before moons. */
+  targetBody: z.enum(['PLANET', 'MOON']).optional(),
   fleet: z.record(MOBILE, z.number().int().min(0)).refine(
     (f) => Object.values(f).some((n) => n > 0),
     'Send at least one ship',
@@ -476,6 +478,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       body.acknowledgeRadiation ?? false,
       app.adminUsernames,
       body.admiral ?? false,
+      body.targetBody ?? 'PLANET',
     );
   });
 

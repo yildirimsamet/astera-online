@@ -35,7 +35,7 @@ export const battleReplayResponseSchema: z.ZodType<{ viewer: BattleSide; ownPlay
   owners: z.array(z.object({ side, playerId: z.string(), stackId: z.string(), wing: nonnegative.int().positive(),
     research: z.object({ SHIP_POWER: nonnegative.int().optional(), SHIP_ARMOR: nonnegative.int().optional(),
       SHIP_SHIELDS: nonnegative.int().optional(), EMPLACEMENT_DOCTRINE: nonnegative.int().optional() }) })),
-  result: z.object({ grade, defenceSalvage: fleet }), environment: z.enum(['PLANET', 'MONUMENT', 'VESSEL']),
+  result: z.object({ grade, defenceSalvage: fleet }), environment: z.enum(['PLANET', 'MONUMENT', 'VESSEL', 'MOON']),
   vessel: z.object({ hull: z.enum(VESSEL_HULLS) }).optional(),
   aegisCapacity: nonnegative, defenceOffline: z.boolean(), escape: z.object({ kind: z.enum(['ESCAPED', 'STRANDED']), ships: fleet }).nullable(),
   control: z.enum(['ATTACKER', 'DEFENDER', 'EMPTY']).nullable(),

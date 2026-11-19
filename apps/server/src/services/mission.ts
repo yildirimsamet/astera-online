@@ -22,6 +22,7 @@ import {
   HULLS,
   COMBAT_HULLS,
   splitHealthFleet,
+  type WorldBody,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
@@ -64,6 +65,7 @@ import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
 import { assertRadiationSafe } from './radiation.js';
 import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
 import { takeHomeHealth } from './homeHealth.js';
+import { assertMoonTarget } from './moon.js';
 import { commitHonor } from './honorCommitment.js';
 import { commitLegacyAttack } from './legacyEvents.js';
 import { attachAdmiral, prepareAdmiral } from './admiral.js';
@@ -133,6 +135,8 @@ export async function launchAttack(
   adminUsernames: ReadonlySet<string> = new Set(),
   /** The commander ship flies with this raid (Y9): it lends its class bonus and never fights. */
   admiral = false,
+  /** Which body of the target world the raid is aimed at (Ay S2/S6); switchable until it lands (S13). */
+  targetBody: WorldBody = 'PLANET',
 ): Promise<LaunchResult> {
   if (originPlanetId === targetPlanetId) {
     throw new GameError('SELF_ATTACK', 'You cannot attack your own planet');
@@ -252,6 +256,7 @@ export async function launchAttack(
     const [me] = await tx.select().from(players).where(eq(players.id, origin.playerId));
     if (!me) throw new GameError('PLAYER_NOT_FOUND', 'No such player', 404);
     assertWorldAttackable(target, origin.now);
+    if (targetBody === 'MOON') await assertMoonTarget(tx, target);
     const [them] = target.controllerPlayerId
       ? await tx.select().from(players).where(eq(players.id, target.controllerPlayerId))
       : [];
@@ -467,6 +472,7 @@ export async function launchAttack(
         originPlanetId,
         targetPlanetId,
         fleet: requested,
+        targetBody,
         distance: dist,
         pace: chosenPace,
         departAt: origin.now,

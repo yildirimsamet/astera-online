@@ -3,6 +3,7 @@ import { hashSeed, moonsEnabled, type MoonRarity } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
 import { moonMoves, moonSeedLedger, moons, planets, seasons, shards, units, type ProbeMoonReading } from '../db/schema.js';
 import { MOON_LOCATION, PLANET_LOCATION } from './unitLocation.js';
+import { GameError } from './planet.js';
 
 /**
  * MOONS ON THE SERVER (ay entegrasyon planı §6). A moon row changes only under its planet's lock.
@@ -160,4 +161,18 @@ export async function moonWatchStatus(tx: Queryable, planetIds: readonly string[
   // A hop is the freshest fact: the fleet is between the bodies right now.
   for (const { id } of hopping) if (out.get(id) !== 'NONE') out.set(id, 'HOP');
   return out;
+}
+
+/**
+ * A RAID MAY AIM AT THIS MOON (S2/S6, S13): the galaxy has moons, the world has one, and somebody holds it.
+ * A neutral world's seeded moon has nobody on it to fight; the world is taken through its planet (V42).
+ * The moon's existence is public (S53), so `NO_MOON` tells the attacker nothing the map does not.
+ */
+export async function assertMoonTarget(
+  tx: Queryable, target: { id: string; seasonId: string; kind: string },
+): Promise<void> {
+  if (!await seasonHasMoons(tx, target.seasonId)) throw new GameError('MOONS_DISABLED', 'This galaxy has no moons', 409);
+  const [moon] = await tx.select({ id: moons.planetId }).from(moons).where(eq(moons.planetId, target.id));
+  if (!moon) throw new GameError('NO_MOON', 'That world has no moon', 409);
+  if (target.kind === 'NEUTRAL') throw new GameError('MOON_UNCLAIMED', 'Nobody holds that moon; take the world first', 409);
 }
