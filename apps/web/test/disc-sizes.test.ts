@@ -59,7 +59,7 @@ describe('the craft dial', () => {
   it('is a single factor the whole galaxy reads', () => {
     const source = String(CRAFT_SCALE);
     expect(Number(source)).toBeGreaterThan(1);
-    expect(CRAFT_SCALE).toBe(1.6 * 2);
+    expect(CRAFT_SCALE).toBe(1.6 * 1.75);
   });
 
   /** The authored per-hull table is untouched: it states shape, not absolute size. */
@@ -97,7 +97,7 @@ describe('the merchant', () => {
 
   /** Every travelling craft, including the merchant, shares the visibility lift. */
   it('doubles the merchant along with the other travelling ships', () => {
-    expect(TRADE_SHIP_SCALE).toBeCloseTo(1.28 * 2, 9);
+    expect(TRADE_SHIP_SCALE).toBeCloseTo(1.6 * 1.75 * 0.8, 9);
     expect(TRADE_SHIP_SCALE).toBeGreaterThan(hullVisualScale('CATACLYSM', 0.195 * CRAFT_SCALE));
     expect(TRADE_SHIP_SCALE / CRAFT_SCALE).toBeCloseTo(0.8, 9);
   });

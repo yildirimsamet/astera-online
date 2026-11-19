@@ -87,7 +87,7 @@ export const DISC_RADIUS = GALAXY.radius / SCALE;
   untouched.
 */
 /** Owner visibility pass: double travelling craft without resizing stationary landmarks. */
-export const CRAFT_SCALE = VIEW.craftScale * 2;
+export const CRAFT_SCALE = VIEW.craftScale * 1.75;
 
 /**
  * A COLONY SHIP DWARFS WHAT IT SENDS (owner playtest 2026-11-07: "orantı biraz garip"). Its length on

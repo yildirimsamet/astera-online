@@ -90,3 +90,36 @@ export const markHit = (): void => {
  * event on its own — see `hitSomething`.
  */
 export const wasMiss = (): boolean => !hitSomething;
+
+/** A fingertip is wider than the printed name; this much of the label's padding is part of it. */
+const NAME_SLOP = 4;
+
+/**
+ * THE COMMANDER NAME TAKES A TAP, NEVER A PRESS.
+ *
+ * The name is a button inside the labels' DOM layer, which sits above the canvas. A button that
+ * takes pointer events also takes the START of a drag, and the camera never hears of it: a finger
+ * that began on a name could not turn the galaxy. So the button takes none (`pointer-events-none`),
+ * every press reaches the canvas and the camera, and the name is answered here instead, on
+ * pointer up: a tap that ended without travelling (`wasTap`) on the printed name opens it.
+ * A drag that merely starts or ends on a name opens nothing.
+ *
+ * Only a press the canvas received counts; a panel laid over the map keeps its own taps.
+ */
+export function installCommanderNameTap(): () => void {
+  const up = (event: PointerEvent): void => {
+    if (!(event.target instanceof HTMLCanvasElement) || !wasTap()) return;
+    for (const name of document.querySelectorAll<HTMLElement>('[data-world-commander]')) {
+      // `visibility` is inherited: a label the layout hides hides its name too.
+      if (getComputedStyle(name).visibility === 'hidden') continue;
+      const box = name.getBoundingClientRect();
+      if (event.clientX < box.left - NAME_SLOP || event.clientX > box.right + NAME_SLOP
+        || event.clientY < box.top - NAME_SLOP || event.clientY > box.bottom + NAME_SLOP) continue;
+      markHit();
+      name.click();
+      return;
+    }
+  };
+  window.addEventListener('pointerup', up);
+  return () => { window.removeEventListener('pointerup', up); };
+}

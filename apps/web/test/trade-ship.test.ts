@@ -93,7 +93,7 @@ describe('TRADE_SHIP_SCALE', () => {
 
   it('doubles with the travelling craft while retaining its own proportions', () => {
     expect(TRADE_SHIP_SCALE).toBeGreaterThan(TRADE_SHIP_BASE_SCALE);
-    expect(TRADE_SHIP_SCALE).toBeCloseTo(2.56, 9);
+    expect(TRADE_SHIP_SCALE).toBeCloseTo(2.24, 9);
   });
 });
 

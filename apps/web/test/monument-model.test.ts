@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { FLEET_V2_ASSET_MANIFEST } from '../src/ui/fleet-v2-assets.js';
 import { CRAFT_SCALE } from '../src/galaxy/scene.js';
 import { MONUMENT_FOG, MONUMENT_MODELS, MONUMENT_SCALE, monumentGlow, monumentScale, monumentModel, monumentModelUrl, monumentFocusDistance } from '../src/galaxy/MonumentModel.js';
-import { TRADE_SHIP_SCALE } from '../src/galaxy/TradeShip.js';
+
+/** The merchant's length when the landmarks were authored (1.6 × 2 × 0.2 × 4). Landmarks do not follow the craft dial. */
+const LANDMARK_UNIT = 2.56;
 
 describe('monument presentation', () => {
   it('maps all eight public ordinals to distinct supplied runtime models', () => {
@@ -28,7 +30,7 @@ describe('monument presentation', () => {
   it('keeps landmark sizes stable when travelling ships double', () => {
     const largestStrategicShip = 0.34 * CRAFT_SCALE * 3.4;
     expect(MONUMENT_SCALE).toBeCloseTo(3.84, 9);
-    expect(MONUMENT_SCALE / TRADE_SHIP_SCALE).toBeCloseTo(1.5, 9);
+    expect(MONUMENT_SCALE / LANDMARK_UNIT).toBeCloseTo(1.5, 9);
     const largestOwnedHull = Math.max(...Object.values(FLEET_V2_ASSET_MANIFEST).map(({ scale }) => scale)) * 0.225 * CRAFT_SCALE;
     expect(MONUMENT_SCALE / largestStrategicShip).toBeGreaterThan(1);
     expect(MONUMENT_SCALE / largestOwnedHull).toBeGreaterThanOrEqual(1.5);
@@ -37,11 +39,11 @@ describe('monument presentation', () => {
   it.each([
     ['EASY', 1.5, '#58f4b3'], ['HARD', 2.5, '#ff4b4b'], ['LEGACY', 1.5, '#8be7ff'],
   ] as const)('draws %s at %s trade ships with its own rim colour', (difficulty, multiple, colour) => {
-    expect(monumentScale(difficulty) / TRADE_SHIP_SCALE).toBeCloseTo(multiple, 9);
+    expect(monumentScale(difficulty) / LANDMARK_UNIT).toBeCloseTo(multiple, 9);
     expect(monumentGlow(difficulty)).toBe(colour);
     const source = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 0.5), new THREE.MeshStandardMaterial());
     const bounds = new THREE.Box3().setFromObject(monumentModel(source, difficulty)).getSize(new THREE.Vector3());
-    expect(Math.max(bounds.x, bounds.y, bounds.z) / TRADE_SHIP_SCALE).toBeCloseTo(multiple, 7);
+    expect(Math.max(bounds.x, bounds.y, bounds.z) / LANDMARK_UNIT).toBeCloseTo(multiple, 7);
     // Fit the entire model in the narrow phone viewport above the focus rail.
     const distance = monumentFocusDistance(difficulty);
     const halfHeight = distance * Math.tan(Math.PI / 8);

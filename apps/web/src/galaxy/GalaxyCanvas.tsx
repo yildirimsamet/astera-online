@@ -149,7 +149,7 @@ import {
   type PlanetNode,
   type Vec3Tuple,
 } from './scene.js';
-import { installTapGuard, wasMiss, wasTap } from './tap.js';
+import { installCommanderNameTap, installTapGuard, wasMiss, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
 import { staleness } from '../lib/time.js';
 import { CommanderShipLabels } from './CommanderShipLabel.js';
@@ -793,6 +793,7 @@ export function GalaxyCanvas({
   const focusKey = useMemo(() => focusIdentity(focus), [focus]);
 
   useEffect(() => installTapGuard(), []);
+  useEffect(() => installCommanderNameTap(), []);
 
   /**
    * WHAT THIS DEVICE SPENDS PER PIXEL. See `lib/quality.ts` for the whole argument.
@@ -1575,8 +1576,8 @@ export function GalaxyPlanetName({ node, compact = false }: { node: PlanetNode; 
  * The flag is the same earned/frozen identity as the commander printed beside it.
  *
  * A NAME WITH A PLAYER BEHIND IT OPENS THEIR SHOWCASE. The label is otherwise inert so a drag
- * over it still turns the disc; only the name takes a press, and it keeps that press to itself
- * so the tap does not also land on the world under it. The player id is the one the galaxy
+ * over it still turns the disc. The name takes no press either — a tap on it is answered on the
+ * canvas (`installCommanderNameTap`) so a drag that starts on it still turns the camera. The player id is the one the galaxy
  * already sent for a seat the caller can name — the fog decides who is clickable, not this.
  */
 export function GalaxyCommanderName({ node, onOpen }: { node: PlanetNode; onOpen?: (node: PlanetNode) => void }) {
@@ -1593,9 +1594,8 @@ export function GalaxyCommanderName({ node, onOpen }: { node: PlanetNode; onOpen
   }
   return <button type="button" data-world-commander
     aria-label={t('legacy.profile.openNamed', { name: node.owner })}
-    onPointerDown={event => { event.stopPropagation(); }}
     onClick={event => { event.stopPropagation(); onOpen(node); }}
-    className="galaxy-commander-link name text-caption text-bone pointer-events-auto flex w-max max-w-full cursor-pointer items-center gap-1.5 rounded-chip px-1 py-0.5">
+    className="galaxy-commander-link name text-caption text-bone pointer-events-none flex w-max max-w-full cursor-pointer items-center gap-1.5 rounded-chip px-1 py-0.5">
     {body}
   </button>;
 }
