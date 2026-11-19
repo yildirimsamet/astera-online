@@ -30,6 +30,8 @@ export const MOON = {
   retargetSpacingSeconds: 5,
   /** The gate opening: ships still stand on the departure moon until it ends (§3.4). */
   gateOpenSeconds: 10,
+  /** How long a gate's flash stays on the map after the instant it happened (S16, S32). */
+  flashSeconds: 60,
   scanCost: { deuterium: 30 },
   /** A Death Star hit shuts gate and Gözcü (S19). */
   strikeCloseHours: 3,

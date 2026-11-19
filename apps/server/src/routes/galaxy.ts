@@ -3,7 +3,7 @@ import { and, asc, desc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { applyHonorPodium } from '../services/honorPodium.js';
 import { readHonorBenefits } from '../services/honorBenefits.js';
-import { honorSoloCredit, isSupportedHonorVersion, coreTier, distance, planetSkinById, honorRankRewards, honorResourceValue, clanTagTier } from '@astera/rules';
+import { honorSoloCredit, isSupportedHonorVersion, coreTier, distance, planetSkinById, honorRankRewards, honorResourceValue, clanTagTier, sensorZone } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import {
   accounts,
@@ -132,7 +132,11 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
       ? await moonsSeenBy(app.db, self.seasonId, new Set(worlds.map((world) => world.id)), (id) => {
         const world = worlds.find((candidate) => candidate.id === id);
         return world !== undefined && resolves(world);
-      }, (id) => remembered.get(id)?.silhouette.moonRarity)
+      }, (id) => remembered.get(id)?.silhouette.moonRarity, (id) => {
+        if (mineSet.has(id)) return 'IDENTIFIED';
+        const world = worlds.find((candidate) => candidate.id === id);
+        return world ? sensorZone(sensors, world.position) : 'NONE';
+      }, now)
       : null;
 
     return {

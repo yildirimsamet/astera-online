@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -6,9 +6,10 @@ import { z } from 'zod';
 import { MOON, SENSOR } from '@astera/rules';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
-import { moons, probeReports, satellites, seasons, units } from '../src/db/schema.js';
+import { moons, planets, probeReports, satellites, scheduledEvents, seasons, units } from '../src/db/schema.js';
+import { HANDLERS } from '../src/worker/handlers.js';
 import { assignWatch, launchProbe, readTelescopes } from '../src/services/intel.js';
-import { hopFleet } from '../src/services/moonMovement.js';
+import { hopFleet, jumpFleet } from '../src/services/moonMovement.js';
 import { MOON_LOCATION } from '../src/services/unitLocation.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { fuelUp, giveSatellite, grant, levelWorld, placeAt, seedWorld, setLevel, testDb, testEnv, type Fixture } from './helpers.js';
@@ -68,6 +69,7 @@ describe('who sees which moon', () => {
     const view = z.object({
       list: z.array(z.object({ planetId: z.string(), cracks: z.number(), lastHitAt: z.string().nullable(), visualSeed: z.number() }).strict()),
       rarity: z.record(z.string(), z.string()),
+      flashes: z.object({ arrivals: z.array(z.unknown()), departures: z.array(z.unknown()) }).strict(),
     }).strict().parse(body.moons);
     expect(view.list.toSorted((a, b) => a.visualSeed - b.visualSeed)).toEqual([
       { planetId: mine, cracks: 0, lastHitAt: null, visualSeed: 11 },
@@ -102,6 +104,37 @@ describe('who sees which moon', () => {
     expect(moon!.fleet.high).toBeGreaterThanOrEqual(9);
     const body = await galaxy();
     expect(z.object({ rarity: z.record(z.string(), z.string()) }).passthrough().parse(body.moons).rarity[far]).toBe('LEGENDARY');
+  });
+
+  it('a gate flashes: the arrival to everybody, the departure only to sensors that reach it, its size only where the world is identified (S16, S32)', async () => {
+    await f.db.update(seasons).set({ rulesetVersion: MOON.rulesetVersion }).where(eq(seasons.id, f.seasonId));
+    // The neighbour also holds the far world; it gates its fleet from the near moon to the far one.
+    await f.db.update(planets).set({ controllerPlayerId: f.playerIds[1]!, kind: 'COLONY', statsOwnerPlayerId: f.playerIds[1]! })
+      .where(eq(planets.id, far));
+    await fuelUp(f.db, near);
+    await f.db.insert(units).values({ planetId: near, ownerPlayerId: f.playerIds[1]!, hull: 'DART', location: MOON_LOCATION, count: 12 });
+    const flashes = async () => z.object({
+      arrivals: z.array(z.object({ planetId: z.string(), at: z.string() }).strict()),
+      departures: z.array(z.object({ planetId: z.string(), at: z.string(), size: z.string().optional() }).strict()),
+    }).strict().parse(z.object({ flashes: z.unknown() }).passthrough().parse((await galaxy()).moons).flashes);
+
+    await jumpFleet(f.db, f.playerIds[1]!, near, far, { DART: 12 }, f.clock);
+    expect(await flashes()).toEqual({ arrivals: [], departures: [{ planetId: near, at: f.clock.now().toISOString(), size: 'LIGHT' }] });
+
+    const [landing] = await f.db.select().from(scheduledEvents).where(and(eq(scheduledEvents.kind, 'moon_move_land'), eq(scheduledEvents.status, 'pending')));
+    f.clock.set(landing!.resolveAt);
+    await HANDLERS.moon_move_land!({ db: f.db, clock: f.clock }, landing!);
+    const seen = await flashes();
+    expect(seen.arrivals).toEqual([{ planetId: far, at: landing!.resolveAt.toISOString() }]);
+    f.clock.advance(MOON.flashSeconds / 60 + 1);
+    expect(await flashes()).toEqual({ arrivals: [], departures: [] });
+
+    // Back the other way once both gates have charged: the far world is beyond every sensor of ours, so only
+    // the arrival at the near moon shows.
+    f.clock.advance(MOON.gateChargeHours.EPIC * 60);
+    await fuelUp(f.db, far);
+    await jumpFleet(f.db, f.playerIds[1]!, far, near, { DART: 12 }, f.clock);
+    expect((await flashes()).departures).toEqual([]);
   });
 
   it('a telescope reads the moon as a second row: ships there, empty, a hop under way, or no moon (S40)', async () => {

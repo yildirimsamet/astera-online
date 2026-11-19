@@ -76,7 +76,9 @@ export type ShardEventKind =
   /** A ship left the starter galaxy for the main one. */
   | 'departure'
   /** A colony ship landed in this main season: its watchers fetch the inbound flight (owner, 2026-11-09). */
-  | 'inbound';
+  | 'inbound'
+  /** Ay §6.22: a gate flashed, or a moon was born, cracked or broke. The moon view lives in the galaxy payload. */
+  | 'moon';
 
 /** Events that affect every signed-in commander, regardless of their season. */
 export type GlobalEventKind = 'announcement' | 'chat-badges';

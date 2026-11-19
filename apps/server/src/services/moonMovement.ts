@@ -17,7 +17,7 @@ import {
 import type { Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import { missions, moonMoves, moons, notifications, planets, units } from '../db/schema.js';
-import { publish } from '../stream/bus.js';
+import { publish, publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { arrivalPending, assertNoArrivalPending, readHomeHealth, selectHomeDispatch, writeHomeHealth } from './homeHealth.js';
 import { assertMoonTarget, seasonHasMoons } from './moon.js';
@@ -313,6 +313,8 @@ export async function jumpFleet(
       await schedule(tx, { seasonId: origin.seasonId, kind: 'moon_gate_ready', refId: gate.planetId, resolveAt: readyAt });
     }
     await publishWatchChanges(tx, [fromPlanetId, toPlanetId]);
+    // The departure flash (S16); who may see it is decided when the map is read.
+    await publishShard(tx, origin.seasonId, 'moon');
     return move!;
   });
 }
@@ -350,6 +352,8 @@ async function finishJump(tx: Tx, move: MoonMove, now: Date): Promise<void> {
   await writeHomeHealth(tx, move.fromPlanetId, selected.remaining, selected.remainingDamage, 'MOON');
   await placeAt(tx, move.toPlanetId, move.ownerPlayerId, MOON_LOCATION, moved, selected.selectedDamage);
   await settle('LANDED', selected.selectedDamage);
+  // The arrival flash, for everybody (S32).
+  await publishShard(tx, move.seasonId, 'moon');
 }
 
 /** A gate has charged (§6.11). Only if nothing re-armed it since, and only to whoever holds the moon now. */

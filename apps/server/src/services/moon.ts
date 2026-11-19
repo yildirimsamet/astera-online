@@ -1,5 +1,5 @@
-import { and, eq, gt, inArray, or, sql } from 'drizzle-orm';
-import { hashSeed, moonsEnabled, type MoonRarity } from '@astera/rules';
+import { and, eq, gt, inArray, lte, or, sql } from 'drizzle-orm';
+import { MOON, fleetSizeClass, hangarLoad, hashSeed, moonsEnabled, type FleetSizeClass, type MoonRarity, type SensorZone } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
 import { moonMoves, moonSeedLedger, moons, planets, seasons, shards, units, type ProbeMoonReading } from '../db/schema.js';
 import { MOON_LOCATION, PLANET_LOCATION } from './unitLocation.js';
@@ -93,10 +93,22 @@ export async function moonMovePending(tx: Tx, playerId: string, planetIds: reado
  * from a probe or a battle. A destroyed moon is not in the list, so its remembered rarity is never drawn.
  * Origin never.
  */
+export interface GateFlashes {
+  arrivals: { planetId: string; at: Date }[];
+  departures: { planetId: string; at: Date; size?: FleetSizeClass }[];
+}
+
 export async function moonsSeenBy(
   db: Queryable, seasonId: string, visible: ReadonlySet<string>, resolves: (planetId: string) => boolean,
   remembered: (planetId: string) => MoonRarity | undefined = () => undefined,
-): Promise<{ list: { planetId: string; cracks: number; lastHitAt: Date | null; visualSeed: number }[]; rarity: Record<string, MoonRarity> }> {
+  /** How the observer's own sensors read each world (S16); their own worlds read IDENTIFIED. */
+  zoneOf: (planetId: string) => SensorZone = () => 'NONE',
+  now: Date = new Date(0),
+): Promise<{
+  list: { planetId: string; cracks: number; lastHitAt: Date | null; visualSeed: number }[];
+  rarity: Record<string, MoonRarity>;
+  flashes: GateFlashes;
+}> {
   const rows = await db.select({ planetId: moons.planetId, rarity: moons.rarity, cracks: moons.cracks,
     lastHitAt: moons.lastHitAt, visualSeed: moons.visualSeed })
     .from(moons).innerJoin(planets, eq(planets.id, moons.planetId)).where(eq(planets.seasonId, seasonId));
@@ -110,7 +122,32 @@ export async function moonsSeenBy(
   return {
     list: shown.map(({ planetId, cracks, lastHitAt, visualSeed }) => ({ planetId, cracks, lastHitAt, visualSeed })),
     rarity,
+    flashes: await gateFlashes(db, seasonId, visible, zoneOf, now),
   };
+}
+
+/**
+ * THE GATE'S FLASHES (S16, S32, plan §6.22), each for `MOON.flashSeconds` after its instant. A jump's arrival
+ * lights the far moon for the whole galaxy. Its departure is seen only where the observer's own sensors
+ * reach the world — radar contact gives the flash, identification adds the fleet's rough size. Nobody's name.
+ */
+async function gateFlashes(
+  db: Queryable, seasonId: string, visible: ReadonlySet<string>, zoneOf: (planetId: string) => SensorZone, now: Date,
+): Promise<GateFlashes> {
+  const since = new Date(now.getTime() - MOON.flashSeconds * 1_000);
+  const jumps = await db.select({ from: moonMoves.fromPlanetId, to: moonMoves.toPlanetId, fleet: moonMoves.fleet,
+    departAt: moonMoves.departAt, arriveAt: moonMoves.arriveAt, status: moonMoves.status })
+    .from(moonMoves).where(and(eq(moonMoves.seasonId, seasonId), eq(moonMoves.kind, 'JUMP'),
+      gt(moonMoves.arriveAt, since), lte(moonMoves.departAt, now)));
+  const arrivals: GateFlashes['arrivals'] = [];
+  const departures: GateFlashes['departures'] = [];
+  for (const jump of jumps) {
+    if (jump.status === 'LANDED' && jump.arriveAt <= now && visible.has(jump.to)) arrivals.push({ planetId: jump.to, at: jump.arriveAt });
+    const zone = visible.has(jump.from) ? zoneOf(jump.from) : 'NONE';
+    if (zone === 'NONE' || jump.departAt <= since) continue;
+    departures.push({ planetId: jump.from, at: jump.departAt, ...(zone === 'IDENTIFIED' ? { size: fleetSizeClass(hangarLoad(jump.fleet)) } : {}) });
+  }
+  return { arrivals, departures };
 }
 
 /**
