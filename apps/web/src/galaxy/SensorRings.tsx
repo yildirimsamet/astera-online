@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { VIEW, toWorld, type SensorSphere } from '@astera/rules';
 
@@ -227,16 +227,52 @@ export function radarWaveState(
   };
 }
 
+/** How many other volumes one shell is cut by. A commander owns four worlds; this is slack. */
+export const MAX_SHELL_OCCLUDERS = 7;
+
+export interface ShellVolume { key: string; centre: readonly [number, number, number]; radius: number }
+export interface Occluder { centre: readonly [number, number, number]; radius: number }
+
+/**
+ * ONE OPEN VOLUME, ONE OUTLINE. Which shells are drawn, and what cuts each of them.
+ *
+ * Two shells with the same centre and radius are drawn once. A shell is cut only by a volume that can
+ * actually reach its surface: one it overlaps, or one that holds it whole. A volume lying wholly inside
+ * the shell, or one far away, never touches it and is not passed on.
+ */
+export function shellUnion<T extends ShellVolume>(shells: readonly T[]): { drawn: T[]; occluders: Occluder[][] } {
+  const seen = new Set<string>();
+  const drawn = shells.filter(shell => {
+    const id = `${shell.centre.join(',')}|${String(shell.radius)}`;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+  const occluders = drawn.map(shell => drawn
+    .filter(other => {
+      if (other === shell) return false;
+      const apart = Math.hypot(...shell.centre.map((value, axis) => value - other.centre[axis]!) as [number, number, number]);
+      return apart < shell.radius + other.radius && apart + other.radius > shell.radius;
+    })
+    .sort((a, b) => b.radius - a.radius)
+    .slice(0, MAX_SHELL_OCCLUDERS)
+    .map(other => ({ centre: other.centre, radius: other.radius })));
+  return { drawn, occluders };
+}
+
 const SHELL_VERTEX = /* glsl */ `
   varying vec3 vNormal;
   varying vec3 vView;
   /** The surface point in the sphere's OWN space, so the shimmer turns with it. */
   varying vec3 vLocal;
+  /** Where the surface point is in the scene: overlapping volumes are compared in this space. */
+  varying vec3 vWorld;
   void main() {
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     vNormal = normalize(normalMatrix * normal);
     vView = normalize(-mv.xyz);
     vLocal = position;
+    vWorld = (modelMatrix * vec4(position, 1.0)).xyz;
     gl_Position = projectionMatrix * mv;
   }
 `;
@@ -322,12 +358,16 @@ export const SHELL_FRAGMENT = /* glsl */ `
   varying vec3 vNormal;
   varying vec3 vView;
   varying vec3 vLocal;
+  varying vec3 vWorld;
   uniform vec3 uColour;
   uniform float uTime;
   uniform float uFalloff;
   uniform float uStrength;
   uniform float uBody;
   uniform float uGrid;
+  /** Other open volumes (centre, radius). Shell inside one of them is interior, not boundary. */
+  uniform vec4 uOthers[${String(MAX_SHELL_OCCLUDERS)}];
+  uniform int uOtherCount;
 
   /** Three parallels and four meridians. Sparse enough to read as navigation. */
   const float LAT_STEP = 0.7853981634;
@@ -349,6 +389,12 @@ export const SHELL_FRAGMENT = /* glsl */ `
   }
 
   void main() {
+    // Overlapping telescopes are one open volume: only its outer surface is drawn. Strict, and a hair
+    // inside the radius, so the seam where two shells meet is cut cleanly and a tangent point is kept.
+    for (int i = 0; i < ${String(MAX_SHELL_OCCLUDERS)}; i++) {
+      if (i >= uOtherCount) break;
+      if (distance(vWorld, uOthers[i].xyz) < uOthers[i].w * 0.9999) discard;
+    }
     float facing = abs(dot(normalize(vNormal), normalize(vView)));
     float rim = pow(max(0.0, 1.0 - facing), uFalloff);
 
@@ -415,15 +461,19 @@ function ReachShell({
   radius,
   telescope,
   staged,
+  occluders,
 }: {
-  centre: THREE.Vector3;
+  centre: readonly [number, number, number];
   radius: number;
   telescope: boolean;
   staged: boolean;
+  /** The other open volumes this shell's inside parts are hidden by. */
+  occluders: readonly Occluder[];
 }) {
   const material = useRef<THREE.ShaderMaterial>(null);
   const shell = useRef<THREE.Mesh>(null);
   const age = useRef(0);
+  const [cx, cy, cz] = centre;
 
   const uniforms = useMemo(
     () => ({
@@ -448,9 +498,17 @@ function ReachShell({
        * surface at a distance, and parallax works at any brightness.
        */
       uGrid: { value: BASE_GRID },
+      uOthers: { value: Array.from({ length: MAX_SHELL_OCCLUDERS }, () => new THREE.Vector4()) },
+      uOtherCount: { value: 0 },
     }),
     [telescope],
   );
+  const invalidate = useThree(state => state.invalidate);
+  useEffect(() => {
+    occluders.forEach((other, index) => { uniforms.uOthers.value[index]?.set(...other.centre, other.radius); });
+    uniforms.uOtherCount.value = occluders.length;
+    invalidate();
+  }, [occluders, uniforms, invalidate]);
 
   useFrame((state, delta) => {
     const live = material.current?.uniforms;
@@ -474,7 +532,7 @@ function ReachShell({
   });
 
   return (
-    <group position={centre}>
+    <group position={[cx, cy, cz]}>
       {/*
         ONE SIDE ONLY, AND THE SECOND ONE WAS THE BUG.
         A FrontSide pass sits BETWEEN the camera and everything inside the bubble,
@@ -815,16 +873,20 @@ export function SensorRings({
   );
 
   const radars = useMemo(() => radarPosts(posts), [posts]);
+  const union = useMemo(() => shellUnion(shells.map(shell => ({
+    ...shell, centre: [shell.centre.x, shell.centre.y, shell.centre.z] as const,
+  }))), [shells]);
 
   return (
     <>
-      {showTelescope && shells.map((shell) => (
+      {showTelescope && union.drawn.map((shell, index) => (
         <ReachShell
           key={shell.key}
           centre={shell.centre}
           radius={shell.radius}
           telescope={shell.telescope}
           staged={staged}
+          occluders={union.occluders[index] ?? []}
         />
       ))}
       {showRadar && radars.map((radar) => (

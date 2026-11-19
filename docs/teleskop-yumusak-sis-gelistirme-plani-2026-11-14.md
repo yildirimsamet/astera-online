@@ -1,7 +1,7 @@
 # Teleskop görüşü ve yumuşak dış sis — geliştirme planı
 
 **Tarih:** 14 Kasım 2026  
-**Durum:** Uygulama öncesi plan. Özellik oyuna uygulanmadı; geçici lab, testleri ve deneme çıktıları temizlendi. Karar ve hesap referansı bu belgede korunuyor.  
+**Durum:** 2026-11-20: adım 1–4 uygulandı (tek ayar `spaceFog.ts`, birleşim geometrisi, tek geçişli sis `spaceFogEffect.ts`, kesişen mavi kabukların iç parçalarının maskelenmesi `SensorRings.tsx`). Gerçek cihaz p95 ölçümü, şeffaf efekt karşılaştırması (§6.3) ve gerçek oyun kamera videoları (§9) henüz yapılmadı. Işın sınırı labdaki gibi 60 sahne birimi (`FOG.rayLimit`).  
 **Görsel karar:** Owner'ın lab değerlendirmesi: **Yumuşak fade · %2,5 perde yoğunluğu · 38 birim geçiş genişliği.**
 
 ## 1. Amaç ve oyuncunun yaşayacağı deneyim

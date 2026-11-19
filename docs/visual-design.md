@@ -21,6 +21,11 @@ does not accept that trade. **Beautiful is a requirement, not a tiebreaker.** A 
 mechanic rendered badly does not ship, and the horizon is still waiting for an answer that
 clears both bars.
 
+**The answer, 2026-11-14 (owner's lab choice, built in `galaxy/spaceFog.ts` and `spaceFogEffect.ts`):**
+a very thin soft haze outside the union of the commander's identify spheres — density 0.025, a
+38 game unit soft edge. Not the grey cloud of D124: it only lifts the dark sky a few levels and
+mutes far worlds, and the worlds stay findable. Live objects inside an open volume are never veiled.
+
 Three failure modes from that build are named because each cost a draft, and any future
 attempt will meet them again:
 

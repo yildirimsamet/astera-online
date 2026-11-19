@@ -5,6 +5,7 @@ import { EffectPass, type Pass } from 'postprocessing';
 import { HalfFloatType } from 'three';
 import { guardBloomRef } from './finiteGuard.js';
 import { FiniteSceneGuard } from './FiniteSceneGuard.js';
+import { SpaceFog } from './SpaceFog.js';
 
 interface Props {
   live: boolean;
@@ -29,6 +30,8 @@ export const GalaxyPostprocessing = memo(function GalaxyPostprocessing({
   const composerRef = useCallback(ditherOutput, []);
   const effects = useMemo(() => [
     <FiniteSceneGuard key="finite-scene" />,
+    // Before bloom: the haze is part of the world's colour, and a bright ship in it still blooms.
+    <SpaceFog key="space-fog" />,
     <Bloom ref={guardBloomRef} key="bloom" intensity={0.62} luminanceThreshold={0.78}
       luminanceSmoothing={0.22} mipmapBlur radius={0.72} levels={6} />,
     <Vignette key="vignette" eskil={false} offset={0.24} darkness={0.62} />,
