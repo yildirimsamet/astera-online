@@ -241,6 +241,7 @@ import { announceGateReady, landMoonMove, landOnMoon, landingBodyOf } from '../s
 import { moonsOf } from '../services/moon.js';
 import { readHomeHealth, writeHomeHealth } from '../services/homeHealth.js';
 import { settleEmptyMoon } from '../services/moonBattle.js';
+import { settleMoonBirth } from '../services/moonBirth.js';
 
 export interface HandlerContext {
   db: Db;
@@ -1311,6 +1312,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
      */
     const totalRaw = flyingValue(result.attackerLosses) + flyingValue(result.defenderLosses);
     const made = totalRaw * DEBRIS.share;
+    // Ay V16, S44: the moon's roll reads the whole wreck, before the collectors and the clan purse.
+    const moonBorn = await settleMoonBirth(tx, { planetId: defender.planetId, missionId, wreck: made, now: defender.now });
     const share = (raw: number): number => (totalRaw > 0 ? made * (raw / totalRaw) : 0);
     const { salvage, field: settled } = settleWreck(
       {
@@ -1697,6 +1700,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
           : {}),
         grade: result.grade,
         ...(onMoon ? { targetBody: 'MOON' } : {}),
+        ...(moonBorn ? { moonBorn: true } : {}),
         lootAlloy: loot.alloy,
         lootCrystal: loot.crystal,
         lootDeuterium: loot.deuterium,
@@ -1724,6 +1728,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       payload: {
         grade: result.grade,
         ...(onMoon ? { targetBody: 'MOON' } : {}),
+        ...(moonBorn ? { moonBorn: true } : {}),
         targetPlanetId: defender.planetId,
         targetUsername: defenderIdentity?.username ?? 'someone',
         targetPlanetName: defender.name,

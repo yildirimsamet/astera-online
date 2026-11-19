@@ -1,3 +1,4 @@
+import { settleMoonBirth } from './moonBirth.js';
 import { PLANET_LOCATION } from './unitLocation.js';
 import { prepareBattleReplay, persistBattleReplay } from './battleReplay.js';
 import { commanderPvpBalance } from './pvpBalance.js';
@@ -506,6 +507,8 @@ export async function resolveClanWarBattle(
   */
   const totalRaw = flyingValue(result.attackerLosses) + flyingValue(result.defenderLosses);
   const made = totalRaw * DEBRIS.share;
+  // Ay V16, S44: the moon's roll reads the whole wreck, before the collectors and the clan purse.
+  const moonBorn = await settleMoonBirth(tx, { planetId: defender.planetId, missionId: mission.id, wreck: made, now: defender.now });
   const share = (raw: number): number => (totalRaw > 0 ? made * (raw / totalRaw) : 0);
   const { salvage, field: settled } = settleWreck(
     {
@@ -921,6 +924,7 @@ export async function resolveClanWarBattle(
       */
       originClanTag: operation.clanTag,
       grade: result.grade,
+      ...(moonBorn ? { moonBorn: true } : {}),
       lootAlloy: loot.alloy,
       lootCrystal: loot.crystal,
       lootDeuterium: loot.deuterium,
@@ -943,6 +947,7 @@ export async function resolveClanWarBattle(
       kind: 'raid_result',
       payload: {
         grade: result.grade,
+        ...(moonBorn ? { moonBorn: true } : {}),
         targetPlanetId: defender.planetId,
         targetUsername: defenderIdentity?.username ?? 'someone',
         targetPlanetName: defender.name,
@@ -982,6 +987,7 @@ export async function resolveClanWarBattle(
       kind: 'raid_result',
       payload: {
         grade: result.grade,
+        ...(moonBorn ? { moonBorn: true } : {}),
         targetPlanetId: defender.planetId,
         targetUsername: defenderIdentity?.username ?? 'someone',
         targetPlanetName: defender.name,

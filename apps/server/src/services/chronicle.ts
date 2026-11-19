@@ -46,6 +46,8 @@ export interface GalaxyEventPayloadByKind {
   control_transfer: { planetName: string; commanderName: string };
   /** Ay V18: a broken moon is public news, with its rarity — the public crack count already told it. */
   moon_destroyed: { planetName: string; rarity: MoonRarity };
+  /** Ay V18: a moon born in battle is public news; its rarity is learnt only by looking (S53). */
+  moon_born: { planetName: string };
   galaxy_event_started: GalaxyEventLifecyclePayload;
   galaxy_event_ended: GalaxyEventLifecyclePayload;
 }

@@ -1340,6 +1340,7 @@ export type GalaxyEventLifecyclePayload =
 export type GalaxyEventPayload =
   | { planetName: string; commanderName: string }
   | { planetName: string; rarity: MoonRarity }
+  | { planetName: string }
   | { planetName: string; commanderName: string; tier: number }
   | { planetName: string; tier: number; claimUntil: string }
   | {
