@@ -2223,7 +2223,8 @@ export const strategicAssets = pgTable('strategic_assets', {
     .where(sql`${t.type} IN ('RADIATION_BOMB_L1', 'RADIATION_BOMB_L2', 'RADIATION_BOMB_L3') AND ${t.status} IN ('BUILDING', 'PAUSED', 'READY', 'LAUNCHED')`),
 ]);
 
-export type BuildOrderKind = 'BUILDING' | 'HULL' | 'INSTRUMENT' | 'SATELLITE' | 'RESEARCH' | 'REPAIR';
+/** `MOON` (Ay S8, V29): a Common moon built on the CONSTRUCTION line; its subject is the rarity. */
+export type BuildOrderKind = 'BUILDING' | 'HULL' | 'INSTRUMENT' | 'SATELLITE' | 'RESEARCH' | 'REPAIR' | 'MOON';
 export type BuildOrderStatus = 'BUILDING' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
 
 /**
@@ -2267,7 +2268,7 @@ export const buildOrders = pgTable('build_orders', {
   check('build_orders_queue_check', sql`${t.queue} IN ('CONSTRUCTION', 'YARD', 'REPAIR')`),
   check(
     'build_orders_kind_check',
-    sql`${t.kind} IN ('BUILDING', 'HULL', 'INSTRUMENT', 'SATELLITE', 'RESEARCH', 'REPAIR')`,
+    sql`${t.kind} IN ('BUILDING', 'HULL', 'INSTRUMENT', 'SATELLITE', 'RESEARCH', 'REPAIR', 'MOON')`,
   ),
   check(
     'build_orders_status_check',

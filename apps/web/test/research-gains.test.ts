@@ -56,6 +56,8 @@ describe('what a rung of research buys', () => {
    */
   const PERMISSIONS = [
     'ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES',
+    // Ay S7: the door to a moon (owner, 2026-11-19).
+    'LUNAR_CAPTURE',
   ] as const;
 
   it('moves on every rung of each active ladder', () => {

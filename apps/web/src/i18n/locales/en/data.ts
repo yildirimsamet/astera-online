@@ -438,6 +438,7 @@ export const gains = {
     isotopeOpens: 'Isotope asteroids become selectable mining targets.',
     denseOpens: 'Ship Propulsion research becomes available.',
     graviticOpens: 'The Nullifier’s specialist research requirement is met.',
+    lunarCaptureOpens: "You can build moons on your worlds, and big battles over worlds you hold can give birth to one.",
   },
   plant: {
     label: 'Deuterium',

@@ -165,4 +165,9 @@ export const research = {
   stockpileTag: "Deux Étoiles de la Mort par monde",
   stockpileRole: "Fait passer de 1 à 2 les Étoiles de la Mort que chacun de tes mondes peut détenir. La seconde commence quand la première est terminée.",
   stockpileDetail: "Sans recherche, chaque monde détient 1 Étoile de la Mort ; cette recherche la porte à 2 sur chaque monde, pas sur tout ton empire. La seconde coûte le prix complet et le temps de construction complet, et se construit après la première. Frapper depuis plusieurs mondes à la fois est le moyen de dépasser les charges d’un défenseur.",
+  lunarCaptureName: "Capture lunaire",
+  lunarCaptureTag: "Donne une lune à vos mondes",
+  lunarCaptureRole: "Vous pouvez construire une lune commune sur chacun de vos mondes. Une grande bataille au-dessus d’un monde que vous tenez peut en faire naître une plus rare.",
+  lunarCaptureDetail: "Une lune est une seconde étape à côté de la planète : votre flotte peut y attendre, sauter entre vos propres lunes et scanner les routes proches. Une lune construite est toujours commune. Une lune née au combat ne remplace l’ancienne que si elle est plus rare. La recherche exige un Noyau 9 sur votre capitale.",
+  moonOrder: "Lune commune",
 } as const;

@@ -200,7 +200,9 @@ export type ResearchProjectId =
   | 'AI_ROBOTS'
   | 'INDUSTRIAL'
   | 'RADIATION_SHIELDING'
-  | 'SHIP_SHIELDS';
+  | 'SHIP_SHIELDS'
+  /** Ay S7: the permission to build a moon, and to see one born in battle (S9). */
+  | 'LUNAR_CAPTURE';
 export const RESEARCH_PROJECT_IDS = [
   'ISOTOPE_SPECTROMETRY',
   'DENSE_FUEL_CELLS',
@@ -236,6 +238,8 @@ export const RESEARCH_PROJECT_IDS = [
   'INDUSTRIAL',
   'RADIATION_SHIELDING',
   'SHIP_SHIELDS',
+  /** Ay S7 (owner 2026-11-19, V28): appended, as every id is. */
+  'LUNAR_CAPTURE',
 ] as const;
 
 export interface ResearchRequirement {

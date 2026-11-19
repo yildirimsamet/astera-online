@@ -514,6 +514,7 @@ export const gains = {
     isotopeOpens: 'Les astéroïdes isotopiques deviennent des cibles minières sélectionnables.',
     denseOpens: 'La recherche sur la propulsion des navires devient disponible.',
     graviticOpens: 'Les exigences de recherche spécialisée du Nullifier sont satisfaites.',
+    lunarCaptureOpens: "Vous pouvez construire des lunes sur vos mondes, et les grandes batailles au-dessus de vos mondes peuvent en faire naître une.",
   },
   plant: {
     label: 'Deutérium',

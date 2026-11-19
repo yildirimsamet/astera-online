@@ -438,6 +438,7 @@ export const gains = {
     isotopeOpens: "同位体小惑星が選択可能な採掘ターゲットになります。",
     denseOpens: "船舶の推進研究が利用可能になります。",
     graviticOpens: "ヌリファイア の専門研究要件は満たされています。",
+    lunarCaptureOpens: "自分の惑星に月を建設でき、保有する惑星上空の大きな戦闘で月が生まれることがあります。",
   },
   plant: {
     label: "重水素",

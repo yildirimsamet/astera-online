@@ -33,6 +33,10 @@ export const MOON = {
   /** How long a gate's flash stays on the map after the instant it happened (S16, S32). */
   flashSeconds: 60,
   scanCost: { deuterium: 30 },
+  /** Lunar Capture, a Core 9 permission at an owner-set price and time (V28, 2026-11-19). */
+  capture: { cost: { alloy: 20_000, crystal: 10_000, deuterium: 500 }, minutes: 240, requiredCore: 9 },
+  /** A Common moon built on a world, at an owner-set price and time (V29, 2026-11-19). */
+  build: { cost: { alloy: 25_000, crystal: 15_000, deuterium: 0 }, minutes: 480 },
   /** A technical guard between two scans from the same moon (§6.12). */
   scanSpacingSeconds: 3,
   /** A Death Star hit shuts gate and Gözcü (S19). */

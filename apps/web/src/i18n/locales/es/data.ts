@@ -438,6 +438,7 @@ export const gains = {
     isotopeOpens: 'Los asteroides isotópicos se convierten en objetivos mineros seleccionables.',
     denseOpens: 'La investigación sobre propulsión de naves está disponible.',
     graviticOpens: 'Se cumple el requisito de investigación especializada del Anulador.',
+    lunarCaptureOpens: "Puedes construir lunas en tus mundos, y las grandes batallas sobre tus mundos pueden hacer nacer una.",
   },
   plant: {
     label: 'Deuterio',

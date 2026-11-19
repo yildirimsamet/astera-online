@@ -327,6 +327,7 @@ describe('the groups', () => {
       INDUSTRIAL: 'industry',
       RADIATION_SHIELDING: 'frontier',
       SHIP_SHIELDS: 'doctrine',
+      LUNAR_CAPTURE: 'frontier',
     };
     for (const id of ALL) expect(groupOf(view, id), id).toBe(expected[id]);
   });

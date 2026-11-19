@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   MOON,
+  RESEARCH_PROJECTS,
+  researchEffectAt,
+  researchMinutes,
+  researchOrderMinutes,
   MOON_RARITIES,
   birthRarityWeights,
   crackLimit,
@@ -211,5 +215,32 @@ describe('seeded moons (S22)', () => {
     const small = [...slots(1, 3, 1000), ...slots(3, 2, 3000)];
     const plan = seedMoonPlan(1, small);
     expect(plan.size).toBe(5);
+  });
+});
+
+/*
+  V34 (owner 2026-11-19, V28–V29): Lunar Capture is a Core 9 permission at a set price and a set time; the
+  Common moon it opens is built at a set price and a set time. Neither follows the economy profile, the
+  crystal discount or the Core's construction speed.
+*/
+describe('Lunar Capture and the Common moon', () => {
+  it('prices Lunar Capture as the owner set it: 20k alloy, 10k crystal, 500 deuterium, four hours, Core 9', () => {
+    const project = RESEARCH_PROJECTS.LUNAR_CAPTURE;
+    expect(project.maxLevel).toBe(1);
+    expect(project.requiredCore).toBe(9);
+    expect(project.prerequisite).toBeNull();
+    expect(project.costAt(1)).toEqual({ alloy: 20_000, crystal: 10_000, deuterium: 500 });
+    for (const core of [9, 12, 15]) expect(researchOrderMinutes('LUNAR_CAPTURE', project.costAt(1), core)).toBe(240);
+    expect(researchEffectAt('LUNAR_CAPTURE', 1)).toBe(1);
+    expect(researchEffectAt('LUNAR_CAPTURE', 0)).toBe(0);
+  });
+
+  it('keeps every other project on the Core’s construction speed', () => {
+    const cost = RESEARCH_PROJECTS.SHIP_POWER.costAt(1);
+    expect(researchOrderMinutes('SHIP_POWER', cost, 9)).toBe(researchMinutes(cost, 9));
+  });
+
+  it('builds a Common moon for 25k alloy and 15k crystal in eight hours', () => {
+    expect(MOON.build).toEqual({ cost: { alloy: 25_000, crystal: 15_000, deuterium: 0 }, minutes: 480 });
   });
 });

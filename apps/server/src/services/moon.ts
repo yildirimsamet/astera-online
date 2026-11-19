@@ -1,7 +1,7 @@
 import { and, eq, gt, inArray, lte, or, sql } from 'drizzle-orm';
 import { MOON, effectiveCracks, fleetSizeClass, hangarLoad, hashSeed, moonsEnabled, type FleetSizeClass, type MoonRarity, type SensorZone } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
-import { moonMoves, moonSeedLedger, moons, planets, seasons, shards, units, type ProbeMoonReading } from '../db/schema.js';
+import { moonMoves, moonSeedLedger, moons, planets, playerResearch, seasons, shards, units, type ProbeMoonReading } from '../db/schema.js';
 import { MOON_LOCATION, PLANET_LOCATION } from './unitLocation.js';
 import { GameError } from './planet.js';
 
@@ -209,11 +209,12 @@ export async function moonWatchStatus(tx: Queryable, planetIds: readonly string[
  * The moon's existence is public (S53), so `NO_MOON` tells the attacker nothing the map does not.
  */
 /**
- * S9: a moon is born over a world only for a holder who has researched Lunar Capture. The research arrives with
- * its art in the F9 slice (V34); until then no commander holds it, and no moon is born in battle (V52).
+ * S9: a moon is born over a world only for a holder who has researched Lunar Capture (V34 slice, 2026-11-20).
  */
-export function holdsLunarCapture(_tx: Queryable, _playerId: string): Promise<boolean> {
-  return Promise.resolve(false);
+export async function holdsLunarCapture(tx: Queryable, playerId: string): Promise<boolean> {
+  const [held] = await tx.select({ level: playerResearch.level }).from(playerResearch)
+    .where(and(eq(playerResearch.playerId, playerId), eq(playerResearch.projectId, 'LUNAR_CAPTURE')));
+  return (held?.level ?? 0) > 0;
 }
 
 export async function assertMoonTarget(

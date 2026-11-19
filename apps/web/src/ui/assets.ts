@@ -195,6 +195,7 @@ export const RESEARCH_ART: Record<ResearchProjectId, string> = {
   STRATEGIC_STOCKPILE: `${RESEARCH_BASE}/strategic-stockpile-v1.webp`,
   INDUSTRIAL: `${RESEARCH_BASE}/industrial-v1.webp`,
   RADIATION_SHIELDING: `${RESEARCH_BASE}/radiation-shielding-v1.webp`,
+  LUNAR_CAPTURE: `${RESEARCH_BASE}/lunar-capture-v1.webp`,
 };
 
 export const PROBE_ART = `${BASE}/ships/explorer_ship.png`;

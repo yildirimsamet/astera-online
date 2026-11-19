@@ -197,7 +197,8 @@ export function academyPlanet(w: AcademyWorld): PlanetView {
     orbit: state.satellites,
     effectiveOrbit: state.satellites,
     orbitSlots: satelliteSlots(state.buildings.CORE),
-    research: RESEARCH_PROJECT_IDS.map((id) => {
+    // The academy's galaxy has no moons (Ay S7), so it offers no Lunar Capture.
+    research: RESEARCH_PROJECT_IDS.filter((id) => id !== 'LUNAR_CAPTURE').map((id) => {
       const project = RESEARCH_PROJECTS[id];
       const discovered = !['ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES'].includes(id);
       return { id, level: 0, nextLevel: 1, maxLevel: project.maxLevel, cost: project.costAt(1),

@@ -256,4 +256,10 @@ describe('Wiki on the colony ship', () => {
       for (const language of ['en', 'tr'] as const) expect(text(id, language)).not.toMatch(/\bbots?\b|botlar|npc/i);
     }
   });
+
+  // Ay V28: Lunar Capture takes its set four hours, whatever the Core; the Wiki quotes the same clock.
+  it('quotes Lunar Capture’s set research time', () => {
+    const text = JSON.stringify(subjectReference({ kind: 'research', id: 'LUNAR_CAPTURE' }, 'en').blocks);
+    expect(text).toContain(`${number(240, 'en')} min`);
+  });
 });

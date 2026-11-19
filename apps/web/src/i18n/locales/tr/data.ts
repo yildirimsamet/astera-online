@@ -514,6 +514,7 @@ export const gains = {
     isotopeOpens: 'İzotop asteroitleri seçilebilir madencilik hedefi olur.',
     denseOpens: 'Gemi İtkisi araştırması açılır.',
     graviticOpens: 'Söndürücünün uzman araştırma koşulu karşılanır.',
+    lunarCaptureOpens: "Gezegenlerine ay kurabilirsin; elindeki gezegenlerin üstündeki büyük savaşlarda ay doğabilir.",
   },
   plant: {
     label: 'Döteryum',

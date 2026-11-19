@@ -438,6 +438,7 @@ export const gains = {
     isotopeOpens: 'Isotopen-Asteroiden werden zu auswählbaren Bergbauzielen.',
     denseOpens: 'Forschung zu Schiffsantrieben wird verfügbar.',
     graviticOpens: 'Die Anforderungen an die Fachforschung des Nullifiers sind erfüllt.',
+    lunarCaptureOpens: "Du kannst auf deinen Welten Monde bauen, und große Schlachten über deinen Welten können einen hervorbringen.",
   },
   plant: {
     label: 'Deuterium',

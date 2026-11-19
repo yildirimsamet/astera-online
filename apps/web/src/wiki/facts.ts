@@ -10,7 +10,7 @@ import {
   shipShieldHp, fleetEntries, instrumentEntries,
   flightSlots, groundSlots, hangarCapacity, hullBulk, shipyardTimeReduction, instrumentCost, radarRange,
   researchEffectAt, interceptorCapacity, satelliteCost, satelliteSlots, shieldHp, telescopeSlots,
-  telescopeRange, telescopeWatchRange, telescopeCooldownHours, researchMinutes,
+  telescopeRange, telescopeWatchRange, telescopeCooldownHours, researchOrderMinutes,
   clanHangarCapacity, clanLevelUpgradeCost, seasonRankRewardProgram, storageHours,
   CLAN_PERK_LADDER, clanCorridorMultiplier, type ClanPerkRung,
   type Resources,
@@ -89,7 +89,7 @@ export function subjectReference(subject: WikiSubject, language: WikiLanguage): 
         })), pairs(language, label(language, 'Research availability', 'Araştırma uygunluğu'), [
           [label(language, 'Available after season starts', 'Sezon başladıktan sonra açılır'), hours(project.availableAtMinutes / 60, language)],
           [label(language, 'Capital Core requirement', "Ana gezegen Çekirdeği şartı"), project.requiredCore ? n(project.requiredCore) : label(language, 'No additional level requirement', 'Ek seviye koşulu yok')],
-          [label(language, 'L1 time at capital Core 1', "Ana gezegen Çekirdeği 1 iken ilk seviye süresi"), `${n(researchMinutes(project.costAt(1), 1))} min`],
+          [label(language, 'L1 time at capital Core 1', "Ana gezegen Çekirdeği 1 iken ilk seviye süresi"), `${n(researchOrderMinutes(subject.id, project.costAt(1), 1))} min`],
         ])];
       break;
     }

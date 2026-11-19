@@ -1242,7 +1242,7 @@ function GalleryWorlds({ one = false }: { one?: boolean }) {
  * RESEARCH (G2-i): the map with the card; `sheet` opens Ship Armor's Details, `locked` shows a
  * card whose door is a missing prerequisite, `paused` a lane stopped by a vacation.
  */
-function GalleryResearch({ variant = 'map' }: { variant?: 'map' | 'sheet' | 'locked' | 'paused' }) {
+function GalleryResearch({ variant = 'map' }: { variant?: 'map' | 'sheet' | 'locked' | 'paused' | 'moon' }) {
   const client = useQueryClient();
   useState(() => {
     const fixture = planetView({ academyStep: null, buildings: { CORE: 15, SHIPYARD: 9, HANGAR: 6 } },
@@ -1258,7 +1258,10 @@ function GalleryResearch({ variant = 'map' }: { variant?: 'map' | 'sheet' | 'loc
         : project.id === 'DENSE_FUEL_CELLS'
           ? { ...project, level: 0, completed: false, discovered: false, queueDiscovered: false, available: false, queueAvailable: false, prerequisiteMet: false, queuePrerequisiteMet: false }
           : project)
-      : research;
+      // Ay S7: Lunar Capture still to buy, in a galaxy with moons.
+      : variant === 'moon'
+        ? research.map((project) => project.id === 'LUNAR_CAPTURE' ? { ...project, level: 0, completed: false } : project)
+        : research;
     const paused = new Date(Date.now() - 40 * MIN);
     client.setQueryData(keys.planet, {
       ...fixture,
@@ -1279,7 +1282,7 @@ function GalleryResearch({ variant = 'map' }: { variant?: 'map' | 'sheet' | 'loc
     }, 300);
     return () => { window.clearTimeout(timer); };
   }, [variant]);
-  const focus = variant === 'locked' ? 'DENSE_FUEL_CELLS' : variant === 'map' ? undefined : 'SHIP_ARMOR';
+  const focus = variant === 'locked' ? 'DENSE_FUEL_CELLS' : variant === 'moon' ? 'LUNAR_CAPTURE' : variant === 'map' ? undefined : 'SHIP_ARMOR';
   return (
     <Sheet bleed title={i18n.t('research.title')} headerArt={ATMOSPHERE.research} kit={{ art: artIconSrc('nav-research'), tone: 'self' }} eyebrow={i18n.t('research.eyebrow')} onClose={noop} detents={['full']}>
       <BaseSwitch value="research" onChange={noop} arenaAvailable />
@@ -1463,6 +1466,7 @@ function Views({ view }: { view: string }) {
   if (view === 'base-research-sheet') return <GalleryResearch variant="sheet" />;
   if (view === 'base-research-locked') return <GalleryResearch variant="locked" />;
   if (view === 'base-research-paused') return <GalleryResearch variant="paused" />;
+  if (view === 'base-research-moon') return <GalleryResearch variant="moon" />;
   if (view === 'base-fleet-empty') return <GalleryBase empty />;
   if (view === 'repair-station') return <GalleryBase open />;
   if (view === 'repair-station-hangar') return <GalleryBase open hangar />;

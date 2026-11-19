@@ -201,6 +201,7 @@ const RESEARCH_NAME_KEY = {
   STRATEGIC_STOCKPILE: 'research.stockpileName',
   INDUSTRIAL: 'research.industrialName',
   RADIATION_SHIELDING: 'research.shieldingName',
+  LUNAR_CAPTURE: 'research.lunarCaptureName',
 } as const satisfies Record<ResearchProjectId, string>;
 
 export const researchName = (id: ResearchProjectId): string =>

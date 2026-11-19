@@ -116,7 +116,7 @@ export const researchProjectId = z.enum([
   'DEUTERIUM_SYNTHESIS', 'YARD_AUTOMATION', 'PROSPECTOR_HOLDS', 'CARGO_HOLDS',
   'STARSHIP_ENGINEERING', 'SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION',
   'EMPLACEMENT_DOCTRINE', 'INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE',
-  'AI_ROBOTS', 'INDUSTRIAL', 'RADIATION_SHIELDING', 'SHIP_SHIELDS',
+  'AI_ROBOTS', 'INDUSTRIAL', 'RADIATION_SHIELDING', 'SHIP_SHIELDS', 'LUNAR_CAPTURE',
 ]);
 
 // If any of these stop compiling, the rules changed and this file has not.
@@ -215,7 +215,8 @@ const timedConstructionOrder = z.object({
   id: z.string(),
   queue: z.literal('CONSTRUCTION'),
   slot: z.number().int().min(0),
-  kind: z.enum(['BUILDING', 'INSTRUMENT', 'SATELLITE', 'RESEARCH']),
+  /** `MOON` (Ay S8): a Common moon built on this line; its subject is the rarity. */
+  kind: z.enum(['BUILDING', 'INSTRUMENT', 'SATELLITE', 'RESEARCH', 'MOON']),
   subject: z.string(),
   count: z.number().int().min(1),
   startedAt: z.coerce.date(),

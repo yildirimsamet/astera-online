@@ -3,6 +3,7 @@ import { hashSeed, replaces, rollMoonBirth, type MoonRarity } from '@astera/rule
 import type { Tx } from '../db/client.js';
 import { moons, planets } from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
+import { abandonMoonOrders } from './buildQueue.js';
 import { recordGalaxyEvent } from './chronicle.js';
 import { holdsLunarCapture, seasonHasMoons } from './moon.js';
 
@@ -30,6 +31,8 @@ export async function settleMoonBirth(tx: Tx, input: {
   };
   if (current) await tx.update(moons).set(moon).where(eq(moons.planetId, world.id));
   else await tx.insert(moons).values({ planetId: world.id, ...moon });
+  // V1: the world has its moon now; a Common one still being built is dropped and paid back in full.
+  await abandonMoonOrders(tx, world.id, input.now);
   await recordGalaxyEvent(tx, { seasonId: world.seasonId, kind: 'moon_born', refId: input.missionId,
     subjectPlanetId: world.id, payload: { planetName: world.name }, occurredAt: input.now });
   await publishShard(tx, world.seasonId, 'moons');

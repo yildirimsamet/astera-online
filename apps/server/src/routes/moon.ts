@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAuth } from './auth.js';
 import { hopFleet, jumpFleet, retargetAttack } from '../services/moonMovement.js';
+import { orderMoon } from '../services/moonBuild.js';
 import { listMoonScans, scanFromMoon } from '../services/moonScan.js';
 import { commanderForAccount, ownedPlanet } from '../services/ownership.js';
 
@@ -30,6 +31,14 @@ export function registerMoonRoutes(app: FastifyInstance): void {
     const owner = await ownedPlanet(app.db, req.accountId!, planetId);
     const move = await jumpFleet(app.db, owner.playerId, owner.planetId, body.toPlanetId, body.fleet, app.clock);
     return { id: move.id, kind: move.kind, fleet: move.fleet, fuelPaid: move.fuelPaid, departAt: move.departAt, arriveAt: move.arriveAt };
+  });
+
+  /** S8, V29: build a Common moon on this world's construction line. */
+  app.post('/api/planets/:planetId/moon/build', { preHandler: requireAuth }, async (req) => {
+    const { planetId } = z.object({ planetId: z.string().uuid() }).strict().parse(req.params);
+    z.object({}).strict().parse(req.body ?? {});
+    const owner = await ownedPlanet(app.db, req.accountId!, planetId);
+    return orderMoon(app.db, owner.planetId, app.clock, owner.playerId);
   });
 
   /** Gözcü (§6.12): photograph the routes into and out of a world in this moon's range. */
