@@ -31,6 +31,7 @@ import { App } from './App.js';
 import { InstallProvider } from './brand/Install.js';
 import { startAndroidBack } from './platform/nativeBack.js';
 import { watchAppHeight } from './lib/appHeight.js';
+import { tolerateForeignDomEdits } from './lib/foreignDomEdits.js';
 import { isAppActive, watchAppActivity } from './platform/activity.js';
 import './styles.css';
 
@@ -46,6 +47,8 @@ function start(): void {
     release: import.meta.env.VITE_ASTERA_RELEASE ?? '',
   }, startSentry);
   syncDocumentLanguage();
+  // A page translator rewrites React's text nodes; an update must not crash on them (Sentry WEB-4).
+  tolerateForeignDomEdits();
 
   /**
    * Measurement, and it is deliberately the last thing set up and the first thing

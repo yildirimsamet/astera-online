@@ -143,7 +143,8 @@ describe('the composer is not mounted against a dead context', () => {
    */
   it('gates the composer on a live context', () => {
     expect(canvasSource).toContain('live={gpu.live}');
-    expect(composerSource).toMatch(/return live \? \(\s*<EffectComposer/);
+    // …and on the context itself: the loss event can trail the loss (Sentry WEB-3).
+    expect(composerSource).toMatch(/return live && !gl\.getContext\(\)\.isContextLost\(\) \? \(\s*<EffectComposer/);
   });
 
   /** And rebuilds it on the far side, because the restored context is a new one. */

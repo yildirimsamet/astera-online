@@ -1,4 +1,5 @@
 import { memo, useCallback, useMemo } from 'react';
+import { useThree } from '@react-three/fiber';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import { EffectPass, type Pass } from 'postprocessing';
 import { HalfFloatType } from 'three';
@@ -33,9 +34,12 @@ export const GalaxyPostprocessing = memo(function GalaxyPostprocessing({
     <Vignette key="vignette" eskil={false} offset={0.24} darkness={0.62} />,
   ], []);
 
+  const gl = useThree(state => state.gl);
   // Construction itself requires a live context. Resolution/context changes
   // rebuild targets; startup enablement must not rebuild the effect passes.
-  return live ? (
+  // `live` follows the loss EVENT, which a backgrounded phone can deliver after the context is
+  // already gone (Sentry WEB-3); the event still arrives and the restore remounts us.
+  return live && !gl.getContext().isContextLost() ? (
     <EffectComposer ref={composerRef} key={`${String(dprCap)}-${String(epoch)}`} enabled={prepared}
       enableNormalPass={false} frameBufferType={HalfFloatType} multisampling={multisampling}>
       {effects}

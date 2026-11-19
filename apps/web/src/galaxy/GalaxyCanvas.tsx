@@ -27,6 +27,7 @@ import { UnknownSignalGuide, UnknownSignalGuideTracker } from './UnknownSignalGu
 import { OutpostFlag, OutpostGuides, OutpostGuideTracker } from './OutpostGuide.js';
 import { GalaxyPostprocessing } from './GalaxyPostprocessing.js';
 import { useGpuContext } from './gpuContext.js';
+import { guardCompileAsync } from './safeCompile.js';
 import { ViewOffset } from './ViewOffset.js';
 import { sensorToggleFrame } from './sensorFraming.js';
 import { SchoolCamera } from '../onboarding/flightSchool/SchoolCamera.js';
@@ -896,6 +897,7 @@ export function GalaxyCanvas({
           this app listened for it; `gpuContext.ts` carries the whole account.
         */
         gpu.watch(gl.domElement);
+        guardCompileAsync(gl);
       }}
       onPointerMissed={() => {
         /**

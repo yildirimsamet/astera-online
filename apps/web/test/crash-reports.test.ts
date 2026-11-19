@@ -61,8 +61,14 @@ describe('what a crash report keeps', () => {
     };
     const kept = scrubEvent(event);
     expect(kept.user).toBeUndefined();
-    expect(kept.request).toEqual({ url: 'https://asteraonline.space/reset' });
+    expect(kept.request).toEqual({ url: 'https://asteraonline.space/reset', headers: { 'User-Agent': navigator.userAgent } });
     expect(kept.exception?.values?.[0]?.value).toBe('x is undefined');
+  });
+
+  it('keeps the browser and device line, which names no player, so a crash says which phone it hit (WEB-2/3/4 had none)', () => {
+    const kept = scrubEvent({ type: undefined, request: { url: 'https://asteraonline.space/', headers: { Cookie: 'sid=1' } } });
+    expect(kept.request?.headers).toEqual({ 'User-Agent': navigator.userAgent });
+    expect(navigator.userAgent).not.toBe('');
   });
 
   it('keeps the trail of what the player did, without queries in its addresses or console lines', () => {

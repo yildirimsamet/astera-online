@@ -24,6 +24,7 @@
     "public/guide-back.js",
     "public/publisher-pricing.js",
     "public/checkout-page.js",
+    "public/ios-probe.js",
     "*.ts"
   ],
   "exclude": ["node_modules", "*.tmp.ts"]

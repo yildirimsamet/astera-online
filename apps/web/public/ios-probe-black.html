@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="Astera Test B" />
+    <meta name="theme-color" content="#05070D" />
+    <link rel="apple-touch-icon" href="/icons/icon-180.png?v=20261103" />
+    <title>Astera Test B</title>
+    <!-- iPhone home-screen probe; see test/ios-probe.test.ts. Magenta = web layer no box covers. -->
+    <style>
+      html, body { margin: 0; height: 100%; background: #ff00aa; overflow: hidden; font: 600 13px/1.35 -apple-system, system-ui, sans-serif; color: #fff; }
+      .strip { position: fixed; top: 0; width: 20%; display: flex; align-items: flex-end; justify-content: center; box-sizing: border-box; border-bottom: 3px solid #fff; color: #000; font-weight: 800; padding-bottom: 4px; }
+      .s-dvh { left: 0; height: 100dvh; background: #3b82f6; }
+      .s-svh { left: 20%; height: 100svh; background: #14b8a6; }
+      .s-lvh { left: 40%; height: 100lvh; background: #22c55e; }
+      .s-inner { left: 60%; height: var(--inner, 0px); background: #eab308; }
+      .s-fixed { left: 80%; bottom: 0; background: #e5e7eb; }
+      .ruler { position: fixed; top: 0; left: 0; right: 0; height: 130px; pointer-events: none; }
+      .tick { position: absolute; left: 0; right: 0; border-top: 1px solid #000; font-size: 10px; color: #000; padding-left: 2px; }
+      .hud { position: fixed; left: 8px; right: 8px; top: env(safe-area-inset-top); height: 34px; background: #0b0f17; color: #fff; display: flex; align-items: center; gap: 14px; padding: 0 10px; font-size: 15px; font-weight: 800; border-radius: 6px; }
+      .safe-bottom { position: fixed; left: 0; right: 0; bottom: env(safe-area-inset-bottom); border-top: 3px dashed #fff; }
+      .panel { position: fixed; left: 8px; right: 8px; top: 34%; background: rgba(0, 0, 0, .82); border-radius: 8px; padding: 10px 12px; font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; white-space: pre-wrap; word-break: break-word; }
+      .probe { position: fixed; left: -9999px; top: 0; width: 1px; }
+    </style>
+  </head>
+  <body>
+    <div class="strip s-dvh">dvh</div>
+    <div class="strip s-svh">svh</div>
+    <div class="strip s-lvh">lvh</div>
+    <div class="strip s-inner">inner</div>
+    <div class="strip s-fixed">fixed</div>
+    <div class="ruler" data-ruler></div>
+    <div class="hud">19.042 +1,9K &nbsp; 20.884 +968</div>
+    <div class="safe-bottom"></div>
+    <div class="panel" data-readings></div>
+    <div class="probe" data-unit="dvh" style="height: 100dvh"></div>
+    <div class="probe" data-unit="svh" style="height: 100svh"></div>
+    <div class="probe" data-unit="lvh" style="height: 100lvh"></div>
+    <div class="probe" data-safe style="padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom)"></div>
+    <script type="module" src="/ios-probe.js"></script>
+  </body>
+</html>

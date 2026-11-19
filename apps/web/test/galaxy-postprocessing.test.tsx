@@ -3,7 +3,11 @@ import { useLayoutEffect, type ReactNode } from 'react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { GalaxyPostprocessing } from '../src/galaxy/GalaxyPostprocessing.js';
 
-const probe = vi.hoisted(() => ({ builds: vi.fn(), mounts: vi.fn(), unmounts: vi.fn(), props: vi.fn() }));
+const probe = vi.hoisted(() => ({ builds: vi.fn(), mounts: vi.fn(), unmounts: vi.fn(), props: vi.fn(), lost: false }));
+vi.mock('@react-three/fiber', () => ({
+  useThree: (select: (state: { gl: { getContext: () => { isContextLost: () => boolean } } }) => unknown) =>
+    select({ gl: { getContext: () => ({ isContextLost: () => probe.lost }) } }),
+}));
 vi.mock('@react-three/postprocessing', () => ({
   EffectComposer: (props: { children: ReactNode; enabled: boolean; multisampling: number }) => {
     probe.props(props);
@@ -15,7 +19,7 @@ vi.mock('@react-three/postprocessing', () => ({
   Vignette: () => null,
   wrapEffect: () => () => null,
 }));
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => { vi.clearAllMocks(); probe.lost = false; });
 
 it('retains effect children through parent updates and startup enablement', () => {
   const props = { live: true, epoch: 0, dprCap: 1.5, multisampling: 4, prepared: false };
@@ -38,4 +42,20 @@ it('rebuilds targets for resolution and restored contexts and unmounts on loss',
   view.rerender(<GalaxyPostprocessing {...props} epoch={1} prepared={false} />);
   expect(probe.mounts).toHaveBeenCalledTimes(3);
   expect(probe.props.mock.lastCall?.[0]).toMatchObject({ enabled: false });
+});
+
+/*
+  Sentry WEB-3 (2026-11-19, live d637eabf, Android): `getContextAttributes()` returned null inside
+  `EffectComposer.setRenderer`. The context was already gone while `live` still said true — the
+  loss event had not been delivered when React built the composer.
+*/
+it('does not build a composer on a context that is already lost, even before the loss event arrives', () => {
+  const props = { live: true, epoch: 0, dprCap: 1.5, multisampling: 4, prepared: true };
+  probe.lost = true;
+  const view = render(<GalaxyPostprocessing {...props} />);
+  expect(probe.mounts).not.toHaveBeenCalled();
+  view.rerender(<GalaxyPostprocessing {...props} live={false} />);
+  probe.lost = false;
+  view.rerender(<GalaxyPostprocessing {...props} epoch={1} />);
+  expect(probe.mounts).toHaveBeenCalledOnce();
 });

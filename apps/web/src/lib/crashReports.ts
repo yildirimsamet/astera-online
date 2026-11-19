@@ -65,10 +65,16 @@ export function crashReportOptions(at: CrashContext): BrowserOptions | null {
 
 const withoutQuery = (url: string): string => url.split(/[?#]/u)[0] ?? '';
 
-/** The stack and where it happened; never who, nor what they sent. */
+/**
+ * The stack, where it happened and on which browser/phone; never who, nor what they sent. The SDK
+ * drops every header under `httpHeaders: false`, User-Agent with them, so the browser's own line is
+ * put back: without it a crash cannot say which device or browser it hit (WEB-2/3/4, 2026-11-19).
+ */
 export function scrubEvent(event: ErrorEvent): ErrorEvent {
   delete event.user;
-  if (event.request) event.request = event.request.url === undefined ? {} : { url: withoutQuery(event.request.url) };
+  const agent = navigator.userAgent;
+  const headers = agent ? { headers: { 'User-Agent': agent } } : {};
+  if (event.request) event.request = event.request.url === undefined ? { ...headers } : { url: withoutQuery(event.request.url), ...headers };
   return event;
 }
 
