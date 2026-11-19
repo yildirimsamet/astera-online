@@ -77,7 +77,7 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
     case 'inbound':
       return [keys.inbound];
     // Ay §6.22: gate flashes, births, cracks and breaks are all read from the galaxy payload's moon view.
-    case 'moon':
+    case 'moons':
       return [keys.galaxy];
     /** What this commander can see moved. Sent only to a client that asked for it. */
     case 'traffic':

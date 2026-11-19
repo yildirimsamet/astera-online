@@ -314,7 +314,7 @@ export async function jumpFleet(
     }
     await publishWatchChanges(tx, [fromPlanetId, toPlanetId]);
     // The departure flash (S16); who may see it is decided when the map is read.
-    await publishShard(tx, origin.seasonId, 'moon');
+    await publishShard(tx, origin.seasonId, 'moons');
     return move!;
   });
 }
@@ -353,7 +353,7 @@ async function finishJump(tx: Tx, move: MoonMove, now: Date): Promise<void> {
   await placeAt(tx, move.toPlanetId, move.ownerPlayerId, MOON_LOCATION, moved, selected.selectedDamage);
   await settle('LANDED', selected.selectedDamage);
   // The arrival flash, for everybody (S32).
-  await publishShard(tx, move.seasonId, 'moon');
+  await publishShard(tx, move.seasonId, 'moons');
 }
 
 /** A gate has charged (§6.11). Only if nothing re-armed it since, and only to whoever holds the moon now. */
