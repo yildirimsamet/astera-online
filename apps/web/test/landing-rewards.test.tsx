@@ -126,7 +126,7 @@ describe('the landing reward moment', () => {
   it('puts the first-week note under the top bar and whatever note the bar holds, never over them', async () => {
     harness({ rewards: waiting(1) });
     const tip = await screen.findByTestId('landing-tip');
-    expect(tip.className).toContain('top-[calc(var(--v2-top-h,96px)+6px)]');
+    expect(tip.className).toContain('top-[calc(var(--v2-top-h,86px)+5px)]');
   });
 
   it('holds the first-week note back while it is up', async () => {
