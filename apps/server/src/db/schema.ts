@@ -22,7 +22,7 @@ import {
   uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import type { HpDamageLots, MigrationCargo, MoonRarity, StarterBattleRecord, WorldBody } from '@astera/rules';
+import type { FleetSizeClass, HpDamageLots, MigrationCargo, MoonRarity, StarterBattleRecord, WorldBody } from '@astera/rules';
 import type {
   BattleReplayData,
   CombatRound,
@@ -1998,6 +1998,9 @@ export const missions = pgTable('missions', {
   index('missions_status_arrive_idx').on(t.status, t.arriveAt),
   index('missions_origin_idx').on(t.originPlanetId),
   index('missions_target_idx').on(t.targetPlanetId),
+  // Ay F5 (V32): Gözcü and K12 by body read only the flights in the air, never the whole history.
+  index('missions_target_in_flight_idx').on(t.targetPlanetId).where(sql`${t.status} = 'in_flight'`),
+  index('missions_origin_in_flight_idx').on(t.originPlanetId).where(sql`${t.status} = 'in_flight'`),
   // A commander's own recent launches (probe cooldowns, launch counts). `status` is
   // useless here: almost every row is `resolved`, so the status index scans them all.
   index('missions_owner_kind_depart_idx').on(t.ownerPlayerId, t.kind, t.departAt),
@@ -3977,7 +3980,7 @@ export const probeWorldMemories = pgTable('probe_world_memories', {
   /** The probe report this came from. NULL when a fleet took the look. */
   reportId: uuid('report_id').references(() => probeReports.id),
   /** Which craft's eyes these were. Never shown; it is here to be debuggable. */
-  source: text('source').$type<'PROBE' | 'BATTLE'>().notNull().default('PROBE'),
+  source: text('source').$type<'PROBE' | 'BATTLE' | 'SCAN'>().notNull().default('PROBE'),
   /**
    * The outside of the world as it was at `seenAt`. Same shape a probe report
    * carries, minus the two readings only a probe takes — a battle learns what a
@@ -6076,4 +6079,32 @@ export const moonMoves = pgTable('moon_moves', {
   index('moon_moves_owner_idx').on(t.ownerPlayerId),
   index('moon_moves_from_pending_idx').on(t.fromPlanetId).where(sql`${t.status} = 'PENDING'`),
   index('moon_moves_to_pending_idx').on(t.toPlanetId).where(sql`${t.status} = 'PENDING'`),
+]);
+
+/** One route a Gözcü photographed (S14, S33): never the flight's kind, only its direction and rough size. */
+export interface MoonScanRow {
+  direction: 'IN' | 'OUT';
+  otherPlanetId: string;
+  arriveAt: string;
+  size: FleetSizeClass;
+}
+
+/**
+ * GÖZCÜ REPORTS (Ay F5, plan §4.1, §6.12). The planet ids are NOT foreign keys: a report is the record of a
+ * moment and adds no work to the delete paths; a world that is gone is drawn as gone.
+ */
+export const moonScans = pgTable('moon_scans', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  scannerPlayerId: uuid('scanner_player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  scannerPlanetId: uuid('scanner_planet_id').notNull(),
+  targetPlanetId: uuid('target_planet_id').notNull(),
+  scannedAt: timestamp('scanned_at', { withTimezone: true }).notNull(),
+  fuelPaid: real('fuel_paid').notNull(),
+  /** A Legendary moon saw through the moons' cloak too (S20). */
+  pierced: boolean('pierced').notNull(),
+  rows: jsonb('rows').$type<{ v: 1; rows: MoonScanRow[] }>().notNull(),
+}, (t) => [
+  index('moon_scans_scanner_idx').on(t.scannerPlayerId, t.scannedAt.desc()),
+  index('moon_scans_scanner_planet_idx').on(t.scannerPlanetId, t.scannedAt.desc()),
 ]);

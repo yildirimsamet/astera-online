@@ -33,6 +33,8 @@ export const MOON = {
   /** How long a gate's flash stays on the map after the instant it happened (S16, S32). */
   flashSeconds: 60,
   scanCost: { deuterium: 30 },
+  /** A technical guard between two scans from the same moon (§6.12). */
+  scanSpacingSeconds: 3,
   /** A Death Star hit shuts gate and Gözcü (S19). */
   strikeCloseHours: 3,
   /** Cracks close this long after the LAST hit (S19). */

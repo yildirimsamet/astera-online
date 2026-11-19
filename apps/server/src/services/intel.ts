@@ -818,7 +818,8 @@ export async function rememberWorld(
     targetPlanetId: string;
     seasonId: string;
     seenAt: Date;
-    source: 'PROBE' | 'BATTLE';
+    /** `SCAN`: a Gözcü saw the world on a route (Ay S53). */
+    source: 'PROBE' | 'BATTLE' | 'SCAN';
     reportId?: string;
     /** Provided by the probe, which reads more than a silhouette. */
     silhouette?: NonNullable<typeof probeWorldMemories.$inferSelect['silhouette']>;

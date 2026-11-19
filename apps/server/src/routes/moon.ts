@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAuth } from './auth.js';
 import { hopFleet, jumpFleet, retargetAttack } from '../services/moonMovement.js';
+import { listMoonScans, scanFromMoon } from '../services/moonScan.js';
 import { commanderForAccount, ownedPlanet } from '../services/ownership.js';
 
 /**
@@ -29,6 +30,19 @@ export function registerMoonRoutes(app: FastifyInstance): void {
     const owner = await ownedPlanet(app.db, req.accountId!, planetId);
     const move = await jumpFleet(app.db, owner.playerId, owner.planetId, body.toPlanetId, body.fleet, app.clock);
     return { id: move.id, kind: move.kind, fleet: move.fleet, fuelPaid: move.fuelPaid, departAt: move.departAt, arriveAt: move.arriveAt };
+  });
+
+  /** Gözcü (§6.12): photograph the routes into and out of a world in this moon's range. */
+  app.post('/api/planets/:planetId/moon/scan', { preHandler: requireAuth }, async (req) => {
+    const { planetId } = z.object({ planetId: z.string().uuid() }).strict().parse(req.params);
+    const { targetPlanetId } = z.object({ targetPlanetId: z.string().uuid() }).strict().parse(req.body);
+    const owner = await ownedPlanet(app.db, req.accountId!, planetId);
+    return scanFromMoon(app.db, owner.playerId, owner.planetId, targetPlanetId, app.clock);
+  });
+
+  app.get('/api/intel/moon-scans', { preHandler: requireAuth }, async (req) => {
+    const owner = await commanderForAccount(app.db, req.accountId!);
+    return { scans: await listMoonScans(app.db, owner.playerId) };
   });
 
   /** S13: switch an own raid in the air between the world's planet and its moon (§6.8). */
