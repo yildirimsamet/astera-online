@@ -216,6 +216,7 @@ export function HudTop({ commander, onCommander, onWorlds, onEconomy, nowOpen, o
             shield={shieldUntil ? { until: shieldUntil.getTime(), kind: season?.shieldKind ?? 'NEWCOMER' } : null}
             recoveryUntil={boostUntil?.getTime() ?? null}
             signalUntil={signalUntil?.getTime() ?? null}
+            newcomerUntil={data?.planet.newcomerBoostUntil?.getTime() ?? null}
             vacationUntil={data?.vacationUntil?.getTime() ?? null}
             onWorld={onWorlds}
             onHint={(text) => { say(text); }}

@@ -396,6 +396,8 @@ export function buildPlanetView(data: PlanetViewData) {
         ? p.recoveryBoostUntil
         : null,
       signalBoostUntil: p.signalBoostUntil !== null && p.signalBoostUntil > p.now ? p.signalBoostUntil : null,
+      /** Kuruluş Saati's end while it runs, null once it has passed: alloy and crystal at five-fold until then. */
+      newcomerBoostUntil: p.newcomerBoostUntil !== null && p.newcomerBoostUntil > p.now ? p.newcomerBoostUntil : null,
       /**
        * NO TRANSFER MAY LEAVE THIS WORLD UNTIL THIS INSTANT. Faz 2A.3.
        *

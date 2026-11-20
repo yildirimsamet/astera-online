@@ -38,6 +38,10 @@ export const statusBar = {
     name: "回復シールド",
     hint: "回復シールド · あと{{duration}}は襲撃されません",
   },
+  founding: {
+    name: '創設の一時間',
+    hint: '創設の一時間：あと{{time}}、施設の合金とクリスタルの生産量が5倍になります。続いているうちに回収して建設しましょう。終わると通常の速度に戻ります。',
+  },
   recoveryBoost: {
     name: "回復生産",
     value: "+50%",

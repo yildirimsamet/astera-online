@@ -178,6 +178,7 @@ const statusLine: StatusLineProps = {
   shield: null,
   recoveryUntil: null,
   signalUntil: null,
+  newcomerUntil: null,
   vacationUntil: null,
   onWorld: noop,
   onHint: noop,
@@ -2036,6 +2037,8 @@ export function Gallery({ view }: { view: string | null }) {
         <StatusLine {...statusLine} shield={{ until: NOW + 7 * 60 * MIN, kind: 'NEWCOMER' }} />
         <StatusLine {...statusLine} world={{ capital: false, name: 'Hollow' }} shield={{ until: NOW + 50 * 60 * MIN, kind: 'RECOVERY' }} recoveryUntil={NOW + 50 * 60 * MIN} />
         <StatusLine {...statusLine} world={{ capital: true, name: 'Kestrel-12' }} signalUntil={NOW + 95 * MIN} vacationUntil={NOW + 40 * 60 * MIN} />
+        <StatusLine {...statusLine} newcomerUntil={NOW + 47 * MIN + 12_000} shield={{ until: NOW + 72 * 60 * MIN, kind: 'NEWCOMER' }} />
+        <StatusLine {...statusLine} newcomerUntil={NOW + 8 * MIN + 30_000} signalUntil={NOW + 50 * MIN} />
       </Section>
 
       <Section title="B2 · now line">

@@ -38,6 +38,10 @@ export const statusBar = {
     name: "Schutzschild",
     hint: 'Schutzschild: Noch {{duration}} lang kann dich niemand überfallen',
   },
+  founding: {
+    name: 'Gründungsstunde',
+    hint: 'Gründungsstunde: Deine Werke liefern noch {{time}} lang die fünffache Menge Legierung und Kristall. Sammle und baue, solange sie läuft; danach gilt wieder die normale Rate.',
+  },
   recoveryBoost: {
     name: "Erholungsproduktion",
     value: "+50 %",

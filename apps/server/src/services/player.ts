@@ -1,5 +1,5 @@
 import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
-import { BUILDING_IDS, FIRST_SEASON_START, MULTI_WORLD, PLANET_START, START_BUILDINGS, academyExitCheckpoint, fleetEntries, findRewardTier, newcomerShieldUntil, pickSpawnSlot } from '@astera/rules';
+import { BUILDING_IDS, FIRST_SEASON_START, MULTI_WORLD, PLANET_START, START_BUILDINGS, academyExitCheckpoint, fleetEntries, findRewardTier, newcomerBoostUntil, newcomerShieldUntil, pickSpawnSlot } from '@astera/rules';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { accounts, buildings, planets, players, seasons, shards, satellites, units, rewardGrants, mainVacancies, returnApplications } from '../db/schema.js';
@@ -287,6 +287,10 @@ export async function joinSeason(
             .returning({ id: accounts.id })
           : [];
 
+        // Kuruluş Saati (plan 2026-11-20 §5.1): a first game's capital makes five-fold alloy and crystal for an hour.
+        const newcomerHourMs = newcomerBoostUntil(now.getTime(), firstGame.length > 0);
+        const newcomerHourEnd = newcomerHourMs === null ? null : new Date(newcomerHourMs);
+
         const [player] = await tx
           .insert(players)
           .values({
@@ -337,6 +341,7 @@ export async function joinSeason(
             bufferCrystal: opening?.buffer.crystal ?? 0,
             bufferDeuterium: opening?.buffer.deuterium ?? 0,
             lastTickAt: now,
+            newcomerBoostUntil: newcomerHourEnd,
           })
           .onConflictDoNothing({ target: [planets.seasonId, planets.slotIndex] })
           .returning();

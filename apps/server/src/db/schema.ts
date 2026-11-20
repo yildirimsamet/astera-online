@@ -1517,6 +1517,12 @@ export const planets = pgTable('planets', {
   recoveryBoostUntil: timestamp('recovery_boost_until', { withTimezone: true }),
   signalBoostUntil: timestamp('signal_boost_until', { withTimezone: true }),
   /**
+   * KURULUŞ SAATİ (plan 2026-11-20 §5.1): when a first game's capital stops making five-fold alloy
+   * and crystal. Stamped once at the landing and never moved, not by a vacation either: the hour runs
+   * on the wall clock (owner, 2026-11-20). Null on every other world.
+   */
+  newcomerBoostUntil: timestamp('newcomer_boost_until', { withTimezone: true }),
+  /**
    * DEAD SINCE D179, AND KEPT ONLY SO OLD ROWS CAN BE CLEARED.
    *
    * D167 put a struck COLONY on a deadline rather than an outage: land no ship

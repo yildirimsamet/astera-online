@@ -20,6 +20,8 @@ import {
   SENSOR_INSTRUMENT_COST_GROWTH,
   EMPLACEMENT,
   HANGAR,
+  INSTANT_BUILD,
+  NEWCOMER_HOUR,
   SATELLITES,
   SEASON,
   UPLINK_BUILD_MINUTES,
@@ -678,6 +680,16 @@ export const buildingMinutes = (
 ): number => profileBuilding(id, level).minutes * ECONOMY_ADJUSTMENT.buildTime * robotSpeedMult(tech);
 
 /**
+ * What a building or instrument upgrade order takes: nothing at or under `INSTANT_BUILD.maxMinutes`,
+ * its whole quote otherwise (owner, 2026-11-20). The quote is the one after robots, so automation
+ * moves more rungs under the line. Server, client and simulator all come through here.
+ */
+export function upgradeOrderMinutes(minutes: number): number {
+  if (!Number.isFinite(minutes) || minutes < 0) throw new RangeError(`not a build time: ${String(minutes)}`);
+  return minutes <= INSTANT_BUILD.maxMinutes ? 0 : minutes;
+}
+
+/**
  * Yard time, after whatever the commander has automated. T8.
  *
  * `tech` is REQUIRED rather than defaulted, so the compiler names every caller
@@ -807,6 +819,22 @@ export function productionHours(
     + boostedMinutes(signalBoostUntil) * UNKNOWN_SIGNAL.energyProductionBonus) / 60;
 }
 
+/** When a capital's newcomer hour ends, in epoch ms: an hour after the landing of a first game, never otherwise. */
+export const newcomerBoostUntil = (landedAtMs: number, firstGame: boolean): number | null =>
+  firstGame ? landedAtMs + NEWCOMER_HOUR.minutes * 60_000 : null;
+
+/**
+ * The newcomer hour's extra production hours inside [from, to), for alloy and crystal only.
+ *
+ * Paid on productive minutes like the recovery and signal windows: a disruption inside the hour
+ * is still offline, and the hour does not wait for it. Anything that is not a finite instant is
+ * no window at all.
+ */
+export function newcomerExtraHours(from: number, to: number, disruptedUntil: number, until: number | null): number {
+  if (until === null || !Number.isFinite(until) || until <= from) return 0;
+  return productiveMinutes(from, Math.min(to, until), disruptedUntil) * NEWCOMER_HOUR.productionBonus / 60;
+}
+
 /* ── The lazy tick ──────────────────────────────────────────────── */
 
 export interface PlanetEconomyState {
@@ -875,6 +903,8 @@ export interface PlanetEconomyInput {
   recoveryBoostUntilMinutes?: number | null;
   /** Capital's signal energy bonus deadline, in season minutes; additive with recovery. */
   signalBoostUntilMinutes?: number | null;
+  /** When the capital's newcomer hour ends, in season minutes; alloy and crystal only, additive. */
+  newcomerBoostUntilMinutes?: number | null;
   /**
    * HOW FAST THE WORKS RUN, BETWEEN 0 AND 1. D212: `SILENT_SPACE.productionPace` there, 1 elsewhere.
    *
@@ -965,6 +995,10 @@ export function advanceEconomy(
     input.recoveryBoostUntilMinutes ?? null,
     input.signalBoostUntilMinutes ?? null,
   );
+  // Kuruluş Saati: alloy and crystal only (owner, 2026-11-20); deuterium reads `producing` alone.
+  const metalHours = producing + newcomerExtraHours(
+    state.lastTickMinutes, nowMinutes, state.disruptedUntilMinutes, input.newcomerBoostUntilMinutes ?? null,
+  );
   const shieldStart = Math.max(
     state.lastTickMinutes,
     input.shieldDisabledUntilMinutes ?? state.lastTickMinutes,
@@ -1023,7 +1057,7 @@ export function advanceEconomy(
     cap: collectorCap(nominalA),
     produce: ra,
     leak: rate.alloy,
-    hours: producing,
+    hours: metalHours,
     budget: room('alloy'),
   });
   const crystal = leakColumn({
@@ -1032,7 +1066,7 @@ export function advanceEconomy(
     cap: collectorCap(nominalC),
     produce: rc,
     leak: rate.crystal,
-    hours: producing,
+    hours: metalHours,
     budget: room('crystal'),
   });
   /*

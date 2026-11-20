@@ -20,6 +20,7 @@ const props = (over: Partial<StatusLineProps> = {}): StatusLineProps => ({
   shield: null,
   recoveryUntil: null,
   signalUntil: null,
+  newcomerUntil: null,
   vacationUntil: null,
   onWorld: vi.fn(),
   onHint: vi.fn(),
@@ -82,6 +83,29 @@ describe('the status line', () => {
     render(<StatusLine {...all} />);
     await userEvent.click(screen.getByRole('button', { name: 'Signal production · ×2 · 59m' }));
     expect(all.onHint).toHaveBeenCalledWith(expect.stringMatching(/collect during the boost/i));
+  });
+
+  // Kuruluş Saati (plan 2026-11-20 §5.1): the first hour's five-fold works, counted down to the second.
+  it('counts the founding hour down to the second at five-fold, and says what it is for on a press', async () => {
+    const all = props({ newcomerUntil: NOW + 47 * 60_000 + 12_000 });
+    render(<StatusLine {...all} />);
+    const chip = screen.getByRole('button', { name: 'Founding hour · ×5 · 47m 12s' });
+    expect(chip.querySelector('.gk-status')).toHaveAttribute('data-tone', 'self');
+    await userEvent.click(chip);
+    expect(all.onHint).toHaveBeenCalledWith(expect.stringMatching(/five times the alloy and crystal for 47m 12s/));
+  });
+
+  it('turns the founding hour amber in its last ten minutes, and draws nothing once it is over', () => {
+    const { rerender, container } = render(<StatusLine {...props({ newcomerUntil: NOW + 9 * 60_000 })} />);
+    expect(container.querySelector('.gk-status')).toHaveAttribute('data-tone', 'warn');
+    rerender(<StatusLine {...props({ newcomerUntil: NOW })} />);
+    expect(screen.queryByRole('button', { name: /^Founding hour/ })).toBeNull();
+  });
+
+  it('folds the founding hour and the signal into one factor for alloy and crystal', () => {
+    render(<StatusLine {...props({ newcomerUntil: NOW + H, signalUntil: NOW + H })} />);
+    expect(screen.getByRole('button', { name: /^Founding hour · ×6/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Signal production · ×2/ })).toBeInTheDocument();
   });
 
   it('folds the recovery boost into the signal’s factor while both run', () => {

@@ -1012,6 +1012,8 @@ export const planetSchema = z.object({
      */
     productionBoostUntil: z.coerce.date().nullable().optional(),
     signalBoostUntil: z.coerce.date().nullable().optional(),
+    /** Kuruluş Saati's end while it runs (plan 2026-11-20 §5.1): five-fold alloy and crystal until then. */
+    newcomerBoostUntil: z.coerce.date().nullable().optional(),
   }),
   pvpBalance: pvpBalanceSchema.optional(),
   buildings: z.record(buildingId, z.number()),

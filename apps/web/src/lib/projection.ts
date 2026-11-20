@@ -1,4 +1,4 @@
-import { productionHours } from '@astera/rules';
+import { newcomerExtraHours, productionHours } from '@astera/rules';
 import type { PlanetView } from '../api/schemas.js';
 import { toServerTime } from './clock.js';
 import { useNow } from './time.js';
@@ -83,12 +83,15 @@ export function worksAt(
     : null;
   const signalUntil = planet.signalBoostUntil ? planet.signalBoostUntil.getTime() / 60_000 : null;
   const hours = productionHours(from, to, until, boostUntil, signalUntil);
+  // Kuruluş Saati: alloy and crystal only, the server's own statement of it (`advanceEconomy`).
+  const newcomerUntil = planet.newcomerBoostUntil ? planet.newcomerBoostUntil.getTime() / 60_000 : null;
+  const metalHours = hours + newcomerExtraHours(from, to, until, newcomerUntil);
 
   return {
-    bufferAlloy: Math.min(planet.bufferAlloyCap, planet.bufferAlloy + planet.alloyPerHour * hours),
+    bufferAlloy: Math.min(planet.bufferAlloyCap, planet.bufferAlloy + planet.alloyPerHour * metalHours),
     bufferCrystal: Math.min(
       planet.bufferCrystalCap,
-      planet.bufferCrystal + planet.crystalPerHour * hours,
+      planet.bufferCrystal + planet.crystalPerHour * metalHours,
     ),
     // A world without a plant preserves its mined haul, just as advanceEconomy does.
     bufferDeuterium: (planet.deuteriumPerHour ?? 0) > 0

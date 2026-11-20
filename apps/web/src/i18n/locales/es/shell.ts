@@ -38,6 +38,10 @@ export const statusBar = {
     name: "Escudo de recuperación",
     hint: 'Escudo de recuperación: no puedes ser atacado por {{duration}}',
   },
+  founding: {
+    name: 'Hora fundacional',
+    hint: 'Hora fundacional: tus fábricas producen cinco veces más aleación y cristal durante {{time}} más. Recoge y construye mientras dure; después vuelven a su ritmo.',
+  },
   recoveryBoost: {
     name: "Producción de recuperación",
     value: "+50 %",

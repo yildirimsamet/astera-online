@@ -74,8 +74,8 @@ Kesin süreler Faz 4'teki oyun testinde ayarlanır. Ekran sırası yalnız bir d
 ### 5.1 Kuruluş Saati
 
 - `packages/rules` içinde tek tablo: `NEWCOMER_HOUR = { minutes: 60, productionBonus }`. Yeni ayrıcalık bu tabloya bir anahtar ve uygulandığı tek yer olarak eklenir.
-- `players.first_game` (boolean, değişmez): katılımda `accounts.first_game_shield_available` tüketildiğinde `true` yazılır. Sonraki sezonlarda `false`.
-- `newcomerHour(player, now)`: `first_game` ve `main_entered_at`'ten açık mı, `endsAt`, oranlar. Arka plan işi veya kapatılacak bayrak yoktur.
+- `planets.newcomer_boost_until` (migration 0253): ilk oyunun başkentine katılımda `newcomerBoostUntil(now, firstGame)` ile bir kez yazılır, hiç kaydırılmaz (tatil dahil). Sinyal artışıyla aynı biçim: ekonomi hesabı (sunucu, istihbarat, istemci projeksiyonu) tek satırdan okur. `firstGame` = katılımda `accounts.first_game_shield_available` tüketildi. Arka plan işi veya kapatılacak bayrak yoktur.
+- Karar (2026-11-20): `players.first_game` eklenmedi. Süre ayrıcalığı kalkınca tek ayrıcalık üretim oldu ve o gezegenin satırında yaşar. Oyuncuya bağlı yeni bir ayrıcalık gelirse bu olgu o zaman eklenir.
 - Üretim: `productionHours` üçüncü pencereyi alır. Çakışma mevcut kuralla toplanır (ör. ilk sinyalden ENERGY gelirse kısa süre ek artış).
 - Süre ayrıcalığı yok (owner, 2026-11-20). İlk saatteki hızı 5 dk kuralı (§5.6) ve kaynak artışı verir.
 - İstemci oranı göndermez; sunucu kabul etmez.
@@ -147,7 +147,7 @@ Her faz: testler önce, KIRMIZI doğrulanır, uygulama, YEŞİL, kod incelemesi,
 
 ### Faz 2: Kuruluş Saati
 
-- Migration: `players.first_game`. Kurallar, sunucu, istemci projeksiyonu, HUD saati, son 10 dakika uyarısı, bitiş özeti, ocak efekti (VFX briefi ve kütüphane yolu teslimde).
+- Migration `0253_newcomer_hour`. Kurallar, sunucu, istemci projeksiyonu, HUD saati, son 10 dakika uyarısı, bitiş özeti, ocak efekti (VFX briefi ve kütüphane yolu teslimde).
 - **Bitti:** Testler: pencere sınırları (0, 59:59, 60:00); ilk oyun olmayan katılım; tatil ve kalkan silinmesi pencereyi değiştirmez; çevrimdışı birikim pencere içinde; sinyal artışıyla çakışma; istemcinin gönderdiği oran reddedilir; sunucu ve istemci aynı rakamı gösterir.
 
 ### Faz 2b: 5 dk kuralı
