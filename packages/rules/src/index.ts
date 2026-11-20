@@ -61,6 +61,7 @@ export * from './intel.js';
 export * from './sight.js';
 export * from './score.js';
 export * from './galaxy.js';
+export * from './personalRocks.js';
 export * from './asteroidDynamic.js';
 export * from './asteroidGeneration.js';
 export * from './galaxyEvents.js';

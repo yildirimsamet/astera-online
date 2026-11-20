@@ -456,6 +456,7 @@ export const focus = {
     noCraft: "Aucun Prospecteur chez toi",
     tooLate: "Il sera parti avant ton arrivée",
     researchNeeded: "Recherche d’abord la Spectrométrie Isotopique",
+    personal: "Ton rocher : toi seul le vois et l’exploites. Il s’éloigne dans {{time}}.",
     resting: "Appareils en repos · {{duration}}",
     send: "Envoyer {{count}} · {{duration}}",
     oreLeft: "Minerai restant",

@@ -13,6 +13,7 @@ import {
   doublePrecision,
   foreignKey,
   pgEnum,
+  pgSequence,
   pgTable,
   primaryKey,
   real,
@@ -22,7 +23,7 @@ import {
   uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import type { HpDamageLots, MigrationCargo, StarterBattleRecord } from '@astera/rules';
+import type { AsteroidSpec, HpDamageLots, MigrationCargo, StarterBattleRecord } from '@astera/rules';
 import type {
   BattleReplayData,
   CombatRound,
@@ -4065,6 +4066,28 @@ export const asteroidClaims = pgTable('asteroid_claims', {
   oreTaken: real('ore_taken').notNull().default(0),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
 }, (t) => [primaryKey({ columns: [t.seasonId, t.index] })]);
+
+/**
+ * KİŞİSEL KAYALAR (plan 2026-11-20 §5.2, Faz 3). The two rocks a first game's landing lays beside the
+ * capital, seen and mined by that commander alone. `index` is negative and drawn from its own sequence, so a
+ * personal rock shares the season's claim ledger (`asteroid_claims`) and a run's `asteroid_index` without
+ * ever meeting a rock of the shared field, whose indexes are never negative. Both keys cascade: a reclaimed
+ * seat or a wiped season takes its rocks with it.
+ */
+export const personalRockIndexSeq = pgSequence('personal_rock_index_seq');
+export const personalRocks = pgTable('personal_rocks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  index: integer('index').notNull().default(sql`-nextval('personal_rock_index_seq')`),
+  spec: jsonb('spec').$type<Omit<AsteroidSpec, 'index'>>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex('personal_rocks_index_idx').on(t.index),
+  index('personal_rocks_player_idx').on(t.playerId, t.expiresAt),
+  check('personal_rocks_index_check', sql`${t.index} < 0`),
+]);
 
 /**
  * ONE HOUR OF THE DYNAMIC ASTEROID FIELD. 2026-09-16.

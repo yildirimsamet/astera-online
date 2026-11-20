@@ -2516,6 +2516,11 @@ export function AsteroidFocus({
       }
     >
       <div className="gk-mine">
+        {rock.personal === true && (
+          <p className="gk-inote" data-tone="self" data-testid="personal-rock"><Glyph id="mine" />
+            {t('focus.asteroid.personal', { time: duration(minutesLeft) })}
+          </p>
+        )}
         {!needsSpectrometry && <CraftPicker available={craftAvailable} value={sending} onPick={setCraft} />}
         <p className="gk-sub gk-num gk-mine__fleet">
           {t('focus.asteroid.fleetLine', { count: craftAvailable, hold: compact(craftHold), total: compact(canCarry) })}

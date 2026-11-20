@@ -72,6 +72,7 @@ import { recordLegacyActivity } from './legacy.js';
 import { pendingThreads, type PendingThread } from './session.js';
 import { loadPlanetViewData, buildPlanetResult, type PlanetView } from './planetView.js';
 import { assertOutsideSilentSpace } from './waitingRoom.js';
+import { personalRockAt, personalRocksOf } from './personalRocks.js';
 
 /**
  * MINING — D19.
@@ -444,20 +445,24 @@ export async function launchMining(
     assertOutsideSilentSpace(origin);
 
     const field = await fieldOf(tx, origin.seasonId, origin.now);
+    // The commander's own rocks (plan 2026-11-20 §5.2) are theirs to aim at; no other commander's are.
+    const own = await personalRocksOf(tx, origin.playerId, origin.now);
+    const reachable = [...field.asteroids, ...own];
     const nowMinutes = minutesSince(field.startsAt, origin.now);
     const fromOpaqueId = typeof asteroidTarget === 'string';
     const asteroidIndex = fromOpaqueId
-      ? asteroidIndexFromId(field.asteroidKey, field.asteroids, asteroidTarget)
+      ? asteroidIndexFromId(field.asteroidKey, reachable, asteroidTarget)
       : asteroidTarget;
     const rock = asteroidIndex === null
       ? undefined
-      : field.asteroids.find((candidate) => candidate.index === asteroidIndex);
+      : reachable.find((candidate) => candidate.index === asteroidIndex);
 
     if (fromOpaqueId) {
       const epochs = await sensorHistoryForPlayer(tx, origin.playerId, origin.seasonId, field.startsAt);
+      const personal = rock !== undefined && own.includes(rock);
       const earned = rock !== undefined
         && asteroidActive(rock, nowMinutes)
-        && orbitDiscoveredAt(rock, epochs, nowMinutes) !== null;
+        && (personal || orbitDiscoveredAt(rock, epochs, nowMinutes) !== null);
       if (!earned) {
         throw new GameError(
           'ASTEROID_UNAVAILABLE',
@@ -861,7 +866,10 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
 
   const { asteroids } = await fieldOf(tx, run.seasonId, now);
   const rockIndex = run.asteroidIndex;
-  const rock = rockIndex === null ? undefined : asteroids.find((a) => a.index === rockIndex);
+  // A negative index is a personal rock (plan 2026-11-20 §5.2): not in the shared field, in its own table.
+  const rock = rockIndex === null ? undefined : rockIndex < 0
+    ? await personalRockAt(tx, run.seasonId, rockIndex)
+    : asteroids.find((a) => a.index === rockIndex);
 
   if (rock && rockIndex !== null) {
     /**

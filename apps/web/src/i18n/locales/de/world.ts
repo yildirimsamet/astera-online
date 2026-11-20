@@ -473,6 +473,7 @@ export const focus = {
     noCraft: "Keine Prospektoren zu Hause",
     tooLate: "Es ist verschwunden, bevor du ankommst",
     researchNeeded: "Forschungsisotopenspektrometrie zuerst",
+    personal: "Dein Felsen: Nur du siehst und förderst ihn. Er treibt in {{time}} davon.",
     /**
      * THE MINUTE AFTER A TRIP THAT COST NOTHING. D183.
      *

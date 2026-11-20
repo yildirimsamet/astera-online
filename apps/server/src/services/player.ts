@@ -14,6 +14,7 @@ import { peopleIn } from './people.js';
 import { equipAdminCapital } from './adminCapital.js';
 import { ensureUnknownSignalSchedule } from './unknownSignalSchedule.js';
 import { scheduleNewcomerHour } from './newcomerHour.js';
+import { layPersonalRocks } from './personalRocks.js';
 import {
   lockGalaxyEventAudience,
   notifyActiveGalaxyEventsForPlayer,
@@ -394,7 +395,12 @@ export async function joinSeason(
         await recomputeWealth(tx, planet.id, clock.now());
         await refreshSensorEpoch(tx, planet.id, now);
         if (seat === 'COMMANDER') await ensureUnknownSignalSchedule(tx, player.id, seasonId, now, false, firstGame.length > 0);
-        if (newcomerHourEnd) await scheduleNewcomerHour(tx, { seasonId, planetId: planet.id, until: newcomerHourEnd });
+        if (newcomerHourEnd) {
+          await scheduleNewcomerHour(tx, { seasonId, planetId: planet.id, until: newcomerHourEnd });
+          // Kişisel kayalar (plan §5.2): a first game's two rocks, beside the capital, for this commander alone.
+          await layPersonalRocks(tx, { seasonId, seasonStartsAt: current.startsAt, playerId: player.id,
+            capital: { x: planet.x, y: planet.y, z: planet.z }, now, seed: Number.parseInt(player.id.slice(0, 8), 16) });
+        }
         await notifyActiveGalaxyEventsForPlayer(tx, {
           playerId: player.id,
           seasonId,

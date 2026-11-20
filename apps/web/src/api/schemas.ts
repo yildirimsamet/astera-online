@@ -3324,6 +3324,8 @@ export const asteroidSchema = z.object({
   active: z.boolean(),
   isotopeRich: z.boolean(),
   deuteriumShare: z.number().nullable(),
+  /** Kişisel kaya (plan 2026-11-20 §5.2): laid at this commander's landing, seen and mined by them alone. */
+  personal: z.literal(true).optional(),
 }).strict();
 
 export const miningSchema = z.object({

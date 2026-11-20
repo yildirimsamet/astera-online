@@ -1786,6 +1786,13 @@
       "when": 1795186531565,
       "tag": "0254_newcomer_hour_news",
       "breakpoints": true
+    },
+    {
+      "idx": 255,
+      "version": "7",
+      "when": 1795192422902,
+      "tag": "0255_personal_rocks",
+      "breakpoints": true
     }
   ]
 }
