@@ -205,7 +205,7 @@ Yok. Üretim artışı ×5 (+%400), owner onayı 2026-11-20.
 - [x] Faz 3 kişisel kayalar (sahnede "senin" işareti Faz 4 kamera anıyla)
 - [ ] Faz 4 korsan senaryosu
 - [x] Faz 5 sinyal 4×
-- [ ] Faz 6 convoy 2×
+- [x] Faz 6 convoy 2×
 - [ ] Faz 7 kapı ve yayın
 
 ### 10.2 Dosya haritası
@@ -236,5 +236,6 @@ Yok. Üretim artışı ×5 (+%400), owner onayı 2026-11-20.
 | Faz 1 | Kod bitti 2026-11-20 | Bağlantılı 72 web test dosyası (821 test) yeşil. Görsel oynanış Faz 4 oyun testinde: Faz 1 yeni görsel getirmez, yalnız yüzeylerin sırasını değiştirir |
 | Faz 2 | Bitti 2026-11-20 | Üretim ×5 (0253), HUD saati (son 10 dk kehribar), son 10 dk bildirimi + Android push (sessiz saatte düşer, sabaha saklanmaz), saat sonu özeti (gezegen `seasonTelemetry.produced` + saatte biten CONSTRUCTION emirleri) — 0254 enum değerleri, olay `newcomer_hour` (devirde WORLD). Ocak efekti §4 an 1'e aittir, Faz 4 iniş kartıyla gelir |
 | Faz 3 | Bitti 2026-11-20 | `personal_rocks` (0255, negatif indeks dizisi, iki FK cascade); iniş anında 2 kaya 300/420 birim, 800–1.200 cevher, %35 kristal, 6 sa, 3 birim/dk; yalnız sahibinin `/api/mining` listesinde `personal: true`; başkasının emri 404. Kart satırı "Senin kayan…". Sahnede işaret ve kamera dönüşü Faz 4 an 2'de |
+| Faz 6 | Bitti 2026-11-20 | `d6b7f46d` yeniden uygulandı: `outboundSpeedMultiplier: 2` yalnız yakalama çözücüsünde; dönüş normal. Keşif erişimi gönderilebilir filo + gerçek saatle (`convoyOpportunity`); seçili filo yetişemiyorsa "seçilen filo" uyarısı; 6 dil, Wiki, galeri fikstürü güncel rota |
 | Faz 5 | Bitti 2026-11-20 | `signalTravelExact` (süre ÷ 4) sunucunun üç bacağında ve istemci teklifinde; sayfada "Tek yön · 4× hız"; Wiki cümlesi. Uçuştaki sinyaller kayıtlı saatleriyle biter (saat satırda saklı) |
 | Faz 2b | Bitti 2026-11-20 | Sunucu boş sırada aynı işlemde bitirir (`finishOrder`), dolu sırada 1 sn sonra; istemci fişi "Anında · ≤5 dk", iyimser tahmin seviyeyi hemen verir, cevapta `confirm` sesi + `commit` titreşimi; sim aynası, Wiki notu, 6 dil. Eski 10 sunucu testi "kısa bekleyen emir" varsayıyordu: `rungsThatTakeTime` ile niyetleri korunarak güncellendi. Sim'de yalnız yeni birim testi koşuldu |

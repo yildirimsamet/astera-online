@@ -143,10 +143,9 @@ import type { ChatChannel } from './ChatScreen.js';
 import { activeTradeShip } from '../lib/trade.js';
 import { compact } from '../lib/format.js';
 import { knownPirateContacts, pirateTargetName } from '../lib/galaxyTargets.js';
-import { activeIntergalacticConvoy } from '../lib/intergalacticConvoy.js';
+import { activeIntergalacticConvoy, convoyOpportunity } from '../lib/intergalacticConvoy.js';
 import {
   flightModifiers,
-  planIntergalacticConvoyRoute,
   planTradeRoute,
 } from '../lib/navigation.js';
 import { outOfBandAbove, ownPeakCore } from '../lib/band.js';
@@ -156,7 +155,6 @@ import { minuteTick, minutesLeft, useNow } from '../lib/time.js';
 import {
   HULLS,
   MOBILE_HULLS,
-  combatValue,
   engagementEndsAt,
   UNAIDED,
   transferCargoCapacity,
@@ -948,27 +946,11 @@ export function GalaxyView({
     return route?.oneWayMinutes ?? null;
   }, [tradeShip, planet.data, season.data, tradeMinute]);
 
-  const convoyReach = useMemo(() => {
-    if (!intergalacticConvoy || !planet.data || !season.data) return null;
-    const home = planet.data;
-    const armed = MOBILE_HULLS.filter(
-      (hull) => (home.fleet[hull] ?? 0) > 0 && combatValue({ [hull]: 1 }) > 0,
-    );
-    let best: number | null = null;
-    for (const hull of armed) {
-      const route = planIntergalacticConvoyRoute(
-        home.planet.position,
-        intergalacticConvoy,
-        (tradeMinute * 60_000 - season.data.startsAt.getTime()) / 60_000,
-        { [hull]: 1 },
-        home.fleet,
-        home.ground,
-        flightModifiers(home),
-      );
-      if (route && (best === null || route.oneWayMinutes < best)) best = route.oneWayMinutes;
-    }
-    return best;
-  }, [intergalacticConvoy, planet.data, season.data, tradeMinute]);
+  // The strike sheet's own fleet and clock (convoy 2×, d6b7f46d): only ships that can be sent, from now.
+  const convoyAccess = useMemo(
+    () => convoyOpportunity(intergalacticConvoy, planet.data, season.data?.startsAt, now),
+    [intergalacticConvoy, planet.data, season.data?.startsAt, now],
+  );
 
   const planets = useMemo(() => planetsWithClanPresence(galaxy.data), [galaxy.data]);
   const trialWorlds = useMemo(() => planets.filter(world => world.isOwned && world.intel !== 'UNKNOWN'), [planets]);
@@ -1900,8 +1882,8 @@ export function GalaxyView({
               0,
               (intergalacticConvoy.endsAt.getTime() - now) / 60_000,
             )}
-            reachMinutes={convoyReach}
-            hasCombatCraft={combatValue(planet.data?.fleet ?? {}) > 0}
+            reachMinutes={convoyAccess.reachMinutes}
+            hasCombatCraft={convoyAccess.hasCombatCraft}
             launchLocked={planet.data?.convoyLaunchLocked === true}
             occurrenceSpent={planet.data?.convoyOccurrenceSpent === true}
             launchBlock={launchFault(planet.data?.faults, 'fleet', planet.data?.silentSpace === true)}

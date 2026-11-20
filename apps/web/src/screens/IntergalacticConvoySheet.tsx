@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  INTERGALACTIC_CONVOY,
   MOBILE_HULLS,
   combatValue,
   convoyProductionCap,
@@ -155,7 +156,7 @@ export function IntergalacticConvoySheet({
             : planet.flight.used >= planet.flight.total
               ? t('convoy.noBay')
               : route === null
-                ? t('convoy.cannotReach')
+                ? t('convoy.selectedCannotReach')
                 : planet.planet.deuterium < route.fuel
                   ? t('convoy.noFuel')
                   : null;
@@ -193,7 +194,7 @@ export function IntergalacticConvoySheet({
       mods,
     );
     if (!fresh) {
-      say(t('convoy.cannotReach'), 'error');
+      say(t('convoy.selectedCannotReach'), 'error');
       return;
     }
     launch.mutate({
@@ -245,7 +246,7 @@ export function IntergalacticConvoySheet({
       <div className="gk-trade">
       {/* The rules before the wing: it does not shoot back, it fires for five seconds, and it is one-way. */}
       <section data-convoy-rules className="gk-well gk-convoy__rules">
-        <p className="gk-convoy__lead">{t('convoy.boundary')}</p>
+        <p className="gk-convoy__lead">{t('convoy.boundary', { multiplier: INTERGALACTIC_CONVOY.outboundSpeedMultiplier })}</p>
         <p className="gk-inote"><Glyph id="timed" />{t('convoy.engagement')}</p>
         <p className="gk-inote" data-tone="warn"><Glyph id="lock" />{t('convoy.irreversible')}</p>
       </section>

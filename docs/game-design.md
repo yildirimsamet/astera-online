@@ -1374,8 +1374,11 @@ when the radius-3000 galaxy made the rim-to-route reach longer), a
 twenty-two-craft double formation crosses an
 isotropic galaxy diameter. Its centre is the gameplay anchor and reaches the galaxy centre at minute
 90. The active route is public; future routes remain server-secret. A commander sends an armed
-mobile wing to the moving intercept, fires alongside it for exactly five seconds, receives no return
-fire, then follows a separately frozen return leg. In the current entity-based radiation model,
+mobile wing to the moving intercept at twice its normal fleet speed (including launch propulsion
+and Beacon), fires alongside it for exactly five seconds, receives no return
+fire, then follows a separately frozen return leg at normal speed. Only convoy outbound travel
+gets the multiplier; other mission types do not. The full strike must fit the crossing; return
+may finish after the convoy leaves, provided it is before season end. In the current entity-based radiation model,
 the outbound leg, five-second pass and return leg take no environmental radiation damage:
 crossing a planet's or monument's visible aura does not mean occupying that target. Existing
 ship damage is preserved. Both legs' fuel is paid at launch and the flight cannot be recalled.

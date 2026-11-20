@@ -7,7 +7,7 @@ import { CosmeticTrialGallery } from './CosmeticTrialGallery.jsx';
 import { StoreDiscoveryGallery } from './StoreDiscoveryGallery.js';
 import { PlanetSelectionGallery } from './PlanetSelectionGallery.jsx';
 import { CosmeticPreview } from '../../screens/CosmeticPreview.jsx';
-import { cosmeticById, groundSlots, hangarCapacity, hullBulk, RESEARCH_PROJECTS, type HullId } from '@astera/rules';
+import { cosmeticById, GALAXY, groundSlots, hangarCapacity, hullBulk, INTERGALACTIC_CONVOY, RESEARCH_PROJECTS, type HullId } from '@astera/rules';
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
@@ -1025,9 +1025,11 @@ function GalleryMonumentFocus() {
 /** The convoy and the merchant every gallery view of them shares: one crossing, one window. */
 const GALLERY_CONVOY: IntergalacticConvoyEvent = {
   id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'INTERGALACTIC_CONVOY',
-  startsAt: new Date(NOW - 10 * MIN), endsAt: new Date(NOW + 110 * MIN),
-  appearsAtMinute: 1140, expiresAtMinute: 1260,
-  route: { from: { x: -2000, y: 0, z: 0 }, to: { x: 2000, y: 0, z: 0 }, velocity: { x: 100 / 3, y: 0, z: 0 }, speed: 100 / 3 },
+  // The live route: across the whole galaxy in the event's own window (d6b7f46d).
+  startsAt: new Date(NOW - 10 * MIN), endsAt: new Date(NOW + (INTERGALACTIC_CONVOY.durationMinutes - 10) * MIN),
+  appearsAtMinute: 1140, expiresAtMinute: 1140 + INTERGALACTIC_CONVOY.durationMinutes,
+  route: { from: { x: -GALAXY.radius, y: 0, z: 0 }, to: { x: GALAXY.radius, y: 0, z: 0 },
+    velocity: { x: 2 * GALAXY.radius / INTERGALACTIC_CONVOY.durationMinutes, y: 0, z: 0 }, speed: 2 * GALAXY.radius / INTERGALACTIC_CONVOY.durationMinutes },
   visual: { formationVersion: 1 },
   rewardPolicy: { resourceCapHours: 4, fullRewardForceRatio: 1, shipDropFullFirepower: 5780, shipDropChanceAtFullQuality: 0.15, maxAwardedShips: 3 },
 };
@@ -1514,7 +1516,7 @@ function Views({ view }: { view: string }) {
       onClose={noop} onTrade={noop} open onToggle={noop} />;
   }
   if (view === 'focus-convoy') {
-    return <IntergalacticConvoyFocus convoy={GALLERY_CONVOY} minutesLeft={110} reachMinutes={14} hasCombatCraft launchLocked={false}
+    return <IntergalacticConvoyFocus convoy={GALLERY_CONVOY} minutesLeft={INTERGALACTIC_CONVOY.durationMinutes - 10} reachMinutes={14} hasCombatCraft launchLocked={false}
       occurrenceSpent={false} onClose={noop} onRaid={noop} open onToggle={noop} />;
   }
   if (view === 'focus-run') {

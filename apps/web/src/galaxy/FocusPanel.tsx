@@ -13,6 +13,7 @@ import {
   DEATH_STAR,
   FEATURE_FLAGS,
   HULLS,
+  INTERGALACTIC_CONVOY,
   MONUMENT_BALANCE,
   MULTI_WORLD,
   SETTLEMENT_CLAIM_MINUTES,
@@ -2867,7 +2868,7 @@ export function IntergalacticConvoyFocus({
           <Figure label={t('convoy.engagementLabel')} value={t('convoy.engagementDuration')} />
           <Figure label={t('convoy.shipChance')} value={`${compact(convoy.rewardPolicy.shipDropChanceAtFullQuality * 100)}%`} />
         </div>
-        <p className="gk-sub gk-convoy__lead">{t('convoy.boundary')}</p>
+        <p className="gk-sub gk-convoy__lead">{t('convoy.boundary', { multiplier: INTERGALACTIC_CONVOY.outboundSpeedMultiplier })}</p>
         <p className="gk-inote" data-tone="warn"><Glyph id="lock" />{t('convoy.irreversible')}</p>
       </div>
     </Shell>

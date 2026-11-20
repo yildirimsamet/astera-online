@@ -1,3 +1,4 @@
+import { INTERGALACTIC_CONVOY } from '@astera/rules';
 import { localized as l, type WikiArticle } from './model.js';
 import { topic } from './concepts.js';
 import { unknownSignal as signalEn } from '../i18n/locales/en/unknownSignal.js';
@@ -81,20 +82,20 @@ export const galaxyArticles: readonly WikiArticle[] = [
   topic('galaxy', 'convoys', l('Intergalactic Convoy', "Galaksilerarası Konvoy"),
     l("Attack the Intergalactic Convoy once per planet during a crossing. Compare firepower, cargo capacity, production limits and ship reward chance.", "Galaksilerarası Konvoya, geçiş başına her gezegenden bir kez saldır. Ateş gücünü, kargoyu, üretim sınırını ve gemi ödülü olasılığını karşılaştır."),
     l([
-      "The Intergalactic Convoy crosses the galaxy at scheduled times. Send at least one armed ship to meet it during the event. It does not return fire, but route radiation can still damage your fleet.",
+      `The Intergalactic Convoy crosses the galaxy at scheduled times. Send at least one armed ship to meet it during the event. Your fleet flies to it at ${INTERGALACTIC_CONVOY.outboundSpeedMultiplier}× its normal speed and returns at normal speed. It does not return fire.`,
       "Each planet can complete one attack per crossing. While an attack from that planet is away, you cannot launch another against the convoy. The attack cannot be recalled, and you pay both legs’ fuel when sending it.",
       "Firepower affects reward quality and the chance of a ship prize. Surviving cargo capacity limits resources brought home. The maximum resource reward also depends on origin-planet production and the event’s production-hour limit. A ship prize is not guaranteed.",
     ], [
-      "Galaksilerarası Konvoy, takvimde belirtilen saatlerde galaksiden geçer. Etkinlik sürerken buluşmak için en az bir savaş gemisi gönder. Konvoy karşı ateş açmaz; rota radyasyonu yine filona hasar verebilir.",
+      `Galaksilerarası Konvoy, takvimde belirtilen saatlerde galaksiden geçer. Etkinlik sürerken buluşmak için en az bir savaş gemisi gönder. Filon yalnız konvoya giderken ${INTERGALACTIC_CONVOY.outboundSpeedMultiplier}× hızla uçar; dönüş normal hızdadır. Konvoy karşı ateş açmaz.`,
       "Her gezegen, bir geçişte bir saldırı tamamlayabilir. O gezegenden konvoya gönderilen görev varken ikinci saldırı başlatılamaz. Saldırı geri çağrılamaz. Gidiş ve dönüş yakıtı gönderimde ödenir.",
       "Ateş gücü, ödül kalitesini ve gemi kazanma olasılığını etkiler. Eve gelen kaynak, sağ kalan kargo kapasitesiyle sınırlıdır. Azami kaynak ödülü, çıkış gezegeninin üretimine ve etkinliğin üretim saati sınırına da bağlıdır. Gemi ödülü garanti değildir.",
     ]),
     l([
       "Review firepower, cargo, production limit, fuel and return time together. Adding warships without cargo room can raise potential reward without increasing what you actually carry home.",
-      "The convoy moves, so check the current meeting time before sending. Review radiation losses and the defence left at home. A target that does not fire can still have a costly route.",
+      "The convoy moves, so check the current meeting time before sending. The meeting and five-second strike must finish before it leaves; your fleet can return later. Passing through a planet’s or monument’s radiation aura causes no flight damage. Existing wounds remain. Review fuel, return time and the defence left at home.",
     ], [
       "Ateş gücünü, kargoyu, üretim sınırını, yakıtı ve dönüş süresini birlikte incele. Kargo eklemeden savaş gemisi eklemek, olası ödülü artırsa da eve taşınan miktarı artırmayabilir.",
-      "Konvoy hareket ettiği için göndermeden önce güncel buluşma zamanını kontrol et. Radyasyon kayıplarını ve gezegeninde kalan savunmayı incele. Hedef ateş açmasa da uçuşun bedeli ve riski vardır.",
+      "Konvoy hareket ettiği için göndermeden önce güncel buluşma zamanını kontrol et. Temas ve beş saniyelik saldırı konvoy ayrılmadan tamamlanmalıdır; filon daha sonra dönebilir. Gezegen veya anıtın radyasyon alanından uçuşla geçmek hasar vermez. Önceki yaralar korunur. Yakıtı, dönüş süresini ve gezegeninde kalan savunmayı incele.",
     ]), ['galaxy.events', 'fleet.flights', 'galaxy.radiation']),
   topic('galaxy', 'monuments', l('Holding a monument', 'Anıt tutmak'),
     l("Win control of a monument, earn deuterium with armed ships and free cargo room, and recall before radiation destroys your fleet.", "Anıtın kontrolünü kazan. Savaş gemileri ve boş kargoyla döteryum biriktir; radyasyon filonu yok etmeden geri çağır."),
