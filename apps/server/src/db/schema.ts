@@ -184,6 +184,8 @@ export const eventKind = pgEnum('event_kind', [
   'arena_ship_ready',
   /** A Bildirim Merkezi push due now: charge the wallet, then send. 2026-10-30. */
   'paid_alert',
+  /** Kuruluş Saati's two moments on a first game's capital: ten minutes left, and the end. Plan 2026-11-20 §4. */
+  'newcomer_hour',
 ]);
 /**
  * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
@@ -300,6 +302,9 @@ export const notificationKind = pgEnum('notification_kind', [
    * support: the host's own warning, copied to every mature member of a level-2 clan.
    */
   'clan_alarm',
+  /** KURULUŞ SAATİ (plan 2026-11-20 §4): ten minutes left of a first game's five-fold hour, and its sum at the end. */
+  'newcomer_hour_ending',
+  'newcomer_hour_summary',
 ]);
 export type NotificationKind = (typeof notificationKind.enumValues)[number];
 

@@ -70,6 +70,8 @@ export const TRANSFER_EVENT_POLICIES = {
   // A season's hour on the dynamic asteroid field belongs to nobody in particular.
   asteroid_hour: 'GLOBAL',
   fault_spawn: 'WORLD',
+  // Kuruluş Saati's two moments are bolted to the capital and told to whoever holds it.
+  newcomer_hour: 'WORLD',
   fault_repair_complete: 'WORLD',
   vault_leak_flush: 'WORLD',
   colony_secession: 'WORLD',

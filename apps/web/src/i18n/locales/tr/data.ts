@@ -564,6 +564,10 @@ export const directives = {
 
 export const notifications = {
   arenaShipReady: "Komutan gemin hazır. Hangarı aç.",
+  newcomerHourEnding: "Kuruluş Saati: beş kat üretimin {{time}} kaldı. Sıradaki inşayı şimdi başlat.",
+  newcomerHourEnded: "Kuruluş Saati bitti.",
+  newcomerHourSummary_one: "Kuruluş Saati bitti: tesislerin {{alloy}} alaşım ve {{crystal}} kristal üretti, {{count}} inşa tamamlandı. Artık normal hızında çalışıyor.",
+  newcomerHourSummary_other: "Kuruluş Saati bitti: tesislerin {{alloy}} alaşım ve {{crystal}} kristal üretti, {{count}} inşa tamamlandı. Artık normal hızında çalışıyor.",
   arenaRepairReady: "Komutan geminin tamiri tamamlandı. Hangarı aç.",
   arenaServiceReady: "Komutan geminin bakımı tamamlandı. Hangarı aç.",
   arenaTeamShare: "Takım payın hazır: {{loot}}. Hangarda al.",

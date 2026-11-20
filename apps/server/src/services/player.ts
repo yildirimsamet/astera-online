@@ -13,6 +13,7 @@ import { refreshSensorEpoch } from './sensorHistory.js';
 import { peopleIn } from './people.js';
 import { equipAdminCapital } from './adminCapital.js';
 import { ensureUnknownSignalSchedule } from './unknownSignalSchedule.js';
+import { scheduleNewcomerHour } from './newcomerHour.js';
 import {
   lockGalaxyEventAudience,
   notifyActiveGalaxyEventsForPlayer,
@@ -373,7 +374,7 @@ export async function joinSeason(
               ...reward.tier.reward, claimedAt: now });
           }
           if (academy?.queue) {
-            // Ordinary paid queue, in this same creation transaction. No instant build.
+            // Ordinary paid queue, in this same creation transaction; the five-minute rule applies as anywhere.
             await placeBuildingUpgrade(tx, await loadLocked(tx, planet.id, clock), academy.queue.building);
           }
         }
@@ -393,6 +394,7 @@ export async function joinSeason(
         await recomputeWealth(tx, planet.id, clock.now());
         await refreshSensorEpoch(tx, planet.id, now);
         if (seat === 'COMMANDER') await ensureUnknownSignalSchedule(tx, player.id, seasonId, now, false, firstGame.length > 0);
+        if (newcomerHourEnd) await scheduleNewcomerHour(tx, { seasonId, planetId: planet.id, until: newcomerHourEnd });
         await notifyActiveGalaxyEventsForPlayer(tx, {
           playerId: player.id,
           seasonId,

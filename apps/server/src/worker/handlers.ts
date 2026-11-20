@@ -164,6 +164,7 @@ import { fleetChangesWatch, publishWatchChanges } from '../services/watchEvents.
 import { wipeAllServers } from '../services/servers.js';
 import { asteroidHourPayloadSchema, openAsteroidHour } from '../services/asteroidSpawn.js';
 import { schedule, type EventRow } from './queue.js';
+import { resolveNewcomerHour } from '../services/newcomerHour.js';
 import {
   applyDeathStarStrike,
   endOccupation,
@@ -3243,6 +3244,7 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   clan_support_expiry: onClanSupportExpiry,
   mission_arrival: onMissionArrival,
   radar_warning: onRadarWarning,
+  newcomer_hour: ({ db, clock }, event) => resolveNewcomerHour(db, clock, event),
   paid_alert: async ({ db, clock }, event) => {
     if (!event.refId) throw new Error('paid_alert without refId');
     await settlePaidAlert(db, clock, event.refId);

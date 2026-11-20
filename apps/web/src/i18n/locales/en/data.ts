@@ -490,6 +490,10 @@ export const directives = {
 /** The seven kinds of news, turned into the sentences a player reads. */
 export const notifications = {
   arenaShipReady: "Your commander ship is ready. Open the hangar.",
+  newcomerHourEnding: "Founding hour: {{time}} of five-fold output left. Start your next build now.",
+  newcomerHourEnded: "Founding hour is over.",
+  newcomerHourSummary_one: "Founding hour over: your works made {{alloy}} alloy and {{crystal}} crystal, and {{count}} build finished. They run at their own rate now.",
+  newcomerHourSummary_other: "Founding hour over: your works made {{alloy}} alloy and {{crystal}} crystal, and {{count}} builds finished. They run at their own rate now.",
   arenaRepairReady: "Your commander ship’s repairs are complete. Open the hangar.",
   arenaServiceReady: "Your commander ship’s maintenance is complete. Open the hangar.",
   arenaTeamShare: "Your team share is ready: {{loot}}. Claim it in the hangar.",

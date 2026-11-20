@@ -21,7 +21,7 @@ export function quietDeliveryAt(now: Date, offsetMinutes: number): Date {
   return new Date(local.getTime() - offsetMinutes * 60_000);
 }
 
-export async function deferQuietPushes(db: Db, devices: readonly Phone[], write: (locale: Phone['locale']) => PushMessage, now: Date): Promise<Phone[]> {
+export async function deferQuietPushes(db: Db, devices: readonly Phone[], write: (locale: Phone['locale']) => PushMessage, now: Date, dropQuiet = false): Promise<Phone[]> {
   if (!devices.length) return [];
   const registered = await db.select().from(pushDevices).where(inArray(pushDevices.token, devices.map(d => d.token)));
   const ready: Phone[] = [];
@@ -31,6 +31,7 @@ export async function deferQuietPushes(db: Db, devices: readonly Phone[], write:
     const message = write(device.locale);
     const deliverAt = quietDeliveryAt(now, phone.utcOffsetMinutes);
     if (message.kind === 'incoming_attack' || message.kind === 'shield_falling' || deliverAt <= now) { ready.push(device); continue; }
+    if (dropQuiet) continue;
     const id = createHash('sha256').update(JSON.stringify([device.token, phone.accountId, message])).digest('hex');
     await db.insert(deferredPushes).values({ id, token: phone.token, accountId: phone.accountId, message: { ...message }, deliverAt }).onConflictDoNothing();
   }
