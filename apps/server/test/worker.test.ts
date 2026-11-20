@@ -189,7 +189,9 @@ describe('event worker', () => {
       await f.db.update(scheduledEvents).set({ attempts: 4 })
         .where(eq(scheduledEvents.refId, orphan!.id));
 
-      // A healthy order that lands LATER, so it is claimed behind the orphan.
+      // A healthy order that lands LATER, so it is claimed behind the orphan. Vault 5 → 6 is long enough
+      // to wait: the five-minute rule finishes shorter rungs at once.
+      await setLevel(f.db, healthyWorld, 'VAULT', 5);
       await upgradeBuilding(f.db, healthyWorld, 'VAULT', f.clock);
       const [healthy] = await f.db.select().from(buildOrders)
         .where(eq(buildOrders.planetId, healthyWorld));

@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeEach, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import type { FastifyInstance } from 'fastify';
-import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
+import { rungsThatTakeTime, seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 import { buildApp } from '../src/app.js';
 import { buildOrders } from '../src/db/schema.js';
 import { upgradeBuilding } from '../src/services/build.js';
@@ -17,6 +17,8 @@ afterEach(async () => { await close(); });
 afterAll(async () => { await (await testDb()).close(); });
 it('persists acceptance time and original manual actor while queue scheduling changes', async () => {
   const acceptedAt = f.clock.now();
+  // Two orders that wait: the five-minute rule would finish a seeded world's first rungs at once.
+  await rungsThatTakeTime(f.db, f.planetIds[0]!);
   const authorization = `Bearer ${await app.tokens.issueAccess(f.accountIds[0]!)}`;
   for (const type of ['CORE', 'REFINERY']) {
     const reply = await app.inject({ method: 'POST', url: '/api/planet/upgrade', headers: { authorization }, payload: { type } });

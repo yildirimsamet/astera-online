@@ -378,14 +378,15 @@ describe('launching a fleet', () => {
      * unchanged and is asserted here as what a player would actually experience.
      * `notifications.test.ts` walks the whole ladder.
      */
-    it('warns nobody below Radar L3, however long the fleet is in the air', async () => {
+    // It used to raise a Radar and read the order still under way at launch. Since the five-minute
+    // rule (2026-11-20) a first Radar rung finishes at once, and Radar 1 warns: the case is a world
+    // whose Radar is not running.
+    it('warns nobody whose Radar is not running, however long the fleet is in the air', async () => {
       await setLevel(f.db, defender, 'CORE', 6);
       await grant(f.db, defender, 200_000, 200_000);
-      // The Radar hangs off an Uplink in orbit (D25).
+      // The Uplink a Radar hangs off (D25), with no Radar on it.
       await giveSatellite(f.db, defender, 'UPLINK');
-      await raiseInstrument(f.db, defender, 'RADAR', f.clock);
-      // Paying for a Radar made the defender rich, and rich means TALL — see
-      // `levelWorld`. This test is about the warning, not about the tier band.
+      // Rich means TALL — see `levelWorld`. This test is about the warning, not about the tier band.
       await levelWorld(f.db, f.planetIds);
 
       const launch = await launchAttack(f.db, attacker, defender, { DART: 10 }, f.clock);

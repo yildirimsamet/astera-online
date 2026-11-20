@@ -105,6 +105,7 @@ import {
   travelExact,
   satelliteCost,
   satelliteMinutes,
+  upgradeOrderMinutes,
   satelliteSlots,
   seeingUnlocked,
   shieldHp,
@@ -985,7 +986,8 @@ export function enqueueSimBuild(
   if (!validLane) return false;
   if (queue.length >= BUILD.queueDepth) return false;
   if (!Number.isInteger(input.count) || input.count < 1) return false;
-  if (!Number.isFinite(input.minutes) || input.minutes <= 0) return false;
+  // Zero is the five-minute rule's instant upgrade, as on the server (owner, 2026-11-20).
+  if (!Number.isFinite(input.minutes) || input.minutes < 0) return false;
   if (
     p.alloy < input.cost.alloy
     || p.crystal < input.cost.crystal
@@ -993,8 +995,10 @@ export function enqueueSimBuild(
   ) return false;
 
   // The server stores whole seconds, so the simulation must not finish a fraction
-  // earlier and compound that drift over a fourteen-day season.
-  const minutes = Math.max(1, Math.ceil(input.minutes * 60)) / 60;
+  // earlier and compound that drift over a fourteen-day season. An instant order on a
+  // free queue is done now; behind another order it keeps the one-second floor.
+  const instant = input.minutes === 0 && queue.length === 0;
+  const minutes = instant ? 0 : Math.max(1, Math.ceil(input.minutes * 60)) / 60;
   const startsAt = queue.at(-1)?.readyAt ?? t;
   const readyAt = startsAt + minutes;
   if (readyAt > world.totalMinutes) return false;
@@ -1002,6 +1006,11 @@ export function enqueueSimBuild(
   p.alloy -= input.cost.alloy;
   p.crystal -= input.cost.crystal;
   p.deuterium -= input.cost.deuterium;
+  if (instant) {
+    sync(p, t);
+    applySimBuild(p, { ...input, cost: { ...input.cost }, minutes, readyAt });
+    return true;
+  }
   queue.push({
     ...input,
     cost: { ...input.cost },
@@ -1018,7 +1027,9 @@ function nextSimBuildReadyAt(
   t: number,
   minutes: number,
 ): number {
-  const roundedMinutes = Math.max(1, Math.ceil(minutes * 60)) / 60;
+  // As `enqueueSimBuild` places it: an instant order on a free queue is ready now.
+  const free = p.queues[queue].length === 0;
+  const roundedMinutes = minutes === 0 && free ? 0 : Math.max(1, Math.ceil(minutes * 60)) / 60;
   return (p.queues[queue].at(-1)?.readyAt ?? t) + roundedMinutes;
 }
 
@@ -2445,7 +2456,7 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
       // The plant answers to its research rung as well as to the Core. T5.
       if (key === 'DEUTERIUM_PLANT' && lvl >= plantCeiling(synthesisRung(p))) continue;
       const cost = buildingCost(key, lvl);
-      const minutes = buildingMinutes(key, lvl + 1, projected.research);
+      const minutes = upgradeOrderMinutes(buildingMinutes(key, lvl + 1, projected.research));
       const readyAt = nextSimBuildReadyAt(p, 'CONSTRUCTION', t, minutes);
 
       // A building only earns after it exists. The old instant model could use the
@@ -2564,7 +2575,7 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
         // A satellite reads the satellite quote (the Uplink is five minutes by hand, D209).
         minutes: orbital
           ? satelliteMinutes(id, projected.buildings.CORE, projected.research)
-          : buildMinutes(cost, projected.buildings.CORE, projected.research),
+          : upgradeOrderMinutes(buildMinutes(cost, projected.buildings.CORE, projected.research)),
       });
       if (placed) {
         spendCrystal(world, 'hardware', cost.crystal);

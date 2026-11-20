@@ -8,6 +8,7 @@ import {
   researchMinutes,
   satelliteMinutes,
   shipMinutes,
+  upgradeOrderMinutes,
   type BuildingId,
   type Resources,
   type SatelliteId,
@@ -145,7 +146,8 @@ export function orderMinutes(
   if (subject && 'building' in subject) {
     // `buildingMinutes`, not `profileBuilding().minutes`: the latter is the design
     // reference and carries no commander's research. Mirrors `build.ts`. D198.
-    return buildingMinutes(subject.building, subject.level, techOf({ research: research(view) }));
+    // The five-minute rule, as `build.ts` places it (owner, 2026-11-20).
+    return upgradeOrderMinutes(buildingMinutes(subject.building, subject.level, techOf({ research: research(view) })));
   }
   if (subject && 'research' in subject) {
     // The subject supplies the row's identity; the live clock still comes from
@@ -160,6 +162,7 @@ export function orderMinutes(
   switch (kind) {
     case 'BUILDING':
     case 'INSTRUMENT':
+      return upgradeOrderMinutes(buildMinutes(priced, projectedCore(view), techOf({ research: research(view) })));
     case 'SATELLITE':
       return buildMinutes(priced, projectedCore(view), techOf({ research: research(view) }));
     case 'HULL':

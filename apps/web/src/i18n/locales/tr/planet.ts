@@ -524,6 +524,8 @@ export const upgradeRow = {
   /** İşin kendisi ne kadar sürer — cüzdanın değil, nesnenin saati. */
   takes: "{{duration}}",
   takesLabel: "Yapımı {{duration}} sürer",
+  instant: "Anında · ≤5 dk",
+  instantLabel: "Anında: 5 dakika ve altı yükseltmeler süresizdir",
   ladder: "Seviye {{level}} / {{max}}",
   level: "Seviye {{level}}",
 } as const;

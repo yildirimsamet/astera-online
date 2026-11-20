@@ -121,6 +121,14 @@ describe('the published Wiki contract', () => {
     for (const [index, row] of table.rows.entries()) expect(row[column]).toBe(new Intl.NumberFormat('en', { maximumFractionDigits: 2 }).format(storageHours(index + 1)));
   });
 
+  // The five-minute rule (owner, 2026-11-20): the minutes column is the base clock; the note says when it is none.
+  it.each([{ kind: 'building', id: 'VAULT' }, { kind: 'instrument', id: 'RADAR' }] as const)('says beside the $kind table that five minutes or less is instant', subject => {
+    const notes = (language: 'en' | 'tr') => subjectReference(subject, language).blocks
+      .flatMap(block => block.kind === 'note' ? [block.text] : []).join(' ');
+    expect(notes('en')).toContain('5 minutes or less finishes instantly');
+    expect(notes('tr')).toContain('5 dakika veya daha kısa');
+  });
+
   it('uses the game’s Turkish class names in the counter comparison', () => {
     const article = getWikiArticle('combat.counters');
     if (!article) throw new Error('Missing counter guide');

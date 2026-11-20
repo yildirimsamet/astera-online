@@ -1992,6 +1992,8 @@ export function useUpgrade() {
       rollback(context);
     },
     onSuccess: async (result) => {
+      // The five-minute rule finished it in this answer (owner, 2026-11-20): the building rises now.
+      if ((result.planet.buildings[result.type] ?? 0) >= result.level) { playSound('confirm'); haptic('commit'); }
       await apply(result.planet);
       // The ladder because Wealth moved. The order only joined a queue: the galaxy
       // moves when it completes, and `build_complete` reads it then.
@@ -2165,6 +2167,8 @@ export function useRaiseInstrument() {
     },
     // A new Telescope level changes what every reading is allowed to say.
     onSuccess: async (result) => {
+      // The five-minute rule finished it in this answer, as for a building.
+      if ((result.planet.instruments[result.type] ?? 0) >= result.level) { playSound('confirm'); haptic('commit'); }
       await apply(result.planet);
       invalidate(keys.intel, keys.galaxy, keys.leaderboard);
     },

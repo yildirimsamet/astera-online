@@ -23,6 +23,7 @@ import {
   satelliteMinutes,
   satelliteSlots,
   seeingUnlocked,
+  upgradeOrderMinutes,
   type BuildingId,
   type FaultKind,
   type HullId,
@@ -257,7 +258,8 @@ export async function placeBuildingUpgrade(
     cost,
     // `buildingMinutes`, never `profileBuilding().minutes`: the latter is the
     // design reference and knows nothing about what this commander automated. D198.
-    minutes: buildingMinutes(type, level + 1, asTech(context.projected.research)),
+    // The five-minute rule (owner, 2026-11-20): an upgrade this short takes no time at all.
+    minutes: upgradeOrderMinutes(buildingMinutes(type, level + 1, asTech(context.projected.research))),
   });
   // The order has passed every gate and payment. Keep this stamp in that same
   // planet-locked transaction: refused/rolled-back orders never buy protection.
@@ -481,9 +483,9 @@ export async function raiseInstrument(
       subject: type,
       count: 1,
       cost,
-      minutes: buildMinutes(
+      minutes: upgradeOrderMinutes(buildMinutes(
         cost, context.projected.buildings.CORE, asTech(context.projected.research),
-      ),
+      )),
     });
 
     return { type, level: level + 1, planet: await loadPlanetViewData(tx, planetId, clock) };

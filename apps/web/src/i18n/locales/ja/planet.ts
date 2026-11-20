@@ -536,6 +536,8 @@ export const upgradeRow = {
    */
   takes: "{{duration}}",
   takesLabel: "ビルドには {{duration}} がかかります",
+  instant: "即時 · 5分以内",
+  instantLabel: "即時：5分以内のアップグレードは待ち時間なしで完了します",
   /** A row whose level has a top: research ladders are the only ones so far. T12. */
   ladder: "L{{level}} / {{max}}",
   level: "レベル{{level}}",

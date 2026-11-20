@@ -522,6 +522,8 @@ export const upgradeRow = {
   /** Durée du travail lui-même — l’horloge de l’objet, pas celle du portefeuille. */
   takes: "{{duration}}",
   takesLabel: "Construction : {{duration}}",
+  instant: "Immédiat · ≤5 min",
+  instantLabel: "Immédiat : les améliorations de 5 minutes ou moins ne prennent pas de temps",
   ladder: "Niveau {{level}} / {{max}}",
   level: "Niveau {{level}}",
 } as const;

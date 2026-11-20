@@ -215,6 +215,12 @@ keeps its separate sixty-minute strategic build (D97), and so does the intercept
 answers it (D139) — both are strategic assets on the world rather than queue orders, and both are
 stopped by a bombardment and resumed by the recovery that follows.
 
+**The five-minute rule** (owner, 2026-11-20; `INSTANT_BUILD`, `upgradeOrderMinutes`). A building or
+instrument upgrade whose whole time, research applied, is five minutes or less takes no time: on a
+free CONSTRUCTION lane it completes in the answer that ordered it; behind another order it completes
+one second after that order. Price, Core ceiling and queue depth still apply. Hulls, defence,
+research and satellites keep their clocks. The card says "Instant · ≤5 min" where the time would be.
+
 **Research is bought on a surface of its own** (D140). The selected world pays, but the order enters
 the commander's three-deep RESEARCH lane; no planet gains an extra lane and no Construction or Yard
 slot is consumed. Starting it is an irreversible commander commitment. The screen draws that lane,

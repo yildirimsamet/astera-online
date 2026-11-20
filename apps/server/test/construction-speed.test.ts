@@ -13,7 +13,7 @@ import {
   buildUnits, installSatellite, raiseInstrument, upgradeBuilding,
 } from '../src/services/build.js';
 import {
-  giveResearch, giveSatellite, grant, seedWorld, setLevel, testDb, type Fixture,
+  giveInstrument, giveResearch, giveSatellite, grant, seedWorld, setLevel, testDb, type Fixture,
 } from './helpers.js';
 
 /**
@@ -67,6 +67,8 @@ describe('the surface build ladder, through the real queue', () => {
     // out, so the Core this file prices against is set AFTER it, never before.
     await grant(f.db, planetId, 4_000_000, 4_000_000);
     await setLevel(f.db, planetId, 'CORE', CORE);
+    // A Vault rung long enough to keep its clock: the five-minute rule finishes shorter ones at once.
+    await setLevel(f.db, planetId, 'VAULT', 5);
   });
 
   it('shortens a building by the rung the commander holds', async () => {
@@ -82,11 +84,13 @@ describe('the surface build ladder, through the real queue', () => {
 
   it('shortens an instrument by the same rung', async () => {
     await giveSatellite(f.db, planetId, 'UPLINK');
+    await giveInstrument(f.db, planetId, 'RADAR', 1);
     await giveResearch(f.db, planetId, 'AI_ROBOTS', 5);
     await raiseInstrument(f.db, planetId, 'RADAR', f.clock);
 
+    // The second rung: the first one is under five minutes and finishes at once.
     expect(await queuedSeconds(f, planetId))
-      .toBe(asStored(buildMinutes(instrumentCost('RADAR', 0), CORE, {}) * 0.75));
+      .toBe(asStored(buildMinutes(instrumentCost('RADAR', 1), CORE, {}) * 0.75));
   });
 
   it('shortens a satellite by the same rung', async () => {

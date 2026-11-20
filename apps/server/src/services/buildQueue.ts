@@ -283,7 +283,8 @@ export async function placeBuildOrder(
   if (!Number.isInteger(input.count) || input.count < 1) {
     throw new GameError('BAD_COUNT', 'Count must be a positive integer');
   }
-  if (!Number.isFinite(input.minutes) || input.minutes <= 0) {
+  // Zero is the five-minute rule's instant upgrade (`upgradeOrderMinutes`); nothing else may ask for it.
+  if (!Number.isFinite(input.minutes) || input.minutes < 0) {
     throw new Error(`invalid build duration for ${input.kind}/${input.subject}`);
   }
   if (
@@ -294,7 +295,13 @@ export async function placeBuildOrder(
     throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources');
   }
 
-  const durationSeconds = Math.max(1, Math.ceil(input.minutes * 60));
+  /*
+    AN INSTANT ORDER ON A FREE QUEUE IS DONE IN THIS TRANSACTION (owner, 2026-11-20). Behind another
+    order it keeps the one-second floor every order has, so no two completions share an instant and
+    the worker still applies them in queue order.
+  */
+  const instant = input.minutes === 0 && context.orders.length === 0;
+  const durationSeconds = instant ? 0 : Math.max(1, Math.ceil(input.minutes * 60));
   const startedAt = context.orders.at(-1)?.readyAt ?? planet.now;
   const readyAt = new Date(startedAt.getTime() + durationSeconds * 1_000);
   // The freeze event owns the deadline itself. Equality would leave two due
@@ -328,7 +335,7 @@ export async function placeBuildOrder(
       kind: input.kind,
       subject: input.subject,
       count: input.count,
-      status: 'BUILDING',
+      status: instant ? 'COMPLETED' : 'BUILDING',
       startedAt,
       readyAt,
       remainingSeconds: durationSeconds,
@@ -337,13 +344,17 @@ export async function placeBuildOrder(
     .returning();
   if (!order) throw new Error('build order insert returned no row');
 
-  await schedule(tx, {
-    seasonId: planet.seasonId,
-    kind: 'build_complete',
-    refId: order.id,
-    payload: { expectedReadyAt: readyAt.toISOString() },
-    resolveAt: readyAt,
-  });
+  if (instant) {
+    await finishOrder(tx, planet, order);
+  } else {
+    await schedule(tx, {
+      seasonId: planet.seasonId,
+      kind: 'build_complete',
+      refId: order.id,
+      payload: { expectedReadyAt: readyAt.toISOString() },
+      resolveAt: readyAt,
+    });
+  }
   await refreshWealth(tx, planet);
   // D212: building, ship, defence, instrument and satellite orders keep a commander home; a repair does not.
   if (input.kind !== 'REPAIR') await markProgress(tx, planet.playerId, planet.now);
@@ -510,6 +521,15 @@ export async function applyBuildCompletion(
     .returning({ id: buildOrders.id });
   if (claimed.length === 0) return false;
 
+  await finishOrder(tx, planet, order);
+  return true;
+}
+
+/**
+ * WHAT A COMPLETED ORDER DOES TO ITS WORLD, whether the worker reached its instant or the
+ * five-minute rule completed it in the transaction that placed it.
+ */
+async function finishOrder(tx: Tx, planet: LockedPlanet, order: BuildOrder): Promise<void> {
   await applyOrderEffect(tx, planet, order);
   if ((order.kind === 'BUILDING' && order.subject === 'CORE') || (order.kind === 'INSTRUMENT' && order.subject === 'AEGIS')) {
     await refreshPlanetAegis(tx, planet.planetId, order.readyAt);
@@ -544,7 +564,6 @@ export async function applyBuildCompletion(
   }
   await reflowQueue(tx, order.planetId, order.queue, planet.now, true);
   await refreshWealth(tx, planet);
-  return true;
 }
 
 /** Radiation closes only REPAIR: finish work already due, then return each remaining invoice once. */

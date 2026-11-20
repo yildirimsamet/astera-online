@@ -439,8 +439,11 @@ describe('kopuşta kuyruğun olayları', () => {
 
   it('kopuşla aynı batch\'te vadesi gelen emir işçiyi düşürmez', async () => {
     const { upgradeBuilding } = await import('../src/services/build.js');
+    // 5 dk kuralı (2026-11-20) kısa basamağı anında bitirir: emir uzun bir basamak, saat vadesine dört dakika kala.
+    await setLevel(f.db, colony, 'VAULT', 5);
     await upgradeBuilding(f.db, colony, 'VAULT', f.clock);
     const [order] = await f.db.select().from(buildOrders).where(eq(buildOrders.planetId, colony));
+    f.clock.set(new Date(order!.readyAt.getTime() - 4 * 60_000));
     // Kopuş tick'i bu olayı da aynı batch'te talep eder ve kopuştan SONRA çalıştırır.
     expect(order!.readyAt.getTime()).toBeLessThan(f.clock.now().getTime() + 5 * 60_000);
 
@@ -451,7 +454,7 @@ describe('kopuşta kuyruğun olayları', () => {
     expect(event.lastError).toBeNull();
     const [vault] = await f.db.select().from(buildings)
       .where(and(eq(buildings.planetId, colony), eq(buildings.type, 'VAULT')));
-    expect(vault!.level).toBe(0);
+    expect(vault!.level).toBe(5);
   });
 });
 

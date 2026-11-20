@@ -201,7 +201,7 @@ Yok. Üretim artışı ×5 (+%400), owner onayı 2026-11-20.
 - [x] Faz 0 ölçüm
 - [x] Faz 1 ekran sırası (oynanış görseli Faz 4 oyun testinde)
 - [ ] Faz 2 Kuruluş Saati
-- [ ] Faz 2b 5 dk kuralı
+- [x] Faz 2b 5 dk kuralı
 - [ ] Faz 3 kişisel kayalar
 - [ ] Faz 4 korsan senaryosu
 - [ ] Faz 5 sinyal 4×
@@ -234,3 +234,4 @@ Yok. Üretim artışı ×5 (+%400), owner onayı 2026-11-20.
 | Faz 0 | Bitti 2026-11-20 | `surface_closed`; taban çizgisi (17 kayıt, 8 iniş): inişten sonraki 5 dk'da ≥3 komut 4/8, hiç komut 2/8 |
 | Kararlar | 2026-11-20 | 5 dk kuralı eklendi (§5.6, Faz 2b); Kuruluş Saati süre −%50 kaldırıldı |
 | Faz 1 | Kod bitti 2026-11-20 | Bağlantılı 72 web test dosyası (821 test) yeşil. Görsel oynanış Faz 4 oyun testinde: Faz 1 yeni görsel getirmez, yalnız yüzeylerin sırasını değiştirir |
+| Faz 2b | Bitti 2026-11-20 | Sunucu boş sırada aynı işlemde bitirir (`finishOrder`), dolu sırada 1 sn sonra; istemci fişi "Anında · ≤5 dk", iyimser tahmin seviyeyi hemen verir, cevapta `confirm` sesi + `commit` titreşimi; sim aynası, Wiki notu, 6 dil. Eski 10 sunucu testi "kısa bekleyen emir" varsayıyordu: `rungsThatTakeTime` ile niyetleri korunarak güncellendi. Sim'de yalnız yeni birim testi koşuldu |
