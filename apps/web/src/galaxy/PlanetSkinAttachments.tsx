@@ -8,6 +8,7 @@ import type { PlanetNode } from './scene.js';
 import { bodyLight } from './PlanetField.jsx';
 import { sphereInFrustum } from './frustum.js';
 import { createPlanetSkinAttachmentMaterial } from './planetSkinMaterial.js';
+import { greyUnseenMaterial, modelTint } from './unseenWorld.js';
 import {
   PLANET_SKIN_BODY_SCALE,
   PLANET_SKIN_ATTACHMENT_SCALE_VARIANTS,
@@ -45,6 +46,7 @@ export function PlanetSkinAttachments({
   nodes,
   galaxyLod,
   avoidFractures,
+  grey = false,
 }: {
   attachments: readonly SkinAttachment[];
   finish: PlanetSkinVisual['finish'];
@@ -52,6 +54,8 @@ export function PlanetSkinAttachments({
   nodes: readonly AttachmentNode[];
   galaxyLod: boolean;
   avoidFractures: boolean;
+  /** These worlds are outside live sight (`unseenWorld.ts`). */
+  grey?: boolean;
 }) {
   const assets = useMemo(() => resolvePlanetSkinAttachments(attachments), [attachments]);
   if (assets.length === 0) return null;
@@ -63,6 +67,7 @@ export function PlanetSkinAttachments({
       nodes={nodes}
       galaxyLod={galaxyLod}
       avoidFractures={avoidFractures}
+      grey={grey}
     />
   );
 }
@@ -74,6 +79,7 @@ function LoadedPlanetSkinAttachments({
   nodes,
   galaxyLod,
   avoidFractures,
+  grey,
 }: {
   assets: readonly PlanetSkinAttachmentAsset[];
   finish: PlanetSkinVisual['finish'];
@@ -81,6 +87,7 @@ function LoadedPlanetSkinAttachments({
   nodes: readonly AttachmentNode[];
   galaxyLod: boolean;
   avoidFractures: boolean;
+  grey: boolean;
 }) {
   const urls = useMemo(() => assets.map((entry) => entry.url), [assets]);
   const loaded = useGLTF(urls, false);
@@ -93,12 +100,14 @@ function LoadedPlanetSkinAttachments({
     const material = finish.kind === 'PALETTE'
       ? createPlanetSkinAttachmentMaterial(source, finish).material
       : source.clone();
+    // Its world is outside live sight: the attachment goes black and white with it.
+    if (grey) greyUnseenMaterial(material);
     return {
       asset: entry,
       geometry: unitAttachmentGeometry(mesh),
       material,
     };
-  }), [assets, loaded, finish]);
+  }), [assets, loaded, finish, grey]);
   const probes = useMemo(() => planetSurfaceProbes(planetGeometry), [planetGeometry]);
   const plans = useMemo(
     () => planPlanetSkinAttachments(
@@ -153,12 +162,7 @@ function LoadedPlanetSkinAttachments({
       helper.updateMatrix();
       roots[index]?.copy(helper.matrix);
       visible[index] = 1;
-      const light = bodyLight(node.stance, node.intel);
-      const cool = node.intel === 'RESOLVED' ? [1, 1, 1] : [0.72, 0.84, 1];
-      const offset = index * 3;
-      lights[offset] = light * cool[0]!;
-      lights[offset + 1] = light * cool[1]!;
-      lights[offset + 2] = light * cool[2]!;
+      lights.set(modelTint(node, bodyLight(node.stance, node.intel)), index * 3);
     });
 
     plans.forEach((plan, groupIndex) => {

@@ -26,7 +26,7 @@ import { observedParkedShips, type HomewardShip, type ParkedShip } from './parke
 import { UnknownSignalGuide, UnknownSignalGuideTracker } from './UnknownSignalGuide.js';
 import { OutpostFlag, OutpostGuides, OutpostGuideTracker } from './OutpostGuide.js';
 import { GalaxyPostprocessing } from './GalaxyPostprocessing.js';
-import { SpaceFogSource } from './SpaceFog.js';
+import { UnknownClouds } from './UnknownClouds.js';
 import { useGpuContext } from './gpuContext.js';
 import { guardCompileAsync } from './safeCompile.js';
 import { ViewOffset } from './ViewOffset.js';
@@ -1025,6 +1025,8 @@ export function GalaxyCanvas({
         )}
         {sensors && !universe?.open && <StarterSightMarks sensors={sensors} asteroids={asteroids} seasonStart={seasonStart}/>}
         <OwnershipFilaments nodes={nodes} selectedId={selectedId} />
+        {/* Every world outside live sight wears a band of mist (owner, 2026-11-20). */}
+        <UnknownClouds nodes={fieldBodies} />
         <PlanetField
           nodes={fieldBodies}
           selectedId={selectedId}
@@ -1173,7 +1175,6 @@ export function GalaxyCanvas({
       <RedrawOnRestore epoch={gpu.epoch} />
       <WideScreenFov />
       <SceneRenderGate />
-      <SpaceFogSource sensors={sensors} />
       <GalaxyPostprocessing
         live={gpu.live}
         epoch={gpu.epoch}

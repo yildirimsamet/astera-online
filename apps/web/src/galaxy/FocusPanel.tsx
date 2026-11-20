@@ -102,6 +102,7 @@ import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { TargetDossier } from '../v2/hud/TargetDossier.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import { useNativeBack } from '../platform/nativeBack.js';
+import { isUnseen } from './unseenWorld.js';
 
 /**
  * FOCUS — what is this thing, and what do I know about it?
@@ -962,7 +963,7 @@ export function PlanetFocus({
     <Shell
       art={target.body === 'VESSEL'
         ? <img src={heroArt(vesselHull(target.id), target.look ?? 'WRECKED')} alt="" draggable={false} className="size-10 rounded-control object-cover" />
-        : <PlanetSigil seed={target.id} skinId={target.skin?.id} size={36} dark={known.kind === 'none'} />}
+        : <PlanetSigil seed={target.id} skinId={target.skin?.id} size={36} unseen={isUnseen(target)} />}
       eyebrow={target.body === 'VESSEL'
         ? t('starter.eyebrow')
         // The kind and the code that tells two alike apart; the name leads (player test).

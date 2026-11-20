@@ -4,9 +4,27 @@ import { Suspense, useMemo } from 'react';
 import * as THREE from 'three';
 import { starterGlowDirections } from './mainSky.js';
 
-/** The same spiral the first galaxies' screens show; 124×68. */
-const GALAXY_URL = '/assets/images/starter/galaxy-badge.webp';
-const GALAXY_ASPECT = 68 / 124;
+/**
+ * The same spiral the first galaxies' screens show, cut for the sky: the badge's navy ground taken
+ * out and its edge faded to black. Drawn additively, the badge itself added its ground too and hung
+ * in the sky as a pale rectangle (owner, 2026-11-20). 248×136.
+ */
+const GALAXY_URL = '/assets/images/starter/galaxy-badge-sky.webp';
+const GALAXY_ASPECT = 136 / 248;
+
+/**
+ * Light added to the sky. Out of the scene fog: the sprites hang past its far edge, where fog turns
+ * any lit pixel into its own navy — added to the sky, each galaxy became a flat rectangle that came
+ * and went with the camera's distance (owner, 2026-11-20).
+ */
+export const SKY_GALAXY_MATERIAL = {
+  sizeAttenuation: false,
+  transparent: true,
+  opacity: 0.6,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+  fog: false,
+} as const;
 
 /**
  * WHERE YOU CAME FROM, in the main galaxy's sky (A18). No data, no tap, nothing to read: only that
@@ -14,7 +32,7 @@ const GALAXY_ASPECT = 68 / 124;
  *
  * VFX brief (owner 2026-11-18: no round glow anywhere). In the world: the first galaxies hang far off
  * in the main galaxy's sky, each a small spiral turned its own way. Asset:
- * `assets/images/starter/galaxy-badge.webp`, the spiral the starter screens use. Why: a galaxy looks
+ * `assets/images/starter/galaxy-badge-sky.webp`, the spiral the starter screens use. Why: a galaxy looks
  * like a galaxy; a blur of light says nothing about where you came from.
  */
 function Galaxies() {
@@ -30,7 +48,7 @@ function Galaxies() {
     <>
       {galaxies.map(({ at, width, turn }, index) => (
         <sprite key={index} position={[...at]} scale={[width, width * GALAXY_ASPECT, 1]} raycast={() => null}>
-          <spriteMaterial map={map} rotation={turn} sizeAttenuation={false} transparent opacity={0.6} depthWrite={false} blending={THREE.AdditiveBlending} />
+          <spriteMaterial map={map} rotation={turn} {...SKY_GALAXY_MATERIAL} />
         </sprite>
       ))}
     </>

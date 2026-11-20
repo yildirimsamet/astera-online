@@ -21,13 +21,23 @@ does not accept that trade. **Beautiful is a requirement, not a tiebreaker.** A 
 mechanic rendered badly does not ship, and the horizon is still waiting for an answer that
 clears both bars.
 
-**The answer, 2026-11-14 (owner's lab choice, built in `galaxy/spaceFog.ts` and `spaceFogEffect.ts`):**
-a very thin soft haze outside the union of the commander's identify spheres — density 0.025, a
-38 game unit soft edge. Not the grey cloud of D124: it only lifts the dark sky a few levels and
-mutes far worlds, and the worlds stay findable. Live objects inside an open volume are never veiled.
+**The answer, 2026-11-20 (owner): the sign is on the WORLD, not in the space.** A world without a
+live reading (`intel` REMEMBERED or UNKNOWN) is drawn in black and white — bold, at full light,
+never dimmed or tinted — with one thin band of mist across its middle (`galaxy/unseenWorld.ts`,
+`UnknownClouds.tsx`; mist is Synty's `explosioncloud`, `synty-fog-cloud.webp`). A live world keeps
+its full colour. Because it belongs to the world it reads from any camera, inside or far outside
+a telescope's reach, and it never makes the galaxy look empty. The grey follows the world
+everywhere it is drawn: every model tier, the card stand-in while a model loads, the limb, skin
+attachments, a remembered world's cosmetic ring, and the focus sheet's portrait. Public event marks
+(the EMP corona, the Aegis dome) keep their colour: they are not the world's own.
 
-Three failure modes from that build are named because each cost a draft, and any future
-attempt will meet them again:
+The screen-space haze of 2026-11-14 to 11-20 (`spaceFog`) was removed. From inside a telescope's
+reach every view ray leaves the sphere, so the whole sky is either hazed (the bubble reads as
+milky, inside foggy and outside clear) or not hazed (nothing reads as fogged). It could not say
+"in here is clear" from both sides of the boundary.
+
+Three failure modes from the fog builds are named because each cost a draft, and any future
+attempt at a space-filling fog will meet them again:
 
 - **A surface is not a volume.** Fog drawn as horizontal sheets in the galactic plane reads as
   a FLOOR — a sea with a pit dug in it — and the camera flies in and out of it while orbiting.

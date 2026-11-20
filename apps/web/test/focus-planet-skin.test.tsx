@@ -59,3 +59,29 @@ describe('the focus rail planet portrait', () => {
     expect(portrait()).toHaveAttribute('src', planetArt('focus-destination'));
   });
 });
+
+describe('the focus rail portrait of a world outside live sight', () => {
+  it.each(['REMEMBERED', 'UNKNOWN'] as const)('is black and white for a %s world, and in colour once it is in sight', (intel) => {
+    const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const api = new Api({ fetch: () => new Promise<Response>(() => undefined) });
+    const world = (sight: GalaxyPlanet['intel']): GalaxyPlanet => ({
+      id: 'focus-destination', name: 'Kestrel', owner: 'Commander',
+      position: { x: 200, y: 0, z: 0 }, coreTier: 2, coreLevel: 6,
+      intel: sight, kind: 'COLONY', state: { kind: 'NORMAL' },
+      satellites: [], shielded: false, isSelf: false, isOwned: false,
+    });
+    const rail = (target: GalaxyPlanet) => <QueryClientProvider client={queries}>
+      <ApiProvider api={api}><ToastProvider><PlanetFocus
+        target={target} planet={origin} intel={undefined} reports={[]} now={0}
+        onClose={noop} onAttack={noop} onTransfer={noop} onInstallTelescope={noop}
+        onLaunched={noop} open={false} onToggle={noop}
+      /></ToastProvider></ApiProvider>
+    </QueryClientProvider>;
+    const { container, rerender } = render(rail(world(intel)));
+    const portrait = () => container.querySelector<HTMLImageElement>('[data-focus-rail] [role="img"] img');
+    expect(portrait()?.style.filter).toMatch(/grayscale\(1\)/);
+    expect(portrait()?.style.filter).not.toMatch(/brightness\(0\./);
+    rerender(rail(world('RESOLVED')));
+    expect(portrait()?.style.filter ?? '').toBe('');
+  });
+});

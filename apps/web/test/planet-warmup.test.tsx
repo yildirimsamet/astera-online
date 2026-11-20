@@ -71,6 +71,17 @@ describe('planet preparation is isolated from drawing and component lifetime', (
     expect(upload.mock.calls).toEqual(maps.map(map => [map]));
   });
 
+  it('compiles the grey dress of a world outside live sight beside the colour one', () => {
+    render(<PlanetWarmup id={id} lod="lite" />);
+    const probes = compile.mock.calls[0]?.[0].children ?? [];
+    const keys = probes.map((probe) => {
+      const material: unknown = probe instanceof THREE.Mesh ? probe.material : null;
+      return material instanceof THREE.Material ? material.customProgramCacheKey() : '';
+    });
+    expect(keys).toHaveLength(2);
+    expect(keys[1]).toBe(`${keys[0] ?? ''}|unseen-grey`);
+  });
+
   it('prepares only the colour map for a light model', async () => {
     render(<PlanetWarmup id={id} lod="lite" />);
     await act(async () => { await Promise.resolve(); });

@@ -22,6 +22,7 @@ import {
 import { approachingFull, groupPlanetsByLod, lodFor, screenRadius, selectPlanetWarmupTargets, type PlanetLod } from './planetLod.js';
 import { planetPickRadius, seat, settleMembers } from './planetPick.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
+import { cardGroups, greyColour, greyFragment, isUnseen, modelTint } from './unseenWorld.js';
 import { createViewMemo, viewChanged } from './viewMemo.js';
 import { drawnRadius, growthMoving } from './coreLevelUp.js';
 import {
@@ -58,6 +59,8 @@ interface Group {
   texture: string;
   nodes: PlanetNode[];
   opaquePreview?: boolean;
+  /** Worlds outside live sight: the card is drawn in black and white (`unseenWorld.ts`). */
+  grey?: boolean;
 }
 
 export function PlanetField({
@@ -152,12 +155,10 @@ export function PlanetField({
       {tiers.map((group) => {
         // A model that fails, or is still on its way, leaves these worlds on their card —
         // rendered from the same model, so the stand-in is the same world.
-        const render = (
-          <PlanetInstances
-            group={{ texture: planetArt(group.nodes[0]?.id ?? ''), nodes: group.nodes }}
-            onSelect={onSelect}
-          />
-        );
+        // Live and unseen worlds on separate cards: an unseen one stays grey while it loads.
+        const render = cardGroups(group.nodes, node => planetArt(node.id)).map(card => (
+          <PlanetInstances key={card.grey ? 'grey' : 'live'} group={card} onSelect={onSelect} />
+        ));
         /*
           THE STAND-IN'S OWN LOADING STAYS HERE. The card suspends on its texture too, and
           a fallback that suspends climbs to the scene's one boundary — which hid every
@@ -332,6 +333,12 @@ export function limbLight(stance: Stance, intel: PlanetNode['intel']): number {
   return intel === 'RESOLVED' ? light : Math.max(light, MIN_PLANET_BODY_LIGHT + 0.05);
 }
 
+/** A world's limb in its own colour, or in grey outside live sight (`unseenWorld.ts`). */
+function limbColour(tint: THREE.Color, node: PlanetNode): THREE.Color {
+  tint.set(planetGlowColor(node.id, node.skin?.id));
+  return isUnseen(node) ? greyColour(tint) : tint;
+}
+
 function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
   const ref = useRef<THREE.InstancedMesh>(null);
   const camera = useThree((state) => state.camera);
@@ -351,7 +358,7 @@ function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
     if (!mesh) return;
     nodes.forEach((node, i) => {
       const light = limbLight(node.stance, node.intel);
-      mesh.setColorAt(i, tint.set(planetGlowColor(node.id, node.skin?.id)).multiplyScalar(light));
+      mesh.setColorAt(i, limbColour(tint, node).multiplyScalar(light));
     });
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     if (!Array.isArray(mesh.material)) mesh.material.needsUpdate = true;
@@ -374,7 +381,7 @@ function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
         // A slow, restrained shine helps worlds outside live Telescope sight get noticed.
         // It follows their authored colour and adds no geometry or draw calls.
         const shine = 1 + 0.24 * ((1 + Math.sin(t * 0.4 + node.position[0])) / 2) ** 6;
-        mesh.setColorAt(i, tint.set(planetGlowColor(node.id, node.skin?.id)).multiplyScalar(limbLight(node.stance, node.intel) * shine));
+        mesh.setColorAt(i, limbColour(tint, node).multiplyScalar(limbLight(node.stance, node.intel) * shine));
       }
       const edge = MIN_LIMB_PX * pixelScale * camera.position.distanceTo(UP.position);
       // A world mid-step (its Core levelled up) carries its limb with it.
@@ -464,8 +471,6 @@ const UNRESOLVED = {
    * probe buys is the detail drawn ON the body, and none of that is lit by this.
    */
   light: UNRESOLVED_BODY_LIGHT,
-  warm: { r: 1, g: 1, b: 1 },
-  cool: { r: 0.72, g: 0.84, b: 1 },
 } as const;
 
 export function bodyLight(stance: Stance, intel: PlanetNode['intel']): number {
@@ -542,25 +547,14 @@ function SkinBillboards({
   nodes: readonly PlanetNode[];
   onSelect: (id: string) => void;
 }) {
-  const groups = useMemo<Group[]>(() => {
-    const byTexture = new Map<string, PlanetNode[]>();
-    for (const node of nodes) {
-      const visual = node.skin ? planetSkinVisual(node.skin.id, node.skin.status) : null;
-      const texture = visual?.billboardUrl ?? planetArt(node.id);
-      const bucket = byTexture.get(texture);
-      if (bucket) bucket.push(node);
-      else byTexture.set(texture, [node]);
-    }
-    return [...byTexture].map(([texture, group]) => ({
-      texture,
-      nodes: group,
-      opaquePreview: true,
-    }));
-  }, [nodes]);
+  const groups = useMemo<Group[]>(() => cardGroups(nodes, (node) => {
+    const visual = node.skin ? planetSkinVisual(node.skin.id, node.skin.status) : null;
+    return visual?.billboardUrl ?? planetArt(node.id);
+  }).map(group => ({ ...group, opaquePreview: true })), [nodes]);
   // Each bucket loads its art behind its own boundary: a card that suspends must not climb to
   // the scene's one boundary and hide every world with it (F9, `scene-boundaries`).
   return groups.map((group) => (
-    <Suspense key={group.texture} fallback={null}>
+    <Suspense key={`${group.texture}|${group.grey ? 'grey' : 'live'}`} fallback={null}>
       <PlanetInstances group={group} onSelect={onSelect} />
     </Suspense>
   ));
@@ -594,6 +588,17 @@ function PlanetInstances({
    * marked for recompilation here.
   */
   const tint = useMemo(() => new THREE.Color(), []);
+  const opaque = group.opaquePreview === true;
+  const grey = group.grey === true;
+  const compile = useMemo(() => (opaque || grey
+    ? (shader: { fragmentShader: string }) => {
+      if (opaque) maskOpaquePlanetBillboard(shader);
+      if (grey) shader.fragmentShader = greyFragment(shader.fragmentShader);
+    }
+    : undefined), [opaque, grey]);
+  const programKey = useMemo(() => (opaque || grey
+    ? () => `${opaque ? opaquePlanetBillboardProgramKey() : 'planet-billboard'}${grey ? '|unseen-grey' : ''}`
+    : undefined), [opaque, grey]);
   const writeInstances = useCallback((
     mesh: THREE.InstancedMesh,
     painted: THREE.InstancedMesh | null,
@@ -606,30 +611,14 @@ function PlanetInstances({
     let seated = false;
     for (const node of group.nodes) {
       /**
-       * OUT OF SENSOR REACH IS DIMMER AND COLDER. D126.
+       * OUT OF LIVE SIGHT IS BLACK AND WHITE (owner, 2026-11-20; was dimmer and colder, D126).
        *
-       * The same mechanism the fog of war already uses, which is the whole reason
-       * this is the version that survived: the requested contrast is applied to
-       * the body itself, with a resolved world lifted by 25% and everything
-       * outside live sight lowered by 15%. Every earlier attempt — cloud, a glass
-       * shell, a screen-space pass — obscured the map instead of clarifying it.
-       *
-       * Cold rather than merely dark, because darkness alone reads as a small
-       * world and this has to read as an unresolved one.
+       * A live world keeps its own light. A world without a live reading — UNKNOWN or REMEMBERED
+       * alike (D127) — is drawn at full, neutral light on a grey card (`unseenWorld.ts`), so it is
+       * bold, never faded. What a probe bought is the DETAIL drawn on top, not the colour.
        */
-      /**
-       * ONLY A LIVE READING IS DRAWN BRIGHT. D127.
-       *
-       * A REMEMBERED world stays dark with an UNKNOWN one: a probe went there once
-       * and brought back what it saw, and none of that makes the world visible
-       * now. What the probe bought is the DETAIL — the name, the rings, the orbit —
-       * which is drawn on top of a body that is still in the dark.
-       */
-      const seen = node.intel === 'RESOLVED';
-      const light = bodyLight(node.stance, node.intel);
-      const chill = seen ? UNRESOLVED.warm : UNRESOLVED.cool;
       if (paintColours) {
-        mesh.setColorAt(drawn, tint.setRGB(light * chill.r, light * chill.g, light * chill.b));
+        mesh.setColorAt(drawn, tint.setRGB(...modelTint(node, bodyLight(node.stance, node.intel))));
       }
 
       UP.position.set(node.position[0], node.position[1], node.position[2]);
@@ -745,8 +734,8 @@ function PlanetInstances({
           alphaTest={0.35}
           depthWrite
           toneMapped={false}
-          onBeforeCompile={group.opaquePreview ? maskOpaquePlanetBillboard : undefined}
-          customProgramCacheKey={group.opaquePreview ? opaquePlanetBillboardProgramKey : undefined}
+          onBeforeCompile={compile}
+          customProgramCacheKey={programKey}
         />
       </instancedMesh>
       <instancedMesh

@@ -16,18 +16,24 @@ import { PLANET_SKIN_CATALOG } from './skinCatalog.js';
  * which is what lets the same sixteen renders serve every planet in the galaxy at
  * every state.
  */
+/** Black and white, a little steeper than plain grey: the galaxy's unseen look, never faded. */
+const UNSEEN_STYLE = { filter: 'grayscale(1) contrast(1.15)' } as const;
+
 export function PlanetSigil({
   seed,
   size = 128,
   shielded = false,
-  /** Dims the world and drops its glow — used for a planet you cannot see into. */
-  dark = false,
+  /**
+   * A world outside live sight: black and white, bold, and without its glow — the same sign the
+   * galaxy draws on it (`galaxy/unseenWorld.ts`).
+   */
+  unseen = false,
   skinId = null,
 }: {
   seed: string;
   size?: number;
   shielded?: boolean;
-  dark?: boolean;
+  unseen?: boolean;
   skinId?: string | null;
 }) {
   const skin = skinId ? planetSkinById(skinId) : null;
@@ -39,7 +45,7 @@ export function PlanetSigil({
       aria-label={i18n.t('surface.planetSigil')}
     >
       {/* Atmospheric bloom, outside the disc. The only real glow in the interface. */}
-      {!dark && (
+      {!unseen && (
         <div
           className="absolute -inset-[12%] rounded-full"
           style={{
@@ -53,11 +59,11 @@ export function PlanetSigil({
         <span className="absolute inset-0 overflow-hidden rounded-full">
           <img src={PLANET_SKIN_CATALOG[skin.id].image} alt="" aria-hidden loading="lazy"
             className="size-full scale-[1.18] object-cover"
-            style={dark ? { filter: 'brightness(0.62) saturate(0.72)' } : undefined} />
+            style={unseen ? UNSEEN_STYLE : undefined} />
         </span>
       ) : (
         <img src={planetArt(seed)} alt="" aria-hidden loading="lazy" className="relative size-full object-contain"
-          style={dark ? { filter: 'brightness(0.62) saturate(0.72)' } : undefined} />
+          style={unseen ? UNSEEN_STYLE : undefined} />
       )}
 
       {shielded && (

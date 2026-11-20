@@ -12,7 +12,8 @@ import { planetModel } from '../ui/assets.js';
 import { planetSkinVisual } from '../ui/planetSkins.js';
 import { createCountryRecoveryMaterial, createPlanetSkinMaterial } from './planetSkinMaterial.js';
 import { planetSurface, solidPlanetMaterial } from './planetSurface.js';
-import { addPlanetImpact, planetImpactGroups } from './planetImpactMaterial.js';
+import { addPlanetImpact } from './planetImpactMaterial.js';
+import { greyUnseenMaterial, modelTint, planetDrawGroups } from './unseenWorld.js';
 import type { PlanetLod } from './planetLod.js';
 import { placeBodies, placePickSpheres, planetPickRadius, seat, settleMembers } from './planetPick.js';
 import { bodyLight } from './PlanetField.jsx';
@@ -126,6 +127,18 @@ interface Dressed {
 }
 type Dress = (source: THREE.Material) => Dressed;
 
+/** A skin's own finish on one of its models, with any impact scar. */
+function skinDress(source: THREE.Material, finish: NonNullable<ReturnType<typeof planetSkinVisual>>['finish'], level: number): Dressed {
+  if (finish.kind === 'PALETTE') return impactDress(createPlanetSkinMaterial(source, finish), level);
+  return impactDress({ material: finish.damaged ? createCountryRecoveryMaterial(source) : solidPlanetMaterial(source.clone()), uniforms: null }, level);
+}
+
+/** The same dress in black and white for a world outside live sight (`unseenWorld.ts`). */
+function greyWhen(grey: boolean, dressed: Dressed): Dressed {
+  if (grey) greyUnseenMaterial(dressed.material);
+  return dressed;
+}
+
 function impactDress(dressed: Dressed, level: number): Dressed {
   if (level === 0) return dressed;
   const time = dressed.uniforms?.time ?? { value: 0 };
@@ -172,28 +185,37 @@ function WarmPlanetModel({ id, lod }: { id: string; lod: PlanetLod }) {
       const mesh = firstMesh(model.scene);
       const source = mesh && (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material);
       if (!mesh || !source) { done('failed'); return; }
-      const { material } = cachedDress(url, lod === 'full' ? 'full' : 'lite', source, lod === 'full' ? dressFull : dressLite);
+      const key = lod === 'full' ? 'full' : 'lite';
+      const dress = lod === 'full' ? dressFull : dressLite;
+      const { material } = cachedDress(url, key, source, dress);
+      // The grey dress a world outside live sight wears (`unseenWorld.ts`) is prepared too, so the
+      // first unseen world the camera closes on does not stall compiling it.
+      const grey = cachedDress(url, `${key}:grey`, source, part => greyWhen(true, dress(part))).material;
       const probes = new THREE.Group();
       const maps: THREE.Texture[] = [];
       const probe = new THREE.InstancedMesh(cachedGeometry(url, mesh), material, 1);
       probe.setColorAt(0, new THREE.Color(1, 1, 1));
       probes.add(probe);
+      const greyProbe = new THREE.InstancedMesh(cachedGeometry(url, mesh), grey, 1);
+      greyProbe.setColorAt(0, new THREE.Color(1, 1, 1));
+      probes.add(greyProbe);
       if (material instanceof THREE.MeshStandardMaterial) {
         for (const map of [material.map, material.normalMap, material.roughnessMap]) if (map) maps.push(map);
       }
       let preparation: Promise<THREE.Object3D>;
       try { preparation = gl.compileAsync(probes, camera, scene); }
-      catch { probe.dispose(); done('failed'); return; }
+      catch { probe.dispose(); greyProbe.dispose(); done('failed'); return; }
       void preparation.then(
         () => {
           probe.dispose();
+          greyProbe.dispose();
           if (!live || current !== generation) return;
           if (gl.getContext().isContextLost()) { done('context-lost'); return; }
           const textures = queuePlanetTextures(gl, maps, () => work?.covered ?? false);
           cancelTextures = textures.cancel;
           void textures.ready.then(done);
         },
-        () => { probe.dispose(); if (live && current === generation) done('failed'); },
+        () => { probe.dispose(); greyProbe.dispose(); if (live && current === generation) done('failed'); },
       );
     };
     const lost = () => {
@@ -245,12 +267,13 @@ export function PlanetSkinModel({
   onRendered?: () => void;
 }) {
   const visual = useMemo(() => planetSkinVisual(skinId, status), [skinId, status]);
-  const groups = useMemo(() => planetImpactGroups(nodes), [nodes]);
+  const groups = useMemo(() => planetDrawGroups(nodes), [nodes]);
   if (!visual) return null;
   return (
     <>{groups.map(group => <LoadedPlanetSkinModel
-      key={group.level}
+      key={group.key}
       impactLevel={group.level}
+      grey={group.grey}
       visual={visual}
       status={status}
       nodes={group.nodes}
@@ -265,6 +288,7 @@ export function PlanetSkinModel({
 
 function LoadedPlanetSkinModel({
   impactLevel,
+  grey,
   visual,
   status,
   nodes,
@@ -275,6 +299,8 @@ function LoadedPlanetSkinModel({
   onRendered,
 }: {
   impactLevel: number;
+  /** Outside live sight: drawn in black and white. */
+  grey: boolean;
   visual: NonNullable<ReturnType<typeof planetSkinVisual>>;
   status: PlanetSkinStatus;
   nodes: readonly SkinNode[];
@@ -298,16 +324,14 @@ function LoadedPlanetSkinModel({
     if (!model) return null;
     const source = Array.isArray(model.material) ? model.material[0] : model.material;
     if (!source) return null;
-    if (visual.finish.kind === 'PALETTE') return impactDress(createPlanetSkinMaterial(source, visual.finish), impactLevel);
-    return impactDress({ material: visual.finish.damaged ? createCountryRecoveryMaterial(source) : solidPlanetMaterial(source.clone()), uniforms: null }, impactLevel);
-  }, [model, visual, impactLevel]);
+    return greyWhen(grey, skinDress(source, visual.finish, impactLevel));
+  }, [model, visual, impactLevel, grey]);
   const lowDressed = useMemo(() => {
     if (!lowModel) return null;
     const source = Array.isArray(lowModel.material) ? lowModel.material[0] : lowModel.material;
     if (!source) return null;
-    if (visual.finish.kind === 'PALETTE') return impactDress(createPlanetSkinMaterial(source, visual.finish), impactLevel);
-    return impactDress({ material: visual.finish.damaged ? createCountryRecoveryMaterial(source) : solidPlanetMaterial(source.clone()), uniforms: null }, impactLevel);
-  }, [lowModel, visual, impactLevel]);
+    return greyWhen(grey, skinDress(source, visual.finish, impactLevel));
+  }, [lowModel, visual, impactLevel, grey]);
   const fullBody = useRef<THREE.InstancedMesh>(null);
   const lowBody = useRef<THREE.InstancedMesh>(null);
   const hits = useRef<THREE.InstancedMesh>(null);
@@ -366,9 +390,7 @@ function LoadedPlanetSkinModel({
       const mesh = lod === 'full' ? full : low;
       const index = lod === 'full' ? fullCount++ : lowCount++;
       mesh.setMatrixAt(index, helper.matrix);
-      const light = bodyLight(node.stance, node.intel);
-      const cool = node.intel === 'RESOLVED' ? [1, 1, 1] : [0.72, 0.84, 1];
-      mesh.setColorAt(index, tint.setRGB(light * cool[0]!, light * cool[1]!, light * cool[2]!));
+      mesh.setColorAt(index, tint.setRGB(...modelTint(node, bodyLight(node.stance, node.intel))));
       helper.scale.setScalar(planetPickRadius(node.radius, camera, helper.position, size.height));
       helper.updateMatrix();
       hits.current?.setMatrixAt(hitCount, helper.matrix);
@@ -431,6 +453,7 @@ function LoadedPlanetSkinModel({
             nodes={nodes}
             galaxyLod={galaxyLod}
             avoidFractures={status === 'RECOVERY_SHIELD'}
+            grey={grey}
           />
         </Suspense>
       </SkinAssetBoundary>
@@ -468,11 +491,13 @@ export function DefaultPlanetModel({
   capacity: number;
   onSelect?: (id: string) => void;
 }) {
-  const groups = useMemo(() => planetImpactGroups(nodes), [nodes]);
+  // Live and unseen worlds draw apart, so only the unseen ones turn grey (`unseenWorld.ts`).
+  const groups = useMemo(() => planetDrawGroups(nodes), [nodes]);
   return (
     <>{groups.map(group => <ModelInstances
-      key={group.level}
+      key={group.key}
       impactLevel={group.level}
+      grey={group.grey}
       name={`planet-models-${lod}`}
       modelUrl={url}
       // Only a world the camera is close to binds its detail maps; a speck and a planet do not.
@@ -488,6 +513,7 @@ export function DefaultPlanetModel({
 
 function ModelInstances({
   impactLevel,
+  grey = false,
   name,
   modelUrl,
   dress,
@@ -498,6 +524,8 @@ function ModelInstances({
   turning = true,
 }: {
   impactLevel: number;
+  /** Outside live sight: drawn in black and white. */
+  grey?: boolean;
   name: string;
   modelUrl: string;
   dress: Dress;
@@ -516,9 +544,9 @@ function ModelInstances({
     if (!model) return null;
     const source = Array.isArray(model.material) ? model.material[0] : model.material;
     if (!source) return null;
-    return cachedDress(modelUrl, impactLevel > 0 ? `${dressKey}:impact:${impactLevel}` : dressKey, source,
-      material => impactDress(dress(material), impactLevel));
-  }, [model, modelUrl, dressKey, dress, impactLevel]);
+    const key = `${impactLevel > 0 ? `${dressKey}:impact:${String(impactLevel)}` : dressKey}${grey ? ':grey' : ''}`;
+    return cachedDress(modelUrl, key, source, material => greyWhen(grey, impactDress(dress(material), impactLevel)));
+  }, [model, modelUrl, dressKey, dress, impactLevel, grey]);
   const body = useRef<THREE.InstancedMesh>(null);
   const hits = useRef<THREE.InstancedMesh>(null);
   const tint = useMemo(() => new THREE.Color(), []);
@@ -558,9 +586,7 @@ function ModelInstances({
       mesh.count = visible.members.length;
       mesh.visible = mesh.count > 0;
       visible.members.forEach((node, i) => {
-        const light = bodyLight(node.stance, node.intel);
-        const cool = node.intel === 'RESOLVED' ? [1, 1, 1] : [0.72, 0.84, 1];
-        mesh.setColorAt(i, tint.setRGB(light * cool[0]!, light * cool[1]!, light * cool[2]!));
+        mesh.setColorAt(i, tint.setRGB(...modelTint(node, bodyLight(node.stance, node.intel))));
       });
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       if (!turning) placeBodies(mesh, visible.members, 0);

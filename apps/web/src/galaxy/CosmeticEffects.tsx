@@ -13,6 +13,7 @@ import { cosmeticEffectRecipe, effectProgram, fleetFlagPose } from './cosmeticEf
 import { prismShardTransforms, RING_SPANS, saturnRingProfile } from './cosmeticRings.js';
 import { shardFragment, shardVertex } from './cosmeticShaders.js';
 import { createTempestFlashClock } from './tempestFlash.js';
+import { greyObject, isUnseen } from './unseenWorld.js';
 
 let saturnProfile: THREE.DataTexture | null = null;
 /** One small radial profile shared by every Saturn ring on the map. */
@@ -259,9 +260,14 @@ function HeliosStations() {
 export function WorldCosmeticRing({ node }: { node: PlanetNode }) {
   const group = useRef<THREE.Group>(null);
   const at = useMemo(() => new THREE.Vector3(...node.position), [node.position]);
+  const grey = isUnseen(node);
   useFrame(({ camera }) => {
-    if (group.current) group.current.visible = node.radius / Math.max(.01, camera.position.distanceTo(at)) > 1 / 90;
+    if (!group.current) return;
+    group.current.visible = node.radius / Math.max(.01, camera.position.distanceTo(at)) > 1 / 90;
+    // A remembered world's ring goes black and white with the world; a part made since is caught too.
+    if (grey && group.current.visible) greyObject(group.current);
   });
   if (!node.ringId || node.intel === 'UNKNOWN') return null;
-  return <group ref={group} position={node.position} scale={node.radius}><CosmeticRing id={node.ringId} /></group>;
+  // Remounts when sight changes, so a world back in sight gets fresh, colour materials.
+  return <group key={grey ? 'grey' : 'live'} ref={group} position={node.position} scale={node.radius}><CosmeticRing id={node.ringId} /></group>;
 }

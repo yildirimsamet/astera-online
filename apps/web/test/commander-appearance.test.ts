@@ -10,7 +10,8 @@ describe('commander presence in the galaxy', () => {
     expect(PARK.length).toBeCloseTo(1.4);
     expect(PARK.radius).toBe(1.7);
     expect(ESCORT_LENGTH).toBeCloseTo(2.3);
-    expect(ESCORT_LENGTH * FLEET_CRAFT * CRAFT_SCALE).toBeCloseTo(1.656);
+    // Craft were shrunk 2 → 1.75 on purpose (owner, 2026-11-20: "biraz fazla büyük geldi").
+    expect(ESCORT_LENGTH * FLEET_CRAFT * CRAFT_SCALE).toBeCloseTo(1.449);
   });
 
   it('gives the galaxy its own clear-coated materials while preserving the cached hull, textures and glow', () => {
