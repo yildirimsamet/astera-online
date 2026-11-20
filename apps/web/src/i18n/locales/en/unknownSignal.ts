@@ -21,7 +21,7 @@ export const unknownSignal = {
   "build": "Build {{ship}}",
   "needsShipyard": "Courier needs Shipyard level 1.",
   "origin": "Departure world",
-  "oneWay": "Outbound",
+  "oneWay": "Outbound · 4× speed",
   "roundTrip": "Round trip",
   "fuel": "Fuel",
   "odds": "Possible outcomes",

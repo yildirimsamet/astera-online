@@ -21,7 +21,7 @@ export const unknownSignal = {
   "build": "Construire {{ship}}",
   "needsShipyard": "Le Courrier nécessite un chantier naval de niveau 1.",
   "origin": "Monde de départ",
-  "oneWay": "Aller",
+  "oneWay": "Aller · vitesse ×4",
   "roundTrip": "Aller-retour",
   "fuel": "Carburant",
   "odds": "Résultats possibles",

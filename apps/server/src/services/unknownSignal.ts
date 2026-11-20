@@ -3,7 +3,7 @@ import { and, desc, eq, gt, inArray, isNotNull, isNull, lte, or, sql } from 'dri
 import {
   ECONOMY_ADJUSTMENT, GALAXY, UNKNOWN_SIGNAL, alloyRate, collectorCap, crystalRate, deuteriumRate,
   productionHours, productionMult, radarContactRange, coreTier, distance, fleetCount, fleetEntries, fleetSpeedMult,
-  fleetTravelExact, hpRadiationApplies, missionFuel, placeUnknownSignal,
+  hpRadiationApplies, missionFuel, placeUnknownSignal, signalTravelExact,
   rollUnknownSignalOutcome, seededFrom, validateUnknownSignalFleet,
   type Fleet, type Vec3, type UnknownSignalOutcome, type UnknownSignalTier,
 } from '@astera/rules';
@@ -191,7 +191,7 @@ export async function dispatchUnknownSignal(db: Db, playerId: string, id: string
     const fuel = missionFuel(fleet, distance(origin, signal), 2);
     assertFuel(fuel, origin.deuterium);
     const tech = await techOf(tx, playerId);
-    const travelMinutes = fleetTravelExact(distance(origin, signal), fleet, { boost: fleetSpeedMult(origin.orbit), tech });
+    const travelMinutes = signalTravelExact(distance(origin, signal), fleet, { boost: fleetSpeedMult(origin.orbit), tech });
     const arriveAt = addMinutes(origin.now, travelMinutes);
     assertSeasonOpenThrough(origin, addMinutes(arriveAt, travelMinutes));
     const damage = await takeHomeHealth(tx, originId, fleet, origin.now);
@@ -321,7 +321,7 @@ export async function resolveUnknownSignalArrival(tx: Tx, id: string, clock: Clo
   if (!lost && signal.origin && signal.originPlanetId) {
     const destinationId = await safeHomePlanet(tx, signal.playerId, signal.originPlanetId);
     const home = await loadLocked(tx, destinationId, { now: () => signal.arriveAt! }, { requireLive: false });
-    returnAt = addMinutes(signal.arriveAt!, fleetTravelExact(distance(signal, home), fleet, { boost: fleetSpeedMult(home.orbit), tech: signal.tech ?? {} }));
+    returnAt = addMinutes(signal.arriveAt!, signalTravelExact(distance(signal, home), fleet, { boost: fleetSpeedMult(home.orbit), tech: signal.tech ?? {} }));
     await setUnits(tx, signal.originPlanetId, fleet, location(id), player.id);
     await schedule(tx, { seasonId: signal.seasonId, kind: 'unknown_signal_return', refId: id, resolveAt: returnAt,
       dedupeKey: `unknown-signal:return:${id}` });
@@ -373,7 +373,7 @@ export async function recallUnknownSignal(db: Db, playerId: string, id: string, 
       y: signal.origin.y + (signal.y - signal.origin.y) * progress, z: signal.origin.z + (signal.z - signal.origin.z) * progress };
     const destinationId = await safeHomePlanet(tx, playerId, signal.originPlanetId!);
     const home = await loadLocked(tx, destinationId, clock, { requireLive: false });
-    const returnAt = addMinutes(now, fleetTravelExact(distance(turn, home), settled.fleet,
+    const returnAt = addMinutes(now, signalTravelExact(distance(turn, home), settled.fleet,
       { boost: fleetSpeedMult(home.orbit), tech: signal.tech ?? {} }));
     const lost = fleetCount(settled.fleet) === 0;
     await tx.update(unknownSignals).set({ status: lost ? 'lost' : 'recalled', recalledAt: now, returnDepartAt: now, returnAt: lost ? null : returnAt, fleet: settled.fleet,

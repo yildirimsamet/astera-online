@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  COSMETICS, GALAXY, HULLS, MULTI_WORLD, UNKNOWN_SIGNAL,
+  COSMETICS, GALAXY, HULLS, MULTI_WORLD, TRAVEL, UNKNOWN_SIGNAL,
   distance, generateGalaxy, placeUnknownSignal, radarContactRange,
-  rollUnknownSignalOutcome, rollUnknownSignalResources, unknownSignalOdds, validateUnknownSignalFleet,
+  rollUnknownSignalOutcome, rollUnknownSignalResources, signalTravelExact, unknownSignalOdds, validateUnknownSignalFleet,
   type CosmeticId, type Vec3,
 } from '../src/index.js';
 
@@ -12,6 +12,18 @@ const eligibleSkins = COSMETICS.filter(item =>
   || item.category === 'RING'
   || ['planet-lava', 'planet-ice', 'planet-desert', 'planet-toxic'].includes(item.id));
 const ownedPool = eligibleSkins.map(item => item.id);
+
+describe('a signal flight is four times as fast (owner, 2026-11-20; plan §5.4)', () => {
+  it('flies out, back and home from a recall at a quarter of the ordinary time, from the slowest hull', () => {
+    expect(UNKNOWN_SIGNAL.speedMultiplier).toBe(4);
+    const fleet = { DART: 1, COURIER: 1 };
+    const slowest = Math.min(HULLS.DART.speed, HULLS.COURIER.speed);
+    // An independent reference: distance over the wing's pace, scaled by the tempo dial.
+    const ordinary = (1_000 / slowest) * TRAVEL.distanceFactor;
+    expect(signalTravelExact(1_000, fleet, { boost: 1, tech: {} })).toBeCloseTo(ordinary / 4, 9);
+    expect(signalTravelExact(1_000, fleet, { boost: 1.5, tech: {} })).toBeCloseTo(ordinary / 6, 9);
+  });
+});
 
 describe('unknown signal owner decisions', () => {
   it('keeps eligibility, lifetime, cadence and placement limits explicit', () => {

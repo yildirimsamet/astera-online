@@ -4,12 +4,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApiProvider } from '../src/api/context.js';
 import { useUnknownSignals, useUnknownSignalActions } from '../src/api/queries.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { HULLS, type UnknownSignalOutcome } from '@astera/rules';
+import { HULLS, fleetTravelExact, type UnknownSignalOutcome } from '@astera/rules';
 import type { UnknownSignalView } from '../src/api/schemas.js';
 import { UnknownSignalSheet } from '../src/screens/UnknownSignalSheet.js';
 import { UnknownSignalHud } from '../src/screens/UnknownSignalHud.js';
 import { Glyph } from '../src/game-ui/index.js';
 import { unknownSignalQuote, unknownSignalMarkerState, openUnknownSignal, subscribeUnknownSignal } from '../src/lib/unknownSignal.js';
+import { flightModifiers } from '../src/lib/navigation.js';
 import { readsForPrivateEvent, readsForShardEvent } from '../src/session/shardEvents.js';
 import { keys } from '../src/api/keys.js';
 import { Api } from '../src/api/client.js';
@@ -110,6 +111,19 @@ describe('unknown signal commitment sheet', () => {
     expect(screen.queryByRole('button', { name: 'Open Radar' })).not.toBeInTheDocument();
     fireEvent.click(within(document.querySelector<HTMLElement>('.gk-signal__radar')!).getByRole('button', { name: 'What is this?' }));
     expect(screen.getByText(/incoming attack fleets/)).toBeInTheDocument();
+  });
+
+  // Sinyal 4× (owner, 2026-11-20): the quote is the server's leg, a quarter of the ordinary flight.
+  it('says beside the flight time that a signal flight is four times as fast', () => {
+    render(<UnknownSignalSheet {...props()} />);
+    expect(screen.getByText('Outbound · 4× speed')).toBeInTheDocument();
+  });
+
+  it('quotes a quarter of the ordinary flight, as the server flies it', () => {
+    const p = props();
+    const quote = unknownSignalQuote(p.planet, p.signal, 'DART', now);
+    const ordinary = fleetTravelExact(quote.distance, quote.fleet, flightModifiers(p.planet));
+    expect(quote.minutes).toBeCloseTo(ordinary / 4, 9);
   });
 
   it('derives travel and loss value from the current shared ship catalogue', () => {

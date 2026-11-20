@@ -21,7 +21,7 @@ export const unknownSignal = {
   "build": "Construir {{ship}}",
   "needsShipyard": "El Mensajero necesita un astillero de nivel 1.",
   "origin": "Planeta de salida",
-  "oneWay": "Ida",
+  "oneWay": "Ida · velocidad ×4",
   "roundTrip": "Ida y vuelta",
   "fuel": "Combustible",
   "odds": "Resultados posibles",

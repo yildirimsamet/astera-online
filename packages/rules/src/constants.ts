@@ -2475,6 +2475,8 @@ export const UNKNOWN_SIGNAL = {
   /** A first game's first signal (owner, 2026-10-20): soon, and never pirates. */
   firstGameGapMinutes: [2, 10],
   lifetimeMinutes: 60,
+  /** Sinyal 4× (owner, 2026-11-20; plan §5.4): out, back and home from a recall, four times as fast. Fuel unchanged. */
+  speedMultiplier: 4,
   minFromCapital: 400,
   minFromAnyPlanet: 250,
   noRadarRangeLevel: 1,

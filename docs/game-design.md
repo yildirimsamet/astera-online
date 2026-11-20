@@ -49,6 +49,14 @@ profile; cargo keeps its `2.5×` lift, and pirate/merchant anchors follow the sa
 Probe speed is `2369.25`, Prospector speed `891` and its laden return `445.5`.
 Asteroids retain `262.5–562.5`; the Beacon, Derrick and Propulsion ratios are unchanged.
 Death Star speed stays `1500`, Radiation Bomb speed stays `1300`.
+An unknown-signal flight — out, back, and home from a recall — moves at `4×` the wing's pace
+(owner, 2026-11-20; `UNKNOWN_SIGNAL.speedMultiplier`, `signalTravelExact`); its fuel is unchanged.
+
+**Personal rocks** (owner, 2026-11-20; `PERSONAL_ROCKS`, `personal_rocks`). A first game's landing lays
+two rocks 300 and 420 units from the capital: 800–1,200 ore, 35% crystal, six hours. Only their
+commander sees and mines them; another commander's order at one is "not found". They drift at
+`3` units per minute on ordinary orbits, share the season's claim ledger under negative indexes,
+and never enter the shared field, its spawn gate or its counts.
 
 All three refinery outputs fall **15% below the previous live output**, at every level.
 Store and Works resource capacities stay fixed, so Works now fill in about `14.71` hours.
