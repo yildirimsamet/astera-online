@@ -189,6 +189,7 @@ import { useArrivals } from '../session/useArrivals.js';
 import { HitboxLegend } from '../galaxy/hitboxDebug.jsx';
 import { CommanderLegacy } from '../legacy/LegacyPeek.js';
 import { LegacyRevealHost } from '../legacy/AwardReveal.js';
+import { useAttentionBusy } from '../shell/attention/store.js';
 import {
   SeasonRecap,
   seasonRecapShowsPrimaryAction,
@@ -893,6 +894,8 @@ export function GalaxyView({
   const covered = useOpeningCover(assets.ready && dataSettled && drawn, undefined, byJump && assets.ready && dataSettled ? JUMP_OPEN_GRACE_MS : null);
   // A scene waits for the sky: under the opening cover, a sheet or a launch its shots would play to no one.
   const directorLive = !covered && panel === null && !launchingNow && !trading && !mainRowOpen && !targetOpen;
+  // The opening cover, or a card, sheet or launch of the player's own: nothing opens over it by itself (plan 2026-11-20 §5.5).
+  useAttentionBusy('galaxy', covered || targetOpen || legacyOf !== null || launchingNow || trading || mainRowOpen);
   // A jump's last frame waits over this view until it has drawn whole.
   useEffect(() => { if (!covered) markGameDrawn(); }, [covered]);
   useEffect(() => { if (drawn && !covered) onSceneReady?.(); }, [drawn, covered, onSceneReady]);

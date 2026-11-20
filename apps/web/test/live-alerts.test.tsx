@@ -2,6 +2,7 @@ import { renderHook } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { NotificationView } from '../src/api/schemas.js';
 import { useLiveAlerts } from '../src/session/useLiveAlerts.js';
+import { dispatchAttention, resetAttentionForTests } from '../src/shell/attention/store.js';
 
 let notifications: NotificationView[] = [];
 const say = vi.fn();
@@ -15,7 +16,7 @@ const event = (id: string, valid = true): NotificationView => ({ id, kind: 'raid
     attacking: true, grade: 'REPELLED', control: 'DEFENDER', survivors: 3, unitsLost: 0, lootDeuterium: 0, dominion: 7040,
   } : { targetKind: 'MONUMENT', monumentId: '68af7958-61b8-4f14-a5c1-34f692be7987' } });
 
-beforeEach(() => { notifications = []; say.mockClear(); telemetry.observe.mockClear(); });
+beforeEach(() => { notifications = []; say.mockClear(); telemetry.observe.mockClear(); resetAttentionForTests(); });
 
 it('keeps the first snapshot silent, then announces a fresh result only once', () => {
   notifications = [event('old')];
@@ -46,6 +47,20 @@ it('still caps valid batches and never marks overflow read', () => {
   notifications = [...notifications];
   view.rerender();
   expect(say).toHaveBeenCalledTimes(3);
+});
+
+it('holds news back while a surface or scenario has the screen, but still warns of a fleet on its way', () => {
+  dispatchAttention({ kind: 'lock', allow: [] });
+  const view = renderHook(() => { useLiveAlerts(true); });
+  const inbound: NotificationView = { id: 'inbound', kind: 'incoming_fleet', seen: false, at: new Date('2026-10-15T13:03:00.000Z'), payload: { etaMinutes: 5 } };
+  notifications = [inbound, event('news')];
+  view.rerender();
+  expect(say).toHaveBeenCalledTimes(1);
+  expect(say.mock.calls[0]?.[1]).toBe('error');
+  dispatchAttention({ kind: 'lock', allow: null });
+  notifications = [...notifications];
+  view.rerender();
+  expect(say).toHaveBeenCalledTimes(1);
 });
 
 it('tells the measurement which results it showed, under the server ids, and none it dropped', () => {

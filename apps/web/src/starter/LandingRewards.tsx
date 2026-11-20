@@ -53,7 +53,7 @@ function PurseRow({ purse, testId }: { purse: Purse; testId: string }) {
  * here, taken with one press; then the seven commander boxes, the first ready to open where it stands.
  * Once an account; Later closes it for good.
  */
-export function LandingRewards({ onDone }: { onDone: () => void }) {
+export function LandingRewards({ onDone }: { onDone: (code: 'act:take' | 'dismiss') => void }) {
   const { t } = useTranslation();
   const say = useToast();
   const { data } = useRewards();
@@ -64,7 +64,8 @@ export function LandingRewards({ onDone }: { onDone: () => void }) {
   const sum = ready.reduce((total, tier) => ({ alloy: total.alloy + tier.alloy, crystal: total.crystal + tier.crystal }), { alloy: 0, crystal: 0 });
   // The reward first, while there is one to take; then the board.
   const rewarding = ready.length > 0 && granted === null;
-  const close = () => { playSound('tap'); haptic('tap'); remember(); onDone(); };
+  const outcome = granted ? 'act:take' : 'dismiss';
+  const close = () => { playSound('tap'); haptic('tap'); remember(); onDone(outcome); };
   const take = () => {
     haptic('thunk');
     claimAll.mutate(undefined, {
@@ -75,7 +76,7 @@ export function LandingRewards({ onDone }: { onDone: () => void }) {
   const ribbon = rewarding || !boxes ? t('starter.landingRewards.ribbon') : t('rewards.welcome.board');
   return (
     <div data-testid="landing-rewards" className="gk fixed inset-0 z-50">
-      <Dialog ribbon={ribbon} tone="info" rays sound="rankup" onBack={() => { remember(); onDone(); }}
+      <Dialog ribbon={ribbon} tone="info" rays sound="rankup" onBack={() => { remember(); onDone(outcome); }}
         actions={rewarding
           ? <>
               <GameButton tone="self" wide heavy glyph="crate" pending={claimAll.isPending} onPress={take}>{t('starter.landingRewards.take')}</GameButton>

@@ -22,7 +22,8 @@ Hedef: İnişten sonraki ilk saat oyuncunun kaçırmak istemeyeceği, tek bir ç
 | Senaryodaki rakip | Korsan. Komutan değil: bot kararı (2026-10-28) ve "oyuncuya saldırınca kalkan düşer" kuralı korunur. |
 | Senaryoda kayıp | Gerçek kayıp yok. Oyuncu senaryo savaşlarında gemi, kaynak veya bina kaybetmez. |
 | İnişte kayalar | Yanına 2 asteroid. **Kişisel**: yalnız o oyuncu görür ve kazar. |
-| Yeni oyuncu ayrıcalığı | İlk 1 saat: üretim artışı ve her üretim süresi %50 kısa. Oranlar değişebilir, yeni ayrıcalık eklenebilir. Oyuncuya FOMO yaratacak şekilde ama dürüstçe sunulur. |
+| Yeni oyuncu ayrıcalığı | İlk 1 saat: üretim artışı. Oranlar değişebilir, yeni ayrıcalık eklenebilir. Oyuncuya FOMO yaratacak şekilde ama dürüstçe sunulur. İlk saatteki %50 süre kısaltması kaldırıldı (owner, 2026-11-20: "5 dk kuralı zaten yeterli"). |
+| 5 dk kuralı | Toplam süresi 5 dakikayı geçmeyen bina ve alet yükseltmesi süresiz, anında biter. Herkes için ve her zaman. Gemi, savunma, araştırma ve uydu dışarıda. Oyuncuya yükseltme yaparken söylenir. Bkz. §5.6. |
 | Saat | Gerçek hayatta geçen süre (duvar saati). Oyundan çıkınca da işler. |
 | Üretim artışı oranı | ×5 (+%400), alaşım ve kristal. Bkz. §5.1. |
 | Sinyal | Bilinmeyen sinyale gidiş ve dönüş herkes için 4× hızlı. |
@@ -30,7 +31,7 @@ Hedef: İnişten sonraki ilk saat oyuncunun kaçırmak istemeyeceği, tek bir ç
 | Sıra | 1) İniş akışı, 2) sinyal hızı, 3) convoy. Hepsi tek yayında. |
 | Ekran yığılması | İnişten sonraki 10 dakikada çıkan her şey incelenir; hiçbiri üst üste binmez. |
 
-Kilitli karar kontrolü: Bu plan bot kararına dokunmaz (kişisel nesneler ve ayrıcalık yalnız sahibine görünür, istemciye bot bayrağı gitmez). Yeni oyuncuya hız ve üretim ayrıcalığı, owner'ın bu tarihteki açık isteğidir.
+Kilitli karar kontrolü: Bu plan bot kararına dokunmaz (kişisel nesneler ve ayrıcalık yalnız sahibine görünür, istemciye bot bayrağı gitmez). Yeni oyuncuya üretim ayrıcalığı ve herkes için 5 dk kuralı, owner'ın bu tarihteki açık isteğidir.
 
 ## 3. Doğrulanmış gerçekler (2026-11-20, master 2c75c138)
 
@@ -55,14 +56,14 @@ Her an tek bir şey ister. Senaryo sürerken ekran sırası başka engelleyici y
 | An | Süre | Dünyada ne olur | Oyuncunun eylemi | Karşılık |
 | --- | --- | --- | --- | --- |
 | 0. İniş | 0–20 sn | Uçuş sahnesi; gemi gezegene iner | — | Mevcut sahne |
-| 1. Kuruluş Saati açılır | ~20 sn | Rafinerinin ocağı aşırı yükte yanar; üst çubukta 60:00 geri sayım | Kartta tek dokunuş | Ses, titreşim, ocak efekti. Kart: getirdiğin kargo tek satır ve saatin iki ayrıcalığı |
+| 1. Kuruluş Saati açılır | ~20 sn | Rafinerinin ocağı aşırı yükte yanar; üst çubukta 60:00 geri sayım | Kartta tek dokunuş | Ses, titreşim, ocak efekti. Kart: getirdiğin kargo tek satır ve saatin ayrıcalığı (5 kat üretim) |
 | 2. Çevreni tanı | 0,5–2 dk | Kamera iki kişisel kayaya döner | Kazıcıyı kayaya gönder (başlangıç galaksisinde öğrenilmiş eylem) | Kazı yolda; kaya yanında "senin" işareti |
 | 3. Sinyal | 1–3 dk | Yakında bir korsan sinyali belirir | Sonda gönder | Rapor: korsan yuvası, gemi sayısı, ganimet |
-| 4. Gemi | 2–4 dk | Tersane çalışır | Gemi üret | Fişte "Kuruluş Saati: X dk → X/2 dk" |
+| 4. Gemi | 2–4 dk | Tersane çalışır | Gemi üret | Fişte süre ve gemilerin ne işe yarayacağı |
 | 5. Saldırı | 4–6 dk | Filo 4× hızla uçar | Filoyu seç, gönder | Zafer, ganimet, ilk komutan kutusu açılır. Oyuncu gemi kaybetmez |
-| 6. Misilleme | 6–9 dk | Korsanlar karşılık verir; geri sayımlı uyarı | Savunma kur (yarı sürede) | Dalga savunmaya çarpar ve kırılır. Kayıp yok |
+| 6. Misilleme | 6–9 dk | Korsanlar karşılık verir; geri sayımlı uyarı | Savunma kur | Dalga savunmaya çarpar ve kırılır. Kayıp yok |
 | 7. Kapanış | ~10 dk | Saatin kalan 50 dakikası | Sıradaki hedef: rafineriyi yükselt | Özet şeridi. Bekleyen yüzeyler (marka testi, kurulum kartı, etkinlikler) sıradan tek tek gelir |
-| Saat sonu | 60 dk | Ocak normale döner | — | "Kuruluş Saatinde: +X alaşım, N inşa, M dk kazandın" ve yarının kutusu |
+| Saat sonu | 60 dk | Ocak normale döner | — | "Kuruluş Saatinde: +X alaşım, N inşa" ve yarının kutusu |
 
 Son 10 dakikada saat kehribar rengine döner, oyun içinde ve Android'de bir uyarı gider ("sıradaki inşayı şimdi başlat").
 
@@ -72,14 +73,14 @@ Kesin süreler Faz 4'teki oyun testinde ayarlanır. Ekran sırası yalnız bir d
 
 ### 5.1 Kuruluş Saati
 
-- `packages/rules` içinde tek tablo: `NEWCOMER_HOUR = { minutes: 60, productionBonus, timeFactor: 0.5 }`. Yeni ayrıcalık bu tabloya bir anahtar ve uygulandığı tek yer olarak eklenir.
+- `packages/rules` içinde tek tablo: `NEWCOMER_HOUR = { minutes: 60, productionBonus }`. Yeni ayrıcalık bu tabloya bir anahtar ve uygulandığı tek yer olarak eklenir.
 - `players.first_game` (boolean, değişmez): katılımda `accounts.first_game_shield_available` tüketildiğinde `true` yazılır. Sonraki sezonlarda `false`.
 - `newcomerHour(player, now)`: `first_game` ve `main_entered_at`'ten açık mı, `endsAt`, oranlar. Arka plan işi veya kapatılacak bayrak yoktur.
 - Üretim: `productionHours` üçüncü pencereyi alır. Çakışma mevcut kuralla toplanır (ör. ilk sinyalden ENERGY gelirse kısa süre ek artış).
-- Süre: bina, araştırma, uydu, gemi ve savunma süresi emir anında `timeFactor` ile çarpılır ve kaydedilir. Saat içinde başlayan iş saat dolduktan sonra bitse de yarı sürelidir. Faktör zorunlu parametredir; derleyici her çağrı yerini gösterir.
+- Süre ayrıcalığı yok (owner, 2026-11-20). İlk saatteki hızı 5 dk kuralı (§5.6) ve kaynak artışı verir.
 - İstemci oranı göndermez; sunucu kabul etmez.
 
-**Üretim artışı oranı: ×5 (owner onayı 2026-11-20).** Simülasyon: paket ilk 15 dakikada harcanır, sonrasında kuyruğu süre değil kaynak tıkar. Süre indirimi ancak kaynak varsa işe yarar.
+**Üretim artışı oranı: ×5 (owner onayı 2026-11-20).** Simülasyon: paket ilk 15 dakikada harcanır, sonrasında kuyruğu süre değil kaynak tıkar. Süre indirimi ancak kaynak varsa işe yarar. Aşağıdaki tablo yarı süreyle hesaplandı; süre ayrıcalığı kaldırıldığı için Faz 2'de tam süre ve 5 dk kuralıyla yeniden hesaplanır.
 
 | Üretim | İlk saatte inşa (kargo yok) | Kaynak bekleme | Fazladan alaşım / kristal |
 | --- | --- | --- | --- |
@@ -119,6 +120,14 @@ Kesin süreler Faz 4'teki oyun testinde ayarlanır. Ekran sırası yalnız bir d
 - Yüzeyler zamana değil ana bağlanır: iniş ödül kutusu korsan zaferinin ödülü olur; kurulum kartı ilk zaferden sonra; marka testi senaryo bitince; galaksi etkinliği bildirimleri senaryo bitince toplu ve tek kez.
 - Taşınacak yüzeyler: iniş kartı, `LandingRewards`, `RecallHost` (marka testi ve kurulum kartı), ilk hafta notu, `LegacyRevealHost`, galaksi etkinliği bildirimleri. DOM'a bakarak bekleme kaldırılır.
 
+### 5.6 5 dk kuralı
+
+- `packages/rules`: `INSTANT_BUILD = { maxMinutes: 5 }` ve tek fonksiyon. Bina ve alet yükseltmesinin robotlardan sonraki süresi 5 dakikayı geçmiyorsa emir süresizdir. Sınır dahil: 5,0 dk anında biter.
+- Sunucu: süresiz emir sıraya 0 süreyle girer. Sıra boşsa aynı işlemde tamamlanır ve yanıt yeni seviyeyi taşır. Önünde iş varsa onunla birlikte biter. Tamamlanma mevcut `build_complete` yolundan geçer, yan etkiler (üretim hesabı, servet, bildirim) aynı kalır. `placeBuildOrder` bugün sıfır süreyi reddeder (`buildQueue.ts`); yalnız bu yol için açılır.
+- İstemci: yükseltme fişinde süre yerine "Anında" yazar; kuralın kendisi süre gösterilen yerde tek satırla söylenir ("5 dk ve altı yükseltmeler anında biter").
+- Botlar ve simülasyon aynı kuralı kullanır.
+- Bugünkü sayılar (robotsuz, inişteki dünya): Döteryum Tesisi 1 (2,8 dk) ve 2 (3,8), Kasa 2 (3,8), Tersane 2 (3,8) anında biter. Rafineri 3 ve Çekirdek 4'ten başlayan diğerleri 5,2 dakikadan uzundur. Aletlerin ilk yükseltmeleri 7,6 dakikadan uzundur. Robot araştırması süreleri kısalttıkça daha çok seviye sınırın altına iner.
+
 ## 6. Fazlar
 
 Her faz: testler önce, KIRMIZI doğrulanır, uygulama, YEŞİL, kod incelemesi, ilgili regresyon. Uzun ekonomi simülasyonları owner açıkça istemedikçe çalıştırılmaz.
@@ -133,12 +142,18 @@ Her faz: testler önce, KIRMIZI doğrulanır, uygulama, YEŞİL, kod incelemesi,
 ### Faz 1: Ekran sırası
 
 - Kuyruk modülü ve §5.5 kuralları; yüzeylerin taşınması; her yüzey için merkezi görünme ve kapanma olayı.
+- Uygulama notları (2026-11-20): Öncelik tablosu `apps/web/src/shell/attention/surfaces.ts`. Meşguliyeti kabuk (panel, zil, filo, sohbet, ders) ve galaksi (açılış örtüsü, oyuncunun açtığı kart, gönderme ekranı) ayrı ayrı bildirir. `RecallHost`'un DOM kontrolü kaldırılmadı: sıranın tanımadığı sayfalar için güvencedir. Sessizlikte tutulan haberler Sinyaller'de okunmamış bekler; senaryo bitince toplu tek bildirim Faz 4'te senaryo kilidiyle gelir.
 - **Bitti:** Testler: kuyruk her yüzeyin görünme ve kapanma olayını bir kez yazar; aynı anda iki engelleyici pencere açılamaz; senaryo kilidinde bildirim bekler, saldırı uyarısı geçer; oyuncu eylemi olmadan ikinci pencere açılmaz; yeniden yüklemede kuyruk kaybolmaz ve tekrar etmez. 350 px'te inişten 10 dakika oynanır, ekran görüntüleri alınır.
 
 ### Faz 2: Kuruluş Saati
 
-- Migration: `players.first_game`. Kurallar, sunucu, istemci projeksiyonu, HUD saati, fiş satırı, son 10 dakika uyarısı, bitiş özeti, ocak efekti (VFX briefi ve kütüphane yolu teslimde).
-- **Bitti:** Testler: pencere sınırları (0, 59:59, 60:00); ilk oyun olmayan katılım; tatil ve kalkan silinmesi pencereyi değiştirmez; çevrimdışı birikim pencere içinde; 59. dakikada verilen emir yarı süreli kalır; 60:00'dan sonraki tam süre; sinyal artışıyla çakışma; istemcinin gönderdiği oran reddedilir; sunucu ve istemci aynı rakamı gösterir.
+- Migration: `players.first_game`. Kurallar, sunucu, istemci projeksiyonu, HUD saati, son 10 dakika uyarısı, bitiş özeti, ocak efekti (VFX briefi ve kütüphane yolu teslimde).
+- **Bitti:** Testler: pencere sınırları (0, 59:59, 60:00); ilk oyun olmayan katılım; tatil ve kalkan silinmesi pencereyi değiştirmez; çevrimdışı birikim pencere içinde; sinyal artışıyla çakışma; istemcinin gönderdiği oran reddedilir; sunucu ve istemci aynı rakamı gösterir.
+
+### Faz 2b: 5 dk kuralı
+
+- §5.6.
+- **Bitti:** Testler: 4,99 / 5,00 dk anında, 5,01 dk normal; boş sırada emir aynı yanıtta tamamlanır, yeni seviye ve üretim hemen geçerlidir; önünde iş varken onunla biter; kaynak, Çekirdek tavanı ve sıra derinliği kontrolleri aynen geçerlidir; iptal edilecek süresiz emir kalmaz; gemi, savunma, araştırma ve uydu etkilenmez; robotlu süre sınırın altına inince anında biter; istemci fişi sunucuyla aynı sonucu gösterir. Wiki ve 6 dil metinleri.
 
 ### Faz 3: Kişisel kayalar
 
@@ -184,8 +199,9 @@ Yok. Üretim artışı ×5 (+%400), owner onayı 2026-11-20.
 ### 10.1 Yapılacaklar
 
 - [x] Faz 0 ölçüm
-- [ ] Faz 1 ekran sırası
+- [x] Faz 1 ekran sırası (oynanış görseli Faz 4 oyun testinde)
 - [ ] Faz 2 Kuruluş Saati
+- [ ] Faz 2b 5 dk kuralı
 - [ ] Faz 3 kişisel kayalar
 - [ ] Faz 4 korsan senaryosu
 - [ ] Faz 5 sinyal 4×
@@ -216,3 +232,5 @@ Yok. Üretim artışı ×5 (+%400), owner onayı 2026-11-20.
 | --- | --- | --- |
 | Plan | Yazıldı 2026-11-20 | Açık soru yok |
 | Faz 0 | Bitti 2026-11-20 | `surface_closed`; taban çizgisi (17 kayıt, 8 iniş): inişten sonraki 5 dk'da ≥3 komut 4/8, hiç komut 2/8 |
+| Kararlar | 2026-11-20 | 5 dk kuralı eklendi (§5.6, Faz 2b); Kuruluş Saati süre −%50 kaldırıldı |
+| Faz 1 | Kod bitti 2026-11-20 | Bağlantılı 72 web test dosyası (821 test) yeşil. Görsel oynanış Faz 4 oyun testinde: Faz 1 yeni görsel getirmez, yalnız yüzeylerin sırasını değiştirir |

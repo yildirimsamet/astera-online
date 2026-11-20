@@ -11,6 +11,7 @@ import { INSTALLED_PWA_KEY } from '../src/brand/installedPwa.js';
 import { keys } from '../src/api/keys.js';
 import { planetSchema } from '../src/api/schemas.js';
 import { planetView } from './fixtures.js';
+import { HOLDER_CLOSE, WindowHolder } from './attentionFixture.js';
 
 const status = { eligible: true, completed: false, reward: { alloy: 100, crystal: 50, deuterium: 20 } };
 const advance = async (ms: number) => { await act(async () => { await vi.advanceTimersByTimeAsync(ms); }); };
@@ -108,6 +109,19 @@ describe('first real-game minutes', () => {
     view.unmount();
     show();
     await advance(121_000);
+    expect(screen.getByTestId('brand-quiz')).toBeInTheDocument();
+  });
+
+  // Plan 2026-11-20 §5.5: a window that already has the screen keeps it; the quiz comes after the player's hand.
+  it('waits behind a window that has the screen, then comes once the player touches the game', async () => {
+    render(<WindowHolder />);
+    show();
+    await advance(181_000);
+    expect(screen.queryByTestId('brand-quiz')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: HOLDER_CLOSE }));
+    await advance(1000);
+    expect(screen.queryByTestId('brand-quiz')).toBeNull();
+    act(() => { fireEvent.pointerDown(window); });
     expect(screen.getByTestId('brand-quiz')).toBeInTheDocument();
   });
 

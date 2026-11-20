@@ -20,6 +20,8 @@ import { keys } from '../api/keys.js';
 import { coverGalaxy } from '../lib/galaxyCover.js';
 import { useNativeBack } from '../platform/nativeBack.js';
 import { isAppActive, watchAppActivity } from '../platform/activity.js';
+import { useAttention } from '../shell/attention/store.js';
+import { SURFACES } from '../shell/attention/surfaces.js';
 import type { LegacyAward } from '../api/legacySchemas.js';
 import { GameButton, Glyph } from '../game-ui/index.js';
 import { AwardEngines, StudioLight, TurntableFrames, useBuiltAward } from './AwardScene.js';
@@ -58,12 +60,14 @@ export function LegacyRevealHost({ ready, live = true }: { ready: boolean; live?
   const ack = useMutation({ mutationFn: (ids: readonly string[]) => api.revealLegacyAwards(ids) });
   const [queue, setQueue] = useState<LegacyAward[] | null>(null);
   const waiting = reveals.data?.awards.filter(award => !played.current.has(award.id)) ?? [];
+  // Its turn on the screen (plan 2026-11-20 §5.5).
+  const turn = useAttention('legacy_reveal', queue !== null, SURFACES.legacy_reveal);
 
   useEffect(() => {
     if (queue === null && ready && waiting.length > 0) setQueue(sortLegacyAwards(waiting));
   }, [queue, ready, waiting]);
 
-  if (!queue) return null;
+  if (!queue || !turn.shown) return null;
   return createPortal(
     <AwardReveal queue={queue} live={live}
       onSeen={ids => {
@@ -72,6 +76,7 @@ export function LegacyRevealHost({ ready, live = true }: { ready: boolean; live?
         ack.mutate(ids);
       }}
       onDone={() => {
+        turn.release(queue.every(award => played.current.has(award.id)) ? 'act:seen' : 'dismiss');
         // Dismissal skips only this visit; unseen pieces stay on the server for next time.
         for (const award of queue) played.current.add(award.id);
         setQueue(null);

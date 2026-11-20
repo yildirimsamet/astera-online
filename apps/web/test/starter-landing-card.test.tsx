@@ -1,12 +1,17 @@
 import { FIRST_SEASON_START } from '@astera/rules';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import i18n from '../src/i18n/index.js';
+import type * as Runtime from '../src/lib/playerAnalytics/runtime.js';
 import { ArrivalHost } from '../src/starter/ArrivalHost.js';
+import { HOLDER_CLOSE, WindowHolder } from './attentionFixture.js';
 import { urlOf } from './starterVesselFixture.js';
+
+const telemetry = vi.hoisted(() => ({ observe: vi.fn(), analyticsRecording: vi.fn(() => true) }));
+vi.mock('../src/lib/playerAnalytics/runtime.js', async (original) => ({ ...await original<typeof Runtime>(), ...telemetry }));
 
 /**
  * THE FIRST MOVE IN THE MAIN GALAXY (plan 2026-11-08 F7, moment 17). The card after the landing
@@ -34,6 +39,7 @@ beforeEach(async () => {
   await i18n.changeLanguage('en');
   // The scene has played: the card itself is what these cases read.
   window.sessionStorage.setItem('astera:jump-scene-played', '1');
+  telemetry.observe.mockClear();
 });
 afterEach(() => { cleanup(); window.sessionStorage.clear(); });
 
@@ -97,6 +103,15 @@ describe('the card after the landing', () => {
     fireEvent.click(move.getByRole('button', { name: /Open Deuterium output/u }));
     expect(onPanel).toHaveBeenCalledWith('planet', undefined, undefined, { group: 'grow', itemId: 'DEUTERIUM_PLANT' });
   });
+
+  // Plan 2026-11-20 Faz 0: which first move the player picked, or that they only closed the card.
+  it('records the move that closed it', async () => {
+    harness();
+    const move = within(await screen.findByTestId('arrival-decide'));
+    expect(telemetry.observe).toHaveBeenCalledWith('surface_visible', { surface: 'arrival_card' }, 'live');
+    fireEvent.click(move.getByRole('button', { name: /Plan a first sortie/u }));
+    expect(telemetry.observe).toHaveBeenCalledWith('surface_closed', { surface: 'arrival_card', code: 'act:outward' }, 'live');
+  });
 });
 
 /** A defender's report of a raid: what was taken is written below zero (`reports.ts`). */
@@ -130,6 +145,17 @@ describe('the first-week note', () => {
   it('says the clan line once the player has been raided', async () => {
     tipHarness([raid], 4);
     await waitFor(() => { expect(screen.getByTestId('landing-tip')).toHaveTextContent(/clan/iu); });
+  });
+
+  // Plan 2026-11-20 §5.5: a light note never lies over a window.
+  it('waits while a window has the screen, and comes once it is closed and the player is back on the map', async () => {
+    render(<WindowHolder />);
+    tipHarness([], 4);
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 30)); });
+    expect(screen.queryByTestId('landing-tip')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: HOLDER_CLOSE }));
+    fireEvent.pointerDown(window);
+    expect(await screen.findByTestId('landing-tip')).toBeInTheDocument();
   });
 
   it('closes on a thumb-sized button and stays closed', async () => {

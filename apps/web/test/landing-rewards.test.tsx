@@ -1,19 +1,23 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import i18n from '../src/i18n/index.js';
+import type * as Runtime from '../src/lib/playerAnalytics/runtime.js';
 import type * as Sound from '../src/lib/sound.js';
 import { ArrivalHost } from '../src/starter/ArrivalHost.js';
 import { ToastProvider } from '../src/ui/Toast.js';
+import { HOLDER_CLOSE, WindowHolder } from './attentionFixture.js';
 import { planetView } from './fixtures.js';
 import { urlOf } from './starterVesselFixture.js';
 
 const sound = vi.hoisted(() => ({ playSound: vi.fn() }));
 const haptics = vi.hoisted(() => ({ haptic: vi.fn() }));
+const telemetry = vi.hoisted(() => ({ observe: vi.fn(), analyticsRecording: vi.fn(() => true) }));
 vi.mock('../src/lib/sound.js', async (original) => ({ ...await original<typeof Sound>(), ...sound }));
 vi.mock('../src/lib/haptics.js', () => haptics);
+vi.mock('../src/lib/playerAnalytics/runtime.js', async (original) => ({ ...await original<typeof Runtime>(), ...telemetry }));
 
 type State = 'locked' | 'claimable' | 'claimed';
 const chain = (id: string, states: State[]) => ({ id, metric: 'level', scope: 'season', progress: 3, tiers: states.map((state, i) => ({ id: `${id}:${String(i + 1)}`, goal: i + 1, alloy: 300, crystal: 100, state })) });
@@ -39,7 +43,7 @@ const harness = ({ rewards, daysAgo = 0, welcome = { welcome: null } }: { reward
 };
 const claimedAll = (fetcher: ReturnType<typeof vi.fn>) => fetcher.mock.calls.filter(([input]) => urlOf(input as RequestInfo).includes('/api/rewards/claim-all'));
 
-beforeEach(async () => { await i18n.changeLanguage('en'); window.localStorage.clear(); sound.playSound.mockClear(); haptics.haptic.mockClear(); });
+beforeEach(async () => { await i18n.changeLanguage('en'); window.localStorage.clear(); sound.playSound.mockClear(); haptics.haptic.mockClear(); telemetry.observe.mockClear(); });
 afterEach(() => { cleanup(); });
 
 /**
@@ -133,5 +137,31 @@ describe('the landing reward moment', () => {
     harness({ rewards: waiting(3) });
     await screen.findByTestId('landing-rewards');
     expect(screen.queryByTestId('landing-tip')).toBeNull();
+  });
+
+  // Plan 2026-11-20 §5.5: one window at a time, and the player's own hand between two of them.
+  it('waits behind a window that has the screen, and comes after the player touches the game again', async () => {
+    render(<WindowHolder />);
+    const { fetcher } = harness({ rewards: waiting(3) });
+    await waitFor(() => { expect(fetcher.mock.calls.some(([input]) => urlOf(input as RequestInfo).includes('/api/welcome'))).toBe(true); });
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 30)); });
+    expect(screen.queryByTestId('landing-rewards')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: HOLDER_CLOSE }));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 30)); });
+    expect(screen.queryByTestId('landing-rewards')).toBeNull();
+    fireEvent.pointerDown(window);
+    expect(await screen.findByTestId('landing-rewards')).toBeInTheDocument();
+  });
+
+  it('records whether the reward was taken or put off', async () => {
+    harness({ rewards: waiting(3) });
+    fireEvent.click(within(await screen.findByTestId('landing-rewards')).getByRole('button', { name: /Later/u }));
+    expect(telemetry.observe).toHaveBeenCalledWith('surface_closed', { surface: 'landing_rewards', code: 'dismiss' }, 'live');
+    cleanup(); window.localStorage.clear(); telemetry.observe.mockClear();
+    harness({ rewards: waiting(3) });
+    const moment = await screen.findByTestId('landing-rewards');
+    fireEvent.click(within(moment).getByRole('button', { name: 'Take the reward' }));
+    fireEvent.click(await within(moment).findByRole('button', { name: 'Continue' }));
+    expect(telemetry.observe).toHaveBeenCalledWith('surface_closed', { surface: 'landing_rewards', code: 'act:take' }, 'live');
   });
 });

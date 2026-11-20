@@ -20,6 +20,8 @@ import { arrivalQuery, useMarkArrivalSeen } from './queries.js';
 import { ProtectionLines } from './ProtectionLines.js';
 import { LandingRewards, useLandingRewardsDue } from './LandingRewards.js';
 import { nearestPirate } from '../lib/rewardGates.js';
+import { useAttention } from '../shell/attention/store.js';
+import { SURFACES } from '../shell/attention/surfaces.js';
 
 const CARD_LINES = ['battle', 'opened', 'alerts'] as const;
 
@@ -122,14 +124,21 @@ export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; 
   const [rewards, setRewards] = useState<'idle' | 'open' | 'done'>('idle');
   useEffect(() => { if (rewardsDue && !arrival) setRewards(state => (state === 'idle' ? 'open' : state)); }, [rewardsDue, arrival]);
 
+  // Each waits its turn on the screen (plan 2026-11-20 §5.5); the note never shows beside the rewards.
+  const card = useAttention('arrival_card', arrival !== null && !jump, SURFACES.arrival_card);
+  const payout = useAttention('landing_rewards', !arrival && rewards === 'open' && !jump, SURFACES.landing_rewards);
+  const note = useAttention('landing_tip', !arrival && rewards !== 'open' && tip !== null && !jump, SURFACES.landing_tip);
+
   if (jump) return null;
   if (arrival) {
-    const pick = (go: () => void) => { playSound('tap'); haptic('tap'); seen.mutate(); go(); };
+    if (!card.shown) return null;
+    const close = (code: string) => { card.release(code); seen.mutate(); };
+    const pick = (move: string, go: () => void) => { playSound('tap'); haptic('tap'); close(`act:${move}`); go(); };
     const fuel = arrival.cargo.deuterium + FIRST_SEASON_START.resources.deuterium;
     return (
       <Sheet
         title={t('starter.landing.title', { name: arrival.shardName })}
-        onClose={() => { seen.mutate(); }}
+        onClose={() => { close('dismiss'); }}
         footer={
           <div className="flex items-center gap-2">
             {/* Watched again only through the map it crosses: without it the scene had nothing to fly in. */}
@@ -137,7 +146,7 @@ export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; 
               onClick={() => { if (world) startJump({ shardName: arrival.shardName, hull: arrival.hull, look: 'RENEWED', world, landing: null, start: 0, replay: true }); }}>
               {t('starter.jump.replay')}
             </button>
-            <button type="button" onClick={() => { seen.mutate(); }}
+            <button type="button" onClick={() => { close('act:go'); }}
               className="min-h-[var(--gk-hit)] flex-1 rounded-control border border-v2-self bg-gradient-to-b from-v2-self to-v2-self/55 text-body font-bold uppercase tracking-wide text-v2-void">
               {t('starter.landing.go')}
             </button>
@@ -154,11 +163,11 @@ export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; 
             <div className="flex gap-1.5">
               {prey && onFocusContact
                 ? <Move id="hunt" icon="i-attack" title={t('starter.arrival.hunt')} line={t('starter.arrival.huntLine', { minutes: prey.minutes })}
-                    onPick={() => { pick(() => { onFocusContact(prey.id); }); }} />
+                    onPick={() => { pick('hunt', () => { onFocusContact(prey.id); }); }} />
                 : <Move id="outward" icon="i-fleet" title={t('starter.arrival.outward')} line={t('starter.arrival.outwardLine', { deuterium: full(fuel) })}
-                    onPick={() => { pick(() => { onPanel('intel'); }); }} />}
+                    onPick={() => { pick('outward', () => { onPanel('intel'); }); }} />}
               <Move id="grow" icon="i-mine" title={t('starter.arrival.grow')} line={t('starter.arrival.growLine', { research: t('research.synthesisName'), plant: buildingName('DEUTERIUM_PLANT') })}
-                onPick={() => { pick(() => { onPanel('planet', undefined, undefined, { group: 'grow', itemId: 'DEUTERIUM_PLANT' }); }); }} />
+                onPick={() => { pick('grow', () => { onPanel('planet', undefined, undefined, { group: 'grow', itemId: 'DEUTERIUM_PLANT' }); }); }} />
             </div>
           </section>
           {/* How the new world is kept, in its own numbers (plan 2026-11-13 §4.7). */}
@@ -177,14 +186,14 @@ export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; 
     );
   }
   // The landing pays first (plan 2026-11-06 §7.1 R1); the first-week note waits until it is closed.
-  if (rewards === 'open') return <LandingRewards onDone={() => { setRewards('done'); }} />;
-  if (!tip) return null;
+  if (rewards === 'open') return payout.shown ? <LandingRewards onDone={(code) => { payout.release(code); setRewards('done'); }} /> : null;
+  if (!tip || !note.shown) return null;
   // Under the top bar and any note it holds (`--v2-top-h` measures both): two notes never stack (owner 2026-11-18).
   return (
     <div data-testid="landing-tip" data-tip={tip} role="status" className="gk pointer-events-auto fixed inset-x-3 top-[calc(var(--v2-top-h,86px)+5px)] z-[60] mx-auto max-w-[396px]">
       <Banner tone="info" variant="strip" glyph={TIP_GLYPH[tip]} title={t(`starter.landing.tip.${tip}`)}
         action={(
-          <button type="button" aria-label={t('starter.landing.dismiss')} onClick={() => { playSound('tap'); haptic('tap'); dismissTip(tip); setTip(null); }}
+          <button type="button" aria-label={t('starter.landing.dismiss')} onClick={() => { playSound('tap'); haptic('tap'); note.release('dismiss'); dismissTip(tip); setTip(null); }}
             className="-my-2 -mr-1 grid size-[var(--gk-hit)] shrink-0 place-items-center text-v2-ink-2">
             <Glyph id="close" className="gk-glyph size-4" />
           </button>

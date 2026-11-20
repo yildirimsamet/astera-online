@@ -26,6 +26,7 @@ import { HudDock } from './HudDock.js';
 import { HudTop } from './HudTop.js';
 import { OutlineHost } from './OutlineHost.js';
 import { RecallHost } from '../../brand/RecallHost.js';
+import { useAttentionBusy } from '../../shell/attention/store.js';
 import { useAppScreen } from '../../lib/appHeight.js';
 
 /** Open a page: the panel, its shelf, the report, the row — as the app's router takes it. */
@@ -181,6 +182,9 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
     bell || chatOpen || fleetOpen || nowOpen ? 'other' : panel === null ? 'galaxy' : panel === 'planet' ? 'ship' : 'other',
   );
   const tutoring = !guideOff && tutorial?.answer.kind === 'step';
+  /** A page of the player's own is open, or the tutorial speaks: nothing opens over it by itself (plan 2026-11-20 §5.5). */
+  const busy = tutoring || panel !== null || bell !== null || fleetOpen || chatOpen || nowOpen;
+  useAttentionBusy('shell', busy);
   /** What the marks follow: the guide's step while it speaks, else the player's pick or the first offer. */
   const goal = tutorial ? starterGoal(tutorial, !guideOff) : null;
 
@@ -316,7 +320,7 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
       {/* E10: asked for after the galaxy is up, never before it (K5). */}
       {/* While the tutorial speaks, nothing else may open over it: its gate would lock that sheet. */}
       <AwayHost onDoor={openAway} onAll={() => { openBell('signals'); }} held={tutoring} />
-      {accountId && <RecallHost key={accountId} accountId={accountId} paused={tutoring || panel !== null || bell !== null || fleetOpen || chatOpen || nowOpen} />}
+      {accountId && <RecallHost key={accountId} accountId={accountId} paused={busy} />}
       {tutorial && <StarterGoalPulse goal={goal} ack={tutorial.ack} />}
       {tutorial && tutoring && <StarterTutorialCoach tutorial={tutorial} {...(onGuideOff ? { onSkip: onGuideOff } : {})} />}
       {tutorial?.vessel && <StarterAftercare key={tutorial.vessel.id} vessel={tutorial.vessel} farewelled={tutorial.farewelled === true} guided={!guideOff} />}

@@ -7,6 +7,7 @@ import { ApiProvider } from '../src/api/context.js';
 import { LegacyRevealHost } from '../src/legacy/AwardReveal.js';
 import i18n from '../src/i18n/index.js';
 import { galaxyCover } from '../src/lib/galaxyCover.js';
+import { HOLDER_CLOSE, WindowHolder } from './attentionFixture.js';
 
 vi.mock('../src/legacy/snapshot.js', () => ({ useAwardSnapshot: () => null }));
 
@@ -131,6 +132,18 @@ describe('revealing a won piece', () => {
     expect(screen.getAllByTestId('legacy-reveal-rest-piece')).toHaveLength(2);
     finishIntro();
     await waitFor(() => { expect(acks(calls).at(-1)?.sort()).toEqual([coin.id, pin.id].sort()); });
+  });
+
+  // Plan 2026-11-20 §5.5: one window at a time; the reveal comes after the player's hand on the game.
+  it('waits behind a window that has the screen', async () => {
+    render(<WindowHolder />);
+    const { calls } = show([honor]);
+    await waitFor(() => { expect(calls.length).toBeGreaterThan(0); });
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 30)); });
+    expect(screen.queryByTestId('legacy-reveal')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: HOLDER_CLOSE }));
+    fireEvent.pointerDown(window);
+    expect(await screen.findByTestId('legacy-reveal')).toBeInTheDocument();
   });
 
   it('waits while the galaxy is busy and shows nothing when nothing was won', async () => {

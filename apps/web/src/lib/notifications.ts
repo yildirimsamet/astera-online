@@ -1543,6 +1543,16 @@ export const isUrgent = (notification: NotificationView): boolean =>
   notification.kind === 'galaxy_event_ended' || transferWasRerouted(notification);
 
 /**
+ * Someone is coming for the player now. The one kind of news that still speaks while a window or
+ * the landing scenario has the screen (plan 2026-11-20 §5.5): everything else waits in Signals.
+ */
+export const isThreat = (notification: NotificationView): boolean =>
+  notification.kind === 'incoming_fleet' ||
+  notification.kind === 'clan_alarm' ||
+  notification.kind === 'strategic_incoming' ||
+  notification.kind === 'monument_inbound';
+
+/**
  * Bad news, which is a different question from urgent news.
  *
  * Completed battles use their own result, including personal fleet destruction.

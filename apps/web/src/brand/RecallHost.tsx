@@ -12,6 +12,8 @@ import { BrandQuiz, type BrandQuizResult } from './BrandQuiz.js';
 import { InstallButton, useDesktopInstall, useInstalled } from './Install.js';
 import { advanceRecall, readRecall, saveRecall } from './recallState.js';
 import { capabilities } from '../platform/runtime.js';
+import { useAttention } from '../shell/attention/store.js';
+import { SURFACES } from '../shell/attention/surfaces.js';
 
 type AnswerResult = BrandQuizResult;
 
@@ -28,6 +30,9 @@ export function RecallHost({ accountId, paused = false }: { accountId: string; p
   const status = useQuery({ queryKey: key, queryFn: () => api.brandRecallStatus(), staleTime: Infinity });
   const progress = useRef(readRecall(accountId));
   const [surface, setSurface] = useState<'return' | 'quiz' | null>(null);
+  // Due is not shown: each waits its turn on the screen (plan 2026-11-20 §5.5).
+  const quiz = useAttention('brand_quiz', surface === 'quiz', SURFACES.brand_quiz);
+  const card = useAttention('return_card', surface === 'return' && offerInstall, SURFACES.return_card);
   const surfaceRef = useRef(surface);
   surfaceRef.current = surface;
   const blocked = useRef(paused);
@@ -48,7 +53,7 @@ export function RecallHost({ accountId, paused = false }: { accountId: string; p
         void refreshQueries(client, { queryKey: keys.rewards });
         void refreshQueries(client, { queryKey: keys.leaderboard });
         void refreshQueries(client, { queryKey: keys.galaxy });
-        if (value === null) setSurface(null);
+        if (value === null) { quiz.release('dismiss'); setSurface(null); }
       }
     },
     onError: () => { setMessage('failed'); },
@@ -93,20 +98,20 @@ export function RecallHost({ accountId, paused = false }: { accountId: string; p
     };
   }, [accountId, eligible, offerInstall]);
 
-  if (surface === 'quiz') return <BrandQuiz
+  if (surface === 'quiz') return !quiz.shown ? null : <BrandQuiz
     result={result} message={message} pending={answer.isPending}
     reward={status.data?.reward ?? BRAND_RECALL.reward}
     onAnswer={(value) => { setMessage(null); answer.mutate(value); }}
-    onClose={() => { if (answer.isPending) return; if (result?.completed) setSurface(null); else answer.mutate(null); }}
+    onClose={() => { if (answer.isPending) return; if (result?.completed) { quiz.release('act:answer'); setSurface(null); } else answer.mutate(null); }}
   />;
-  if (surface !== 'return' || paused || !offerInstall) return null;
+  if (surface !== 'return' || paused || !card.shown) return null;
   return <aside data-testid="return-card" className="gk gk-returncard" aria-label={t('brand.returnTitle')}>
     <div className="gk-returncard__head">
       <div>
         <p className="gk-display gk-returncard__title">{t('brand.returnTitle')}</p>
         <p className="gk-returncard__address">asteraonline<span>.space</span></p>
       </div>
-      <RoundButton glyph="close" label={t('brand.close')} onPress={() => { setSurface(null); }} />
+      <RoundButton glyph="close" label={t('brand.close')} onPress={() => { card.release('dismiss'); setSurface(null); }} />
     </div>
     <p className="gk-sub">{t(desktop ? 'brand.returnHintDesktop' : 'brand.returnHint')}</p>
     <div className="gk-returncard__foot"><span className="gk-label">Astera Online</span><InstallButton compact /></div>

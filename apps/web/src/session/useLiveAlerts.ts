@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useNotifications } from '../api/queries.js';
-import { describeNotification, isAlarming, isUrgent } from '../lib/notifications.js';
+import { describeNotification, isAlarming, isThreat, isUrgent } from '../lib/notifications.js';
 import { useToast } from '../ui/Toast.js';
 import { serverNow } from '../lib/clock.js';
+import { attentionIsQuiet } from '../shell/attention/store.js';
 import { observeOutcomes } from './outcomeVisible.js';
 
 /**
@@ -60,7 +61,10 @@ export function useLiveAlerts(enabled: boolean): void {
      * showed the less important one. An inbound fleet losing its toast to a mining
      * run that got home is the exact failure the whole surface exists to prevent.
      */
-    const ordered = [...fresh].sort((a, b) => {
+    // A window or the landing scenario has the screen: only a threat interrupts it. The rest is not
+    // replayed later — it is already marked announced, and waits unread in Signals like any overflow.
+    const quiet = attentionIsQuiet();
+    const ordered = fresh.filter((n) => !quiet || isThreat(n)).sort((a, b) => {
       if (isUrgent(a) !== isUrgent(b)) return isUrgent(a) ? -1 : 1;
       return b.at.getTime() - a.at.getTime();
     });
