@@ -88,6 +88,8 @@ const PATHS = {
   class_lance: 'M12 1 18 10.5 13.6 15.8V23h-3.2v-7.2L6 10.5z',
   class_bulwark: 'M2.8 3h4.4v3h2.6V3h4.4v3h2.6V3h4.4v9.6c0 4.9-3.6 8.4-9.2 10.4-5.6-2-9.2-5.5-9.2-10.4z',
   class_support: 'M12 2.5a9.5 9.5 0 0 1 9.5 9.5 9.5 9.5 0 0 1-9.5 9.5 9.5 9.5 0 0 1-9.5-9.5A9.5 9.5 0 0 1 12 2.5zm-1.8 4.6v3.1H7.1v3.6h3.1v3.1h3.6v-3.1h3.1v-3.6h-3.1V7.1z',
+  /** Crescent moon for the Base Moon tab and orbital badges. */
+  moon: 'M14.2 2.3a9.8 9.8 0 1 0 7.5 16.1a8 8 0 0 1-10.3-10.3a9.7 9.7 0 0 1 2.8-5.8z',
 } as const;
 
 export type GlyphId = keyof typeof PATHS;

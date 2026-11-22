@@ -63,8 +63,6 @@ import {
 import { isResearchProject } from '../lib/researchNeed.js';
 import {
   usePlanet,
-  useSeason,
-  useGalaxy,
   useBuild,
   useBuildInterceptor,
   useInstallSatellite,
@@ -72,9 +70,6 @@ import {
   useUpgrade,
   useBuildDeathStar,
 } from '../api/queries.js';
-import { distance } from '@astera/rules';
-import { useApi } from '../api/context.js';
-import { MoonPanel } from './MoonPanel.js';
 import type { FaultView, PlanetView } from '../api/schemas.js';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
@@ -254,10 +249,7 @@ export function PlanetScreen({
   onOpenResearch?: (project: ResearchProjectId) => void;
 }) {
   const { t } = useTranslation();
-  const api = useApi();
   const { data, dataUpdatedAt, isError, refetch } = usePlanet();
-  const { data: season } = useSeason();
-  const { data: galaxy } = useGalaxy();
   const lesson = useAcademyLesson();
   const held = useProjected(data?.planet, dataUpdatedAt, 5000);
   const [building, setBuilding] = useState<HullId | null>(null);
@@ -562,44 +554,7 @@ export function PlanetScreen({
           >
             <DecisionGroup problem={t(GROUPS[active].problem)} question={t(GROUPS[active].question)}>
               {active === 'defend' && <Defend {...shared} onBuild={openBuild} />}
-              {active === 'orbit' && (
-                <div className="flex flex-col gap-3">
-                  {!lesson && (
-                    <MoonPanel
-                      planet={data}
-                      moonsEnabled={season?.features?.moons === true}
-                      otherMoons={(() => {
-                        if (!galaxy?.moons) return [];
-                        const mine = new Set(galaxy.you.planetIds ?? [galaxy.you.planetId]);
-                        return galaxy.planets
-                          .filter((w) => w.id !== data.planet.id && mine.has(w.id) && galaxy.moons?.rarity[w.id])
-                          .map((w) => ({
-                            planetId: w.id,
-                            name: w.name,
-                            position: w.position,
-                            rarity: galaxy.moons!.rarity[w.id]!,
-                          }));
-                      })()}
-                      scanTargets={(() => {
-                        if (!galaxy || !data.moon) return [];
-                        const mine = new Set(galaxy.you.planetIds ?? [galaxy.you.planetId]);
-                        return galaxy.planets
-                          .filter((w) => !mine.has(w.id))
-                          .map((w) => ({ planetId: w.id, name: w.name, distance: distance(data.planet.position, w.position) }))
-                          .filter((w) => w.distance <= data.moon!.scanRange)
-                          .sort((a, b) => a.distance - b.distance)
-                          .slice(0, 20);
-                      })()}
-                      onRefresh={() => { void refetch(); }}
-                      onOrderMoon={(id) => api.orderMoon(id)}
-                      onHop={(id, dir, fl) => api.hopMoonFleet(id, dir, fl)}
-                      onJump={(id, toId, fl) => api.jumpMoonFleet(id, toId, fl)}
-                      onScan={(id, targetId) => api.scanFromMoon(id, targetId)}
-                    />
-                  )}
-                  <Orbit {...shared} />
-                </div>
-              )}
+              {active === 'orbit' && <Orbit {...shared} />}
               {active === 'reach' && <Reach {...shared} onBuild={openBuild} onStation={() => { setStation(true); }} />}
               {active === 'grow' && <Grow {...shared} />}
               {!lesson && active === 'tactical' && (
@@ -1541,7 +1496,7 @@ function Defend({
   // Taktik geri çekilme: stated on this tab only in a season dealt the rule.
   const escapeRuled = fleetEscapeApplies(planet.rulesetVersion ?? 0);
   const stationed = sumFleets(...(planet.clanSupport?.waves ?? []).filter((wave) => wave.status === 'STATIONED').map((wave) => wave.fleet));
-  const owned = fleetCount(planet.fleet) + fleetCount(planet.fleetAway) + fleetCount(planet.fleetDocked ?? {});
+  const owned = fleetCount(planet.fleet) + fleetCount(planet.fleetAway) + fleetCount(planet.fleetDocked ?? {}) + fleetCount(planet.moon?.fleet ?? {});
   const showForce = !lesson && owned > 0;
   // The escape line speaks of ships standing here, the clan's included; with none it has nothing to say.
   const hasLine = fleetCount(planet.fleet) + fleetCount(stationed) > 0;
@@ -1557,7 +1512,14 @@ function Defend({
       */}
       {(showForce || (escapeRuled && hasLine)) && (
         <Fold data-defence-line="" glyph="rocket" title={t('planet.defend.lineFold')} value={compact(fleetCount(planet.fleet))}>
-          {showForce && <FleetCards fleet={planet.fleet} fleetAway={planet.fleetAway} fleetDocked={planet.fleetDocked ?? {}} />}
+          {showForce && (
+            <FleetCards
+              fleet={planet.fleet}
+              fleetAway={planet.fleetAway}
+              fleetDocked={planet.fleetDocked ?? {}}
+              fleetMoon={planet.moon?.fleet ?? {}}
+            />
+          )}
           {escapeRuled && (
             <EscapeReadout fleet={planet.fleet} ground={planet.ground} deuterium={planet.planet.deuterium}
               rulesetVersion={planet.rulesetVersion ?? 0}

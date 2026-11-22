@@ -1,6 +1,7 @@
 import { MOBILE_HULLS, type MobileHullId } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import { hullLabel } from '../i18n/names.js';
+import { useMoonT } from '../i18n/moon.js';
 import { useAccordion } from '../lib/accordion.js';
 import { familyGroups } from '../lib/roster.js';
 import { HULL_ART } from './assets.js';
@@ -49,15 +50,20 @@ export function FleetCards({
   fleet,
   fleetAway,
   fleetDocked = {},
+  fleetMoon = {},
 }: {
   fleet: Partial<Record<string, number>>;
   fleetAway: Partial<Record<string, number>>;
   /** Waiting in the Repair Station: owned, neither home nor away (Kalıcı gemi hasarı). */
   fleetDocked?: Partial<Record<string, number>>;
+  /** Stationed on the world's moon dock. */
+  fleetMoon?: Partial<Record<string, number>>;
 }) {
   const { t } = useTranslation();
+  const mt = useMoonT();
 
-  const owned = (id: MobileHullId) => (fleet[id] ?? 0) + (fleetAway[id] ?? 0) + (fleetDocked[id] ?? 0);
+  const owned = (id: MobileHullId) =>
+    (fleet[id] ?? 0) + (fleetAway[id] ?? 0) + (fleetDocked[id] ?? 0) + (fleetMoon[id] ?? 0);
   const groups = familyGroups(MOBILE_HULLS.filter((id) => owned(id) > 0));
   /*
     ONE OPEN, THE REST SHUT AND COUNTED — the shape the Fleet tab and the launch
@@ -99,12 +105,19 @@ export function FleetCards({
                   const home = fleet[id] ?? 0;
                   const away = fleetAway[id] ?? 0;
                   const docked = fleetDocked[id] ?? 0;
+                  const onMoon = fleetMoon[id] ?? 0;
                   const art = HULL_ART[id];
                   return (
                     <span key={id} data-testid={`fleet-card-${id}`} className="gk-fleetchip">
                       {art !== null && <img src={art} alt="" aria-hidden="true" className="gk-fleetchip__art" />}
                       <span className="gk-fleetchip__name">{hullLabel(id)}</span>
                       <span data-testid={`fleet-home-${id}`} className="gk-fleetchip__home gk-num">{home}</span>
+                      {onMoon > 0 && (
+                        <span data-testid={`fleet-moon-${id}`} className="gk-fleetchip__away gk-num text-amber-300"
+                          title={mt('fleetSplit.onMoonBadge', { count: onMoon })}>
+                          <Glyph id="moon" />{onMoon}
+                        </span>
+                      )}
                       {/*
                         THE ARROW IS THE LABEL. One glyph says "out" in every
                         language this game ships, and at this size a word would

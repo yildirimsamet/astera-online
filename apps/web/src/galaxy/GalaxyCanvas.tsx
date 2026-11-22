@@ -110,6 +110,8 @@ import {
 } from './StrategicInterception.jsx';
 import { PlanetField, rivalColour, LIMB_SCALE } from './PlanetField.jsx';
 import { Moons } from './Moons.js';
+import { MoonGateWarpFx, type MoonGateWarpEvent } from './MoonGateWarpFx.js';
+import { MoonScanFx, type MoonScanFxEvent } from './MoonScanFx.js';
 import { SCENE_LIGHT } from './planetSurface.js';
 import { SpaceLighting } from './SpaceLighting.js';
 import { FirstSceneFrame, SceneRenderGate, SceneWarmup } from './SceneWarmup.js';
@@ -315,6 +317,10 @@ export interface GalaxyCanvasProps {
   monuments?: readonly PublicMonument[];
   /** Ay F9d: public moon list, observer-filtered rarities, and gate flashes. */
   moons?: GalaxyMoons | undefined;
+  /** Private owner-only Moon Gate aperture + directional fleet warp animations. */
+  moonWarps?: readonly MoonGateWarpEvent[] | undefined;
+  /** Owner-only Gözcü moon scanner wave & holographic target lock animations. */
+  moonScans?: readonly MoonScanFxEvent[] | undefined;
   /**
    * Whether each instrument's boundaries are drawn AT ALL. Owner instruction.
    *
@@ -449,6 +455,8 @@ export function GalaxyCanvas({
   hpRadiation = EMPTY_HP_RADIATION,
   monuments = EMPTY_MONUMENTS,
   moons,
+  moonWarps,
+  moonScans,
   unknownSignals = EMPTY_UNKNOWN_SIGNALS,
   clanAlarms = NO_CLAN_ALARMS,
   unknownSignalRadar,
@@ -1017,6 +1025,12 @@ export function GalaxyCanvas({
         <Monuments monuments={monuments} planets={nodes} hpRadiation={hpRadiation} focusedId={focus?.kind === 'monument' ? focus.id : null}
           onSelect={(id) => { onFocus({ kind: 'monument', id }); }} />
         <Moons moons={moons} nodes={nodes} />
+        {moonWarps && moonWarps.length > 0 && (
+          <MoonGateWarpFx events={moonWarps} moons={moons} nodes={nodes} />
+        )}
+        {moonScans && moonScans.length > 0 && (
+          <MoonScanFx events={moonScans} moons={moons} nodes={nodes} />
+        )}
         {sensors && sensors.length > 0 && (
           <SensorRings
             posts={sensors}

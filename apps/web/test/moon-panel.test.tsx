@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '../src/i18n/index.js';
 import type { PlanetMoon, PlanetView } from '../src/api/schemas.js';
@@ -83,7 +83,7 @@ describe('MoonPanel (F9b)', () => {
         />
       </I18nextProvider>,
     );
-    const buildBtn = screen.getByTestId<HTMLButtonElement>('moon-build-btn');
+    const buildBtn = within(screen.getByTestId('moon-panel-empty')).getByRole<HTMLButtonElement>('button');
     expect(buildBtn.disabled).toBe(true);
 
     rerender(
@@ -97,13 +97,13 @@ describe('MoonPanel (F9b)', () => {
         />
       </I18nextProvider>,
     );
-    const readyBtn = screen.getByTestId<HTMLButtonElement>('moon-build-btn');
+    const readyBtn = within(screen.getByTestId('moon-panel-empty')).getByRole<HTMLButtonElement>('button');
     expect(readyBtn.disabled).toBe(false);
     fireEvent.click(readyBtn);
     expect(onOrderMoon).toHaveBeenCalledWith('p-home');
   });
 
-  it('renders moon stats, dock gauge, cracks, hop action, and Legendary Gözcü badge', () => {
+  it('renders moon stats, dock gauge, cracks, hop action, and Legendary Gözcü badge', async () => {
     const onHop = vi.fn().mockResolvedValue(undefined);
     const onScan = vi.fn().mockResolvedValue({ id: 's1', scannedAt: new Date(), pierced: true, rows: [] });
     render(
@@ -124,8 +124,30 @@ describe('MoonPanel (F9b)', () => {
     expect(screen.getByTestId('moon-rarity').textContent).toMatch(/Legendary|Efsanevi/i);
     expect(screen.getByTestId('moon-cracks').textContent).toContain('2/9');
     expect(screen.getByTestId('moon-pierce-badge')).toBeDefined();
+    expect(screen.getByTestId('moon-split-planet')).toBeDefined();
+    expect(screen.getByTestId('moon-split-moon')).toBeDefined();
 
-    fireEvent.click(screen.getByTestId('moon-hop-submit'));
+    const hopCard = screen.getByTestId('moon-hop-card');
+    const getHopSubmit = () =>
+      within(hopCard).getAllByRole<HTMLButtonElement>('button').at(-1)!;
+
+    // Nothing selected yet -> submit stays disabled until commander chooses ships
+    expect(getHopSubmit().disabled).toBe(true);
+
+    // Commander can pick an exact subset via the per-hull stepper
+    const dartRow = screen.getByTestId('moon-hop-row-DART');
+    const dartInput = within(dartRow).getByRole<HTMLInputElement>('textbox');
+    fireEvent.change(dartInput, { target: { value: '3' } });
+    expect(getHopSubmit().disabled).toBe(false);
+    fireEvent.click(getHopSubmit());
+    expect(onHop).toHaveBeenCalledWith('p-home', 'UP', { DART: 3 });
+
+    // Wait for first hop to settle, then choose all ships via Select All
+    await waitFor(() => {
+      fireEvent.click(screen.getByTestId('moon-hop-select-all'));
+      expect(getHopSubmit().disabled).toBe(false);
+    });
+    fireEvent.click(getHopSubmit());
     expect(onHop).toHaveBeenCalledWith('p-home', 'UP', { DART: 8 });
   });
 });
