@@ -1,24 +1,29 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Component, Suspense, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useTexture } from '@react-three/drei';
+import { useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import type { MoonRarity } from '@astera/rules';
 import type { GalaxyMoons } from '../api/schemas.js';
 import { serverNow } from '../lib/clock.js';
-import type { AstralGateInstance, AstralGateOptions } from '../vfx/astralGate.js';
-import { moonOrbitPosition, moonRadiusFor } from './moonOrbit.js';
+import { haptic } from '../lib/haptics.js';
+import { playSound } from '../lib/sound.js';
+import { HULL_MODEL } from '../ui/assets.js';
+import createAstralGate, { type AstralGateInstance } from '../vfx/astralGate.js';
+import { moonClearStagingDirection, moonOrbitPosition, moonRadiusFor } from './moonOrbit.js';
 
 /*
-  VFX BRIEF — Private Purple Astral Gate & Directional Moon Fleet Warp
-  - Physical event: The commander opens a paired purple Gate of Astral Tracery (`astralGate.js`,
-    #c1b8ff) clearly ahead of their moon along the exact jump vector. Their squadron forms up in
-    front of the moon in clear space, glides visibly toward the open violet star-membrane portal,
-    and punches through one-by-one — stretching into crisp violet-cyan hyper-light spears aimed
-    straight at the destination moon, where the paired Astral Gate opens and receives them.
+  VFX BRIEF — Private Purple Astral Gate & Directional Moon Fleet Warp (Paket D)
+  - Physical event: The commander opens a paired purple Gate of Astral Tracery (`astralGate.ts`,
+    #c1b8ff) cleanly outside the moon & Dyson shell exclusion sphere along the jump vector.
+    Real Astera GLB starcraft form up in V-wedge ahead of the moon, glide visibly into the open
+    violet star-membrane portal, and punch through one-by-one — stretching into crisp violet-cyan
+    hyper-light spears along a volumetric hyperspace conduit to the destination moon, where the
+    camera pans over as the paired Astral Gate opens and receives the squadron.
   - Privacy: Strictly client-local to the jumping commander (never broadcast to other players).
   - Assets:
-    · `src/vfx/astralGate.js` (lazy-imported MIT Gate of Astral Tracery, #c1b8ff)
-    · `/assets/vfx/library/sck-exhaust-jet.webp` — thruster plumes & directional warp light streaks
+    · `src/vfx/astralGate.ts` (lean synchronous Gate of Astral Tracery, ~6 KB)
+    · `HULL_MODEL.DART` (real GLB starcraft silhouette, fallback to sculpted delta hull)
+    · `/assets/vfx/library/sck-exhaust-jet.webp` — thruster plumes, warp spears & volumetric conduit
     · `/assets/vfx/library/flare-star.webp` — crisp warp snap star flare
     · `/assets/vfx/library/white-shock-4x4.webp` — 16-frame aperture ripple at warp punch-through
   - Zero radial gradient / soft glow sprites; 60fps only while active.
@@ -28,7 +33,11 @@ const JET_TEX = '/assets/vfx/library/sck-exhaust-jet.webp';
 const FLARE_TEX = '/assets/vfx/library/flare-star.webp';
 const SHOCK_TEX = '/assets/vfx/library/white-shock-4x4.webp';
 
-export const MOON_WARP_DURATION_MS = 7_600;
+useTexture.preload(JET_TEX);
+useTexture.preload(FLARE_TEX);
+useTexture.preload(SHOCK_TEX);
+
+export const MOON_WARP_DURATION_MS = 8_600;
 
 export interface MoonGateWarpEvent {
   readonly id: string;
@@ -49,7 +58,7 @@ const Z_AXIS = new THREE.Vector3(0, 0, 1);
 const UP_AXIS = new THREE.Vector3(0, 1, 0);
 const ALT_UP = new THREE.Vector3(1, 0, 0);
 
-/** Measured center Y of `utility-gate-frame` / `utility-star-membrane` in `astralGate.js` at size=1. */
+/** Measured center Y of `utility-gate-frame` / `utility-star-membrane` in `astralGate.ts` at size=1. */
 const ASTRAL_GATE_CENTER_Y = 1.45;
 const ASTRAL_GATE_PURPLE = '#c1b8ff';
 
@@ -70,25 +79,88 @@ interface SharedMaps {
   shock: THREE.Texture;
 }
 
-type CreateAstralGateFn = (options?: AstralGateOptions) => AstralGateInstance;
-let cachedGateLoader: Promise<CreateAstralGateFn> | null = null;
-function loadAstralGate(): Promise<CreateAstralGateFn> {
-  cachedGateLoader ??= import('../vfx/astralGate.js').then((mod) => mod.default);
-  return cachedGateLoader;
-}
-
 const MAX_SQUAD = 6;
 /** Clean V-wedge formation spread in clear space ahead of the moon so every ship reads individually. */
 const FORMATION_OFFSETS: readonly (readonly [number, number, number])[] = [
   [0, 0.04, 0],
-  [-0.62, 0.12, -0.34],
-  [0.62, -0.08, -0.34],
-  [-1.12, -0.14, -0.68],
-  [1.12, 0.16, -0.68],
-  [0, 0.34, -0.82],
+  [-0.64, 0.12, -0.34],
+  [0.64, -0.08, -0.34],
+  [-1.16, -0.14, -0.68],
+  [1.16, 0.16, -0.68],
+  [0, 0.36, -0.84],
 ];
 
-/** Build a sleek swept-wing spacecraft mesh (body + delta wing + glowing canopy) in 1 lightweight geometry group. */
+class ModelGuard extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+  override state = { failed: false };
+  static getDerivedStateFromError(): { failed: boolean } { return { failed: true }; }
+  override render(): ReactNode { return this.state.failed ? this.props.fallback : this.props.children; }
+}
+
+/** Real Astera GLB starcraft normalized to 1 unit down +Z with bright warp silhouette lighting. */
+function GlbCraftModel() {
+  const { scene } = useGLTF(HULL_MODEL.DART, false);
+  const clone = useMemo(() => {
+    const root = scene.clone(true);
+    const box = new THREE.Box3().setFromObject(root);
+    const size = new THREE.Vector3();
+    const center = new THREE.Vector3();
+    box.getSize(size);
+    box.getCenter(center);
+    const maxDim = Math.max(0.001, size.x, size.y, size.z);
+    const s = 1.15 / maxDim;
+    root.scale.setScalar(s);
+    root.position.set(-center.x * s, -center.y * s, -center.z * s);
+    root.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) {
+        obj.renderOrder = 7;
+        const orig = obj.material as THREE.Material | THREE.Material[];
+        const brighten = (m: THREE.Material): THREE.Material => {
+          const c = m.clone();
+          if ('emissive' in c && c.emissive instanceof THREE.Color) {
+            c.emissive.set('#6366f1');
+            if ('emissiveIntensity' in c) (c as THREE.MeshStandardMaterial).emissiveIntensity = 0.55;
+          }
+          return c;
+        };
+        obj.material = Array.isArray(orig) ? orig.map(brighten) : brighten(orig);
+      }
+    });
+    return root;
+  }, [scene]);
+
+  useEffect(() => () => {
+    clone.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) {
+        const mat = obj.material as THREE.Material | THREE.Material[];
+        if (Array.isArray(mat)) mat.forEach((m) => { m.dispose(); });
+        else mat.dispose();
+      }
+    });
+  }, [clone]);
+
+  return <primitive object={clone} />;
+}
+
+/** Fallback sleek swept-wing spacecraft mesh (body + delta wing) if GLB is still streaming. */
+function FallbackCraftHull({
+  fuselageGeo,
+  wingGeo,
+  hullMat,
+  accentMat,
+}: {
+  readonly fuselageGeo: THREE.BufferGeometry;
+  readonly wingGeo: THREE.BufferGeometry;
+  readonly hullMat: THREE.Material;
+  readonly accentMat: THREE.Material;
+}) {
+  return (
+    <>
+      <mesh geometry={fuselageGeo} material={hullMat} renderOrder={7} />
+      <mesh geometry={wingGeo} position={[0, -0.02, -0.12]} material={accentMat} renderOrder={7} />
+    </>
+  );
+}
+
 function CraftMesh({
   fuselageGeo,
   wingGeo,
@@ -104,12 +176,23 @@ function CraftMesh({
   readonly jetMat: THREE.Material;
   readonly jetScale?: number;
 }) {
+  const fallback = (
+    <FallbackCraftHull
+      fuselageGeo={fuselageGeo}
+      wingGeo={wingGeo}
+      hullMat={hullMat}
+      accentMat={accentMat}
+    />
+  );
   return (
     <>
-      <mesh geometry={fuselageGeo} material={hullMat} renderOrder={7} />
-      <mesh geometry={wingGeo} position={[0, -0.02, -0.12]} material={accentMat} renderOrder={7} />
+      <ModelGuard fallback={fallback}>
+        <Suspense fallback={fallback}>
+          <GlbCraftModel />
+        </Suspense>
+      </ModelGuard>
       {/* Crossed thruster plume cards behind the stern */}
-      <group position={[0, 0, -0.5]} rotation={[0, Math.PI / 2, 0]} scale={[1.35 * jetScale, 0.44 * jetScale, 1]}>
+      <group position={[0, 0, -0.52]} rotation={[0, Math.PI / 2, 0]} scale={[1.45 * jetScale, 0.48 * jetScale, 1]}>
         <mesh position={[0.5, 0, 0]} material={jetMat} renderOrder={7}>
           <planeGeometry args={[1, 1]} />
         </mesh>
@@ -126,27 +209,27 @@ function WarpSequence({
   moons,
   nodeById,
   maps,
-  createGate,
+  onArriveCamera,
 }: {
   readonly event: MoonGateWarpEvent;
   readonly moons: GalaxyMoons | undefined;
   readonly nodeById: ReadonlyMap<string, MoonHostRef>;
   readonly maps: SharedMaps;
-  readonly createGate: CreateAstralGateFn;
+  readonly onArriveCamera?: ((toPlanetId: string) => void) | undefined;
 }) {
   const invalidate = useThree((s) => s.invalidate);
   const shipCount = Math.max(3, Math.min(MAX_SQUAD, Math.ceil(Math.sqrt(Math.max(1, event.shipCount)))));
 
-  // Instantiate two real purple Gate of Astral Tracery portals (departure + arrival).
+  // Instantiate two real purple Gate of Astral Tracery portals synchronously (zero lazy-load delay!).
   const portals = useMemo(() => {
-    const dep: AstralGateInstance = createGate({
+    const dep: AstralGateInstance = createAstralGate({
       size: 1,
       speed: 1.15,
       detail: 1,
       color: ASTRAL_GATE_PURPLE,
       density: 0.7,
     });
-    const arr: AstralGateInstance = createGate({
+    const arr: AstralGateInstance = createAstralGate({
       size: 1,
       speed: 1.15,
       detail: 1,
@@ -156,8 +239,11 @@ function WarpSequence({
     // Center the upright arch at local origin so ships fly directly through the star membrane.
     dep.group.position.set(0, -ASTRAL_GATE_CENTER_Y, 0);
     arr.group.position.set(0, -ASTRAL_GATE_CENTER_Y, 0);
+    // If mounted mid-sequence, fast-forward departure gate to current clock
+    const elapsedSec = Math.max(0, (serverNow() - event.startedAtMs) / 1_000);
+    if (elapsedSec > 0.05) dep.update(Math.min(elapsedSec, 3.2));
     return { dep, arr };
-  }, [createGate]);
+  }, [event.startedAtMs]);
 
   const localTex = useMemo(() => {
     const depShock = maps.shock.clone();
@@ -171,19 +257,15 @@ function WarpSequence({
   }, [maps.shock]);
 
   const geometries = useMemo(() => {
-    // Sleek pointed fuselage oriented along +Z
     const fuselage = new THREE.ConeGeometry(0.2, 0.95, 5);
     fuselage.rotateX(Math.PI / 2);
     fuselage.scale(1.0, 0.45, 1.0);
 
-    // Swept delta wing oriented flat along XZ
     const wing = new THREE.ConeGeometry(0.52, 0.56, 3);
     wing.rotateX(Math.PI / 2);
     wing.scale(1.15, 0.08, 0.9);
 
-    const conduit = new THREE.BufferGeometry();
-    conduit.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
-    return { fuselage, wing, conduit };
+    return { fuselage, wing };
   }, []);
 
   const materials = useMemo(() => {
@@ -203,6 +285,8 @@ function WarpSequence({
       accent: new THREE.MeshBasicMaterial({ color: '#a5b4fc', transparent: true, opacity: 0.95, toneMapped: false }),
       jet: mk(maps.jet, '#a78bfa'),
       streak: mk(maps.jet, '#e9d5ff'),
+      conduit: mk(maps.jet, '#c4b5fd'),
+      conduitCore: mk(maps.jet, '#f5f3ff'),
       depShock: mk(localTex.depShock, '#c4b5fd'),
       arrShock: mk(localTex.arrShock, '#c4b5fd'),
       depFlare: new THREE.SpriteMaterial({
@@ -223,30 +307,14 @@ function WarpSequence({
         blending: THREE.AdditiveBlending,
         toneMapped: false,
       }),
-      conduit: new THREE.LineBasicMaterial({
-        color: '#c4b5fd',
-        transparent: true,
-        opacity: 0,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        toneMapped: false,
-      }),
     };
   }, [maps, localTex]);
-
-  const conduitLine = useMemo(() => {
-    const line = new THREE.Line(geometries.conduit, materials.conduit);
-    line.visible = false;
-    line.frustumCulled = false;
-    return line;
-  }, [geometries.conduit, materials.conduit]);
 
   useEffect(() => () => {
     portals.dep.dispose();
     portals.arr.dispose();
     geometries.fuselage.dispose();
     geometries.wing.dispose();
-    geometries.conduit.dispose();
     localTex.depShock.dispose();
     localTex.arrShock.dispose();
     Object.values(materials).forEach((m) => { m.dispose(); });
@@ -255,6 +323,8 @@ function WarpSequence({
   const depGateHostRef = useRef<THREE.Group>(null);
   const depShockRef = useRef<THREE.Mesh>(null);
   const depFlareRef = useRef<THREE.Sprite>(null);
+
+  const conduitRef = useRef<THREE.Group>(null);
 
   const arrGateHostRef = useRef<THREE.Group>(null);
   const arrShockRef = useRef<THREE.Mesh>(null);
@@ -268,29 +338,38 @@ function WarpSequence({
   const depStopped = useRef(false);
   const arrStarted = useRef(false);
   const arrStopped = useRef(false);
+  const cameraPanned = useRef(false);
+  const soundPlayed = useRef({ open: false, warp: false, arrive: false });
 
   const scratch = useMemo(() => ({
     originParent: { x: 0, y: 0, z: 0 },
     destParent: { x: 0, y: 0, z: 0 },
     originMoon: { x: 0, y: 0, z: 0 },
     destMoon: { x: 0, y: 0, z: 0 },
+    depDirOut: { x: 0, y: 0, z: 0 },
+    arrDirOut: { x: 0, y: 0, z: 0 },
     fromV: new THREE.Vector3(),
     toV: new THREE.Vector3(),
-    dir: new THREE.Vector3(),
-    negDir: new THREE.Vector3(),
+    depDir: new THREE.Vector3(),
+    arrInDir: new THREE.Vector3(),
+    arrOutDir: new THREE.Vector3(),
+    conduitDir: new THREE.Vector3(),
     side: new THREE.Vector3(),
     up: new THREE.Vector3(),
+    arrSide: new THREE.Vector3(),
+    arrUp: new THREE.Vector3(),
     basis: new THREE.Matrix4(),
     gateDepQuat: new THREE.Quaternion(),
     gateArrQuat: new THREE.Quaternion(),
-    shipFacing: new THREE.Quaternion(),
-    backFacing: new THREE.Quaternion(),
+    depShipFacing: new THREE.Quaternion(),
+    arrShipFacing: new THREE.Quaternion(),
+    arrBackFacing: new THREE.Quaternion(),
+    conduitQuat: new THREE.Quaternion(),
     gateDepPos: new THREE.Vector3(),
     gateArrPos: new THREE.Vector3(),
-    laneStart: new THREE.Vector3(),
-    laneEnd: new THREE.Vector3(),
     head: new THREE.Vector3(),
     tail: new THREE.Vector3(),
+    mid: new THREE.Vector3(),
     tmp: new THREE.Vector3(),
   }), []);
 
@@ -303,6 +382,27 @@ function WarpSequence({
     const fromNode = nodeById.get(event.fromPlanetId);
     const toNode = nodeById.get(event.toPlanetId);
     if (!fromNode || !toNode) return;
+
+    // Synced audio & haptic beats
+    if (!soundPlayed.current.open && t >= 0.04) {
+      soundPlayed.current.open = true;
+      playSound('unseal', { gain: 0.72, key: `moon-gate-open:${event.id}` });
+      haptic('commit');
+    }
+    if (!soundPlayed.current.warp && t >= 1.48) {
+      soundPlayed.current.warp = true;
+      playSound('warp', { gain: 0.85, key: `moon-gate-warp:${event.id}` });
+      haptic('warp');
+    }
+    if (!cameraPanned.current && t >= 3.15) {
+      cameraPanned.current = true;
+      onArriveCamera?.(event.toPlanetId);
+    }
+    if (!soundPlayed.current.arrive && t >= 3.75) {
+      soundPlayed.current.arrive = true;
+      playSound('impact', { gain: 0.65, key: `moon-gate-arrive:${event.id}` });
+      haptic('thunk');
+    }
 
     const timeSec = nowMs / 1_000;
     const list = moons?.list ?? [];
@@ -324,43 +424,60 @@ function WarpSequence({
 
     scratch.fromV.set(scratch.originMoon.x, scratch.originMoon.y, scratch.originMoon.z);
     scratch.toV.set(scratch.destMoon.x, scratch.destMoon.y, scratch.destMoon.z);
-    scratch.dir.subVectors(scratch.toV, scratch.fromV);
-    const totalDist = scratch.dir.length();
+    const totalDist = scratch.fromV.distanceTo(scratch.toV);
     if (totalDist < 0.001) return;
-    scratch.dir.divideScalar(totalDist);
-    scratch.negDir.copy(scratch.dir).negate();
 
-    // Orthonormal basis: X = portal normal (`dir`), Y = upright (`up`), Z = arch width (`side`).
-    const refUp = Math.abs(scratch.dir.y) > 0.92 ? ALT_UP : UP_AXIS;
-    scratch.side.crossVectors(scratch.dir, refUp).normalize();
-    scratch.up.crossVectors(scratch.side, scratch.dir).normalize();
+    // Planet + Dyson shell safe departure & arrival staging vectors!
+    moonClearStagingDirection(
+      scratch.originParent,
+      fromNode.radius,
+      scratch.originMoon,
+      scratch.destMoon,
+      scratch.depDirOut,
+    );
+    moonClearStagingDirection(
+      scratch.destParent,
+      toNode.radius,
+      scratch.destMoon,
+      scratch.originMoon,
+      scratch.arrDirOut,
+    );
 
-    // Astral Gate faces +X with upright +Y -> map X->dir, Y->up, Z->side!
-    scratch.basis.makeBasis(scratch.dir, scratch.up, scratch.side);
+    scratch.depDir.set(scratch.depDirOut.x, scratch.depDirOut.y, scratch.depDirOut.z);
+    scratch.arrOutDir.set(scratch.arrDirOut.x, scratch.arrDirOut.y, scratch.arrDirOut.z);
+    scratch.arrInDir.copy(scratch.arrOutDir).negate();
+
+    // Departure gate orthonormal basis: X = depDir, Y = up, Z = side
+    const depRefUp = Math.abs(scratch.depDir.y) > 0.92 ? ALT_UP : UP_AXIS;
+    scratch.side.crossVectors(scratch.depDir, depRefUp).normalize();
+    scratch.up.crossVectors(scratch.side, scratch.depDir).normalize();
+    scratch.basis.makeBasis(scratch.depDir, scratch.up, scratch.side);
     scratch.gateDepQuat.setFromRotationMatrix(scratch.basis);
-    // Arrival gate faces -dir (receiving) with upright +Y -> map X->-dir, Y->up, Z->-side!
-    scratch.tmp.copy(scratch.side).negate();
-    scratch.basis.makeBasis(scratch.negDir, scratch.up, scratch.tmp);
+
+    // Arrival gate faces outward toward incoming beam (arrOutDir) with upright Y
+    const arrRefUp = Math.abs(scratch.arrOutDir.y) > 0.92 ? ALT_UP : UP_AXIS;
+    scratch.arrSide.crossVectors(scratch.arrOutDir, arrRefUp).normalize();
+    scratch.arrUp.crossVectors(scratch.arrSide, scratch.arrOutDir).normalize();
+    scratch.basis.makeBasis(scratch.arrOutDir, scratch.arrUp, scratch.arrSide);
     scratch.gateArrQuat.setFromRotationMatrix(scratch.basis);
 
-    scratch.shipFacing.setFromUnitVectors(Z_AXIS, scratch.dir);
-    scratch.backFacing.setFromUnitVectors(Z_AXIS, scratch.negDir);
+    scratch.depShipFacing.setFromUnitVectors(Z_AXIS, scratch.depDir);
+    scratch.arrShipFacing.setFromUnitVectors(Z_AXIS, scratch.arrInDir);
+    scratch.arrBackFacing.setFromUnitVectors(Z_AXIS, scratch.arrOutDir);
 
-    // Clear-space staging lane well IN FRONT of the moon so ships & portal never collide with the moon!
-    const depUnit = Math.max(fromR * 2.2, fromNode.radius * 0.65);
-    const arrUnit = Math.max(toR * 2.2, toNode.radius * 0.65);
-    const depStartOffset = Math.max(fromR * 1.9, depUnit * 0.95);
-    const depGateOffset = Math.max(fromR * 5.1, depUnit * 2.55);
-    const arrGateOffset = Math.max(toR * 5.1, arrUnit * 2.55);
-    const arrStopOffset = Math.max(toR * 1.9, arrUnit * 0.95);
+    // Clear-space staging lane well IN FRONT of the moon (never overlapping moon or parent Dyson shell)
+    const depUnit = Math.max(fromR * 2.25, fromNode.radius * 0.68);
+    const arrUnit = Math.max(toR * 2.25, toNode.radius * 0.68);
+    const depStartOffset = Math.max(fromR * 2.0, depUnit * 0.95);
+    const depGateOffset = Math.max(fromR * 5.2, depUnit * 2.55);
+    const arrGateOffset = Math.max(toR * 5.2, arrUnit * 2.55);
+    const arrStopOffset = Math.max(toR * 2.0, arrUnit * 0.95);
 
-    scratch.laneStart.copy(scratch.fromV).addScaledVector(scratch.dir, depStartOffset);
-    scratch.gateDepPos.copy(scratch.fromV).addScaledVector(scratch.dir, depGateOffset);
-    scratch.gateArrPos.copy(scratch.toV).addScaledVector(scratch.dir, -arrGateOffset);
-    scratch.laneEnd.copy(scratch.toV).addScaledVector(scratch.dir, -arrStopOffset);
+    scratch.gateDepPos.copy(scratch.fromV).addScaledVector(scratch.depDir, depGateOffset);
+    scratch.gateArrPos.copy(scratch.toV).addScaledVector(scratch.arrOutDir, arrGateOffset);
 
     // ─── 1. PURPLE ASTRAL GATE AT ORIGIN MOON (0.0s -> 4.3s) ──────────────────
-    if (t >= 3.3 && !depStopped.current) {
+    if (t >= 3.4 && !depStopped.current) {
       depStopped.current = true;
       portals.dep.stop();
     }
@@ -371,23 +488,22 @@ function WarpSequence({
       depGateHostRef.current.visible = !portals.dep.finished;
       depGateHostRef.current.position.copy(scratch.gateDepPos);
       depGateHostRef.current.quaternion.copy(scratch.gateDepQuat);
-      depGateHostRef.current.scale.setScalar(depUnit * 0.68);
+      depGateHostRef.current.scale.setScalar(depUnit * 0.72);
     }
 
-    // Aperture shockwave when lead vessel hits the star membrane (~1.55s)
-    const depPunch = t >= 1.5 ? clamp01((t - 1.5) / 0.85) : -1;
+    const depPunch = t >= 1.52 ? clamp01((t - 1.52) / 0.85) : -1;
     if (depShockRef.current) {
       depShockRef.current.visible = depPunch >= 0 && depPunch < 1;
       if (depPunch >= 0 && depPunch < 1) {
         depShockRef.current.position.copy(scratch.gateDepPos);
-        depShockRef.current.quaternion.copy(scratch.shipFacing);
-        depShockRef.current.scale.setScalar(depUnit * (0.9 + depPunch * 2.1));
+        depShockRef.current.quaternion.copy(scratch.depShipFacing);
+        depShockRef.current.scale.setScalar(depUnit * (0.95 + depPunch * 2.2));
         setGridFrame(localTex.depShock, depPunch * 15, 4, 4);
-        materials.depShock.opacity = (1 - depPunch) * 0.82;
+        materials.depShock.opacity = (1 - depPunch) * 0.85;
       }
     }
 
-    // ─── 2. VISIBLE SQUADRON LAUNCHING AHEAD OF MOON -> THROUGH PURPLE GATE ──
+    // ─── 2. VISIBLE GLB SQUADRON LAUNCHING AHEAD OF MOON -> THROUGH PURPLE GATE ──
     let depFlashPeak = 0;
     let maxJet = 0;
     let maxStreak = 0;
@@ -398,8 +514,8 @@ function WarpSequence({
       const streakGrp = depStreakRefs.current[i];
       const [ox, oy, oz] = FORMATION_OFFSETS[i] ?? [0, 0, 0];
       const stagger = i * 0.17;
-      const appearAt = 0.42 + stagger * 0.65;
-      const snapAt = 1.56 + stagger; // exact moment this ship pierces the purple star membrane
+      const appearAt = 0.4 + stagger * 0.65;
+      const snapAt = 1.56 + stagger;
 
       if (shipGrp) {
         const alive = t >= appearAt && t < snapAt + 0.14;
@@ -408,41 +524,39 @@ function WarpSequence({
           const lt = t - appearAt;
           const cruiseSpan = Math.max(0.2, snapAt - appearAt);
           const u = clamp01(lt / cruiseSpan);
-          // Smooth cruise-in from ahead of the moon, then hard warp acceleration into the gate
-          const ease = u * 0.32 + u * u * u * 0.68;
+          const ease = u * 0.3 + u * u * u * 0.7;
           const along = t < snapAt
             ? depStartOffset + oz * depUnit * 0.42 + laneLen * ease
-            : depGateOffset + depUnit * 19 * (t - snapAt);
-          // Formation converges cleanly toward the portal throat right before entry
-          const converge = 1 - 0.58 * smooth(0.58, 1.0, u);
+            : depGateOffset + depUnit * 20 * (t - snapAt);
+          const converge = 1 - 0.6 * smooth(0.55, 1.0, u);
           const fadeIn = smooth(0, 0.2, lt);
           shipGrp.position
             .copy(scratch.fromV)
-            .addScaledVector(scratch.dir, along)
+            .addScaledVector(scratch.depDir, along)
             .addScaledVector(scratch.side, ox * depUnit * 0.58 * converge)
             .addScaledVector(scratch.up, oy * depUnit * 0.58 * converge);
-          shipGrp.quaternion.copy(scratch.shipFacing);
+          shipGrp.quaternion.copy(scratch.depShipFacing);
 
           const stretch = 1 + 19 * clamp01((t - (snapAt - 0.15)) / 0.22) ** 2;
           const slim = 1 / Math.sqrt(stretch);
-          const s = depUnit * 0.48 * (0.45 + 0.55 * fadeIn);
+          const s = depUnit * 0.52 * (0.45 + 0.55 * fadeIn);
           shipGrp.scale.set(s * slim, s * slim, s * stretch);
-          maxJet = Math.max(maxJet, 0.55 + 0.45 * u);
+          maxJet = Math.max(maxJet, 0.58 + 0.42 * u);
         }
       }
 
       if (streakGrp) {
         const sinceSnap = t - (snapAt - 0.03);
-        const a = sinceSnap >= 0 && sinceSnap < 0.8 ? (1 - sinceSnap / 0.8) ** 1.45 : 0;
+        const a = sinceSnap >= 0 && sinceSnap < 0.85 ? (1 - sinceSnap / 0.85) ** 1.45 : 0;
         streakGrp.visible = a > 0.01;
         if (a > 0.01) {
           streakGrp.position
             .copy(scratch.gateDepPos)
             .addScaledVector(scratch.side, ox * depUnit * 0.22)
             .addScaledVector(scratch.up, oy * depUnit * 0.22);
-          streakGrp.quaternion.copy(scratch.shipFacing);
-          const streakLen = Math.min(totalDist * 0.42, depUnit * (5 + 16 * clamp01(sinceSnap / 0.2)));
-          streakGrp.scale.set(depUnit * 0.28, depUnit * 0.28, streakLen);
+          streakGrp.quaternion.copy(scratch.depShipFacing);
+          const streakLen = Math.min(totalDist * 0.42, depUnit * (5 + 17 * clamp01(sinceSnap / 0.2)));
+          streakGrp.scale.set(depUnit * 0.3, depUnit * 0.3, streakLen);
           maxStreak = Math.max(maxStreak, a);
         }
       }
@@ -452,33 +566,46 @@ function WarpSequence({
       }
     }
 
-    materials.jet.opacity = Math.max(maxJet, 0.45);
-    materials.streak.opacity = Math.max(maxStreak, 0.2);
+    materials.jet.opacity = Math.max(maxJet, 0.48);
+    materials.streak.opacity = Math.max(maxStreak, 0.22);
     if (depFlareRef.current) {
       depFlareRef.current.visible = depFlashPeak > 0.01;
       depFlareRef.current.position.copy(scratch.gateDepPos);
-      depFlareRef.current.scale.setScalar(depUnit * (0.85 + 1.35 * depFlashPeak));
-      materials.depFlare.opacity = depFlashPeak * 0.78;
+      depFlareRef.current.scale.setScalar(depUnit * (0.9 + 1.4 * depFlashPeak));
+      materials.depFlare.opacity = depFlashPeak * 0.82;
     }
 
-    // ─── 3. HYPERSPACE CONDUIT PULSE (1.5s -> 4.1s) ───────────────────────────
-    const transit = (t - 1.5) / 2.1;
-    const showConduit = transit > 0 && transit < 1.18;
-    conduitLine.visible = showConduit;
-    if (showConduit) {
-      scratch.head.lerpVectors(scratch.gateDepPos, scratch.gateArrPos, clamp01(transit));
-      scratch.tail.lerpVectors(scratch.gateDepPos, scratch.gateArrPos, clamp01(transit - 0.3));
-      const posAttr = geometries.conduit.getAttribute('position') as THREE.BufferAttribute;
-      posAttr.setXYZ(0, scratch.tail.x, scratch.tail.y, scratch.tail.z);
-      posAttr.setXYZ(1, scratch.head.x, scratch.head.y, scratch.head.z);
-      posAttr.needsUpdate = true;
-      materials.conduit.opacity = smooth(0, 0.12, transit) * (1 - smooth(0.92, 1.18, transit)) * 0.88;
+    // ─── 3. VOLUMETRIC HYPERSPACE CONDUIT RIBBON (1.5s -> 4.4s) ───────────────
+    const transit = (t - 1.5) / 2.25;
+    const showConduit = transit > 0 && transit < 1.22;
+    if (conduitRef.current) {
+      conduitRef.current.visible = showConduit;
+      if (showConduit) {
+        scratch.head.lerpVectors(scratch.gateDepPos, scratch.gateArrPos, clamp01(transit));
+        scratch.tail.lerpVectors(scratch.gateDepPos, scratch.gateArrPos, clamp01(transit - 0.36));
+        scratch.conduitDir.subVectors(scratch.head, scratch.tail);
+        const segLen = scratch.conduitDir.length();
+        if (segLen > 0.01) {
+          scratch.conduitDir.divideScalar(segLen);
+          scratch.mid.addVectors(scratch.tail, scratch.head).multiplyScalar(0.5);
+          scratch.conduitQuat.setFromUnitVectors(Z_AXIS, scratch.conduitDir);
+          conduitRef.current.position.copy(scratch.mid);
+          conduitRef.current.quaternion.copy(scratch.conduitQuat);
+          const width = Math.max(depUnit, arrUnit) * 0.42;
+          conduitRef.current.scale.set(width, width, segLen);
+          const alpha = smooth(0, 0.14, transit) * (1 - smooth(0.92, 1.22, transit));
+          materials.conduit.opacity = alpha * 0.78;
+          materials.conduitCore.opacity = alpha * 0.92;
+        } else {
+          conduitRef.current.visible = false;
+        }
+      }
     }
 
-    // ─── 4. PURPLE ASTRAL GATE AT DESTINATION MOON (2.8s -> 7.4s) ─────────────
-    if (t >= 2.8) {
+    // ─── 4. PURPLE ASTRAL GATE AT DESTINATION MOON (3.1s -> 8.4s) ─────────────
+    if (t >= 3.1) {
       arrStarted.current = true;
-      if (t >= 5.7 && !arrStopped.current) {
+      if (t >= 6.4 && !arrStopped.current) {
         arrStopped.current = true;
         portals.arr.stop();
       }
@@ -490,18 +617,18 @@ function WarpSequence({
       arrGateHostRef.current.visible = arrStarted.current && !portals.arr.finished;
       arrGateHostRef.current.position.copy(scratch.gateArrPos);
       arrGateHostRef.current.quaternion.copy(scratch.gateArrQuat);
-      arrGateHostRef.current.scale.setScalar(arrUnit * 0.68);
+      arrGateHostRef.current.scale.setScalar(arrUnit * 0.72);
     }
 
-    const arrPunch = t >= 3.5 ? clamp01((t - 3.5) / 0.85) : -1;
+    const arrPunch = t >= 3.75 ? clamp01((t - 3.75) / 0.85) : -1;
     if (arrShockRef.current) {
       arrShockRef.current.visible = arrPunch >= 0 && arrPunch < 1;
       if (arrPunch >= 0 && arrPunch < 1) {
         arrShockRef.current.position.copy(scratch.gateArrPos);
-        arrShockRef.current.quaternion.copy(scratch.backFacing);
-        arrShockRef.current.scale.setScalar(arrUnit * (0.9 + arrPunch * 2.1));
+        arrShockRef.current.quaternion.copy(scratch.arrBackFacing);
+        arrShockRef.current.scale.setScalar(arrUnit * (0.95 + arrPunch * 2.2));
         setGridFrame(localTex.arrShock, arrPunch * 15, 4, 4);
-        materials.arrShock.opacity = (1 - arrPunch) * 0.82;
+        materials.arrShock.opacity = (1 - arrPunch) * 0.85;
       }
     }
 
@@ -511,27 +638,27 @@ function WarpSequence({
       const shipGrp = arrShipRefs.current[i];
       const streakGrp = arrStreakRefs.current[i];
       const [ox, oy, oz] = FORMATION_OFFSETS[i] ?? [0, 0, 0];
-      const emergeAt = 3.55 + i * 0.17;
-      const doneAt = emergeAt + 1.85;
+      const emergeAt = 3.8 + i * 0.17;
+      const doneAt = emergeAt + 2.05;
 
       if (shipGrp) {
         const alive = t >= emergeAt && t < doneAt;
         shipGrp.visible = alive;
         if (alive) {
           const et = t - emergeAt;
-          const settle = 1 - Math.exp(-et * 2.6);
-          const along = -arrGateOffset + arrSpan * settle + oz * arrUnit * 0.35;
+          const settle = 1 - Math.exp(-et * 2.5);
+          const distFromMoon = arrGateOffset - arrSpan * settle - oz * arrUnit * 0.35;
           shipGrp.position
             .copy(scratch.toV)
-            .addScaledVector(scratch.dir, along)
-            .addScaledVector(scratch.side, ox * arrUnit * 0.55 * (0.35 + 0.65 * settle))
-            .addScaledVector(scratch.up, oy * arrUnit * 0.55 * (0.35 + 0.65 * settle));
-          shipGrp.quaternion.copy(scratch.shipFacing);
+            .addScaledVector(scratch.arrOutDir, distFromMoon)
+            .addScaledVector(scratch.arrSide, ox * arrUnit * 0.55 * (0.35 + 0.65 * settle))
+            .addScaledVector(scratch.arrUp, oy * arrUnit * 0.55 * (0.35 + 0.65 * settle));
+          shipGrp.quaternion.copy(scratch.arrShipFacing);
 
           const stretch = 1 + 17 * Math.max(0, 1 - et / 0.25) ** 2;
           const slim = 1 / Math.sqrt(stretch);
-          const fadeOut = 1 - smooth(1.35, 1.85, et);
-          const s = arrUnit * 0.48 * (0.35 + 0.65 * fadeOut);
+          const fadeOut = 1 - smooth(1.5, 2.05, et);
+          const s = arrUnit * 0.52 * (0.35 + 0.65 * fadeOut);
           shipGrp.scale.set(s * slim, s * slim, s * stretch);
         }
       }
@@ -543,10 +670,10 @@ function WarpSequence({
         if (a > 0.01) {
           streakGrp.position
             .copy(scratch.gateArrPos)
-            .addScaledVector(scratch.side, ox * arrUnit * 0.22)
-            .addScaledVector(scratch.up, oy * arrUnit * 0.22);
-          streakGrp.quaternion.copy(scratch.backFacing);
-          streakGrp.scale.set(arrUnit * 0.28, arrUnit * 0.28, Math.min(totalDist * 0.36, arrUnit * 13));
+            .addScaledVector(scratch.arrSide, ox * arrUnit * 0.22)
+            .addScaledVector(scratch.arrUp, oy * arrUnit * 0.22);
+          streakGrp.quaternion.copy(scratch.arrBackFacing);
+          streakGrp.scale.set(arrUnit * 0.3, arrUnit * 0.3, Math.min(totalDist * 0.36, arrUnit * 13));
         }
       }
 
@@ -558,8 +685,8 @@ function WarpSequence({
     if (arrFlareRef.current) {
       arrFlareRef.current.visible = arrFlashPeak > 0.01;
       arrFlareRef.current.position.copy(scratch.gateArrPos);
-      arrFlareRef.current.scale.setScalar(arrUnit * (0.85 + 1.35 * arrFlashPeak));
-      materials.arrFlare.opacity = arrFlashPeak * 0.78;
+      arrFlareRef.current.scale.setScalar(arrUnit * (0.9 + 1.4 * arrFlashPeak));
+      materials.arrFlare.opacity = arrFlashPeak * 0.82;
     }
 
     invalidate();
@@ -603,8 +730,20 @@ function WarpSequence({
         </group>
       ))}
 
-      {/* Hyperspace conduit connecting Origin Gate -> Destination Gate */}
-      <primitive object={conduitLine} raycast={() => null} />
+      {/* Volumetric crossed hyperspace conduit beam connecting Origin Gate -> Destination Gate */}
+      <group ref={conduitRef} visible={false}>
+        <group rotation={[0, Math.PI / 2, 0]}>
+          <mesh material={materials.conduit} renderOrder={6}>
+            <planeGeometry args={[1, 1]} />
+          </mesh>
+          <mesh rotation={[Math.PI / 2, 0, 0]} material={materials.conduit} renderOrder={6}>
+            <planeGeometry args={[1, 1]} />
+          </mesh>
+          <mesh scale={[1, 0.35, 1]} material={materials.conduitCore} renderOrder={7}>
+            <planeGeometry args={[1, 1]} />
+          </mesh>
+        </group>
+      </group>
 
       {/* Real Purple Gate of Astral Tracery at Destination Moon */}
       <group ref={arrGateHostRef} visible={false}>
@@ -648,22 +787,13 @@ export function MoonGateWarpFx({
   events,
   moons,
   nodes,
+  onArriveCamera,
 }: {
   readonly events: readonly MoonGateWarpEvent[];
   readonly moons?: GalaxyMoons | undefined;
   readonly nodes: readonly MoonHostRef[];
+  readonly onArriveCamera?: ((toPlanetId: string) => void) | undefined;
 }) {
-  const [createGate, setCreateGate] = useState<CreateAstralGateFn | null>(null);
-
-  useEffect(() => {
-    if (events.length === 0 || createGate !== null) return;
-    let alive = true;
-    void loadAstralGate().then((fn) => {
-      if (alive) setCreateGate(() => fn);
-    });
-    return () => { alive = false; };
-  }, [events.length, createGate]);
-
   const [jet, flare, shock] = useTexture([JET_TEX, FLARE_TEX, SHOCK_TEX]);
 
   const maps = useMemo<SharedMaps>(() => {
@@ -682,7 +812,7 @@ export function MoonGateWarpFx({
     return map;
   }, [nodes]);
 
-  if (events.length === 0 || createGate === null) return null;
+  if (events.length === 0) return null;
 
   return (
     <group name="moon-gate-warp-layer">
@@ -693,7 +823,7 @@ export function MoonGateWarpFx({
           moons={moons}
           nodeById={nodeById}
           maps={maps}
-          createGate={createGate}
+          onArriveCamera={onArriveCamera}
         />
       ))}
     </group>

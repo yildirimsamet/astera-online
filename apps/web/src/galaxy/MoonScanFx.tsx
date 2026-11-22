@@ -4,17 +4,19 @@ import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import type { GalaxyMoons } from '../api/schemas.js';
 import { serverNow } from '../lib/clock.js';
+import { playSound } from '../lib/sound.js';
 import { moonOrbitPosition, moonRadiusFor } from './moonOrbit.js';
 import type { MoonHostRef } from './MoonGateWarpFx.js';
 
 /*
-  VFX BRIEF — Moon Gözcü Scanner Telemetry Wave & Target Hologram Lock
+  VFX BRIEF — Moon Gözcü Scanner Telemetry Wave, Target Hologram Lock & Discovered Route Arcs
   - Physical event: The commander's moon fires a silent Gözcü route scan. A crisp circular
     sensor pulse expands from the scanning moon (`circle-wave-5x5.webp`), a telemetry beam packet
     streaks to the target world, and a holographic latitude/longitude scan shell + counter-rotating
-    Sci-Fi reticle (`circles-outlines-2x2.webp`) sweeps and locks onto the target. Legendary
-    cloak-piercing scans burn amber-gold and add an electric pierce burst (`white-shock-4x4.webp`
-    + `electric-line-4x4.webp`).
+    Sci-Fi reticle (`circles-outlines-2x2.webp`) sweeps and locks onto the target.
+  - Legendary cloak-piercing scans burn amber-gold, aim the electric pierce burst directly onto
+    the target's orbiting moon (when present), and highlight discovered flight routes as temporary
+    glowing curved telemetry tubes across the galaxy map.
   - Zero radial glow sprites; 60fps only while active.
 */
 
@@ -23,7 +25,18 @@ const RETICLE_TEX = '/assets/vfx/library/circles-outlines-2x2.webp';
 const SHOCK_TEX = '/assets/vfx/library/white-shock-4x4.webp';
 const ARC_TEX = '/assets/vfx/library/electric-line-4x4.webp';
 
-export const MOON_SCAN_DURATION_MS = 6_000;
+useTexture.preload(CIRCLE_WAVE_TEX);
+useTexture.preload(RETICLE_TEX);
+useTexture.preload(SHOCK_TEX);
+useTexture.preload(ARC_TEX);
+
+export const MOON_SCAN_DURATION_MS = 6_500;
+
+export interface MoonScanRouteFx {
+  readonly fromPlanetId: string;
+  readonly toPlanetId: string;
+  readonly cloaked?: boolean | undefined;
+}
 
 export interface MoonScanFxEvent {
   readonly id: string;
@@ -31,6 +44,7 @@ export interface MoonScanFxEvent {
   readonly targetPlanetId: string;
   readonly startedAtMs: number;
   readonly pierced: boolean;
+  readonly routes?: readonly MoonScanRouteFx[] | undefined;
 }
 
 const SCAN_SHELL_VERT = /* glsl */ `
@@ -137,6 +151,27 @@ function ScanEffect({
     return geo;
   }, []);
 
+  // Build curved 3D telemetry tubes for any discovered routes returned by Gözcü
+  const routeArcs = useMemo(() => {
+    const routes = event.routes ?? [];
+    const built: { geo: THREE.TubeGeometry; cloaked: boolean }[] = [];
+    for (const r of routes.slice(0, 12)) {
+      const a = nodeById.get(r.fromPlanetId);
+      const b = nodeById.get(r.toPlanetId);
+      if (!a || !b || a.id === b.id) continue;
+      const p0 = new THREE.Vector3(...a.position);
+      const p2 = new THREE.Vector3(...b.position);
+      const dist = p0.distanceTo(p2);
+      if (dist < 0.01) continue;
+      const mid = new THREE.Vector3().addVectors(p0, p2).multiplyScalar(0.5);
+      mid.y += Math.min(6.5, dist * 0.14);
+      const curve = new THREE.QuadraticBezierCurve3(p0, mid, p2);
+      const radius = Math.max(0.06, Math.min(0.16, dist * 0.004));
+      built.push({ geo: new THREE.TubeGeometry(curve, 28, radius, 6, false), cloaked: Boolean(r.cloaked) });
+    }
+    return built;
+  }, [event.routes, nodeById]);
+
   const materials = useMemo(() => {
     const color = new THREE.Color(toneHex);
     const mk = (map: THREE.Texture, c: string) =>
@@ -158,6 +193,22 @@ function ScanEffect({
       arc: mk(localTex.arc, '#fef08a'),
       beam: new THREE.LineBasicMaterial({
         color: toneHex,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+      routeStd: new THREE.MeshBasicMaterial({
+        color: '#38bdf8',
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+      routeCloaked: new THREE.MeshBasicMaterial({
+        color: '#fbbf24',
         transparent: true,
         opacity: 0,
         blending: THREE.AdditiveBlending,
@@ -190,9 +241,10 @@ function ScanEffect({
 
   useEffect(() => () => {
     beamGeo.dispose();
+    routeArcs.forEach((a) => { a.geo.dispose(); });
     Object.values(localTex).forEach((t) => { t.dispose(); });
     Object.values(materials).forEach((m) => { m.dispose(); });
-  }, [beamGeo, localTex, materials]);
+  }, [beamGeo, routeArcs, localTex, materials]);
 
   const waveRef = useRef<THREE.Mesh>(null);
   const shellRef = useRef<THREE.Mesh>(null);
@@ -200,15 +252,21 @@ function ScanEffect({
   const retBRef = useRef<THREE.Mesh>(null);
   const pierceShockRef = useRef<THREE.Mesh>(null);
   const pierceArcRef = useRef<THREE.Mesh>(null);
+  const routesGroupRef = useRef<THREE.Group>(null);
+  const soundPlayed = useRef({ pulse: false, lock: false });
 
   const scratch = useMemo(() => ({
     parent: { x: 0, y: 0, z: 0 },
     moonPos: { x: 0, y: 0, z: 0 },
+    targetParent: { x: 0, y: 0, z: 0 },
+    targetMoonPos: { x: 0, y: 0, z: 0 },
     fromV: new THREE.Vector3(),
     toV: new THREE.Vector3(),
+    pierceV: new THREE.Vector3(),
     head: new THREE.Vector3(),
     tail: new THREE.Vector3(),
     toCam: new THREE.Vector3(),
+    pierceCam: new THREE.Vector3(),
   }), []);
 
   useFrame(({ camera }) => {
@@ -220,6 +278,15 @@ function ScanEffect({
     const toNode = nodeById.get(event.targetPlanetId);
     if (!fromNode || !toNode) return;
 
+    if (!soundPlayed.current.pulse && t >= 0.02) {
+      soundPlayed.current.pulse = true;
+      playSound('charge', { gain: 0.62, key: `moon-scan-pulse:${event.id}` });
+    }
+    if (!soundPlayed.current.lock && t >= 0.96) {
+      soundPlayed.current.lock = true;
+      playSound(event.pierced ? 'arc' : 'tick', { gain: 0.7, key: `moon-scan-lock:${event.id}` });
+    }
+
     const timeSec = nowMs / 1_000;
     const fromMoon = moons?.list.find((m) => m.planetId === event.fromPlanetId);
     scratch.parent.x = fromNode.position[0];
@@ -230,6 +297,20 @@ function ScanEffect({
 
     scratch.fromV.set(scratch.moonPos.x, scratch.moonPos.y, scratch.moonPos.z);
     scratch.toV.set(toNode.position[0], toNode.position[1], toNode.position[2]);
+
+    // If Legendary pierces a target world that has a moon, aim the cloak-pierce burst right at its moon!
+    const targetMoon = moons?.list.find((m) => m.planetId === event.targetPlanetId);
+    let pierceRadius = toNode.radius;
+    if (event.pierced && targetMoon) {
+      scratch.targetParent.x = toNode.position[0];
+      scratch.targetParent.y = toNode.position[1];
+      scratch.targetParent.z = toNode.position[2];
+      moonOrbitPosition(scratch.targetParent, toNode.radius, targetMoon.visualSeed, timeSec, scratch.targetMoonPos);
+      scratch.pierceV.set(scratch.targetMoonPos.x, scratch.targetMoonPos.y, scratch.targetMoonPos.z);
+      pierceRadius = Math.max(toNode.radius * 0.6, moonRadiusFor(toNode.radius, moons?.rarity[event.targetPlanetId]) * 2.1);
+    } else {
+      scratch.pierceV.copy(scratch.toV);
+    }
 
     // 1. Expanding sensor pulse wave at Origin Moon (0.0s -> 1.6s)
     const waveProg = clamp01(t / 1.55);
@@ -255,9 +336,9 @@ function ScanEffect({
       materials.beam.opacity = smooth(0, 0.15, beamProg) * (1 - smooth(0.9, 1.25, beamProg)) * 0.9;
     }
 
-    // 3. Target Holographic Sweep Shell + Counter-Rotating Sci-Fi Reticles (0.95s -> 5.8s)
+    // 3. Target Holographic Sweep Shell + Counter-Rotating Sci-Fi Reticles (0.95s -> 6.2s)
     const targetAge = t - 0.95;
-    const targetActive = targetAge >= 0 && targetAge < 4.9;
+    const targetActive = targetAge >= 0 && targetAge < 5.3;
     const r = toNode.radius;
     if (shellRef.current) {
       shellRef.current.visible = targetActive;
@@ -267,14 +348,14 @@ function ScanEffect({
         const sweepProg = clamp01(targetAge / 1.65);
         materials.shell.uniforms.uSweep!.value = 1.15 - sweepProg * 2.3;
         materials.shell.uniforms.uBand!.value = smooth(0, 0.2, targetAge) * (1 - smooth(1.6, 2.4, targetAge));
-        materials.shell.uniforms.uGrid!.value = smooth(0.15, 0.7, targetAge) * (1 - smooth(3.6, 4.85, targetAge));
+        materials.shell.uniforms.uGrid!.value = smooth(0.15, 0.7, targetAge) * (1 - smooth(4.0, 5.25, targetAge));
       }
     }
 
     // Camera-facing reticles locking onto target planet
     scratch.toCam.copy(camera.position).sub(scratch.toV).normalize().multiplyScalar(r * 1.18);
     const lockGrow = smooth(0, 0.35, targetAge);
-    const lockFade = 1 - smooth(3.9, 4.85, targetAge);
+    const lockFade = 1 - smooth(4.2, 5.25, targetAge);
     const retOpacity = targetActive ? lockGrow * lockFade * 0.92 : 0;
     const retScale = r * (3.1 - 0.65 * lockGrow);
 
@@ -295,28 +376,39 @@ function ScanEffect({
       materials.retB.opacity = retOpacity * 0.85;
     }
 
-    // 4. Legendary Cloak-Pierce Shock + Electric Arc on Target (1.05s -> 2.4s)
-    const pierceProg = event.pierced && targetAge >= 0.08 ? clamp01((targetAge - 0.08) / 1.2) : -1;
+    // 4. Legendary Cloak-Pierce Shock + Electric Arc on Target Moon (or Target World)
+    scratch.pierceCam.copy(camera.position).sub(scratch.pierceV).normalize().multiplyScalar(pierceRadius * 1.05);
+    const pierceProg = event.pierced && targetAge >= 0.08 ? clamp01((targetAge - 0.08) / 1.35) : -1;
     if (pierceShockRef.current) {
       pierceShockRef.current.visible = pierceProg >= 0 && pierceProg < 1;
       if (pierceProg >= 0 && pierceProg < 1) {
-        pierceShockRef.current.position.copy(scratch.toV).add(scratch.toCam);
+        pierceShockRef.current.position.copy(scratch.pierceV).add(scratch.pierceCam);
         pierceShockRef.current.quaternion.copy(camera.quaternion);
-        pierceShockRef.current.scale.setScalar(r * (1.8 + 3.4 * pierceProg));
+        pierceShockRef.current.scale.setScalar(pierceRadius * (1.8 + 3.4 * pierceProg));
         setGridFrame(localTex.shock, pierceProg * 15, 4, 4);
         materials.shock.opacity = (1 - pierceProg) * 0.95;
       }
     }
     if (pierceArcRef.current) {
-      pierceArcRef.current.visible = pierceProg >= 0 && pierceProg < 0.85;
-      if (pierceProg >= 0 && pierceProg < 0.85) {
-        pierceArcRef.current.position.copy(scratch.toV).add(scratch.toCam);
+      pierceArcRef.current.visible = pierceProg >= 0 && pierceProg < 0.88;
+      if (pierceProg >= 0 && pierceProg < 0.88) {
+        pierceArcRef.current.position.copy(scratch.pierceV).add(scratch.pierceCam);
         pierceArcRef.current.quaternion.copy(camera.quaternion);
         pierceArcRef.current.rotateZ(Math.floor(t * 16) * 1.1);
-        pierceArcRef.current.scale.setScalar(r * 2.9);
+        pierceArcRef.current.scale.setScalar(pierceRadius * 2.9);
         setGridFrame(localTex.arc, (t * 24) % 16, 4, 4);
-        materials.arc.opacity = (1 - pierceProg / 0.85) * 0.9;
+        materials.arc.opacity = (1 - pierceProg / 0.88) * 0.92;
       }
+    }
+
+    // 5. Discovered Gözcü Route Arcs glowing temporarily across the galaxy map (1.1s -> 6.2s)
+    if (routesGroupRef.current) {
+      const routeAlpha = targetActive
+        ? smooth(0.15, 0.65, targetAge) * (1 - smooth(4.1, 5.25, targetAge)) * (0.62 + 0.18 * Math.sin(t * 5.0))
+        : 0;
+      routesGroupRef.current.visible = routeAlpha > 0.01;
+      materials.routeStd.opacity = routeAlpha;
+      materials.routeCloaked.opacity = routeAlpha * 1.15;
     }
 
     invalidate();
@@ -348,6 +440,19 @@ function ScanEffect({
       <mesh ref={pierceArcRef} visible={false} renderOrder={6} material={materials.arc}>
         <planeGeometry args={[1, 1]} />
       </mesh>
+      {/* Discovered Route Arcs */}
+      {routeArcs.length > 0 && (
+        <group ref={routesGroupRef} visible={false}>
+          {routeArcs.map((arc, idx) => (
+            <mesh
+              key={idx}
+              geometry={arc.geo}
+              material={arc.cloaked ? materials.routeCloaked : materials.routeStd}
+              renderOrder={5}
+            />
+          ))}
+        </group>
+      )}
     </group>
   );
 }

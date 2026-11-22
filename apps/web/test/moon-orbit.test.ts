@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MOON } from '@astera/rules';
 import {
+  moonClearStagingDirection,
   moonFlashProgress,
   moonOrbitPosition,
   moonRadiusFor,
@@ -20,7 +21,7 @@ describe('moon 3D orbit & visual rules (F9d)', () => {
     const dy = out1.y - parent.y;
     const dz = out1.z - parent.z;
     const dist = Math.hypot(dx, dy, dz);
-    expect(dist).toBeGreaterThan(12 * 1.6);
+    expect(dist).toBeGreaterThan(12 * 2.4);
     expect(dist).toBeLessThan(12 * 3.0);
 
     // Advances along orbit over time.
@@ -45,6 +46,24 @@ describe('moon 3D orbit & visual rules (F9d)', () => {
     const r = moonRadiusFor(10, 'COMMON');
     expect(r).toBeGreaterThan(2);
     expect(r).toBeLessThan(4);
+  });
+
+  it('deflects staging direction away from parent planet + Dyson shell when moon sits on far hemisphere', () => {
+    const parent = { x: 0, y: 0, z: 0 };
+    const moon = { x: -30, y: 0, z: 0 };
+    const target = { x: 200, y: 0, z: 0 }; // straight line passes right through planet at (0,0,0)!
+    const dir = { x: 0, y: 0, z: 0 };
+    moonClearStagingDirection(parent, 10, moon, target, dir);
+    // Must stay normalized and deflect away from the +X planet axis
+    expect(Math.hypot(dir.x, dir.y, dir.z)).toBeCloseTo(1, 4);
+    expect(Math.hypot(dir.y, dir.z)).toBeGreaterThan(0.4);
+
+    // When target is on the clear side of the moon, direction points straight at target
+    const clearTarget = { x: -200, y: 0, z: 0 };
+    moonClearStagingDirection(parent, 10, moon, clearTarget, dir);
+    expect(dir.x).toBeCloseTo(-1, 4);
+    expect(dir.y).toBeCloseTo(0, 4);
+    expect(dir.z).toBeCloseTo(0, 4);
   });
 
   it('tracks gate flash lifetime over MOON.flashSeconds and expires cleanly', () => {

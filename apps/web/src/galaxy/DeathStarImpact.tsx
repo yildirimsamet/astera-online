@@ -8,13 +8,14 @@ import { EmpStormWarmup } from './EmpStorm.jsx';
 import { SkinAssetBoundary } from './SkinAssetBoundary.js';
 import type { StrategicImpactKind } from './strategicLayers.js';
 import { DEATH_STAR } from '@astera/rules';
-import type { Contact, PendingThread } from '../api/schemas.js';
+import type { Contact, GalaxyMoons, PendingThread } from '../api/schemas.js';
 import { serverNow } from '../lib/clock.js';
 import { FullRate } from './frames.jsx';
 import { playSceneSound } from './audio.js';
 import { ringTexture } from './vfx.js';
 import { replayStarts } from './publicMoments.js';
 import { toWorld, type PlanetNode, type Vec3Tuple } from './scene.js';
+import { moonOrbitPosition, moonRadiusFor } from './moonOrbit.js';
 
 /** Long enough to read as an event, short enough not to obscure the next decision. */
 export const DEATH_STAR_IMPACT_MS = DEATH_STAR.impactSeconds * 1000;
@@ -73,7 +74,7 @@ export function mergeRetainedDeathStarImpacts(
     .sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
 }
 
-const radiusAt = (position: Vec3Tuple, nodes: readonly PlanetNode[]): number => {
+const nearestNodeAt = (position: Vec3Tuple, nodes: readonly PlanetNode[]): PlanetNode | undefined => {
   let nearest: PlanetNode | undefined;
   let distance = Number.POSITIVE_INFINITY;
   for (const node of nodes) {
@@ -87,8 +88,11 @@ const radiusAt = (position: Vec3Tuple, nodes: readonly PlanetNode[]): number => 
       nearest = node;
     }
   }
-  return nearest?.radius ?? 0.82;
+  return nearest;
 };
+
+const radiusAt = (position: Vec3Tuple, nodes: readonly PlanetNode[]): number =>
+  nearestNodeAt(position, nodes)?.radius ?? 0.82;
 
 /**
  * Resolve the one public fact needed by the cinematic: where and when it lands.
@@ -105,6 +109,7 @@ export function deathStarImpactCandidates(
    * and the landing contact a bystander holds until the next read would land it too.
    */
   intercepted: ReadonlySet<string> = new Set(),
+  moons?: GalaxyMoons,
 ): DeathStarImpactEvent[] {
   const events = new Map<string, DeathStarImpactEvent>();
   const add = (event: DeathStarImpactEvent): void => {
@@ -114,12 +119,29 @@ export function deathStarImpactCandidates(
   };
   for (const thread of pending) {
     if (thread.kind !== 'death_star' || thread.leg === 'return' || !thread.id || !thread.path) continue;
-    const position = toWorld(thread.path.to);
+    let position = toWorld(thread.path.to);
+    const node = nearestNodeAt(position, nodes);
+    let radius = node?.radius ?? 0.82;
+    if (thread.targetBody === 'MOON' && node) {
+      const moon = moons?.list.find((m) => m.planetId === node.id);
+      if (moon) {
+        const out = { x: 0, y: 0, z: 0 };
+        moonOrbitPosition(
+          { x: node.position[0], y: node.position[1], z: node.position[2] },
+          node.radius,
+          moon.visualSeed,
+          thread.path.arriveAt.getTime() / 1_000,
+          out,
+        );
+        position = [out.x, out.y, out.z];
+        radius = Math.max(0.45, moonRadiusFor(node.radius, moons?.rarity[node.id]) * 1.45);
+      }
+    }
     add({
       id: thread.id,
       at: thread.path.arriveAt.getTime(),
       position,
-      radius: radiusAt(position, nodes),
+      radius,
       intensity: 1,
     });
   }
@@ -159,15 +181,17 @@ export function DeathStarImpacts({
   contacts,
   nodes,
   intercepted,
+  moons,
 }: {
   pending: readonly PendingThread[];
   contacts: readonly Contact[];
   nodes: readonly PlanetNode[];
   intercepted: ReadonlySet<string>;
+  moons?: GalaxyMoons | undefined;
 }) {
   const candidates = useMemo(
-    () => deathStarImpactCandidates(pending, contacts, nodes, intercepted),
-    [pending, contacts, nodes, intercepted],
+    () => deathStarImpactCandidates(pending, contacts, nodes, intercepted, moons),
+    [pending, contacts, nodes, intercepted, moons],
   );
   const [retained, setRetained] = useState<DeathStarImpactEvent[]>(
     () => mergeRetainedDeathStarImpacts([], candidates, serverNow(), intercepted),

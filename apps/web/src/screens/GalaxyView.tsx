@@ -175,7 +175,8 @@ import { WorldsPanel } from './WorldsPanel.js';
 import { PlanetScreen, TAB_OF } from './PlanetScreen.jsx';
 import { MoonPanel } from './MoonPanel.js';
 import { MOON_WARP_DURATION_MS, type MoonGateWarpEvent } from '../galaxy/MoonGateWarpFx.js';
-import { MOON_SCAN_DURATION_MS, type MoonScanFxEvent } from '../galaxy/MoonScanFx.js';
+import { MOON_SCAN_DURATION_MS, type MoonScanFxEvent, type MoonScanRouteFx } from '../galaxy/MoonScanFx.js';
+import type { MoonHopFxItem } from '../galaxy/MoonActivityFx.js';
 import { researchNeedWorld } from '../lib/researchNeed.js';
 import { ResearchPanel } from './ResearchPanel.js';
 import { IntelScreen } from './IntelScreen.jsx';
@@ -1391,7 +1392,12 @@ export function GalaxyView({
     }, MOON_WARP_DURATION_MS + 400);
   }, [galaxy.data?.moons?.rarity, planet.data?.moon?.rarity]);
 
-  const triggerMoonScan = useCallback((fromPlanetId: string, targetPlanetId: string, pierced: boolean) => {
+  const triggerMoonScan = useCallback((
+    fromPlanetId: string,
+    targetPlanetId: string,
+    pierced: boolean,
+    routes?: readonly MoonScanRouteFx[],
+  ) => {
     const id = `scan-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const event: MoonScanFxEvent = {
       id,
@@ -1399,12 +1405,37 @@ export function GalaxyView({
       targetPlanetId,
       startedAtMs: serverNow(),
       pierced,
+      ...(routes && routes.length > 0 ? { routes } : {}),
     };
     setMoonScans((prev) => [...prev, event]);
     window.setTimeout(() => {
       setMoonScans((prev) => prev.filter((item) => item.id !== id));
     }, MOON_SCAN_DURATION_MS + 400);
   }, []);
+
+  const moonHops = useMemo<readonly MoonHopFxItem[]>(() => {
+    const moves = planet.data?.moon?.moves ?? [];
+    const pid = planet.data?.planet.id;
+    if (!pid || moves.length === 0) return [];
+    const out: MoonHopFxItem[] = [];
+    for (const mv of moves) {
+      if (mv.kind === 'HOP_UP' || mv.kind === 'HOP_DOWN') {
+        out.push({
+          id: mv.id,
+          planetId: pid,
+          direction: mv.kind === 'HOP_UP' ? 'UP' : 'DOWN',
+          arriveAtMs: mv.arriveAt.getTime(),
+        });
+      }
+    }
+    return out;
+  }, [planet.data?.moon?.moves, planet.data?.planet.id]);
+
+  const moonBuildPlanetId = useMemo<string | null>(() => {
+    const p = planet.data;
+    if (!p?.queues) return null;
+    return p.queues.CONSTRUCTION.some((q) => q.kind === 'MOON') ? p.planet.id : null;
+  }, [planet.data]);
 
   const tryCosmetic = (cosmeticId: CosmeticId): void => {
     const item = cosmeticById(cosmeticId);
@@ -1582,8 +1613,11 @@ export function GalaxyView({
         planets={displayPlanets}
         moons={galaxy.data?.moons}
         moonWarps={moonWarps}
+        onMoonWarpArrive={(toId) => { focusPlanet(toId); }}
         moonScans={moonScans}
-        focusDistanceOverride={moonWarps.length > 0 ? 14.5 : moonScans.length > 0 ? 11.5 : undefined}
+        moonHops={moonHops}
+        moonBuildPlanetId={moonBuildPlanetId}
+        focusDistanceOverride={moonWarps.length > 0 ? 15.5 : moonScans.length > 0 ? 11.5 : undefined}
         unknownSignals={signalData?.signals}
         clanAlarms={clanAlarms}
         unknownSignalRadar={focusedSignalId ? personalSignals.data?.radar ?? undefined : undefined}
@@ -2281,8 +2315,8 @@ export function GalaxyView({
               onPanel(null);
               onFocus({ kind: 'planet', id: fromId });
             }}
-            onScanVisual={(fromId, targetId, pierced) => {
-              triggerMoonScan(fromId, targetId, pierced);
+            onScanVisual={(fromId, targetId, pierced, routes) => {
+              triggerMoonScan(fromId, targetId, pierced, routes);
             }}
             onWatchTarget={(targetId) => {
               const p = planet.data;

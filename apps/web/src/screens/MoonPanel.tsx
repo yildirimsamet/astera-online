@@ -92,8 +92,13 @@ export interface MoonPanelProps {
   readonly onScan?: (planetId: string, targetPlanetId: string) => Promise<MoonScanResult>;
   /** Fires after a successful gate jump so the galaxy view can close the sheet and play the private warp VFX. */
   readonly onJumpStarted?: (fromPlanetId: string, toPlanetId: string, fleet: Fleet) => void;
-  /** Fires after a successful Gözcü scan so the galaxy view can play the scan VFX. */
-  readonly onScanVisual?: (fromPlanetId: string, targetPlanetId: string, pierced: boolean) => void;
+  /** Fires after a successful Gözcü scan so the galaxy view can play the scan VFX and route arcs. */
+  readonly onScanVisual?: (
+    fromPlanetId: string,
+    targetPlanetId: string,
+    pierced: boolean,
+    routes?: readonly { readonly fromPlanetId: string; readonly toPlanetId: string; readonly cloaked?: boolean | undefined }[],
+  ) => void;
   /** Optional action to close the sheet and pan the camera to a scanned target. */
   readonly onWatchTarget?: (targetPlanetId: string) => void;
 }
@@ -670,7 +675,16 @@ function ActiveMoonCard({
       setLastScannedTargetId(effectiveScanId);
       playSound('arc');
       onRefresh?.();
-      onScanVisual?.(planet.planet.id, effectiveScanId, res.pierced);
+      onScanVisual?.(
+        planet.planet.id,
+        effectiveScanId,
+        res.pierced,
+        res.rows.map((r) => ({
+          fromPlanetId: r.direction === 'IN' ? r.otherPlanetId : effectiveScanId,
+          toPlanetId: r.direction === 'IN' ? effectiveScanId : r.otherPlanetId,
+          cloaked: res.pierced,
+        })),
+      );
     } catch (e) {
       setErr(describe(e));
     } finally {

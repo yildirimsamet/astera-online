@@ -112,6 +112,7 @@ import { PlanetField, rivalColour, LIMB_SCALE } from './PlanetField.jsx';
 import { Moons } from './Moons.js';
 import { MoonGateWarpFx, type MoonGateWarpEvent } from './MoonGateWarpFx.js';
 import { MoonScanFx, type MoonScanFxEvent } from './MoonScanFx.js';
+import { MoonActivityFx, type MoonHopFxItem } from './MoonActivityFx.js';
 import { SCENE_LIGHT } from './planetSurface.js';
 import { SpaceLighting } from './SpaceLighting.js';
 import { FirstSceneFrame, SceneRenderGate, SceneWarmup } from './SceneWarmup.js';
@@ -319,8 +320,14 @@ export interface GalaxyCanvasProps {
   moons?: GalaxyMoons | undefined;
   /** Private owner-only Moon Gate aperture + directional fleet warp animations. */
   moonWarps?: readonly MoonGateWarpEvent[] | undefined;
+  /** Fires at mid-warp so the camera can smoothly pan to the destination moon for arrival. */
+  onMoonWarpArrive?: ((toPlanetId: string) => void) | undefined;
   /** Owner-only Gözcü moon scanner wave & holographic target lock animations. */
   moonScans?: readonly MoonScanFxEvent[] | undefined;
+  /** Owner-only active 90s Planet <-> Moon shuttle hops. */
+  moonHops?: readonly MoonHopFxItem[] | undefined;
+  /** Planet currently running an 8h Common moon construction queue, if any. */
+  moonBuildPlanetId?: string | null | undefined;
   /**
    * Whether each instrument's boundaries are drawn AT ALL. Owner instruction.
    *
@@ -458,7 +465,10 @@ export function GalaxyCanvas({
   monuments = EMPTY_MONUMENTS,
   moons,
   moonWarps,
+  onMoonWarpArrive,
   moonScans,
+  moonHops,
+  moonBuildPlanetId = null,
   unknownSignals = EMPTY_UNKNOWN_SIGNALS,
   clanAlarms = NO_CLAN_ALARMS,
   unknownSignalRadar,
@@ -1027,12 +1037,36 @@ export function GalaxyCanvas({
           identify: 0, detect: unknownSignalRadar.range, telescope: false }]} showTelescope={false} showRadar />}
         <Monuments monuments={monuments} planets={nodes} hpRadiation={hpRadiation} focusedId={focus?.kind === 'monument' ? focus.id : null}
           onSelect={(id) => { onFocus({ kind: 'monument', id }); }} />
-        <Moons moons={moons} nodes={nodes} />
+        <Suspense fallback={null}>
+          <Moons
+            moons={moons}
+            nodes={nodes}
+            onSelectPlanet={(id) => {
+              if (isMainWorld(id)) return;
+              if (allowFocus && !allowFocus(id)) return;
+              onFocus({ kind: 'planet', id });
+            }}
+          />
+        </Suspense>
         {moonWarps && moonWarps.length > 0 && (
-          <MoonGateWarpFx events={moonWarps} moons={moons} nodes={nodes} />
+          <Suspense fallback={null}>
+            <MoonGateWarpFx events={moonWarps} moons={moons} nodes={nodes} onArriveCamera={onMoonWarpArrive} />
+          </Suspense>
         )}
         {moonScans && moonScans.length > 0 && (
-          <MoonScanFx events={moonScans} moons={moons} nodes={nodes} />
+          <Suspense fallback={null}>
+            <MoonScanFx events={moonScans} moons={moons} nodes={nodes} />
+          </Suspense>
+        )}
+        {((moonHops?.length ?? 0) > 0 || moonBuildPlanetId !== null) && (
+          <Suspense fallback={null}>
+            <MoonActivityFx
+              hops={moonHops ?? []}
+              buildingPlanetId={moonBuildPlanetId}
+              moons={moons}
+              nodes={nodes}
+            />
+          </Suspense>
         )}
         {sensors && sensors.length > 0 && (
           <SensorRings
@@ -1133,7 +1167,7 @@ export function GalaxyCanvas({
             onFocus({ kind: 'contact', id });
           }}
         />
-        <DeathStarImpacts pending={pending} contacts={contacts} nodes={nodes} intercepted={interceptedWeapons} />
+        <DeathStarImpacts pending={pending} contacts={contacts} nodes={nodes} intercepted={interceptedWeapons} moons={moons} />
         <StrategicInterceptions
           events={interceptions ?? []}
           impacts={interceptionImpacts ?? []}
