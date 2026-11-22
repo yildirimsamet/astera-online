@@ -55,6 +55,20 @@ export interface BotFlightWeights {
   readonly idle: number;
 }
 
+/**
+ * Persona-weighted moon habits (Ay F8, plan §10.1). Rates are per-turn probabilities when the
+ * preconditions hold, so commanders stagger their moon actions like people rather than acting
+ * in lockstep on the first eligible minute.
+ */
+export interface BotMoonHabit {
+  readonly captureChance: number;
+  readonly escapeChance: number;
+  readonly reinforceChance: number;
+  readonly scanChance: number;
+  readonly retargetChance: number;
+  readonly strikeMoonChance: number;
+}
+
 export interface BotPersona {
   readonly id: BotPersonaId;
   readonly buildOrder: readonly BuildingId[];
@@ -84,6 +98,7 @@ export interface BotPersona {
    * the reading allows. See `judgement.ts` for how it is read.
    */
   readonly nerve: Nerve;
+  readonly moon: BotMoonHabit;
 }
 
 export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
@@ -105,6 +120,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
     defenceRatio: 1.2, militaryShare: 0.2, prospectorTarget: 1,
     flight: { probe: 2, mine: 3, harvest: 2, pirate: 1, attack: 1, idle: 5 },
     nerve: { need: 'CLEARS', maxLoss: 0.2, lootOverFuel: 4 },
+    moon: { captureChance: 0.3, escapeChance: 0.65, reinforceChance: 0.25, scanChance: 0.15, retargetChance: 0.04, strikeMoonChance: 0 },
   },
   RAIDER: {
     id: 'RAIDER',
@@ -123,6 +139,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
     defenceRatio: 0.45, militaryShare: 0.6, prospectorTarget: 1,
     flight: { probe: 4, mine: 1, harvest: 2, pirate: 3, attack: 6, idle: 3 },
     nerve: { need: 'BREAKS', maxLoss: 0.45, lootOverFuel: 2 },
+    moon: { captureChance: 0.45, escapeChance: 0.35, reinforceChance: 0.45, scanChance: 0.45, retargetChance: 0.15, strikeMoonChance: 0.12 },
   },
   PROSPECTOR: {
     id: 'PROSPECTOR',
@@ -139,6 +156,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
     defenceRatio: 0.9, militaryShare: 0.3, prospectorTarget: 2,
     flight: { probe: 2, mine: 8, harvest: 5, pirate: 1, attack: 2, idle: 4 },
     nerve: { need: 'CLEARS', maxLoss: 0.2, lootOverFuel: 4 },
+    moon: { captureChance: 0.25, escapeChance: 0.55, reinforceChance: 0.2, scanChance: 0.15, retargetChance: 0.04, strikeMoonChance: 0 },
   },
   BALANCED: {
     id: 'BALANCED',
@@ -155,6 +173,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
     defenceRatio: 0.8, militaryShare: 0.4, prospectorTarget: 1,
     flight: { probe: 3, mine: 4, harvest: 3, pirate: 2, attack: 4, idle: 4 },
     nerve: { need: 'CLEARS', maxLoss: 0.3, lootOverFuel: 3 },
+    moon: { captureChance: 0.35, escapeChance: 0.5, reinforceChance: 0.35, scanChance: 0.3, retargetChance: 0.08, strikeMoonChance: 0.04 },
   },
 };
 
