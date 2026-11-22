@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { DEBRIS, dominionTransfer, fleetValue, type Fleet, type MoonRarity } from '@astera/rules';
 import type { Tx } from '../db/client.js';
-import { debrisFields, dominionEvents, missions, moons, seasons, units } from '../db/schema.js';
+import { debrisFields, dominionEvents, hpRadiationSources, missions, moons, seasons, units } from '../db/schema.js';
 import { adminPlayerIdsInSeason } from './admin.js';
 import { applyDelta, flyingAlloy, flyingCrystal, flyingDeuterium, flyingValue, lockLedgers, saveLedger } from './battleSettlement.js';
 import { recordGalaxyEvent } from './chronicle.js';
@@ -62,6 +62,11 @@ export async function explodeMoon(tx: Tx, input: {
     seasonId: world.seasonId, kind: 'moon_destroyed', refId: input.missionId, subjectPlanetId: world.id,
     payload: { planetName: world.name, rarity: input.rarity }, occurredAt: now,
   });
+  await tx.delete(hpRadiationSources).where(and(
+    eq(hpRadiationSources.anchorKind, 'PLANET'),
+    eq(hpRadiationSources.anchorId, world.id),
+    eq(hpRadiationSources.body, 'MOON'),
+  ));
   await tx.delete(moons).where(eq(moons.planetId, world.id));
   await publishWatchChanges(tx, [world.id]);
   await publishShard(tx, world.seasonId, 'moons');

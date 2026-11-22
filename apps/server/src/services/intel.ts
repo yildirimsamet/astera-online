@@ -1,4 +1,4 @@
-import { PLANET_LOCATION, awaySql } from './unitLocation.js';
+import { PLANET_LOCATION, awaySql, isAway } from './unitLocation.js';
 import { dispatchProvenance } from './commandOrigin.js';
 import { commanderPvpBalance } from './pvpBalance.js';
 import { recordLegacyActivity } from './legacy.js';
@@ -991,7 +991,9 @@ export async function resolveProbe(
     } else if (isDockLocation(u.location)) {
       // Workshop ships are physically here, but never belong to the defending line.
       presentCount += u.count;
-    } else anyAway = true;
+    } else if (isAway(u.location)) {
+      anyAway = true;
+    }
   }
   const homeFleet = home as Partial<Record<HullId, number>>;
 

@@ -42,6 +42,7 @@ import {
   silentSpaceDueAt,
   type BuildingId,
   type Fleet,
+  type HpDamageLot,
   clanDefenseApplies,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
@@ -253,6 +254,7 @@ export function buildPlanetView(data: PlanetViewData) {
   const owned: Fleet = {};
   const fleetAway: Fleet = {};
   const moonFleet: Fleet = {};
+  const moonDamage: HpDamageLot[] = [];
   for (const row of unitRows) {
     owned[row.hull] = (owned[row.hull] ?? 0) + row.count;
     if (row.count > 0 && isAway(row.location)) {
@@ -260,6 +262,7 @@ export function buildPlanetView(data: PlanetViewData) {
     }
     if (row.count > 0 && row.location === MOON_LOCATION) {
       moonFleet[row.hull] = (moonFleet[row.hull] ?? 0) + row.count;
+      if (row.damage.length > 0) moonDamage.push(...row.damage);
     }
   }
   const moon = moonRow ? (() => {
@@ -277,6 +280,8 @@ export function buildPlanetView(data: PlanetViewData) {
       closedUntil: moonRow.closedUntil?.toISOString() ?? null,
       visualSeed: moonRow.visualSeed,
       fleet: moonFleet,
+      fleetDamage: moonDamage,
+      fleetCombatReady: partitionCombatFleet(moonFleet, moonDamage).eligible,
       dockUsed,
       dockCapacity: gateCapacity(moonRow.rarity),
       dockFree: dockFree(moonRow.rarity, dockUsed, inboundBulk),

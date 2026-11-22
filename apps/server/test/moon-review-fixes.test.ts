@@ -1,9 +1,15 @@
+import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { MOON } from '@astera/rules';
-import { moons, notifications, planets, seasons, units } from '../src/db/schema.js';
-import { announceGateReady, jumpFleet } from '../src/services/moonMovement.js';
+import { hpRadiationSources, missions, moonMoves, moons, notifications, planets, players, seasons, units } from '../src/db/schema.js';
+import { announceGateReady, hopFleet, jumpFleet } from '../src/services/moonMovement.js';
+import { moonWatchStatus, probeMoon } from '../src/services/moon.js';
+import { explodeMoon } from '../src/services/moonExplosion.js';
+import { launchTransfer } from '../src/services/movement.js';
+import { commanderRows, demolish } from '../src/services/reclaim.js';
+import { vacationStatus } from '../src/services/vacation.js';
 import { maybeEscapeToMoon } from '../src/services/bots/moon.js';
 import { BOT_PERSONAS } from '../src/services/bots/personas.js';
 import { launchAttack } from '../src/services/mission.js';
@@ -122,5 +128,118 @@ describe('moon code-review server fixes', () => {
     expect(did).toContain('moon:hop-up');
     expect(after).toBeDefined();
     expect(after.fleet.DART ?? 0).toBe(0);
+  });
+
+  it('Paket A P0 #1: demolish deletes historical moon_moves on a lost colony before deleting player', async () => {
+    await f.db.insert(moons).values({
+      planetId: colony, rarity: 'COMMON', origin: 'BUILT', visualSeed: 6, bornAt: f.clock.now(),
+    });
+    await f.db.insert(moonMoves).values({
+      seasonId: f.seasonId, ownerPlayerId: owner, kind: 'HOP_UP',
+      fromPlanetId: colony, toPlanetId: colony, fleet: { DART: 2 },
+      departAt: f.clock.now(), arriveAt: f.clock.now(), status: 'LANDED',
+    });
+    // Colony changed hands to enemy before owner's seat is reclaimed.
+    await f.db.update(planets).set({ controllerPlayerId: f.playerIds[2]! }).where(eq(planets.id, colony));
+
+    await f.db.transaction(async (tx) => {
+      const rows = await commanderRows(tx, [home], owner);
+      await demolish(tx, [home], owner, rows);
+    });
+
+    const left = await f.db.select().from(players).where(eq(players.id, owner));
+    expect(left).toHaveLength(0);
+  });
+
+  it('Paket A P0 #2: launchTransfer from MOON with planet cargo is blocked by K12 when a raid is due on PLANET', async () => {
+    await f.db.insert(moons).values({
+      planetId: home, rarity: 'RARE', origin: 'BUILT', visualSeed: 7, bornAt: f.clock.now(),
+    });
+    await f.db.insert(units).values({
+      planetId: home, ownerPlayerId: owner, hull: 'COURIER', location: MOON_LOCATION, count: 5,
+    });
+    await f.db.insert(missions).values({
+      seasonId: f.seasonId, kind: 'attack', ownerPlayerId: f.playerIds[2]!,
+      originPlanetId: enemy, targetPlanetId: home, targetBody: 'PLANET',
+      fleet: { WARDEN: 10 }, fuelPaid: 0, distance: 500, departAt: addMinutes(f.clock.now(), -10),
+      arriveAt: f.clock.now(), status: 'in_flight',
+    });
+
+    await expect(launchTransfer(
+      f.db, owner, home, colony, { COURIER: 5 }, { alloy: 500, crystal: 0, deuterium: 0 },
+      f.clock, 1, undefined, false, 'PLANET', 'MOON',
+    )).rejects.toMatchObject({ code: 'ARRIVAL_PENDING' });
+  });
+
+  it('Paket A P1 #5 & #7: pending JUMP blocks vacation, does not fake HOP in probeMoon/watch, and probeMoon exposes gateReadyAt', async () => {
+    await f.db.insert(moons).values([
+      { planetId: home, rarity: 'RARE', origin: 'BUILT', visualSeed: 8, bornAt: f.clock.now() },
+      { planetId: colony, rarity: 'RARE', origin: 'SEED', visualSeed: 9, bornAt: f.clock.now() },
+    ]);
+    await f.db.insert(units).values({
+      planetId: home, ownerPlayerId: owner, hull: 'DART', location: MOON_LOCATION, count: 6,
+    });
+
+    await jumpFleet(f.db, owner, home, colony, { DART: 6 }, f.clock);
+
+    const vac = await vacationStatus(f.db, owner, f.clock, 3);
+    expect(vac.reasons).toContain('VACATION_FLEET');
+
+    const probed = await probeMoon(f.db, home, (n) => ({ low: n, high: n }), f.clock.now());
+    expect(probed?.hopping).toBe(false);
+    expect(probed?.gateReadyAt).toBeTruthy();
+
+    const watch = await moonWatchStatus(f.db, [home]);
+    expect(watch.get(home)).toBe('HOME');
+  });
+
+  it('Paket A P1 #4 & P2 #14 & planetView: explodeMoon clears moon radiation, announceGateReady deduplicates by eventId, and planetView exposes moon damage', async () => {
+    const t1 = addMinutes(f.clock.now(), 60);
+    await f.db.insert(moons).values({
+      planetId: home, rarity: 'COMMON', origin: 'BUILT', visualSeed: 10, bornAt: f.clock.now(), gateReadyAt: t1,
+    });
+    const eventId = randomUUID();
+    await f.db.transaction((tx) => announceGateReady(tx, home, t1, eventId));
+    await f.db.transaction((tx) => announceGateReady(tx, home, t1, eventId));
+    const notes = await f.db.select().from(notifications)
+      .where(and(eq(notifications.playerId, owner), eq(notifications.kind, 'moon_gate_ready')));
+    expect(notes).toHaveLength(1);
+
+    await f.db.insert(units).values({
+      planetId: home, ownerPlayerId: owner, hull: 'DART', location: MOON_LOCATION, count: 4,
+      damage: [{ hull: 'DART', count: 2, damageBp: 9600, remainderBp: 0 }],
+    });
+    const view = await f.db.transaction((tx) => planetView(tx, home, f.clock));
+    expect(view.moon?.fleetDamage).toHaveLength(1);
+    expect(view.moon?.fleetCombatReady.DART).toBe(2);
+
+    await f.db.insert(hpRadiationSources).values({
+      seasonId: f.seasonId, anchorKind: 'PLANET', anchorId: home, body: 'MOON',
+      x: 0, y: 0, z: 0, radius: 100, intensityHpPerMinute: 5, radiationLevel: null,
+      origin: 'ENVIRONMENT', mode: 'EMIT', activeFrom: f.clock.now(), activeUntil: addMinutes(f.clock.now(), 60),
+    });
+    const [dsMission] = await f.db.insert(missions).values({
+      seasonId: f.seasonId, kind: 'death_star', ownerPlayerId: f.playerIds[2]!,
+      originPlanetId: enemy, targetPlanetId: home, targetBody: 'MOON',
+      fleet: {}, fuelPaid: 0, distance: 500, departAt: addMinutes(f.clock.now(), -10),
+      arriveAt: f.clock.now(), status: 'in_flight',
+    }).returning({ id: missions.id });
+    const [world] = await f.db.select().from(planets).where(eq(planets.id, home));
+    await f.db.transaction((tx) => explodeMoon(tx, {
+      missionId: dsMission!.id, world: world!, holder: owner, rarity: 'COMMON', now: f.clock.now(),
+    }));
+    const radRows = await f.db.select().from(hpRadiationSources)
+      .where(and(eq(hpRadiationSources.anchorId, home), eq(hpRadiationSources.body, 'MOON')));
+    expect(radRows).toHaveLength(0);
+  });
+
+  it('Paket A P1: hopFleet succeeds and reserves ships off-planet', async () => {
+    await f.db.insert(moons).values({
+      planetId: home, rarity: 'COMMON', origin: 'BUILT', visualSeed: 11, bornAt: f.clock.now(),
+    });
+    await giveUnits(f.db, home, { DART: 4 });
+    const move = await hopFleet(f.db, owner, home, 'UP', { DART: 4 }, f.clock);
+    expect(move.status).toBe('PENDING');
+    expect(move.kind).toBe('HOP_UP');
   });
 });

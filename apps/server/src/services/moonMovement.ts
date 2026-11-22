@@ -17,7 +17,7 @@ import {
 import type { Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import { missions, moonMoves, moons, notifications, planets, units } from '../db/schema.js';
-import { publish, publishShard } from '../stream/bus.js';
+import { publish, publishMoonMove, publishShard } from '../stream/bus.js';
 import { settlePlanetRadiationAt } from './planetRadiation.js';
 import { schedule } from '../worker/queue.js';
 import { arrivalPending, assertNoArrivalPending, readHomeHealth, selectHomeDispatch, writeHomeHealth } from './homeHealth.js';
@@ -26,8 +26,9 @@ import { lockWorlds, safeHomePlanet } from './ownership.js';
 import { assertFuel } from './fuel.js';
 import { landingBlock } from './movement.js';
 import { notify } from './notifications.js';
-import { GameError, assertWorldOperational, loadLocked, saveResources, setUnits } from './planet.js';
+import { GameError, assertWorldOperational, loadLocked, lockSeason, saveResources, setUnits } from './planet.js';
 import { MOON_LOCATION, bodyLocation, hopLocation } from './unitLocation.js';
+import { recordLegacyActivity } from './legacy.js';
 import { publishWatchChanges } from './watchEvents.js';
 
 /**
@@ -44,47 +45,52 @@ const KIND = { UP: 'HOP_UP', DOWN: 'HOP_DOWN' } as const;
 const ORIGIN: Record<HopDirection, WorldBody> = { UP: 'PLANET', DOWN: 'MOON' };
 const DESTINATION: Record<MoonMove['kind'], WorldBody> = { HOP_UP: 'MOON', HOP_DOWN: 'PLANET', JUMP: 'MOON' };
 
+export async function hopFleetTx(
+  tx: Tx, playerId: string, planetId: string, direction: HopDirection, requested: Readonly<Record<string, number>>, clock: Clock,
+): Promise<MoonMove> {
+  await lockWorlds(tx, [planetId]);
+  const world = await loadLocked(tx, planetId, clock);
+  if (world.playerId !== playerId) throw new GameError('PLANET_NOT_OWNED', 'This world is not yours', 403);
+  assertWorldOperational(world);
+  if (!await seasonHasMoons(tx, world.seasonId)) throw new GameError('MOONS_DISABLED', 'This galaxy has no moons', 409);
+  const [moon] = await tx.select().from(moons).where(eq(moons.planetId, planetId));
+  if (!moon) throw new GameError('NO_MOON', 'This world has no moon', 409);
+
+  const fleet = mobileFleet(requested);
+  const kind = KIND[direction];
+  const [pending] = await tx.select({ id: moonMoves.id }).from(moonMoves)
+    .where(and(eq(moonMoves.fromPlanetId, planetId), eq(moonMoves.kind, kind), eq(moonMoves.status, 'PENDING'))).limit(1);
+  if (pending) throw new GameError('HOP_PENDING', 'A hop this way is already under way', 409);
+
+  const origin = ORIGIN[direction];
+  // K12 holds only the body the attack reached (E3): a raid due on the moon keeps the moon's ships.
+  await assertNoArrivalPending(tx, planetId, world.now, origin);
+  if (direction === 'UP') {
+    if (hangarLoad(fleet) > await moonDockRoom(tx, planetId)) throw new GameError('DOCK_FULL', 'The moon’s dock has no room for this fleet', 409);
+  }
+
+  const standing = await readHomeHealth(tx, planetId, origin);
+  assertAvailable(origin === 'MOON' ? remainderOf(standing.fleet, await reservedOnMoon(tx, planetId)) : standing.fleet, fleet);
+  const selected = selectHomeDispatch(standing.fleet, standing.damage, fleet);
+  await setUnits(tx, planetId, subtract(standing.fleet, fleet), bodyLocation(origin), playerId);
+  await writeHomeHealth(tx, planetId, selected.remaining, selected.remainingDamage, origin);
+
+  const arriveAt = new Date(world.now.getTime() + MOON.hopSeconds * 1000);
+  const [move] = await tx.insert(moonMoves).values({
+    seasonId: world.seasonId, ownerPlayerId: playerId, kind, fromPlanetId: planetId, toPlanetId: planetId,
+    fleet, damage: selected.selectedDamage, departAt: world.now, arriveAt,
+  }).returning();
+  await placeAt(tx, planetId, playerId, hopLocation(move!.id), fleet, selected.selectedDamage);
+  await schedule(tx, { seasonId: world.seasonId, kind: 'moon_move_land', refId: move!.id, resolveAt: arriveAt });
+  await recordLegacyActivity(tx, playerId, world.now);
+  await publishWatchChanges(tx, [planetId]);
+  return move!;
+}
+
 export async function hopFleet(
   db: Db, playerId: string, planetId: string, direction: HopDirection, requested: Readonly<Record<string, number>>, clock: Clock,
 ): Promise<MoonMove> {
-  return db.transaction(async (tx) => {
-    await lockWorlds(tx, [planetId]);
-    const world = await loadLocked(tx, planetId, clock);
-    if (world.playerId !== playerId) throw new GameError('PLANET_NOT_OWNED', 'This world is not yours', 403);
-    assertWorldOperational(world);
-    if (!await seasonHasMoons(tx, world.seasonId)) throw new GameError('MOONS_DISABLED', 'This galaxy has no moons', 409);
-    const [moon] = await tx.select().from(moons).where(eq(moons.planetId, planetId));
-    if (!moon) throw new GameError('NO_MOON', 'This world has no moon', 409);
-
-    const fleet = mobileFleet(requested);
-    const kind = KIND[direction];
-    const [pending] = await tx.select({ id: moonMoves.id }).from(moonMoves)
-      .where(and(eq(moonMoves.fromPlanetId, planetId), eq(moonMoves.kind, kind), eq(moonMoves.status, 'PENDING'))).limit(1);
-    if (pending) throw new GameError('HOP_PENDING', 'A hop this way is already under way', 409);
-
-    const origin = ORIGIN[direction];
-    // K12 holds only the body the attack reached (E3): a raid due on the moon keeps the moon's ships.
-    await assertNoArrivalPending(tx, planetId, world.now, origin);
-    if (direction === 'UP') {
-      if (hangarLoad(fleet) > await moonDockRoom(tx, planetId)) throw new GameError('DOCK_FULL', 'The moon’s dock has no room for this fleet', 409);
-    }
-
-    const standing = await readHomeHealth(tx, planetId, origin);
-    assertAvailable(origin === 'MOON' ? remainderOf(standing.fleet, await reservedOnMoon(tx, planetId)) : standing.fleet, fleet);
-    const selected = selectHomeDispatch(standing.fleet, standing.damage, fleet);
-    await setUnits(tx, planetId, subtract(standing.fleet, fleet), bodyLocation(origin), playerId);
-    await writeHomeHealth(tx, planetId, selected.remaining, selected.remainingDamage, origin);
-
-    const arriveAt = new Date(world.now.getTime() + MOON.hopSeconds * 1000);
-    const [move] = await tx.insert(moonMoves).values({
-      seasonId: world.seasonId, ownerPlayerId: playerId, kind, fromPlanetId: planetId, toPlanetId: planetId,
-      fleet, damage: selected.selectedDamage, departAt: world.now, arriveAt,
-    }).returning();
-    await placeAt(tx, planetId, playerId, hopLocation(move!.id), fleet, selected.selectedDamage);
-    await schedule(tx, { seasonId: world.seasonId, kind: 'moon_move_land', refId: move!.id, resolveAt: arriveAt });
-    await publishWatchChanges(tx, [planetId]);
-    return move!;
-  });
+  return db.transaction((tx) => hopFleetTx(tx, playerId, planetId, direction, requested, clock));
 }
 
 /** The hop lands. Battles first (E2); a vanished moon lands on the planet; a lost world lands at the owner's safe home. */
@@ -103,18 +109,19 @@ export async function landMoonMove(tx: Tx, moveId: string, now: Date): Promise<v
   if (world?.controllerPlayerId !== move.ownerPlayerId) {
     // The world changed hands while the fleet hopped: it comes down at its owner's safe home (V36).
     landingPlanetId = await safeHomePlanet(tx, move.ownerPlayerId, move.fromPlanetId);
+    if (landingPlanetId !== move.toPlanetId && landingPlanetId !== move.fromPlanetId) {
+      await lockWorlds(tx, [landingPlanetId], { requireLive: false });
+    }
     destination = 'PLANET';
     status = 'RETURNED';
-  } else {
-    if (destination === 'MOON' && (await tx.select({ id: moons.planetId }).from(moons).where(eq(moons.planetId, move.toPlanetId))).length === 0) {
-      destination = 'PLANET';
-      status = 'RETURNED';
-    }
-    // E2: a battle due on the body it lands on is fought first; the hop comes down a second later.
-    if (await arrivalPending(tx, move.toPlanetId, now, destination)) {
-      await schedule(tx, { seasonId: move.seasonId, kind: 'moon_move_land', refId: move.id, resolveAt: new Date(now.getTime() + 1_000) });
-      return;
-    }
+  } else if (destination === 'MOON' && (await tx.select({ id: moons.planetId }).from(moons).where(eq(moons.planetId, move.toPlanetId))).length === 0) {
+    destination = 'PLANET';
+    status = 'RETURNED';
+  }
+  // E2: a battle due on the body it lands on is fought first; the hop comes down a second later.
+  if (await arrivalPending(tx, landingPlanetId, now, destination)) {
+    await schedule(tx, { seasonId: move.seasonId, kind: 'moon_move_land', refId: move.id, resolveAt: new Date(now.getTime() + 1_000) });
+    return;
   }
 
   await tx.delete(units).where(and(eq(units.planetId, move.toPlanetId), eq(units.location, hopLocation(move.id))));
@@ -123,6 +130,7 @@ export async function landMoonMove(tx: Tx, moveId: string, now: Date): Promise<v
   await placeAt(tx, landingPlanetId, move.ownerPlayerId, bodyLocation(destination), move.fleet, move.damage);
   await tx.update(moonMoves).set({ status }).where(eq(moonMoves.id, move.id));
   await publishWatchChanges(tx, [...new Set([move.toPlanetId, landingPlanetId])]);
+  await publishMoonMove(tx, move.ownerPlayerId);
 }
 
 /** The body a leg comes down on: its target, or the body it left when it was turned around (S34). */
@@ -187,39 +195,50 @@ function subtract(from: Fleet, take: Fleet): Fleet {
  * A defender whose radar already caught the raid is told at once: the strip and the timed warning read
  * the body from this row. One that has not been warned hears nothing (S24).
  */
+export async function retargetAttackTx(
+  tx: Tx, playerId: string, missionId: string, body: WorldBody, clock: Clock,
+): Promise<{ id: string; targetBody: WorldBody; arriveAt: Date }> {
+  const now = clock.now();
+  const [mission] = await tx.select().from(missions).where(eq(missions.id, missionId)).for('update');
+  if (!mission) throw new GameError('NOT_FOUND', 'That flight no longer exists', 404);
+  if (mission.ownerPlayerId !== playerId) throw new GameError('PLANET_NOT_OWNED', 'That is not your flight', 403);
+  await lockSeason(tx, mission.seasonId);
+  if (mission.kind !== 'attack' || mission.status !== 'in_flight' || mission.recalledAt !== null || mission.parentMissionId !== null) {
+    throw new GameError('NOT_RETARGETABLE', 'Only a raid on its way out can switch between planet and moon', 409);
+  }
+  if (now >= mission.arriveAt) throw new GameError('RETARGET_CLOSED', 'The battle has already begun', 409);
+  const view = (targetBody: WorldBody) => ({ id: mission.id, targetBody, arriveAt: mission.arriveAt });
+  if (body === mission.targetBody) return view(body);
+  if (mission.retargetedAt && now.getTime() - mission.retargetedAt.getTime() < MOON.retargetSpacingSeconds * 1_000) {
+    throw new GameError('RETARGET_TOO_SOON', 'Hold the course a moment before switching again', 409);
+  }
+  const [target] = await tx.select({ id: planets.id, seasonId: planets.seasonId, kind: planets.kind, controllerPlayerId: planets.controllerPlayerId })
+    .from(planets).where(eq(planets.id, mission.targetPlanetId));
+  if (!target) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
+  if (body === 'MOON') await assertMoonTarget(tx, target);
+  await tx.update(missions).set({ targetBody: body, retargetedAt: now }).where(eq(missions.id, mission.id));
+  await recordLegacyActivity(tx, playerId, now);
+
+  if (target.controllerPlayerId) {
+    const [warned] = await tx.select({ id: notifications.id }).from(notifications).where(and(
+      eq(notifications.playerId, target.controllerPlayerId),
+      eq(notifications.kind, 'incoming_fleet'),
+      eq(notifications.refId, mission.id),
+    )).limit(1);
+    if (warned) {
+      await tx.update(notifications)
+        .set({ payload: sql`jsonb_set(${notifications.payload}, '{targetBody}', to_jsonb(${body}::text), true)` })
+        .where(eq(notifications.id, warned.id));
+      await publish(tx, target.controllerPlayerId, 'retarget');
+    }
+  }
+  return view(body);
+}
+
 export async function retargetAttack(
   db: Db, playerId: string, missionId: string, body: WorldBody, clock: Clock,
 ): Promise<{ id: string; targetBody: WorldBody; arriveAt: Date }> {
-  return db.transaction(async (tx) => {
-    const now = clock.now();
-    const [mission] = await tx.select().from(missions).where(eq(missions.id, missionId)).for('update');
-    if (!mission) throw new GameError('NOT_FOUND', 'That flight no longer exists', 404);
-    if (mission.ownerPlayerId !== playerId) throw new GameError('PLANET_NOT_OWNED', 'That is not your flight', 403);
-    if (mission.kind !== 'attack' || mission.status !== 'in_flight' || mission.recalledAt !== null || mission.parentMissionId !== null) {
-      throw new GameError('NOT_RETARGETABLE', 'Only a raid on its way out can switch between planet and moon', 409);
-    }
-    if (now >= mission.arriveAt) throw new GameError('RETARGET_CLOSED', 'The battle has already begun', 409);
-    const view = (targetBody: WorldBody) => ({ id: mission.id, targetBody, arriveAt: mission.arriveAt });
-    if (body === mission.targetBody) return view(body);
-    if (mission.retargetedAt && now.getTime() - mission.retargetedAt.getTime() < MOON.retargetSpacingSeconds * 1_000) {
-      throw new GameError('RETARGET_TOO_SOON', 'Hold the course a moment before switching again', 409);
-    }
-    const [target] = await tx.select({ id: planets.id, seasonId: planets.seasonId, kind: planets.kind, controllerPlayerId: planets.controllerPlayerId })
-      .from(planets).where(eq(planets.id, mission.targetPlanetId));
-    if (!target) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
-    if (body === 'MOON') await assertMoonTarget(tx, target);
-    await tx.update(missions).set({ targetBody: body, retargetedAt: now }).where(eq(missions.id, mission.id));
-
-    if (target.controllerPlayerId) {
-      const [warned] = await tx.select({ id: notifications.id }).from(notifications).where(and(
-        eq(notifications.playerId, target.controllerPlayerId),
-        eq(notifications.kind, 'incoming_fleet'),
-        eq(notifications.refId, mission.id),
-      )).limit(1);
-      if (warned) await publish(tx, target.controllerPlayerId, 'retarget');
-    }
-    return view(body);
-  });
+  return db.transaction((tx) => retargetAttackTx(tx, playerId, missionId, body, clock));
 }
 
 /** Mobile hulls only, positive counts only; anything else is refused (S37). */
@@ -271,58 +290,63 @@ export async function reservedOnMoon(tx: Queryable, planetId: string): Promise<F
  * departure planet pays the route's one-leg transfer fuel. Both gates start charging at once; the ships
  * cross when the ten-second opening ends.
  */
-export async function jumpFleet(
-  db: Db, playerId: string, fromPlanetId: string, toPlanetId: string, requested: Readonly<Record<string, number>>, clock: Clock,
+export async function jumpFleetTx(
+  tx: Tx, playerId: string, fromPlanetId: string, toPlanetId: string, requested: Readonly<Record<string, number>>, clock: Clock,
 ): Promise<MoonMove> {
   if (fromPlanetId === toPlanetId) throw new GameError('SAME_MOON', 'Choose another of your moons', 400);
   const fleet = mobileFleet(requested);
-  return db.transaction(async (tx) => {
-    await lockWorlds(tx, [fromPlanetId, toPlanetId]);
-    const origin = await loadLocked(tx, fromPlanetId, clock);
-    if (origin.playerId !== playerId) throw new GameError('PLANET_NOT_OWNED', 'This world is not yours', 403);
-    assertWorldOperational(origin);
-    const target = await loadLocked(tx, toPlanetId, clock);
-    if (target.playerId !== playerId) throw new GameError('PLANET_NOT_OWNED', 'That world is not yours', 403);
-    assertWorldOperational(target);
-    if (target.seasonId !== origin.seasonId) throw new GameError('CROSS_SEASON', 'Another galaxy', 403);
-    if (!await seasonHasMoons(tx, origin.seasonId)) throw new GameError('MOONS_DISABLED', 'This galaxy has no moons', 409);
-    const pair = await tx.select().from(moons).where(inArray(moons.planetId, [fromPlanetId, toPlanetId]));
-    const here = pair.find((moon) => moon.planetId === fromPlanetId);
-    const there = pair.find((moon) => moon.planetId === toPlanetId);
-    if (!here || !there) throw new GameError('NO_MOON', 'Both worlds need a moon', 409);
-    const now = origin.now;
-    for (const gate of [here, there]) {
-      if (gate.closedUntil && gate.closedUntil > now) throw new GameError('GATE_CLOSED', 'A struck moon’s gate is shut', 409);
-      if (gate.gateReadyAt && gate.gateReadyAt > now) throw new GameError('GATE_CHARGING', 'A gate is still charging', 409);
-    }
-    await assertNoArrivalPending(tx, fromPlanetId, now, 'MOON');
-    const standing = await readHomeHealth(tx, fromPlanetId, 'MOON');
-    assertAvailable(remainderOf(standing.fleet, await reservedOnMoon(tx, fromPlanetId)), fleet);
-    if (hangarLoad(fleet) > jumpCapacity(here.rarity, await moonDockRoom(tx, toPlanetId))) {
-      throw new GameError('GATE_CAPACITY', 'The smaller moon cannot take this fleet in one jump', 409);
-    }
-    const blocked = await landingBlock(tx, toPlanetId, fleet);
-    if (blocked) throw new GameError(blocked.code, blocked.message, 409, blocked.params);
-    const fuel = jumpFuel(fleet, distance(origin, target));
-    assertFuel(fuel, origin.deuterium, 0);
-    await saveResources(tx, fromPlanetId, { alloy: origin.alloy, crystal: origin.crystal, deuterium: origin.deuterium - fuel });
+  await lockWorlds(tx, [fromPlanetId, toPlanetId]);
+  const origin = await loadLocked(tx, fromPlanetId, clock);
+  if (origin.playerId !== playerId) throw new GameError('PLANET_NOT_OWNED', 'This world is not yours', 403);
+  assertWorldOperational(origin);
+  const target = await loadLocked(tx, toPlanetId, clock);
+  if (target.playerId !== playerId) throw new GameError('PLANET_NOT_OWNED', 'That world is not yours', 403);
+  assertWorldOperational(target);
+  if (target.seasonId !== origin.seasonId) throw new GameError('CROSS_SEASON', 'Another galaxy', 403);
+  if (!await seasonHasMoons(tx, origin.seasonId)) throw new GameError('MOONS_DISABLED', 'This galaxy has no moons', 409);
+  const pair = await tx.select().from(moons).where(inArray(moons.planetId, [fromPlanetId, toPlanetId]));
+  const here = pair.find((moon) => moon.planetId === fromPlanetId);
+  const there = pair.find((moon) => moon.planetId === toPlanetId);
+  if (!here || !there) throw new GameError('NO_MOON', 'Both worlds need a moon', 409);
+  const now = origin.now;
+  for (const gate of [here, there]) {
+    if (gate.closedUntil && gate.closedUntil > now) throw new GameError('GATE_CLOSED', 'A struck moon’s gate is shut', 409);
+    if (gate.gateReadyAt && gate.gateReadyAt > now) throw new GameError('GATE_CHARGING', 'A gate is still charging', 409);
+  }
+  await assertNoArrivalPending(tx, fromPlanetId, now, 'MOON');
+  const standing = await readHomeHealth(tx, fromPlanetId, 'MOON');
+  assertAvailable(remainderOf(standing.fleet, await reservedOnMoon(tx, fromPlanetId)), fleet);
+  if (hangarLoad(fleet) > jumpCapacity(here.rarity, await moonDockRoom(tx, toPlanetId))) {
+    throw new GameError('GATE_CAPACITY', 'The smaller moon cannot take this fleet in one jump', 409);
+  }
+  const blocked = await landingBlock(tx, toPlanetId, fleet);
+  if (blocked) throw new GameError(blocked.code, blocked.message, 409, blocked.params);
+  const fuel = jumpFuel(fleet, distance(origin, target));
+  assertFuel(fuel, origin.deuterium, 0);
+  await saveResources(tx, fromPlanetId, { alloy: origin.alloy, crystal: origin.crystal, deuterium: origin.deuterium - fuel });
 
-    const arriveAt = new Date(now.getTime() + MOON.gateOpenSeconds * 1_000);
-    const [move] = await tx.insert(moonMoves).values({
-      seasonId: origin.seasonId, ownerPlayerId: playerId, kind: 'JUMP', fromPlanetId, toPlanetId,
-      fleet, fuelPaid: fuel, departAt: now, arriveAt,
-    }).returning();
-    await schedule(tx, { seasonId: origin.seasonId, kind: 'moon_move_land', refId: move!.id, resolveAt: arriveAt });
-    for (const gate of [here, there]) {
-      const readyAt = new Date(now.getTime() + gateChargeMs(gate.rarity));
-      await tx.update(moons).set({ gateReadyAt: readyAt }).where(eq(moons.planetId, gate.planetId));
-      await schedule(tx, { seasonId: origin.seasonId, kind: 'moon_gate_ready', refId: gate.planetId, resolveAt: readyAt });
-    }
-    await publishWatchChanges(tx, [fromPlanetId, toPlanetId]);
-    // The departure flash (S16); who may see it is decided when the map is read.
-    await publishShard(tx, origin.seasonId, 'moons');
-    return move!;
-  });
+  const arriveAt = new Date(now.getTime() + MOON.gateOpenSeconds * 1_000);
+  const [move] = await tx.insert(moonMoves).values({
+    seasonId: origin.seasonId, ownerPlayerId: playerId, kind: 'JUMP', fromPlanetId, toPlanetId,
+    fleet, fuelPaid: fuel, departAt: now, arriveAt,
+  }).returning();
+  await schedule(tx, { seasonId: origin.seasonId, kind: 'moon_move_land', refId: move!.id, resolveAt: arriveAt });
+  for (const gate of [here, there]) {
+    const readyAt = new Date(now.getTime() + gateChargeMs(gate.rarity));
+    await tx.update(moons).set({ gateReadyAt: readyAt }).where(eq(moons.planetId, gate.planetId));
+    await schedule(tx, { seasonId: origin.seasonId, kind: 'moon_gate_ready', refId: gate.planetId, resolveAt: readyAt });
+  }
+  await recordLegacyActivity(tx, playerId, now);
+  await publishWatchChanges(tx, [fromPlanetId, toPlanetId]);
+  // The departure flash (S16); who may see it is decided when the map is read.
+  await publishShard(tx, origin.seasonId, 'moons');
+  return move!;
+}
+
+export async function jumpFleet(
+  db: Db, playerId: string, fromPlanetId: string, toPlanetId: string, requested: Readonly<Record<string, number>>, clock: Clock,
+): Promise<MoonMove> {
+  return db.transaction((tx) => jumpFleetTx(tx, playerId, fromPlanetId, toPlanetId, requested, clock));
 }
 
 /**
@@ -339,6 +363,7 @@ async function finishJump(tx: Tx, move: MoonMove, now: Date): Promise<void> {
   const settle = async (status: MoonMove['status'], damage: readonly HpDamageLot[] = []) => {
     await tx.update(moonMoves).set({ status, damage: [...damage] }).where(eq(moonMoves.id, move.id));
     await publishWatchChanges(tx, [move.fromPlanetId, move.toPlanetId]);
+    await publishMoonMove(tx, move.ownerPlayerId);
   };
   if (!hasMoon(move.fromPlanetId) || !holds(move.fromPlanetId)) { await settle('LOST'); return; }
   if (!hasMoon(move.toPlanetId) || !holds(move.toPlanetId)) { await settle('CANCELLED'); return; }
@@ -366,11 +391,11 @@ async function finishJump(tx: Tx, move: MoonMove, now: Date): Promise<void> {
 }
 
 /** A gate has charged (§6.11). Only if nothing re-armed it since, the moon is open, and only to whoever holds the moon now. */
-export async function announceGateReady(tx: Tx, planetId: string, readyAt: Date): Promise<void> {
+export async function announceGateReady(tx: Tx, planetId: string, readyAt: Date, eventId?: string): Promise<void> {
   const [row] = await tx.select({
     readyAt: moons.gateReadyAt, closedUntil: moons.closedUntil, holder: planets.controllerPlayerId, name: planets.name,
   }).from(moons).innerJoin(planets, eq(planets.id, moons.planetId)).where(eq(moons.planetId, planetId));
   if (!row?.holder || row.readyAt?.getTime() !== readyAt.getTime()) return;
   if (row.closedUntil && row.closedUntil > readyAt) return;
-  await notify(tx, { playerId: row.holder, kind: 'moon_gate_ready', payload: { planetId, planetName: row.name }, at: readyAt, refId: null });
+  await notify(tx, { playerId: row.holder, kind: 'moon_gate_ready', payload: { planetId, planetName: row.name }, at: readyAt, refId: eventId ?? null });
 }

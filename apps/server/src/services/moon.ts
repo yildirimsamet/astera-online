@@ -165,12 +165,17 @@ export async function probeMoon(
   const standing = await tx.select({ count: units.count }).from(units)
     .where(and(eq(units.planetId, planetId), eq(units.location, MOON_LOCATION), gt(units.count, 0)));
   const [hop] = await tx.select({ id: moonMoves.id }).from(moonMoves)
-    .where(and(eq(moonMoves.fromPlanetId, planetId), eq(moonMoves.status, 'PENDING'))).limit(1);
+    .where(and(
+      eq(moonMoves.fromPlanetId, planetId),
+      inArray(moonMoves.kind, ['HOP_UP', 'HOP_DOWN']),
+      eq(moonMoves.status, 'PENDING'),
+    )).limit(1);
   return {
     rarity: moon.rarity,
     cracks: effectiveCracks({ cracks: moon.cracks, lastHitAtMs: moon.lastHitAt?.getTime() ?? null }, now.getTime()),
     lastHitAt: moon.lastHitAt?.toISOString() ?? null,
     closedUntil: moon.closedUntil?.toISOString() ?? null,
+    gateReadyAt: moon.gateReadyAt?.toISOString() ?? null,
     fleet: band(standing.reduce((sum, row) => sum + row.count, 0)),
     hopping: hop !== undefined,
   };
@@ -194,7 +199,11 @@ export async function moonWatchStatus(tx: Queryable, planetIds: readonly string[
     tx.selectDistinct({ id: units.planetId }).from(units)
       .where(and(inArray(units.planetId, ids), eq(units.location, MOON_LOCATION), gt(units.count, 0))),
     tx.selectDistinct({ id: moonMoves.fromPlanetId }).from(moonMoves)
-      .where(and(inArray(moonMoves.fromPlanetId, ids), eq(moonMoves.status, 'PENDING'))),
+      .where(and(
+        inArray(moonMoves.fromPlanetId, ids),
+        inArray(moonMoves.kind, ['HOP_UP', 'HOP_DOWN']),
+        eq(moonMoves.status, 'PENDING'),
+      )),
   ]);
   for (const { id } of withMoon) out.set(id, 'EMPTY');
   for (const { id } of manned) if (out.get(id) === 'EMPTY') out.set(id, 'HOME');

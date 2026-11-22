@@ -74,7 +74,7 @@ import { loadPlanetViewData, buildPlanetResult } from './planetView.js';
 import { pendingThreads } from './session.js';
 import { techOf } from './researchState.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
-import { readHomeHealth, selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
+import { assertNoArrivalPending, readHomeHealth, selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
 import { assertMoonTarget } from './moon.js';
 import { assertMoonShipsFree, landOnMoon, landingBodyOf, moonDockRoom } from './moonMovement.js';
 import { withdrawRaidWarning } from './notifications.js';
@@ -328,6 +328,10 @@ export async function launchTransfer(
     const blocked = await landingBlock(tx, targetPlanetId, staying);
     if (blocked) throw new GameError(blocked.code, blocked.message, 409, blocked.params);
     if (originBody === 'MOON') await assertMoonTarget(tx, { id: originPlanetId, seasonId: origin.seasonId, kind: origin.kind });
+    // K12: cargo comes out of the planet's store, so a raid due on the planet locks planet cargo even when ships launch from the moon.
+    if (originBody === 'MOON' && resourcesTotal(cargo) > 0) {
+      await assertNoArrivalPending(tx, originPlanetId, origin.now, 'PLANET');
+    }
     const source = originBody === 'MOON'
       ? await readHomeHealth(tx, originPlanetId, 'MOON')
       : { fleet: origin.homeFleet, damage: origin.homeDamage };
@@ -629,6 +633,8 @@ async function rerouteToSafeHome(
     ownerPlayerId: mission.ownerPlayerId,
     originPlanetId: fromId,
     targetPlanetId: homeId,
+    originBody: mission.originBody,
+    targetBody: homeId === mission.originPlanetId && mission.originBody === 'MOON' ? 'MOON' : 'PLANET',
     fleet: mission.fleet,
     cargo: mission.cargo ?? EMPTY,
     settlementEscrow: mission.settlementEscrow,

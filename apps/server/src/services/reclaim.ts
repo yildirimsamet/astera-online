@@ -30,6 +30,7 @@ import {
   debrisFields,
   intergalacticConvoyRuns,
   miningRuns,
+  moonMoves,
   pirateRaids,
   pirateState,
   missions,
@@ -678,14 +679,25 @@ export async function demolish(
     .select({ id: buildOrders.id })
     .from(buildOrders)
     .where(inArray(buildOrders.planetId, planetIds))).map((order) => order.id);
+  const moonMoveIds = (await tx
+    .select({ id: moonMoves.id })
+    .from(moonMoves)
+    .where(or(
+      eq(moonMoves.ownerPlayerId, playerId),
+      inArray(moonMoves.fromPlanetId, planetIds),
+      inArray(moonMoves.toPlanetId, planetIds),
+    ))).map((row) => row.id);
   const refs = [
     ...missionIds, ...runIds, ...raidIds, ...tradeIds, ...convoyIds,
-    ...planetIds, ...assetIds, ...buildOrderIds, ...bombIds,
+    ...planetIds, ...assetIds, ...buildOrderIds, ...bombIds, ...moonMoveIds,
     playerId,
     ...(await tx.select({ id: unknownSignals.id }).from(unknownSignals).where(eq(unknownSignals.playerId, playerId))).map(row => row.id),
   ];
   if (refs.length > 0) {
     await tx.delete(scheduledEvents).where(inArray(scheduledEvents.refId, refs));
+  }
+  if (moonMoveIds.length > 0) {
+    await tx.delete(moonMoves).where(inArray(moonMoves.id, moonMoveIds));
   }
 
   if (runIds.length > 0) await tx.delete(miningRuns).where(inArray(miningRuns.id, runIds));

@@ -47,6 +47,7 @@ import { assertFliesOutsideMaintenance } from './maintenanceWindow.js';
 import { assertNoArrivalPending } from './homeHealth.js';
 import { assertMoonTarget } from './moon.js';
 import { explodeMoon, scoreMoonBreak } from './moonExplosion.js';
+import { settlePlanetRadiationAt } from './planetRadiation.js';
 import { loadPlanetViewData, buildPlanetResult } from './planetView.js';
 import { pendingThreads } from './session.js';
 import { inboundRadarLead } from './radar.js';
@@ -512,6 +513,8 @@ export async function applyDeathStarStrike(
     const hit = strikeMoon({ rarity: moon.rarity, cracks: moon.cracks, lastHitAtMs: moon.lastHitAt?.getTime() ?? null }, now.getTime());
     const holder = target.kind === 'NEUTRAL' ? null : target.controllerPlayerId;
     if (hit.explodes) {
+      // Close the moon's radiation dose first so ships already killed by radiation do not inflate wreck/honor/dominion.
+      await settlePlanetRadiationAt(tx, target.id, now);
       const { destroyedFleet } = await explodeMoon(tx, { missionId: mission.id, world: target, holder, rarity: moon.rarity, now });
       await settleMoonBreakHonor(tx, { seasonId: mission.seasonId, id: mission.id, at: now, defender: holder, destroyed: destroyedFleet });
       if (holder) {

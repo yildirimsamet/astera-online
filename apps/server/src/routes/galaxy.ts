@@ -128,13 +128,14 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     ).map(world => world.id), now);
 
     // Absent, not empty, in a galaxy without moons (E13).
+    const worldById = new Map(worlds.map((world) => [world.id, world]));
     const moonView = await seasonHasMoons(app.db, self.seasonId)
-      ? await moonsSeenBy(app.db, self.seasonId, new Set(worlds.map((world) => world.id)), (id) => {
-        const world = worlds.find((candidate) => candidate.id === id);
+      ? await moonsSeenBy(app.db, self.seasonId, new Set(worldById.keys()), (id) => {
+        const world = worldById.get(id);
         return world !== undefined && resolves(world);
       }, (id) => remembered.get(id)?.silhouette.moonRarity, (id) => {
         if (mineSet.has(id)) return 'IDENTIFIED';
-        const world = worlds.find((candidate) => candidate.id === id);
+        const world = worldById.get(id);
         return world ? sensorZone(sensors, world.position) : 'NONE';
       }, now)
       : null;

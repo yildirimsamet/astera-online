@@ -6024,6 +6024,7 @@ export interface ProbeMoonReading {
   cracks: number;
   lastHitAt: string | null;
   closedUntil: string | null;
+  gateReadyAt?: string | null;
   fleet: { low: number; high: number };
   /** A hop between the bodies was under way at the look (V10). */
   hopping: boolean;
@@ -6069,7 +6070,7 @@ export const moonSeedLedger = pgTable('moon_seed_ledger', {
 export const moonMoves = pgTable('moon_moves', {
   id: uuid('id').primaryKey().defaultRandom(),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
-  ownerPlayerId: uuid('owner_player_id').notNull().references(() => players.id),
+  ownerPlayerId: uuid('owner_player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
   kind: text('kind').$type<'HOP_UP' | 'HOP_DOWN' | 'JUMP'>().notNull(),
   fromPlanetId: uuid('from_planet_id').notNull().references(() => planets.id, { onDelete: 'cascade' }),
   toPlanetId: uuid('to_planet_id').notNull().references(() => planets.id, { onDelete: 'cascade' }),
@@ -6091,6 +6092,7 @@ export const moonMoves = pgTable('moon_moves', {
   index('moon_moves_owner_idx').on(t.ownerPlayerId),
   index('moon_moves_from_pending_idx').on(t.fromPlanetId).where(sql`${t.status} = 'PENDING'`),
   index('moon_moves_to_pending_idx').on(t.toPlanetId).where(sql`${t.status} = 'PENDING'`),
+  index('moon_moves_season_jump_arrive_idx').on(t.seasonId, t.arriveAt).where(sql`${t.kind} = 'JUMP'`),
 ]);
 
 /** One route a Gözcü photographed (S14, S33): never the flight's kind, only its direction and rough size. */

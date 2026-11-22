@@ -237,6 +237,7 @@ export function projectVisibleDebris(snapshot: MiningSnapshot, now: Date) {
         id: field.id,
         /** NULL for a pirate battle: open space has no world to orbit. D150. */
         planetId: field.planetId,
+        body: field.body,
         x: field.x,
         y: field.y,
         z: field.z,

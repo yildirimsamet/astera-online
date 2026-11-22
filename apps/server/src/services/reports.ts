@@ -24,6 +24,7 @@ import {
   type PirateLevel,
   type Resources,
   type PvpBalance,
+  type WorldBody,
 } from '@astera/rules';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import {
@@ -147,6 +148,7 @@ export interface BattleReportView {
   } | null;
   at: Date;
   grade: Grade;
+  targetBody: WorldBody;
   /** The blow-by-blow. Null calculation fields identify a report from before D121a telemetry. */
   rounds: BattleReportRoundView[];
   /** True when the caller was the one who launched. */
@@ -896,6 +898,7 @@ async function readBattleReportsIn(
         : null,
       at: row.createdAt,
       grade: row.grade,
+      targetBody: row.targetBody,
       rounds,
       attacking,
       opponentName: raid

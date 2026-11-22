@@ -651,6 +651,11 @@ export async function publishWorldMemory(tx: Queryable, playerId: string): Promi
   await publish(tx, playerId, `${PRIVATE_PREFIX}memory`);
 }
 
+/** A hop or Moon Gate jump belonging to this commander landed or settled; refresh their world state. */
+export async function publishMoonMove(tx: Queryable, playerId: string): Promise<void> {
+  await publish(tx, playerId, `${PRIVATE_PREFIX}moon-move`);
+}
+
 /**
  * Announce that something happened in a galaxy, to everybody living in it. D53.
  *

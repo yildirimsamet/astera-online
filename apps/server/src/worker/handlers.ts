@@ -82,6 +82,7 @@ import {
   intergalacticConvoyRuns,
   miningRuns,
   missions,
+  moonMoves,
   neutralPlanetState,
   planets,
   players,
@@ -157,6 +158,7 @@ import { creditVictoryWreck } from '../services/clanTreasury.js';
 import { armPaidAlert, settlePaidAlert } from '../services/notificationCenter.js';
 import {
   publicDominionLeader,
+  publicControlTransferIdentity,
   publicPlanetIdentity,
   recordGalaxyEvent,
 } from '../services/chronicle.js';
@@ -473,7 +475,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         });
       }
       if (outcome === 'CAPTURED') {
-        const captured = await publicPlanetIdentity(tx, mission.targetPlanetId);
+        const captured = await publicControlTransferIdentity(tx, mission.targetPlanetId);
         if (captured) {
           await recordGalaxyEvent(tx, {
             seasonId: mission.seasonId,
@@ -555,7 +557,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         });
       }
       if (outcome === 'CAPTURED') {
-        const captured = await publicPlanetIdentity(tx, mission.targetPlanetId);
+        const captured = await publicControlTransferIdentity(tx, mission.targetPlanetId);
         if (captured) {
           await recordGalaxyEvent(tx, {
             seasonId: mission.seasonId,
@@ -1522,6 +1524,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         .values({
           seasonId: mission.seasonId,
           planetId: defender.planetId,
+          body: onMoon ? 'MOON' : 'PLANET',
           // Stored beside the anchor, so a void field and a world field are read
           // through the same three columns. D150.
           x: defender.x,
@@ -2250,7 +2253,7 @@ async function freezeSeason(
       // Recovery guard for pre-D85 rows and same-instant worker ordering. Delete
       // this processing event and replace it atomically; EventWorker's later
       // `complete()` update simply finds no old row.
-      const [[missionCount], [miningCount], [buildCount], [strategicCount], [researchCount], [pirateCount], [tradeCount], [convoyCount], [clanWarCount], [supportCount], [signalCount]] = await Promise.all([
+      const [[missionCount], [miningCount], [buildCount], [strategicCount], [researchCount], [pirateCount], [tradeCount], [convoyCount], [clanWarCount], [supportCount], [signalCount], [moonMoveCount]] = await Promise.all([
       tx
         .select({ n: sql<number>`count(*)::int` })
         .from(missions)
@@ -2298,6 +2301,8 @@ async function freezeSeason(
         )),
       tx.select({ n: sql<number>`count(*)::int` }).from(unknownSignals)
         .where(and(eq(unknownSignals.seasonId, seasonId), inArray(unknownSignals.status, ['outbound', 'returning', 'recalled']))),
+      tx.select({ n: sql<number>`count(*)::int` }).from(moonMoves)
+        .where(and(eq(moonMoves.seasonId, seasonId), eq(moonMoves.status, 'PENDING'))),
       ]);
       if (
         (missionCount?.n ?? 0) > 0
@@ -2311,6 +2316,7 @@ async function freezeSeason(
         || (clanWarCount?.n ?? 0) > 0
         || (supportCount?.n ?? 0) > 0
         || (signalCount?.n ?? 0) > 0
+        || (moonMoveCount?.n ?? 0) > 0
       ) {
         await tx.delete(scheduledEvents).where(eq(scheduledEvents.id, event.id));
         await schedule(tx, {
@@ -2329,6 +2335,18 @@ async function freezeSeason(
     await finishArenaTeamSeason(tx, { now: () => capturedThrough }, seasonId);
     await closeSeasonRadiationBombs(tx, seasonId, capturedThrough);
     await closeSeasonMonuments(tx, { seasonId, cutoff: capturedThrough, adminUsernames: [...adminUsernames] });
+    // E12 / §6.17: settle any pending moon moves on forced freeze (hops land; jumps cancel so ships stay home).
+    const pendingMoonMoves = await tx
+      .select({ id: moonMoves.id, kind: moonMoves.kind })
+      .from(moonMoves)
+      .where(and(eq(moonMoves.seasonId, seasonId), eq(moonMoves.status, 'PENDING')));
+    for (const move of pendingMoonMoves) {
+      if (move.kind === 'JUMP') {
+        await tx.update(moonMoves).set({ status: 'CANCELLED' }).where(eq(moonMoves.id, move.id));
+      } else {
+        await landMoonMove(tx, move.id, capturedThrough);
+      }
+    }
     const ownedWorlds = await tx
       .select({ id: planets.id })
       .from(planets)
@@ -3310,7 +3328,7 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   moon_gate_ready: async ({ db }, event) => {
     if (!event.refId) throw new Error('moon_gate_ready without refId');
     const planetId = event.refId;
-    await db.transaction((tx) => announceGateReady(tx, planetId, event.resolveAt));
+    await db.transaction((tx) => announceGateReady(tx, planetId, event.resolveAt, event.id));
   },
   strategic_intercept: onStrategicIntercept,
   strategic_intercept_impact: onStrategicInterceptImpact,
