@@ -324,10 +324,12 @@ export interface GalaxyCanvasProps {
   onMoonWarpArrive?: ((toPlanetId: string) => void) | undefined;
   /** Owner-only Gözcü moon scanner wave & holographic target lock animations. */
   moonScans?: readonly MoonScanFxEvent[] | undefined;
+  /** Called when the player taps a moon on the disc; owns opening Moon tab for owned worlds. */
+  onSelectMoon?: ((planetId: string) => void) | undefined;
   /** Owner-only active 90s Planet <-> Moon shuttle hops. */
   moonHops?: readonly MoonHopFxItem[] | undefined;
-  /** Planet currently running an 8h Common moon construction queue, if any. */
-  moonBuildPlanetId?: string | null | undefined;
+  /** Planets currently running an 8h Common moon construction queue. */
+  moonBuildPlanetIds?: readonly string[] | undefined;
   /**
    * Whether each instrument's boundaries are drawn AT ALL. Owner instruction.
    *
@@ -466,9 +468,10 @@ export function GalaxyCanvas({
   moons,
   moonWarps,
   onMoonWarpArrive,
+  onSelectMoon,
   moonScans,
   moonHops,
-  moonBuildPlanetId = null,
+  moonBuildPlanetIds,
   unknownSignals = EMPTY_UNKNOWN_SIGNALS,
   clanAlarms = NO_CLAN_ALARMS,
   unknownSignalRadar,
@@ -1044,6 +1047,10 @@ export function GalaxyCanvas({
             onSelectPlanet={(id) => {
               if (isMainWorld(id)) return;
               if (allowFocus && !allowFocus(id)) return;
+              if (onSelectMoon) {
+                onSelectMoon(id);
+                return;
+              }
               onFocus({ kind: 'planet', id });
             }}
           />
@@ -1058,11 +1065,11 @@ export function GalaxyCanvas({
             <MoonScanFx events={moonScans} moons={moons} nodes={nodes} />
           </Suspense>
         )}
-        {((moonHops?.length ?? 0) > 0 || moonBuildPlanetId !== null) && (
+        {((moonHops?.length ?? 0) > 0 || (moonBuildPlanetIds?.length ?? 0) > 0) && (
           <Suspense fallback={null}>
             <MoonActivityFx
               hops={moonHops ?? []}
-              buildingPlanetId={moonBuildPlanetId}
+              buildingPlanetIds={moonBuildPlanetIds ?? []}
               moons={moons}
               nodes={nodes}
             />

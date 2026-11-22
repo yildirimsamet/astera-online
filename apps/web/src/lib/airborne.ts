@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next';
 import { fleetCount, hpRadiationApplies, type WorldBody } from '@astera/rules';
 import type { FlightRecallInput } from '../api/client.js';
 import { useGalaxy, useMining, useMonuments, usePending, usePlanet, useTraffic } from '../api/queries.js';
+import { useWorld } from '../api/world.js';
+import { useMoonT } from '../i18n/moon.js';
 import { threadKey } from '../galaxy/threadKey.js';
 import {
   arrivalOf,
@@ -41,6 +43,7 @@ export type StripFocus = FlightFocus;
  */
 export function useAirborne(): { items: AirborneItem[]; now: number } {
   const { t } = useTranslation();
+  const tMoon = useMoonT();
   const { data } = usePending();
   const mining = useMining();
   /**
@@ -56,12 +59,41 @@ export function useAirborne(): { items: AirborneItem[]; now: number } {
   const galaxy = useGalaxy();
   const now = useNow(1000);
   const origin = usePlanet();
+  const { worlds } = useWorld();
   const monuments = useMonuments(hpRadiationApplies(origin.data?.rulesetVersion ?? 0));
   const threads = [...data?.pending ?? [], ...monumentPendingThreads(monuments.data, now)];
   const runs = (mining.data?.runs ?? []).filter((run) => run.status !== 'done');
   const seen = traffic.data?.contacts ?? [];
   const moonPlanetIds = new Set(galaxy.data?.moons?.list.map((m) => m.planetId) ?? []);
   const worldKindById = new Map(galaxy.data?.planets.map((w) => [w.id, w.kind]) ?? []);
+  const worldNameById = new Map(galaxy.data?.planets.map((w) => [w.id, w.name]) ?? []);
+
+  // Collect active Planet <-> Moon hops & Moon Gate jumps across all owned worlds (deduped by move id)
+  const moonMovesById = new Map<string, {
+    id: string;
+    kind: 'HOP_UP' | 'HOP_DOWN' | 'JUMP';
+    fromPlanetId: string;
+    toPlanetId: string;
+    ships: number;
+    departAt: number;
+    arriveAt: number;
+  }>();
+  const allOwned = origin.data ? [origin.data, ...worlds] : worlds;
+  for (const w of allOwned) {
+    if (!w.moon) continue;
+    for (const mv of w.moon.moves) {
+      if (mv.arriveAt.getTime() <= now || moonMovesById.has(mv.id)) continue;
+      moonMovesById.set(mv.id, {
+        id: mv.id,
+        kind: mv.kind,
+        fromPlanetId: mv.fromPlanetId,
+        toPlanetId: mv.toPlanetId,
+        ships: fleetCount(mv.fleet),
+        departAt: mv.departAt.getTime(),
+        arriveAt: mv.arriveAt.getTime(),
+      });
+    }
+  }
 
   const items: AirborneItem[] = [
     ...threads.map((thread, index): AirborneItem => {
@@ -119,6 +151,31 @@ export function useAirborne(): { items: AirborneItem[]; now: number } {
         ? { recall: { runId: run.id, originPlanetId: run.planetId } }
         : {}),
     })),
+    ...[...moonMovesById.values()].map((mv): AirborneItem => {
+      const fromName = worldNameById.get(mv.fromPlanetId) ?? '';
+      const toName = worldNameById.get(mv.toPlanetId) ?? '';
+      const actionLabel = mv.kind === 'HOP_UP'
+        ? tMoon('hop.movingUp')
+        : mv.kind === 'HOP_DOWN'
+          ? tMoon('hop.movingDown')
+          : tMoon('gate.jumping');
+      const title = mv.kind === 'JUMP' && fromName && toName
+        ? `${fromName} → ${toName} · ${actionLabel}`
+        : fromName
+          ? `${fromName} · ${actionLabel}`
+          : actionLabel;
+      return {
+        key: `moon_move:${mv.id}`,
+        title,
+        detail: t('pendingStrip.craftCount', { count: mv.ships }),
+        arrival: mv.arriveAt,
+        leg: 'outbound',
+        incoming: false,
+        engages: false,
+        mark: 'moon_move',
+        span: { from: mv.departAt, to: mv.arriveAt },
+      };
+    }),
   ].sort((a, b) => a.arrival - b.arrival || a.key.localeCompare(b.key));
   return { items, now };
 }
@@ -158,4 +215,4 @@ export interface AirborneItem {
 export type FlightMark =
   | 'monument' | 'unknown_signal'
   | 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star' | 'radiation_bomb'
-  | 'mining' | 'salvage' | 'pirate' | 'trade' | 'intergalactic_convoy';
+  | 'mining' | 'salvage' | 'pirate' | 'trade' | 'intergalactic_convoy' | 'moon_move';

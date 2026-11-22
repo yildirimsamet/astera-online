@@ -55,6 +55,7 @@ export const FLIGHT_MARK: Record<FlightMark, GlyphId> = {
   pirate: 'pirate',
   trade: 'crate',
   intergalactic_convoy: 'crate',
+  moon_move: 'moon',
 };
 
 /** A kit press: the tap, the buzz, then the place it opens. */

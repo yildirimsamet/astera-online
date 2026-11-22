@@ -122,7 +122,7 @@ describe('MoonPanel (F9b)', () => {
       </I18nextProvider>,
     );
     expect(screen.getByTestId('moon-rarity').textContent).toMatch(/Legendary|Efsanevi/i);
-    expect(screen.getByTestId('moon-cracks').textContent).toContain('2/9');
+    expect(screen.getByTestId('moon-cracks').textContent).toContain('7/9');
     expect(screen.getByTestId('moon-pierce-badge')).toBeDefined();
     expect(screen.getByTestId('moon-split-planet')).toBeDefined();
     expect(screen.getByTestId('moon-split-moon')).toBeDefined();

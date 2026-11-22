@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { GalaxyMoons } from '../api/schemas.js';
 import { serverNow } from '../lib/clock.js';
+import { FullRate } from './frames.jsx';
 import { moonOrbitPosition, moonRadiusFor } from './moonOrbit.js';
 import type { MoonHostRef } from './MoonGateWarpFx.js';
 
@@ -156,8 +157,13 @@ function HopArc({
     invalidate();
   });
 
+  useEffect(() => {
+    invalidate();
+  }, [invalidate, hop.id, nodeById]);
+
   return (
     <group name={`moon-hop-fx-${hop.id}`}>
+      <FullRate />
       <primitive object={lineObj} raycast={() => null} />
       {[0, 1, 2].map((idx) => (
         <mesh
@@ -262,8 +268,13 @@ function MoonConstructionSite({
     invalidate();
   });
 
+  useEffect(() => {
+    invalidate();
+  }, [invalidate, planetId, nodeById]);
+
   return (
     <group name={`moon-construction-${planetId}`}>
+      <FullRate />
       <group ref={groupRef}>
         <mesh geometry={rockGeo} material={materials.rock} raycast={() => null} />
         <mesh geometry={rockGeo} scale={1.18} material={materials.scaffold} raycast={() => null} />
@@ -275,12 +286,12 @@ function MoonConstructionSite({
 
 export function MoonActivityFx({
   hops,
-  buildingPlanetId,
+  buildingPlanetIds,
   moons,
   nodes,
 }: {
   readonly hops: readonly MoonHopFxItem[];
-  readonly buildingPlanetId: string | null;
+  readonly buildingPlanetIds: readonly string[];
   readonly moons?: GalaxyMoons | undefined;
   readonly nodes: readonly MoonHostRef[];
 }) {
@@ -290,16 +301,16 @@ export function MoonActivityFx({
     return map;
   }, [nodes]);
 
-  if (hops.length === 0 && !buildingPlanetId) return null;
+  if (hops.length === 0 && buildingPlanetIds.length === 0) return null;
 
   return (
     <group name="moon-activity-fx">
       {hops.map((hop) => (
         <HopArc key={hop.id} hop={hop} moons={moons} nodeById={nodeById} />
       ))}
-      {buildingPlanetId && (
-        <MoonConstructionSite planetId={buildingPlanetId} nodeById={nodeById} />
-      )}
+      {buildingPlanetIds.map((pid) => (
+        <MoonConstructionSite key={pid} planetId={pid} nodeById={nodeById} />
+      ))}
     </group>
   );
 }

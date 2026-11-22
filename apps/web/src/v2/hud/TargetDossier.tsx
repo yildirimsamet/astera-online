@@ -232,12 +232,12 @@ export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, 
               {moon.rarity ? (
                 <span className="gk-num text-caption text-slate-300">
                   {tMoon(`rarity.${moon.rarity}`)} · {tMoon('status.cracks')}{' '}
-                  {effectiveCracks({ cracks: moon.cracks, lastHitAtMs: moon.lastHitAt?.getTime() ?? null }, now)}/
+                  {Math.max(0, crackLimit(moon.rarity) - effectiveCracks({ cracks: moon.cracks, lastHitAtMs: moon.lastHitAt?.getTime() ?? null }, now))}/
                   {crackLimit(moon.rarity)}
                 </span>
               ) : (
                 <span className="gk-num text-caption text-slate-400">
-                  {tMoon('status.cracks')} {effectiveCracks({ cracks: moon.cracks, lastHitAtMs: moon.lastHitAt?.getTime() ?? null }, now)}
+                  {tMoon('status.hitsTaken')}: {effectiveCracks({ cracks: moon.cracks, lastHitAtMs: moon.lastHitAt?.getTime() ?? null }, now)}
                 </span>
               )}
             </div>

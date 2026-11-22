@@ -1441,7 +1441,10 @@ export function DeathStarSection({ target, origin, report, moon = null, now, dis
             <div className="gk-well flex flex-col gap-1 text-caption">
               <p className="font-semibold text-amber-200 gk-num">
                 {moon.rarity
-                  ? tMoon('body.deathStarMoonCracks', { cracks: cracksNow, limit: crackLimit(moon.rarity) })
+                  ? tMoon('body.deathStarMoonCracks', {
+                    remaining: Math.max(0, crackLimit(moon.rarity) - cracksNow),
+                    limit: crackLimit(moon.rarity),
+                  })
                   : tMoon('body.deathStarMoonCracksUnknown', { cracks: cracksNow })}
               </p>
               <p className="text-slate-300">{tMoon('body.deathStarMoonHint')}</p>

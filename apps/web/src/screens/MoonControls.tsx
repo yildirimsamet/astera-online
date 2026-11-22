@@ -167,7 +167,7 @@ export function MoonProbeSection({ moon }: { readonly moon: ProbeMoon }) {
           {t('body.probeSection')}
         </span>
         <span className="gk-num text-slate-300">
-          {t(RARITY_KEY[moon.rarity])} · {t('status.cracks')} {moon.cracks}/{crackLimit(moon.rarity)}
+          {t(RARITY_KEY[moon.rarity])} · {t('status.cracks')} {Math.max(0, crackLimit(moon.rarity) - moon.cracks)}/{crackLimit(moon.rarity)}
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-2 text-slate-300">

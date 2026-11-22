@@ -315,6 +315,7 @@ const MARK: Record<FlightMark, (props: { className?: string }) => ReactNode> = {
   // the pirate line above — the glyph names the ACT, not the destination. D156.
   trade: SendIcon,
   intergalactic_convoy: AttackIcon,
+  moon_move: SendIcon,
 };
 
 /**

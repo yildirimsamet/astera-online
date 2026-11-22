@@ -144,6 +144,7 @@ export function Moons({
 
   const regIdsRef = useRef<string[]>([]);
   const ancIdsRef = useRef<string[]>([]);
+  const ringIdsRef = useRef<string[]>([]);
   const moonPosPoolRef = useRef<Map<string, CachedMoonPos>>(new Map());
   const seenHydratedRef = useRef(false);
   const knownMoonsRef = useRef<Map<string, { x: number; y: number; z: number; r: number; seed: number }>>(new Map());
@@ -297,8 +298,10 @@ export function Moons({
     const pool = moonPosPoolRef.current;
     const regIds = regIdsRef.current;
     const ancIds = ancIdsRef.current;
+    const ringIds = ringIdsRef.current;
     regIds.length = 0;
     ancIds.length = 0;
+    ringIds.length = 0;
 
     for (const item of list) {
       const node = nodeById.get(item.planetId);
@@ -384,22 +387,26 @@ export function Moons({
         ringMesh.setMatrixAt(ringCount, _dummy.matrix);
         _color.setHex(ringColor);
         ringMesh.setColorAt(ringCount, _color);
+        ringIds.push(item.planetId);
         ringCount++;
       }
     }
 
     regMesh.count = regCount;
     regMesh.instanceMatrix.needsUpdate = true;
+    regMesh.boundingSphere = null;
     if (regMesh.instanceColor) regMesh.instanceColor.needsUpdate = true;
     geometries.regCrackAttr.needsUpdate = true;
 
     ancMesh.count = ancCount;
     ancMesh.instanceMatrix.needsUpdate = true;
+    ancMesh.boundingSphere = null;
     if (ancMesh.instanceColor) ancMesh.instanceColor.needsUpdate = true;
     geometries.ancCrackAttr.needsUpdate = true;
 
     ringMesh.count = ringCount;
     ringMesh.instanceMatrix.needsUpdate = true;
+    ringMesh.boundingSphere = null;
     if (ringMesh.instanceColor) ringMesh.instanceColor.needsUpdate = true;
 
     // Public gate flashes (cyan arrivals, violet sensor-gated departures) + Birth accretion rings
@@ -539,7 +546,7 @@ export function Moons({
         args={[geometries.ring, materials.ring, MAX_INSTANCES]}
         count={0}
         frustumCulled={false}
-        raycast={() => undefined}
+        onClick={handleClick(ringIdsRef.current)}
       />
       <instancedMesh
         ref={flashRef}

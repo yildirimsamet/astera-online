@@ -1414,28 +1414,38 @@ export function GalaxyView({
   }, []);
 
   const moonHops = useMemo<readonly MoonHopFxItem[]>(() => {
-    const moves = planet.data?.moon?.moves ?? [];
-    const pid = planet.data?.planet.id;
-    if (!pid || moves.length === 0) return [];
+    const allOwned = planet.data ? [planet.data, ...worlds] : worlds;
+    const seen = new Set<string>();
     const out: MoonHopFxItem[] = [];
-    for (const mv of moves) {
-      if (mv.kind === 'HOP_UP' || mv.kind === 'HOP_DOWN') {
-        out.push({
-          id: mv.id,
-          planetId: pid,
-          direction: mv.kind === 'HOP_UP' ? 'UP' : 'DOWN',
-          arriveAtMs: mv.arriveAt.getTime(),
-        });
+    for (const w of allOwned) {
+      const moves = w.moon?.moves;
+      if (!moves || moves.length === 0) continue;
+      for (const mv of moves) {
+        if (seen.has(mv.id)) continue;
+        if (mv.kind === 'HOP_UP' || mv.kind === 'HOP_DOWN') {
+          seen.add(mv.id);
+          out.push({
+            id: mv.id,
+            planetId: w.planet.id,
+            direction: mv.kind === 'HOP_UP' ? 'UP' : 'DOWN',
+            arriveAtMs: mv.arriveAt.getTime(),
+          });
+        }
       }
     }
     return out;
-  }, [planet.data?.moon?.moves, planet.data?.planet.id]);
+  }, [planet.data, worlds]);
 
-  const moonBuildPlanetId = useMemo<string | null>(() => {
-    const p = planet.data;
-    if (!p?.queues) return null;
-    return p.queues.CONSTRUCTION.some((q) => q.kind === 'MOON') ? p.planet.id : null;
-  }, [planet.data]);
+  const moonBuildPlanetIds = useMemo<readonly string[]>(() => {
+    const allOwned = planet.data ? [planet.data, ...worlds] : worlds;
+    const ids = new Set<string>();
+    for (const w of allOwned) {
+      if (w.queues?.CONSTRUCTION.some((q) => q.kind === 'MOON')) {
+        ids.add(w.planet.id);
+      }
+    }
+    return [...ids];
+  }, [planet.data, worlds]);
 
   const tryCosmetic = (cosmeticId: CosmeticId): void => {
     const item = cosmeticById(cosmeticId);
@@ -1614,9 +1624,19 @@ export function GalaxyView({
         moons={galaxy.data?.moons}
         moonWarps={moonWarps}
         onMoonWarpArrive={(toId) => { focusPlanet(toId); }}
+        onSelectMoon={(planetId) => {
+          const mine = new Set(galaxy.data?.you.planetIds ?? [galaxy.data?.you.planetId]);
+          if (mine.has(planetId)) {
+            if (planetId !== activePlanetId) selectPlanet(planetId);
+            focusPlanet(planetId);
+            onPanel('moon');
+            return;
+          }
+          onFocus({ kind: 'planet', id: planetId });
+        }}
         moonScans={moonScans}
         moonHops={moonHops}
-        moonBuildPlanetId={moonBuildPlanetId}
+        moonBuildPlanetIds={moonBuildPlanetIds}
         focusDistanceOverride={moonWarps.length > 0 ? 15.5 : moonScans.length > 0 ? 11.5 : undefined}
         unknownSignals={signalData?.signals}
         clanAlarms={clanAlarms}
@@ -2293,11 +2313,24 @@ export function GalaxyView({
               const g = galaxy.data;
               const p = planet.data;
               if (!g || !p.moon) return [];
+              const mine = new Set(g.you.planetIds ?? [g.you.planetId]);
               return g.planets
-                .filter((w) => w.id !== p.planet.id && w.name.trim().length > 0)
-                .map((w) => ({ planetId: w.id, name: w.name, distance: distance(p.planet.position, w.position) }))
+                .filter((w) => !mine.has(w.id) && w.name.trim().length > 0)
+                .map((w) => {
+                  const isPlayer = w.controller?.kind === 'PLAYER';
+                  const ownerLabel = w.controller?.kind === 'PLAYER'
+                    ? w.controller.displayName
+                    : undefined;
+                  return {
+                    planetId: w.id,
+                    name: w.name,
+                    distance: distance(p.planet.position, w.position),
+                    isPlayer,
+                    ...(ownerLabel ? { ownerLabel } : {}),
+                  };
+                })
                 .filter((w) => w.distance <= p.moon!.scanRange)
-                .sort((a, b) => a.distance - b.distance);
+                .sort((a, b) => Number(b.isPlayer) - Number(a.isPlayer) || a.distance - b.distance);
             })()}
             worldNames={new Map((galaxy.data?.planets ?? []).map((w) => [w.id, w.name]))}
             onOpenResearch={() => { onPanel('research'); }}
