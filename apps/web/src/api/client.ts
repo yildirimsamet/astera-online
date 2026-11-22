@@ -8,7 +8,7 @@ import { commanderShipSchema, galaxyShipModelsSchema } from './commanderShipSche
 import { communityPolicyConsentSchema, communityPolicyStatusSchema, type CommunityPolicyConsent } from './communityPolicySchemas.js';
 import { buildHeader, reportUpdateRequired } from '../platform/updateGate.js';
 import { reportIfInsideWindow, reportMaintenance } from '../platform/maintenanceGate.js';
-import { accountSecuritySchema, securityChallengeSchema, securityCompleteSchema, accountDeletionStatusSchema, accountDeletionSubmittedSchema } from './schemas.js';
+import { accountSecuritySchema, securityChallengeSchema, securityCompleteSchema, accountDeletionStatusSchema, accountDeletionSubmittedSchema, moonBuildSchema, moonHopSchema, moonJumpSchema, moonRetargetSchema, moonScanSchema, moonScansSchema } from './schemas.js';
 import { contentReportReceiptSchema, contentReportQueueSchema, contentReportDecisionSchema, communityBlocksSchema, communityBlockResultSchema, type ReportTarget, type ReportReason } from './contentReportSchemas.js';
 import { unknownSignalsSchema, unknownSignalDetailsSchema, unknownSignalLaunchSchema, unknownSignalRecallSchema } from './schemas.js';
 import { COSMETIC_IDS, type AlertTiming, type CosmeticCategory, type CosmeticId, type MobileHullId, type PaidAlertKind, type VesselHull } from '@astera/rules';
@@ -38,6 +38,7 @@ import type {
   TransferReturnPlan,
   StarterFeature,
   VesselModule,
+  WorldBody,
 } from '@astera/rules';
 import { noteServerTime } from '../lib/clock.js';
 import { capabilities } from '../platform/runtime.js';
@@ -1355,6 +1356,8 @@ export class Api {
     acknowledgeRadiation?: boolean,
     /** The commander ship escorts this raid (Y9). */
     admiral?: boolean,
+    /** Ay F3b/F3c: departure and target body (PLANET | MOON). */
+    bodies?: { originBody?: WorldBody; targetBody?: WorldBody },
   ) =>
     this.send('/api/fleet/launch', launchSchema, {
       method: 'POST',
@@ -1366,6 +1369,8 @@ export class Api {
         ...(pace !== undefined && pace !== 1 ? { pace } : {}),
         ...(acknowledgeRadiation ? { acknowledgeRadiation: true } : {}),
         ...(admiral ? { admiral: true } : {}),
+        ...(bodies?.originBody && bodies.originBody !== 'PLANET' ? { originBody: bodies.originBody } : {}),
+        ...(bodies?.targetBody && bodies.targetBody !== 'PLANET' ? { targetBody: bodies.targetBody } : {}),
       },
     });
 
@@ -1401,7 +1406,7 @@ export class Api {
     { method: 'POST' },
   );
 
-  transfer = (originPlanetId: string, targetPlanetId: string, fleet: Fleet, cargo: { alloy: number; crystal: number; deuterium: number }, pace?: MissionPace, returnPlan?: TransferReturnPlan, acknowledgeRadiation?: boolean) =>
+  transfer = (originPlanetId: string, targetPlanetId: string, fleet: Fleet, cargo: { alloy: number; crystal: number; deuterium: number }, pace?: MissionPace, returnPlan?: TransferReturnPlan, acknowledgeRadiation?: boolean, bodies?: { originBody?: WorldBody; targetBody?: WorldBody }) =>
     this.send('/api/fleet/transfer', movementLaunchSchema, {
       method: 'POST',
       body: {
@@ -1409,6 +1414,8 @@ export class Api {
         ...(returnPlan ? { returnPlan } : {}),
         ...(pace !== undefined && pace !== 1 ? { pace } : {}),
         ...(acknowledgeRadiation ? { acknowledgeRadiation: true } : {}),
+        ...(bodies?.originBody && bodies.originBody !== 'PLANET' ? { originBody: bodies.originBody } : {}),
+        ...(bodies?.targetBody && bodies.targetBody !== 'PLANET' ? { targetBody: bodies.targetBody } : {}),
       },
     });
 
@@ -1428,7 +1435,7 @@ export class Api {
     });
 
   launchRadiationBomb = (originPlanetId: string, level: 1 | 2 | 3,
-    target: { kind: 'PLANET' | 'MONUMENT'; id: string }, key: string, acknowledgeShieldLoss = false) =>
+    target: { kind: 'PLANET' | 'MONUMENT'; id: string; body?: WorldBody }, key: string, acknowledgeShieldLoss = false) =>
     this.send('/api/radiation-bombs/launch', radiationBombLaunchSchema, {
       method: 'POST', body: { originPlanetId, level, target, acknowledgeShieldLoss }, idempotencyKey: key,
     });
@@ -1455,9 +1462,47 @@ export class Api {
       { method: 'POST', body: {} },
     );
 
-  launchDeathStar = (originPlanetId: string, targetPlanetId: string) =>
+  launchDeathStar = (originPlanetId: string, targetPlanetId: string, targetBody?: WorldBody) =>
     this.send('/api/death-star/launch', deathStarLaunchSchema, {
-      method: 'POST', body: { originPlanetId, targetPlanetId },
+      method: 'POST',
+      body: {
+        originPlanetId,
+        targetPlanetId,
+        ...(targetBody && targetBody !== 'PLANET' ? { targetBody } : {}),
+      },
+    });
+
+  /** Ay F9a: build a Common moon on this world's CONSTRUCTION line. */
+  orderMoon = (planetId: string) =>
+    this.send(`/api/planets/${encodeURIComponent(planetId)}/moon/build`, moonBuildSchema, {
+      method: 'POST', body: {},
+    });
+
+  /** Ay F9a: hop mobile ships between planet and moon (90 s, free). */
+  hopMoonFleet = (planetId: string, direction: 'UP' | 'DOWN', fleet: Fleet) =>
+    this.send(`/api/planets/${encodeURIComponent(planetId)}/moon/hop`, moonHopSchema, {
+      method: 'POST', body: { direction, fleet },
+    });
+
+  /** Ay F9a: jump mobile ships between two of your own moons via the Moon Gate (10 s). */
+  jumpMoonFleet = (planetId: string, toPlanetId: string, fleet: Fleet) =>
+    this.send(`/api/planets/${encodeURIComponent(planetId)}/moon/jump`, moonJumpSchema, {
+      method: 'POST', body: { toPlanetId, fleet },
+    });
+
+  /** Ay F9a: Gözcü route scan from this world's moon (30 D). */
+  scanFromMoon = (planetId: string, targetPlanetId: string) =>
+    this.send(`/api/planets/${encodeURIComponent(planetId)}/moon/scan`, moonScanSchema, {
+      method: 'POST', body: { targetPlanetId },
+    });
+
+  /** Ay F9a: list your own Gözcü route scan reports. */
+  moonScans = () => this.send('/api/intel/moon-scans', moonScansSchema);
+
+  /** Ay F9a: retarget an in-flight single raid between PLANET and MOON. */
+  retargetMission = (missionId: string, body: WorldBody) =>
+    this.send(`/api/missions/${encodeURIComponent(missionId)}/target-body`, moonRetargetSchema, {
+      method: 'POST', body: { body },
     });
 
   rewards = () => this.send('/api/rewards', rewardsSchema);

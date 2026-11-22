@@ -624,6 +624,8 @@ export const seasonSchema = z.object({
    * compared by hand.
    */
   rulesetVersion: z.number().int().positive().optional(),
+  /** Feature flags advertised by the galaxy; optional for rolling deploys. */
+  features: z.object({ moons: z.boolean() }).optional(),
   players: z.number(),
   /**
    * Commanders whose last authenticated request was inside the online window.
@@ -943,6 +945,112 @@ export type ClanSupportQuote = z.infer<typeof clanSupportQuoteSchema>;
 
 export const clanSupportWaveAnswerSchema = z.object({ wave: clanSupportWaveSchema });
 
+export const worldBodySchema = z.enum(['PLANET', 'MOON']);
+export const moonRaritySchema = z.enum(['COMMON', 'RARE', 'EPIC', 'LEGENDARY']);
+export const moonOriginSchema = z.enum(['SEED', 'BUILT', 'BATTLE']);
+export const moonMoveKindSchema = z.enum(['HOP_UP', 'HOP_DOWN', 'JUMP']);
+export const moonSizeClassSchema = z.enum(['LIGHT', 'MEDIUM', 'HEAVY']);
+
+export const moonMoveSchema = z.object({
+  id: z.string(),
+  kind: moonMoveKindSchema,
+  fromPlanetId: z.string(),
+  toPlanetId: z.string(),
+  fleet,
+  departAt: z.coerce.date(),
+  arriveAt: z.coerce.date(),
+});
+
+export const planetMoonSchema = z.object({
+  rarity: moonRaritySchema,
+  origin: moonOriginSchema,
+  cracks: z.number().int().nonnegative(),
+  crackLimit: z.number().int().positive(),
+  lastHitAt: z.coerce.date().nullable(),
+  gateReadyAt: z.coerce.date().nullable(),
+  closedUntil: z.coerce.date().nullable(),
+  visualSeed: z.number().int(),
+  fleet,
+  dockUsed: z.number().nonnegative(),
+  dockCapacity: z.number().nonnegative(),
+  dockFree: z.number().nonnegative(),
+  scanRange: z.number().nonnegative(),
+  scanPierces: z.boolean(),
+  moves: z.array(moonMoveSchema),
+});
+
+export const probeMoonSchema = z.object({
+  rarity: moonRaritySchema,
+  cracks: z.number().int().nonnegative(),
+  lastHitAt: z.coerce.date().nullable(),
+  closedUntil: z.coerce.date().nullable(),
+  gateReadyAt: z.coerce.date().nullable(),
+  fleetSize: z.object({ low: z.number(), high: z.number() }),
+  hopping: z.boolean(),
+});
+
+export const galaxyMoonsSchema = z.object({
+  list: z.array(z.object({
+    planetId: z.string(),
+    cracks: z.number().int().nonnegative(),
+    lastHitAt: z.coerce.date().nullable(),
+    visualSeed: z.number().int(),
+  })),
+  rarity: z.record(z.string(), moonRaritySchema),
+  flashes: z.object({
+    arrivals: z.array(z.object({ planetId: z.string(), at: z.coerce.date() })),
+    departures: z.array(z.object({
+      planetId: z.string(),
+      at: z.coerce.date(),
+      size: moonSizeClassSchema.optional(),
+    })),
+  }),
+});
+
+export const moonHopSchema = z.object({
+  id: z.string(),
+  kind: moonMoveKindSchema,
+  fleet,
+  departAt: z.coerce.date(),
+  arriveAt: z.coerce.date(),
+});
+
+export const moonJumpSchema = moonHopSchema.extend({
+  fuelPaid: z.number().nonnegative(),
+});
+
+export const moonScanRowSchema = z.object({
+  direction: z.enum(['IN', 'OUT']),
+  otherPlanetId: z.string(),
+  arriveAt: z.coerce.date(),
+  size: moonSizeClassSchema,
+});
+
+export const moonScanSchema = z.object({
+  id: z.string(),
+  scannedAt: z.coerce.date(),
+  pierced: z.boolean(),
+  rows: z.array(moonScanRowSchema),
+});
+
+export const moonScansSchema = z.object({
+  scans: z.array(moonScanSchema.extend({
+    scannerPlanetId: z.string(),
+    targetPlanetId: z.string(),
+  })),
+});
+
+export const moonRetargetSchema = z.object({
+  id: z.string(),
+  targetBody: worldBodySchema,
+  arriveAt: z.coerce.date(),
+});
+
+export type PlanetMoon = z.infer<typeof planetMoonSchema>;
+export type GalaxyMoons = z.infer<typeof galaxyMoonsSchema>;
+export type ProbeMoon = z.infer<typeof probeMoonSchema>;
+export type MoonScanReport = z.infer<typeof moonScansSchema>['scans'][number];
+
 export const planetSchema = z.object({
   /**
    * THE COLONY SHIP THIS VIEW WAS MADE FROM, present only aboard one. One object carries both, so
@@ -1174,6 +1282,8 @@ export const planetSchema = z.object({
   fleetDamage: z.array(z.object({ hull: hullId, count: z.number().int().positive(),
     damageBp: z.number().int().min(0).max(9999), remainderBp: z.number().finite().min(0).lt(1).optional(),
   })).optional(),
+  /** This world's moon (Ay F9a); null when none, optional on older servers. */
+  moon: planetMoonSchema.nullable().optional(),
   fleetCombatReady: fleet.optional(),
   /** Your own craft that are off the planet right now. Ownership, not readiness. */
   fleetAway: fleet,
@@ -1306,6 +1416,11 @@ const withPlanet = { planet: planetSchema };
 export const defencePostureResultSchema = z.object({ ...withPlanet, returnedWaves: z.number().int().nonnegative() });
 /** Sending a wave answers with the wave and the origin world it left. */
 export const clanSupportSendSchema = z.object({ ...withPlanet, wave: clanSupportWaveSchema });
+
+export const moonBuildSchema = z.object({
+  orderId: z.string(),
+  ...withPlanet,
+});
 
 export const upgradeSchema = z.object({
   type: buildingId,
@@ -1579,6 +1694,8 @@ export const galaxySchema = z.object({
   radiation: z.array(radiationSourceSchema).optional(),
   hpRadiation: z.array(hpRadiationSourceSchema).optional(),
   monuments: z.array(publicMonumentSchema).optional(),
+  /** Public moon list, observer-filtered rarity map, and gate flashes (Ay S53, F4b). */
+  moons: galaxyMoonsSchema.optional(),
   you: z.object({
     planetId: z.string(),
     playerId: z.string(),
@@ -2569,6 +2686,7 @@ export const intelSchema = z.object({
         etaMinutes: z.number().nullable(),
         state: clarityState,
         clarity: z.number(),
+        moon: z.enum(['HOME', 'EMPTY', 'HOP', 'NONE', 'UNKNOWN']).optional(),
       }),
       cooldownUntil: z.coerce.date().nullable(),
     }),
@@ -2644,6 +2762,8 @@ export const intelSchema = z.object({
        * a wallet band, sometimes misread by a weaker probe. Absent means never measured.
        */
       notificationCenter: z.enum(['NONE', 'EMPTY', 'FEW', 'PLENTY', 'UNKNOWN']).optional(),
+      /** Moon reading taken by the probe at arrival (Ay S23, V39). */
+      moon: probeMoonSchema.optional(),
       /**
        * THE THREE READINGS D199 ADDED: the shape of what fires, the Aegis charge at
        * arrival and the hulls in the line that fire nothing. Absent on a report
