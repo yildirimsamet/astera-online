@@ -110,6 +110,7 @@ import {
 } from './StrategicInterception.jsx';
 import { PlanetField, rivalColour, LIMB_SCALE } from './PlanetField.jsx';
 import { Moons } from './Moons.js';
+import { moonClearStagingDirection, moonOrbitPosition, moonRadiusFor } from './moonOrbit.js';
 import { MoonGateWarpFx, type MoonGateWarpEvent } from './MoonGateWarpFx.js';
 import { MoonScanFx, type MoonScanFxEvent } from './MoonScanFx.js';
 import { MoonActivityFx, type MoonHopFxItem } from './MoonActivityFx.js';
@@ -764,6 +765,134 @@ export function GalaxyCanvas({
     }
   }, [directing, directorLive, shotHull, home, mainOffset, resolveSubject, sensors]);
 
+  // Cinematic 2-phase over-the-shoulder Moon Gate Warp camera:
+  // Phase 1 ('departure'): stands behind & slightly above the departing moon looking past the
+  // opening purple Astral Gate down the volumetric hyperspace conduit toward the destination moon.
+  // Phase 2 ('arrival'): glides forward along the corridor to frame the paired arrival Astral Gate
+  // and emerging squadron at the destination moon. Player can freely orbit/zoom at any moment.
+  const latestWarp = moonWarps && moonWarps.length > 0 ? moonWarps[moonWarps.length - 1] ?? null : null;
+  const warpKeyCounter = useRef(1_000);
+  const [warpShotState, setWarpShotState] = useState<{ id: string; phase: 'departure' | 'arrival'; key: number } | null>(null);
+
+  useEffect(() => {
+    if (!latestWarp) {
+      setWarpShotState(null);
+      return;
+    }
+    setWarpShotState((prev) => {
+      if (prev?.id === latestWarp.id) return prev;
+      warpKeyCounter.current += 1;
+      return { id: latestWarp.id, phase: 'departure', key: warpKeyCounter.current };
+    });
+  }, [latestWarp]);
+
+  const handleWarpArrivalPhase = useCallback((toPlanetId: string) => {
+    setWarpShotState((prev) => {
+      if (!prev || prev.phase === 'arrival') return prev;
+      warpKeyCounter.current += 1;
+      return { ...prev, phase: 'arrival', key: warpKeyCounter.current };
+    });
+    onMoonWarpArrive?.(toPlanetId);
+  }, [onMoonWarpArrive]);
+
+  const moonWarpShot = useMemo<DirectorShot | null>(() => {
+    if (!latestWarp || warpShotState?.id !== latestWarp.id) return null;
+    const fromNode = nodes.find((n) => n.id === latestWarp.fromPlanetId);
+    const toNode = nodes.find((n) => n.id === latestWarp.toPlanetId);
+    if (!fromNode || !toNode) return null;
+
+    const list = moons?.list ?? [];
+    const fromMoon = list.find((m) => m.planetId === latestWarp.fromPlanetId);
+    const toMoon = list.find((m) => m.planetId === latestWarp.toPlanetId);
+    const fromR = moonRadiusFor(fromNode.radius, moons?.rarity[latestWarp.fromPlanetId] ?? latestWarp.rarity);
+    const toR = moonRadiusFor(toNode.radius, moons?.rarity[latestWarp.toPlanetId]);
+    const depUnit = Math.max(fromR * 2.25, fromNode.radius * 0.68);
+    const arrUnit = Math.max(toR * 2.25, toNode.radius * 0.68);
+
+    const computePair = () => {
+      const timeSec = serverNow() / 1_000;
+      const originParent = { x: fromNode.position[0], y: fromNode.position[1], z: fromNode.position[2] };
+      const destParent = { x: toNode.position[0], y: toNode.position[1], z: toNode.position[2] };
+      const originMoon = { x: 0, y: 0, z: 0 };
+      const destMoon = { x: 0, y: 0, z: 0 };
+      moonOrbitPosition(originParent, fromNode.radius, fromMoon?.visualSeed ?? 1, timeSec, originMoon);
+      moonOrbitPosition(destParent, toNode.radius, toMoon?.visualSeed ?? 2, timeSec, destMoon);
+      const depDir = { x: 1, y: 0, z: 0 };
+      const arrOutDir = { x: -1, y: 0, z: 0 };
+      moonClearStagingDirection(originParent, fromNode.radius, originMoon, destMoon, depDir);
+      moonClearStagingDirection(destParent, toNode.radius, destMoon, originMoon, arrOutDir);
+      return { originMoon, destMoon, depDir, arrOutDir };
+    };
+
+    if (warpShotState.phase === 'departure') {
+      const range = Math.max(depUnit * 8.4, fromNode.radius * 5.2, 11.5);
+      return {
+        key: warpShotState.key,
+        stays: true,
+        allowOrbit: true,
+        seconds: 0.85,
+        range,
+        at: () => {
+          const { originMoon, destMoon, depDir } = computePair();
+          const dx = destMoon.x - originMoon.x;
+          const dy = destMoon.y - originMoon.y;
+          const dz = destMoon.z - originMoon.z;
+          const totalDist = Math.hypot(dx, dy, dz) || 1;
+          const forwardGate = depUnit * 3.2;
+          const destBias = Math.min(totalDist * 0.22, depUnit * 3.8);
+          return [
+            originMoon.x + depDir.x * forwardGate + (dx / totalDist) * destBias,
+            originMoon.y + depDir.y * forwardGate + (dy / totalDist) * destBias,
+            originMoon.z + depDir.z * forwardGate + (dz / totalDist) * destBias,
+          ];
+        },
+        towards: () => {
+          const { depDir } = computePair();
+          let sx = -depDir.z;
+          let sz = depDir.x;
+          const sLen = Math.hypot(sx, sz);
+          if (sLen > 1e-4) { sx /= sLen; sz /= sLen; } else { sx = 1; sz = 0; }
+          const vx = -depDir.x + sx * 0.26;
+          const vy = -depDir.y + 0.36;
+          const vz = -depDir.z + sz * 0.26;
+          const len = Math.hypot(vx, vy, vz) || 1;
+          return [vx / len, vy / len, vz / len];
+        },
+      };
+    }
+
+    const arrRange = Math.max(arrUnit * 8.0, toNode.radius * 5.0, 11.0);
+    return {
+      key: warpShotState.key,
+      stays: true,
+      allowOrbit: true,
+      seconds: 1.25,
+      range: arrRange,
+      at: () => {
+        const { destMoon, arrOutDir } = computePair();
+        return [
+          destMoon.x + arrOutDir.x * (arrUnit * 1.9),
+          destMoon.y + arrOutDir.y * (arrUnit * 1.9),
+          destMoon.z + arrOutDir.z * (arrUnit * 1.9),
+        ];
+      },
+      towards: () => {
+        const { arrOutDir } = computePair();
+        let sx = -arrOutDir.z;
+        let sz = arrOutDir.x;
+        const sLen = Math.hypot(sx, sz);
+        if (sLen > 1e-4) { sx /= sLen; sz /= sLen; } else { sx = 1; sz = 0; }
+        const vx = arrOutDir.x - sx * 0.28;
+        const vy = arrOutDir.y + 0.38;
+        const vz = arrOutDir.z - sz * 0.28;
+        const len = Math.hypot(vx, vy, vz) || 1;
+        return [vx / len, vy / len, vz / len];
+      },
+    };
+  }, [latestWarp, warpShotState, nodes, moons]);
+
+  const activeShot = directorShot ?? moonWarpShot;
+
   /**
    * How close the camera is pulled in when it takes a new subject.
    *
@@ -1057,7 +1186,7 @@ export function GalaxyCanvas({
         </Suspense>
         {moonWarps && moonWarps.length > 0 && (
           <Suspense fallback={null}>
-            <MoonGateWarpFx events={moonWarps} moons={moons} nodes={nodes} onArriveCamera={onMoonWarpArrive} />
+            <MoonGateWarpFx events={moonWarps} moons={moons} nodes={nodes} onArriveCamera={handleWarpArrivalPhase} />
           </Suspense>
         )}
         {moonScans && moonScans.length > 0 && (
@@ -1288,7 +1417,7 @@ export function GalaxyCanvas({
         openingPrepared={prepared && openingDataReady && gpu.live}
         openingWork={openingWork}
         openingMark={openingMark}
-        shot={directorShot}
+        shot={activeShot}
       />}
       {/* E11: a page docked on the right does not hide the camera's subject. */}
       <ViewOffset />
@@ -2005,10 +2134,10 @@ function Rig({
     directed.current = true;
     mode.current = 'released';
     acquired.current = false;
-    controls.enabled = false;
+    controls.enabled = current.allowOrbit === true;
     controls.maxDistance = Math.max(controls.maxDistance, current.range);
     const pose = shotPose({ target: controls.target.toArray(), camera: controls.object.position.toArray() }, { to: at, range: current.range, turn: current.turn, towards: current.towards?.() ?? undefined });
-    ease.current = { to: new THREE.Vector3(...pose.to), left: current.seconds, duration: current.seconds, rangeTo: pose.range, exactRange: true, waitForScene: false, towards: new THREE.Vector3(...pose.towards), held: true };
+    ease.current = { to: new THREE.Vector3(...pose.to), left: current.seconds, duration: current.seconds, rangeTo: pose.range, exactRange: true, waitForScene: false, towards: new THREE.Vector3(...pose.towards), held: current.allowOrbit !== true };
     invalidate();
   }, [shotKey, invalidate]);
 

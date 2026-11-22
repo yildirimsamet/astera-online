@@ -1623,7 +1623,6 @@ export function GalaxyView({
         planets={displayPlanets}
         moons={galaxy.data?.moons}
         moonWarps={moonWarps}
-        onMoonWarpArrive={(toId) => { focusPlanet(toId); }}
         onSelectMoon={(planetId) => {
           const mine = new Set(galaxy.data?.you.planetIds ?? [galaxy.data?.you.planetId]);
           if (mine.has(planetId)) {
@@ -2346,7 +2345,7 @@ export function GalaxyView({
             onJumpStarted={(fromId, toId, fl) => {
               triggerMoonWarp(fromId, toId, fl);
               onPanel(null);
-              onFocus({ kind: 'planet', id: fromId });
+              onFocus(null);
             }}
             onScanVisual={(fromId, targetId, pierced, routes) => {
               triggerMoonScan(fromId, targetId, pierced, routes);
