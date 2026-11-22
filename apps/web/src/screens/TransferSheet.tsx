@@ -157,6 +157,8 @@ export function TransferSheet({
   const [originBody, setOriginBody] = useState<'PLANET' | 'MOON'>('PLANET');
   const [targetBody, setTargetBody] = useState<'PLANET' | 'MOON'>('PLANET');
   const hasOriginMoonShips = fleetCount(planet.moon?.fleet ?? {}) > 0;
+  const originFleet = originBody === 'MOON' && hasOriginMoonShips ? (planet.moon?.fleet ?? {}) : planet.fleet;
+  const originDamage = originBody === 'MOON' && hasOriginMoonShips ? [] : planet.fleetDamage;
   const launchBlocked = launchFault(planet.faults, 'fleet') !== null;
   /**
    * THE FIVE MINUTES AFTER A SQUADRON LANDED HERE. Faz 2A.3.
@@ -187,19 +189,19 @@ export function TransferSheet({
   const mods = flightModifiers(planet);
   const capacity = fleetCargo(fleet, mods.tech);
   const loaded = resourcesTotal(cargo);
-  const ownsHold = fleetCargo(planet.fleet, mods.tech) > 0;
+  const ownsHold = fleetCargo(originFleet, mods.tech) > 0;
   const returningFleet = transferReturningFleet(fleet, returnPlan);
   const selectedHealth = useMemo(() => {
-    try { return splitHealthFleet(planet.fleet, planet.fleetDamage, fleet); }
+    try { return splitHealthFleet(originFleet, originDamage, fleet); }
     catch (error) { if (!(error instanceof RangeError)) throw error; return null; }
-  }, [planet.fleet, planet.fleetDamage, fleet]);
+  }, [originFleet, originDamage, fleet]);
   const stayingFleet = transferStayingFleet(fleet, returningFleet);
   const remainingFleet = useMemo<Fleet>(() => Object.fromEntries(
-    (Object.keys(planet.fleet) as HullId[]).map((id) => [
+    (Object.keys(originFleet) as HullId[]).map((id) => [
       id,
-      Math.max(0, (planet.fleet[id] ?? 0) - (fleet[id] ?? 0)),
+      Math.max(0, (originFleet[id] ?? 0) - (fleet[id] ?? 0)),
     ]),
-  ), [fleet, planet.fleet]);
+  ), [fleet, originFleet]);
   // Firepower, the one force unit the launch sheet and a probe use. D199.
   const homeDefence = combatValue(garrisonOf(selectedHealth
     ? partitionCombatFleet(selectedHealth.remaining, selectedHealth.remainingDamage).eligible : remainingFleet, planet.ground));
@@ -298,7 +300,7 @@ export function TransferSheet({
     || destinationUsed + incomingRoom <= destinationTotal;
 
   const setShip = (id: HullId, value: number) => {
-    const max = planet.fleet[id] ?? 0;
+    const max = originFleet[id] ?? 0;
     const next = { ...fleet, [id]: Math.max(0, Math.min(max, value)) };
     setFleet(next);
     setCargoAdjustment(null);
@@ -381,7 +383,11 @@ export function TransferSheet({
       )}
     >
       <div className="gk gk-launch">
-        <OriginBodyPicker value={originBody} hasMoonShips={hasOriginMoonShips} onChange={setOriginBody} />
+        <OriginBodyPicker
+          value={originBody}
+          hasMoonShips={hasOriginMoonShips}
+          onChange={(body) => { setOriginBody(body); setFleet({}); }}
+        />
         <TargetBodyPicker
           value={targetBody}
           hasMoon={targetHasMoon}
@@ -409,8 +415,8 @@ export function TransferSheet({
             its reason beside it is the sentence the server's refusal never had on screen.
           */}
           <div className="gk-ledger gk-launch__rows">
-            {MOVABLE.filter((id) => (planet.fleet[id] ?? 0) > 0 || IS_HAULER(id)).map((id) => {
-              const held = planet.fleet[id] ?? 0;
+            {MOVABLE.filter((id) => (originFleet[id] ?? 0) > 0 || IS_HAULER(id)).map((id) => {
+              const held = originFleet[id] ?? 0;
               const packed = fleet[id] ?? 0;
               const art = HULL_ART[id];
               return (

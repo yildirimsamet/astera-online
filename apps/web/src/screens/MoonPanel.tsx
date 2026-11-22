@@ -16,6 +16,7 @@ import { GameButton, GameHold, RoomGauge } from '../game-ui/index.js';
 import { hullName } from '../i18n/names.js';
 import { useMoonT } from '../i18n/moon.js';
 import { playSound } from '../lib/sound.js';
+import { useNow } from '../lib/time.js';
 
 export interface OtherOwnedMoon {
   readonly planetId: string;
@@ -128,7 +129,7 @@ export function MoonPanel({
   const [error, setError] = useState<string | null>(null);
 
   const moon: PlanetMoon | null = planet.moon ?? null;
-  const nowMs = Date.now();
+  const nowMs = useNow(1_000);
 
   const hasLunarCapture = useMemo(
     () => planet.research.some((r) => r.id === 'LUNAR_CAPTURE' && (r.level ?? 0) > 0),

@@ -31,6 +31,7 @@ import { heroArt } from '../starter/shipScreen.js';
 import { GameButton, GameTabs, Glyph, InfoPeek, SectionTag, type TabItem } from '../game-ui/index.js';
 import { instrumentArt, planetArt } from '../ui/assets.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
+import { MoonProbeSection, WatchMoonBadge } from './MoonControls.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { AgeStamp, AgedThumb, ClarityMark } from '../v2/kit/Freshness.js';
 import { SignalBars } from '../v2/kit/SignalBars.js';
@@ -460,7 +461,12 @@ function KnownWatch({ watch, aboard, onFocusPlanet }: { watch: Watch; aboard: bo
             {watch.ownerName}
             <span className="gk-intel__fleet" {...(status === 'AWAY' ? { 'data-away': '' } : {})}>{t(FLEET_WORD[status])}</span>
           </span>
-          <span className="gk-ledger__sub">{watch.targetName} · {t('intel.known.telescope')} · {staleness(staleMinutes)}</span>
+          <span className="gk-ledger__sub">
+            {watch.targetName} · {t('intel.known.telescope')} · {staleness(staleMinutes)}
+            {watch.reading.moon && watch.reading.moon !== 'NONE' && (
+              <> · <WatchMoonBadge status={watch.reading.moon} /></>
+            )}
+          </span>
         </span>
         <span className="gk-ledger__side">
           {window ? (
@@ -646,6 +652,7 @@ function ProbeReport({ report, minutes, yours, aboard, hunt, onOpenDossier }: {
         <RangeRow label={t('intel.probes.ships')} low={report.fleetSize.low} high={report.fleetSize.high} sharp={report.fleetHome} mine={yours?.ships ?? null} />
         {report.repair && <RangeRow label={t('starter.reading.repairLabel')} low={report.repair.low} high={report.repair.high} sharp={report.fleetHome} mine={null} />}
       </div>
+      {report.moon && <MoonProbeSection moon={report.moon} />}
       {outpost && <OutpostReading reading={report.classReading} carry={hunt.carry} stock={report.stock} crate={hunt.crate} own={hunt.own} />}
       {/* An outpost is decided here: the door goes straight to its attack (owner playtest 2026-11-08). */}
       {outpost && onOpenDossier && (

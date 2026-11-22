@@ -100,6 +100,26 @@ export const moon = {
       UNKNOWN: 'Moon: obscured',
     },
   },
+  errors: {
+    MOONS_DISABLED: 'This galaxy has no moons yet.',
+    NO_MOON: 'This world has no moon.',
+    DOCK_FULL: 'The moon dock does not have enough room for this fleet.',
+    HOP_PENDING: 'A planet ↔ moon transfer in that direction is already under way.',
+    MOON_CLOSED: 'A Death Star hit shut this moon’s systems temporarily.',
+    MOON_EXISTS: 'This world already has a moon.',
+    MOON_ALREADY_ORDERED: 'A moon is already under construction here.',
+    MOON_UNCLAIMED: 'Nobody holds that moon; take the planet first.',
+    RETARGET_TOO_SOON: 'Hold the course a few seconds before switching target again.',
+    RETARGET_CLOSED: 'Too late — the battle has already begun.',
+    NOT_RETARGETABLE: 'Only an outbound single raid can switch between planet and moon.',
+    SCAN_TOO_SOON: 'Gözcü is still turning to the next world.',
+    OUT_OF_RANGE: 'That world is outside this moon’s Gözcü range.',
+    GATE_CHARGING: 'One of the Moon Gates is still charging.',
+    GATE_CLOSED: 'A struck moon’s gate is shut.',
+    GATE_CAPACITY: 'The smaller moon cannot take this fleet in one jump.',
+    HULL_CANNOT_HOP: 'Ground guns and Prospectors cannot board a moon.',
+    SAME_MOON: 'Choose a different moon as the destination.',
+  },
 } as const;
 
 export type MoonResources = typeof moon;

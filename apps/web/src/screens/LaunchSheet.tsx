@@ -108,6 +108,10 @@ export function LaunchSheet({
   const [originBody, setOriginBody] = useState<'PLANET' | 'MOON'>('PLANET');
   const [targetBody, setTargetBody] = useState<'PLANET' | 'MOON'>('PLANET');
   const hasOriginMoonShips = fleetCount(planet.moon?.fleet ?? {}) > 0;
+  const activeOriginBody = hasOriginMoonShips ? originBody : 'PLANET';
+  const activePlanet: PlanetView = activeOriginBody === 'MOON'
+    ? { ...planet, fleet: planet.moon?.fleet ?? {}, fleetDamage: [] }
+    : planet;
   const targetWorldId = target.kind === 'world' ? target.world.id : null;
   const targetHasMoon = targetWorldId !== null && (galaxy?.moons?.list.some((m) => m.planetId === targetWorldId) ?? false);
   const targetMoonRarity = targetWorldId !== null ? galaxy?.moons?.rarity[targetWorldId] : undefined;
@@ -119,8 +123,8 @@ export function LaunchSheet({
     holding, away, atHome, recordAge, opposing, power, escape, notes, refusal,
     commit, classReading, report, pirateProfit, pirateProfitState,
   } = useLaunchPlan({
-    target, planet, intel, reports, onLaunched, onAim,
-    originBody,
+    target, planet: activePlanet, intel, reports, onLaunched, onAim,
+    originBody: activeOriginBody,
     targetBody: targetHasMoon ? targetBody : 'PLANET',
   });
   const choosing = school !== null && !selectionComplete;
@@ -169,7 +173,7 @@ export function LaunchSheet({
    * ONE RUN, IN THE SHIPYARD'S ORDER (the roster's families, flattened). The bands that
    * folded it were for a picker with nothing above it; the mock lists what stands home.
    */
-  const order = familyGroups(MOBILE.filter((hull) => (planet.fleet[hull] ?? 0) > 0)).flatMap((group) => group.hulls);
+  const order = familyGroups(MOBILE.filter((hull) => (activePlanet.fleet[hull] ?? 0) > 0)).flatMap((group) => group.hulls);
 
   /**
    * THE LESSON'S OWN READING ORDER, or null outside a lesson: the kept-back prize
