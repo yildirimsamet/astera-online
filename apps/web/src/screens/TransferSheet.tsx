@@ -25,6 +25,7 @@ import {
   type TransferReturnPlan,
 } from '@astera/rules';
 import { useGalaxy, useTransfer } from '../api/queries.js';
+import { OriginBodyPicker, TargetBodyPicker } from './MoonControls.js';
 import {
   lethalAfterRefusal, radiationRefusalCount, routeRadiation, transferHpRadiation, toHpRadiationSources, toRadiationSources, type RadiationRefusal,
 } from '../lib/radiation.js';
@@ -153,6 +154,9 @@ export function TransferSheet({
   // Both route ends travel explicitly; target focus and later world selection
   // must never change the source of an already-open transfer picker.
   const transfer = useTransfer(planet.planet.id);
+  const [originBody, setOriginBody] = useState<'PLANET' | 'MOON'>('PLANET');
+  const [targetBody, setTargetBody] = useState<'PLANET' | 'MOON'>('PLANET');
+  const hasOriginMoonShips = fleetCount(planet.moon?.fleet ?? {}) > 0;
   const launchBlocked = launchFault(planet.faults, 'fleet') !== null;
   /**
    * THE FIVE MINUTES AFTER A SQUADRON LANDED HERE. Faz 2A.3.
@@ -226,6 +230,8 @@ export function TransferSheet({
    * settles at the landing, and a lethal route's hold is the acknowledgement it asks for.
    */
   const galaxy = useGalaxy();
+  const targetHasMoon = galaxy.data?.moons?.list.some((m) => m.planetId === target.id) ?? false;
+  const targetMoonRarity = galaxy.data?.moons?.rarity[target.id];
   const clouds = galaxy.data?.radiation;
   const sources = useMemo(() => toRadiationSources(clouds ?? []), [clouds]);
   const departMs = serverNow();
@@ -355,6 +361,8 @@ export function TransferSheet({
             onCommit={() => {
               transfer.mutate({
                 targetPlanetId: target.id, fleet, cargo, pace, returnPlan,
+                ...(originBody === 'MOON' ? { originBody } : {}),
+                ...(targetBody === 'MOON' && targetHasMoon ? { targetBody } : {}),
                 ...(radiation !== null && radiation.destroyed > 0 ? { acknowledgeRadiation: true } : {}),
               }, {
                 onSuccess: () => {
@@ -373,6 +381,14 @@ export function TransferSheet({
       )}
     >
       <div className="gk gk-launch">
+        <OriginBodyPicker value={originBody} hasMoonShips={hasOriginMoonShips} onChange={setOriginBody} />
+        <TargetBodyPicker
+          value={targetBody}
+          hasMoon={targetHasMoon}
+          knownRarity={targetMoonRarity}
+          onChange={setTargetBody}
+          showAttackHint={false}
+        />
         {/*
           WHAT THIS WORLD IS LEFT HOLDING, the garrison as a bar with the part that flies away carved
           off it — alloy, not threat red: a transfer is logistics, not exposure, but the consequence

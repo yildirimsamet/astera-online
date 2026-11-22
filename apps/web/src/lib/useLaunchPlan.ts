@@ -57,12 +57,16 @@ export function useLaunchPlan({
   reports = [],
   onLaunched,
   onAim,
+  originBody = 'PLANET',
+  targetBody = 'PLANET',
 }: {
   target: LaunchTarget;
   planet: PlanetView;
   intel?: IntelView | undefined;
   reports?: readonly Report[];
   onLaunched: () => void;
+  originBody?: 'PLANET' | 'MOON';
+  targetBody?: 'PLANET' | 'MOON';
   onAim?: ((at: { x: number; y: number; z: number } | null) => void) | undefined;
 }) {
   const { t } = useTranslation();
@@ -497,6 +501,8 @@ export function useLaunchPlan({
         ...(spendsShield ? { acknowledgeShieldLoss: true } : {}),
         pace,
         ...(escortBonus ? { admiral: true } : {}),
+        ...(originBody === 'MOON' ? { originBody } : {}),
+        ...(targetBody === 'MOON' ? { targetBody } : {}),
         // The hold on a lethal route is the answer the server asks for (D10).
         ...(radiation !== null && radiation.destroyed > 0 ? { acknowledgeRadiation: true } : {}),
       },

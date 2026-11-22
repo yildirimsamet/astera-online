@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { TempoNote } from '../starter/TempoNote.js';
 import { setLaunchSheet } from '../starter/tutorial/launchSheet.js';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +6,7 @@ import { RadiationPreview } from '../ui/RadiationPreview.js';
 import {
   HULLS,
   fleetCargo,
+  fleetCount,
   hullFuelRate,
   hullTech,
   type MobileHullId,
@@ -20,6 +21,8 @@ import { MOBILE, homePowerAfter } from '../lib/navigation.js';
 import { namedWall } from '../lib/matchup.js';
 import { familyGroups } from '../lib/roster.js';
 import { useLaunchPlan } from '../lib/useLaunchPlan.js';
+import { useGalaxy } from '../api/queries.js';
+import { OriginBodyPicker, TargetBodyPicker } from './MoonControls.js';
 import { serverNow } from '../lib/clock.js';
 import { PaceRow } from '../ui/PaceRow.js';
 import { EscortRow } from '../ui/EscortRow.js';
@@ -101,6 +104,13 @@ export function LaunchSheet({
   // The guide reads that an attack is being planned (owner play-through 2026-11-18).
   useEffect(() => { setLaunchSheet(true); return () => { setLaunchSheet(false); }; }, []);
   const { t } = useTranslation();
+  const { data: galaxy } = useGalaxy();
+  const [originBody, setOriginBody] = useState<'PLANET' | 'MOON'>('PLANET');
+  const [targetBody, setTargetBody] = useState<'PLANET' | 'MOON'>('PLANET');
+  const hasOriginMoonShips = fleetCount(planet.moon?.fleet ?? {}) > 0;
+  const targetWorldId = target.kind === 'world' ? target.world.id : null;
+  const targetHasMoon = targetWorldId !== null && (galaxy?.moons?.list.some((m) => m.planetId === targetWorldId) ?? false);
+  const targetMoonRarity = targetWorldId !== null ? galaxy?.moons?.rarity[targetWorldId] : undefined;
   const school = useSchoolPresentation();
   const {
     sending, set, roomFor, allowance, selectionComplete, lesson, season, honorTarget, spendsShield, pirate, mods, radiation,
@@ -108,7 +118,11 @@ export function LaunchSheet({
     escort, escorted, setEscortWanted,
     holding, away, atHome, recordAge, opposing, power, escape, notes, refusal,
     commit, classReading, report, pirateProfit, pirateProfitState,
-  } = useLaunchPlan({ target, planet, intel, reports, onLaunched, onAim });
+  } = useLaunchPlan({
+    target, planet, intel, reports, onLaunched, onAim,
+    originBody,
+    targetBody: targetHasMoon ? targetBody : 'PLANET',
+  });
   const choosing = school !== null && !selectionComplete;
   const wall = namedWall(classReading);
 
@@ -288,6 +302,17 @@ export function LaunchSheet({
       }
     >
       <div className="gk gk-launch">
+        {target.kind === 'world' && (
+          <>
+            <OriginBodyPicker value={originBody} hasMoonShips={hasOriginMoonShips} onChange={setOriginBody} />
+            <TargetBodyPicker
+              value={targetHasMoon ? targetBody : 'PLANET'}
+              hasMoon={targetHasMoon}
+              knownRarity={targetMoonRarity}
+              onChange={setTargetBody}
+            />
+          </>
+        )}
         {honorTarget.data && <HonorTargetCard value={honorTarget.data} />}
         {honorTarget.isFetching && !honorTarget.data && <p className="gk-sub">{t('leaderboard.honorTarget.loading')}</p>}
         {honorTarget.isError && <div className="gk-launch__retry">

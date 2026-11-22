@@ -2,6 +2,7 @@ import { useId, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SETTLEMENT_PRIORITY_MINUTES } from '@astera/rules';
 import { useChronicle } from '../api/queries.js';
+import { useMoonT } from '../i18n/moon.js';
 import { EmptyState, GameButton, Glyph, artIconSrc, type GlyphId } from '../game-ui/index.js';
 import { chatRelativeTime } from '../lib/chatTime.js';
 import { full } from '../lib/format.js';
@@ -28,6 +29,7 @@ export function ChronicleScreen({
   focusablePlanetIds?: readonly string[];
 }) {
   const { t } = useTranslation();
+  const tMoon = useMoonT();
   const chronicle = useChronicle();
   const now = useNow(30_000);
   /**
@@ -179,6 +181,24 @@ export function ChronicleScreen({
                     });
                 glyph = EVENT_GLYPH[event.payload.eventKind];
                 break;
+              case 'moon_born':
+                title = tMoon('body.chronicleBorn', { planet: event.payload.planetName });
+                detail = tMoon('body.chronicleBornDetail');
+                tone = 'gold';
+                glyph = 'star';
+                break;
+              case 'moon_destroyed': {
+                const rarityLabel =
+                  event.payload.rarity === 'LEGENDARY' ? tMoon('rarity.LEGENDARY')
+                    : event.payload.rarity === 'EPIC' ? tMoon('rarity.EPIC')
+                      : event.payload.rarity === 'RARE' ? tMoon('rarity.RARE')
+                        : tMoon('rarity.COMMON');
+                title = tMoon('body.chronicleDestroyed', { planet: event.payload.planetName, rarity: rarityLabel });
+                detail = tMoon('body.chronicleDestroyedDetail');
+                tone = 'hostile';
+                glyph = 'attack';
+                break;
+              }
               case 'galaxy_event_ended':
                 title = event.payload.eventKind === 'TRADE_SHIP'
                   ? t('chronicle.tradeShipEnded')

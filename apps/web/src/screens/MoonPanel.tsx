@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   MOBILE_HULLS,
   MOON,
@@ -15,6 +14,7 @@ import {
 import type { PlanetMoon, PlanetView } from '../api/schemas.js';
 import { GameButton, GameHold, RoomGauge } from '../game-ui/index.js';
 import { hullName } from '../i18n/names.js';
+import { useMoonT } from '../i18n/moon.js';
 import { playSound } from '../lib/sound.js';
 
 export interface OtherOwnedMoon {
@@ -119,7 +119,7 @@ export function MoonPanel({
   onJump,
   onScan,
 }: MoonPanelProps) {
-  const { t } = useTranslation('moon');
+  const t = useMoonT();
   const [busy, setBusy] = useState(false);
   const [hopDir, setHopDir] = useState<'UP' | 'DOWN'>('UP');
   const [jumpTargetId, setJumpTargetId] = useState<string>(otherMoons[0]?.planetId ?? '');

@@ -2635,6 +2635,20 @@ const galaxyEventSchema = z.discriminatedUnion('kind', [
       payload: galaxyLifecyclePayloadSchema,
       occurredAt: z.coerce.date(),
     })),
+  z.object({
+    id: z.string(),
+    kind: z.literal('moon_born'),
+    subjectPlanetId: z.string(),
+    payload: z.object({ planetName: z.string() }),
+    occurredAt: z.coerce.date(),
+  }),
+  z.object({
+    id: z.string(),
+    kind: z.literal('moon_destroyed'),
+    subjectPlanetId: z.string(),
+    payload: z.object({ planetName: z.string(), rarity: moonRaritySchema }),
+    occurredAt: z.coerce.date(),
+  }),
 ]);
 
 const knownChronicleKinds: ReadonlySet<string> = new Set(

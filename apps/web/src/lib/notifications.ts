@@ -9,6 +9,7 @@ import { unknownSignalOutcomeSchema } from '../api/schemas.js';
 import { HULLS } from '@astera/rules';
 import { cosmeticCopy } from '../ui/cosmeticCopy.js';
 import i18n from '../i18n/index.js';
+import { moonT } from '../i18n/moon.js';
 import { hullName, monumentName, researchName, unlockCopy } from '../i18n/names.js';
 import { battleOutcome, monumentControlKey, monumentGradeKey, type BattleOutcome } from './battleOutcome.js';
 import { compact, decimal, full, signed } from './format.js';
@@ -90,6 +91,8 @@ const incoming = z.object({
    * rows written before this existed do not carry it.
    */
   targetPlanetName: z.string().optional(),
+  /** Ay S24: whether this incoming warning is aimed at the defender's planet or moon. */
+  targetBody: z.enum(['PLANET', 'MOON']).optional(),
   /** Y9: the commander ship escorting the raid. Absent on unescorted raids and older rows. */
   admiral: z.object({ ship: z.enum(SHIP_CLASSES), level: z.number().int().min(1) }).optional(),
 });
@@ -923,7 +926,7 @@ export function describeNotification(notification: NotificationView, now: number
       const {
         arriveAt, etaMinutes, estimatedShips, mass, fleet: ships,
         originUsername, originClanTag, originPlanetName, originName,
-        targetPlanetName, admiral,
+        targetPlanetName, targetBody, admiral,
       } = parsed.data;
 
       /**
@@ -943,12 +946,15 @@ export function describeNotification(notification: NotificationView, now: number
               duration: duration((arriveAt.getTime() - now) / 60_000),
             });
 
-      const parts = [i18n.t(
-        notification.kind === 'strategic_incoming'
-          ? 'notifications.strategicIncomingHead'
-          : 'notifications.incomingHead',
-        { clock },
-      )];
+      const parts = [
+        ...(targetBody === 'MOON' ? [moonT('body.incomingMoon')] : []),
+        i18n.t(
+          notification.kind === 'strategic_incoming'
+            ? 'notifications.strategicIncomingHead'
+            : 'notifications.incomingHead',
+          { clock },
+        ),
+      ];
       // Composition is the better line when radar has bought it — it says what
       // to build against, which a count cannot.
       if (ships && Object.keys(ships).length > 0) parts.push(composition(ships));
@@ -1367,6 +1373,11 @@ export function describeNotification(notification: NotificationView, now: number
       if (!parsed.success) return null;
       const copy = unlockCopy(parsed.data.unlock, parsed.data);
       return i18n.t('notifications.unlock', { title: copy.title, body: copy.body });
+    }
+
+    case 'moon_gate_ready': {
+      const payload = notification.payload as { planetName?: string } | null;
+      return moonT('body.gateReadyBody', { planet: payload?.planetName ?? '' });
     }
 
     case 'death_star_result': {

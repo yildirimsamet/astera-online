@@ -1,5 +1,4 @@
 import type { Resources } from './locales/en/index.js';
-import type { MoonResources } from './locales/en/moon.js';
 
 /**
  * `t()` IS TYPED AGAINST THE ENGLISH TREE.
@@ -13,7 +12,7 @@ import type { MoonResources } from './locales/en/moon.js';
 declare module 'i18next' {
   interface CustomTypeOptions {
     defaultNS: 'game';
-    resources: { game: Resources; moon: MoonResources };
+    resources: { game: Resources };
     returnNull: false;
     keySeparator: '.';
     nsSeparator: ':';
