@@ -43,6 +43,7 @@ import type {
   StrategicInterceptionImpact,
   RadiationSourceView,
   HpRadiationSourceView,
+  GalaxyMoons,
   PublicMonument,
   UnknownSignalView,
 } from '../api/schemas.js';
@@ -108,6 +109,7 @@ import {
   strategicInterceptionMissilePosition,
 } from './StrategicInterception.jsx';
 import { PlanetField, rivalColour, LIMB_SCALE } from './PlanetField.jsx';
+import { Moons } from './Moons.js';
 import { SCENE_LIGHT } from './planetSurface.js';
 import { SpaceLighting } from './SpaceLighting.js';
 import { FirstSceneFrame, SceneRenderGate, SceneWarmup } from './SceneWarmup.js';
@@ -311,6 +313,8 @@ export interface GalaxyCanvasProps {
   radiation?: readonly RadiationSourceView[];
   hpRadiation?: readonly HpRadiationSourceView[];
   monuments?: readonly PublicMonument[];
+  /** Ay F9d: public moon list, observer-filtered rarities, and gate flashes. */
+  moons?: GalaxyMoons | undefined;
   /**
    * Whether each instrument's boundaries are drawn AT ALL. Owner instruction.
    *
@@ -444,6 +448,7 @@ export function GalaxyCanvas({
   radiation,
   hpRadiation = EMPTY_HP_RADIATION,
   monuments = EMPTY_MONUMENTS,
+  moons,
   unknownSignals = EMPTY_UNKNOWN_SIGNALS,
   clanAlarms = NO_CLAN_ALARMS,
   unknownSignalRadar,
@@ -1011,6 +1016,7 @@ export function GalaxyCanvas({
           identify: 0, detect: unknownSignalRadar.range, telescope: false }]} showTelescope={false} showRadar />}
         <Monuments monuments={monuments} planets={nodes} hpRadiation={hpRadiation} focusedId={focus?.kind === 'monument' ? focus.id : null}
           onSelect={(id) => { onFocus({ kind: 'monument', id }); }} />
+        <Moons moons={moons} nodes={nodes} />
         {sensors && sensors.length > 0 && (
           <SensorRings
             posts={sensors}

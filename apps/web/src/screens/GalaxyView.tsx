@@ -1538,6 +1538,7 @@ export function GalaxyView({
           probeId: cosmetics.data?.equipment?.PROBE, flagId: cosmetics.data?.clanFlagId ?? undefined,
           shipSkins: cosmetics.data?.equipment?.SHIP }}
         planets={displayPlanets}
+        moons={galaxy.data?.moons}
         unknownSignals={signalData?.signals}
         clanAlarms={clanAlarms}
         unknownSignalRadar={focusedSignalId ? personalSignals.data?.radar ?? undefined : undefined}
