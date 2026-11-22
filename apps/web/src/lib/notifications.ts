@@ -186,6 +186,9 @@ const raided = z.object({
   /** Taktik geri çekilme: the ships ran, or would have and the tank was dry. */
   escape: z.enum(['ESCAPED', 'STRANDED']).optional(),
   escapeShips: z.number().int().nonnegative().optional(),
+  targetBody: z.enum(['PLANET', 'MOON']).optional(),
+  moonBorn: z.boolean().optional(),
+  moonEmpty: z.boolean().optional(),
   ...dockFields,
 });
 
@@ -219,6 +222,9 @@ const raidResult = z.object({
   dominion: z.number().int().safe().optional(),
   /** The line emptied in front of the raid. Nothing about what it held. */
   targetFled: z.boolean().optional(),
+  targetBody: z.enum(['PLANET', 'MOON']).optional(),
+  moonBorn: z.boolean().optional(),
+  moonEmpty: z.boolean().optional(),
   /** Survivors flying home damaged; the Repair Station judges them when they land. */
   damaged: z.number().int().nonnegative().optional(),
 });
@@ -1027,24 +1033,26 @@ export function describeNotification(notification: NotificationView, now: number
       if (!parsed.success) return i18n.t('notifications.raidedFallback');
       const {
         grade, lootAlloy, lootCrystal, lootDeuterium, unitsLost, theirLosses, disruptedMinutes,
-        originUsername, originClanTag, originPlanetName,
+        originUsername, originClanTag, originPlanetName, targetBody, moonBorn, moonEmpty,
       } =
         parsed.data;
+      const moonTag = targetBody === 'MOON' ? `${moonT('body.battleMoonBadge')}${JOIN()}` : '';
+      const bornTail = moonBorn === true ? `${JOIN()}${moonT('body.notifMoonBorn')}` : '';
       const raider = originUsername
         ? i18n.t('notifications.raidedBy', {
             origin: identity(originUsername, originPlanetName, undefined, originClanTag),
           })
         : '';
       if (grade === 'REPELLED') {
-        // What it cost to hold, on both sides. "You repelled a raid" on its own
-        // reads as a free win, and a defence that looks free is not one anybody
-        // maintains.
         const cost = [i18n.t('notifications.repelledLost', { count: unitsLost })];
         if (theirLosses !== undefined && theirLosses > 0) {
           cost.push(i18n.t('notifications.repelledTheirs', { count: theirLosses }));
         }
         cost.push(...dockClauses(parsed.data));
-        return `${raider}${i18n.t('notifications.repelledHead', { cost: cost.join(JOIN()) })}`;
+        return `${moonTag}${raider}${i18n.t('notifications.repelledHead', { cost: cost.join(JOIN()) })}${bornTail}`;
+      }
+      if (moonEmpty === true) {
+        return `${moonTag}${raider}${moonT('body.battleMoonEmpty')}${bornTail}`;
       }
       /**
        * SAY WHAT HAPPENED, NOT WHAT DID NOT.
@@ -1089,8 +1097,8 @@ export function describeNotification(notification: NotificationView, now: number
        * defenders to lose and, on an older row, no works figure to report. Saying
        * so plainly is better than assembling an empty sentence.
        */
-      if (clauses.length === 0) return `${raider}${i18n.t('notifications.raidedNothing')}`;
-      return `${raider}${i18n.t('notifications.raided', { detail: clauses.join(JOIN()) })}`;
+      if (clauses.length === 0) return `${moonTag}${raider}${i18n.t('notifications.raidedNothing')}${bornTail}`;
+      return `${moonTag}${raider}${i18n.t('notifications.raided', { detail: clauses.join(JOIN()) })}${bornTail}`;
     }
 
     case 'radiation_lost': {
@@ -1111,17 +1119,22 @@ export function describeNotification(notification: NotificationView, now: number
       const {
         grade, targetUsername, targetClanTag, targetPlanetName, targetName,
         lootAlloy, lootCrystal, lootDeuterium, unitsLost, shipsHome,
-        targetKind, pirateLevel, pirateCallsign, capturedHull,
+        targetKind, pirateLevel, pirateCallsign, capturedHull, targetBody, moonBorn, moonEmpty,
       } = parsed.data;
-      const target = targetKind === 'PIRATE'
+      const baseTarget = targetKind === 'PIRATE'
         ? (pirateLevel === undefined
             ? i18n.t('pirate.title')
             : i18n.t('pirate.name', { level: pirateLevel, callsign: pirateCallsign ?? '' }))
         : identity(targetUsername, targetPlanetName, targetName, targetClanTag);
+      const target = targetBody === 'MOON' ? `${baseTarget} (${moonT('body.MOON')})` : baseTarget;
+      const bornTail = moonBorn === true ? `${JOIN()}${moonT('body.notifMoonBorn')}` : '';
+      if (moonEmpty === true) {
+        return `${moonT('body.notifMoonEmpty', { planet: targetPlanetName ?? targetName ?? baseTarget })}${bornTail}`;
+      }
       // The fleet is gone. This is the line the whole notification exists for —
       // before it, nothing in the game told a player their raid had been wiped out.
       if (shipsHome === 0) {
-        return i18n.t('notifications.raidWiped', { target, count: unitsLost });
+        return `${i18n.t('notifications.raidWiped', { target, count: unitsLost })}${bornTail}`;
       }
       const took = spoils(lootAlloy, lootCrystal, lootDeuterium);
       // After the loot and apart from it: wreck the collectors lifted, never plunder.
@@ -1148,12 +1161,12 @@ export function describeNotification(notification: NotificationView, now: number
         took.length > 0 ? took.join(JOIN()) : i18n.t('notifications.raidNothing'),
         ...(damaged !== undefined && damaged > 0 ? [i18n.t('notifications.damagedClause', { count: damaged })] : []),
       ].join(JOIN());
-      return i18n.t('notifications.raidResult', {
+      return `${i18n.t('notifications.raidResult', {
         grade: gradeWord(grade),
         target,
         detail,
         count: unitsLost,
-      });
+      })}${bornTail}`;
     }
 
     case 'convoy_result': {
@@ -1737,6 +1750,7 @@ export function signalFamily(notification: NotificationView): SignalFamily {
     case 'colony_captured':
     case 'settlement_success':
     case 'death_star_result':
+    case 'moon_gate_ready':
       return 'gain';
     default:
       return 'note';
@@ -1836,6 +1850,7 @@ export type SignalGlyph =
   | 'conquest'
   | 'world-lost'
   | 'galaxy'
+  | 'moon'
   | 'bell';
 
 export function signalGlyph(notification: NotificationView): SignalGlyph {
@@ -1893,6 +1908,8 @@ export function signalGlyph(notification: NotificationView): SignalGlyph {
     case 'galaxy_event_started':
     case 'galaxy_event_ended':
       return 'galaxy';
+    case 'moon_gate_ready':
+      return 'moon';
     default:
       return 'bell';
   }

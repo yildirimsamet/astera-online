@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useRecallFlight, useRecallMining } from '../api/queries.js';
+import { useRecallFlight, useRecallMining, useRetargetMission } from '../api/queries.js';
+import { useMoonT } from '../i18n/moon.js';
+import { RetargetButton } from '../screens/MoonControls.js';
 import { useAirborne, type FlightMark, type StripFocus } from '../lib/airborne.js';
 import { legProgress } from '../lib/fleetPage.js';
 import { countdown } from '../lib/time.js';
@@ -117,9 +119,11 @@ export function PendingStrip({ onFocus }: { onFocus?: (focus: StripFocus) => voi
  */
 export function FlightList({ onFocus, onDone }: { onFocus: (focus: StripFocus) => void; onDone: () => void }) {
   const { t } = useTranslation();
+  const tMoon = useMoonT();
   const { items, now } = useAirborne();
   const recall = useRecallMining();
   const recallFleet = useRecallFlight();
+  const retarget = useRetargetMission();
   const say = useToast();
 
   return (
@@ -175,36 +179,58 @@ export function FlightList({ onFocus, onDone }: { onFocus: (focus: StripFocus) =
             the screen they are already looking at when a raid is inbound.
           */
           const recallMission = item.recallMission;
-          if (recallMission) {
+          const retargetInfo = item.retarget;
+          if (recallMission || retargetInfo) {
             return (
-              <div key={item.key} className="plate flex min-h-14 w-full items-stretch">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onDone();
-                    if (focus) onFocus(focus);
-                  }}
-                  className="flex min-w-0 flex-1 items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
-                >
-                  {body}
-                </button>
-                <button
-                  type="button"
-                  aria-label={t('pendingStrip.recallFleet')}
-                  disabled={recallFleet.isPending}
-                  onClick={() => {
-                    recallFleet.mutate(recallMission, {
-                      onSuccess: () => { say(t('pendingStrip.recallFleetStarted')); },
-                      onError: (error) => { say(describe(error), 'error'); },
-                    });
-                  }}
-                  className="flex min-w-20 shrink-0 flex-col items-center justify-center gap-1 border-l border-line-soft px-3 text-label text-alloy transition-colors hover:bg-alloy/[0.06] disabled:opacity-50"
-                >
-                  <ReturnedIcon className="size-4" />
-                  {recallFleet.isPending
-                    ? t('pendingStrip.recallingFleet')
-                    : t('pendingStrip.recallFleet')}
-                </button>
+              <div key={item.key} className="plate flex flex-col w-full">
+                <div className="flex min-h-14 w-full items-stretch">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onDone();
+                      if (focus) onFocus(focus);
+                    }}
+                    className="flex min-w-0 flex-1 items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
+                  >
+                    {body}
+                  </button>
+                  {recallMission && (
+                    <button
+                      type="button"
+                      aria-label={t('pendingStrip.recallFleet')}
+                      disabled={recallFleet.isPending}
+                      onClick={() => {
+                        recallFleet.mutate(recallMission, {
+                          onSuccess: () => { say(t('pendingStrip.recallFleetStarted')); },
+                          onError: (error) => { say(describe(error), 'error'); },
+                        });
+                      }}
+                      className="flex min-w-20 shrink-0 flex-col items-center justify-center gap-1 border-l border-line-soft px-3 text-label text-alloy transition-colors hover:bg-alloy/[0.06] disabled:opacity-50"
+                    >
+                      <ReturnedIcon className="size-4" />
+                      {recallFleet.isPending
+                        ? t('pendingStrip.recallingFleet')
+                        : t('pendingStrip.recallFleet')}
+                    </button>
+                  )}
+                </div>
+                {retargetInfo && (
+                  <div className="border-t border-line-soft px-3 py-2 flex justify-end">
+                    <RetargetButton
+                      missionId={retargetInfo.missionId}
+                      currentBody={retargetInfo.currentBody}
+                      disabled={retarget.isPending}
+                      onRetarget={(missionId, targetBody) => {
+                        retarget.mutate({ missionId, body: targetBody }, {
+                          onSuccess: (res) => {
+                            say(tMoon(res.targetBody === 'MOON' ? 'body.retargetedToMoon' : 'body.retargetedToPlanet'));
+                          },
+                          onError: (error) => { say(describe(error), 'error'); },
+                        });
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             );
           }

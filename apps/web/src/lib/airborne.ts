@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { fleetCount, hpRadiationApplies } from '@astera/rules';
+import { fleetCount, hpRadiationApplies, type WorldBody } from '@astera/rules';
 import type { FlightRecallInput } from '../api/client.js';
-import { useMining, useMonuments, usePending, usePlanet, useTraffic } from '../api/queries.js';
+import { useGalaxy, useMining, useMonuments, usePending, usePlanet, useTraffic } from '../api/queries.js';
 import { threadKey } from '../galaxy/threadKey.js';
 import {
   arrivalOf,
@@ -53,17 +53,25 @@ export function useAirborne(): { items: AirborneItem[]; now: number } {
    * the row stays a statement.
    */
   const traffic = useTraffic();
+  const galaxy = useGalaxy();
   const now = useNow(1000);
   const origin = usePlanet();
   const monuments = useMonuments(hpRadiationApplies(origin.data?.rulesetVersion ?? 0));
   const threads = [...data?.pending ?? [], ...monumentPendingThreads(monuments.data, now)];
   const runs = (mining.data?.runs ?? []).filter((run) => run.status !== 'done');
   const seen = traffic.data?.contacts ?? [];
+  const moonPlanetIds = new Set(galaxy.data?.moons?.list.map((m) => m.planetId) ?? []);
+  const worldKindById = new Map(galaxy.data?.planets.map((w) => [w.id, w.kind]) ?? []);
 
   const items: AirborneItem[] = [
     ...threads.map((thread, index): AirborneItem => {
       const focus = flightFocus(thread, index, seen);
       const recallMission = flightRecallInput(thread, now);
+      const canRetarget = thread.kind === 'fleet' && thread.leg !== 'return'
+        && thread.id !== undefined && thread.targetPlanetId !== undefined
+        && moonPlanetIds.has(thread.targetPlanetId)
+        && worldKindById.get(thread.targetPlanetId) !== 'NEUTRAL'
+        && thread.arriveAt.getTime() > now;
       return {
         key: `thread:${threadKey(thread, index)}`,
         title: flightTitle(thread),
@@ -77,25 +85,12 @@ export function useAirborne(): { items: AirborneItem[]; now: number } {
         incoming: thread.kind === 'incoming',
         engages: thread.kind === 'fleet' && thread.leg === 'outbound',
         mark: thread.kind,
-        /*
-          THE LEG'S OWN TWO INSTANTS, and null for an inbound attack — the server
-          sends no `path` for somebody else's fleet, deliberately (D123), so there
-          is no honest position to draw and `FlightBar` says so with a dashed track
-          rather than inventing one.
-        */
         span: thread.path
           ? { from: thread.path.departAt.getTime(), to: thread.path.arriveAt.getTime() }
           : null,
-        /*
-          TWO WAYS TO LOOK AT A CRAFT, AND AN INBOUND WARNING HAS THE SECOND. D162.
-
-          Your own craft is focused by its thread. A warning has no path — the route
-          is what Radar L5 does not sell — so it is focused through the CONTACT the
-          disc is already drawing, and only when there is one. No contact, no
-          control: the fog is enforced in the contact query, not here.
-        */
         ...(focus ? { focus } : {}),
         ...(recallMission ? { recallMission } : {}),
+        ...(canRetarget && thread.id ? { retarget: { missionId: thread.id, currentBody: thread.targetBody ?? 'PLANET' } } : {}),
         ...(thread.monumentRecall ? { recallMinutes: thread.monumentRecall.minutes } : {}),
       };
     }),
@@ -138,6 +133,8 @@ export interface AirborneItem {
   pace?: number;
   incoming: boolean;
   engages: boolean;
+  /** Ay S13: outbound single raid that may switch between planet and moon mid-flight. */
+  retarget?: { missionId: string; currentBody: WorldBody };
   /** Which of the seven things this is, so the row can wear its own glyph. */
   mark: FlightMark;
   /** The leg's departure and arrival instants, or null where it is fogged. */

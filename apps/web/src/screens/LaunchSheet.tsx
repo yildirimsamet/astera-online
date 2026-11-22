@@ -110,11 +110,26 @@ export function LaunchSheet({
   const hasOriginMoonShips = fleetCount(planet.moon?.fleet ?? {}) > 0;
   const activeOriginBody = hasOriginMoonShips ? originBody : 'PLANET';
   const activePlanet: PlanetView = activeOriginBody === 'MOON'
-    ? { ...planet, fleet: planet.moon?.fleet ?? {}, fleetDamage: [] }
+    ? {
+        ...planet,
+        fleet: planet.moon?.fleet ?? {},
+        fleetCombatReady: planet.moon?.fleetCombatReady ?? planet.moon?.fleet ?? {},
+        fleetDamage: planet.moon?.fleetDamage ?? [],
+        ground: {},
+      }
     : planet;
+  const planetMobileCount = fleetCount(
+    Object.fromEntries(MOBILE.map((h) => [h, planet.fleet[h] ?? 0])),
+  );
+  const moonMobileCount = fleetCount(
+    Object.fromEntries(MOBILE.map((h) => [h, planet.moon?.fleet[h] ?? 0])),
+  );
   const targetWorldId = target.kind === 'world' ? target.world.id : null;
-  const targetHasMoon = targetWorldId !== null && (galaxy?.moons?.list.some((m) => m.planetId === targetWorldId) ?? false);
+  // V42: Neutral worlds' seeded moons cannot be raided until someone holds the world.
+  const targetHasMoon = target.kind === 'world' && target.world.kind !== 'NEUTRAL'
+    && (galaxy?.moons?.list.some((m) => m.planetId === targetWorldId) ?? false);
   const targetMoonRarity = targetWorldId !== null ? galaxy?.moons?.rarity[targetWorldId] : undefined;
+  const effectiveTargetBody: 'PLANET' | 'MOON' = targetHasMoon ? targetBody : 'PLANET';
   const school = useSchoolPresentation();
   const {
     sending, set, roomFor, allowance, selectionComplete, lesson, season, honorTarget, spendsShield, pirate, mods, radiation,
@@ -125,7 +140,7 @@ export function LaunchSheet({
   } = useLaunchPlan({
     target, planet: activePlanet, intel, reports, onLaunched, onAim,
     originBody: activeOriginBody,
-    targetBody: targetHasMoon ? targetBody : 'PLANET',
+    targetBody: effectiveTargetBody,
   });
   const choosing = school !== null && !selectionComplete;
   const wall = namedWall(classReading);
@@ -139,7 +154,7 @@ export function LaunchSheet({
    * the captured Warden made the commander's prize vanish from the one screen that lists their fleet.
    */
   const row = (hull: MobileHullId) => {
-    const available = planet.fleet[hull] ?? 0;
+    const available = activePlanet.fleet[hull] ?? 0;
     if (available === 0) return null;
     const chosen = sending[hull] ?? 0;
     const carries = HULLS[hull].atk <= 0 ? fleetCargo({ [hull]: 1 }, mods.tech) : 0;
@@ -181,7 +196,7 @@ export function LaunchSheet({
    * them, so the Max presses the hand teaches run top to bottom.
    */
   const lessonOrder = allowance === null ? null : [
-    ...MOBILE.filter((hull) => (planet.fleet[hull] ?? 0) > 0 && roomFor(hull) === 0),
+    ...MOBILE.filter((hull) => (activePlanet.fleet[hull] ?? 0) > 0 && roomFor(hull) === 0),
     ...Object.keys(allowance).filter((hull): hull is MobileHullId =>
       MOBILE.includes(hull as MobileHullId) && roomFor(hull as MobileHullId) > 0),
   ];
@@ -193,8 +208,10 @@ export function LaunchSheet({
   const homeAt = route !== null && route.exposureMinutes > 0
     ? clockTime(new Date(serverNow() + route.exposureMinutes * 60_000))
     : null;
-  /** The haul the probe read, against the hold picked (a world only; nobody looked, no figure). */
-  const loot = lootEstimate(report, route?.cargo ?? fleetCargo(sending, mods.tech));
+  /** The haul the probe read, against the hold picked (planet raids only; moons yield no loot). */
+  const loot = effectiveTargetBody === 'MOON'
+    ? null
+    : lootEstimate(report, route?.cargo ?? fleetCargo(sending, mods.tech));
   /** Whose world, and the mark it wears (D183): the mock's "→ [VEX] Kestrel". */
   const owned = target.kind === 'world' && target.world.intel !== 'UNKNOWN' && target.world.owner !== ''
     ? target.world
@@ -306,17 +323,6 @@ export function LaunchSheet({
       }
     >
       <div className="gk gk-launch">
-        {target.kind === 'world' && (
-          <>
-            <OriginBodyPicker value={originBody} hasMoonShips={hasOriginMoonShips} onChange={setOriginBody} />
-            <TargetBodyPicker
-              value={targetHasMoon ? targetBody : 'PLANET'}
-              hasMoon={targetHasMoon}
-              knownRarity={targetMoonRarity}
-              onChange={setTargetBody}
-            />
-          </>
-        )}
         {honorTarget.data && <HonorTargetCard value={honorTarget.data} />}
         {honorTarget.isFetching && !honorTarget.data && <p className="gk-sub">{t('leaderboard.honorTarget.loading')}</p>}
         {honorTarget.isError && <div className="gk-launch__retry">
@@ -344,6 +350,31 @@ export function LaunchSheet({
           two strips. The ships scroll under those, not under a paragraph.
         */}
         {!choosing && classReading && <MatchupLine folded wing={sending} reading={classReading} />}
+
+        {/*
+          ORIGIN & TARGET BODY PICKERS (Planet <-> Moon): placed below the Power ruler right
+          over the ship cards so toggling origin visibly swaps the available fleet below.
+        */}
+        {target.kind === 'world' && (hasOriginMoonShips || targetHasMoon) && (
+          <div
+            data-testid="launch-moon-bodies"
+            className={`grid gap-2.5 ${hasOriginMoonShips && targetHasMoon ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}
+          >
+            <OriginBodyPicker
+              value={activeOriginBody}
+              hasMoonShips={hasOriginMoonShips}
+              planetCount={planetMobileCount}
+              moonCount={moonMobileCount}
+              onChange={setOriginBody}
+            />
+            <TargetBodyPicker
+              value={targetHasMoon ? targetBody : 'PLANET'}
+              hasMoon={targetHasMoon}
+              knownRarity={targetMoonRarity}
+              onChange={setTargetBody}
+            />
+          </div>
+        )}
 
         <section data-launch-fleet className="gk-launch__fleet">
           {/*
@@ -461,7 +492,7 @@ export function LaunchSheet({
           <Figure
             label={t('launch.stays')}
             value={t('launch.staysUnits', { count: holding })}
-            sub={t('launch.staysPower', { value: compact(homePowerAfter(planet.fleet, planet.ground, sending)) })}
+            sub={t('launch.staysPower', { value: compact(homePowerAfter(activePlanet.fleet, activePlanet.ground, sending)) })}
           />
         </Figures>}
       </div>

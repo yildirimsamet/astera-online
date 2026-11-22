@@ -55,6 +55,7 @@ const EVERY_KIND = [
   'monument_inbound',
   'monument_probe_lost',
   'monument_returning',
+  'moon_gate_ready',
   'probe_report',
   'radiation_lost',
   'radiation_bomb_result',
@@ -90,6 +91,7 @@ const PAYLOAD: Record<(typeof EVERY_KIND)[number], Record<string, unknown>> = {
   monument_returning: { targetKind: 'MONUMENT', monumentId: '00000000-0000-4000-8000-000000000001', monumentOrdinal: 1, reason: 'CAPACITY', craft: 2, arriveAt: '2026-08-26T12:40:00.000Z' },
   monument_inbound: { monumentId: '00000000-0000-4000-8000-000000000001', monumentOrdinal: 1, arriveAt: '2026-08-26T12:20:00.000Z' },
   monument_probe_lost: { monumentId: '00000000-0000-4000-8000-000000000001', monumentOrdinal: 1 },
+  moon_gate_ready: { planetId: 'p9', planetName: 'Vantage' },
   clan_support_inbound: {
     waveId: 'w', senderPlayerId: 's', senderName: 'Ali', hostPlanetId: 'p9', hostPlanetName: 'Vantage',
     fleet: { DART: 4 }, arriveAt: '2026-08-26T12:20:00.000Z',

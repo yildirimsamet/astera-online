@@ -1583,6 +1583,7 @@ export function GalaxyView({
         moons={galaxy.data?.moons}
         moonWarps={moonWarps}
         moonScans={moonScans}
+        focusDistanceOverride={moonWarps.length > 0 ? 14.5 : moonScans.length > 0 ? 11.5 : undefined}
         unknownSignals={signalData?.signals}
         clanAlarms={clanAlarms}
         unknownSignalRadar={focusedSignalId ? personalSignals.data?.radar ?? undefined : undefined}
@@ -1820,8 +1821,8 @@ export function GalaxyView({
           */
           outOfBand={outOfBandAbove(planets, selected)}
           ownPeakCore={ownPeakCore(planets)}
-          onDeathStar={() => {
-            deathStar.mutate(selected.id, {
+          onDeathStar={(targetBody) => {
+            deathStar.mutate({ targetPlanetId: selected.id, ...(targetBody ? { targetBody } : {}) }, {
               onSuccess: () => {
                 say(t('galaxy.deathStarAway', {
                   world: selected.intel === 'UNKNOWN'
@@ -2224,11 +2225,25 @@ export function GalaxyView({
         >
           <BaseSwitch value="moon" onChange={openBase} moonAvailable={moonsAvailable} arenaAvailable={arenaAvailable} />
           <MoonPanel
+            key={planet.data.planet.id}
             planet={planet.data}
             moonsEnabled={moonsAvailable}
             otherMoons={(() => {
-              const g = galaxy.data;
               const p = planet.data;
+              const fromWorlds = worlds
+                .filter((w) => w.planet.id !== p.planet.id && w.moon !== null && w.moon !== undefined)
+                .map((w) => ({
+                  planetId: w.planet.id,
+                  name: w.planet.name,
+                  position: w.planet.position,
+                  rarity: w.moon!.rarity,
+                  dockFree: w.moon!.dockFree,
+                  dockCapacity: w.moon!.dockCapacity,
+                  gateReadyAt: w.moon!.gateReadyAt,
+                  closedUntil: w.moon!.closedUntil,
+                }));
+              if (fromWorlds.length > 0) return fromWorlds;
+              const g = galaxy.data;
               if (!g?.moons) return [];
               const mine = new Set(g.you.planetIds ?? [g.you.planetId]);
               return g.planets
@@ -2244,16 +2259,17 @@ export function GalaxyView({
               const g = galaxy.data;
               const p = planet.data;
               if (!g || !p.moon) return [];
-              const mine = new Set(g.you.planetIds ?? [g.you.planetId]);
               return g.planets
-                .filter((w) => !mine.has(w.id) && w.name.trim().length > 0)
+                .filter((w) => w.id !== p.planet.id && w.name.trim().length > 0)
                 .map((w) => ({ planetId: w.id, name: w.name, distance: distance(p.planet.position, w.position) }))
                 .filter((w) => w.distance <= p.moon!.scanRange)
-                .sort((a, b) => a.distance - b.distance)
-                .slice(0, 20);
+                .sort((a, b) => a.distance - b.distance);
             })()}
+            worldNames={new Map((galaxy.data?.planets ?? []).map((w) => [w.id, w.name]))}
+            onOpenResearch={() => { onPanel('research'); }}
             onRefresh={() => {
               void queryClient.invalidateQueries({ queryKey: keys.planet });
+              void queryClient.invalidateQueries({ queryKey: keys.planets });
               void queryClient.invalidateQueries({ queryKey: keys.galaxy });
             }}
             onOrderMoon={(id) => api.orderMoon(id)}
@@ -2795,6 +2811,7 @@ export function GalaxyView({
           : contact;
         return target ? (
           <TransferSheet
+            key={target.id}
             target={target}
             {...(owned ? { targetPlanet: owned } : {})}
             planet={transferOrigin}

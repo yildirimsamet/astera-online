@@ -2712,7 +2712,7 @@ export function useLaunchRadiationBomb(planetId: string) {
   const lane = usePlanetMutationLane(planetId);
   return useMutation({
     meta: lane.meta,
-    mutationFn: (input: { level: 1 | 2 | 3; target: { kind: 'PLANET' | 'MONUMENT'; id: string };
+    mutationFn: (input: { level: 1 | 2 | 3; target: { kind: 'PLANET' | 'MONUMENT'; id: string; body?: WorldBody };
       key: string; acknowledgeShieldLoss: boolean }, context) => api.launchRadiationBomb(
       requiredPlanetMutationOrigin(context), input.level, input.target, input.key, input.acknowledgeShieldLoss),
     onMutate: lane.enter,

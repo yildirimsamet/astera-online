@@ -25,6 +25,7 @@ import {
   type TransferReturnPlan,
 } from '@astera/rules';
 import { useGalaxy, useTransfer } from '../api/queries.js';
+import { useMoonT } from '../i18n/moon.js';
 import { OriginBodyPicker, TargetBodyPicker } from './MoonControls.js';
 import {
   lethalAfterRefusal, radiationRefusalCount, routeRadiation, transferHpRadiation, toHpRadiationSources, toRadiationSources, type RadiationRefusal,
@@ -150,6 +151,7 @@ export function TransferSheet({
   onLaunched: () => void;
 }) {
   const { t } = useTranslation();
+  const tMoon = useMoonT();
   const say = useToast();
   // Both route ends travel explicitly; target focus and later world selection
   // must never change the source of an already-open transfer picker.
@@ -157,8 +159,10 @@ export function TransferSheet({
   const [originBody, setOriginBody] = useState<'PLANET' | 'MOON'>('PLANET');
   const [targetBody, setTargetBody] = useState<'PLANET' | 'MOON'>('PLANET');
   const hasOriginMoonShips = fleetCount(planet.moon?.fleet ?? {}) > 0;
-  const originFleet = originBody === 'MOON' && hasOriginMoonShips ? (planet.moon?.fleet ?? {}) : planet.fleet;
-  const originDamage = originBody === 'MOON' && hasOriginMoonShips ? [] : planet.fleetDamage;
+  const activeOriginBody: 'PLANET' | 'MOON' = hasOriginMoonShips ? originBody : 'PLANET';
+  const originFleet = activeOriginBody === 'MOON' ? (planet.moon?.fleet ?? {}) : planet.fleet;
+  const originDamage = activeOriginBody === 'MOON' ? (planet.moon?.fleetDamage ?? []) : planet.fleetDamage;
+  const originGround: Fleet = activeOriginBody === 'MOON' ? {} : planet.ground;
   const launchBlocked = launchFault(planet.faults, 'fleet') !== null;
   /**
    * THE FIVE MINUTES AFTER A SQUADRON LANDED HERE. Faz 2A.3.
@@ -204,9 +208,9 @@ export function TransferSheet({
   ), [fleet, originFleet]);
   // Firepower, the one force unit the launch sheet and a probe use. D199.
   const homeDefence = combatValue(garrisonOf(selectedHealth
-    ? partitionCombatFleet(selectedHealth.remaining, selectedHealth.remainingDamage).eligible : remainingFleet, planet.ground));
+    ? partitionCombatFleet(selectedHealth.remaining, selectedHealth.remainingDamage).eligible : remainingFleet, originGround));
   /** What the origin holds before anything is packed, so the bar has a whole. */
-  const defencePowerNow = combatValue(garrisonOf(partitionCombatFleet(planet.fleet, planet.fleetDamage).eligible, planet.ground));
+  const defencePowerNow = combatValue(garrisonOf(partitionCombatFleet(originFleet, originDamage).eligible, originGround));
   /** The one distance this sheet is about: the ETA, the fuel and the trim share it. */
   const span = distance(planet.planet.position, target.position);
   /**
@@ -298,6 +302,10 @@ export function TransferSheet({
   const incomingRoom = hangarLoad(stayingFleet);
   const destinationFits = destinationTotal === undefined || destinationUsed === undefined
     || destinationUsed + incomingRoom <= destinationTotal;
+  const effectiveTargetBody: 'PLANET' | 'MOON' = targetHasMoon ? targetBody : 'PLANET';
+  const destinationMoonFits = effectiveTargetBody !== 'MOON'
+    || !targetPlanet?.moon
+    || incomingRoom <= targetPlanet.moon.dockFree;
 
   const setShip = (id: HullId, value: number) => {
     const max = originFleet[id] ?? 0;
@@ -328,7 +336,9 @@ export function TransferSheet({
           ? t('errors.SHIP_SELECTION_CHANGED')
         : !destinationFits
           ? t('transfer.noRoom')
-          : loaded > capacity
+          : !destinationMoonFits
+            ? tMoon('body.moonDockFull')
+            : loaded > capacity
               || cargo.alloy > planet.planet.alloy
               || cargo.crystal > planet.planet.crystal
               || cargo.deuterium > planet.planet.deuterium
@@ -340,7 +350,7 @@ export function TransferSheet({
   const homeAt = returnMinutes > 0 && eta > 0
     ? clockTime(new Date(serverNow() + (eta + returnMinutes) * 60_000)) : null;
   const holdsLine = t('transfer.homeDefence', {
-    ships: fleetCount(remainingFleet) + fleetCount(planet.ground),
+    ships: fleetCount(remainingFleet) + fleetCount(originGround),
     power: compact(homeDefence),
   });
 
@@ -363,8 +373,8 @@ export function TransferSheet({
             onCommit={() => {
               transfer.mutate({
                 targetPlanetId: target.id, fleet, cargo, pace, returnPlan,
-                ...(originBody === 'MOON' ? { originBody } : {}),
-                ...(targetBody === 'MOON' && targetHasMoon ? { targetBody } : {}),
+                ...(activeOriginBody === 'MOON' ? { originBody: 'MOON' as const } : {}),
+                ...(effectiveTargetBody === 'MOON' ? { targetBody: 'MOON' as const } : {}),
                 ...(radiation !== null && radiation.destroyed > 0 ? { acknowledgeRadiation: true } : {}),
               }, {
                 onSuccess: () => {
@@ -383,18 +393,6 @@ export function TransferSheet({
       )}
     >
       <div className="gk gk-launch">
-        <OriginBodyPicker
-          value={originBody}
-          hasMoonShips={hasOriginMoonShips}
-          onChange={(body) => { setOriginBody(body); setFleet({}); }}
-        />
-        <TargetBodyPicker
-          value={targetBody}
-          hasMoon={targetHasMoon}
-          knownRarity={targetMoonRarity}
-          onChange={setTargetBody}
-          showAttackHint={false}
-        />
         {/*
           WHAT THIS WORLD IS LEFT HOLDING, the garrison as a bar with the part that flies away carved
           off it — alloy, not threat red: a transfer is logistics, not exposure, but the consequence
@@ -407,6 +405,29 @@ export function TransferSheet({
           </div>
           <p className="gk-sub gk-num">{holdsLine}</p>
         </div>
+
+        {(hasOriginMoonShips || targetHasMoon) && (
+          <div className={`grid gap-2.5 ${hasOriginMoonShips && targetHasMoon ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+            <OriginBodyPicker
+              value={activeOriginBody}
+              hasMoonShips={hasOriginMoonShips}
+              planetCount={fleetCount(Object.fromEntries(MOVABLE.map((h) => [h, planet.fleet[h] ?? 0])))}
+              moonCount={fleetCount(Object.fromEntries(MOVABLE.map((h) => [h, planet.moon?.fleet[h] ?? 0])))}
+              onChange={(body) => {
+                setOriginBody(body);
+                setFleet({});
+                setCargo({ alloy: 0, crystal: 0, deuterium: 0 });
+              }}
+            />
+            <TargetBodyPicker
+              value={targetBody}
+              hasMoon={targetHasMoon}
+              knownRarity={targetMoonRarity}
+              onChange={setTargetBody}
+              showAttackHint={false}
+            />
+          </div>
+        )}
 
         <section className="gk-launch__fleet">
           <SectionTag as="h3">{t('transfer.fleet')}</SectionTag>

@@ -1473,36 +1473,36 @@ export class Api {
     });
 
   /** Ay F9a: build a Common moon on this world's CONSTRUCTION line. */
-  orderMoon = (planetId: string) =>
+  orderMoon = (planetId: string, key = createIdempotencyKey()) =>
     this.send(`/api/planets/${encodeURIComponent(planetId)}/moon/build`, moonBuildSchema, {
-      method: 'POST', body: {},
+      method: 'POST', body: {}, idempotencyKey: key,
     });
 
   /** Ay F9a: hop mobile ships between planet and moon (90 s, free). */
-  hopMoonFleet = (planetId: string, direction: 'UP' | 'DOWN', fleet: Fleet) =>
+  hopMoonFleet = (planetId: string, direction: 'UP' | 'DOWN', fleet: Fleet, key = createIdempotencyKey()) =>
     this.send(`/api/planets/${encodeURIComponent(planetId)}/moon/hop`, moonHopSchema, {
-      method: 'POST', body: { direction, fleet },
+      method: 'POST', body: { direction, fleet }, idempotencyKey: key,
     });
 
   /** Ay F9a: jump mobile ships between two of your own moons via the Moon Gate (10 s). */
-  jumpMoonFleet = (planetId: string, toPlanetId: string, fleet: Fleet) =>
+  jumpMoonFleet = (planetId: string, toPlanetId: string, fleet: Fleet, key = createIdempotencyKey()) =>
     this.send(`/api/planets/${encodeURIComponent(planetId)}/moon/jump`, moonJumpSchema, {
-      method: 'POST', body: { toPlanetId, fleet },
+      method: 'POST', body: { toPlanetId, fleet }, idempotencyKey: key,
     });
 
   /** Ay F9a: Gözcü route scan from this world's moon (30 D). */
-  scanFromMoon = (planetId: string, targetPlanetId: string) =>
+  scanFromMoon = (planetId: string, targetPlanetId: string, key = createIdempotencyKey()) =>
     this.send(`/api/planets/${encodeURIComponent(planetId)}/moon/scan`, moonScanSchema, {
-      method: 'POST', body: { targetPlanetId },
+      method: 'POST', body: { targetPlanetId }, idempotencyKey: key,
     });
 
   /** Ay F9a: list your own Gözcü route scan reports. */
   moonScans = () => this.send('/api/intel/moon-scans', moonScansSchema);
 
   /** Ay F9a: retarget an in-flight single raid between PLANET and MOON. */
-  retargetMission = (missionId: string, body: WorldBody) =>
+  retargetMission = (missionId: string, body: WorldBody, key = createIdempotencyKey()) =>
     this.send(`/api/missions/${encodeURIComponent(missionId)}/target-body`, moonRetargetSchema, {
-      method: 'POST', body: { body },
+      method: 'POST', body: { body }, idempotencyKey: key,
     });
 
   rewards = () => this.send('/api/rewards', rewardsSchema);

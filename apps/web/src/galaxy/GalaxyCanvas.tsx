@@ -357,6 +357,8 @@ export interface GalaxyCanvasProps {
   inspectionPlanetId?: string;
   /** Local asset review may start closer to small debris and rocks. */
   reviewFocusDistance?: number;
+  /** Optional pulled-back framing range when a Moon Gate warp or Gözcü scan is playing. */
+  focusDistanceOverride?: number | undefined;
   /**
    * Open on the whole disc, with nothing selected. D56.
    *
@@ -477,6 +479,7 @@ export function GalaxyCanvas({
   centerSignal = 0,
   inspectionPlanetId,
   reviewFocusDistance,
+  focusDistanceOverride,
   aim = null,
   openWide = false,
   wideDistance = WHOLE_DISC_DISTANCE,
@@ -1227,7 +1230,10 @@ export function GalaxyCanvas({
         subject={subject}
         focusKey={focusKey}
         approach={reviewFocusDistance !== undefined && Number.isFinite(reviewFocusDistance)
-          ? Math.max(1.2, reviewFocusDistance) : approach}
+          ? Math.max(1.2, reviewFocusDistance)
+          : focusDistanceOverride !== undefined && Number.isFinite(focusDistanceOverride)
+            ? focusDistanceOverride
+            : approach}
         focusRadius={reviewFocusDistance === undefined ? focusRadius : 0}
         inspectionRadius={focus?.kind === 'planet' && focus.id === inspectionPlanetId ? nodes.find(node => node.id === inspectionPlanetId)?.radius : undefined}
         exactApproach={focus !== null || coachTap !== null}

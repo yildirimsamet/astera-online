@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BuildOrderView } from '../../api/schemas.js';
 import { Glyph, SectionTag, TimerRow, type GlyphId } from '../../game-ui/index.js';
+import { useMoonT } from '../../i18n/moon.js';
 import { haptic } from '../../lib/haptics.js';
 import type { OutlineLaneId, OutlineQueue, OutlineWorld } from '../../lib/outline.js';
 import type { AirborneItem, FlightMark } from '../../lib/airborne.js';
@@ -73,9 +74,11 @@ function Part({ title, count, children }: { title: string; count?: number; child
 /** A world: its mark on a coin, its name, its ships; an attack coming for it is a red siren. */
 function WorldRow({ world, onWorld }: { world: OutlineWorld; onWorld: (id: string) => void }) {
   const { t } = useTranslation();
+  const tMoon = useMoonT();
   const own = usePress(() => { onWorld(world.id); });
   const ships = world.ships > 0 ? t('fleetPage.shipsHome', { count: world.ships }) : t('fleetPage.noShips');
-  const where = [ships, ...(world.away > 0 ? [t('fleetPage.away', { count: world.away })] : [])].join(' · ');
+  const moonPart = (world.moonShips ?? 0) > 0 ? [tMoon('fleetSplit.onMoonBadge', { count: world.moonShips ?? 0 })] : [];
+  const where = [ships, ...moonPart, ...(world.away > 0 ? [t('fleetPage.away', { count: world.away })] : [])].join(' · ');
   return (
     <button
       type="button"
@@ -83,6 +86,7 @@ function WorldRow({ world, onWorld }: { world: OutlineWorld; onWorld: (id: strin
       aria-label={[
         world.name,
         t(world.capital ? 'fleetPage.capital' : 'fleetPage.colony'),
+        ...(world.hasMoon ? [tMoon('body.moonBadge')] : []),
         ...(world.threats > 0 ? [t('outline.threat', { count: world.threats })] : []),
         where,
       ].join(' · ')}
@@ -93,7 +97,10 @@ function WorldRow({ world, onWorld }: { world: OutlineWorld; onWorld: (id: strin
     >
       <span className="gk-wrow__coin" aria-hidden="true"><Glyph id={world.capital ? 'home' : 'colony'} /></span>
       <span className="grid min-w-0">
-        <span className="gk-wrow__name">{world.name}</span>
+        <span className="gk-wrow__name inline-flex items-center gap-1">
+          <span className="truncate">{world.name}</span>
+          {world.hasMoon && <Glyph id="moon" className="size-3 shrink-0 text-amber-300" />}
+        </span>
         <span className="gk-sub">{where}</span>
       </span>
       {world.threats > 0 && (

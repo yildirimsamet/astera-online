@@ -146,7 +146,9 @@ export function ChronicleScreen({
                 glyph = 'critical';
                 break;
               case 'control_transfer':
-                title = t('chronicle.controlTransfer', { planet: event.payload.planetName });
+                title = event.payload.hasMoon
+                  ? `${t('chronicle.controlTransfer', { planet: event.payload.planetName })} · ${tMoon('body.chronicleWithMoon')}`
+                  : t('chronicle.controlTransfer', { planet: event.payload.planetName });
                 detail = t('chronicle.controlTransferDetail', {
                   commander: event.payload.commanderName,
                 });

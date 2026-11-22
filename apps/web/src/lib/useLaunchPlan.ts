@@ -74,6 +74,10 @@ export function useLaunchPlan({
   const raid = useRaidPirate();
   const say = useToast();
   const [sending, setSending] = useState<Fleet>({});
+  // Clear ship selections whenever the commander switches origin body (Planet <-> Moon).
+  useEffect(() => {
+    setSending({});
+  }, [originBody]);
   const available = planet.fleetCombatReady ?? partitionCombatFleet(planet.fleet, planet.fleetDamage).eligible;
   const selectedHealth = useMemo(() => {
     try { return splitHealthFleet(planet.fleet, planet.fleetDamage, sending, true); }
@@ -423,6 +427,7 @@ export function useLaunchPlan({
     rulesetVersion: planet.rulesetVersion ?? season.data?.rulesetVersion ?? 0,
     escort: escortBonus,
     aboard,
+    targetBody,
   });
 
   /**

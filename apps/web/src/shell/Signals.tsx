@@ -364,6 +364,7 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   // The active-event chip lives on the galaxy itself; closing Signals is the route.
   galaxy_event_started: { panel: null },
   galaxy_event_ended: { panel: null },
+  moon_gate_ready: { panel: 'moon' },
 };
 
 /**
@@ -457,6 +458,7 @@ const SIGNAL_MARK: Record<SignalGlyph, GlyphId> = {
   conquest: 'banner',
   'world-lost': 'colony',
   galaxy: 'star',
+  moon: 'moon',
   bell: 'bell',
 };
 

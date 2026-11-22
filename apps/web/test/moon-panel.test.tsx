@@ -149,5 +149,14 @@ describe('MoonPanel (F9b)', () => {
     });
     fireEvent.click(getHopSubmit());
     expect(onHop).toHaveBeenCalledWith('p-home', 'UP', { DART: 8 });
+
+    // Switch sub-tabs: Moon Gate -> Gözcü
+    fireEvent.click(screen.getByRole('tab', { name: /Moon Gate|Ay Kapısı/i }));
+    expect(screen.getByTestId('moon-gate-card')).toBeDefined();
+    expect(screen.queryByTestId('moon-hop-card')).toBeNull();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Gözcü/i }));
+    expect(screen.getByTestId('moon-scan-card')).toBeDefined();
+    expect(screen.queryByTestId('moon-gate-card')).toBeNull();
   });
 });

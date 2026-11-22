@@ -1,12 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   MOBILE_HULLS,
   MOON,
+  MOON_RARITIES,
+  crackLimit,
   distance,
   fleetCount,
+  gateCapacity,
+  gateChargeMs,
   hullBulk,
   jumpCapacity,
   jumpFuel,
+  scanPierces,
+  scanRange,
   type Fleet,
   type MobileHullId,
   type MoonRarity,
@@ -14,21 +20,43 @@ import {
 } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import type { PlanetMoon, PlanetView } from '../api/schemas.js';
-import { Choices, GameButton, GameHold, Glyph, RoomGauge, SectionTag } from '../game-ui/index.js';
+import {
+  Banner,
+  Choices,
+  CostLine,
+  Fold,
+  GameButton,
+  GameHold,
+  GameTabs,
+  Glyph,
+  InfoPeek,
+  Picker,
+  Plate,
+  RoomGauge,
+  SectionTag,
+  Well,
+} from '../game-ui/index.js';
 import { hullName } from '../i18n/names.js';
 import { useMoonT } from '../i18n/moon.js';
-import { compact } from '../lib/format.js';
-import { playSound } from '../lib/sound.js';
-import { useNow } from '../lib/time.js';
+import { compact, full } from '../lib/format.js';
+import { haptic } from '../lib/haptics.js';
+import { OWN_SOUND, playSound } from '../lib/sound.js';
+import { countdown, duration, useNow } from '../lib/time.js';
 import { HULL_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
+import { describe } from '../ui/Toast.js';
 
 export interface OtherOwnedMoon {
   readonly planetId: string;
   readonly name: string;
   readonly position: Vec3;
   readonly rarity: MoonRarity;
+  /** Authoritative free dock room on the destination moon, when loaded from `/api/planets`. */
+  readonly dockFree?: number;
+  readonly dockCapacity?: number;
+  readonly gateReadyAt?: Date | null;
+  readonly closedUntil?: Date | null;
 }
 
 export interface MoonScanTarget {
@@ -54,7 +82,10 @@ export interface MoonPanelProps {
   readonly moonsEnabled: boolean;
   readonly otherMoons: readonly OtherOwnedMoon[];
   readonly scanTargets: readonly MoonScanTarget[];
+  /** Full galaxy world id -> name map so Gözcü routes always resolve to real names. */
+  readonly worldNames?: ReadonlyMap<string, string>;
   readonly onRefresh?: () => void;
+  readonly onOpenResearch?: () => void;
   readonly onOrderMoon?: (planetId: string) => Promise<unknown>;
   readonly onHop?: (planetId: string, direction: 'UP' | 'DOWN', fleet: Fleet) => Promise<unknown>;
   readonly onJump?: (planetId: string, toPlanetId: string, fleet: Fleet) => Promise<unknown>;
@@ -93,6 +124,8 @@ const SIZE_KEY = {
   HEAVY: 'scan.size.HEAVY',
 } as const;
 
+const CRACK_HEAL_MS = MOON.crackHealHours * 3_600_000;
+
 function fitMobileFleet(source: Fleet, maxBulk: number): Fleet {
   if (maxBulk <= 0) return {};
   const out: Fleet = {};
@@ -106,6 +139,15 @@ function fitMobileFleet(source: Fleet, maxBulk: number): Fleet {
       out[hull] = take;
       left -= take * each;
     }
+  }
+  return out;
+}
+
+function subtractFleets(from: Fleet, reserved: Fleet): Fleet {
+  const out: Fleet = {};
+  for (const hull of MOBILE_HULLS) {
+    const left = Math.max(0, (from[hull] ?? 0) - (reserved[hull] ?? 0));
+    if (left > 0) out[hull] = left;
   }
   return out;
 }
@@ -129,15 +171,28 @@ function clampSelection(selected: Fleet, available: Fleet): Fleet {
   return out;
 }
 
-function formatCountdown(ms: number): string {
-  if (ms <= 0) return '0s';
-  const totalSec = Math.ceil(ms / 1_000);
-  const h = Math.floor(totalSec / 3_600);
-  const m = Math.floor((totalSec % 3_600) / 60);
-  const s = totalSec % 60;
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
+/** Arm a one-shot refresh shortly after the soonest moon timer elapses so counters never stick at 0s. */
+function useMoonExpiryWakeup(deadlines: readonly (Date | null | undefined)[], now: number, onRefresh?: () => void) {
+  const soonestMs = useMemo(() => {
+    let min = Number.POSITIVE_INFINITY;
+    for (const d of deadlines) {
+      if (!d) continue;
+      const ms = d.getTime();
+      if (ms > now && ms < min) min = ms;
+    }
+    return Number.isFinite(min) ? min : null;
+  }, [deadlines, now]);
+
+  useEffect(() => {
+    if (soonestMs === null || !onRefresh) return;
+    const delay = Math.max(250, soonestMs - Date.now() + 400);
+    const timer = window.setTimeout(() => {
+      onRefresh();
+    }, delay);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [soonestMs, onRefresh]);
 }
 
 function FleetChips({ fleet, emptyLabel }: { readonly fleet: Fleet; readonly emptyLabel: string }) {
@@ -152,7 +207,7 @@ function FleetChips({ fleet, emptyLabel }: { readonly fleet: Fleet; readonly emp
         return (
           <span
             key={hull}
-            className="inline-flex items-center gap-1 rounded-chip border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-caption text-slate-100"
+            className="inline-flex items-center gap-1 rounded-chip border border-white/10 bg-white/[0.04] px-2 py-0.5 text-caption text-slate-100"
           >
             {art ? (
               <img src={art} alt="" aria-hidden width={18} height={18} className="size-[18px] object-contain" />
@@ -165,6 +220,52 @@ function FleetChips({ fleet, emptyLabel }: { readonly fleet: Fleet; readonly emp
         );
       })}
     </div>
+  );
+}
+
+function RarityComparisonTable({ current }: { readonly current?: MoonRarity }) {
+  const mt = useMoonT();
+  return (
+    <Fold glyph="moon" title={mt('guide.rarityTableTitle')}>
+      <div className="overflow-x-auto pt-1">
+        <table className="w-full border-collapse text-left text-caption">
+          <thead>
+            <tr className="border-b border-white/10 text-slate-400">
+              <th className="py-1.5 pr-2 font-medium">{mt('guide.colTier')}</th>
+              <th className="py-1.5 px-2 font-medium">{mt('guide.colDock')}</th>
+              <th className="py-1.5 px-2 font-medium">{mt('guide.colGate')}</th>
+              <th className="py-1.5 px-2 font-medium">{mt('guide.colScan')}</th>
+              <th className="py-1.5 pl-2 font-medium">{mt('guide.colCracks')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {MOON_RARITIES.map((tier) => {
+              const active = tier === current;
+              const style = RARITY_STYLE[tier];
+              return (
+                <tr
+                  key={tier}
+                  className={`border-b border-white/5 last:border-b-0 ${active ? 'bg-white/[0.06]' : ''}`}
+                >
+                  <td className={`py-1.5 pr-2 font-semibold ${style.text}`}>
+                    {mt(RARITY_KEY[tier])}
+                    {scanPierces(tier) && (
+                      <span className="ml-1.5 rounded-chip bg-amber-400/20 px-1.5 py-0.5 text-caption text-amber-200">
+                        {mt('guide.pierceShort')}
+                      </span>
+                    )}
+                  </td>
+                  <td className="gk-num py-1.5 px-2 text-slate-200">{compact(gateCapacity(tier))}</td>
+                  <td className="gk-num py-1.5 px-2 text-slate-200">{duration(gateChargeMs(tier) / 60_000)}</td>
+                  <td className="gk-num py-1.5 px-2 text-slate-200">{full(scanRange(tier))}</td>
+                  <td className="gk-num py-1.5 pl-2 text-slate-200">{crackLimit(tier)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Fold>
   );
 }
 
@@ -228,11 +329,13 @@ function HullPickerRows({
 function NoMoonCard({
   planet,
   onOrderMoon,
+  onOpenResearch,
   onRefresh,
   now,
 }: {
   readonly planet: PlanetView;
   readonly onOrderMoon?: (planetId: string) => Promise<unknown>;
+  readonly onOpenResearch?: () => void;
   readonly onRefresh?: () => void;
   readonly now: number;
 }) {
@@ -259,6 +362,8 @@ function NoMoonCard({
             ? mt('build.action')
             : null;
 
+  useMoonExpiryWakeup([pendingOrder?.finishesAt], now, onRefresh);
+
   const handleBuild = async () => {
     if (!onOrderMoon || !canBuild) return;
     setBusy(true);
@@ -268,7 +373,7 @@ function NoMoonCard({
       playSound('tap');
       onRefresh?.();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      setErr(describe(e));
     } finally {
       setBusy(false);
     }
@@ -278,38 +383,53 @@ function NoMoonCard({
 
   return (
     <div data-testid="moon-panel-empty" className="gk flex flex-col gap-3 px-3 pb-4">
-      <div className="rounded-xl border border-white/10 bg-slate-900/75 p-4">
+      <Plate className="flex flex-col gap-3 p-4">
         <div className="flex items-start gap-3">
           <img
             src="/images/premium/moon/moon-gate-v1.webp"
             alt=""
-            className="size-16 shrink-0 rounded-lg border border-white/10 object-cover"
+            className="size-16 shrink-0 rounded-control border border-white/10 object-cover"
           />
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold text-white">{mt('build.title')}</div>
-            <p className="mt-0.5 text-xs text-slate-300">{mt('build.subtitle')}</p>
-            <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-200">
-              <span>{MOON.build.cost.alloy.toLocaleString()} Alloy</span>
-              <span>{MOON.build.cost.crystal.toLocaleString()} Crystal</span>
-              <span className="text-slate-400">{mt('build.duration')}</span>
+            <div className="text-title font-semibold text-white">{mt('build.title')}</div>
+            <p className="mt-0.5 text-caption text-slate-300">{mt('build.subtitle')}</p>
+            <div className="mt-2">
+              <CostLine
+                cost={{ alloy: MOON.build.cost.alloy, crystal: MOON.build.cost.crystal }}
+                held={{ alloy: planet.planet.alloy, crystal: planet.planet.crystal }}
+                time={duration(MOON.build.minutes)}
+              />
             </div>
           </div>
         </div>
 
         {pendingOrder ? (
-          <div className="mt-3 rounded-lg border border-sky-400/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-200">
-            {mt('build.queued')}
-            {pendingOrder.finishesAt ? ` · ${formatCountdown(pendingOrder.finishesAt.getTime() - now)}` : ''}
-          </div>
+          <Banner
+            tone="info"
+            glyph="clock"
+            title={mt('build.queued')}
+            {...(pendingOrder.finishesAt ? { body: countdown(pendingOrder.finishesAt.getTime() - now) } : {})}
+          />
         ) : (
-          <div className="mt-3 flex flex-col gap-2">
+          <div className="flex flex-col gap-2">
             {!hasResearch && (
-              <div className="text-xs text-amber-300">{mt('build.needResearch')}</div>
+              <Banner
+                tone="warn"
+                glyph="lock"
+                title={mt('build.needResearch')}
+                {...(onOpenResearch ? {
+                  action: (
+                    <GameButton size="sm" glyph="star" onPress={onOpenResearch}>
+                      {mt('guide.openResearch')}
+                    </GameButton>
+                  ),
+                } : {})}
+              />
             )}
             {hasResearch && !hasResources && (
-              <div className="text-xs text-rose-300">{mt('build.needResources')}</div>
+              <Banner tone="hostile" title={mt('build.needResources')} />
             )}
-            {err && <div className="text-xs text-rose-300">{err}</div>}
+            {err && <Banner tone="hostile" role="alert" title={err} />}
             <GameButton
               data-testid="moon-build-btn"
               tone="action"
@@ -322,18 +442,32 @@ function NoMoonCard({
             </GameButton>
           </div>
         )}
-      </div>
+      </Plate>
+
+      {/* 3 Ways to Acquire a Moon + Rarity Comparison Table (always accessible without leaving the tab) */}
+      <Fold glyph="moon" title={mt('guide.waysTitle')} open>
+        <ul className="flex flex-col gap-1.5 pt-1 text-caption text-slate-300">
+          <li>{mt('guide.wayBuild')}</li>
+          <li>{mt('guide.wayBattle')}</li>
+          <li>{mt('guide.wayCapture')}</li>
+        </ul>
+      </Fold>
+
+      <RarityComparisonTable />
 
       {/* Show planet mobile fleet even before a moon exists so the commander sees what can later dock here. */}
-      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
-        <div className="mb-1.5 flex items-center justify-between text-xs">
-          <span className="font-semibold text-slate-200">{mt('fleetSplit.planet')}</span>
+      <Plate className="flex flex-col gap-2 p-3">
+        <div className="flex items-center justify-between text-caption">
+          <span className="inline-flex items-center gap-1.5 font-semibold text-slate-200">
+            <Glyph id="home" className="size-3.5 text-sky-300" />
+            {mt('fleetSplit.planet')}
+          </span>
           <span className="gk-num text-slate-400">
             {mt('fleetSplit.ships', { count: fleetCount(planetMobile) })}
           </span>
         </div>
         <FleetChips fleet={planetMobile} emptyLabel={mt('fleetSplit.emptyPlanet')} />
-      </div>
+      </Plate>
     </div>
   );
 }
@@ -343,6 +477,7 @@ function ActiveMoonCard({
   moon,
   otherMoons,
   scanTargets,
+  worldNames,
   onHop,
   onJump,
   onScan,
@@ -356,6 +491,7 @@ function ActiveMoonCard({
   readonly moon: PlanetMoon;
   readonly otherMoons: readonly OtherOwnedMoon[];
   readonly scanTargets: readonly MoonScanTarget[];
+  readonly worldNames?: ReadonlyMap<string, string>;
   readonly onHop?: MoonPanelProps['onHop'];
   readonly onJump?: MoonPanelProps['onJump'];
   readonly onScan?: MoonPanelProps['onScan'];
@@ -366,6 +502,7 @@ function ActiveMoonCard({
   readonly now: number;
 }) {
   const mt = useMoonT();
+  const [subTab, setSubTab] = useState<'dock' | 'gate' | 'scan'>('dock');
   const [hopDir, setHopDir] = useState<'UP' | 'DOWN'>('UP');
   const [hopPick, setHopPick] = useState<Fleet>({});
   const [gatePick, setGatePick] = useState<Fleet>({});
@@ -380,15 +517,48 @@ function ActiveMoonCard({
   const isClosed = moon.closedUntil !== null && moon.closedUntil.getTime() > now;
   const gateChargingMs = moon.gateReadyAt !== null ? moon.gateReadyAt.getTime() - now : 0;
   const gateReady = !isClosed && gateChargingMs <= 0;
+  const crackHealMs = moon.cracks > 0 && moon.lastHitAt
+    ? Math.max(0, moon.lastHitAt.getTime() + CRACK_HEAL_MS - now)
+    : 0;
+
+  // Automatically wake up and refresh when any active move, gate charge, or closure expires.
+  const deadlines = useMemo(
+    () => [
+      moon.gateReadyAt,
+      moon.closedUntil,
+      ...moon.moves.map((m) => m.arriveAt),
+      ...otherMoons.flatMap((m) => [m.gateReadyAt, m.closedUntil]),
+    ],
+    [moon.gateReadyAt, moon.closedUntil, moon.moves, otherMoons],
+  );
+  useMoonExpiryWakeup(deadlines, now, onRefresh);
+
+  // Ships reserved by a pending 10s Gate JUMP cannot be hopped or jumped again (§4.1).
+  const reservedJumpFleet = useMemo(() => {
+    const out: Fleet = {};
+    for (const mv of moon.moves) {
+      if (mv.kind !== 'JUMP' || mv.fromPlanetId !== planet.planet.id) continue;
+      for (const hull of MOBILE_HULLS) {
+        const n = mv.fleet[hull] ?? 0;
+        if (n > 0) out[hull] = (out[hull] ?? 0) + n;
+      }
+    }
+    return out;
+  }, [moon.moves, planet.planet.id]);
 
   const planetMobile = useMemo(() => fitMobileFleet(planet.fleet, Number.MAX_SAFE_INTEGER), [planet.fleet]);
-  const moonMobile = useMemo(() => fitMobileFleet(moon.fleet, Number.MAX_SAFE_INTEGER), [moon.fleet]);
+  const moonAllMobile = useMemo(() => fitMobileFleet(moon.fleet, Number.MAX_SAFE_INTEGER), [moon.fleet]);
+  const moonMobile = useMemo(() => subtractFleets(moonAllMobile, reservedJumpFleet), [moonAllMobile, reservedJumpFleet]);
 
   const planetShipCount = fleetCount(planetMobile);
   const planetShipBulk = fleetBulk(planetMobile);
   const moonShipCount = fleetCount(moonMobile);
 
   // Hop source & clamped selection
+  const hopPendingKind = hopDir === 'UP' ? 'HOP_UP' : 'HOP_DOWN';
+  const hopAlreadyMoving = moon.moves.some(
+    (mv) => mv.kind === hopPendingKind && mv.fromPlanetId === planet.planet.id && mv.arriveAt.getTime() > now,
+  );
   const hopSource = hopDir === 'UP' ? planetMobile : moonMobile;
   const hopFleet = useMemo(() => clampSelection(hopPick, hopSource), [hopPick, hopSource]);
   const hopCount = fleetCount(hopFleet);
@@ -396,28 +566,33 @@ function ActiveMoonCard({
   const hopOverDock = hopDir === 'UP' && hopBulk > moon.dockFree;
   const hopSourceCount = fleetCount(hopSource);
   const canHop =
+    !hopAlreadyMoving &&
     hopCount > 0 &&
     !hopOverDock &&
     busy === null &&
     Boolean(onHop) &&
     !(hopDir === 'UP' && moon.dockFree <= 0);
 
-  // Gate destination & clamped selection
+  // Gate destination & clamped selection (authoritative dockFree & gate status)
   const effectiveDestId = otherMoons.some((m) => m.planetId === destId)
     ? destId
     : (otherMoons[0]?.planetId ?? '');
   const destMoon = otherMoons.find((m) => m.planetId === effectiveDestId) ?? null;
-  const gateCap = destMoon ? jumpCapacity(moon.rarity, MOON.gateCapacity[destMoon.rarity]) : 0;
+  const destClosedMs = destMoon?.closedUntil ? Math.max(0, destMoon.closedUntil.getTime() - now) : 0;
+  const destChargingMs = destMoon?.gateReadyAt ? Math.max(0, destMoon.gateReadyAt.getTime() - now) : 0;
+  const destReady = destMoon !== null && destClosedMs <= 0 && destChargingMs <= 0;
+  const destDockFree = destMoon ? (destMoon.dockFree ?? MOON.gateCapacity[destMoon.rarity]) : 0;
+  const gateCap = destMoon ? jumpCapacity(moon.rarity, destDockFree) : 0;
   const gateFleet = useMemo(() => clampSelection(gatePick, moonMobile), [gatePick, moonMobile]);
   const gateCount = fleetCount(gateFleet);
   const gateBulk = fleetBulk(gateFleet);
-  const gateOverCap = gateCap > 0 && gateBulk > gateCap;
+  const gateOverCap = gateCap > 0 ? gateBulk > gateCap : gateBulk > 0;
   const destDist = destMoon ? distance(planet.planet.position, destMoon.position) : 0;
   const fuelNeeded = gateCount > 0 && destMoon ? jumpFuel(gateFleet, destDist) : 0;
   const hasFuel = planet.planet.deuterium >= fuelNeeded;
   const canJump =
     gateReady &&
-    destMoon !== null &&
+    destReady &&
     gateCount > 0 &&
     !gateOverCap &&
     hasFuel &&
@@ -436,12 +611,12 @@ function ActiveMoonCard({
     Boolean(onScan);
 
   const nameByPlanetId = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const s of scanTargets) map.set(s.planetId, s.name);
-    for (const m of otherMoons) map.set(m.planetId, m.name);
+    const map = new Map<string, string>(worldNames);
+    for (const s of scanTargets) if (!map.has(s.planetId)) map.set(s.planetId, s.name);
+    for (const m of otherMoons) if (!map.has(m.planetId)) map.set(m.planetId, m.name);
     map.set(planet.planet.id, planet.planet.name);
     return map;
-  }, [scanTargets, otherMoons, planet.planet.id, planet.planet.name]);
+  }, [worldNames, scanTargets, otherMoons, planet.planet.id, planet.planet.name]);
 
   const setHopHull = (hull: MobileHullId, count: number) => {
     setHopPick((prev) => ({ ...prev, [hull]: count }));
@@ -461,7 +636,7 @@ function ActiveMoonCard({
       playSound('launch');
       onRefresh?.();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      setErr(describe(e));
     } finally {
       setBusy(null);
     }
@@ -479,7 +654,7 @@ function ActiveMoonCard({
       onRefresh?.();
       onJumpStarted?.(planet.planet.id, destMoon.planetId, jumpingFleet);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      setErr(describe(e));
     } finally {
       setBusy(null);
     }
@@ -493,15 +668,38 @@ function ActiveMoonCard({
       const res = await onScan(planet.planet.id, effectiveScanId);
       setScanResult(res);
       setLastScannedTargetId(effectiveScanId);
-      playSound('tap');
+      playSound('arc');
       onRefresh?.();
       onScanVisual?.(planet.planet.id, effectiveScanId, res.pierced);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      setErr(describe(e));
     } finally {
       setBusy(null);
     }
   };
+
+  const destOptions = useMemo(() => otherMoons.map((m) => {
+    const d = Math.round(distance(planet.planet.position, m.position));
+    const free = m.dockFree ?? MOON.gateCapacity[m.rarity];
+    const mClosed = m.closedUntil && m.closedUntil.getTime() > now ? m.closedUntil.getTime() - now : 0;
+    const mCharging = m.gateReadyAt && m.gateReadyAt.getTime() > now ? m.gateReadyAt.getTime() - now : 0;
+    const statusSub = mClosed > 0
+      ? mt('gate.destClosed', { time: countdown(mClosed) })
+      : mCharging > 0
+        ? mt('gate.destCharging', { time: countdown(mCharging) })
+        : mt('gate.destDockFree', { free: compact(free) });
+    return {
+      id: m.planetId,
+      label: `${m.name} (${mt(RARITY_KEY[m.rarity])})`,
+      sub: `${full(d)} · ${statusSub}`,
+    };
+  }), [otherMoons, planet.planet.position, now, mt]);
+
+  const scanOptions = useMemo(() => scanTargets.map((s) => ({
+    id: s.planetId,
+    label: s.name,
+    sub: full(Math.round(s.distance)),
+  })), [scanTargets]);
 
   return (
     <div
@@ -509,24 +707,33 @@ function ActiveMoonCard({
       data-moon-rarity={moon.rarity}
       className="gk flex flex-col gap-3 px-3 pb-6"
     >
-      {/* 1. Moon Status & Dock Header */}
-      <div className={`rounded-xl border ${style.ring} bg-slate-950/75 p-3.5 flex flex-col gap-3`}>
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span data-testid="moon-rarity" className={`inline-flex items-center gap-1 rounded-md border ${style.ring} ${style.bg} ${style.text} px-2 py-0.5 text-xs font-semibold`}>
+      {/* 1. Compact Moon Status & Dock Header */}
+      <Plate className="flex flex-col gap-3 p-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span data-testid="moon-rarity" className={`inline-flex items-center gap-1 rounded-chip border ${style.ring} ${style.bg} ${style.text} px-2 py-0.5 text-caption font-semibold`}>
               <Glyph id="moon" className="size-3.5" />
               {mt(RARITY_KEY[moon.rarity])}
             </span>
-            <span className="text-xs text-slate-400">{mt(ORIGIN_KEY[moon.origin])}</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs">
-            {isClosed ? (
-              <span className="rounded bg-rose-500/20 px-2 py-0.5 font-medium text-rose-300">
-                {mt('status.closed')} ({formatCountdown(moon.closedUntil!.getTime() - now)})
+            <span className="text-caption text-slate-400">{mt(ORIGIN_KEY[moon.origin])}</span>
+            {moon.scanPierces && (
+              <span data-testid="moon-pierce-badge" className="rounded-chip bg-amber-400/15 px-1.5 py-0.5 text-caption font-medium text-amber-300">
+                {mt('scan.pierces')}
               </span>
-            ) : (
-              <span data-testid="moon-cracks" className="text-slate-300 gk-num">
-                {mt('status.cracks')}: {moon.cracks}/{moon.crackLimit}
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-caption">
+            <span data-testid="moon-cracks" className="text-slate-300 gk-num">
+              {mt('status.cracks')}: {moon.cracks}/{moon.crackLimit}
+            </span>
+            {crackHealMs > 0 && (
+              <span className="gk-num text-slate-400">
+                ({mt('status.healsIn', { time: countdown(crackHealMs) })})
+              </span>
+            )}
+            {isClosed && (
+              <span className="rounded-chip bg-rose-500/20 px-2 py-0.5 font-medium text-rose-300 gk-num">
+                {mt('status.closed')} ({countdown(moon.closedUntil!.getTime() - now)})
               </span>
             )}
           </div>
@@ -540,13 +747,20 @@ function ActiveMoonCard({
           queued={0}
         />
 
+        <InfoPeek
+          about={mt('guide.howItWorks')}
+          lead={<Glyph id="moon" />}
+          fact={<span className="text-caption text-slate-200">{mt('guide.howItWorks')}</span>}
+          rule={<p className="gk-sub">{mt('guide.headerRule')}</p>}
+        />
+
         {/* Active in-transit hops / jumps */}
         {moon.moves.length > 0 && (
           <div className="flex flex-col gap-1.5">
             {moon.moves.map((mv) => (
-              <div
+              <Well
                 key={mv.id}
-                className="flex items-center justify-between rounded-lg border border-sky-400/25 bg-sky-500/10 px-2.5 py-1.5 text-xs text-sky-200"
+                className="flex items-center justify-between px-2.5 py-1.5 text-caption text-sky-200"
               >
                 <span>
                   {mv.kind === 'HOP_UP'
@@ -558,369 +772,436 @@ function ActiveMoonCard({
                   <strong className="gk-num">{fleetCount(mv.fleet)}</strong>
                 </span>
                 <span className="gk-num font-mono font-semibold">
-                  {formatCountdown(mv.arriveAt.getTime() - now)}
+                  {countdown(mv.arriveAt.getTime() - now)}
                 </span>
-              </div>
+              </Well>
             ))}
           </div>
         )}
-      </div>
+      </Plate>
 
-      {/* 2. Fleet Split Overview: Planet Hangar vs Moon Dock */}
-      <div data-testid="moon-fleet-split" className="rounded-xl border border-white/10 bg-slate-900/70 p-3 flex flex-col gap-2.5">
-        <SectionTag as="h3">{mt('fleetSplit.title')}</SectionTag>
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-          <div data-testid="moon-split-planet" className="rounded-lg border border-white/10 bg-slate-950/60 p-2.5 flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-2 text-xs">
-              <span className="inline-flex items-center gap-1.5 font-semibold text-amber-200">
-                <Glyph id="home" className="size-3.5" />
-                {mt('fleetSplit.planet')}
-              </span>
-              <span className="gk-num text-caption text-slate-300">
-                {mt('fleetSplit.ships', { count: planetShipCount })} · {mt('fleetSplit.bulk', { bulk: compact(planetShipBulk) })}
-              </span>
-            </div>
-            <FleetChips fleet={planetMobile} emptyLabel={mt('fleetSplit.emptyPlanet')} />
-          </div>
+      {/* Collapsible 4-tier rarity comparison table */}
+      <RarityComparisonTable current={moon.rarity} />
 
-          <div data-testid="moon-split-moon" className={`rounded-lg border ${style.ring} bg-slate-950/60 p-2.5 flex flex-col gap-2`}>
-            <div className="flex items-center justify-between gap-2 text-xs">
-              <span className={`inline-flex items-center gap-1.5 font-semibold ${style.text}`}>
-                <Glyph id="moon" className="size-3.5" />
-                {mt('fleetSplit.moon')}
-              </span>
-              <span className="gk-num text-caption text-slate-300">
-                {mt('fleetSplit.ships', { count: moonShipCount })} · {mt('fleetSplit.bulk', { bulk: compact(moon.dockUsed) })}
-              </span>
-            </div>
-            <FleetChips fleet={moonMobile} emptyLabel={mt('fleetSplit.emptyMoon')} />
-          </div>
-        </div>
-      </div>
+      {/* 2. Sub-Tab Navigation (Dock | Moon Gate | Gözcü) — matches PlanetScreen's stacked GameTabs */}
+      <GameTabs
+        stacked
+        label={mt('tabs.label')}
+        value={subTab}
+        onChange={setSubTab}
+        tabs={[
+          { id: 'dock', label: mt('tabs.dock'), glyph: { id: 'bay' } },
+          {
+            id: 'gate',
+            label: mt('tabs.gate'),
+            glyph: { id: 'speed_up' },
+            ...(!gateReady ? { mark: { glyph: 'clock' as const, hint: isClosed ? mt('status.closed') : mt('status.charging') } } : {}),
+          },
+          { id: 'scan', label: mt('tabs.scan'), glyph: { id: 'eye' } },
+        ]}
+      />
 
-      {/* 3. Planet ↔ Moon Short Hop (90s, free) with Per-Hull Picker */}
-      <div data-testid="moon-hop-card" className="rounded-xl border border-white/10 bg-slate-900/70 p-3.5 flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="text-sm font-semibold text-white">{mt('hop.title')}</div>
-            <div className="text-xs text-slate-400">{mt('hop.subtitle')}</div>
-          </div>
-          <Choices
-            label={mt('hop.title')}
-            value={hopDir}
-            onChange={(dir) => {
-              setHopDir(dir);
-              setHopPick({});
-            }}
-            options={[
-              { id: 'UP', label: mt('hop.toMoon') },
-              { id: 'DOWN', label: mt('hop.toPlanet') },
-            ]}
-          />
-        </div>
+      {/* TAB 1: DOCK & PLANET <-> MOON TRANSFER */}
+      {subTab === 'dock' && (
+        <div data-testid="moon-tab-dock" className="flex flex-col gap-3">
+          {/* Fleet Split Overview: equal neutral wells so neither card feels "selected" */}
+          <Plate className="flex flex-col gap-2.5 p-3">
+            <div data-testid="moon-fleet-split" className="flex flex-col gap-2.5">
+              <SectionTag as="h3">{mt('fleetSplit.title')}</SectionTag>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <Well className="flex flex-col gap-2 p-2.5">
+                  <div data-testid="moon-split-planet" className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between gap-2 text-caption">
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-slate-100">
+                        <Glyph id="home" className="size-3.5 text-sky-300" />
+                        {mt('fleetSplit.planet')}
+                      </span>
+                      <span className="gk-num text-slate-300">
+                        {mt('fleetSplit.ships', { count: planetShipCount })} · {mt('fleetSplit.bulk', { bulk: compact(planetShipBulk) })}
+                      </span>
+                    </div>
+                    <FleetChips fleet={planetMobile} emptyLabel={mt('fleetSplit.emptyPlanet')} />
+                  </div>
+                </Well>
 
-        {hopSourceCount > 0 ? (
-          <>
-            <div className="flex items-center justify-between gap-2 text-xs">
-              <span className={`gk-num ${hopOverDock ? 'text-rose-300 font-semibold' : 'text-slate-300'}`}>
-                {hopDir === 'UP'
-                  ? mt('picker.selectedLimit', { ships: hopCount, bulk: compact(hopBulk), cap: compact(moon.dockFree) })
-                  : mt('picker.selected', { ships: hopCount, bulk: compact(hopBulk) })}
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  data-testid="moon-hop-select-all"
-                  onClick={() => {
-                    setHopPick(
-                      hopDir === 'UP'
-                        ? fitMobileFleet(hopSource, moon.dockFree)
-                        : { ...hopSource },
-                    );
-                  }}
-                  className="rounded-chip border border-sky-400/40 bg-sky-500/15 px-2 py-1 text-caption font-medium text-sky-200 hover:bg-sky-500/25"
-                >
-                  {mt('picker.selectAll')}
-                </button>
-                {hopCount > 0 && (
-                  <button
-                    type="button"
-                    data-testid="moon-hop-clear"
-                    onClick={() => { setHopPick({}); }}
-                    className="rounded-chip border border-white/15 bg-white/5 px-2 py-1 text-caption text-slate-300 hover:bg-white/10"
-                  >
-                    {mt('picker.clear')}
-                  </button>
-                )}
+                <Well className="flex flex-col gap-2 p-2.5">
+                  <div data-testid="moon-split-moon" className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between gap-2 text-caption">
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-slate-100">
+                        <Glyph id="moon" className="size-3.5 text-amber-300" />
+                        {mt('fleetSplit.moon')}
+                      </span>
+                      <span className="gk-num text-slate-300">
+                        {mt('fleetSplit.ships', { count: moonShipCount })} · {mt('fleetSplit.bulk', { bulk: compact(moon.dockUsed) })}
+                      </span>
+                    </div>
+                    <FleetChips fleet={moonMobile} emptyLabel={mt('fleetSplit.emptyMoon')} />
+                  </div>
+                </Well>
               </div>
             </div>
+          </Plate>
 
-            <HullPickerRows
-              available={hopSource}
-              selected={hopFleet}
-              onChange={setHopHull}
-              testPrefix="moon-hop"
-            />
-          </>
-        ) : (
-          <p className="rounded-lg border border-white/5 bg-slate-950/50 px-3 py-2 text-xs text-slate-400">
-            {mt('hop.noShips')}
-          </p>
-        )}
+          {/* Planet ↔ Moon Short Hop (90s, free) with Per-Hull Picker */}
+          <Plate className="flex flex-col gap-3 p-3.5">
+            <div data-testid="moon-hop-card" className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-body font-semibold text-white">{mt('hop.title')}</div>
+                <Choices
+                  label={mt('hop.title')}
+                  value={hopDir}
+                  onChange={(dir) => {
+                    setHopDir(dir);
+                    setHopPick({});
+                  }}
+                  options={[
+                    { id: 'UP', label: mt('hop.toMoon') },
+                    { id: 'DOWN', label: mt('hop.toPlanet') },
+                  ]}
+                />
+              </div>
 
-        <GameButton
-          data-testid="moon-hop-submit"
-          tone="action"
-          size="md"
-          wide
-          disabledReason={
-            !canHop
-              ? (hopSourceCount === 0
-                ? mt('hop.noShips')
-                : hopDir === 'UP' && moon.dockFree <= 0
-                  ? mt('hop.dockFull')
-                  : hopOverDock
-                    ? mt('picker.overDock')
-                    : mt('picker.chooseShips'))
-              : null
-          }
-          onPress={() => { void handleHop(); }}
-        >
-          {hopDir === 'UP' ? mt('hop.submitUp') : mt('hop.submitDown')}{hopCount > 0 ? ` (${hopCount})` : ''}
-        </GameButton>
-      </div>
+              <InfoPeek
+                about={mt('guide.howItWorks')}
+                lead={<Glyph id="bay" />}
+                fact={<span className="text-caption text-slate-300">{mt('hop.subtitle')}</span>}
+                rule={<p className="gk-sub">{mt('guide.dockRule')}</p>}
+              />
 
-      {/* 4. Moon Gate Jump (10s) with Per-Hull Picker */}
-      <div data-testid="moon-gate-card" className="rounded-xl border border-white/10 bg-slate-900/70 p-3.5 flex flex-col gap-3">
-        <div className="flex items-start gap-3">
-          <img
-            src="/images/premium/moon/moon-gate-v1.webp"
-            alt=""
-            className="size-12 shrink-0 rounded-lg border border-white/10 object-cover"
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-semibold text-white">{mt('gate.title')}</span>
-              <span className={`text-xs font-medium ${gateReady ? 'text-emerald-300' : 'text-amber-300'}`}>
-                {isClosed
-                  ? mt('status.closed')
-                  : gateReady
-                    ? mt('status.ready')
-                    : `${mt('status.charging')} (${formatCountdown(gateChargingMs)})`}
-              </span>
-            </div>
-            <div className="text-xs text-slate-400">{mt('gate.subtitle')}</div>
-          </div>
-        </div>
-
-        {otherMoons.length === 0 ? (
-          <p className="text-xs text-slate-400">{mt('gate.noOtherMoons')}</p>
-        ) : (
-          <>
-            <label className="flex flex-col gap-1 text-xs text-slate-300">
-              <span>{mt('gate.destination')}</span>
-              <select
-                value={effectiveDestId}
-                onChange={(e) => { setDestId(e.target.value); }}
-                className="rounded-lg border border-white/15 bg-slate-950 px-2.5 py-2 text-xs text-white"
-              >
-                {otherMoons.map((m) => {
-                  const d = Math.round(distance(planet.planet.position, m.position));
-                  return (
-                    <option key={m.planetId} value={m.planetId}>
-                      {m.name} ({mt(RARITY_KEY[m.rarity])} · {d.toLocaleString()})
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
-
-            {moonShipCount > 0 ? (
-              <>
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <span className={`gk-num ${gateOverCap ? 'text-rose-300 font-semibold' : 'text-slate-300'}`}>
-                    {mt('picker.selectedLimit', {
-                      ships: gateCount,
-                      bulk: compact(gateBulk),
-                      cap: compact(gateCap),
-                    })}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => { setGatePick(fitMobileFleet(moonMobile, gateCap)); }}
-                      className="rounded-chip border border-sky-400/40 bg-sky-500/15 px-2 py-1 text-caption font-medium text-sky-200 hover:bg-sky-500/25"
-                    >
-                      {mt('picker.fillGate')}
-                    </button>
-                    {gateCount > 0 && (
+              {hopSourceCount > 0 ? (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-caption">
+                    <span className={`gk-num ${hopOverDock ? 'text-rose-300 font-semibold' : 'text-slate-300'}`}>
+                      {hopDir === 'UP'
+                        ? mt('picker.selectedLimit', { ships: hopCount, bulk: compact(hopBulk), cap: compact(moon.dockFree) })
+                        : mt('picker.selected', { ships: hopCount, bulk: compact(hopBulk) })}
+                    </span>
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={() => { setGatePick({}); }}
-                        className="rounded-chip border border-white/15 bg-white/5 px-2 py-1 text-caption text-slate-300 hover:bg-white/10"
+                        {...OWN_SOUND}
+                        data-testid="moon-hop-select-all"
+                        onClick={() => {
+                          playSound('tap');
+                          haptic('tap');
+                          setHopPick(
+                            hopDir === 'UP'
+                              ? fitMobileFleet(hopSource, moon.dockFree)
+                              : { ...hopSource },
+                          );
+                        }}
+                        className="gk-hit"
                       >
-                        {mt('picker.clear')}
+                        <span className="gk-chip" data-on="">{mt('picker.selectAll')}</span>
                       </button>
-                    )}
+                      {hopCount > 0 && (
+                        <button
+                          type="button"
+                          {...OWN_SOUND}
+                          data-testid="moon-hop-clear"
+                          onClick={() => {
+                            playSound('tap');
+                            haptic('tap');
+                            setHopPick({});
+                          }}
+                          className="gk-hit"
+                        >
+                          <span className="gk-chip">{mt('picker.clear')}</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                <HullPickerRows
-                  available={moonMobile}
-                  selected={gateFleet}
-                  onChange={setGateHull}
-                  testPrefix="moon-gate"
-                />
-
-                {gateCount > 0 && (
-                  <div className={`text-xs gk-num ${hasFuel ? 'text-sky-200' : 'text-rose-300 font-medium'}`}>
-                    {mt('gate.fuel', { fuel: fuelNeeded.toLocaleString() })}
-                    {' · '}
-                    <span className="text-slate-400">
-                      ({Math.floor(planet.planet.deuterium).toLocaleString()} D)
-                    </span>
-                  </div>
-                )}
-              </>
-            ) : (
-              <p className="rounded-lg border border-white/5 bg-slate-950/50 px-3 py-2 text-xs text-slate-400">
-                {mt('gate.noShips')}
-              </p>
-            )}
-
-            <GameHold
-              weight="spends"
-              label={gateCount > 0 ? `${mt('gate.holdLabel')} (${gateCount})` : mt('gate.holdLabel')}
-              {...(gateCount > 0 ? { detail: mt('gate.fuel', { fuel: fuelNeeded.toLocaleString() }) } : {})}
-              disabledReason={
-                !canJump
-                  ? (isClosed
-                    ? mt('status.closed')
-                    : !gateReady
-                      ? `${mt('status.charging')} (${formatCountdown(gateChargingMs)})`
-                      : moonShipCount === 0
-                        ? mt('gate.noShips')
-                        : gateOverCap
-                          ? mt('picker.overGate')
-                          : gateCount === 0
-                            ? mt('picker.chooseShips')
-                            : !hasFuel
-                              ? mt('gate.noFuel')
-                              : mt('gate.holdLabel'))
-                  : null
-              }
-              onCommit={() => { void handleJump(); }}
-            />
-          </>
-        )}
-      </div>
-
-      {/* 5. Gözcü Route Scanner */}
-      <div data-testid="moon-scan-card" className="rounded-xl border border-white/10 bg-slate-900/70 p-3.5 flex flex-col gap-3">
-        <div className="flex items-start gap-3">
-          <img
-            src="/images/premium/moon/moon-gozcu-v1.webp"
-            alt=""
-            className="size-12 shrink-0 rounded-lg border border-white/10 object-cover"
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm font-semibold text-white">{mt('scan.title')}</span>
-              {moon.scanPierces && (
-                <span data-testid="moon-pierce-badge" className="rounded-chip bg-amber-400/20 px-1.5 py-0.5 text-caption font-medium text-amber-300">
-                  {mt('scan.pierces')}
-                </span>
+                  <HullPickerRows
+                    available={hopSource}
+                    selected={hopFleet}
+                    onChange={setHopHull}
+                    testPrefix="moon-hop"
+                  />
+                </>
+              ) : (
+                <Well className="px-3 py-2 text-caption text-slate-400">
+                  {mt('hop.noShips')}
+                </Well>
               )}
-            </div>
-            <div className="text-xs text-slate-400">
-              {mt('scan.subtitle', { range: moon.scanRange.toLocaleString() })}
-            </div>
-          </div>
-        </div>
 
-        {scanTargets.length === 0 ? (
-          <p className="text-xs text-slate-400">{mt('scan.noTargets')}</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <label className="flex flex-col gap-1 text-xs text-slate-300">
-              <span>{mt('scan.target')}</span>
-              <select
-                value={effectiveScanId}
-                onChange={(e) => { setScanTargetId(e.target.value); }}
-                className="rounded-lg border border-white/15 bg-slate-950 px-2.5 py-2 text-xs text-white"
+              <GameButton
+                data-testid="moon-hop-submit"
+                tone="action"
+                size="md"
+                wide
+                disabledReason={
+                  !canHop
+                    ? (hopAlreadyMoving
+                      ? mt('hop.alreadyMoving')
+                      : hopSourceCount === 0
+                        ? mt('hop.noShips')
+                        : hopDir === 'UP' && moon.dockFree <= 0
+                          ? mt('hop.dockFull')
+                          : hopOverDock
+                            ? mt('picker.overDock')
+                            : mt('picker.chooseShips'))
+                    : null
+                }
+                onPress={() => { void handleHop(); }}
               >
-                {scanTargets.map((s) => (
-                  <option key={s.planetId} value={s.planetId}>
-                    {s.name} ({Math.round(s.distance).toLocaleString()})
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <GameButton
-                  data-testid="moon-scan-btn"
-                  size="md"
-                  wide
-                  disabledReason={
-                    !canScan
-                      ? (isClosed
-                        ? mt('status.closed')
-                        : planet.planet.deuterium < MOON.scanCost.deuterium
-                          ? mt('gate.noFuel')
-                          : mt('scan.noTargets'))
-                      : null
-                  }
-                  onPress={() => { void handleScan(); }}
-                >
-                  {mt('scan.action')}
-                </GameButton>
-              </div>
-              {lastScannedTargetId && onWatchTarget && (
-                <GameButton
-                  tone="action"
-                  size="md"
-                  glyph="eye"
-                  onPress={() => { onWatchTarget(lastScannedTargetId); }}
-                >
-                  {mt('picker.watchOnMap')}
-                </GameButton>
-              )}
+                {hopDir === 'UP' ? mt('hop.submitUp') : mt('hop.submitDown')}{hopCount > 0 ? ` (${hopCount})` : ''}
+              </GameButton>
             </div>
-          </div>
-        )}
-
-        {scanResult && (
-          <div data-testid="moon-scan-result" className="rounded-lg border border-sky-400/25 bg-slate-950/75 p-2.5 text-xs flex flex-col gap-1.5">
-            {scanResult.rows.length === 0 ? (
-              <div className="text-slate-300">{mt('scan.noRoutes')}</div>
-            ) : (
-              scanResult.rows.map((row, idx) => (
-                <div key={`${row.otherPlanetId}-${idx}`} className="flex items-center justify-between gap-2 text-slate-200">
-                  <span>
-                    <strong className={row.direction === 'IN' ? 'text-rose-300' : 'text-sky-300'}>
-                      {row.direction === 'IN' ? mt('scan.dirIn') : mt('scan.dirOut')}
-                    </strong>
-                    {' · '}
-                    <span>{nameByPlanetId.get(row.otherPlanetId) ?? row.otherPlanetId.slice(0, 8)}</span>
-                    {' · '}
-                    {mt(SIZE_KEY[row.size])}
-                  </span>
-                  <span className="gk-num font-mono text-slate-300">
-                    {formatCountdown(row.arriveAt.getTime() - now)}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-      </div>
-
-      {err && (
-        <div role="alert" className="rounded-lg border border-rose-400/40 bg-rose-500/15 px-3 py-2 text-xs text-rose-200">
-          {err}
+          </Plate>
         </div>
       )}
+
+      {/* TAB 2: MOON GATE JUMP (10s) */}
+      {subTab === 'gate' && (
+        <Plate className="flex flex-col gap-3 p-3.5">
+          <div data-testid="moon-gate-card" className="flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <img
+                src="/images/premium/moon/moon-gate-v1.webp"
+                alt=""
+                className="size-12 shrink-0 rounded-control border border-white/10 object-cover"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-body font-semibold text-white">{mt('gate.title')}</span>
+                  <span className={`gk-num text-caption font-medium ${gateReady ? 'text-emerald-300' : 'text-amber-300'}`}>
+                    {isClosed
+                      ? mt('status.closed')
+                      : gateReady
+                        ? mt('status.ready')
+                        : `${mt('status.charging')} (${countdown(gateChargingMs)})`}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <InfoPeek
+              about={mt('guide.howItWorks')}
+              lead={<Glyph id="speed_up" />}
+              fact={<span className="text-caption text-slate-300">{mt('gate.subtitle')}</span>}
+              rule={<p className="gk-sub">{mt('guide.gateRule')}</p>}
+            />
+
+            {otherMoons.length === 0 ? (
+              <Banner tone="info" glyph="moon" title={mt('gate.noOtherMoons')} />
+            ) : (
+              <>
+                <Picker
+                  label={mt('gate.destination')}
+                  value={effectiveDestId}
+                  options={destOptions}
+                  onChange={(id) => { setDestId(id); }}
+                />
+
+                {destClosedMs > 0 && (
+                  <Banner tone="warn" title={mt('gate.destClosed', { time: countdown(destClosedMs) })} />
+                )}
+                {destClosedMs <= 0 && destChargingMs > 0 && (
+                  <Banner tone="warn" glyph="clock" title={mt('gate.destCharging', { time: countdown(destChargingMs) })} />
+                )}
+
+                {moonShipCount > 0 ? (
+                  <>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-caption">
+                      <span className={`gk-num ${gateOverCap ? 'text-rose-300 font-semibold' : 'text-slate-300'}`}>
+                        {mt('picker.selectedLimit', {
+                          ships: gateCount,
+                          bulk: compact(gateBulk),
+                          cap: compact(gateCap),
+                        })}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          {...OWN_SOUND}
+                          data-testid="moon-gate-fill"
+                          onClick={() => {
+                            playSound('tap');
+                            haptic('tap');
+                            setGatePick(fitMobileFleet(moonMobile, gateCap));
+                          }}
+                          className="gk-hit"
+                        >
+                          <span className="gk-chip" data-on="">{mt('picker.fillGate')}</span>
+                        </button>
+                        {gateCount > 0 && (
+                          <button
+                            type="button"
+                            {...OWN_SOUND}
+                            onClick={() => {
+                              playSound('tap');
+                              haptic('tap');
+                              setGatePick({});
+                            }}
+                            className="gk-hit"
+                          >
+                            <span className="gk-chip">{mt('picker.clear')}</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <HullPickerRows
+                      available={moonMobile}
+                      selected={gateFleet}
+                      onChange={setGateHull}
+                      testPrefix="moon-gate"
+                    />
+
+                    {gateCount > 0 && (
+                      <div className={`text-caption gk-num ${hasFuel ? 'text-sky-200' : 'text-rose-300 font-medium'}`}>
+                        {mt('gate.fuel', { fuel: full(Math.ceil(fuelNeeded)) })}
+                        {' · '}
+                        <span className="text-slate-400">
+                          ({full(Math.floor(planet.planet.deuterium))} D)
+                        </span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <Well className="px-3 py-2 text-caption text-slate-400">
+                    {mt('gate.noShips')}
+                  </Well>
+                )}
+
+                <GameHold
+                  weight="spends"
+                  label={gateCount > 0 ? `${mt('gate.holdLabel')} (${gateCount})` : mt('gate.holdLabel')}
+                  {...(gateCount > 0 ? { detail: mt('gate.fuel', { fuel: full(Math.ceil(fuelNeeded)) }) } : {})}
+                  disabledReason={
+                    !canJump
+                      ? (isClosed
+                        ? mt('status.closed')
+                        : !gateReady
+                          ? `${mt('status.charging')} (${countdown(gateChargingMs)})`
+                          : destClosedMs > 0
+                            ? mt('gate.destClosed', { time: countdown(destClosedMs) })
+                            : destChargingMs > 0
+                              ? mt('gate.destCharging', { time: countdown(destChargingMs) })
+                              : moonShipCount === 0
+                                ? mt('gate.noShips')
+                                : gateOverCap
+                                  ? mt('picker.overGate')
+                                  : gateCount === 0
+                                    ? mt('picker.chooseShips')
+                                    : !hasFuel
+                                      ? mt('gate.noFuel')
+                                      : mt('gate.holdLabel'))
+                      : null
+                  }
+                  onCommit={() => { void handleJump(); }}
+                />
+              </>
+            )}
+          </div>
+        </Plate>
+      )}
+
+      {/* TAB 3: GÖZCÜ ROUTE SCANNER */}
+      {subTab === 'scan' && (
+        <Plate className="flex flex-col gap-3 p-3.5">
+          <div data-testid="moon-scan-card" className="flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <img
+                src="/images/premium/moon/moon-gozcu-v1.webp"
+                alt=""
+                className="size-12 shrink-0 rounded-control border border-white/10 object-cover"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-body font-semibold text-white">{mt('scan.title')}</span>
+                  {moon.scanPierces && (
+                    <span className="rounded-chip bg-amber-400/20 px-1.5 py-0.5 text-caption font-medium text-amber-300">
+                      {mt('scan.pierces')}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <InfoPeek
+              about={mt('guide.howItWorks')}
+              lead={<Glyph id="eye" />}
+              fact={<span className="text-caption text-slate-300">{mt('scan.subtitle', { range: full(moon.scanRange) })}</span>}
+              rule={<p className="gk-sub">{mt('guide.scanRule')}</p>}
+            />
+
+            {scanTargets.length === 0 ? (
+              <Banner tone="info" title={mt('scan.noTargets')} />
+            ) : (
+              <div className="flex flex-col gap-2">
+                <Picker
+                  label={mt('scan.target')}
+                  value={effectiveScanId}
+                  options={scanOptions}
+                  onChange={(id) => { setScanTargetId(id); }}
+                />
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <GameButton
+                      data-testid="moon-scan-btn"
+                      size="md"
+                      wide
+                      disabledReason={
+                        !canScan
+                          ? (isClosed
+                            ? mt('status.closed')
+                            : planet.planet.deuterium < MOON.scanCost.deuterium
+                              ? mt('gate.noFuel')
+                              : mt('scan.noTargets'))
+                          : null
+                      }
+                      onPress={() => { void handleScan(); }}
+                    >
+                      {mt('scan.action')}
+                    </GameButton>
+                  </div>
+                  {lastScannedTargetId && onWatchTarget && (
+                    <GameButton
+                      tone="action"
+                      size="md"
+                      glyph="eye"
+                      onPress={() => { onWatchTarget(lastScannedTargetId); }}
+                    >
+                      {mt('picker.watchOnMap')}
+                    </GameButton>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {scanResult && (
+              <Well className="p-2.5 text-caption">
+                <div data-testid="moon-scan-result" className="flex flex-col gap-1.5">
+                  {scanResult.rows.length === 0 ? (
+                    <div className="text-slate-300">{mt('scan.noRoutes')}</div>
+                  ) : (
+                    scanResult.rows.map((row, idx) => (
+                      <div key={`${row.otherPlanetId}-${idx}`} className="flex items-center justify-between gap-2 text-slate-200">
+                        <span>
+                          <strong className={row.direction === 'IN' ? 'text-rose-300' : 'text-sky-300'}>
+                            {row.direction === 'IN' ? mt('scan.dirIn') : mt('scan.dirOut')}
+                          </strong>
+                          {' · '}
+                          <span>{nameByPlanetId.get(row.otherPlanetId) ?? row.otherPlanetId.slice(0, 8)}</span>
+                          {' · '}
+                          {mt(SIZE_KEY[row.size])}
+                        </span>
+                        <span className="gk-num font-mono text-slate-300">
+                          {countdown(row.arriveAt.getTime() - now)}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </Well>
+            )}
+          </div>
+        </Plate>
+      )}
+
+      {err && <Banner tone="hostile" role="alert" title={err} />}
     </div>
   );
 }
@@ -932,8 +1213,10 @@ export function MoonPanel(props: MoonPanelProps) {
   if (!props.planet.moon) {
     return (
       <NoMoonCard
+        key={props.planet.planet.id}
         planet={props.planet}
         {...(props.onOrderMoon ? { onOrderMoon: props.onOrderMoon } : {})}
+        {...(props.onOpenResearch ? { onOpenResearch: props.onOpenResearch } : {})}
         {...(props.onRefresh ? { onRefresh: props.onRefresh } : {})}
         now={now}
       />
@@ -942,10 +1225,12 @@ export function MoonPanel(props: MoonPanelProps) {
 
   return (
     <ActiveMoonCard
+      key={props.planet.planet.id}
       planet={props.planet}
       moon={props.planet.moon}
       otherMoons={props.otherMoons}
       scanTargets={props.scanTargets}
+      {...(props.worldNames ? { worldNames: props.worldNames } : {})}
       {...(props.onHop ? { onHop: props.onHop } : {})}
       {...(props.onJump ? { onJump: props.onJump } : {})}
       {...(props.onScan ? { onScan: props.onScan } : {})}

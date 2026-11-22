@@ -971,6 +971,13 @@ export const planetMoonSchema = z.object({
   closedUntil: z.coerce.date().nullable(),
   visualSeed: z.number().int(),
   fleet,
+  fleetDamage: z.array(z.object({
+    hull: hullId,
+    count: z.number().int().positive(),
+    damageBp: z.number().int().min(0).max(9999),
+    remainderBp: z.number().finite().min(0).lt(1).optional(),
+  })).optional(),
+  fleetCombatReady: fleet.optional(),
   dockUsed: z.number().nonnegative(),
   dockCapacity: z.number().nonnegative(),
   dockFree: z.number().nonnegative(),
@@ -2624,7 +2631,7 @@ const galaxyEventSchema = z.discriminatedUnion('kind', [
     id: z.string(),
     kind: z.literal('control_transfer'),
     subjectPlanetId: z.string(),
-    payload: z.object({ planetName: z.string(), commanderName: z.string() }),
+    payload: z.object({ planetName: z.string(), commanderName: z.string(), hasMoon: z.boolean().optional() }),
     occurredAt: z.coerce.date(),
   }),
   ...(['galaxy_event_started', 'galaxy_event_ended'] as const).map((kind) =>
@@ -2929,6 +2936,9 @@ const pendingThread = z.object({
    * even when the world has no visible name. Optional for rolling deploys.
    */
   targetPlanetId: z.string().optional(),
+  /** Ay S13/S24: which body the flight is aimed at or departed from. Optional on legacy servers. */
+  targetBody: worldBodySchema.optional(),
+  originBody: worldBodySchema.optional(),
   /**
    * WHETHER THIS FLIGHT MAY BE TURNED AROUND. Owner decision, 2026-09-21.
    *
@@ -3144,6 +3154,7 @@ const ordinaryBattleReport = z.object({
         .nullish(),
       at: z.coerce.date(),
       grade,
+      targetBody: worldBodySchema.optional(),
       rounds: z.array(
         z.object({
           round: z.number(),
@@ -3511,6 +3522,7 @@ export const miningSchema = z.object({
        * world's ring is this drawn against.
        */
       planetId: z.string().nullable(),
+      body: worldBodySchema.optional(),
       at: vec3,
       alloy: z.number(),
       crystal: z.number(),

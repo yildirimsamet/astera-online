@@ -17,7 +17,8 @@ import {
 } from '@astera/rules';
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useGalaxy, useIntel, usePlanet } from '../api/queries.js';
+import { useGalaxy, useIntel, useMoonScans, usePlanet } from '../api/queries.js';
+import { useMoonT } from '../i18n/moon.js';
 import { probeAxis, yardstickOf, type Yardstick } from '../lib/probeScale.js';
 import type { IntelView } from '../api/schemas.js';
 import { rivalColour } from '../galaxy/PlanetField.js';
@@ -59,7 +60,7 @@ import { BattleReports, type ReportDoors } from './BattleReports.jsx';
  * instrument that would fill it and what it would tell the player.
  */
 
-type Shelf = 'watch' | 'probes' | 'battles' | 'radar';
+type Shelf = 'watch' | 'probes' | 'battles' | 'radar' | 'gozcu';
 
 /** A marked rival as the menu resolves it (`rivalMenuRows`): the commander, found on the disc. */
 export interface RivalRow {
@@ -112,11 +113,14 @@ export function IntelScreen({
   onOpenDossier?: (planetId: string) => void;
 } & Omit<ReportDoors, 'onAttackAgain'>) {
   const { t } = useTranslation();
+  const tMoon = useMoonT();
   const intel = useIntel();
   const planet = usePlanet();
   const galaxy = useGalaxy();
+  const moonsActive = galaxy.data?.moons !== undefined;
   const now = useNow(30_000);
   const [shelf, setShelf] = useState<Shelf>(open?.stop ?? 'watch');
+  const moonScans = useMoonScans(moonsActive && shelf === 'gozcu');
   const requestedStop = open?.stop;
   const request = open?.request;
   useReadReportSignals(shelf === 'probes' && !intel.isError && intel.data !== undefined,
@@ -166,6 +170,7 @@ export function IntelScreen({
     { id: 'probes', label: t('intel.shelf.probes'), spoken: t('intel.probes.heading'), glyph: { id: 'zoom' } },
     { id: 'battles', label: t('intel.shelf.battles'), spoken: t('reports.heading'), glyph: { id: 'attack' } },
     { id: 'radar', label: t('intel.shelf.radar'), glyph: { id: 'siren' } },
+    ...(moonsActive ? [{ id: 'gozcu' as const, label: tMoon('scan.historyTab'), glyph: { id: 'moon' as const } }] : []),
   ];
 
   return (
@@ -239,6 +244,90 @@ export function IntelScreen({
         {shelf === 'radar' && (
           <div role="tabpanel" id="intel-panel-radar" aria-labelledby="intel-shelf-radar" className="gk-intel__shelf">
             <RadarShelf aboard={aboard} radar={radar} anyRadar={anyRadar} scans={radarLog} now={now} {...(onOpenOrbit ? { onOpenOrbit } : {})} {...(onOpenDossier ? { onFocusPlanet: onOpenDossier } : {})} />
+          </div>
+        )}
+
+        {shelf === 'gozcu' && (
+          <div role="tabpanel" id="intel-panel-gozcu" aria-labelledby="intel-shelf-gozcu" className="gk-intel__shelf">
+            <section className="flex flex-col gap-2">
+              <SectionTag as="h3" aside={<span className="gk-num">{moonScans.data?.scans.length ?? 0}</span>}>
+                {tMoon('scan.historyTitle')}
+              </SectionTag>
+              {moonScans.isLoading ? (
+                <Waiting>{t('surface.waitingIntel')}</Waiting>
+              ) : (moonScans.data?.scans.length ?? 0) === 0 ? (
+                <div className="gk-well p-3 text-caption text-slate-300">
+                  {tMoon('scan.historyEmpty')}
+                </div>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {(moonScans.data?.scans ?? []).map((scan) => {
+                    const nameOf = (id: string) => {
+                      const raw = galaxy.data?.planets.find((w) => w.id === id)?.name;
+                      return raw !== undefined && raw.trim().length > 0 ? raw : id.slice(0, 8);
+                    };
+                    const ageMin = Math.max(0, (now - scan.scannedAt.getTime()) / 60_000);
+                    return (
+                      <li key={scan.id} data-testid="gozcu-history-item" className="gk-plate flex flex-col gap-2 p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Glyph id="moon" className="size-4 shrink-0 text-amber-300" />
+                            <span className="truncate text-caption font-semibold text-slate-100">
+                              {tMoon('scan.historyFrom', {
+                                scanner: nameOf(scan.scannerPlanetId),
+                                target: nameOf(scan.targetPlanetId),
+                              })}
+                            </span>
+                            {scan.pierced && (
+                              <span className="rounded-chip bg-amber-400/20 px-1.5 py-0.5 text-caption font-medium text-amber-200">
+                                {tMoon('guide.pierceShort')}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="gk-num text-caption text-slate-400">
+                              {tMoon('scan.historyCount', { count: scan.rows.length })} · {staleness(ageMin)}
+                            </span>
+                            {onOpenDossier && (
+                              <GameButton
+                                size="sm"
+                                glyph="eye"
+                                onPress={() => { onOpenDossier(scan.targetPlanetId); }}
+                              >
+                                {tMoon('scan.focusTarget')}
+                              </GameButton>
+                            )}
+                          </div>
+                        </div>
+                        {scan.rows.length === 0 ? (
+                          <p className="text-caption text-slate-400">{tMoon('scan.noRoutes')}</p>
+                        ) : (
+                          <ul className="flex flex-col gap-1">
+                            {scan.rows.map((row, idx) => (
+                              <li
+                                key={`${scan.id}-${idx}`}
+                                className="gk-well flex items-center justify-between gap-2 px-2.5 py-1.5 text-caption"
+                              >
+                                <span className="text-slate-200">
+                                  <span className={row.direction === 'IN' ? 'font-semibold text-rose-300' : 'font-semibold text-sky-300'}>
+                                    {row.direction === 'IN' ? tMoon('scan.dirIn') : tMoon('scan.dirOut')}
+                                  </span>
+                                  {' · '}
+                                  {nameOf(row.otherPlanetId)}
+                                </span>
+                                <span className="gk-num text-slate-400">
+                                  {tMoon(`scan.size.${row.size}`)} · {row.arriveAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
           </div>
         )}
       </div>
