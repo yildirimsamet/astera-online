@@ -281,8 +281,9 @@ export async function jumpFleet(
     const origin = await loadLocked(tx, fromPlanetId, clock);
     if (origin.playerId !== playerId) throw new GameError('PLANET_NOT_OWNED', 'This world is not yours', 403);
     assertWorldOperational(origin);
-    const [target] = await tx.select().from(planets).where(eq(planets.id, toPlanetId));
-    if (target?.controllerPlayerId !== playerId) throw new GameError('PLANET_NOT_OWNED', 'That world is not yours', 403);
+    const target = await loadLocked(tx, toPlanetId, clock);
+    if (target.playerId !== playerId) throw new GameError('PLANET_NOT_OWNED', 'That world is not yours', 403);
+    assertWorldOperational(target);
     if (target.seasonId !== origin.seasonId) throw new GameError('CROSS_SEASON', 'Another galaxy', 403);
     if (!await seasonHasMoons(tx, origin.seasonId)) throw new GameError('MOONS_DISABLED', 'This galaxy has no moons', 409);
     const pair = await tx.select().from(moons).where(inArray(moons.planetId, [fromPlanetId, toPlanetId]));
@@ -345,6 +346,8 @@ async function finishJump(tx: Tx, move: MoonMove, now: Date): Promise<void> {
     await schedule(tx, { seasonId: move.seasonId, kind: 'moon_move_land', refId: move.id, resolveAt: new Date(now.getTime() + 1_000) });
     return;
   }
+  // Close departure moon's radiation dose before ships leave (Ay S45).
+  await settlePlanetRadiationAt(tx, move.fromPlanetId, now);
   const standing = await readHomeHealth(tx, move.fromPlanetId, 'MOON');
   const moved: Fleet = {};
   for (const [hull, n] of fleetEntries(move.fleet)) {
@@ -362,10 +365,12 @@ async function finishJump(tx: Tx, move: MoonMove, now: Date): Promise<void> {
   await publishShard(tx, move.seasonId, 'moons');
 }
 
-/** A gate has charged (§6.11). Only if nothing re-armed it since, and only to whoever holds the moon now. */
+/** A gate has charged (§6.11). Only if nothing re-armed it since, the moon is open, and only to whoever holds the moon now. */
 export async function announceGateReady(tx: Tx, planetId: string, readyAt: Date): Promise<void> {
-  const [row] = await tx.select({ readyAt: moons.gateReadyAt, holder: planets.controllerPlayerId, name: planets.name })
-    .from(moons).innerJoin(planets, eq(planets.id, moons.planetId)).where(eq(moons.planetId, planetId));
+  const [row] = await tx.select({
+    readyAt: moons.gateReadyAt, closedUntil: moons.closedUntil, holder: planets.controllerPlayerId, name: planets.name,
+  }).from(moons).innerJoin(planets, eq(planets.id, moons.planetId)).where(eq(moons.planetId, planetId));
   if (!row?.holder || row.readyAt?.getTime() !== readyAt.getTime()) return;
-  await notify(tx, { playerId: row.holder, kind: 'moon_gate_ready', payload: { planetId, planetName: row.name }, at: readyAt, refId: planetId });
+  if (row.closedUntil && row.closedUntil > readyAt) return;
+  await notify(tx, { playerId: row.holder, kind: 'moon_gate_ready', payload: { planetId, planetName: row.name }, at: readyAt, refId: null });
 }

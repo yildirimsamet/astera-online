@@ -524,6 +524,7 @@ export async function applyDeathStarStrike(
       ground: {}, coreOnline: false, groundWasOnline: false, shieldDestroyed: 0, addedBlackoutPpm: 0, loyaltyLost: 0, effective: false });
     await tx.update(moons).set({ cracks: hit.cracks, lastHitAt: now, closedUntil: new Date(hit.closedUntilMs) })
       .where(eq(moons.planetId, target.id));
+    await publishShard(tx, mission.seasonId, 'moons');
     return empty(target.controllerPlayerId, 'MOON_CRACKED');
   }
 

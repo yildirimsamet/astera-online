@@ -26,7 +26,7 @@ import { orderMoon } from '../moonBuild.js';
 import { hopFleet, jumpFleet, moonDockRoom, retargetAttack } from '../moonMovement.js';
 import { scanFromMoon } from '../moonScan.js';
 import { GameError } from '../planet.js';
-import type { PlanetView } from '../planetView.js';
+import { planetView, type PlanetView } from '../planetView.js';
 import { completeResearch } from '../research.js';
 import { launchDeathStar } from '../strategic.js';
 import { MOON_LOCATION } from '../unitLocation.js';
@@ -156,11 +156,11 @@ export async function tendMoonCaptureAndBuild(
 export async function maybeEscapeToMoon(
   db: Db, clock: Clock, seat: BotMoonSeat, persona: BotPersona,
   view: PlanetView, did: string[], log: FastifyBaseLogger, rng: () => number,
-): Promise<void> {
-  if (!await seasonHasMoons(db, seat.seasonId)) return;
+): Promise<PlanetView> {
+  if (!await seasonHasMoons(db, seat.seasonId)) return view;
   const [moon] = await db.select({ planetId: moons.planetId }).from(moons)
     .where(eq(moons.planetId, seat.planetId));
-  if (!moon) return;
+  if (!moon) return view;
 
   const warned = await db.select({ refId: notifications.refId, payload: notifications.payload })
     .from(notifications)
@@ -195,13 +195,15 @@ export async function maybeEscapeToMoon(
   }
 
   if (threatOnPlanet) {
-    if (!outmatched || rng() >= persona.moon.escapeChance) return;
+    if (!outmatched || rng() >= persona.moon.escapeChance) return view;
     const room = await moonDockRoom(db, seat.planetId);
     const wing = fitMobileBulk(view.fleet, room);
-    if (fleetCount(wing) === 0) return;
-    await attempt(did, 'moon:hop-up', log, () =>
-      hopFleet(db, seat.playerId, seat.planetId, 'UP', wing, clock));
-    return;
+    if (fleetCount(wing) === 0) return view;
+    if (await attempt(did, 'moon:hop-up', log, () =>
+      hopFleet(db, seat.playerId, seat.planetId, 'UP', wing, clock))) {
+      return db.transaction((tx) => planetView(tx, seat.planetId, clock));
+    }
+    return view;
   }
 
   // No warned threat on the planet: bring any mobile ships sitting on the moon back down.
@@ -211,9 +213,10 @@ export async function maybeEscapeToMoon(
   for (const row of moonRows) {
     if (MOBILE_HULLS.some((h) => h === row.hull)) onMoon[row.hull] = row.count;
   }
-  if (fleetCount(onMoon) === 0) return;
+  if (fleetCount(onMoon) === 0) return view;
   await attempt(did, 'moon:hop-down', log, () =>
     hopFleet(db, seat.playerId, seat.planetId, 'DOWN', onMoon, clock));
+  return view;
 }
 
 /**
@@ -415,7 +418,7 @@ export async function tendBotMoon(
   view: PlanetView, did: string[], log: FastifyBaseLogger, rng: () => number,
 ): Promise<PlanetView> {
   if (!await seasonHasMoons(db, seat.seasonId)) return view;
-  await maybeEscapeToMoon(db, clock, seat, persona, view, did, log, rng);
+  view = await maybeEscapeToMoon(db, clock, seat, persona, view, did, log, rng);
   await maybeReinforceByGate(db, clock, seat, persona, did, log, rng);
   view = await tendMoonCaptureAndBuild(db, clock, seat, persona, view, did, log, rng);
   await maybeRetargetToMoon(db, clock, seat, persona, did, log, rng);

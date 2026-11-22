@@ -11,6 +11,7 @@ import { withdrawRaidWarning } from './notifications.js';
 import { recomputePlayerWealth } from './planet.js';
 import { MOON_LOCATION } from './unitLocation.js';
 import { publishWatchChanges } from './watchEvents.js';
+import { publishShard } from '../stream/bus.js';
 
 /**
  * THE MOON BREAKS (S35, plan §6.14 steps 1–10), inside the Death Star's transaction.
@@ -63,6 +64,7 @@ export async function explodeMoon(tx: Tx, input: {
   });
   await tx.delete(moons).where(eq(moons.planetId, world.id));
   await publishWatchChanges(tx, [world.id]);
+  await publishShard(tx, world.seasonId, 'moons');
   return { destroyedFleet: fleet };
 }
 
