@@ -225,24 +225,24 @@ export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, 
         <section data-dossier-moon className="gk-dossier__part">
           <div className="gk-well flex flex-col gap-1.5">
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 text-caption font-semibold text-amber-200">
+              <span className="inline-flex items-center gap-1.5 text-caption font-semibold text-alloy">
                 <Glyph id="moon" className="size-3.5 shrink-0" />
                 {tMoon('body.dossierMoonTitle')}
               </span>
               {moon.rarity ? (
-                <span className="gk-num text-caption text-slate-300">
+                <span className="gk-num text-caption text-dim">
                   {tMoon(`rarity.${moon.rarity}`)} · {tMoon('status.cracks')}{' '}
                   {Math.max(0, crackLimit(moon.rarity) - effectiveCracks({ cracks: moon.cracks, lastHitAtMs: moon.lastHitAt?.getTime() ?? null }, now))}/
                   {crackLimit(moon.rarity)}
                 </span>
               ) : (
-                <span className="gk-num text-caption text-slate-400">
+                <span className="gk-num text-caption text-faint">
                   {tMoon('status.hitsTaken')}: {effectiveCracks({ cracks: moon.cracks, lastHitAtMs: moon.lastHitAt?.getTime() ?? null }, now)}
                 </span>
               )}
             </div>
             {!moon.rarity && !report?.moon && (
-              <p className="text-caption text-slate-400">{tMoon('body.dossierMoonUnknown')}</p>
+              <p className="text-caption text-faint">{tMoon('body.dossierMoonUnknown')}</p>
             )}
             {report?.moon && <MoonProbeSection moon={report.moon} />}
           </div>

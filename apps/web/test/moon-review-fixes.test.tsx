@@ -7,7 +7,8 @@ describe('moon code-review web fixes', () => {
   it('#8: translates every server moon error code instead of falling back to generic error', () => {
     const fallback = describeError(new ApiError('TOTALLY_UNKNOWN_CODE', 'fallback', 500));
     for (const code of Object.keys(enMoon.errors)) {
-      const msg = describeError(new ApiError(code, 'raw', 409));
+      // OUT_OF_RANGE is shared with ships and probes: the moon's wording needs the Gözcü's context.
+      const msg = describeError(new ApiError(code, 'raw', 409, code === 'OUT_OF_RANGE' ? { context: 'gozcu' } : undefined));
       expect(msg).not.toBe(fallback);
       expect(msg.length).toBeGreaterThan(5);
     }

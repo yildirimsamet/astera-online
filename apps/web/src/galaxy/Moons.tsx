@@ -8,6 +8,8 @@ import { serverNow } from '../lib/clock.js';
 import { NIGHT_FLOOR } from './planetSurface.js';
 import {
   moonFlashProgress,
+  moonListChanges,
+  type MoonListState,
   moonOrbitPosition,
   moonRadiusFor,
   moonRarityRingColor,
@@ -27,11 +29,20 @@ import {
   - Physical event: Orbital telemetry ring locking onto a discovered moon's gravitational resonance;
     undiscovered moons render ringless (V17).
 
-  VFX BRIEF 3 — Public Moon Gate Aperture Flash, Birth Accretion & Shatter Shards (§9.3)
+  VFX BRIEF 3 — Public Moon Gate Aperture Flash (§9.3)
   - Public gate arrivals flash crisp cyan (`#38bdf8`); sensor-gated departures flash violet
-    (`#c084fc`) using `/assets/vfx/library/gate-ring-scifi.webp` (`AdditiveBlending`).
-  - Newly born moons emit a 4.5s golden-cyan accretion ring; shattered moons burst into radial
-    regolith rock shards. Zero radial glow sprites.
+    (`#c084fc`) using `/assets/vfx/library/gate-ring-scifi.webp` (`AdditiveBlending`): the gate's own ring.
+
+  VFX BRIEF 4 — Birth from wreckage (review V1, §9.3)
+  - In the world: the battle's wreck cloud spirals in around the planet and packs into a new moon.
+  - Asset: the moon's own `moon-regolith-2x1.webp` on lit, tumbling boulders (one instanced draw).
+  - Why: the moon is literally made of the fight's wreckage; no ring, no halo.
+
+  VFX BRIEF 5 — Shatter (review V2, §9.3)
+  - In the world: inside the Death Star's fireball (`NukeBlast`, already aimed at the moon) the moon
+    breaks into regolith boulders flung outward, glowing hot at first and cooling to grey.
+  - Asset: the same regolith texture on the same boulder draw; the fire is `NukeBlast`'s library art.
+  - Why: the dock and every ship on it are now rubble — the loss reads as rock, not as a light.
 */
 
 const MOON_REGOLITH_TEX = '/assets/textures/moons/moon-regolith-2x1.webp';
@@ -43,7 +54,10 @@ useTexture.preload(MOON_ANCIENT_TEX);
 useTexture.preload(GATE_RING_TEX);
 
 const MAX_INSTANCES = 4_096;
-const SHATTER_SHARDS = 14;
+const SHATTER_SHARDS = 22;
+const BIRTH_SHARDS = 18;
+const _hot = new THREE.Color(0xffa25e);
+const _cool = new THREE.Color(0xb9b2a6);
 const BIRTH_DURATION_MS = 4_500;
 const SHATTER_DURATION_MS = 3_600;
 
@@ -146,7 +160,7 @@ export function Moons({
   const ancIdsRef = useRef<string[]>([]);
   const ringIdsRef = useRef<string[]>([]);
   const moonPosPoolRef = useRef<Map<string, CachedMoonPos>>(new Map());
-  const seenHydratedRef = useRef(false);
+  const listStateRef = useRef<MoonListState>({ hydrated: false, known: new Set() });
   const knownMoonsRef = useRef<Map<string, { x: number; y: number; z: number; r: number; seed: number }>>(new Map());
   const birthsRef = useRef<BirthEvent[]>([]);
   const shattersRef = useRef<ShatterEvent[]>([]);
@@ -184,7 +198,7 @@ export function Moons({
       ancCrackAttr,
       ring: new THREE.RingGeometry(1.30, 1.42, 48),
       flash: new THREE.PlaneGeometry(3.8, 3.8),
-      shard: new THREE.DodecahedronGeometry(0.18, 0),
+      shard: new THREE.IcosahedronGeometry(0.18, 0),
     };
   }, []);
 
@@ -216,17 +230,20 @@ export function Moons({
         map: gate,
         color: 0xffffff,
         side: THREE.DoubleSide,
+        forceSinglePass: true,
         transparent: true,
         opacity: 0.92,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         toneMapped: false,
       }),
-      shard: new THREE.MeshBasicMaterial({
-        color: 0xfb923c,
-        transparent: true,
-        opacity: 0.9,
-        toneMapped: false,
+      // Lit regolith boulders: the same rock the moon is drawn in (V1/V2), never a flat coloured sticker.
+      shard: new THREE.MeshStandardMaterial({
+        map: reg,
+        roughness: 1,
+        metalness: 0,
+        emissive: new THREE.Color().setScalar(NIGHT_FLOOR),
+        flatShading: true,
       }),
     };
   }, [regolithTex, ancientTex, gateRingTex]);
@@ -244,38 +261,19 @@ export function Moons({
     materials.shard.dispose();
   }, [geometries, materials]);
 
-  // Track moon births & shatters whenever `moons.list` updates (after initial hydration)
+  // Track moon births & shatters whenever `moons.list` updates (the first list is the galaxy as it stands).
   useEffect(() => {
     const list = moons?.list;
     if (!list) return;
     const nowMs = serverNow();
-    const currentSet = new Set<string>();
-    for (const m of list) currentSet.add(m.planetId);
-
-    if (!seenHydratedRef.current) {
-      if (list.length > 0) seenHydratedRef.current = true;
-      return;
-    }
-
-    // New moon born -> accretion swirl
-    for (const m of list) {
-      if (!knownMoonsRef.current.has(m.planetId)) {
-        birthsRef.current.push({ planetId: m.planetId, startedAtMs: nowMs });
-      }
-    }
-    // Existing moon vanished -> shatter shards burst
-    for (const [planetId, prev] of knownMoonsRef.current.entries()) {
-      if (!currentSet.has(planetId)) {
-        shattersRef.current.push({
-          x: prev.x,
-          y: prev.y,
-          z: prev.z,
-          r: prev.r,
-          seed: prev.seed,
-          startedAtMs: nowMs,
-        });
-        knownMoonsRef.current.delete(planetId);
-      }
+    const change = moonListChanges(listStateRef.current, list.map((m) => m.planetId));
+    listStateRef.current = change;
+    for (const planetId of change.births) birthsRef.current.push({ planetId, startedAtMs: nowMs });
+    for (const planetId of change.gone) {
+      const prev = knownMoonsRef.current.get(planetId);
+      if (!prev) continue;
+      shattersRef.current.push({ x: prev.x, y: prev.y, z: prev.z, r: prev.r, seed: prev.seed, startedAtMs: nowMs });
+      knownMoonsRef.current.delete(planetId);
     }
   }, [moons?.list]);
 
@@ -458,6 +456,7 @@ export function Moons({
     }
 
     // Moon Birth Accretion Swirl (§9.3)
+    let shardCount = 0;
     const births = birthsRef.current;
     for (let i = births.length - 1; i >= 0; i--) {
       const b = births[i]!;
@@ -468,13 +467,29 @@ export function Moons({
       }
       const target = pool.get(b.planetId);
       if (!target) continue;
-      // Inward condensing golden-cyan accretion halo
-      emitFlash(target.x, target.y, target.z, target.r, 1 - p, 0xfbbf24, 1.5, 2.6);
-      emitFlash(target.x, target.y, target.z, target.r, p, 0x38bdf8, -1.2, 1.8);
+      // Wreckage spirals in and packs: far and loose at first, gone into the moon's surface at the end.
+      const ease = 1 - (1 - p) ** 3;
+      for (let s = 0; s < BIRTH_SHARDS; s++) {
+        if (shardCount >= MAX_INSTANCES) break;
+        const a1 = ((s * 137.5) % 360) * (Math.PI / 180) + (1 - ease) * Math.PI * 1.6;
+        const a2 = ((((s * 53) % 120) - 60) * (Math.PI / 180)) * (1 - ease);
+        const dist = target.r * (1 + (4.6 + (s % 4) * 0.5) * (1 - ease));
+        _dummy.position.set(
+          target.x + Math.cos(a1) * Math.cos(a2) * dist,
+          target.y + Math.sin(a2) * dist,
+          target.z + Math.sin(a1) * Math.cos(a2) * dist,
+        );
+        _dummy.rotation.set(timeSec * (0.9 + s * 0.17), timeSec * (1.3 + s * 0.11), s);
+        const size = target.r * (0.32 + (s % 3) * 0.12) * (1 - ease * 0.85);
+        _dummy.scale.set(size * (1 + (s % 2) * 0.35), size, size * (1 + (s % 3) * 0.2));
+        _dummy.updateMatrix();
+        shardMesh.setMatrixAt(shardCount, _dummy.matrix);
+        shardMesh.setColorAt(shardCount, _cool);
+        shardCount++;
+      }
     }
 
     // Moon Shatter Debris Shards (§9.3)
-    let shardCount = 0;
     const shatters = shattersRef.current;
     for (let i = shatters.length - 1; i >= 0; i--) {
       const sh = shatters[i]!;
@@ -483,8 +498,6 @@ export function Moons({
         shatters.splice(i, 1);
         continue;
       }
-      // Expanding orange shock ring on shatter
-      emitFlash(sh.x, sh.y, sh.z, sh.r, p, 0xf97316, 1.8, 3.4);
       const fade = 1 - p * p;
       const spread = sh.r * (0.6 + p * 5.2);
       for (let s = 0; s < SHATTER_SHARDS; s++) {
@@ -499,10 +512,12 @@ export function Moons({
           sh.z + Math.sin(a1) * Math.cos(a2) * dist,
         );
         _dummy.rotation.set(timeSec * (1.8 + s * 0.3), timeSec * (2.2 + s * 0.2), s);
-        _dummy.scale.setScalar(sh.r * (0.45 + (s % 3) * 0.18) * fade);
+        const size = sh.r * (0.45 + (s % 3) * 0.18) * fade;
+        _dummy.scale.set(size * (1 + (s % 2) * 0.4), size, size * (1 + (s % 3) * 0.25));
         _dummy.updateMatrix();
         shardMesh.setMatrixAt(shardCount, _dummy.matrix);
-        _color.setHex(s % 2 === 0 ? 0xfb923c : 0x94a3b8).multiplyScalar(0.4 + 0.6 * fade);
+        // Fresh fracture faces glow, then cool to the moon's own grey.
+        _color.copy(_hot).lerp(_cool, Math.min(1, p * 2.2));
         shardMesh.setColorAt(shardCount, _color);
         shardCount++;
       }

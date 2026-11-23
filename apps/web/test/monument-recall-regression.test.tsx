@@ -36,6 +36,8 @@ const view = monumentsSchema.parse(raw);
 vi.mock('../src/api/queries.js', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('../src/api/queries.js');
   return { ...actual,
+    // useAirborne reads the galaxy's moons to name hops and jumps (Ay §6.6); none here.
+    useGalaxy: () => ({ data: undefined }),
     usePending: () => ({ data: { pending: [] } }),
     useMining: () => ({ data: { runs: [] } }),
     useTraffic: () => ({ data: { contacts: [] } }),

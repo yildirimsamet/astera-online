@@ -28,7 +28,7 @@ import { landingBlock } from './movement.js';
 import { notify } from './notifications.js';
 import { GameError, assertWorldOperational, loadLocked, lockSeason, saveResources, setUnits } from './planet.js';
 import { MOON_LOCATION, bodyLocation, hopLocation } from './unitLocation.js';
-import { recordLegacyActivity } from './legacy.js';
+import { markProgress } from './waitingRoom.js';
 import { publishWatchChanges } from './watchEvents.js';
 
 /**
@@ -82,7 +82,7 @@ export async function hopFleetTx(
   }).returning();
   await placeAt(tx, planetId, playerId, hopLocation(move!.id), fleet, selected.selectedDamage);
   await schedule(tx, { seasonId: world.seasonId, kind: 'moon_move_land', refId: move!.id, resolveAt: arriveAt });
-  await recordLegacyActivity(tx, playerId, world.now);
+  await markProgress(tx, playerId, world.now); // V55: every moon order restarts the Silent Space clock
   await publishWatchChanges(tx, [planetId]);
   return move!;
 }
@@ -217,7 +217,7 @@ export async function retargetAttackTx(
   if (!target) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
   if (body === 'MOON') await assertMoonTarget(tx, target);
   await tx.update(missions).set({ targetBody: body, retargetedAt: now }).where(eq(missions.id, mission.id));
-  await recordLegacyActivity(tx, playerId, now);
+  await markProgress(tx, playerId, now); // V55: every moon order restarts the Silent Space clock
 
   if (target.controllerPlayerId) {
     const [warned] = await tx.select({ id: notifications.id }).from(notifications).where(and(
@@ -336,7 +336,7 @@ export async function jumpFleetTx(
     await tx.update(moons).set({ gateReadyAt: readyAt }).where(eq(moons.planetId, gate.planetId));
     await schedule(tx, { seasonId: origin.seasonId, kind: 'moon_gate_ready', refId: gate.planetId, resolveAt: readyAt });
   }
-  await recordLegacyActivity(tx, playerId, now);
+  await markProgress(tx, playerId, now); // V55: every moon order restarts the Silent Space clock
   await publishWatchChanges(tx, [fromPlanetId, toPlanetId]);
   // The departure flash (S16); who may see it is decided when the map is read.
   await publishShard(tx, origin.seasonId, 'moons');
@@ -391,11 +391,20 @@ async function finishJump(tx: Tx, move: MoonMove, now: Date): Promise<void> {
 }
 
 /** A gate has charged (§6.11). Only if nothing re-armed it since, the moon is open, and only to whoever holds the moon now. */
-export async function announceGateReady(tx: Tx, planetId: string, readyAt: Date, eventId?: string): Promise<void> {
+export async function announceGateReady(tx: Tx, planetId: string, at: Date, eventId?: string): Promise<void> {
   const [row] = await tx.select({
     readyAt: moons.gateReadyAt, closedUntil: moons.closedUntil, holder: planets.controllerPlayerId, name: planets.name,
+    seasonId: planets.seasonId,
   }).from(moons).innerJoin(planets, eq(planets.id, moons.planetId)).where(eq(moons.planetId, planetId));
-  if (!row?.holder || row.readyAt?.getTime() !== readyAt.getTime()) return;
-  if (row.closedUntil && row.closedUntil > readyAt) return;
-  await notify(tx, { playerId: row.holder, kind: 'moon_gate_ready', payload: { planetId, planetName: row.name }, at: readyAt, refId: eventId ?? null });
+  // A newer charge (or none) outlives this event: that charge announces itself.
+  if (!row?.holder || !row.readyAt || row.readyAt.getTime() > at.getTime()) return;
+  if (row.closedUntil && row.closedUntil > at) {
+    // B6: charged while a Death Star hit has the moon shut — say so when it reopens, not never.
+    await schedule(tx, {
+      seasonId: row.seasonId, kind: 'moon_gate_ready', refId: planetId, resolveAt: row.closedUntil,
+      dedupeKey: `moon_gate_reopen:${planetId}:${row.closedUntil.getTime()}`,
+    });
+    return;
+  }
+  await notify(tx, { playerId: row.holder, kind: 'moon_gate_ready', payload: { planetId, planetName: row.name }, at, refId: eventId ?? null });
 }

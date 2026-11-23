@@ -111,7 +111,8 @@ import {
 import { PlanetField, rivalColour, LIMB_SCALE } from './PlanetField.jsx';
 import { Moons } from './Moons.js';
 import { moonOrbitPosition, moonRadiusFor } from './moonOrbit.js';
-import { MoonGateWarpFx, type MoonGateWarpEvent } from './MoonGateWarpFx.js';
+import { MOON_WARP_DURATION_MS, MoonGateWarpFx, type MoonGateWarpEvent } from './MoonGateWarpFx.js';
+import { moonWarpPose } from './moonWarpShot.js';
 import { MoonScanFx, type MoonScanFxEvent } from './MoonScanFx.js';
 import { MoonActivityFx, type MoonHopFxItem } from './MoonActivityFx.js';
 import { SCENE_LIGHT } from './planetSurface.js';
@@ -765,10 +766,7 @@ export function GalaxyCanvas({
     }
   }, [directing, directorLive, shotHull, home, mainOffset, resolveSubject, sensors]);
 
-  // Single-glide unlocked over-the-shoulder Moon Gate Warp camera:
-  // Frames the departing moon in the lower-center foreground and looks from behind & above
-  // straight down the origin-moon -> destination-moon axis so both moons and the purple Astral
-  // Gate flow stay in one continuous frame. Never locks or re-hijacks the player's camera.
+  // The Moon Gate warp camera: one glide to an unlocked over-the-shoulder shot (see `moonWarpPose`).
   const latestWarp = moonWarps && moonWarps.length > 0 ? moonWarps[moonWarps.length - 1] ?? null : null;
   const warpKeyCounter = useRef(1_000);
   const [warpShotState, setWarpShotState] = useState<{ id: string; key: number } | null>(null);
@@ -797,58 +795,27 @@ export function GalaxyCanvas({
     const fromR = moonRadiusFor(fromNode.radius, moons?.rarity[latestWarp.fromPlanetId] ?? latestWarp.rarity);
     const depUnit = Math.max(fromR * 2.25, fromNode.radius * 0.68);
 
-    const computeAxis = () => {
-      const timeSec = serverNow() / 1_000;
-      const originParent = { x: fromNode.position[0], y: fromNode.position[1], z: fromNode.position[2] };
-      const destParent = { x: toNode.position[0], y: toNode.position[1], z: toNode.position[2] };
+    // Owner 2026-11-24: a little behind and above the departing moon, both moons in frame (`moonWarpPose`).
+    // Read once when the shot starts; the camera stays free to orbit and zoom. Framed on where the moons are
+    // halfway through the warp: a moon keeps orbiting its world, and this keeps it in frame from start to end.
+    const pose = () => {
+      const timeSec = (latestWarp.startedAtMs + MOON_WARP_DURATION_MS / 2) / 1_000;
       const originMoon = { x: 0, y: 0, z: 0 };
       const destMoon = { x: 0, y: 0, z: 0 };
-      moonOrbitPosition(originParent, fromNode.radius, fromMoon?.visualSeed ?? 1, timeSec, originMoon);
-      moonOrbitPosition(destParent, toNode.radius, toMoon?.visualSeed ?? 2, timeSec, destMoon);
-      const dx = destMoon.x - originMoon.x;
-      const dy = destMoon.y - originMoon.y;
-      const dz = destMoon.z - originMoon.z;
-      const totalDist = Math.hypot(dx, dy, dz) || 1;
-      return {
-        originMoon,
-        totalDist,
-        tx: dx / totalDist,
-        ty: dy / totalDist,
-        tz: dz / totalDist,
-      };
+      moonOrbitPosition({ x: fromNode.position[0], y: fromNode.position[1], z: fromNode.position[2] }, fromNode.radius, fromMoon?.visualSeed ?? 1, timeSec, originMoon);
+      moonOrbitPosition({ x: toNode.position[0], y: toNode.position[1], z: toNode.position[2] }, toNode.radius, toMoon?.visualSeed ?? 2, timeSec, destMoon);
+      return moonWarpPose([originMoon.x, originMoon.y, originMoon.z], [destMoon.x, destMoon.y, destMoon.z], depUnit * 8);
     };
-
-    const portrait = typeof window !== 'undefined' && window.innerWidth < window.innerHeight * 0.85;
-    const range = portrait
-      ? Math.max(depUnit * 9.0, fromNode.radius * 7.2, 9.5)
-      : Math.max(depUnit * 7.4, fromNode.radius * 5.8, 8.6);
+    const first = pose();
 
     return {
       key: warpShotState.key,
       stays: true,
       allowOrbit: true,
       seconds: 0.75,
-      range,
-      at: () => {
-        const { originMoon, totalDist, tx, ty, tz } = computeAxis();
-        // Aim slightly ahead of the departing moon along the true axis toward the destination moon
-        // so the departing moon sits in lower-center foreground and destination moon sits straight ahead above it.
-        const forward = Math.min(totalDist * 0.36, Math.max(fromNode.radius * 3.1, depUnit * 4.2));
-        return [
-          originMoon.x + tx * forward,
-          originMoon.y + ty * forward,
-          originMoon.z + tz * forward,
-        ];
-      },
-      towards: () => {
-        const { tx, ty, tz } = computeAxis();
-        // Directly behind and elevated above the departing moon looking forward toward the target moon.
-        const vx = -tx;
-        const vy = -ty + 0.64;
-        const vz = -tz;
-        const len = Math.hypot(vx, vy, vz) || 1;
-        return [vx / len, vy / len, vz / len];
-      },
+      range: first.range,
+      at: () => first.at,
+      towards: () => first.towards,
     };
   }, [latestWarp, warpShotState, nodes, moons]);
 

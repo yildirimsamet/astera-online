@@ -174,6 +174,12 @@ export const HULL_ART: Record<HullId, string | null> = {
   PROSPECTOR: `${BASE}/drills/drill_1.png`,
 };
 
+/** The moon's two instruments (Ay F9b): the Gate ring and the Gözcü dish. */
+export const MOON_ART = {
+  gate: `${BASE}/premium/moon/moon-gate-v1.webp`,
+  gozcu: `${BASE}/premium/moon/moon-gozcu-v1.webp`,
+} as const;
+
 /** Original cinematic hardware renders. Lossless masters and prompts: assets/source/premium/research. */
 const RESEARCH_BASE = `${BASE}/premium/research`;
 export const RESEARCH_ART: Record<ResearchProjectId, string> = {

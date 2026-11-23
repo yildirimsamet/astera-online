@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '../src/i18n/index.js';
 import type { PlanetMoon, PlanetView } from '../src/api/schemas.js';
@@ -70,7 +70,7 @@ describe('MoonPanel (F9b)', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('shows locked Common moon build card before Lunar Capture and allows ordering after research', () => {
+  it('shows locked Common moon build card before Lunar Capture and allows ordering after research', async () => {
     const onOrderMoon = vi.fn().mockResolvedValue(undefined);
     const { rerender } = render(
       <I18nextProvider i18n={i18n}>
@@ -99,7 +99,13 @@ describe('MoonPanel (F9b)', () => {
     );
     const readyBtn = within(screen.getByTestId('moon-panel-empty')).getByRole<HTMLButtonElement>('button');
     expect(readyBtn.disabled).toBe(false);
-    fireEvent.click(readyBtn);
+    // Review U3: the build is a 1 s hold.
+    vi.useFakeTimers();
+    try {
+      fireEvent.pointerDown(readyBtn, { button: 0 });
+      await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+      fireEvent.pointerUp(readyBtn);
+    } finally { vi.useRealTimers(); }
     expect(onOrderMoon).toHaveBeenCalledWith('p-home');
   });
 

@@ -8,7 +8,7 @@ import { rememberWorld } from './intel.js';
 import { seasonHasMoons } from './moon.js';
 import { lockWorlds } from './ownership.js';
 import { GameError, assertWorldOperational, loadLocked, saveResources } from './planet.js';
-import { recordLegacyActivity } from './legacy.js';
+import { markProgress } from './waitingRoom.js';
 
 /** The flights a Gözcü can see (S33): players' fleets. Probes, mining and strategic strikes never show. */
 const SEEN_KINDS = ['attack', 'transfer', 'clan_transfer', 'clan_war', 'clan_support', 'settlement', 'return'] as const;
@@ -34,7 +34,7 @@ export async function scanFromMoonTx(
   const [target] = await tx.select({ id: planets.id, seasonId: planets.seasonId, x: planets.x, y: planets.y, z: planets.z })
     .from(planets).where(eq(planets.id, targetPlanetId));
   if (target?.seasonId !== world.seasonId) throw new GameError('PLANET_NOT_FOUND', 'No such world here', 404);
-  if (distance(world, target) > scanRange(moon.rarity)) throw new GameError('OUT_OF_RANGE', 'That world is beyond this moon’s reach', 409);
+  if (distance(world, target) > scanRange(moon.rarity)) throw new GameError('OUT_OF_RANGE', 'That world is beyond this moon’s reach', 409, { context: 'gozcu' });
   const [recent] = await tx.select({ id: moonScans.id }).from(moonScans).where(and(
     eq(moonScans.scannerPlanetId, planetId),
     gt(moonScans.scannedAt, new Date(now.getTime() - MOON.scanSpacingSeconds * 1_000)),
@@ -85,7 +85,7 @@ export async function scanFromMoonTx(
       await rememberWorld(tx, { observerPlayerId: playerId, targetPlanetId: id, seasonId: world.seasonId, seenAt: now, source: 'SCAN' });
     }
   }
-  await recordLegacyActivity(tx, playerId, now);
+  await markProgress(tx, playerId, now); // V55: every moon order restarts the Silent Space clock
   return { id: report!.id, scannedAt: now, pierced, rows };
 }
 

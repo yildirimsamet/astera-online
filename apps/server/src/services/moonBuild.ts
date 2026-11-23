@@ -5,7 +5,7 @@ import type { Db, Tx } from '../db/client.js';
 import { moons } from '../db/schema.js';
 import { buildQueueContext, placeBuildOrder } from './buildQueue.js';
 import { holdsLunarCapture, seasonHasMoons } from './moon.js';
-import { GameError, assertWorldOperational, loadLocked, withPlanetLock } from './planet.js';
+import { GameError, assertWorldOperational, loadLocked } from './planet.js';
 import { buildPlanetResult, loadPlanetViewData } from './planetView.js';
 
 /**
@@ -33,6 +33,6 @@ export async function orderMoonTx(tx: Tx, planetId: string, clock: Clock, expect
 }
 
 export async function orderMoon(db: Db, planetId: string, clock: Clock, expectedPlayerId?: string) {
-  return withPlanetLock(db, planetId, clock, async (tx) => orderMoonTx(tx, planetId, clock, expectedPlayerId), expectedPlayerId)
-    .then(buildPlanetResult);
+  // `orderMoonTx` takes the world's lock itself (`loadLocked`); a second lock around it read the world twice (review B1).
+  return db.transaction((tx) => orderMoonTx(tx, planetId, clock, expectedPlayerId)).then(buildPlanetResult);
 }

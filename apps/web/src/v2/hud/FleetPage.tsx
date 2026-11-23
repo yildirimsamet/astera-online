@@ -1,4 +1,4 @@
-import { HULLS, fleetCount, fleetEntries, type Fleet, type HpDamageLots, type WorldBody } from '@astera/rules';
+import { HULLS, fleetCount, fleetEntries, type Fleet, type HpDamageLots } from '@astera/rules';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ClanSupportWave, Monuments } from '../../api/schemas.js';
@@ -6,7 +6,7 @@ import {
   Chip, DOCK_ART, Emblem, GameButton, GameHold, GameTabs, Glyph, InfoPeek, ProgressBar, SectionTag, TimerRow, artIconSrc,
 } from '../../game-ui/index.js';
 import { useMoonT } from '../../i18n/moon.js';
-import { RetargetButton } from '../../screens/MoonControls.js';
+import { MissionRetarget } from '../../screens/MissionRetarget.js';
 import { hullLabel, hullName, monumentName } from '../../i18n/names.js';
 import type { AirborneItem } from '../../lib/airborne.js';
 import { supportVerdict } from '../../lib/clanAlarm.js';
@@ -62,8 +62,6 @@ export interface FleetPageProps {
   recalling: string | null;
   onFocus: (item: AirborneItem) => void;
   onRecall: (item: AirborneItem) => void;
-  retargeting?: boolean;
-  onRetarget?: (missionId: string, body: WorldBody) => void;
   /**
    * THE DOCK COUNT IS A DOOR (2026-09-30): the Repair Station lives in each world's Base,
    * under its Shipyard and Hangar, and this opens the one the ships are held at.
@@ -119,19 +117,18 @@ export function FlightRow({
   item,
   now,
   recalling,
-  retargeting = false,
   onFocus,
   onRecall,
-  onRetarget,
+  retarget = false,
 }: {
   item: AirborneItem;
   now: number;
   recalling: boolean;
-  retargeting?: boolean;
   onFocus: (item: AirborneItem) => void;
   /** Absent where the row is a glance: the recall lives on the Fleet page. */
   onRecall?: (item: AirborneItem) => void;
-  onRetarget?: (missionId: string, body: WorldBody) => void;
+  /** The world/moon turn, offered where the recall is: on the Fleet page. */
+  retarget?: boolean;
 }) {
   const { t } = useTranslation();
   const pace = paceShown(item.pace);
@@ -153,14 +150,9 @@ export function FlightRow({
         at={t('now.at', { time: clockTime(new Date(item.arrival)) })}
         {...(item.focus ? { onPress: () => { onFocus(item); } } : {})}
       />
-      {item.retarget && onRetarget && (
+      {item.retarget && retarget && (
         <div className="gk-flight__more">
-          <RetargetButton
-            missionId={item.retarget.missionId}
-            currentBody={item.retarget.currentBody}
-            disabled={retargeting}
-            onRetarget={onRetarget}
-          />
+          <MissionRetarget missionId={item.retarget.missionId} currentBody={item.retarget.currentBody} />
         </div>
       )}
       {turnable && (recalling ? (
@@ -336,7 +328,7 @@ function Garrison({ world, aboard, onOpenRepairStation, onFocusWorld, onDock, do
       <div className="gk-world__counts">
         {total > 0 && <span className="gk-num">{t('fleetPage.shipsHome', { count: total })}</span>}
         {moonTotal > 0 && (
-          <span className="gk-num inline-flex items-center gap-1 text-amber-200">
+          <span className="gk-num inline-flex items-center gap-1 text-alloy">
             <Glyph id="moon" className="size-3 shrink-0" />
             {tMoon('fleetSplit.onMoonBadge', { count: moonTotal })}
           </span>
@@ -364,7 +356,7 @@ function Garrison({ world, aboard, onOpenRepairStation, onFocusWorld, onDock, do
           )}
           {moonRows.length > 0 && (
             <div className="mt-1.5 flex flex-col gap-1 border-t border-white/10 pt-1.5">
-              <span className="inline-flex items-center gap-1 text-caption font-medium text-amber-200/90">
+              <span className="inline-flex items-center gap-1 text-caption font-medium text-alloy/90">
                 <Glyph id="moon" className="size-3 shrink-0" />
                 {tMoon('fleetSplit.moon')}
               </span>
@@ -463,8 +455,6 @@ export function FleetPage({
   recalling,
   onFocus,
   onRecall,
-  retargeting = false,
-  onRetarget,
   onOpenRepairStation,
   onDock,
   docking,
@@ -527,10 +517,9 @@ export function FleetPage({
                 item={item}
                 now={now}
                 recalling={recalling === item.key}
-                retargeting={retargeting}
                 onFocus={onFocus}
                 onRecall={onRecall}
-                {...(onRetarget ? { onRetarget } : {})}
+                retarget
               />
             ))}
           </ul>

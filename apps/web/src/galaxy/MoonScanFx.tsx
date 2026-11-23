@@ -183,6 +183,7 @@ function ScanEffect({
         depthWrite: false,
         blending: THREE.AdditiveBlending,
         side: THREE.DoubleSide,
+        forceSinglePass: true,
         toneMapped: false,
       });
     return {

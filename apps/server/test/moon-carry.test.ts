@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { afterAll, expect, it } from 'vitest';
 import { MULTI_WORLD, generateGalaxy, selectNeutralSlots } from '@astera/rules';
-import { mainVacancies, moons, planets, seasons, shards, units } from '../src/db/schema.js';
+import { mainVacancies, moons, planets, players, seasons, shards, units } from '../src/db/schema.js';
 import { transferCommander } from '../src/services/commanderTransfer.js';
 import { MOON_LOCATION, PLANET_LOCATION } from '../src/services/unitLocation.js';
 import { ensureWaitingSeason } from '../src/services/waitingServers.js';
@@ -85,6 +85,10 @@ it('holds a transfer and an account deletion back while a hop is under way (E16)
   await giveUnits(f.db, capital, { DART: 3 });
   f.clock.advance(48 * 60);
   await hopFleet(f.db, f.playerIds[0]!, capital, 'UP', { DART: 3 }, f.clock);
+  // V55: the hop itself restarts the Silent Space clock, so a commander due to move cannot hop on their own.
+  // The guard still holds for any other road into a transfer: the clock is put back to reach it.
+  await f.db.update(players).set({ lastProgressAt: new Date(f.clock.now().getTime() - 48 * 3_600_000) })
+    .where(eq(players.id, f.playerIds[0]!));
   const waiting = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
   expect((await transferCommander(f.db, f.playerIds[0]!, waiting!.id, f.clock)).status).toBe('FLIGHT');
   const [account] = await f.db.select().from(accounts).where(eq(accounts.id, f.accountIds[0]!));

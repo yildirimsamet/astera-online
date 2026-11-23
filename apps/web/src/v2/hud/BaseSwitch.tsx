@@ -20,6 +20,8 @@ export function BaseSwitch({ value, onChange, moonAvailable = false, arenaAvaila
   return (
     <div className="gk px-3 pb-2">
       <GameTabs
+        // Four plates do not fit a word and its mark side by side at 350 px ("ARAŞTIR/MA", review U9): the mark stands over the word.
+        stacked={moonAvailable && arenaAvailable}
         label={t('baseSwitch.label')}
         tabs={[
           // Owner 2026-10-27: a coloured glyph beside each word — the world, its moon, research, the ship flown.

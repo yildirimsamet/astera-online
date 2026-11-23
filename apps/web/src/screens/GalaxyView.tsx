@@ -2064,6 +2064,9 @@ export function GalaxyView({
               above={nextStep}
               onFocusMonument={(id) => { setFocus({ kind: 'monument', id }); setDetail(true); setAttacking(false); }}
               thread={thread}
+              targetMoon={thread.targetPlanetId !== undefined
+                && (galaxy.data?.moons?.list.some((m) => m.planetId === thread.targetPlanetId) ?? false)
+                && galaxy.data?.planets.find((w) => w.id === thread.targetPlanetId)?.kind !== 'NEUTRAL'}
               recalling={recallFlight.isPending}
               onRecall={() => {
                 const input = flightRecallInput(thread);

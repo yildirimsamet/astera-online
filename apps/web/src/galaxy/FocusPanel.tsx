@@ -56,9 +56,10 @@ import type {
   RivalSummary,
   PublicMonument,
 } from '../api/schemas.js';
-import { useGalaxy, useProbe, useRetargetMission, useSetRival, useWatch } from '../api/queries.js';
+import { useGalaxy, useProbe, useSetRival, useWatch } from '../api/queries.js';
 import { useMoonT } from '../i18n/moon.js';
-import { RetargetButton, TargetBodyPicker } from '../screens/MoonControls.js';
+import { TargetBodyPicker } from '../screens/MoonControls.js';
+import { MissionRetarget } from '../screens/MissionRetarget.js';
 import { gateOf } from '../starter/gate.js';
 import { heroArt } from '../starter/shipScreen.js';
 import { radiationAt, toRadiationSources } from '../lib/radiation.js';
@@ -1439,7 +1440,7 @@ export function DeathStarSection({ target, origin, report, moon = null, now, dis
           />
           {effectiveBody === 'MOON' && (
             <div className="gk-well flex flex-col gap-1 text-caption">
-              <p className="font-semibold text-amber-200 gk-num">
+              <p className="font-semibold text-alloy gk-num">
                 {moon.rarity
                   ? tMoon('body.deathStarMoonCracks', {
                     remaining: Math.max(0, crackLimit(moon.rarity) - cracksNow),
@@ -1447,7 +1448,7 @@ export function DeathStarSection({ target, origin, report, moon = null, now, dis
                   })
                   : tMoon('body.deathStarMoonCracksUnknown', { cracks: cracksNow })}
               </p>
-              <p className="text-slate-300">{tMoon('body.deathStarMoonHint')}</p>
+              <p className="text-dim">{tMoon('body.deathStarMoonHint')}</p>
             </div>
           )}
         </div>
@@ -3240,6 +3241,7 @@ export function ThreadFocus({
   onFocusMonument,
   onRecall,
   recalling = false,
+  targetMoon = false,
   above,
 }: {
   thread: PendingThread;
@@ -3250,26 +3252,20 @@ export function ThreadFocus({
   onFocusMonument?: (monumentId: string) => void;
   onRecall?: () => void;
   recalling?: boolean;
+  /** The target is a held world with a moon, so an outbound raid may turn between the two (Ay §6.11). */
+  targetMoon?: boolean;
   /** Over the closed card (`Shell`). */
   above?: ReactNode;
 }) {
   const { t } = useTranslation();
   const tMoon = useMoonT();
-  const say = useToast();
-  const galaxy = useGalaxy();
-  const retarget = useRetargetMission();
   const composition = thread.fleet ? describeThreadFleet(thread.fleet) : null;
   const now = useNow(1000);
   const remainingMs = thread.arriveAt.getTime() - now;
   const recallable = thread.recallable === true && thread.id !== undefined
     && thread.kind !== 'incoming' && thread.leg !== 'return' && remainingMs > 0;
-  const targetWorld = thread.targetPlanetId
-    ? galaxy.data?.planets.find((w) => w.id === thread.targetPlanetId)
-    : undefined;
-  const targetHasMoon = thread.targetPlanetId !== undefined
-    && (galaxy.data?.moons?.list.some((m) => m.planetId === thread.targetPlanetId) ?? false);
   const canRetarget = thread.kind === 'fleet' && thread.leg !== 'return' && thread.id !== undefined
-    && targetHasMoon && targetWorld?.kind !== 'NEUTRAL' && remainingMs > 0;
+    && targetMoon && remainingMs > 0;
   const currentBody: WorldBody = thread.targetBody ?? 'PLANET';
   const titleBase = thread.kind === 'trade' ? t('trade.title') : thread.targetName;
   const titleText = thread.targetBody === 'MOON' ? `${titleBase} · ${tMoon('body.MOON')}` : titleBase;
@@ -3297,19 +3293,7 @@ export function ThreadFocus({
       actions={(recallable && onRecall) || canRetarget ? (
         <div className="gk-focus__wide flex flex-col gap-2">
           {canRetarget && thread.id && (
-            <RetargetButton
-              missionId={thread.id}
-              currentBody={currentBody}
-              disabled={retarget.isPending}
-              onRetarget={(missionId, body) => {
-                retarget.mutate({ missionId, body }, {
-                  onSuccess: (res) => {
-                    say(tMoon(res.targetBody === 'MOON' ? 'body.retargetedToMoon' : 'body.retargetedToPlanet'));
-                  },
-                  onError: (err) => { say(describe(err), 'error'); },
-                });
-              }}
-            />
+            <MissionRetarget missionId={thread.id} currentBody={currentBody} />
           )}
           {recallable && onRecall && (
             <GameHold weight="reversible" size="md" tone="steel" glyph="recall" label={t('pendingStrip.recallFleet')}

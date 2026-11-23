@@ -241,6 +241,17 @@ under it, and is brighter on a near-black ground into the bargain. The plate bod
 alpha at every depth for the reason in I5 — the galaxy never closes — but the `backdrop-filter`
 that would make it literal glass is refused: it re-blurs the live canvas per plate per frame.
 
+## Moons (Ay)
+
+- A moon is a textured sphere (NASA-style regolith / an older veined "ancient" map, `public/assets/textures/moons`),
+  two instanced draws for the whole galaxy, cracks drawn by a procedural seam (`galaxy/Moons.tsx`).
+- Rarity is a thin line ring only when the viewer knows it; an unknown moon has no ring (V17).
+- Gate flashes use the library's `gate-ring-scifi.webp` — the gate's own ring. Birth and shatter are
+  regolith boulders (spiralling in / flung out, hot then cooling), never a halo; the shatter's fire is
+  the Death Star's `NukeBlast` aimed at the moon.
+- The private jump (`MoonGateWarpFx`) and scan (`MoonScanFx`) play only for the commander who acted.
+- Card art: `public/assets/images/premium/moon/` (`MOON_ART`).
+
 ## When to ask for an asset
 
 If an element would be significantly better with a proper custom asset and you cannot produce

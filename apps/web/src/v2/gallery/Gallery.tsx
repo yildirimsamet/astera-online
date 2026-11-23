@@ -1,4 +1,5 @@
 import { FleetTowingGallery } from './FleetTowingGallery.js';
+import { GalleryMoon } from './GalleryMoon.js';
 import { GameKitGallery, isKitView } from './GameKitGallery.js';
 import { CommanderPresenceGallery } from './CommanderPresenceGallery.js';
 import { CosmeticFleetGallery } from './CosmeticFleetGallery.jsx';
@@ -1467,6 +1468,11 @@ function Views({ view }: { view: string }) {
   if (view === 'base-research-locked') return <GalleryResearch variant="locked" />;
   if (view === 'base-research-paused') return <GalleryResearch variant="paused" />;
   if (view === 'base-research-moon') return <GalleryResearch variant="moon" />;
+  if (view === 'moon-locked') return <GalleryMoon state="locked" />;
+  if (view === 'moon-none') return <GalleryMoon state="none" />;
+  if (view === 'moon-dock') return <GalleryMoon state="dock" />;
+  if (view === 'moon-gate') return <GalleryMoon state="gate" />;
+  if (view === 'moon-scan') return <GalleryMoon state="scan" />;
   if (view === 'base-fleet-empty') return <GalleryBase empty />;
   if (view === 'repair-station') return <GalleryBase open />;
   if (view === 'repair-station-hangar') return <GalleryBase open hangar />;

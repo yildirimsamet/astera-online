@@ -138,3 +138,27 @@ export function moonFlashProgress(atMs: number, nowMs: number): number | null {
   if (ageMs < 0 || ageMs > totalMs) return null;
   return ageMs / totalMs;
 }
+
+/** What the moon list says changed since the last one: the births and the shattered (review W8). */
+export interface MoonListState {
+  readonly hydrated: boolean;
+  readonly known: ReadonlySet<string>;
+}
+
+/**
+ * The first list a page loads is the galaxy as it already stands — nothing in it is born. Every later list
+ * names its newcomers (a birth) and its missing (a shatter). An empty first list counts as loaded too, so
+ * the first moon a galaxy ever sees still plays its birth.
+ */
+export function moonListChanges(
+  previous: MoonListState, planetIds: readonly string[],
+): MoonListState & { births: string[]; gone: string[] } {
+  const now = new Set(planetIds);
+  if (!previous.hydrated) return { hydrated: true, known: now, births: [], gone: [] };
+  return {
+    hydrated: true,
+    known: now,
+    births: planetIds.filter((id) => !previous.known.has(id)),
+    gone: [...previous.known].filter((id) => !now.has(id)),
+  };
+}

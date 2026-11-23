@@ -100,7 +100,7 @@ function WorldRow({ world, onWorld }: { world: OutlineWorld; onWorld: (id: strin
       <span className="grid min-w-0">
         <span className="gk-wrow__name inline-flex items-center gap-1">
           <span className="truncate">{world.name}</span>
-          {world.hasMoon && <Glyph id="moon" className="size-3 shrink-0 text-amber-300" />}
+          {world.hasMoon && <Glyph id="moon" className="size-3 shrink-0 text-alloy" />}
         </span>
         <span className="gk-sub">{where}</span>
       </span>

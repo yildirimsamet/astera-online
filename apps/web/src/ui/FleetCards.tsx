@@ -113,7 +113,7 @@ export function FleetCards({
                       <span className="gk-fleetchip__name">{hullLabel(id)}</span>
                       <span data-testid={`fleet-home-${id}`} className="gk-fleetchip__home gk-num">{home}</span>
                       {onMoon > 0 && (
-                        <span data-testid={`fleet-moon-${id}`} className="gk-fleetchip__away gk-num text-amber-300"
+                        <span data-testid={`fleet-moon-${id}`} className="gk-fleetchip__away gk-num text-alloy"
                           title={mt('fleetSplit.onMoonBadge', { count: onMoon })}>
                           <Glyph id="moon" />{onMoon}
                         </span>

@@ -541,7 +541,7 @@ Chronicle kayıtları sezon arşivinde kalır. Ek bir "ay rekoru" kapsam dışı
 ### 6.18 Bildirim, Chronicle, push (S41)
 
 - **Kişisel bildirimler:** ayın doğdu, çatladı, patladı, kapı hazır. Saldırı uyarısı gövdeyi söyler.
-- **Push:** Push kategorileri `notificationCenter` kurallarına eklenir; oyuncunun ayarları geçerlidir.
+- **Push (V56):** Yeni push türü yok; ay olayları oyun içi zile gider, akın ve Ölüm Yıldızı uyarıları mevcut push'larla gelir.
 - **Uyarı:** `/api/notifications` payload'u ham yayınlanır (O22). Ay bildirimleri yalnız alıcının zaten bildiğini taşır. Örneğin "ayın çatladı" bildirimi, alıcının radar ya da teleskopla görmediği bir saldırganın kimliğini taşımaz.
 - **Chronicle (V18):**
   - **Doğdu:** Nadirlik yazılmaz (S53).
@@ -563,7 +563,7 @@ Chronicle kayıtları sezon arşivinde kalır. Ek bir "ay rekoru" kapsam dışı
 - **Arıza:** Görevleri her iki gövdeden bağlar; geçiş ve sıçramayı bağlamaz (V13).
 - **Uçuş yuvası:** Aydan kalkan görev dünyanın yuvasını kullanır; geçiş ve sıçrama kullanmaz.
 - **Komutan gemisi:** Aydan kalkan saldırıya eşlik eder, kapıdan geçmez (V4).
-- **Aktivite:** Her ay eylemi oyuncu emri sayılır ve mevcut aktivite kaydını günceller (Silent Space ve hareketsizlik sayaçları). Botlar da aynı yoldan geçer.
+- **Aktivite (V55):** Her ay eylemi oyuncu emri sayılır ve mevcut aktivite kaydını günceller (Silent Space ve hareketsizlik sayaçları, `markProgress`). Botlar da aynı yoldan geçer.
 
 ### 6.21 API, Zod, idempotency, hata kodları
 
@@ -591,8 +591,8 @@ Chronicle kayıtları sezon arşivinde kalır. Ek bir "ay rekoru" kapsam dışı
 
 ### 6.23 Admin, stage, analitik
 
-- **Admin aracı:** Stage ve test sezonlarında bir dünyaya istenen nadirlikte ay koyar; canlıda kapalıdır.
-- **Analitik (F10 ölçümü):** Geçiş, sıçrama, tarama, hedef değiştirme, kurma, doğum, Death Star darbesi ve patlama kaydedilir.
+- **Admin aracı (V57):** Stage ve test sezonlarında bir dünyaya istenen nadirlikte ay koyar (`cli/grant-moon.ts`); canlıda kapalıdır.
+- **Analitik (F10 ölçümü, V57):** Geçiş, sıçrama, tarama, hedef değiştirme, kurma, doğum, Death Star darbesi ve patlama mevcut tablolardan sayılır (`GET /api/admin/analytics/moons`).
 - **Komut kaynağı:** Mevcut `commandSource` ve `analyticsVisitHash` deseni kullanılır.
 
 ## 7. Eşzamanlılık ve yarışlar
@@ -957,6 +957,10 @@ Kıyas için `profileIncome(9)`: dünya başına saatte ~1.740 alloy, ~870 cryst
 | V52 | **Ajan kararı.** F6'nın doğum mekaniği V34 diliminden önce yazıldı; S9 şartı tek bir kapı fonksiyonunda (`holdsLunarCapture`, `services/moon.ts`) durur ve araştırma gelene kadar `false` döner. Testler kapıyı açarak mekaniği sınar. Ayrı `moon_born` bildirim türü açılmadı; akın ve klan savaş bildirimleri `moonBorn: true` taşır (V49 ile aynı gerekçe). | Araştırma kimliği istemci görselleri olmadan kataloğa giremez (V34); doğum kodunu beklemek F8'i de bekletirdi. Kapı tek yerde olduğu için F9'da yalnız bu fonksiyon değişir. |
 | V53 | **Ajan kararı (2026-11-20).** Ay Çekimi takımyıldızda **Ufuk** grubuna (izinler) girer; aysız galakside sunucu onu listelemez, yıldızın yeri boş kalır (Endüstri ve Radyasyon Kalkanı'nın eski sezonlardaki davranışı). Akademi dünyası onu sunmaz. Kart görseli owner'ın Codex çizimi, seri çerçevesine kırpıldı (`research/lunar-capture-v1.webp`, kaynak `assets/source/premium/research/lunar-capture-v1.png`). | İzin araştırması; Ufuk notu "İzinler" der. |
 | V54 | **Ajan kararı (2026-11-20).** Ay kurma siparişi `build_orders.kind = 'MOON'`, `subject = 'COMMON'` (migration 0262). Önkoşul sırası: aylı galaksi (`MOONS_DISABLED`) → Ay Çekimi (`RESEARCH_LOCKED`) → dünyada ay yok (`MOON_EXISTS`) → kuyrukta ay siparişi yok (`MOON_ALREADY_ORDERED`). Oyuncu iptali olağan `cancelRefund`; V1 sistem iptali `FAILED` + tam iade, kaynaklar artışla yazılır (savaş savunanın stoğunu doğumdan önce kaydeder). Bitişte zaten ay varsa (yalnız koruma) hiçbir şey ezilmez. Kuyruk şeridinde sipariş "Yaygın ay" adıyla ve Ay Çekimi görseliyle görünür. **Kurma düğmesi F9'un ay paneline kalır**: oyuncunun ayı gördüğü yüzey henüz yok. | Paneli ay ekranıyla birlikte tasarlamak, tek düğmeyi bugünkü gezegen ekranına iliştirmekten iyi. |
+| V55 | **Owner kararı (2026-11-23).** Her ay emri (kurma, geçiş, sıçrama, tarama, hedef değiştirme) Sessiz Uzay sayacını sıfırlar (`markProgress`). Kural "oyunu gerçekten bırakan" komutanı bekler; bir şey yapan oyuncu oynuyordur. Kurma zaten inşa emri olarak sayılıyordu; geçiş/sıçrama/tarama/hedef değiştirme takeover review'da eklendi (`moon-review-1123.test.ts`). | §6.20 metni bunu söylüyordu, kod yalnız `recordLegacyActivity` yazıyordu. |
+| V56 | **Owner kararı (2026-11-23).** Ay için yeni push türü yok. Doğdu/çatladı/patladı/kapı hazır oyun içi zile gider; aya gelen akın `incoming_attack`, Ölüm Yıldızı `incoming_strategic` push'uyla zaten uyarılır. Kapı, Ölüm Yıldızı darbesiyle kapalıyken şarj olursa "kapı hazır" bildirimi kapanma bitince gelir (review B6). | Gezegene Ölüm Yıldızı isabetinin de push'u yok; uyarı önceden gelir. |
+| V57 | **Ajan kararı (2026-11-23).** Stage aracı: `apps/server/src/cli/grant-moon.ts --world <ad> --rarity <R>` (canlıda reddedilir: `NODE_ENV=production` ve `SENTRY_ENVIRONMENT≠stage`). Analitik: `GET /api/admin/analytics/moons?days=7[&seasonId=]` mevcut tablolardan sayar (geçiş, sıçrama, tarama, hedef değiştirme, ay akını, aya Ölüm Yıldızı, kurma; komutan ve bot kadrosu ayrı; doğum, patlama, ayakta ay). Yeni sütun/migration yok; admin ekranı yok, owner isterse eklenir. | §6.23'ün iki eksiği; §10.1 bot kalibrasyonu ilk haftanın insan oranına dayanır. |
+| V58 | **Ajan kararı (2026-11-23, takeover review).** Ay paneli: kurma 1 sn basılı tutma (GameHold `spends`); Ay Çekimi araştırılıyorsa kart bunu söyler; hata kartın kendi eyleminin yanında; aynı bilgi bir kez (rıhtım çubuğu ve hareket listesi başlıkta); "?" düğmesi yerine dayanıklılık satırında InfoPeek ("tam onarım …"); aysız ekranda filo çipleri yok; bilinmeyen dünya kimlik parçası değil "Bilinmeyen dünya"; Gözcü rotaları "pelerinli" diye boyanmaz (satır bu bilgiyi taşımıyor); bütün kural sayıları `MOON`'dan (`moonT` değişkenleri), Wiki de; tr EPIC = "Destansı" (Miras ile aynı). Geçiş sürükleme yerine adet seçici + düğme kalır (sık eylem, kesin adet); Gözcü hedefi harita dokunuşu yerine seçici + "Haritada göster". Doğum/parçalanma VFX'i halka değil regolit kayalar (owner 2026-11-18 hale yasağı). | Takeover review bulguları W1–W8, U1–U11, V1–V2 (`out/moon-review-2026-11-23.md`). |
 
 ## 16. Dosya haritası
 
@@ -1012,4 +1016,5 @@ Kıyas için `profileIncome(9)`: dünya başına saatte ~1.740 alloy, ~870 cryst
 | V34 dilimi (Ay Çekimi + Common kurma) | ✅ 2026-11-20 sunucu + istemci verisi: kurallar `RESEARCH_PROJECTS.LUNAR_CAPTURE` (20k/10k/500, sabit 4 sa, Çekirdek 9, `fixedMinutes` + `researchOrderMinutes`), `MOON.capture` / `MOON.build`; sunucu aysız galakside sunmaz, `holdsLunarCapture` gerçek araştırmayı okur (V52 kapandı, savaşta doğum artık canlı), `orderMoon` + `POST /api/planets/:planetId/moon/build`, `abandonMoonOrders` (V1); istemci şema (`LUNAR_CAPTURE`, `MOON` sipariş), kart görseli, 6 dil ad/etiket/rol/detay/kazanç/sipariş adı, Wiki, takımyıldız (V53), süre önizlemesi sabit 4 sa. Testler: kurallar `moon.test.ts` +3, sunucu `moon-capture.test.ts` 4, `moon-build.test.ts` 5, web `moon-order.test.ts` 3, `research-gains` +1. Kalan: kurma düğmesi F9 ay panelinde (V54). |
 | F8 botlar | ✅ 2026-11-22 `services/bots/moon.ts`, `personas.ts` (`BotMoonHabit`), `brain.ts` (`tendBotMoon`, `seasonHasMoons` kapısı altında): Çekirdek 9+ Ay Çekimi + Common ay kurma, yalnız `incoming_fleet` radar uyarısında aya kaçış / tehdit yoksa geri iniş, çift aylı botta kapı takviyesi, Gözcü taraması, tekli akında kamusal aya hedef değiştirme, saldırgan personada READY Ölüm Yıldızı ile ay çatlatma (nötr tohum ayı dahil, S54; `moons.rarity` okunmaz, yalnız `probe_world_memories` nadirliği, S53 bilgi eşitliği). Testler: `bots-moon.test.ts` 11 test, ilgili bot + `unit-location-guard` 70 test, `@astera/server` typecheck + eslint temiz. |
 | F9 görsel, ses, UX | ✅ 2026-11-22 F9a (`planetView.moon`, probe ay API'si, web şema/istemci), F9b (`MoonPanel`, `PlanetScreen` orbit sekmesi, 6 dil ayrı `moon` i18next namespace + `useMoonT`/`moonT`, Ay Kapısı & Gözcü kart görselleri WebP), F9c (`LaunchSheet`/`TransferSheet` gövde seçicileri, `MoonControls`, `incoming_fleet` ay uyarısı S24, `moon_gate_ready` V46, `ChronicleScreen` `moon_born`/`moon_destroyed`), F9d (`Moons.tsx` + `moonOrbit.ts` 3D instanced ay/V17 nadirlik halkası/kapı parıltısı VFX briefleri). Testler: `moon-planet-view` 3, `moon-api-schemas` 4, `moon-panel` 3, `moon-surfaces` 5, `moon-orbit` 4, `i18n` 120 test; server + web typecheck & eslint temiz. |
-| F10 oyuncu testi ve teslim | 🟡 Kod ve birim/entegrasyon testleri tamam; stage ruleset 20 playtest, varsayılan ruleset 19 → 20 ve deploy owner emriyle. |
+| Takeover review | ✅ 2026-11-23 tüm plan yeniden incelendi (backend, frontend, UX, VFX): bulgular ve doğrulama `out/moon-review-2026-11-23.md`; düzeltmeler V55–V58. |
+| F10 oyuncu testi ve teslim | 🟡 Kod ve birim/entegrasyon testleri tamam; stage ruleset 20 playtest (`grant-moon` ile nadir aylar), varsayılan ruleset 19 → 20 ve deploy owner emriyle. |

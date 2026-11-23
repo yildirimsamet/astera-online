@@ -1,8 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useRecallFlight, useRecallMining, useRetargetMission } from '../api/queries.js';
-import { useMoonT } from '../i18n/moon.js';
-import { RetargetButton } from '../screens/MoonControls.js';
+import { useRecallFlight, useRecallMining } from '../api/queries.js';
+import { MissionRetarget } from '../screens/MissionRetarget.js';
 import { useAirborne, type FlightMark, type StripFocus } from '../lib/airborne.js';
 import { legProgress } from '../lib/fleetPage.js';
 import { countdown } from '../lib/time.js';
@@ -119,11 +118,9 @@ export function PendingStrip({ onFocus }: { onFocus?: (focus: StripFocus) => voi
  */
 export function FlightList({ onFocus, onDone }: { onFocus: (focus: StripFocus) => void; onDone: () => void }) {
   const { t } = useTranslation();
-  const tMoon = useMoonT();
   const { items, now } = useAirborne();
   const recall = useRecallMining();
   const recallFleet = useRecallFlight();
-  const retarget = useRetargetMission();
   const say = useToast();
 
   return (
@@ -216,19 +213,7 @@ export function FlightList({ onFocus, onDone }: { onFocus: (focus: StripFocus) =
                 </div>
                 {retargetInfo && (
                   <div className="border-t border-line-soft px-3 py-2 flex justify-end">
-                    <RetargetButton
-                      missionId={retargetInfo.missionId}
-                      currentBody={retargetInfo.currentBody}
-                      disabled={retarget.isPending}
-                      onRetarget={(missionId, targetBody) => {
-                        retarget.mutate({ missionId, body: targetBody }, {
-                          onSuccess: (res) => {
-                            say(tMoon(res.targetBody === 'MOON' ? 'body.retargetedToMoon' : 'body.retargetedToPlanet'));
-                          },
-                          onError: (error) => { say(describe(error), 'error'); },
-                        });
-                      }}
-                    />
+                    <MissionRetarget missionId={retargetInfo.missionId} currentBody={retargetInfo.currentBody} />
                   </div>
                 )}
               </div>

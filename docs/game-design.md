@@ -902,6 +902,25 @@ returns first; blocked applicants retain priority. Maintenance runs every five m
 to five successful moves. The placement notice links to return applications. Normal season
 reset continues. Activation status and measured acceptance are recorded in deployment docs.
 
+## Moons — Ay (ruleset 20, owner 2026-11-18/19)
+
+A moon is the world's second body: a dock where a fleet can stand apart from the planet, a Gate that
+crosses the galaxy between the commander's own moons, and a Gözcü that photographs routes in silence.
+It deepens the information game (where is the fleet? what is coming?) without a new resource.
+
+- **Getting one:** research Lunar Capture (Core 9), then build a Common moon on the construction line;
+  or have a rarer moon born from large battle wreckage; or conquer a world that has one (seeded moons).
+- **Fighting:** a raid or Death Star picks a body. A moon battle is fought only by the moon's fleet — no
+  ground guns, no Aegis, no escape, no loot. A single outbound raid may switch body until it lands.
+- **Durability:** Death Star hits take durability and shut the gate and Gözcü; at 0 the moon and every
+  ship on it are gone. Durability heals a day after the last hit.
+- **Silent Space (V55, owner 2026-11-23):** every moon order — build, hop, jump, scan, retarget — counts
+  as playing and restarts the 30-hour clock. The rule exists for commanders who stopped playing.
+- **Notifications (V56, owner 2026-11-23):** moon events reach the in-game bell; no new push kind.
+  Attacks on a moon already push through `incoming_attack`, strikes through `incoming_strategic`.
+
+Every number, rule and decision: `docs/ay-entegrasyon-plani-2026-11-19.md` (V1–V58) and `docs/ay-plani-2026-11-18.md`.
+
 ## Galaxy, travel and mining
 
 ### Flight speed, recall and the landing pause (Faz 2A, owner decisions 2026-09-21)

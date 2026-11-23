@@ -256,7 +256,7 @@ export function IntelScreen({
               {moonScans.isLoading ? (
                 <Waiting>{t('surface.waitingIntel')}</Waiting>
               ) : (moonScans.data?.scans.length ?? 0) === 0 ? (
-                <div className="gk-well p-3 text-caption text-slate-300">
+                <div className="gk-well p-3 text-caption text-dim">
                   {tMoon('scan.historyEmpty')}
                 </div>
               ) : (
@@ -264,28 +264,28 @@ export function IntelScreen({
                   {(moonScans.data?.scans ?? []).map((scan) => {
                     const nameOf = (id: string) => {
                       const raw = galaxy.data?.planets.find((w) => w.id === id)?.name;
-                      return raw !== undefined && raw.trim().length > 0 ? raw : id.slice(0, 8);
+                      return raw !== undefined && raw.trim().length > 0 ? raw : tMoon('scan.unknownWorld');
                     };
                     const ageMin = Math.max(0, (now - scan.scannedAt.getTime()) / 60_000);
                     return (
                       <li key={scan.id} data-testid="gozcu-history-item" className="gk-plate flex flex-col gap-2 p-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
-                            <Glyph id="moon" className="size-4 shrink-0 text-amber-300" />
-                            <span className="truncate text-caption font-semibold text-slate-100">
+                            <Glyph id="moon" className="size-4 shrink-0 text-alloy" />
+                            <span className="truncate text-caption font-semibold text-bone">
                               {tMoon('scan.historyFrom', {
                                 scanner: nameOf(scan.scannerPlanetId),
                                 target: nameOf(scan.targetPlanetId),
                               })}
                             </span>
                             {scan.pierced && (
-                              <span className="rounded-chip bg-amber-400/20 px-1.5 py-0.5 text-caption font-medium text-amber-200">
+                              <span className="rounded-chip bg-alloy/20 px-1.5 py-0.5 text-caption font-medium text-alloy">
                                 {tMoon('guide.pierceShort')}
                               </span>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="gk-num text-caption text-slate-400">
+                            <span className="gk-num text-caption text-faint">
                               {tMoon('scan.historyCount', { count: scan.rows.length })} · {staleness(ageMin)}
                             </span>
                             {onOpenDossier && (
@@ -300,7 +300,7 @@ export function IntelScreen({
                           </div>
                         </div>
                         {scan.rows.length === 0 ? (
-                          <p className="text-caption text-slate-400">{tMoon('scan.noRoutes')}</p>
+                          <p className="text-caption text-faint">{tMoon('scan.noRoutes')}</p>
                         ) : (
                           <ul className="flex flex-col gap-1">
                             {scan.rows.map((row, idx) => (
@@ -308,14 +308,14 @@ export function IntelScreen({
                                 key={`${scan.id}-${idx}`}
                                 className="gk-well flex items-center justify-between gap-2 px-2.5 py-1.5 text-caption"
                               >
-                                <span className="text-slate-200">
-                                  <span className={row.direction === 'IN' ? 'font-semibold text-rose-300' : 'font-semibold text-sky-300'}>
+                                <span className="text-bone">
+                                  <span className={row.direction === 'IN' ? 'font-semibold text-threat-ink' : 'font-semibold text-crystal'}>
                                     {row.direction === 'IN' ? tMoon('scan.dirIn') : tMoon('scan.dirOut')}
                                   </span>
                                   {' · '}
                                   {nameOf(row.otherPlanetId)}
                                 </span>
-                                <span className="gk-num text-slate-400">
+                                <span className="gk-num text-faint">
                                   {tMoon(`scan.size.${row.size}`)} · {row.arriveAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                               </li>

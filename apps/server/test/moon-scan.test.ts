@@ -101,7 +101,7 @@ describe('Gözcü, the moon’s route scan', () => {
   });
 
   it('refuses a world out of range, a shut moon, no moon, and a second scan within three seconds', async () => {
-    await expect(scanFromMoon(f.db, f.playerIds[0]!, mine, colony, f.clock)).rejects.toMatchObject({ code: 'OUT_OF_RANGE' });
+    await expect(scanFromMoon(f.db, f.playerIds[0]!, mine, colony, f.clock)).rejects.toMatchObject({ code: 'OUT_OF_RANGE', params: { context: 'gozcu' } });
     await scan();
     await expect(scan()).rejects.toMatchObject({ code: 'SCAN_TOO_SOON' });
     f.clock.advance(MOON.scanSpacingSeconds / 60);

@@ -41,7 +41,7 @@ import { compact, full } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { countdown, duration, useNow } from '../lib/time.js';
-import { HULL_ART } from '../ui/assets.js';
+import { HULL_ART, MOON_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { describe } from '../ui/Toast.js';
@@ -105,10 +105,10 @@ export interface MoonPanelProps {
 }
 
 const RARITY_STYLE: Record<MoonRarity, { ring: string; text: string; bg: string }> = {
-  COMMON: { ring: 'border-slate-400/50', text: 'text-slate-200', bg: 'bg-slate-400/15' },
-  RARE: { ring: 'border-sky-400/60', text: 'text-sky-300', bg: 'bg-sky-400/15' },
+  COMMON: { ring: 'border-faint/50', text: 'text-bone', bg: 'bg-void/15' },
+  RARE: { ring: 'border-crystal/60', text: 'text-crystal', bg: 'bg-crystal/15' },
   EPIC: { ring: 'border-purple-400/60', text: 'text-purple-300', bg: 'bg-purple-400/15' },
-  LEGENDARY: { ring: 'border-amber-400/70', text: 'text-amber-300', bg: 'bg-amber-400/15' },
+  LEGENDARY: { ring: 'border-alloy/70', text: 'text-alloy', bg: 'bg-alloy/15' },
 };
 
 const RARITY_KEY = {
@@ -204,7 +204,7 @@ function useMoonExpiryWakeup(deadlines: readonly (Date | null | undefined)[], no
 function FleetChips({ fleet, emptyLabel }: { readonly fleet: Fleet; readonly emptyLabel: string }) {
   const present = MOBILE_HULLS.filter((h) => (fleet[h] ?? 0) > 0);
   if (present.length === 0) {
-    return <p className="text-caption text-slate-400">{emptyLabel}</p>;
+    return <p className="text-caption text-faint">{emptyLabel}</p>;
   }
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -213,7 +213,7 @@ function FleetChips({ fleet, emptyLabel }: { readonly fleet: Fleet; readonly emp
         return (
           <span
             key={hull}
-            className="inline-flex items-center gap-1 rounded-chip border border-white/10 bg-white/[0.04] px-2 py-0.5 text-caption text-slate-100"
+            className="inline-flex items-center gap-1 rounded-chip border border-white/10 bg-white/[0.04] px-2 py-0.5 text-caption text-bone"
           >
             {art ? (
               <img src={art} alt="" aria-hidden width={18} height={18} className="size-[18px] object-contain" />
@@ -221,7 +221,7 @@ function FleetChips({ fleet, emptyLabel }: { readonly fleet: Fleet; readonly emp
               <HullMark hull={hull} className="size-4" />
             )}
             <span>{hullName(hull) ?? hull}</span>
-            <span className="gk-num font-semibold text-sky-200">×{fleet[hull]}</span>
+            <span className="gk-num font-semibold text-crystal">×{fleet[hull]}</span>
           </span>
         );
       })}
@@ -234,9 +234,9 @@ function RarityComparisonTable({ current }: { readonly current?: MoonRarity }) {
   return (
     <Fold glyph="moon" title={mt('guide.rarityTableTitle')}>
       <div className="overflow-x-auto pt-1">
-        <table className="w-full border-collapse text-left text-caption">
+        <table className="w-full [border-collapse:collapse] text-left text-caption">
           <thead>
-            <tr className="border-b border-white/10 text-slate-400">
+            <tr className="border-b border-white/10 text-faint">
               <th className="py-1.5 pr-2 font-medium">{mt('guide.colTier')}</th>
               <th className="py-1.5 px-2 font-medium">{mt('guide.colDock')}</th>
               <th className="py-1.5 px-2 font-medium">{mt('guide.colGate')}</th>
@@ -256,15 +256,15 @@ function RarityComparisonTable({ current }: { readonly current?: MoonRarity }) {
                   <td className={`py-1.5 pr-2 font-semibold ${style.text}`}>
                     {mt(RARITY_KEY[tier])}
                     {scanPierces(tier) && (
-                      <span className="ml-1.5 rounded-chip bg-amber-400/20 px-1.5 py-0.5 text-caption text-amber-200">
+                      <span className="ml-1.5 rounded-chip bg-alloy/20 px-1.5 py-0.5 text-caption text-alloy">
                         {mt('guide.pierceShort')}
                       </span>
                     )}
                   </td>
-                  <td className="gk-num py-1.5 px-2 text-slate-200">{compact(gateCapacity(tier))}</td>
-                  <td className="gk-num py-1.5 px-2 text-slate-200">{duration(gateChargeMs(tier) / 60_000)}</td>
-                  <td className="gk-num py-1.5 px-2 text-slate-200">{full(scanRange(tier))}</td>
-                  <td className="gk-num py-1.5 pl-2 text-slate-200">{crackLimit(tier)}</td>
+                  <td className="gk-num py-1.5 px-2 text-bone">{compact(gateCapacity(tier))}</td>
+                  <td className="gk-num py-1.5 px-2 text-bone">{duration(gateChargeMs(tier) / 60_000)}</td>
+                  <td className="gk-num py-1.5 px-2 text-bone">{full(scanRange(tier))}</td>
+                  <td className="gk-num py-1.5 pl-2 text-bone">{crackLimit(tier)}</td>
                 </tr>
               );
             })}
@@ -351,6 +351,8 @@ function NoMoonCard({
 
   const research = planet.research.find((r) => r.id === 'LUNAR_CAPTURE');
   const hasResearch = (research?.level ?? 0) >= 1;
+  // F2: Lunar Capture already on the research line — say when it lands, not "research first".
+  const researching = hasResearch ? undefined : planet.researchQueue?.find((q) => q.projectId === 'LUNAR_CAPTURE');
   const pendingOrder = planet.queues?.CONSTRUCTION.find((q) => q.kind === 'MOON');
   const hasResources =
     planet.planet.alloy >= MOON.build.cost.alloy &&
@@ -358,7 +360,9 @@ function NoMoonCard({
   const canBuild = !pendingOrder && hasResearch && hasResources && !busy && Boolean(onOrderMoon);
   const buildDisabledReason = pendingOrder
     ? mt('build.queued')
-    : !hasResearch
+    : researching
+      ? mt('build.researching', { time: researching.finishesAt ? countdown(researching.finishesAt.getTime() - now) : '…' })
+      : !hasResearch
       ? mt('build.needResearch')
       : !hasResources
         ? mt('build.needResources')
@@ -368,7 +372,7 @@ function NoMoonCard({
             ? mt('build.action')
             : null;
 
-  useMoonExpiryWakeup([pendingOrder?.finishesAt], now, onRefresh);
+  useMoonExpiryWakeup([pendingOrder?.finishesAt, researching?.finishesAt], now, onRefresh);
 
   const handleBuild = async () => {
     if (!onOrderMoon || !canBuild) return;
@@ -376,7 +380,7 @@ function NoMoonCard({
     setErr(null);
     try {
       await onOrderMoon(planet.planet.id);
-      playSound('tap');
+      haptic('commit');
       onRefresh?.();
     } catch (e) {
       setErr(describe(e));
@@ -385,20 +389,18 @@ function NoMoonCard({
     }
   };
 
-  const planetMobile = useMemo(() => fitMobileFleet(planet.fleet, Number.MAX_SAFE_INTEGER), [planet.fleet]);
-
   return (
     <div data-testid="moon-panel-empty" className="gk flex flex-col gap-3 px-3 pb-4">
       <Plate className="flex flex-col gap-3 p-4">
         <div className="flex items-start gap-3">
           <img
-            src="/images/premium/moon/moon-gate-v1.webp"
+            src={MOON_ART.gate}
             alt=""
             className="size-16 shrink-0 rounded-control border border-white/10 object-cover"
           />
           <div className="min-w-0 flex-1">
             <div className="text-title font-semibold text-white">{mt('build.title')}</div>
-            <p className="mt-0.5 text-caption text-slate-300">{mt('build.subtitle')}</p>
+            <p className="mt-0.5 text-caption text-dim">{mt('build.subtitle')}</p>
             <div className="mt-2">
               <CostLine
                 cost={{ alloy: MOON.build.cost.alloy, crystal: MOON.build.cost.crystal }}
@@ -418,7 +420,16 @@ function NoMoonCard({
           />
         ) : (
           <div className="flex flex-col gap-2">
-            {!hasResearch && (
+            {researching && (
+              <div data-testid="moon-research-running">
+                <Banner
+                  tone="info"
+                  glyph="clock"
+                  title={mt('build.researching', { time: researching.finishesAt ? countdown(researching.finishesAt.getTime() - now) : '…' })}
+                />
+              </div>
+            )}
+            {!hasResearch && !researching && (
               <Banner
                 tone="warn"
                 glyph="lock"
@@ -436,44 +447,30 @@ function NoMoonCard({
               <Banner tone="hostile" title={mt('build.needResources')} />
             )}
             {err && <Banner tone="hostile" role="alert" title={err} />}
-            <GameButton
-              data-testid="moon-build-btn"
-              tone="action"
-              size="md"
-              wide
+            {/* U3: pulling a rock into orbit is a commitment that spends — the kit's 1 s hold, like the Gate. */}
+            <GameHold
+              weight="spends"
+              glyph="moon"
+              marks={{ 'data-testid': 'moon-build-btn' }}
+              label={mt('build.action')}
               disabledReason={buildDisabledReason}
-              onPress={() => { void handleBuild(); }}
-            >
-              {mt('build.action')}
-            </GameButton>
+              onCommit={() => { void handleBuild(); }}
+            />
           </div>
         )}
       </Plate>
 
       {/* 3 Ways to Acquire a Moon + Rarity Comparison Table (always accessible without leaving the tab) */}
       <Fold glyph="moon" title={mt('guide.waysTitle')} open>
-        <ul className="flex flex-col gap-1.5 pt-1 text-caption text-slate-300">
+        <ol className="flex list-decimal flex-col gap-1.5 pl-5 pt-1 text-caption text-dim">
           <li>{mt('guide.wayBuild')}</li>
           <li>{mt('guide.wayBattle')}</li>
           <li>{mt('guide.wayCapture')}</li>
-        </ul>
+        </ol>
       </Fold>
 
       <RarityComparisonTable />
 
-      {/* Show planet mobile fleet even before a moon exists so the commander sees what can later dock here. */}
-      <Plate className="flex flex-col gap-2 p-3">
-        <div className="flex items-center justify-between text-caption">
-          <span className="inline-flex items-center gap-1.5 font-semibold text-slate-200">
-            <Glyph id="home" className="size-3.5 text-sky-300" />
-            {mt('fleetSplit.planet')}
-          </span>
-          <span className="gk-num text-slate-400">
-            {mt('fleetSplit.ships', { count: fleetCount(planetMobile) })}
-          </span>
-        </div>
-        <FleetChips fleet={planetMobile} emptyLabel={mt('fleetSplit.emptyPlanet')} />
-      </Plate>
     </div>
   );
 }
@@ -518,7 +515,8 @@ function ActiveMoonCard({
   const [lastScannedTargetId, setLastScannedTargetId] = useState<string | null>(null);
   const [busy, setBusy] = useState<'hop' | 'jump' | 'scan' | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [headerHelpOpen, setHeaderHelpOpen] = useState(false);
+  /** W1: a refusal is told on the card that was pressed, beside its control. */
+  const errBanner = err ? <Banner tone="hostile" role="alert" title={err} /> : null;
 
   const style = RARITY_STYLE[moon.rarity];
   const isClosed = moon.closedUntil !== null && moon.closedUntil.getTime() > now;
@@ -526,10 +524,10 @@ function ActiveMoonCard({
   const gateReady = !isClosed && gateChargingMs <= 0;
   const durability = Math.max(0, moon.crackLimit - moon.cracks);
   const durabilityTone = durability >= moon.crackLimit
-    ? 'text-emerald-300'
+    ? 'text-opportunity'
     : durability <= 1
-      ? 'text-rose-300'
-      : 'text-amber-300';
+      ? 'text-threat-ink'
+      : 'text-alloy';
   const crackHealMs = moon.cracks > 0 && moon.lastHitAt
     ? Math.max(0, moon.lastHitAt.getTime() + CRACK_HEAL_MS - now)
     : 0;
@@ -575,9 +573,6 @@ function ActiveMoonCard({
   const activeHopMove = moon.moves.find(
     (mv) => mv.kind === hopPendingKind && mv.fromPlanetId === planet.planet.id && mv.arriveAt.getTime() > now,
   ) ?? null;
-  const activeAnyHops = moon.moves.filter(
-    (mv) => (mv.kind === 'HOP_UP' || mv.kind === 'HOP_DOWN') && mv.fromPlanetId === planet.planet.id && mv.arriveAt.getTime() > now,
-  );
   const hopAlreadyMoving = activeHopMove !== null;
   const hopSource = hopDir === 'UP' ? planetMobile : moonMobile;
   const hopFleet = useMemo(() => clampSelection(hopPick, hopSource), [hopPick, hopSource]);
@@ -654,6 +649,7 @@ function ActiveMoonCard({
       await onHop(planet.planet.id, hopDir, hopFleet);
       setHopPick({});
       playSound('launch');
+      haptic('commit');
       onRefresh?.();
     } catch (e) {
       setErr(describe(e));
@@ -671,6 +667,7 @@ function ActiveMoonCard({
       await onJump(planet.planet.id, destMoon.planetId, jumpingFleet);
       setGatePick({});
       playSound('launch');
+      haptic('warp');
       onRefresh?.();
       onJumpStarted?.(planet.planet.id, destMoon.planetId, jumpingFleet);
     } catch (e) {
@@ -689,6 +686,7 @@ function ActiveMoonCard({
       setScanResult(res);
       setLastScannedTargetId(effectiveScanId);
       playSound('arc');
+      haptic('commit');
       onRefresh?.();
       onScanVisual?.(
         planet.planet.id,
@@ -697,7 +695,6 @@ function ActiveMoonCard({
         res.rows.map((r) => ({
           fromPlanetId: r.direction === 'IN' ? r.otherPlanetId : effectiveScanId,
           toPlanetId: r.direction === 'IN' ? effectiveScanId : r.otherPlanetId,
-          cloaked: res.pierced,
         })),
       );
     } catch (e) {
@@ -744,65 +741,52 @@ function ActiveMoonCard({
               <Glyph id="moon" className="size-3.5" />
               {mt(RARITY_KEY[moon.rarity])}
             </span>
-            <span className="text-caption text-slate-400">{mt(ORIGIN_KEY[moon.origin])}</span>
+            <span className="text-caption text-faint">{mt(ORIGIN_KEY[moon.origin])}</span>
             {moon.scanPierces && (
-              <span data-testid="moon-pierce-badge" className="rounded-chip bg-amber-400/15 px-1.5 py-0.5 text-caption font-medium text-amber-300">
+              <span data-testid="moon-pierce-badge" className="rounded-chip bg-alloy/15 px-1.5 py-0.5 text-caption font-medium text-alloy">
                 {mt('scan.pierces')}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1.5 text-caption">
-            <span data-testid="moon-cracks" className={`gk-num font-medium ${durabilityTone}`}>
-              {mt('status.cracks')}: {durability}/{moon.crackLimit}
+          {isClosed && (
+            <span className="rounded-chip bg-threat/20 px-1.5 py-0.5 text-caption font-medium text-threat-ink gk-num">
+              {mt('status.closed')} ({countdown(moon.closedUntil!.getTime() - now)})
             </span>
-            {crackHealMs > 0 && (
-              <span className="gk-num text-slate-400">
-                ({countdown(crackHealMs)})
-              </span>
-            )}
-            {isClosed && (
-              <span className="rounded-chip bg-rose-500/20 px-1.5 py-0.5 font-medium text-rose-300 gk-num">
-                {mt('status.closed')} ({countdown(moon.closedUntil!.getTime() - now)})
-              </span>
-            )}
-            <button
-              type="button"
-              {...OWN_SOUND}
-              aria-label={mt('guide.howItWorks')}
-              aria-expanded={headerHelpOpen}
-              onClick={() => {
-                playSound('tap');
-                setHeaderHelpOpen((v) => !v);
-              }}
-              className="grid size-7 place-items-center rounded-control border border-white/15 bg-white/5 text-caption font-bold text-slate-200 hover:bg-white/10"
-            >
-              ?
-            </button>
-          </div>
+          )}
         </div>
+
+        {/* U2/U11: durability and its heal timer say what they are; the rule is one tap away, in place. */}
+        <InfoPeek
+          about={mt('guide.howItWorks')}
+          lead={<Glyph id="shield" />}
+          fact={(
+            <span className="text-caption">
+              <span data-testid="moon-cracks" className={`gk-num font-medium ${durabilityTone}`}>
+                {mt('status.cracks')}: {durability}/{moon.crackLimit}
+              </span>
+              {crackHealMs > 0 && (
+                <span data-testid="moon-heal" className="gk-num text-faint">
+                  {' · '}{mt('status.healShort', { time: countdown(crackHealMs) })}
+                </span>
+              )}
+            </span>
+          )}
+          rule={<p className="gk-sub">{mt('guide.headerRule')}</p>}
+        />
 
         {/* Slim single-line Moon Dock capacity strip */}
         <div className="flex items-center gap-2.5">
-          <span className="text-caption uppercase tracking-wide text-slate-400">{mt('dock.label')}</span>
+          <span className="text-caption uppercase tracking-wide text-faint">{mt('dock.label')}</span>
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
             <div
-              className="h-full rounded-full bg-teal-400 transition-all duration-300"
+              className="h-full rounded-full bg-crystal transition-all duration-300"
               style={{ width: `${dockPct}%` }}
             />
           </div>
-          <span className="gk-num text-caption font-semibold text-slate-100">
+          <span className="gk-num text-caption font-semibold text-bone">
             {compact(moon.dockUsed)} / {compact(moon.dockCapacity)}
           </span>
         </div>
-
-        {headerHelpOpen && (
-          <Well className="px-2.5 py-2 text-caption text-slate-300">
-            <p>{mt('guide.headerRule')}</p>
-            {crackHealMs > 0 && (
-              <p className="mt-1 text-amber-200">{mt('status.healsIn', { time: countdown(crackHealMs) })}</p>
-            )}
-          </Well>
-        )}
 
         {/* Active in-transit hops / jumps with live 1s countdown */}
         {moon.moves.length > 0 && (
@@ -814,7 +798,7 @@ function ActiveMoonCard({
               return (
                 <Well
                   key={mv.id}
-                  className="flex flex-col gap-1 px-2.5 py-1.5 text-caption text-sky-200"
+                  className="flex flex-col gap-1 px-2.5 py-1.5 text-caption text-crystal"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span>
@@ -826,12 +810,12 @@ function ActiveMoonCard({
                       {' · '}
                       <strong className="gk-num">{fleetCount(mv.fleet)}</strong>
                     </span>
-                    <span className="gk-num font-mono font-semibold text-sky-100">
+                    <span className="gk-num font-mono font-semibold text-crystal">
                       {countdown(remMs)}
                     </span>
                   </div>
-                  <div className="h-1 w-full overflow-hidden rounded-full bg-sky-400/15">
-                    <div className="h-full rounded-full bg-sky-400 transition-all duration-300" style={{ width: `${pct}%` }} />
+                  <div className="h-1 w-full overflow-hidden rounded-full bg-crystal/15">
+                    <div className="h-full rounded-full bg-crystal transition-all duration-300" style={{ width: `${pct}%` }} />
                   </div>
                 </Well>
               );
@@ -845,7 +829,7 @@ function ActiveMoonCard({
         stacked
         label={mt('tabs.label')}
         value={subTab}
-        onChange={setSubTab}
+        onChange={(tab) => { setSubTab(tab); setErr(null); }}
         tabs={[
           { id: 'dock', label: mt('tabs.dock'), glyph: { id: 'bay' } },
           {
@@ -869,20 +853,20 @@ function ActiveMoonCard({
                 <Well className="flex flex-col gap-2 p-2.5">
                   <div data-testid="moon-split-planet" className="flex flex-col gap-1.5">
                     <div className="flex items-center justify-between gap-2 text-caption">
-                      <span className="inline-flex items-center gap-1.5 font-semibold text-slate-100">
-                        <Glyph id="home" className="size-3.5 text-sky-300" />
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-bone">
+                        <Glyph id="home" className="size-3.5 text-crystal" />
                         {mt('fleetSplit.planet')}
                       </span>
-                      <span className="gk-num text-slate-300">
+                      <span className="gk-num text-dim">
                         {mt('fleetSplit.ships', { count: planetShipCount })}
                       </span>
                     </div>
                     {hangarCap > 0 && (
                       <div className="flex items-center gap-2">
                         <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
-                          <div className="h-full rounded-full bg-sky-400" style={{ width: `${hangarPct}%` }} />
+                          <div className="h-full rounded-full bg-crystal" style={{ width: `${hangarPct}%` }} />
                         </div>
-                        <span className="gk-num text-micro text-slate-400">
+                        <span className="gk-num text-micro text-faint">
                           {compact(hangarUsed)} / {compact(hangarCap)}
                         </span>
                       </div>
@@ -894,29 +878,18 @@ function ActiveMoonCard({
                 <Well className="flex flex-col gap-2 p-2.5">
                   <div data-testid="moon-split-moon" className="flex flex-col gap-1.5">
                     <div className="flex items-center justify-between gap-2 text-caption">
-                      <span className="inline-flex items-center gap-1.5 font-semibold text-slate-100">
-                        <Glyph id="moon" className="size-3.5 text-amber-300" />
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-bone">
+                        <Glyph id="moon" className="size-3.5 text-alloy" />
                         {mt('fleetSplit.moon')}
                       </span>
-                      <span className="gk-num text-slate-300">
+                      <span className="gk-num text-dim">
                         {mt('fleetSplit.ships', { count: moonShipCount })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
-                        <div className="h-full rounded-full bg-teal-400" style={{ width: `${dockPct}%` }} />
-                      </div>
-                      <span className="gk-num text-micro text-slate-400">
-                        {compact(moon.dockUsed)} / {compact(moon.dockCapacity)}
                       </span>
                     </div>
                     <FleetChips fleet={moonMobile} emptyLabel={mt('fleetSplit.emptyMoon')} />
                   </div>
                 </Well>
               </div>
-              <p className="text-micro leading-snug text-slate-400">
-                {mt('fleetSplit.hangarNote')}
-              </p>
             </div>
           </Plate>
 
@@ -942,42 +915,14 @@ function ActiveMoonCard({
               <InfoPeek
                 about={mt('guide.howItWorks')}
                 lead={<Glyph id="bay" />}
-                fact={<span className="text-caption text-slate-300">{mt('hop.subtitle')}</span>}
+                fact={<span className="text-caption text-dim">{mt('hop.subtitle')}</span>}
                 rule={<p className="gk-sub">{mt('guide.dockRule')}</p>}
               />
-
-              {activeAnyHops.length > 0 && (
-                <div className="flex flex-col gap-1.5">
-                  {activeAnyHops.map((mv) => {
-                    const totalMs = Math.max(1, mv.arriveAt.getTime() - mv.departAt.getTime());
-                    const remMs = Math.max(0, mv.arriveAt.getTime() - now);
-                    const pct = Math.max(0, Math.min(100, ((totalMs - remMs) / totalMs) * 100));
-                    return (
-                      <Well key={mv.id} className="flex flex-col gap-1.5 border border-sky-400/25 px-3 py-2 text-caption text-sky-100">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="inline-flex items-center gap-1.5 font-medium">
-                            <Glyph id="moon" className="size-3.5 text-sky-300" />
-                            {mv.kind === 'HOP_UP' ? mt('hop.movingUp') : mt('hop.movingDown')}
-                            {' · '}
-                            <strong className="gk-num">{mt('fleetSplit.ships', { count: fleetCount(mv.fleet) })}</strong>
-                          </span>
-                          <span className="gk-num font-mono font-semibold text-sky-200">
-                            {countdown(remMs)}
-                          </span>
-                        </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-sky-400/15">
-                          <div className="h-full rounded-full bg-sky-400 transition-all duration-300" style={{ width: `${pct}%` }} />
-                        </div>
-                      </Well>
-                    );
-                  })}
-                </div>
-              )}
 
               {hopSourceCount > 0 ? (
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-2 text-caption">
-                    <span className={`gk-num ${hopOverDock ? 'text-rose-300 font-semibold' : 'text-slate-300'}`}>
+                    <span className={`gk-num ${hopOverDock ? 'text-threat-ink font-semibold' : 'text-dim'}`}>
                       {hopDir === 'UP'
                         ? mt('picker.selectedLimit', { ships: hopCount, bulk: compact(hopBulk), cap: compact(moon.dockFree) })
                         : mt('picker.selected', { ships: hopCount, bulk: compact(hopBulk) })}
@@ -1026,13 +971,14 @@ function ActiveMoonCard({
                   />
                 </>
               ) : (
-                <Well className="px-3 py-2 text-caption text-slate-400">
+                <Well className="px-3 py-2 text-caption text-faint">
                   {mt('hop.noShips')}
                 </Well>
               )}
 
+              {errBanner}
               <GameButton
-                data-testid="moon-hop-submit"
+                marks={{ 'data-testid': 'moon-hop-submit' }}
                 tone="action"
                 size="md"
                 wide
@@ -1064,14 +1010,14 @@ function ActiveMoonCard({
           <div data-testid="moon-gate-card" className="flex flex-col gap-3">
             <div className="flex items-start gap-3">
               <img
-                src="/images/premium/moon/moon-gate-v1.webp"
+                src={MOON_ART.gate}
                 alt=""
                 className="size-12 shrink-0 rounded-control border border-white/10 object-cover"
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-body font-semibold text-white">{mt('gate.title')}</span>
-                  <span className={`gk-num text-caption font-medium ${gateReady ? 'text-emerald-300' : 'text-amber-300'}`}>
+                  <span className={`gk-num text-caption font-medium ${gateReady ? 'text-opportunity' : 'text-alloy'}`}>
                     {isClosed
                       ? mt('status.closed')
                       : gateReady
@@ -1085,7 +1031,7 @@ function ActiveMoonCard({
             <InfoPeek
               about={mt('guide.howItWorks')}
               lead={<Glyph id="speed_up" />}
-              fact={<span className="text-caption text-slate-300">{mt('gate.subtitle')}</span>}
+              fact={<span className="text-caption text-dim">{mt('gate.subtitle')}</span>}
               rule={<p className="gk-sub">{mt('guide.gateRule')}</p>}
             />
 
@@ -1110,7 +1056,7 @@ function ActiveMoonCard({
                 {moonShipCount > 0 ? (
                   <>
                     <div className="flex flex-wrap items-center justify-between gap-2 text-caption">
-                      <span className={`gk-num ${gateOverCap ? 'text-rose-300 font-semibold' : 'text-slate-300'}`}>
+                      <span className={`gk-num ${gateOverCap ? 'text-threat-ink font-semibold' : 'text-dim'}`}>
                         {mt('picker.selectedLimit', {
                           ships: gateCount,
                           bulk: compact(gateBulk),
@@ -1156,21 +1102,22 @@ function ActiveMoonCard({
                     />
 
                     {gateCount > 0 && (
-                      <div className={`text-caption gk-num ${hasFuel ? 'text-sky-200' : 'text-rose-300 font-medium'}`}>
+                      <div className={`text-caption gk-num ${hasFuel ? 'text-crystal' : 'text-threat-ink font-medium'}`}>
                         {mt('gate.fuel', { fuel: full(Math.ceil(fuelNeeded)) })}
                         {' · '}
-                        <span className="text-slate-400">
+                        <span className="text-faint">
                           ({full(Math.floor(planet.planet.deuterium))} D)
                         </span>
                       </div>
                     )}
                   </>
                 ) : (
-                  <Well className="px-3 py-2 text-caption text-slate-400">
+                  <Well className="px-3 py-2 text-caption text-faint">
                     {mt('gate.noShips')}
                   </Well>
                 )}
 
+                {errBanner}
                 <GameHold
                   weight="spends"
                   label={gateCount > 0 ? `${mt('gate.holdLabel')} (${gateCount})` : mt('gate.holdLabel')}
@@ -1210,7 +1157,7 @@ function ActiveMoonCard({
           <div data-testid="moon-scan-card" className="flex flex-col gap-3">
             <div className="flex items-start gap-3">
               <img
-                src="/images/premium/moon/moon-gozcu-v1.webp"
+                src={MOON_ART.gozcu}
                 alt=""
                 className="size-12 shrink-0 rounded-control border border-white/10 object-cover"
               />
@@ -1218,7 +1165,7 @@ function ActiveMoonCard({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-body font-semibold text-white">{mt('scan.title')}</span>
                   {moon.scanPierces && (
-                    <span className="rounded-chip bg-amber-400/20 px-1.5 py-0.5 text-caption font-medium text-amber-300">
+                    <span className="rounded-chip bg-alloy/20 px-1.5 py-0.5 text-caption font-medium text-alloy">
                       {mt('scan.pierces')}
                     </span>
                   )}
@@ -1229,13 +1176,9 @@ function ActiveMoonCard({
             <InfoPeek
               about={mt('guide.howItWorks')}
               lead={<Glyph id="eye" />}
-              fact={<span className="text-caption text-slate-300">{mt('scan.subtitle', { range: full(moon.scanRange) })}</span>}
+              fact={<span className="text-caption text-dim">{mt('scan.subtitle', { range: full(moon.scanRange) })}</span>}
               rule={<p className="gk-sub">{mt('guide.scanRule')}</p>}
             />
-
-            <Well className="px-3 py-2 text-caption leading-relaxed text-slate-300">
-              {mt('scan.explain')}
-            </Well>
 
             {scanTargets.length === 0 ? (
               <Banner tone="info" title={mt('scan.noTargets')} />
@@ -1247,17 +1190,22 @@ function ActiveMoonCard({
                   options={scanOptions}
                   onChange={(id) => { setScanTargetId(id); }}
                 />
+                {errBanner}
                 <GameButton
-                  data-testid="moon-scan-btn"
+                  marks={{ 'data-testid': 'moon-scan-btn' }}
                   size="md"
                   wide
                   disabledReason={
                     !canScan
-                      ? (isClosed
+                      ? (busy === 'scan'
+                        ? mt('scan.scanning')
+                        : isClosed
                         ? mt('status.closed')
                         : planet.planet.deuterium < MOON.scanCost.deuterium
                           ? mt('gate.noFuel')
-                          : mt('scan.noTargets'))
+                          : busy !== null
+                            ? mt('scan.scanning')
+                            : mt('scan.noTargets'))
                       : null
                   }
                   onPress={() => { void handleScan(); }}
@@ -1271,7 +1219,7 @@ function ActiveMoonCard({
               <Well className="p-2.5 text-caption">
                 <div data-testid="moon-scan-result" className="flex flex-col gap-2">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-1.5">
-                    <span className="font-semibold text-slate-100">
+                    <span className="font-semibold text-bone">
                       {mt('scan.scannedHeader', {
                         target: (lastScannedTargetId ? nameByPlanetId.get(lastScannedTargetId) : undefined) ?? '—',
                         count: scanResult.rows.length,
@@ -1296,18 +1244,18 @@ function ActiveMoonCard({
                     )}
                   </div>
                   {scanResult.rows.length === 0 ? (
-                    <div className="text-slate-300">{mt('scan.noRoutes')}</div>
+                    <div className="text-dim">{mt('scan.noRoutes')}</div>
                   ) : (
                     scanResult.rows.map((row, idx) => (
-                      <div key={`${row.otherPlanetId}-${idx}`} className="flex items-center justify-between gap-2 text-slate-200">
+                      <div key={`${row.otherPlanetId}-${idx}`} className="flex items-center justify-between gap-2 text-bone">
                         <span className="inline-flex flex-wrap items-center gap-1.5">
-                          <span className={`rounded-chip px-1.5 py-0.5 text-micro font-semibold ${row.direction === 'IN' ? 'bg-rose-500/20 text-rose-200' : 'bg-sky-500/20 text-sky-200'}`}>
+                          <span className={`rounded-chip px-1.5 py-0.5 text-micro font-semibold ${row.direction === 'IN' ? 'bg-threat/20 text-threat-ink' : 'bg-crystal/20 text-crystal'}`}>
                             {row.direction === 'IN' ? `← ${mt('scan.dirIn')}` : `→ ${mt('scan.dirOut')}`}
                           </span>
-                          <span>{nameByPlanetId.get(row.otherPlanetId) ?? row.otherPlanetId.slice(0, 8)}</span>
-                          <span className="text-slate-400">· {mt(SIZE_KEY[row.size])}</span>
+                          <span>{nameByPlanetId.get(row.otherPlanetId) ?? mt('scan.unknownWorld')}</span>
+                          <span className="text-faint">· {mt(SIZE_KEY[row.size])}</span>
                         </span>
-                        <span className="gk-num font-mono font-semibold text-slate-200">
+                        <span className="gk-num font-mono font-semibold text-bone">
                           {countdown(row.arriveAt.getTime() - now)}
                         </span>
                       </div>
@@ -1322,8 +1270,6 @@ function ActiveMoonCard({
 
       {/* Collapsible 4-tier rarity comparison table at the bottom so action tabs stay at the top */}
       <RarityComparisonTable current={moon.rarity} />
-
-      {err && <Banner tone="hostile" role="alert" title={err} />}
     </div>
   );
 }

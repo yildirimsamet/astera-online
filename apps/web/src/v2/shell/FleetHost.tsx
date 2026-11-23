@@ -1,10 +1,9 @@
 import { clanDefenseApplies, fleetCount, hpRadiationApplies } from '@astera/rules';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useClanSupportActions, useMaintenance, useMySupport, useMonuments, usePlanet, useRecallFlight, useRecallMining, useRetargetMission } from '../../api/queries.js';
+import { useClanSupportActions, useMaintenance, useMySupport, useMonuments, usePlanet, useRecallFlight, useRecallMining } from '../../api/queries.js';
 import { createIdempotencyKey } from '../../api/client.js';
 import { useWorld } from '../../api/world.js';
-import { useMoonT } from '../../i18n/moon.js';
 import { roomOf } from '../../lib/fleetPage.js';
 import { useAirborne, type AirborneItem, type StripFocus } from '../../lib/airborne.js';
 import { describe, useToast } from '../../ui/Toast.js';
@@ -28,7 +27,6 @@ export function FleetHost({ onFocus, onFocusWorld, onClose, onOpenRepairStation 
   onOpenRepairStation: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
-  const tMoon = useMoonT();
   const [tab, setTab] = useState<FleetTab>('air');
   const [recalling, setRecalling] = useState<string | null>(null);
   const { items, now } = useAirborne();
@@ -37,7 +35,6 @@ export function FleetHost({ onFocus, onFocusWorld, onClose, onOpenRepairStation 
   const { activePlanetId, capitalPlanetId, worlds } = useWorld();
   const recallFlight = useRecallFlight();
   const recallMining = useRecallMining();
-  const retarget = useRetargetMission();
   const maintenance = useMaintenance();
   const dockIntent = useRef<{ fingerprint: string; key: string } | null>(null);
   const say = useToast();
@@ -108,15 +105,6 @@ export function FleetHost({ onFocus, onFocusWorld, onClose, onOpenRepairStation 
         onFocus(item.focus);
       }}
       onRecall={recall}
-      retargeting={retarget.isPending}
-      onRetarget={(missionId, body) => {
-        retarget.mutate({ missionId, body }, {
-          onSuccess: (res) => {
-            say(tMoon(res.targetBody === 'MOON' ? 'body.retargetedToMoon' : 'body.retargetedToPlanet'));
-          },
-          onError: (error) => { say(describe(error), 'error'); },
-        });
-      }}
       support={{
         waves: mySupport?.waves ?? [],
         recalling: recallingWave,

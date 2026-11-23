@@ -64,7 +64,8 @@ export function describeError(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.code === 'UNREACHABLE') return i18n.t('errors.unreachable');
     if (err.code === 'STREAM_FAILED') return i18n.t('errors.streamFailed');
-    if (isMoonError(err.code)) return moonT(`errors.${err.code}`);
+    // OUT_OF_RANGE is shared with ships, probes and the Telescope: only the Gözcü's own refusal says Gözcü.
+    if (isMoonError(err.code) && (err.code !== 'OUT_OF_RANGE' || err.params?.context === 'gozcu')) return moonT(`errors.${err.code}`);
     if (err.code === 'PERSONAL_RAID_COOLDOWN') {
       const until = err.params?.until;
       const at = typeof until === 'string' ? Date.parse(until) : NaN;

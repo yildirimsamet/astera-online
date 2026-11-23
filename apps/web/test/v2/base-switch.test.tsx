@@ -32,7 +32,7 @@ describe('the Base switch', () => {
     const { rerender } = render(<BaseSwitch value="world" onChange={onChange} moonAvailable={false} />);
     expect(screen.queryByRole('tab', { name: 'Moon' })).not.toBeInTheDocument();
     rerender(<BaseSwitch value="world" onChange={onChange} moonAvailable />);
-    const tabs = screen.getAllByRole('tab').map((el) => el.textContent?.trim());
+    const tabs = screen.getAllByRole('tab').map((el) => el.textContent.trim());
     expect(tabs.slice(0, 2)).toEqual(['Planet', 'Moon']);
     await userEvent.click(screen.getByRole('tab', { name: 'Moon' }));
     expect(onChange).toHaveBeenCalledWith('moon');
