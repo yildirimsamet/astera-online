@@ -75,6 +75,20 @@ export function useAttentionBusy(id: string, busy: boolean): void {
   }, [id, busy]);
 }
 
+/** While a scenario plays, only `allow`ed surfaces may open; pass `null` to lift the lock. */
+export function useAttentionLock(allow: readonly string[] | null): void {
+  const key = allow === null ? null : allow.join(',');
+  useEffect(() => {
+    dispatchAttention({ kind: 'lock', allow: key === null ? null : (key ? key.split(',') : []) });
+    return () => { dispatchAttention({ kind: 'lock', allow: null }); };
+  }, [key]);
+}
+
+/** Reactive subscription to whether news is currently held back (blocking window or scenario lock). */
+export function useAttentionQuiet(): boolean {
+  return useSyncExternalStore(subscribe, () => attentionQuiet(state), () => false);
+}
+
 /** Read when news arrives: a window is open or a scenario plays (plan §5.5). */
 export const attentionIsQuiet = (): boolean => attentionQuiet(state);
 

@@ -474,7 +474,6 @@ export const focus = {
     noCraft: "惑星にプロスペクターがいません",
     tooLate: "到着する前に小惑星が通過します",
     researchNeeded: "先に同位体分光分析を研究してください",
-    personal: "あなたの岩：あなただけが見えて採掘できます。{{time}}後に離れていきます。",
     /**
      * THE MINUTE AFTER A TRIP THAT COST NOTHING. D183.
      *

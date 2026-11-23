@@ -23,7 +23,7 @@ import {
   uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import type { AsteroidSpec, HpDamageLots, MigrationCargo, StarterBattleRecord } from '@astera/rules';
+import type { AsteroidSpec, HpDamageLots, MigrationCargo, PirateSpec, StarterBattleRecord } from '@astera/rules';
 import type {
   BattleReplayData,
   CombatRound,
@@ -4087,6 +4087,34 @@ export const personalRocks = pgTable('personal_rocks', {
   uniqueIndex('personal_rocks_index_idx').on(t.index),
   index('personal_rocks_player_idx').on(t.playerId, t.expiresAt),
   check('personal_rocks_index_check', sql`${t.index} < 0`),
+]);
+
+/**
+ * İNİŞ SONRASI İLK SAAT GÖREVLERİ (plan 2026-11-20 §5.3, Faz 4; playtest 2026-11-23).
+ *
+ * One row per first-game commander: tracks authentic player-driven step progression and holds the
+ * commander's personal pirate spec under a negative index (`pirate_index < 0`, mirroring
+ * `personal_rocks`) so it shares `pirate_state` and `pirate_raids` without ever colliding with the
+ * shared pirate lane. Cascade-deleted with the player or season.
+ */
+export const personalPirateIndexSeq = pgSequence('personal_pirate_index_seq');
+export const newcomerScenario = pgTable('newcomer_scenario', {
+  playerId: uuid('player_id').primaryKey().references(() => players.id, { onDelete: 'cascade' }),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  step: text('step').$type<'LANDING' | 'MINE' | 'PIRATE' | 'PROBE' | 'WRAP_UP' | 'DONE' | 'DISMISSED'>().notNull(),
+  pirateIndex: integer('pirate_index').notNull().default(sql`-nextval('personal_pirate_index_seq')`),
+  pirateSpec: jsonb('pirate_spec').$type<Omit<PirateSpec, 'index'>>(),
+  pirateSpawnedAt: timestamp('pirate_spawned_at', { withTimezone: true }),
+  pirateDefeatedAt: timestamp('pirate_defeated_at', { withTimezone: true }),
+  probeSentAt: timestamp('probe_sent_at', { withTimezone: true }),
+  dismissedAt: timestamp('dismissed_at', { withTimezone: true }),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex('newcomer_scenario_pirate_index_idx').on(t.pirateIndex),
+  index('newcomer_scenario_season_step_idx').on(t.seasonId, t.step),
+  check('newcomer_scenario_pirate_index_check', sql`${t.pirateIndex} < 0`),
 ]);
 
 /**

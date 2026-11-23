@@ -149,6 +149,7 @@ export const errors = {
   BAD_CLAN_TAG: 'Use two to five letters or digits for the clan tag',
   BAD_CREDENTIALS: 'The sign-in details do not match',
   BAD_FLEET: 'Bad ship count for {{hull}}',
+  NEEDS_WARSHIP: 'Send at least one warship to attack this pirate',
   BAD_REQUEST: "The action details could not be read. Check your selections.",
   BAD_SESSION: "Your session is invalid or has expired. Sign in again.",
   BAD_SLOT: 'Telescope L{{level}} can watch {{slots}} planet(s)',

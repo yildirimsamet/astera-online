@@ -42,6 +42,8 @@ export interface TutorialInput {
   rockShown?: boolean;
   /** The drive's scene is still to be seen: the jump is asked after it (owner phone playtest 2026-11-18, item 24). */
   jumpWaiting?: boolean;
+  /** The drive's scene is on the screen right now (not only waiting its turn behind the ship's page). */
+  jumpPlaying?: boolean;
   /** Why the server holds the jump though the drive is ready: then it is not asked, and the handover says why. */
   jumpBlock?: JumpBlock;
   /** The step the player is acting on (a world open over the galaxy, or aboard, or on a page): kept until it is done or put down. */
@@ -170,7 +172,7 @@ const FIRST_ROAD: Part = {
     { id: 'waitProbe', kind: 'wait', chapter: 4, place: 'any', marks: [], satisfied: i => !i.probing, reached: i => i.facts.includes('FIRST_PROBE_REPORT') },
     orderStep('orderShipyard', 'SHIPYARD', 1, 'CARGO', 5),
     waitFor('waitYard', 'SHIPYARD', 5),
-    { id: 'buildShip', kind: 'press', chapter: 5, place: 'ship', marks: ['[data-commit] button', '[data-testid="yard-hull"][data-hull="DART"] button', '#ship-deck-yard'], satisfied: i => seasoned(i) || (!i.canBuildShip && !hasReady(i)) },
+    { id: 'buildShip', kind: 'press', chapter: 5, place: 'ship', marks: ['[data-commit] button', '[data-testid="yard-hull"][data-hull="DART"] button', '#ship-deck-yard'], ready: i => i.inHand === 'buildShip' || !jumpWindowOpen(i) || i.acked.includes('jumpAsk') || i.jumpBlock !== undefined, satisfied: i => seasoned(i) || (!i.canBuildShip && !hasReady(i)) },
     // With the jump open the guide hands over at it (owner phone playtest 2026-11-18, item 13); before, at the ship's share.
     { id: 'farewell', kind: 'read', chapter: 9, place: 'ship', marks: [JUMP_GO, '[data-testid="ship-repair"]'], satisfied: seasoned },
   ],
@@ -198,7 +200,10 @@ const MOMENTS: readonly Part[] = [
     // Asked only when it can be taken: a held jump has no control to put the hand on (code review 2026-11-19).
     strict: false, due: i => jumpWindowOpen(i) && !seasoned(i) && i.jumpBlock === undefined,
     steps: [
-      { id: 'jumpAsk', kind: 'read', chapter: 9, place: 'ship', marks: [JUMP_GO, tab('DRIVE')], boarding: [JUMP_CALL], ready: i => i.jumpWaiting !== true },
+      // On the ship's page the scene can wait behind the page itself: there the jump is asked unless the scene is
+      // on the screen this moment (playtest 2026-11-23; item 24 still holds: never over the drive's own scene).
+      { id: 'jumpAsk', kind: 'read', chapter: 9, place: 'ship', marks: [JUMP_GO, tab('DRIVE')], boarding: [JUMP_CALL],
+        ready: i => i.jumpWaiting !== true || (i.view === 'ship' && i.jumpPlaying !== true) },
       { id: 'jumpGo', kind: 'press', chapter: 9, place: 'ship', marks: [JUMP_GO, tab('DRIVE')], boarding: [JUMP_CALL] },
     ],
   },

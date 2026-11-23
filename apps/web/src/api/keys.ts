@@ -31,6 +31,7 @@ export const keys = {
   galaxy: ['galaxy'],
   monuments: ['monuments'],
   unknownSignals: ['unknown-signals'],
+  newcomerScenario: ['newcomer-scenario'],
   skins: ['skins'],
   skinShop: ['skins', 'shop'],
   skinPricing: ['skins', 'pricing'],

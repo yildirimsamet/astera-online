@@ -30,7 +30,8 @@ afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 describe('the address quiz on the kit', () => {
   it('is a kit sheet that leads with the reward and asks on kit plates', () => {
     const onAnswer = vi.fn();
-    quiz({ onAnswer });
+    const onClose = vi.fn();
+    quiz({ onAnswer, onClose });
     const dialog = screen.getByRole('dialog');
     expect(dialog).toHaveClass('gk-sheet');
     expect(oldPaint(dialog)).toEqual([]);
@@ -39,7 +40,10 @@ describe('the address quiz on the kit', () => {
     expect(right).toHaveClass('gk-quizopt');
     fireEvent.click(right);
     expect(onAnswer).toHaveBeenCalledWith(BRAND_RECALL.answer);
-    expect(screen.getByRole('button', { name: i18n.t('brand.skip') })).toHaveClass('gk-btn', 'gk-btn--ghost');
+    // The sheet's own close key is the way out (playtest 2026-11-23): no second skip button under the choices.
+    expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
+    fireEvent.click(within(dialog).getAllByRole('button', { name: /close/i })[0]!);
+    expect(onClose).toHaveBeenCalled();
   });
 
   it('says a wrong pick on a warning banner', () => {

@@ -1,6 +1,6 @@
 # İniş Sonrası İlk Saat: Kuruluş Saati, Korsan Senaryosu, Ekran Sırası
 
-Tarih: 2026-11-20. Durum: **plan, uygulama başlamadı.** Yayın tek seferde, yalnız owner "deploy" dediğinde.
+Tarih: 2026-11-20, güncelleme 2026-11-23. Durum: **uygulandı, yayın bekliyor.** Yayın tek seferde, yalnız owner "deploy" dediğinde.
 Bu belge iniş anından sonraki ilk saati yönetir. İniş öncesi yolculuk için [yeni oyuncu yolculuğu planı](yeni-oyuncu-yolculugu-plani-2026-11-13.md) geçerlidir; §4.7 "İniş (ilk saat)" bu belgeyle güncellenir.
 
 ## 1. Neden
@@ -30,6 +30,10 @@ Hedef: İnişten sonraki ilk saat oyuncunun kaçırmak istemeyeceği, tek bir ç
 | Convoy | `codex/convoy-outbound-2x` (d6b7f46d) bu işin kapsamına girer, en son yapılır. |
 | Sıra | 1) İniş akışı, 2) sinyal hızı, 3) convoy. Hepsi tek yayında. |
 | Ekran yığılması | İnişten sonraki 10 dakikada çıkan her şey incelenir; hiçbiri üst üste binmez. |
+| Senaryo akışı (2026-11-23) | Kaz → korsana saldır → bir gezegene sonda yolla → bitir. Misilleme ve savunma adımı yok. Kişisel korsan savaşında oyuncu her zaman tam zafer kazanır ve kayıp vermez (sonuç gerçek savaştan alınmaz). |
+| HUD turu (2026-11-23) | İniş kartından sonra HUD dört adımda tanıtılır; tur bitene kadar alt bar ve araçlar gizlidir. |
+| İniş ödülü (2026-11-23) | Başkentin inişte karşıladığı 7 kademe (Çekirdek 2–3, Tersane 1, Rafineri 2, Çıkarıcı 2, Kasa 1, Aegis 1; 1.976 alaşım, 968 kristal) peşin alınmış sayılır. Oyuncu ödülleri görevlerle tek tek kazanır. |
+| 7 kutu (2026-11-23) | Kutular sabit ve artan: toplam 7.750 alaşım, 4.630 kristal, 1.000 döteryum (4. kutudan itibaren). 3. kutu Helios Halkası, 7. kutu Titan İtkisi; boş yuvaya kendiliğinden takılır. |
 
 Kilitli karar kontrolü: Bu plan bot kararına dokunmaz (kişisel nesneler ve ayrıcalık yalnız sahibine görünür, istemciye bot bayrağı gitmez). Yeni oyuncuya üretim ayrıcalığı ve herkes için 5 dk kuralı, owner'ın bu tarihteki açık isteğidir.
 
@@ -57,12 +61,11 @@ Her an tek bir şey ister. Senaryo sürerken ekran sırası başka engelleyici y
 | --- | --- | --- | --- | --- |
 | 0. İniş | 0–20 sn | Uçuş sahnesi; gemi gezegene iner | — | Mevcut sahne |
 | 1. Kuruluş Saati açılır | ~20 sn | Rafinerinin ocağı aşırı yükte yanar; üst çubukta 60:00 geri sayım | Kartta tek dokunuş | Ses, titreşim, ocak efekti. Kart: getirdiğin kargo tek satır ve saatin ayrıcalığı (5 kat üretim) |
-| 2. Çevreni tanı | 0,5–2 dk | Kamera iki kişisel kayaya döner | Kazıcıyı kayaya gönder (başlangıç galaksisinde öğrenilmiş eylem) | Kazı yolda; kaya yanında "senin" işareti |
-| 3. Sinyal | 1–3 dk | Yakında bir korsan sinyali belirir | Sonda gönder | Rapor: korsan yuvası, gemi sayısı, ganimet |
-| 4. Gemi | 2–4 dk | Tersane çalışır | Gemi üret | Fişte süre ve gemilerin ne işe yarayacağı |
-| 5. Saldırı | 4–6 dk | Filo 4× hızla uçar | Filoyu seç, gönder | Zafer, ganimet, ilk komutan kutusu açılır. Oyuncu gemi kaybetmez |
-| 6. Misilleme | 6–9 dk | Korsanlar karşılık verir; geri sayımlı uyarı | Savunma kur | Dalga savunmaya çarpar ve kırılır. Kayıp yok |
-| 7. Kapanış | ~10 dk | Saatin kalan 50 dakikası | Sıradaki hedef: rafineriyi yükselt | Özet şeridi. Bekleyen yüzeyler (marka testi, kurulum kartı, etkinlikler) sıradan tek tek gelir |
+| 1b. HUD turu | ~30 sn | HUD dört adımda açılır (durum, hedef tarayıcı, araçlar, alt bar) | İleri / turu geç | Tur bitince görev kartı alt köşede |
+| 2. Kazı (görev 1/4) | 0,5–2 dk | Başkentin yanında iki kişisel kaya, soluk bir halkayla | Herhangi bir kayaya Kazıcı gönder | Kazı yolda; kişisel korsan başkentin yanında belirir |
+| 3. Korsan (görev 2/4) | 2–4 dk | Kişisel korsan (2 Ok, 300/150 ganimet), yalnız oyuncuya görünür | Savaş gemisi içeren bir filoyla saldır | Gidiş ve dönüş ~30–42 sn. Tam zafer, kayıp ve hasar yok; iniş ödülleri penceresi açılabilir |
+| 4. Sonda (görev 3/4) | 4–6 dk | — | Başka bir gezegene sonda gönder | Sonda yolda |
+| 5. Kapanış (görev 4/4) | ~6 dk | Saatin kalanı | "Tamamla" | Bekleyen yüzeyler (marka testi, kurulum kartı, etkinlikler) sıradan tek tek gelir; ilk düzenli sinyal 1–2 dk içinde |
 | Saat sonu | 60 dk | Ocak normale döner | — | "Kuruluş Saatinde: +X alaşım, N inşa" ve yarının kutusu |
 
 Son 10 dakikada saat kehribar rengine döner, oyun içinde ve Android'de bir uyarı gider ("sıradaki inşayı şimdi başlat").
@@ -101,9 +104,9 @@ Kesin süreler Faz 4'teki oyun testinde ayarlanır. Ekran sırası yalnız bir d
 
 ### 5.3 Korsan senaryosu
 
-- Oyuncu başına durum: `newcomer_scenario` (adım, zamanlar, yuva konumu, misilleme zamanı). Sunucu adımı doğrular; istemci yalnız gösterir.
-- Korsan yuvası kişisel bir hedeftir. Sinyalin uçuş ve HUD altyapısını yeniden kullanmak Faz 4 tasarımında denenir; PIRATES sonucu (filo kaybı) bu senaryoda kullanılmaz.
-- Senaryo savaşı gerçek savaş motoruyla çözülür; oyuncu tarafına kayıp uygulanmaz. Misilleme bir worker işiyle zamanlanır; savunma yoksa da kayıp yoktur, ama sahne savunmanın farkını gösterir.
+- Oyuncu başına durum: `newcomer_scenario` (adım `LANDING → MINE → PIRATE → PROBE → WRAP_UP → DONE`, ya da `DISMISSED`). Adımlar gerçek oyun eylemleriyle ilerler: herhangi bir kazı, bir korsanı silme, bir sondayı gönderme. Sunucu doğrular; istemci yalnız gösterir.
+- Kişisel korsan gerçek korsan hattını kullanır, negatif indeksle (`pirate_index < 0`): yalnız sahibinin `/api/pirates` ve trafik listesinde görünür, başkasının saldırısı "bulunamadı" alır. Oyuncu onu yenene kadar haritada bekler (review 2026-11-23). Saldırı en az bir savaş gemisi ister; sonuç her zaman tam zaferdir, oyuncu kayıp ve hasar almaz, yakalama ve enkaz yoktur.
+- Görevler ekranı en fazla Kuruluş Saati boyunca tutar (`holdsScreenUntil`, review 2026-11-23). Sonra kart yol göstermeyi sürdürür; marka testi, kurulum kartı ve haberler sırayla gelir.
 - Ödüller sabit ve hesap başına bir kez. Senaryo Honor, sıralama ve kalkanı etkilemez.
 - Rehberi kapatan oyuncu senaryoyu da kapatır; yeniden yüklemede kaldığı adımdan devam eder.
 - İlk oyunun düzenli ilk sinyali bugün katılımdan 2–10 dk sonra gelir (`ensureUnknownSignalSchedule`, `firstGame`). Senaryonun korsan sinyaliyle aynı anda düşmemesi için senaryo sürerken ertelenir; senaryo bitince ya da bırakılınca kısa bir aralıkla gelir. Testle doğrulanır.
@@ -162,7 +165,7 @@ Her faz: testler önce, KIRMIZI doğrulanır, uygulama, YEŞİL, kod incelemesi,
 ### Faz 4: Korsan senaryosu
 
 - §4 akışı ve §5.3 kuralları. Başlangıç galaksisinin sahne yöneticisi kamera çekimleri için yeniden kullanılır.
-- **Bitti:** Testler: adımlar sırayla, atlanamadan ilerler; oyuncu hiçbir adımda kayıp yaşamaz; ödül bir kez; yeniden yükleme ve rehberi kapatma; misilleme zamanında gelir. Oyun testi: taze hesapla 350 px'te prologdan inişin 10. dakikasına kadar.
+- **Bitti:** Testler: adımlar sırayla, atlanamadan ilerler; oyuncu hiçbir adımda kayıp yaşamaz; korsan yalnız sahibine görünür; silahsız filo reddedilir; korsan saatler sonra da bekler; rehberi kapatma ve komutan taşınması senaryoyu kapatır; ekran kilidi saat dolunca kalkar. Oyun testi: taze hesapla 350 px'te inişten görev 4'e kadar.
 
 ### Faz 5: Sinyal 4×
 
@@ -203,10 +206,10 @@ Yok. Üretim artışı ×5 (+%400), owner onayı 2026-11-20.
 - [x] Faz 2 Kuruluş Saati (ocak efekti Faz 4 iniş kartı anında)
 - [x] Faz 2b 5 dk kuralı
 - [x] Faz 3 kişisel kayalar (sahnede "senin" işareti Faz 4 kamera anıyla)
-- [ ] Faz 4 korsan senaryosu
+- [x] Faz 4 korsan senaryosu
 - [x] Faz 5 sinyal 4×
 - [x] Faz 6 convoy 2×
-- [ ] Faz 7 kapı ve yayın
+- [x] Faz 7 kapı (yayın yalnız owner "deploy" dediğinde)
 
 ### 10.2 Dosya haritası
 
@@ -239,3 +242,5 @@ Yok. Üretim artışı ×5 (+%400), owner onayı 2026-11-20.
 | Faz 6 | Bitti 2026-11-20 | `d6b7f46d` yeniden uygulandı: `outboundSpeedMultiplier: 2` yalnız yakalama çözücüsünde; dönüş normal. Keşif erişimi gönderilebilir filo + gerçek saatle (`convoyOpportunity`); seçili filo yetişemiyorsa "seçilen filo" uyarısı; 6 dil, Wiki, galeri fikstürü güncel rota |
 | Faz 5 | Bitti 2026-11-20 | `signalTravelExact` (süre ÷ 4) sunucunun üç bacağında ve istemci teklifinde; sayfada "Tek yön · 4× hız"; Wiki cümlesi. Uçuştaki sinyaller kayıtlı saatleriyle biter (saat satırda saklı) |
 | Faz 2b | Bitti 2026-11-20 | Sunucu boş sırada aynı işlemde bitirir (`finishOrder`), dolu sırada 1 sn sonra; istemci fişi "Anında · ≤5 dk", iyimser tahmin seviyeyi hemen verir, cevapta `confirm` sesi + `commit` titreşimi; sim aynası, Wiki notu, 6 dil. Eski 10 sunucu testi "kısa bekleyen emir" varsayıyordu: `rungsThatTakeTime` ile niyetleri korunarak güncellendi. Sim'de yalnız yeni birim testi koşuldu |
+| Faz 4 | Bitti 2026-11-22, akış 2026-11-23 owner oyun testiyle değişti (§2) | `newcomer_scenario` (0256, `event_kind` + tablo), `packages/rules/src/newcomerScenario.ts` (4× hız, gerçek `resolveBattle`, sıfır oyuncu kaybı, 300/150 sabit ganimet; gemi üretme adımı owner 2026-11-22 kararıyla kaldırıldı); ilk oyunda düzenli bilinmeyen sinyal senaryo bitene/bırakılana dek ertelenir, sonra 1–2 dk içinde gelir; rehberi kapatma (`PUT /api/auth/me/starter-guide`) senaryoyu kapatır. İstemci: ilk oyunda tek-dokunuşlu Kuruluş Saati iniş kartı + `FurnaceOverloadFx` (`BURN_FIRE` 6×6 flipbook), kişisel kayalarda 3D "Senin" işareti, kişisel korsan yuvası 3D işareti, `NewcomerScenarioHost` ekran kilidi + zaferde `LandingRewards`, kilit kalkınca toplu galaksi etkinliği bildirimi, 6 dil |
+| İnceleme | 2026-11-23 | Düzeltilenler: görev kilidi saatle sınırlı; korsan yenilene dek bekler; silahsız filo reddi; iniş kartı kapanıp başlatma başarısız olunca HUD'un gizli kalması; görev ilerlemişken iniş kartının ekranı boşuna tutması; kart metinleri (5 dk kuralı yanlış anlatılıyordu, "Başladı / Başlat" çelişkisi, başlık büyük harfleri); 7 kutudaki yumuşak parlama (yasak) kaldırıldı; ocak efekti saat boyunca tam kare istemez; 11 px altı yazı; marka testi seçenekleri 44 px; ödül gösteriminde kaydırma geri geldi; trafik yorumları geri kondu; tip zorlamaları kaldırıldı; silahsız filo reddi kendi hata koduyla (`NEEDS_WARSHIP`, 6 dil) açık cümle söyler; sıçrama sorusu gemi sayfasında da sürücünün sahnesi ekrandayken sorulmaz (madde 24); iniş kartında 5× tekrarı ve "Onarımların burada ödül" başlığı düzeltildi ("İlk ödüllerin"); tur sırasında görev kartı yuvada kalır. Oyun testi 350 px (2026-11-24): iniş → tur → kazı → korsan (DECISIVE, kayıpsız, kurye tek başına reddedildi) → sonda → kapanış uçtan uca geçti, sayfa hatası yok |

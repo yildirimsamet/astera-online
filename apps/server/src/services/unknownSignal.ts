@@ -10,7 +10,7 @@ import {
 import type { Clock } from '../clock.js';
 import { addMinutes, minutesSince } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
-import { buildings, cosmeticEntitlements, planets, players, satellites, scheduledEvents, seasons, shards, units, unknownSignals, unknownSignalState, vacations } from '../db/schema.js';
+import { buildings, cosmeticEntitlements, newcomerScenario, planets, players, satellites, scheduledEvents, seasons, shards, units, unknownSignals, unknownSignalState, vacations } from '../db/schema.js';
 import { publish, publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { assertFreeBay } from './flight.js';
@@ -39,6 +39,7 @@ export async function backfillUnknownSignals(db: Db, clock: Clock): Promise<numb
     .innerJoin(shards, eq(shards.id, seasons.shardId))
     .leftJoin(unknownSignalState, eq(unknownSignalState.playerId, players.id))
     .where(and(eq(seasons.status, 'live'), isPerson, isNull(unknownSignalState.playerId),
+      sql`not exists (select 1 from ${newcomerScenario} ns where ns.player_id = ${players.id} and ns.step not in ('DONE', 'DISMISSED'))`,
       sql`not exists (select 1 from ${planets} p join ${buildings} b on b.planet_id = p.id and b.type = 'CORE'
         where p.player_id = ${players.id} and b.level >= 10)`))
     .orderBy(players.id).limit(250);

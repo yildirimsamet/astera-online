@@ -46,7 +46,13 @@ export async function resolveNewcomerHour(db: Db, clock: Clock, event: EventRow)
   const { stage } = stageSchema.parse(event.payload);
   const now = clock.now();
   const phones = await db.transaction(async tx => {
-    const planet = await loadLocked(tx, planetId, clock);
+    const [peek] = await tx.select({ until: planets.newcomerBoostUntil, lastTickAt: planets.lastTickAt })
+      .from(planets).where(eq(planets.id, planetId));
+    // If the end-of-hour worker fires late, settle economy at `until` first so the summary never counts post-hour output.
+    const settleClock: Clock = stage === 'ended' && peek?.until && now > peek.until && peek.lastTickAt < peek.until
+      ? { now: () => peek.until! }
+      : clock;
+    const planet = await loadLocked(tx, planetId, settleClock);
     const until = planet.newcomerBoostUntil;
     const [owner] = await tx.select({ id: players.id, accountId: players.accountId }).from(players)
       .innerJoin(planets, eq(planets.controllerPlayerId, players.id)).where(eq(planets.id, planetId));

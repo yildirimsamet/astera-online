@@ -1793,6 +1793,13 @@
       "when": 1795192422902,
       "tag": "0255_personal_rocks",
       "breakpoints": true
+    },
+    {
+      "idx": 256,
+      "version": "7",
+      "when": 1795386225370,
+      "tag": "0256_newcomer_scenario",
+      "breakpoints": true
     }
   ]
 }

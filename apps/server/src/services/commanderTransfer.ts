@@ -5,7 +5,7 @@ import { CLAN, DEBRIS, INACTIVITY_MS, MULTI_WORLD, dockLocation, generateGalaxy,
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
 import { accounts, buildOrders, clanMemberships, clanRequests, clans, honorObservations, honorSeasons,
-  clanSupportWaves, clanWarContributions, clanWarOperations, commanderTransfers, debrisFields, mainVacancies,
+  clanSupportWaves, clanWarContributions, clanWarOperations, commanderTransfers, debrisFields, mainVacancies, newcomerScenario, personalRocks,
   miningRuns, missions, planets, playerRivals, players, probeWorldMemories, researchOrders, returnApplications,
   scheduledEvents, seasons, shards, strategicAssets, strategicInterceptions, units, watches, pirateRaids, tradeRuns,
   intergalacticConvoyRuns, radiationBombFlights, hpRadiationSources, unknownSignals, unknownSignalState } from '../db/schema.js';
@@ -190,7 +190,8 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       for (const e of events) {
         const personal = (e.kind === 'build_complete' && orders.some(o => o.id === e.refId))
           || (e.kind === 'research_complete' && research.some(o => o.id === e.refId))
-          || (e.kind === 'death_star_ready' && assets.some(a => a.id === e.refId));
+          || (e.kind === 'death_star_ready' && assets.some(a => a.id === e.refId))
+          || (e.kind === 'newcomer_hour' && e.refId !== null && ids.includes(e.refId));
         if (e.status !== 'pending' || e.attempts !== 0 || e.resolveAt <= now || (!personal && e.kind !== 'neutral_reinforce')) defer('EVENT');
       }
       for (const work of [...orders.filter(o => o.status === 'BUILDING'), ...research.filter(o => o.status === 'BUILDING'), ...assets.filter(a => a.status === 'BUILDING')]) {
@@ -336,6 +337,11 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       // with its commander; a permanently stopped T4 cadence remains stopped.
       await tx.update(unknownSignals).set({ status: 'expired' }).where(and(eq(unknownSignals.playerId, playerId), eq(unknownSignals.status, 'open')));
       await tx.delete(scheduledEvents).where(and(eq(scheduledEvents.refId, playerId), eq(scheduledEvents.kind, 'unknown_signal_spawn')));
+      // Personal rocks and the opening pirate scenario belong to the old capital's coordinates.
+      await tx.delete(personalRocks).where(eq(personalRocks.playerId, playerId));
+      await tx.update(newcomerScenario)
+        .set({ step: 'DISMISSED', dismissedAt: now, updatedAt: now })
+        .where(and(eq(newcomerScenario.playerId, playerId), notInArray(newcomerScenario.step, ['DONE', 'DISMISSED'])));
       const [signalState] = await tx.select().from(unknownSignalState).where(eq(unknownSignalState.playerId, playerId));
       if (signalState?.nextAt === null) {
         await tx.update(unknownSignalState).set({ seasonId: target.id }).where(eq(unknownSignalState.playerId, playerId));

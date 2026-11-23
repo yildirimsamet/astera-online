@@ -110,6 +110,19 @@ export function RewardsScreen({ commander, onGo }: { commander: string; onGo?: (
     {/* A ready commander box is what the gift icon called for: it stands first; a waiting one below (owner 2026-11-18). */}
     {boxReady && <WelcomeWeek />}
     {pod && <div className="gk-rewards__pod">
+      {(podChain !== undefined || pod.id === 'all') && <div data-pod-reward className="gk-cut gk-cut--self gk-rewards__podname">
+        <div className="gk-rewards__podrow">
+          <span className="gk-label gk-rewards__podkey">{t('rewards.podTask')}:</span>
+          <span className="gk-rewards__podval gk-display">
+            <Glyph id={podChain ? CHAIN_GLYPH[podChain.id] : 'crate'} />
+            <span>{podChain ? `${t(`rewards.chains.${podChain.id}.name`)}${podChain.metric === 'grant' ? '' : ` · ${goalText(t, podChain.metric, pod.goal)}`}` : t('rewards.summaryReady')}</span>
+          </span>
+        </div>
+        <div className="gk-rewards__podrow">
+          <span className="gk-label gk-rewards__podkey">{t('rewards.podPrize')}:</span>
+          <CostLine cost={{ alloy: pod.alloy, crystal: pod.crystal }} />
+        </div>
+      </div>}
       <RewardPod key={pod.id} label={t('rewards.openPod')} opened={opened !== null}
         onOpen={() => { setOpened(pod); onClaim(pod.id); }}>
         <CostLine cost={{ alloy: pod.alloy, crystal: pod.crystal }} />
@@ -117,11 +130,6 @@ export function RewardsScreen({ commander, onGo }: { commander: string; onGo?: (
       {opened === null && ready.length > 1 && <GameButton tone="self" wide heavy glyph="crate" pending={claimAll.isPending}
         disabledReason={claim.isPending ? t('rewards.takeAll', { count: ready.length }) : null}
         onPress={onClaimAll}>{t('rewards.takeAll', { count: ready.length })}</GameButton>}
-      {podChain && <div data-pod-reward className="gk-rewards__podname">
-        <span className="gk-label">{t(`rewards.chains.${podChain.id}.name`)}{podChain.metric === 'grant' ? '' : ` · ${goalText(t, podChain.metric, pod.goal)}`}</span>
-        {/* once the lid is off, the loot itself says what was inside */}
-        {opened === null && <CostLine cost={{ alloy: pod.alloy, crystal: pod.crystal }} />}
-      </div>}
     </div>}
     <dl className="gk-cmdr__cells gk-well gk-rewards__sum">
       <div className="gk-cmdr__cell" {...(ready.length > 0 ? { 'data-on': '' } : {})}>

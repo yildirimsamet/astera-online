@@ -82,7 +82,7 @@ export function LandingRewards({ onDone }: { onDone: (code: 'act:take' | 'dismis
               <GameButton tone="self" wide heavy glyph="crate" pending={claimAll.isPending} onPress={take}>{t('starter.landingRewards.take')}</GameButton>
               <GameButton tone="ghost" wide onPress={close}>{t('starter.landingRewards.later')}</GameButton>
             </>
-          : <GameButton tone="ghost" wide onPress={close}>{t(granted ? 'starter.landingRewards.continue' : 'starter.landingRewards.later')}</GameButton>}>
+          : <GameButton tone={granted ? 'action' : 'steel'} wide onPress={close}>{t(granted ? 'starter.landingRewards.continue' : 'starter.landingRewards.later')}</GameButton>}>
         <div className="lr-body">
           {rewarding && (
             <section className="lr-reward">

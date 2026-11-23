@@ -48,7 +48,6 @@ export const brand = {
   "alreadyComplete": "Bu soru zaten tamamlandı.",
   "requestFailed": "Cevabın doğrulanamadı. Tekrar dene.",
   "waiting": "Cevabın kontrol ediliyor…",
-  "skip": "Atla",
   "continue": "Oyuna devam et",
   "close": "Kapat",
   "rewardSummary": "{{alloy}} Alaşım · {{crystal}} Kristal · {{deuterium}} Döteryum"

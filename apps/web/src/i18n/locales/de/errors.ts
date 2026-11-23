@@ -149,6 +149,7 @@ export const errors = {
   BAD_CLAN_TAG: 'Verwende zwei bis fünf Buchstaben oder Ziffern für das Clankürzel',
   BAD_CREDENTIALS: 'Die Anmeldedaten stimmen nicht überein',
   BAD_FLEET: 'Falsche Schiffsanzahl für {{hull}}',
+  NEEDS_WARSHIP: 'Schick mindestens ein Kriegsschiff, um diesen Piraten anzugreifen',
   BAD_REQUEST: "Die Angaben zur Aktion konnten nicht gelesen werden. Prüfe deine Auswahl.",
   BAD_SESSION: "Deine Sitzung ist ungültig oder abgelaufen. Melde dich erneut an.",
   BAD_SLOT: 'Teleskop L{{level}} kann {{slots}} Planeten beobachten',

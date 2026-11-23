@@ -18,9 +18,10 @@ export async function queueUnknownSignalSpawn(tx: Queryable, state: typeof unkno
  * (the account's one three-day shield) hears its first signal within minutes, pirate-free.
  */
 export async function ensureUnknownSignalSchedule(tx: Tx, playerId: string, seasonId: string, at: Date, backfill = false,
-  firstGame = false): Promise<boolean> {
-  const [min, max] = firstGame ? UNKNOWN_SIGNAL.firstGameGapMinutes
-    : backfill ? [0, UNKNOWN_SIGNAL.gapMinutes[0]] : UNKNOWN_SIGNAL.gapMinutes;
+  firstGame = false, gapOverride?: readonly [number, number]): Promise<boolean> {
+  const [min, max] = gapOverride
+    ?? (firstGame ? UNKNOWN_SIGNAL.firstGameGapMinutes
+      : backfill ? [0, UNKNOWN_SIGNAL.gapMinutes[0]] : UNKNOWN_SIGNAL.gapMinutes);
   const nextAt = addMinutes(at, min + seededFrom(`unknown-signal:first:${seasonId}:${playerId}`)() * (max - min));
   const [state] = await tx.insert(unknownSignalState).values({ playerId, seasonId, nextAt, firstSignalSpared: firstGame })
     .onConflictDoNothing().returning();

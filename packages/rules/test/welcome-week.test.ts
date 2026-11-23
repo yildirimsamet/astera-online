@@ -24,25 +24,30 @@ describe('the next welcome box', () => {
 });
 
 describe('what a welcome box holds', () => {
-  const rate = { alloy: 300, crystal: 100 };
-  it('is about an hour of output, crystal-heavy', () => {
-    const box = welcomeBox(1, rate);
-    expect(box.alloy + box.crystal).toBe(400);
-    expect(box.crystal).toBeGreaterThan(box.alloy);
+  it('increases alloy and crystal every single day from box 1 through box 7', () => {
+    for (let i = 1; i < WELCOME_WEEK.boxes; i++) {
+      const current = welcomeBox(i);
+      const next = welcomeBox(i + 1);
+      expect(next.alloy).toBeGreaterThan(current.alloy);
+      expect(next.crystal).toBeGreaterThan(current.crystal);
+    }
   });
 
-  it('makes the seventh about three hours', () => {
-    const box = welcomeBox(7, rate);
-    expect(box.alloy + box.crystal).toBe(1200);
+  it('adds escalating deuterium starting after day 3 (boxes 4 through 7)', () => {
+    expect([1, 2, 3].map(i => welcomeBox(i).deuterium)).toEqual([0, 0, 0]);
+    for (let i = 4; i <= WELCOME_WEEK.boxes; i++) {
+      expect(welcomeBox(i).deuterium).toBeGreaterThan(welcomeBox(i - 1).deuterium);
+    }
   });
 
-  it('is never empty, even while production is down', () => {
-    const box = welcomeBox(2, { alloy: 0, crystal: 0 });
-    expect(box.alloy + box.crystal).toBe(WELCOME_WEEK.floorPerHour);
+  it('grants ring-helios on day 3 and engine-titan on day 7', () => {
+    expect(welcomeBox(3).cosmeticId).toBe('ring-helios');
+    expect(welcomeBox(7).cosmeticId).toBe('engine-titan');
+    expect([1, 2, 4, 5, 6].map(i => welcomeBox(i).cosmeticId)).toEqual([undefined, undefined, undefined, undefined, undefined]);
   });
 
   it('refuses a box outside the seven', () => {
-    expect(() => welcomeBox(0, rate)).toThrow();
-    expect(() => welcomeBox(8, rate)).toThrow();
+    expect(() => welcomeBox(0)).toThrow();
+    expect(() => welcomeBox(8)).toThrow();
   });
 });

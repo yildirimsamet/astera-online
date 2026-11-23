@@ -48,7 +48,6 @@ export const brand = {
   "alreadyComplete": "Cette question est déjà terminée.",
   "requestFailed": "Ta réponse n’a pas pu être confirmée. Réessaie.",
   "waiting": "Vérification de ta réponse…",
-  "skip": "Passer",
   "continue": "Continuer à jouer",
   "close": "Fermer",
   "rewardSummary": "{{alloy}} Alliage · {{crystal}} Cristal · {{deuterium}} Deutérium"

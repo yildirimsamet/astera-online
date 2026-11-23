@@ -9,7 +9,7 @@ import i18n from '../i18n/index.js';
 import { monumentName } from '../i18n/names.js';
 import { serverNow } from './clock.js';
 
-export type FlightFocus = CraftFocus | Extract<Focus, { kind: 'contact' | 'monument' }>;
+export type FlightFocus = CraftFocus | Extract<Focus, { kind: 'contact' | 'monument' | 'asteroid' }>;
 
 /** Keep every flight surface on the same native recall lane without generating writes during render. */
 export function flightRecallInput(thread: PendingThread, now = serverNow()): FlightRecallInput | undefined {

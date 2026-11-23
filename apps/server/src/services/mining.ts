@@ -73,6 +73,7 @@ import { pendingThreads, type PendingThread } from './session.js';
 import { loadPlanetViewData, buildPlanetResult, type PlanetView } from './planetView.js';
 import { assertOutsideSilentSpace } from './waitingRoom.js';
 import { personalRockAt, personalRocksOf } from './personalRocks.js';
+import { onScenarioAsteroidMined } from './newcomerScenario.js';
 
 /**
  * MINING — D19.
@@ -575,6 +576,8 @@ export async function launchMining(
       refId: run!.id,
       resolveAt: arriveAt,
     });
+
+    await onScenarioAsteroidMined(tx, origin.playerId, field.startsAt, origin, origin.now);
 
     /**
      * AND THE RACE IS ANNOUNCED. D53.

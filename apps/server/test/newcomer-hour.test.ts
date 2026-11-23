@@ -175,4 +175,26 @@ describe('the newcomer hour, told', () => {
     expect(await w.news('newcomer_hour_summary')).toHaveLength(1);
     expect(sent).toHaveLength(0);
   });
+
+  it('caps the end-of-hour production summary at until even when the worker runs late', async () => {
+    const onTime = await landed(true, 'OnTime');
+    const delayed = await landed(true, 'Delayed');
+    for (const w of [onTime, delayed]) {
+      for (const [type, level] of [['CORE', 3], ['REFINERY', 2], ['EXTRACTOR', 2], ['VAULT', 1]] as const) {
+        await setLevel(w.db, w.planetId, type, level);
+      }
+    }
+    onTime.clock.set(new Date(onTime.until));
+    await onTime.tick();
+    await onTime.tick();
+    // Delayed worker runs 30 minutes after the hour ended.
+    delayed.clock.set(new Date(delayed.until + 30 * 60_000));
+    await delayed.tick();
+    await delayed.tick();
+
+    const [a] = await onTime.news('newcomer_hour_summary');
+    const [b] = await delayed.news('newcomer_hour_summary');
+    const schema = z.object({ alloy: z.number(), crystal: z.number(), builds: z.number() });
+    expect(schema.parse(b?.payload)).toEqual(schema.parse(a?.payload));
+  });
 });

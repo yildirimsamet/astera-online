@@ -7,6 +7,7 @@ import { ApiProvider } from '../src/api/context.js';
 import i18n from '../src/i18n/index.js';
 import type * as Runtime from '../src/lib/playerAnalytics/runtime.js';
 import { ArrivalHost } from '../src/starter/ArrivalHost.js';
+import { ToastProvider } from '../src/ui/Toast.js';
 import { HOLDER_CLOSE, WindowHolder } from './attentionFixture.js';
 import { urlOf } from './starterVesselFixture.js';
 
@@ -29,7 +30,7 @@ const harness = () => {
   const api = new Api({ fetch: fetcher as unknown as typeof globalThis.fetch });
   const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const onPanel = vi.fn();
-  render(<QueryClientProvider client={queries}><ApiProvider api={api}><ArrivalHost onPanel={onPanel} /></ApiProvider></QueryClientProvider>);
+  render(<QueryClientProvider client={queries}><ApiProvider api={api}><ToastProvider><ArrivalHost onPanel={onPanel} /></ToastProvider></ApiProvider></QueryClientProvider>);
   return { fetcher, onPanel };
 };
 
@@ -44,6 +45,27 @@ beforeEach(async () => {
 afterEach(() => { cleanup(); window.sessionStorage.clear(); });
 
 describe('the card after the landing', () => {
+  // Review 2026-11-23: tasks already begun (on another screen, or a rock mined under a held card) leave the
+  // founding-hour card nothing to start; it is put away, or it would hold the screen with nothing drawn.
+  it('is put away once the founding hour\'s tasks have begun without it', async () => {
+    const fetcher = vi.fn((input: RequestInfo | URL) => {
+      const url = urlOf(input);
+      const body = url.includes('/api/starter/arrival/seen') ? { ok: true }
+        : url.includes('/api/newcomer-scenario')
+          ? { scenario: { step: 'PIRATE', pirateDefeated: false, holdsScreenUntil: new Date(Date.now() + 30 * 60_000).toISOString() } }
+          : { arrival, landedAt: new Date().toISOString() };
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } }));
+    });
+    const api = new Api({ fetch: fetcher as unknown as typeof globalThis.fetch });
+    const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={queries}><ApiProvider api={api}><ToastProvider><ArrivalHost onPanel={vi.fn()} /></ToastProvider></ApiProvider></QueryClientProvider>);
+    await waitFor(() => { expect(fetcher.mock.calls.some(([input]) => urlOf(input).includes('/api/starter/arrival/seen'))).toBe(true); });
+    expect(screen.queryByTestId('landing-card')).toBeNull();
+    // A server still sending the arrival back (a seen that did not land) is not asked again in a loop.
+    await new Promise(resolve => { setTimeout(resolve, 300); });
+    expect(fetcher.mock.calls.filter(([input]) => urlOf(input).includes('/api/starter/arrival/seen'))).toHaveLength(1);
+  });
+
   // Pressed before the map was in, the flight had no world to fly through: a black screen for the scene.
   it('lets the flight be watched again only once the map it crosses is in', async () => {
     harness();
@@ -130,7 +152,7 @@ const tipHarness = (reports: object[], daysAgo: number) => {
   });
   const api = new Api({ fetch: fetcher as unknown as typeof globalThis.fetch });
   const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(<QueryClientProvider client={queries}><ApiProvider api={api}><ArrivalHost onPanel={vi.fn()} /></ApiProvider></QueryClientProvider>);
+  render(<QueryClientProvider client={queries}><ApiProvider api={api}><ToastProvider><ArrivalHost onPanel={vi.fn()} /></ToastProvider></ApiProvider></QueryClientProvider>);
 };
 
 /** The first week's note comes with the need (plan 2026-11-13 §4.8); the calendar is the fallback. */
@@ -191,7 +213,7 @@ describe('the first move of a ship that never hunted', () => {
     const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const onFocusContact = vi.fn();
     const onPanel = vi.fn();
-    render(<QueryClientProvider client={queries}><ApiProvider api={api}><ArrivalHost onPanel={onPanel} onFocusContact={onFocusContact} /></ApiProvider></QueryClientProvider>);
+    render(<QueryClientProvider client={queries}><ApiProvider api={api}><ToastProvider><ArrivalHost onPanel={onPanel} onFocusContact={onFocusContact} /></ToastProvider></ApiProvider></QueryClientProvider>);
     return { onFocusContact, onPanel };
   };
 

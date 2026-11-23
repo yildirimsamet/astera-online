@@ -1,24 +1,11 @@
-import { alloyRate, crystalRate, productionMult, welcomeBox, welcomeNext } from '@astera/rules';
-import { and, eq, inArray } from 'drizzle-orm';
+import { cosmeticById, welcomeBox, welcomeNext, type CosmeticId } from '@astera/rules';
+import { eq } from 'drizzle-orm';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
-import { buildings, players, satellites, vessels, welcomeWeek } from '../db/schema.js';
+import { accounts, cosmeticEntitlements, players, vessels, welcomeWeek } from '../db/schema.js';
+import { publishShard } from '../stream/bus.js';
 import { capitalPlanet } from './ownership.js';
-import { GameError, orbitFromRows, refreshWealth, saveResources, withPlanetLock } from './planet.js';
-
-interface Rate { alloy: number; crystal: number }
-
-/** What the capital makes an hour: its refinery and extractor at its orbit's pace. */
-async function capitalRate(q: Queryable, planetId: string): Promise<Rate> {
-  const [levels, orbit] = await Promise.all([
-    q.select({ type: buildings.type, level: buildings.level }).from(buildings)
-      .where(and(eq(buildings.planetId, planetId), inArray(buildings.type, ['REFINERY', 'EXTRACTOR', 'CORE']))),
-    q.select({ slot: satellites.slot, type: satellites.type }).from(satellites).where(eq(satellites.planetId, planetId)),
-  ]);
-  const level = (type: string) => levels.find(row => row.type === type)?.level ?? 0;
-  const mult = productionMult(orbitFromRows(orbit, level('CORE')));
-  return { alloy: alloyRate(level('REFINERY')) * mult, crystal: crystalRate(level('EXTRACTOR')) * mult };
-}
+import { GameError, refreshWealth, saveResources, withPlanetLock } from './planet.js';
 
 /**
  * Where the box goes: the capital of a commander who came by colony ship and has landed. Null aboard
@@ -27,10 +14,10 @@ async function capitalRate(q: Queryable, planetId: string): Promise<Rate> {
 async function destination(q: Queryable, accountId: string) {
   const [ship] = await q.select({ status: vessels.status }).from(vessels).where(eq(vessels.accountId, accountId));
   if (ship?.status !== 'DEPARTED') return null;
-  const [player] = await q.select({ id: players.id }).from(players).where(eq(players.accountId, accountId)).limit(1);
+  const [player] = await q.select({ id: players.id, seasonId: players.seasonId }).from(players).where(eq(players.accountId, accountId)).limit(1);
   if (!player) return null;
   const capital = await capitalPlanet(q, player.id);
-  return { planetId: capital.id, rate: await capitalRate(q, capital.id) };
+  return { planetId: capital.id, seasonId: player.seasonId };
 }
 
 /** The welcome week as the panel draws it, or null for an account it is not for. */
@@ -46,7 +33,7 @@ export async function welcomeView(db: Db, accountId: string, now: Date) {
       box: next.box,
       // Ready "now" reads as now; a later moment as itself.
       readyAt: next.readyAtMs === null ? null : new Date(Math.max(next.readyAtMs, now.getTime())).toISOString(),
-      preview: next.box === null ? null : welcomeBox(next.box, to.rate),
+      preview: next.box === null ? null : welcomeBox(next.box),
     },
   };
 }
@@ -62,18 +49,52 @@ async function takeBox(tx: Tx, accountId: string, now: Date): Promise<number> {
   return next.box;
 }
 
-/** Opens the next box into the capital's store, in the transaction that counts it. */
+/** Grants a welcome-box cosmetic entitlement and auto-equips it if its slot is currently empty. */
+async function grantWelcomeCosmetic(
+  tx: Tx,
+  accountId: string,
+  seasonId: string,
+  boxIndex: number,
+  cosmeticId: CosmeticId,
+  now: Date,
+): Promise<void> {
+  await tx.insert(cosmeticEntitlements).values({
+    accountId,
+    cosmeticId,
+    source: 'WELCOME_WEEK',
+    orderRef: `welcome:${accountId}:${String(boxIndex)}`,
+    grantedAt: now,
+  }).onConflictDoNothing();
+
+  const item = cosmeticById(cosmeticId);
+  if (!item || (item.category !== 'RING' && item.category !== 'ENGINE')) return;
+  const [owner] = await tx.select({ equipment: accounts.cosmeticEquipment })
+    .from(accounts).where(eq(accounts.id, accountId)).for('update');
+  if (!owner || owner.equipment[item.category]) return;
+  await tx.update(accounts)
+    .set({ cosmeticEquipment: { ...owner.equipment, [item.category]: cosmeticId } })
+    .where(eq(accounts.id, accountId));
+  await publishShard(tx, seasonId, 'world');
+}
+
+/** Opens the next box into the capital's store (and cosmetic inventory on days 3 & 7), in the transaction that counts it. */
 export async function openWelcomeBox(db: Db, accountId: string, clock: Clock) {
   const to = await destination(db, accountId);
   if (!to) throw new GameError('WELCOME_NOT_ELIGIBLE', 'This account has no welcome week', 404);
+  const now = clock.now();
   const granted = await withPlanetLock(db, to.planetId, clock, async (tx, planet) => {
-    const box = welcomeBox(await takeBox(tx, accountId, clock.now()), to.rate);
+    const boxIndex = await takeBox(tx, accountId, now);
+    const box = welcomeBox(boxIndex);
     planet.alloy += box.alloy;
     planet.crystal += box.crystal;
+    planet.deuterium += box.deuterium;
     await saveResources(tx, to.planetId, { alloy: planet.alloy, crystal: planet.crystal, deuterium: planet.deuterium });
     await refreshWealth(tx, planet);
+    if (box.cosmeticId) {
+      await grantWelcomeCosmetic(tx, accountId, to.seasonId, boxIndex, box.cosmeticId, now);
+    }
     return box;
   });
-  return { granted, ...(await welcomeView(db, accountId, clock.now())) };
+  return { granted, ...(await welcomeView(db, accountId, now)) };
 }
 

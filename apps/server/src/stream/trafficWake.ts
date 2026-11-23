@@ -12,12 +12,13 @@ import {
 export async function readTrafficView(projections: Projections, self: CommanderTopology, now: Date) {
   // Both from the same generation of the caller's world list: the horizon and
   // the ownership filter must never disagree about which worlds are theirs.
-  const [snapshot, sensors, mining, epochs, pirates] = await Promise.all([
+  const [snapshot, sensors, mining, epochs, pirates, ownPirate] = await Promise.all([
     projections.trafficSnapshot(self.seasonId, now),
     projections.sensorsFor(self.playerId, self.seasonId, self.planetIds),
     projections.miningSnapshot(self.seasonId, now),
     projections.historyFor(self.playerId, self.seasonId),
     projections.pirateSnapshot(self.seasonId, now),
+    projections.personalPirateFor(self.playerId),
   ]);
   return {
     contacts: projectGalaxyTraffic(
@@ -33,6 +34,7 @@ export async function readTrafficView(projections: Projections, self: CommanderT
         run.asteroidIndex === null ? [] : [run.asteroidIndex]))),
       pirates,
       discoveredPirateIndexes(pirates, epochs, now),
+      ownPirate ?? null,
     ),
     interceptions: projectStrategicInterceptions(snapshot, self.playerId, sensors),
     interceptionImpacts: projectStrategicInterceptionImpacts(snapshot, self.playerId, sensors, now),

@@ -48,7 +48,6 @@ export const brand = {
   "alreadyComplete": "この質問は回答済みです。",
   "requestFailed": "回答を確認できませんでした。もう一度お試しください。",
   "waiting": "回答を確認中…",
-  "skip": "スキップ",
   "continue": "ゲームを続ける",
   "close": "閉じる",
   "rewardSummary": "合金 {{alloy}} · クリスタル {{crystal}} · 重水素 {{deuterium}}"

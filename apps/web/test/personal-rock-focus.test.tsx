@@ -5,8 +5,9 @@ import { AsteroidFocus } from '../src/galaxy/FocusPanel.js';
 import i18n from '../src/i18n/index.js';
 
 /**
- * KİŞİSEL KAYA ON THE CARD (plan 2026-11-20 §5.2, Faz 3). The server marks the commander's own rocks; the
- * card says what that means before the send: only you see it, only you mine it, and it does not stay.
+ * KİŞİSEL KAYA ON THE CARD (playtest 2026-11-23):
+ * The server still tags personal rocks (`personal: true`) so the 3D scene can draw a subtle faint
+ * ring, but the focus card intentionally avoids meta-language ("Your rock: only you see it...").
  */
 const ROCK = {
   id: 'mJtQH0vR5cP8sN2xK7dL4A', level: 1, ore: 1000, oreRemaining: 1000, crystalShare: 0.35, radius: 5_000, period: 10_000, phase: 0.2,
@@ -27,12 +28,10 @@ describe('a rock of your own', () => {
     expect(asteroidSchema.parse(ROCK).personal).toBeUndefined();
   });
 
-  it('says on the card that it is yours alone, and that it will not stay', () => {
+  it('does not show meta ownership labels on the focus card for either personal or shared rocks', () => {
     card(true);
-    expect(screen.getByTestId('personal-rock')).toHaveTextContent('Your rock: only you see it and mine it. It drifts off in 5h 00m.');
-  });
-
-  it('says nothing of the kind on a rock of the shared field', () => {
+    expect(screen.queryByTestId('personal-rock')).toBeNull();
+    cleanup();
     card(false);
     expect(screen.queryByTestId('personal-rock')).toBeNull();
   });

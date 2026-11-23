@@ -29,6 +29,7 @@ import { PushDeviceSync } from './shell/PushDeviceSync.js';
 import { PushOpenRoute } from './shell/PushOpenRoute.js';
 import { BlockedScreen } from './shell/BlockedScreen.js';
 const ArrivalHost = lazy(() => import('./starter/ArrivalHost.js').then(module => ({ default: module.ArrivalHost })));
+const NewcomerScenarioLock = lazy(() => import('./starter/NewcomerScenarioHost.js').then(module => ({ default: module.NewcomerScenarioLock })));
 const GameShell = lazy(() => import('./v2/shell/GameShell.js').then(module => ({ default: module.GameShell })));
 import { WebLandingGate } from './landing/public/WebLandingGate.js';
 import { runtime } from './platform/runtime.js';
@@ -323,6 +324,7 @@ function SessionApp() {
             setPanel(null);
             setCraftFocus((current) => ({ focus: { kind: 'contact', id }, request: (current?.request ?? 0) + 1 }));
           }} />}
+          {!session.me.vessel && <NewcomerScenarioLock />}
           {profileOpen && <ProfileHost name={session.me.displayName} country={session.me.country} onCountryChange={updateCountry}
             onSignOut={() => { dismissProfile(); void signOut(); }} onBack={leaveProfile} />}
           </>

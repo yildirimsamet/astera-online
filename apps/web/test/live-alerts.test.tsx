@@ -74,3 +74,18 @@ it('tells the measurement which results it showed, under the server ids, and non
     ['outcome_visible', { refId: 'a1f3c3f4-41a7-4d5e-9a40-5a6e43c5b001', surface: 'toast', code: 'raid_result' }, 'live'],
   ]);
 });
+
+it('batches galaxy_event_started alerts held during a scenario lock into one toast when the lock lifts', () => {
+  dispatchAttention({ kind: 'lock', allow: ['arrival_card'] });
+  const view = renderHook(() => { useLiveAlerts(true); });
+  const ev1: NotificationView = { id: 'ge-1', kind: 'galaxy_event_started', seen: false, at: new Date('2026-10-15T13:03:00.000Z'), payload: { kind: 'ASTEROID_SHOWER' } };
+  const ev2: NotificationView = { id: 'ge-2', kind: 'galaxy_event_started', seen: false, at: new Date('2026-10-15T13:03:10.000Z'), payload: { kind: 'TRADE_SHIP' } };
+  notifications = [ev2, ev1];
+  view.rerender();
+  expect(say).not.toHaveBeenCalled();
+
+  dispatchAttention({ kind: 'lock', allow: null });
+  view.rerender();
+  expect(say).toHaveBeenCalledTimes(1);
+  expect(say.mock.calls[0]?.[0]).toMatch(/2/);
+});

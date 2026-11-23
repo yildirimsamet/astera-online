@@ -7,7 +7,7 @@ import { forceSeasonEnd, onSeasonEnd, HANDLERS } from '../src/worker/handlers.js
 import { startVacation, endVacation, vacationStatus } from '../src/services/vacation.js';
 import { COSMETICS, HULLS, distance, fleetSpeedMult, fleetTravelExact, missionFuel, repairPct, shipHpRepairCost, rollUnknownSignalOutcome, type UnknownSignalOutcome } from '@astera/rules';
 import { FixedClock } from '../src/clock.js';
-import { botProfiles, buildOrders, cosmeticEntitlements, hpRadiationSources, notifications, planets, players, scheduledEvents, seasons, shards, shipDamageLots, unknownSignals, unknownSignalState, units } from '../src/db/schema.js';
+import { accounts, botProfiles, buildOrders, cosmeticEntitlements, hpRadiationSources, notifications, planets, players, scheduledEvents, seasons, shards, shipDamageLots, unknownSignals, unknownSignalState, units } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { pendingThreads } from '../src/services/session.js';
 import {
@@ -61,6 +61,8 @@ beforeEach(async () => {
 describe('a first game\'s first signal', () => {
   const firstGame = async () => {
     const account = await registerAccount(f.db, { username: 'FirstPilot', password: 'correct-horse-battery' }, true);
+    // Guide off so the opening pirate scenario does not defer the first regular signal (plan 2026-11-20 §5.3).
+    await f.db.update(accounts).set({ starterGuideOffAt: f.clock.now() }).where(eq(accounts.id, account.id));
     return (await joinSeason(f.db, account.id, f.seasonId, f.clock)).playerId;
   };
   const spawn = async (id: string) => {

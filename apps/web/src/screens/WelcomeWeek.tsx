@@ -14,18 +14,15 @@ import { welcomeBoard, type WelcomeCell } from './welcomeBoard.js';
 import './welcome.css';
 
 /*
-  VFX brief (owner 2026-11-18: every effect is its own event).
-  - In the world: a supply crate's latches give under the thumb. Its lid strains and lifts while you
-    hold, then blows off and spins away; what it held leaps out of the open crate into your store, and
-    sparks scrape off the latches. The open, empty crate stays where it stood.
-  - Assets: Synty POLYGON Sci-Fi Space `SM_Prop_Crate_01` (silver lid, texture B) for boxes 1–6 and
-    `SM_Prop_Crate_Wide_01` (gold lid, texture A) for the seventh, each rendered as body and lid apart in
-    the game's light (`assets/images/welcome/`); the haul is the resources' own art; sparks are hard streaks.
-  - Why: a lid that flies and goods that jump out are what opening a crate is; the empty crate says "taken".
+  VFX brief — Orbital Supply Pods (owner 2026-11-23 playtest item 8 / A4):
+  - Space-themed orbital supply capsules (`/assets/ui/icons/pod-closed.webp` and `pod-open.webp`) docked in
+    holographic telemetry bays instead of military crates.
+  - Hold-to-unseal strains the capsule; on release it swaps to its open art with hard sparks off the seal and
+    the resource crystals/alloy leaping into the commander's stores (no soft round flare: owner 2026-11-18).
 */
-const CRATE = {
-  small: { body: '/assets/images/welcome/crate-small-body.webp', lid: '/assets/images/welcome/crate-small-lid.webp' },
-  big: { body: '/assets/images/welcome/crate-big-body.webp', lid: '/assets/images/welcome/crate-big-lid.webp' },
+const POD = {
+  closed: '/assets/ui/icons/pod-closed.webp',
+  open: '/assets/ui/icons/pod-open.webp',
 } as const;
 /** As long as a launch's hold: one gesture that cannot happen by accident. */
 const HOLD_MS = 600;
@@ -35,34 +32,50 @@ const OPEN_MS = 1_100;
 const POURED_MS = 2_600;
 const SPARKS = Array.from({ length: 8 }, (_, i) => ({ '--a': `${String(i * 45 + 20)}deg`, animationDelay: `${String((i % 3) * 30)}ms` }) as CSSProperties);
 
-interface Purse { alloy: number; crystal: number }
+interface Purse { alloy: number; crystal: number; deuterium?: number; cosmeticId?: string }
 
-function Holds({ holds, estimate }: { holds: Purse; estimate: boolean }) {
+function SkinBadge({ cosmeticId }: { cosmeticId: string }) {
   const { t } = useTranslation();
+  const isRing = cosmeticId === 'ring-helios';
+  const label = isRing ? t('rewards.welcome.skinRingHelios') : t('rewards.welcome.skinEngineTitan');
   return (
-    <span className="ww-holds" {...(estimate ? { 'data-estimate': '', title: t('rewards.welcome.later') } : {})}>
-      {(['crystal', 'alloy'] as const).map(resource => (
-        <span key={resource} className={`ww-hold ww-hold--${resource}`} aria-label={`${compact(holds[resource])} ${t(`vocabulary.resource.${resource}`)}`}>
-          <img src={RESOURCE_ART[resource]} alt="" draggable={false} />
-          {estimate && <span aria-hidden="true">≈</span>}{compact(holds[resource])}
-        </span>
-      ))}
+    <span className={`ww-skin ${isRing ? 'ww-skin--ring' : 'ww-skin--engine'}`} data-cosmetic={cosmeticId}>
+      <Glyph id={isRing ? 'star' : 'rocket'} className="gk-glyph" />
+      <span>{label}</span>
     </span>
   );
 }
 
-const sheenOf = (lid: string): CssVars => ({ '--ww-shape': `url(${lid})` });
+function Holds({ holds }: { holds: Purse }) {
+  const { t } = useTranslation();
+  const resources = holds.deuterium && holds.deuterium > 0
+    ? (['crystal', 'alloy', 'deuterium'] as const)
+    : (['crystal', 'alloy'] as const);
+  return (
+    <span className="ww-holds">
+      {resources.map(resource => {
+        const amount = resource === 'deuterium' ? (holds.deuterium ?? 0) : holds[resource];
+        return (
+          <span key={resource} className={`ww-hold ww-hold--${resource}`} aria-label={`${compact(amount)} ${t(`vocabulary.resource.${resource}`)}`}>
+            <img src={RESOURCE_ART[resource]} alt="" draggable={false} />
+            {compact(amount)}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
-/** The crate itself, body and lid apart so the lid can fly; once opened only the empty body stands. */
+const sheenOf = (src: string): CssVars => ({ '--ww-shape': `url(${src})` });
+
+/** Orbital supply capsule suspended over a holographic bay ring; unseals with a plasma flare on open. */
 function Crate({ big, opened, opening }: { big: boolean; opened: boolean; opening: boolean }) {
-  const art = big ? CRATE.big : CRATE.small;
+  const src = opened || opening ? POD.open : POD.closed;
   return (
     <span className="ww-crate" aria-hidden="true">
-      <span className="ww-shadow" />
-      <img className="ww-body" src={art.body} alt="" draggable={false} />
-      {!opened && <img className="ww-lid" src={art.lid} alt="" draggable={false} />}
-      {/* The gold crate's lid catches a band of light, masked to its own shape (welcome.css). */}
-      {big && !opened && <span className="ww-sheen" style={sheenOf(art.lid)} />}
+      <span className="ww-pedestal" />
+      <img className="ww-pod" src={src} alt="" draggable={false} />
+      {big && !opened && <span className="ww-sheen" style={sheenOf(POD.closed)} />}
       {opening && (
         <>
           {SPARKS.map((style, i) => <span key={i} className="ww-spark" style={style} />)}
@@ -111,8 +124,9 @@ function Box({ cell, opening, fresh, onOpen }: { cell: WelcomeCell; opening: boo
       {/* The wait sits on the crate it belongs to, not on a line of its own. */}
       {wait && <span className="ww-wait"><Glyph id="clock" className="gk-glyph" />{wait}</span>}
       <span className="ww-foot">
-        {cell.big && <span className="ww-big">{t('rewards.welcome.big')}<b>×{WELCOME_WEEK.hours[cell.box - 1]}</b></span>}
-        {cell.holds && state !== 'opened' && <Holds holds={cell.holds} estimate={state === 'later'} />}
+        {cell.big && <span className="ww-big">{t('rewards.welcome.big')}</span>}
+        {cell.cosmeticId && <SkinBadge cosmeticId={cell.cosmeticId} />}
+        {cell.holds && state !== 'opened' && <Holds holds={cell.holds} />}
         {/* The plate under the thumb: hold here. */}
         {state === 'ready' && !opening && <span className="ww-plate">{t('rewards.welcome.hold')}</span>}
       </span>
@@ -185,20 +199,37 @@ export function WelcomeWeek({ titled = true }: { titled?: boolean }) {
 
   return (
     <section data-testid="welcome-week" className="ww" aria-label={t('rewards.welcome.board')}>
-      <header className="ww-head">
-        {/* A host that already names the board (the landing's ribbon) keeps the count and drops the name. */}
-        {titled && <h3 className="v2-legend">{t('rewards.welcome.board')}</h3>}
-        <span className="ww-count">{opened}/{WELCOME_WEEK.boxes}</span>
-      </header>
-      <p data-testid="welcome-rule" className="ww-rule">
-        {t('rewards.welcome.rule', { hours: WELCOME_WEEK.hours[0], big: WELCOME_WEEK.hours[WELCOME_WEEK.boxes - 1], gap: WELCOME_WEEK.gapHours })}
-      </p>
+      {titled ? (
+        <>
+          <header className="ww-head">
+            <h3 className="v2-legend">{t('rewards.welcome.board')}</h3>
+            <span className="ww-count">{opened}/{WELCOME_WEEK.boxes}</span>
+          </header>
+          <p data-testid="welcome-rule" className="ww-rule">
+            {t('rewards.welcome.rule', { gap: WELCOME_WEEK.gapHours })}
+          </p>
+        </>
+      ) : (
+        <div className="ww-intro">
+          <span className="ww-count ww-count--pill">{opened}/{WELCOME_WEEK.boxes}</span>
+          <p data-testid="welcome-rule" className="ww-rule">
+            {t('rewards.welcome.rule', { gap: WELCOME_WEEK.gapHours })}
+          </p>
+        </div>
+      )}
       <div className="ww-grid">
         {board.map(cell => <Box key={cell.box} cell={cell} opening={opening === cell.box} fresh={fresh === cell.box} onOpen={() => { openBox(cell.box); }} />)}
       </div>
       {poured && (
         <p data-testid="welcome-poured" className="ww-poured" aria-live="polite">
-          {t('rewards.welcome.poured', { purse: `+${compact(poured.crystal)} ${t('vocabulary.resource.crystal')} · +${compact(poured.alloy)} ${t('vocabulary.resource.alloy')}` })}
+          {t('rewards.welcome.poured', {
+            purse: [
+              `+${compact(poured.crystal)} ${t('vocabulary.resource.crystal')}`,
+              `+${compact(poured.alloy)} ${t('vocabulary.resource.alloy')}`,
+              ...(poured.deuterium && poured.deuterium > 0 ? [`+${compact(poured.deuterium)} ${t('vocabulary.resource.deuterium')}`] : []),
+              ...(poured.cosmeticId ? [poured.cosmeticId === 'ring-helios' ? t('rewards.welcome.skinRingHelios') : t('rewards.welcome.skinEngineTitan')] : []),
+            ].join(' · '),
+          })}
         </p>
       )}
     </section>

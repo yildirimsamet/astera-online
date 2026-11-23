@@ -149,6 +149,7 @@ export const errors = {
   BAD_CLAN_TAG: 'Utilice de dos a cinco letras o dígitos para la etiqueta del clan',
   BAD_CREDENTIALS: 'Los datos de acceso no coinciden',
   BAD_FLEET: 'Recuento de envío incorrecto para {{hull}}',
+  NEEDS_WARSHIP: 'Envía al menos una nave de guerra para atacar a este pirata',
   BAD_REQUEST: "No se pudieron leer los detalles de la acción. Comprueba tus selecciones.",
   BAD_SESSION: "Tu sesión no es válida o ha caducado. Vuelve a iniciar sesión.",
   BAD_SLOT: 'El telescopio L{{level}} puede observar los planetas {{slots}}',

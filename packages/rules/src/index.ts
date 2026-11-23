@@ -95,6 +95,7 @@ export * from './pirateGeneration.js';
 export * from './pirateLoot.js';
 export * from './pirateProfit.js';
 export * from './unknownSignal.js';
+export * from './newcomerScenario.js';
 export * from './spawnGate.js';
 export * from './starter/index.js';
 

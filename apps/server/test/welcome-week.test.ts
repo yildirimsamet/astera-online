@@ -1,7 +1,7 @@
-import { WELCOME_WEEK } from '@astera/rules';
+import { WELCOME_WEEK, welcomeBox } from '@astera/rules';
 import { eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { planets, vessels, welcomeWeek } from '../src/db/schema.js';
+import { accounts, cosmeticEntitlements, planets, vessels, welcomeWeek } from '../src/db/schema.js';
 import { testDb } from './helpers.js';
 import { TOKENS, bearer, starterWorld } from './starterFixture.js';
 import { aboard, get, post, type StarterWorld } from './starterShips.js';
@@ -68,25 +68,38 @@ describe('the welcome week', () => {
     expect((await open(veteran)).json<{ error: string }>().error).toBe('WELCOME_NOT_ELIGIBLE');
   });
 
-  it('after the landing goes into the capital\'s store, and ends with the seventh', async () => {
+  it('grants fixed escalating resources, deuterium from box 4+, and cosmetics on boxes 3 and 7', async () => {
     const headers = await landed();
     const capital = world.f.planetIds[0]!;
-    const stock = async () => (await world.f.db.select({ alloy: planets.alloy, crystal: planets.crystal }).from(planets).where(eq(planets.id, capital)))[0]!;
-    await world.f.db.update(planets).set({ alloy: 0, crystal: 0 }).where(eq(planets.id, capital));
+    const accountId = world.f.accountIds[0]!;
+    const stock = async () => (await world.f.db.select({ alloy: planets.alloy, crystal: planets.crystal, deuterium: planets.deuterium }).from(planets).where(eq(planets.id, capital)))[0]!;
+    await world.f.db.update(planets).set({ alloy: 0, crystal: 0, deuterium: 0 }).where(eq(planets.id, capital));
     const preview = (await read(headers)).welcome!.preview!;
+    expect(preview).toEqual(welcomeBox(1));
     expect((await open(headers)).statusCode).toBe(200);
-    expect(await stock()).toEqual(preview);
-    const worth = (box: { alloy: number; crystal: number }) => box.alloy + box.crystal;
-    let sixth = 0;
+    expect(await stock()).toEqual({ alloy: preview.alloy, crystal: preview.crystal, deuterium: 0 });
+
     for (let box = 2; box <= WELCOME_WEEK.boxes; box++) {
       world.f.clock.advance(WELCOME_WEEK.gapHours * 60);
       const next = (await read(headers)).welcome!;
       expect(next.box).toBe(box);
-      if (box === 6) sixth = worth(next.preview!);
-      // The capital's works have not changed, so the seventh is three of the sixth.
-      if (box === 7) expect(Math.abs(worth(next.preview!) - 3 * sixth)).toBeLessThanOrEqual(2);
+      expect(next.preview).toEqual(welcomeBox(box));
       expect((await open(headers)).statusCode).toBe(200);
     }
+
+    const total = WELCOME_WEEK.rewards.reduce(
+      (acc, r) => ({ alloy: acc.alloy + r.alloy, crystal: acc.crystal + r.crystal, deuterium: acc.deuterium + r.deuterium }),
+      { alloy: 0, crystal: 0, deuterium: 0 },
+    );
+    expect(await stock()).toEqual(total);
+
+    const rights = await world.f.db.select({ id: cosmeticEntitlements.cosmeticId }).from(cosmeticEntitlements)
+      .where(eq(cosmeticEntitlements.accountId, accountId));
+    expect(rights.map(r => r.id).sort()).toEqual(['engine-titan', 'ring-helios']);
+    const [owner] = await world.f.db.select({ equipment: accounts.cosmeticEquipment }).from(accounts)
+      .where(eq(accounts.id, accountId));
+    expect(owner?.equipment).toMatchObject({ RING: 'ring-helios', ENGINE: 'engine-titan' });
+
     world.f.clock.advance(WELCOME_WEEK.gapHours * 60);
     expect((await read(headers)).welcome).toMatchObject({ opened: 7, box: null, readyAt: null, preview: null });
     expect((await open(headers)).json<{ error: string }>().error).toBe('WELCOME_DONE');

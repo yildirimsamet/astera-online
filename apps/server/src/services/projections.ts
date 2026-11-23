@@ -1,7 +1,8 @@
 import { performance } from 'node:perf_hooks';
 import type { Db, Queryable } from '../db/client.js';
-import type { SensorEpoch } from '@astera/rules';
+import type { PirateSpec, SensorEpoch } from '@astera/rules';
 import { sensorHistoryForPlayer } from './sensorHistory.js';
+import { personalPirateOf } from './newcomerScenario.js';
 import { PRIVATE_PREFIX, type EventBus, type StreamEvent } from '../stream/bus.js';
 import { AsyncCache, type AsyncCacheStats } from './asyncCache.js';
 import { publicWorlds, type PublicWorld } from './publicGalaxy.js';
@@ -311,6 +312,11 @@ export class Projections {
     // same reason `miningSnapshot` does: a cold fan-out must not hold every pool
     // slot while its shared fill waits for another one.
     return this.pirates.get(seasonId, () => loadPirateSnapshot(source, seasonId, now));
+  }
+
+  /** Personal onboarding pirate for one commander, read directly by PK (never shared). */
+  personalPirateFor(playerId: string): Promise<PirateSpec | undefined> {
+    return personalPirateOf(this.db, playerId);
   }
 
   invalidate(seasonId: string): void {

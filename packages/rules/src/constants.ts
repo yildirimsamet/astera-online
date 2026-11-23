@@ -2448,12 +2448,6 @@ export const RIVAL = {
 } as const;
 
 /**
- * KURULUŞ SAATİ (owner, 2026-11-20; plan docs/inis-sonrasi-ilk-saat-plani-2026-11-20.md §5.1). A first
- * game's first hour in the main galaxy, on the wall clock from the landing: the capital's alloy and
- * crystal works run at five times their rate. Deuterium is not boosted. A new newcomer perk is one more
- * key here and the one place it is applied.
- */
-/**
  * THE FIVE-MINUTE RULE (owner, 2026-11-20; plan docs/inis-sonrasi-ilk-saat-plani-2026-11-20.md §5.6). A
  * building or instrument upgrade whose whole time is this or less takes no time at all, for everyone.
  * Ships, defence, research and satellites keep their clocks: panic defence is priced in seconds already.
@@ -2462,6 +2456,12 @@ export const INSTANT_BUILD = {
   maxMinutes: 5,
 } as const;
 
+/**
+ * KURULUŞ SAATİ (owner, 2026-11-20; plan docs/inis-sonrasi-ilk-saat-plani-2026-11-20.md §5.1). A first
+ * game's first hour in the main galaxy, on the wall clock from the landing: the capital's alloy and
+ * crystal works run at five times their rate. Deuterium is not boosted. A new newcomer perk is one more
+ * key here and the one place it is applied.
+ */
 export const NEWCOMER_HOUR = {
   minutes: 60,
   /** Added to the ordinary rate: 4 makes it five-fold (owner, 2026-11-20). */

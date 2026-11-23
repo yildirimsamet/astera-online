@@ -476,7 +476,6 @@ export const focus = {
     noCraft: "No Prospectors at home",
     tooLate: "It will be gone before you arrive",
     researchNeeded: "Research Isotope Spectrometry first",
-    personal: "Your rock: only you see it and mine it. It drifts off in {{time}}.",
     /**
      * THE MINUTE AFTER A TRIP THAT COST NOTHING. D183.
      *

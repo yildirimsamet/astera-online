@@ -48,7 +48,7 @@ describe('the welcome board', () => {
 
   it('says what the boxes hold and when the next comes, in the rules\' own numbers', async () => {
     harness(state());
-    expect(await screen.findByTestId('welcome-rule')).toHaveTextContent(/1 hour.*the last 3 hours.*20 hours/u);
+    expect(await screen.findByTestId('welcome-rule')).toHaveTextContent(/Helios planet ring.*deuterium.*Titan Drive.*20 hours/u);
   });
 
   it('opens the ready box with the crate\'s hold, and pours it into the store', async () => {
@@ -68,13 +68,16 @@ describe('the welcome board', () => {
     expect(within(cell(3)).queryByRole('button')).toBeNull();
   });
 
-  it('shows the seventh as the big box, three hours of today\'s output', async () => {
+  it('shows the third with the Helios Ring and the seventh as the big box with Titan Drive and escalating fixed cache', async () => {
     harness(state());
     await screen.findByTestId('welcome-week');
+    expect(cell(3)).toHaveTextContent(/Helios Ring/u);
     expect(cell(7).dataset.big).toBe('');
     expect(cell(7)).toHaveTextContent(/Big box/u);
-    expect(cell(7)).toHaveTextContent('720');
-    expect(cell(7)).toHaveTextContent('480');
+    expect(cell(7)).toHaveTextContent(/Titan Drive/u);
+    expect(cell(7)).toHaveTextContent('3K');
+    expect(cell(7)).toHaveTextContent('1.8K');
+    expect(cell(7)).toHaveTextContent('500');
   });
 
   it('shows nothing once the seven are open, or for an account without the week', async () => {

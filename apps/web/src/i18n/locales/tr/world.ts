@@ -444,7 +444,6 @@ export const focus = {
     noCraft: "Evde Kazıcı yok",
     tooLate: "Sen varmadan gitmiş olur",
     researchNeeded: "Önce İzotop Spektrometrisi araştır",
-    personal: "Senin kayan: yalnız sen görür ve kazarsın. {{time}} sonra uzaklaşır.",
     resting: "Araçlar dinleniyor · {{duration}}",
     send: "{{count}} gönder · {{duration}}",
     oreLeft: "Kalan cevher",

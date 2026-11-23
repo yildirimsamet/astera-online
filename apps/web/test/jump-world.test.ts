@@ -40,9 +40,13 @@ describe('the galaxies the jump crosses', () => {
   });
 
   // The galaxy view draws its own worlds; the flight adds only the new one, so it must be at hand.
-  it('hands out the new world on its own, as the last of the worlds', () => {
+  // Owner playtest 2026-11-23 item 10: the commander's destination planet must be RESOLVED (full colour), never UNKNOWN greyscale.
+  it('hands out the new world on its own in full resolved colour, as the last of the worlds', () => {
     expect(world.destination.id).toBe(world.worlds.at(-1)!.id);
     expect(world.destination.position).toEqual(world.planet);
+    expect(world.destination.intel).toBe('RESOLVED');
+    expect(world.destination.stance).toBe('self');
+    expect(world.destination.isOwned).toBe(true);
   });
 
   // The galaxy view sizes a world's model by its distance to the camera: the world must stand where it

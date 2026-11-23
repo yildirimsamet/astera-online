@@ -15,6 +15,7 @@ import { equipAdminCapital } from './adminCapital.js';
 import { ensureUnknownSignalSchedule } from './unknownSignalSchedule.js';
 import { scheduleNewcomerHour } from './newcomerHour.js';
 import { layPersonalRocks } from './personalRocks.js';
+import { initNewcomerScenario } from './newcomerScenario.js';
 import {
   lockGalaxyEventAudience,
   notifyActiveGalaxyEventsForPlayer,
@@ -268,7 +269,7 @@ export async function joinSeason(
 
         // The durable receipt is also the account lock across concurrent galaxy joins.
         // A rollback restores eligibility; season wipes and seat reclaim cannot.
-        const [joiningAccount] = await tx.select({ startedAt: accounts.firstSeasonStartedAt })
+        const [joiningAccount] = await tx.select({ startedAt: accounts.firstSeasonStartedAt, guideOffAt: accounts.starterGuideOffAt })
           .from(accounts).where(eq(accounts.id, accountId)).for('update');
         // The account lock can wait beyond the season boundary. Start every
         // entitlement from admission time and leave it available if time ran out.
@@ -368,9 +369,10 @@ export async function joinSeason(
           if (fleet.length) await tx.insert(units).values(fleet.map(([hull, count]) => ({
             planetId: planet.id, ownerPlayerId: player.id, hull, count, location: 'home',
           })));
-          for (const id of academy?.claimedRewards ?? []) {
+          const preclaimed = 'claimedRewards' in opening ? opening.claimedRewards : [];
+          for (const id of preclaimed) {
             const reward = findRewardTier(id);
-            if (!reward) throw new Error(`Missing Academy reward ${id}`);
+            if (!reward) throw new Error(`Missing opening reward ${id}`);
             await tx.insert(rewardGrants).values({ playerId: player.id, rewardId: id,
               ...reward.tier.reward, claimedAt: now });
           }
@@ -394,12 +396,18 @@ export async function joinSeason(
         // zero, and the rank floor then protects them from every attacker forever.
         await recomputeWealth(tx, planet.id, clock.now());
         await refreshSensorEpoch(tx, planet.id, now);
-        if (seat === 'COMMANDER') await ensureUnknownSignalSchedule(tx, player.id, seasonId, now, false, firstGame.length > 0);
+        const runScenario = seat === 'COMMANDER' && firstGame.length > 0 && joiningAccount?.guideOffAt === null;
+        if (seat === 'COMMANDER' && !runScenario) {
+          await ensureUnknownSignalSchedule(tx, player.id, seasonId, now, false, firstGame.length > 0);
+        }
         if (newcomerHourEnd) {
           await scheduleNewcomerHour(tx, { seasonId, planetId: planet.id, until: newcomerHourEnd });
           // Kişisel kayalar (plan §5.2): a first game's two rocks, beside the capital, for this commander alone.
           await layPersonalRocks(tx, { seasonId, seasonStartsAt: current.startsAt, playerId: player.id,
             capital: { x: planet.x, y: planet.y, z: planet.z }, now, seed: Number.parseInt(player.id.slice(0, 8), 16) });
+        }
+        if (runScenario) {
+          await initNewcomerScenario(tx, { seasonId, playerId: player.id, now });
         }
         await notifyActiveGalaxyEventsForPlayer(tx, {
           playerId: player.id,

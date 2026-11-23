@@ -6,7 +6,8 @@ import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { RecallHost } from '../src/brand/RecallHost.js';
 import { InstallProvider } from '../src/brand/Install.js';
-import { saveRecall } from '../src/brand/recallState.js';
+import { saveRecall, readRecall } from '../src/brand/recallState.js';
+import { dispatchAttention, resetAttentionForTests } from '../src/shell/attention/store.js';
 import { INSTALLED_PWA_KEY } from '../src/brand/installedPwa.js';
 import { keys } from '../src/api/keys.js';
 import { planetSchema } from '../src/api/schemas.js';
@@ -31,6 +32,7 @@ function show(paused = false, eligible = true) {
 
 beforeEach(() => {
   localStorage.clear();
+  resetAttentionForTests();
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date', 'performance'] });
   vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
 });
@@ -162,7 +164,8 @@ describe('first real-game minutes', () => {
     const view = show();
     view.answer.mockResolvedValue({ correct: false, completed: true, granted: { alloy: 0, crystal: 0, deuterium: 0 } });
     await advance(1000);
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Skip' })); await Promise.resolve(); await Promise.resolve(); });
+    expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Close' })); await Promise.resolve(); await Promise.resolve(); });
     await advance(1);
     expect(view.answer).toHaveBeenCalledWith(null);
     expect(screen.queryByTestId('brand-quiz')).toBeNull();
@@ -181,12 +184,13 @@ describe('first real-game minutes', () => {
     await advance(1000);
     const dialog = screen.getByRole('dialog');
     const close = screen.getByRole('button', { name: 'Close' });
-    const skip = screen.getByRole('button', { name: 'Skip' });
-    skip.focus();
-    act(() => { fireEvent.keyDown(skip, { key: 'Tab' }); });
+    const buttons = Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));
+    const lastChoice = buttons.at(-1)!;
+    lastChoice.focus();
+    act(() => { fireEvent.keyDown(lastChoice, { key: 'Tab' }); });
     expect(document.activeElement).toBe(close);
     act(() => { fireEvent.keyDown(close, { key: 'Tab', shiftKey: true }); });
-    expect(document.activeElement).toBe(skip);
+    expect(document.activeElement).toBe(lastChoice);
     expect(dialog.contains(document.activeElement)).toBe(true);
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'asteraonline.space' })); await Promise.resolve(); });
     await advance(1);
@@ -211,6 +215,31 @@ describe('first real-game minutes', () => {
     expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
     expect(queries.getQueryData(keys.planet)).toBeUndefined();
     act(() => { fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' }); });
+    expect(screen.getByTestId('brand-quiz')).toBeInTheDocument();
+  });
+
+  it('shows the return card under a post-victory scenario lock even when activeMs is already past 3 min, and only remembers returnShown once shown', async () => {
+    // Player spent >3 min in starter galaxy before landing; scenario holds a pre-victory lock first.
+    saveRecall('a', { activeMs: 180_000, returnShown: false, quizDone: false });
+    dispatchAttention({ kind: 'lock', allow: ['arrival_card'] });
+    show();
+    await advance(1_000);
+    // Neither surface is shown under the pre-victory lock, and returnShown is NOT prematurely persisted.
+    expect(screen.queryByTestId('return-card')).toBeNull();
+    expect(screen.queryByTestId('brand-quiz')).toBeNull();
+    expect(readRecall('a').returnShown).toBe(false);
+
+    // Post-victory lock allows return_card while still holding brand_quiz back.
+    act(() => { dispatchAttention({ kind: 'lock', allow: ['arrival_card', 'landing_rewards', 'return_card'] }); });
+    await advance(500);
+    expect(screen.getByTestId('return-card')).toBeInTheDocument();
+    expect(screen.queryByTestId('brand-quiz')).toBeNull();
+    expect(readRecall('a').returnShown).toBe(true);
+
+    // Closing return_card and lifting the scenario lock lets brand_quiz open next.
+    fireEvent.click(within(screen.getByTestId('return-card')).getByRole('button', { name: /close/i }));
+    act(() => { dispatchAttention({ kind: 'lock', allow: null }); });
+    await advance(500);
     expect(screen.getByTestId('brand-quiz')).toBeInTheDocument();
   });
 });

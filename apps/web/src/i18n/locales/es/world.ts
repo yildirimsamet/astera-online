@@ -473,7 +473,6 @@ export const focus = {
     noCraft: "No hay buscadores en casa",
     tooLate: "Desaparecerá antes de que llegues",
     researchNeeded: "Primero investiga la espectrometría de isótopos",
-    personal: "Tu roca: solo tú la ves y la minas. Se aleja en {{time}}.",
     /**
      * THE MINUTE AFTER A TRIP THAT COST NOTHING. D183.
      *
