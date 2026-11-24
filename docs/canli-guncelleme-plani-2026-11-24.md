@@ -1,6 +1,6 @@
 # Canlı güncelleme (OTA) ve sürüm farkına dayanıklılık — plan (2026-11-24)
 
-**Durum:** Plan. Owner kararları bekleniyor (§2). Kod yok.
+**Durum:** Plan onaylandı (owner, 2026-11-24, §2). Kod yok.
 
 ## 1. Sorun ve hedef
 
@@ -20,9 +20,9 @@ Android uygulaması oyunun web kodunu içine paketliyor (`bundled: true`, `mobil
 
 | # | Soru | Öneri | Neden |
 |---|---|---|---|
-| K1 | Güncelleme sunucusu: Capgo bulutu mu, kendi VPS'imiz mi? | **Kendi VPS'imiz** | Ek ücret yok; paket zaten her web deploy'unda VPS'te üretiliyor; oyuncu verisi üçüncü tarafa gitmez. Bedeli: yayın betiğine bir adım eklenir. |
-| K2 | Yeni paket ne zaman devreye girer? | **İndirme arka planda; uygulama bir sonraki açılışta yeni sürümle açılır. Kurallar değiştiyse (sunucu 426 dönerse) hemen "Güncelleniyor" ekranı, indir, yeniden başlat.** | Oyuncunun bir savaşın veya sıçramanın ortasında ekranı yenilenmez; kural değişikliğinde ise oyun çalışmaya devam edemez, beklemek anlamsız. |
-| K3 | Kademeli yayın (önce %10)? | **Hayır, herkese birden; yeni paket açılamazsa otomatik eski pakete dönüş.** | 42 aktif oyuncuda yüzde dilimi anlamsız; asıl güvence açılmayan paketin kendini geri alması (EN-07). |
+| K1 | Güncelleme sunucusu | **Kendi VPS'imiz** (owner seçti) | Ek ücret yok; paket her web deploy'unda VPS'te zaten üretiliyor; oyuncu verisi üçüncü tarafa gitmez. |
+| K2 | Yeni paket ne zaman devreye girer? | **Oyuna girerken kontrol; yeni sürüm varsa ilerlemeli yükleme ekranı ("Güncelleme indiriliyor · 12/30 MB"), bitince oyun yeni sürümle açılır** (owner: "diğer popüler oyunlardaki gibi") | Oyuncu her zaman güncel sürümle oyuna girer, oyunun ortasında ekran yenilenmez. Arka plandan dönüşte yeni sürüm varsa yalnızca "Güncelleme hazır · Yeniden başlat" kartı çıkar, oyuncu seçer. Kurallar değiştiyse (426) aynı yükleme ekranı hemen açılır. |
+| K3 | Kademeli yayın? | **Herkese birden; açılamayan paket kendiliğinden eskisine döner** (owner seçti) | ~42 aktif oyuncuda dilim anlamsız; güvence otomatik geri dönüş (EN-07). |
 
 ## 3. Bilinen gerçekler (koddan)
 
@@ -48,10 +48,17 @@ Android uygulaması oyunun web kodunu içine paketliyor (`bundled: true`, `mobil
    - `manifest.json`: dosya → sha256, boyut.
    - Dosyalar içerik hash'iyle tekrar kullanılır.
    - `ota/latest.json`: `{ version: <web sha>, minShell: <versionCode>, rules: <ECONOMY_PROFILE.id>, manifest: <url> }`.
-2. Uygulama açılışta ve arka plandan dönüşte (en fazla 30 dakikada bir) `latest.json`'u okur.
-3. Yeni sürüm varsa ve kabuk `minShell`'i karşılıyorsa yalnızca hash'i farklı dosyaları indirir, hash'leri doğrular ve paketi hazırlar.
-4. Bir sonraki açılışta yeni paketle açılır. İlk başarılı `/api/auth/me` cevabından sonra "hazırım" bildirir; bildirmezse eklenti bir sonraki açılışta eski pakete döner.
-5. Sunucu 426 (kurallar değişti) dönerse "Güncelleniyor" ekranı gelir: ilerleme gösterilir, paket indirilir ve oyun hemen yeniden başlar. Play mağazası yalnızca kabuk `minShell`'in altındaysa önerilir.
+2. **Oyuna giriş (K2):** Açılışın marka sahnesinde (`OpeningScene`) uygulama `latest.json`'u okur.
+   - Yeni sürüm varsa ve kabuk `minShell`'i karşılıyorsa sahne "Güncelleme indiriliyor" ilerlemesine geçer: yüzde, MB ve bir ilerleme çubuğu.
+   - Yalnızca hash'i farklı dosyalar indirilir ve hash'ler doğrulanır. Bitince uygulama yeni paketle yeniden başlar ve oyun açılır.
+   - Ağ yoksa ya da kontrol 5 sn içinde cevap vermezse oyun eldeki paketle açılır. Kural uyumsuzluğu ayrıca 426 ile yakalanır.
+3. Yeni paket, ilk başarılı `/api/auth/me` cevabından sonra "hazırım" bildirir. Bildirmezse eklenti bir sonraki açılışta eski pakete döner.
+4. **Arka plandan dönüş:** Uygulama en fazla 30 dakikada bir kontrol eder. Yeni sürüm varsa yalnızca "Güncelleme hazır · Yeniden başlat" kartı çıkar; oyuncu seçer, oyun kendi kendine yenilenmez.
+5. **Kurallar değiştiyse** (sunucu 426 dönerse) aynı yükleme ekranı hemen açılır, paket indirilir ve oyun yeniden başlar. Play mağazası yalnızca kabuk `minShell`'in altındaysa önerilir.
+6. **Oyun hissi:** Yükleme ekranı bir form değil, oyunun açılış sahnesinin parçasıdır.
+   - İlerleme sahnedeki ışık ve halka üzerinden okunur, metin kısa ve anlamlıdır ("Yeni filo verileri alınıyor…" değil; "Güncelleme indiriliyor · 12/30 MB").
+   - Bitişte kısa bir ses ve titreşim (`lib/sound`, `haptic`).
+   - El kitabı: UI-ilgili bölüm ve `checklists.md` F3'te geçirilir.
 
 **Kimlikler (G2):**
 - `x-astera-build`: kabuğun gerçek versionCode'u. Çalışma anında native'den okunur, pakete gömülmez.
@@ -75,7 +82,7 @@ Android uygulaması oyunun web kodunu içine paketliyor (`bundled: true`, `mobil
 | F0 Spike (½ gün) | Eklentiyi debug APK'ya kur. S22'de: kendi sunucudan indir, sonraki açılışta uygula, "hazırım" gelmezse geri dön, manifest ile kısmi indir. Lisans ve Capacitor 8 uyumu kontrol edilir; Play politika metni tekrar okunur. | Telefonda video veya ekran görüntüsüyle 4 senaryo; karar: eklenti mi, kendi eklentimiz mi. |
 | F1 Kimlikler | `x-astera-build` native'den okunur, `x-astera-web` eklenir; Sentry release = web SHA; sunucu iki değeri loglar. | Testler: başlıklar doğru; `MIN_NATIVE_BUILD` yalnızca kabuğa bakıyor. |
 | F2 Yayın | Web build betiği `ota/<sha>/manifest.json` + dosyalar + `latest.json` üretir; nginx `/ota/`'yı uzun önbellekle sunar; `latest.json` önbelleksiz. `latest.json` en son yazılır (atomik). | Betik testi: manifest hash'leri dosyalarla eşleşiyor; yarım yayın `latest.json`'u değiştirmiyor. |
-| F3 İstemci | Güncelleme denetleyicisi (açılış, dönüş, 426); delta indirme; "Güncelleniyor" ekranı (mevcut marka sahnesi + ilerleme); "hazırım" bildirimi. | Birim testleri (sürüm karşılaştırma, minShell, 426 akışı) + S22'de uçtan uca: web deploy → telefon 1 dk içinde yeni sürümde. |
+| F3 İstemci | Açılışta kontrol + ilerlemeli yükleme ekranı (marka sahnesi); dönüşte "Güncelleme hazır" kartı; 426 akışı; delta indirme; "hazırım" bildirimi; 5 sn zaman aşımı ve çevrimdışı açılış. | Birim testleri (sürüm karşılaştırma, minShell, 426 akışı) + S22'de uçtan uca: web deploy → telefon 1 dk içinde yeni sürümde. |
 | F4 Dayanıklılık | §5.1–5.3. | Sözleşme testleri yeşil; N-1 betiği bugünkü `fleet` hatasını eski şemayla yakalıyor (geriye dönük kanıt). |
 | F5 Geçiş | Güncelleyicili kabukla AAB v15 → Play. Yayına girince `MIN_NATIVE_BUILD=15` son kez. Sonraki web deploy'ları OTA ile gider. `deployment.md` + hafıza güncellenir. | Play'deki v15 bir web deploy'unu Play'siz alıyor. |
 
@@ -91,5 +98,5 @@ Android uygulaması oyunun web kodunu içine paketliyor (`bundled: true`, `mobil
 
 | Faz | Durum |
 |---|---|
-| Owner kararları K1–K3 | Bekliyor |
+| Owner kararları K1–K3 | Verildi (2026-11-24) |
 | F0–F5 | Başlamadı |
