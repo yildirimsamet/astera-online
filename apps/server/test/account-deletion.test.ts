@@ -285,6 +285,8 @@ describe('deleting an account at the player’s request', () => {
     const colony = await capture(3);
     const hitAt = new Date(f.clock.now().getTime() - 3_600_000);
     const closedUntil = new Date(f.clock.now().getTime() + 7_200_000);
+    // Ruleset 20 seasons are dealt seeded neutral moons; they are not this account's and must stay put.
+    const seeded = await f.db.select().from(moons);
     await f.db.insert(moons).values([
       { planetId: colony.id, rarity: 'EPIC', origin: 'BATTLE', cracks: 2, lastHitAt: hitAt, closedUntil,
         gateReadyAt: new Date(f.clock.now().getTime() + 600_000), visualSeed: 77, bornAt: hitAt },
@@ -295,7 +297,9 @@ describe('deleting an account at the player’s request', () => {
 
     const [restored] = await f.db.select({ id: planets.id }).from(planets)
       .where(and(eq(planets.seasonId, f.seasonId), eq(planets.slotIndex, colony.slotIndex)));
-    const all = await f.db.select().from(moons);
+    const after = await f.db.select().from(moons);
+    expect(after.filter((moon) => seeded.some((s) => s.planetId === moon.planetId))).toEqual(seeded);
+    const all = after.filter((moon) => !seeded.some((s) => s.planetId === moon.planetId));
     expect(all).toHaveLength(1);
     expect(all[0]).toEqual({ planetId: restored!.id, rarity: 'EPIC', origin: 'BATTLE', cracks: 2, lastHitAt: hitAt,
       closedUntil, gateReadyAt: null, visualSeed: 77, bornAt: hitAt, bornMissionId: null });
