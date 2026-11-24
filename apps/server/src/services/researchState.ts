@@ -1,6 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import {
   DEUTERIUM,
+  moonsEnabled,
   RESEARCH_PROJECT_IDS,
   RESEARCH_PROJECTS,
   researchAvailable,
@@ -216,7 +217,9 @@ export function buildResearchView(
   const offered = RESEARCH_PROJECT_IDS.filter((id) =>
     (id !== 'INDUSTRIAL' || shipDamageApplies(planet.rulesetVersion))
     && (id !== 'RADIATION_SHIELDING' || monumentRadiationStart({ rulesetVersion: planet.rulesetVersion,
-      startsAt: planet.seasonStart, monumentRadiationStartsAt: planet.monumentRadiationStartsAt }) !== undefined));
+      startsAt: planet.seasonStart, monumentRadiationStartsAt: planet.monumentRadiationStartsAt }) !== undefined)
+    // Ay S7: Lunar Capture opens a moon, and only a galaxy with moons has one to open.
+    && (id !== 'LUNAR_CAPTURE' || moonsEnabled(planet, { role: planet.silentSpace ? 'WAITING' : 'MAIN' })));
   return offered.map((id) => {
     const project = RESEARCH_PROJECTS[id];
     const level = held.get(id) ?? 0;

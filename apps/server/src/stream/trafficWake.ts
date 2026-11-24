@@ -18,7 +18,7 @@ export async function readTrafficView(projections: Projections, self: CommanderT
     projections.miningSnapshot(self.seasonId, now),
     projections.historyFor(self.playerId, self.seasonId),
     projections.pirateSnapshot(self.seasonId, now),
-    projections.personalPirateFor(self.playerId),
+    projections.personalPirateFor(self.playerId, self.seasonId),
   ]);
   return {
     contacts: projectGalaxyTraffic(
@@ -34,7 +34,7 @@ export async function readTrafficView(projections: Projections, self: CommanderT
         run.asteroidIndex === null ? [] : [run.asteroidIndex]))),
       pirates,
       discoveredPirateIndexes(pirates, epochs, now),
-      ownPirate ?? null,
+      ownPirate,
     ),
     interceptions: projectStrategicInterceptions(snapshot, self.playerId, sensors),
     interceptionImpacts: projectStrategicInterceptionImpacts(snapshot, self.playerId, sensors, now),

@@ -4,7 +4,7 @@ import { vacationCost, vacationDaysAvailable, vacationPayment, VACATION_DAY_MS, 
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import { buildings, buildOrders, clanSupportWaves, clanWarContributions, clanWarOperations,
-  intergalacticConvoyRuns, miningRuns, missions, monumentProbes, monumentWaves, pirateRaids,
+  intergalacticConvoyRuns, miningRuns, missions, monumentProbes, monumentWaves, moonMoves, pirateRaids,
   planetFaults, planets, players, radiationBombFlights, researchOrders, scheduledEvents,
   seasons, shards, strategicAssets, tradeRuns, vacations, unknownSignals } from '../db/schema.js';
 import { GameError, loadLocked, recomputePlayerWealth } from './planet.js';
@@ -49,6 +49,8 @@ async function flightBlockers(tx: Tx, playerId: string, ids: string[], now: Date
       and ${unknownSignals.status} in ('outbound','returning','recalled'))`],
     ['VACATION_FLEET', sql`exists(select 1 from ${missions} where ${missions.status} = 'in_flight'
       and ${missions.ownerPlayerId} = ${playerId} and ${missions.kind} not in ('probe','clan_support','clan_war'))`],
+    ['VACATION_FLEET', sql`exists(select 1 from ${moonMoves} where ${moonMoves.ownerPlayerId} = ${playerId}
+      and ${moonMoves.status} = 'PENDING')`],
     ['VACATION_PROBES', sql`exists(select 1 from ${missions} where ${missions.status} = 'in_flight'
       and ${missions.ownerPlayerId} = ${playerId} and ${missions.kind} = 'probe')`],
     ['VACATION_SUPPORT_SENT', sql`exists(select 1 from ${missions} where ${missions.status} = 'in_flight'

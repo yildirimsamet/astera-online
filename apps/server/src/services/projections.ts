@@ -54,6 +54,7 @@ export interface ProjectionStatus {
   sensors: AsyncCacheStats;
   remembered: AsyncCacheStats;
   sensorHistory: AsyncCacheStats;
+  personalPirate: AsyncCacheStats;
   publicGalaxy: AsyncCacheStats;
   traffic: AsyncCacheStats;
   mining: AsyncCacheStats;
@@ -122,6 +123,8 @@ export class Projections {
    */
   private readonly remembered: AsyncCache<RememberedWorlds>;
   private readonly sensorHistory: AsyncCache<SensorEpoch[]>;
+  /** A commander's onboarding pirate (null when none stands): the traffic read is served from memory, so is it. */
+  private readonly personalPirates: AsyncCache<PirateSpec | null>;
   /**
    * THE GALAXY'S SHARED PART OF `/api/galaxy`. Scaling plan F1.8 (C3, C4).
    *
@@ -169,6 +172,7 @@ export class Projections {
       usable,
     );
     this.sensorHistory = new AsyncCache<SensorEpoch[]>(config.maxAccounts, config.commanderTtlMs, usable);
+    this.personalPirates = new AsyncCache<PirateSpec | null>(config.maxAccounts, config.commanderTtlMs, usable);
     this.publicGalaxy = new AsyncCache<PublicWorld[]>(
       config.maxSeasons,
       config.publicTtlMs,
@@ -314,9 +318,10 @@ export class Projections {
     return this.pirates.get(seasonId, () => loadPirateSnapshot(source, seasonId, now));
   }
 
-  /** Personal onboarding pirate for one commander, read directly by PK (never shared). */
-  personalPirateFor(playerId: string): Promise<PirateSpec | undefined> {
-    return personalPirateOf(this.db, playerId);
+  /** One commander's onboarding pirate, never shared; refreshed by their own `private:newcomer-scenario`. */
+  personalPirateFor(playerId: string, seasonId: string): Promise<PirateSpec | null> {
+    return this.personalPirates.get(playerKey(seasonId, playerId),
+      async () => (await personalPirateOf(this.db, playerId)) ?? null);
   }
 
   invalidate(seasonId: string): void {
@@ -333,6 +338,7 @@ export class Projections {
       sensors: this.sensors.status(),
       remembered: this.remembered.status(),
       sensorHistory: this.sensorHistory.status(),
+      personalPirate: this.personalPirates.status(),
       publicGalaxy: this.publicGalaxy.status(),
       traffic: this.traffic.status(),
       mining: this.mining.status(),
@@ -365,6 +371,7 @@ export class Projections {
     this.sensors.clear();
     this.remembered.clear();
     this.sensorHistory.clear();
+    this.personalPirates.clear();
     this.publicGalaxy.clear();
     this.traffic.clear();
     this.mining.clear();
@@ -385,6 +392,7 @@ export class Projections {
     this.sensors.invalidatePrefix(inGalaxy(seasonId));
     this.remembered.invalidatePrefix(inGalaxy(seasonId));
     this.sensorHistory.invalidatePrefix(inGalaxy(seasonId));
+    this.personalPirates.invalidatePrefix(inGalaxy(seasonId));
   }
 
   /** One commander's caller-keyed entries, in every galaxy. */
@@ -393,6 +401,7 @@ export class Projections {
     this.sensors.invalidateWhere(ownedBy(playerId));
     this.remembered.invalidateWhere(ownedBy(playerId));
     this.sensorHistory.invalidateWhere(ownedBy(playerId));
+    this.personalPirates.invalidateWhere(ownedBy(playerId));
   }
 
   private onEvent(event: StreamEvent): void {
@@ -420,6 +429,8 @@ export class Projections {
        * that was not already addressed to that one commander.
        */
       if (event.kind === 'probe_report') this.remembered.invalidateWhere(owned);
+      // The onboarding pirate is born, beaten or put away only with this event (newcomerScenario.ts).
+      if (event.kind === 'private:newcomer-scenario') this.personalPirates.invalidateWhere(owned);
       /**
        * AND A FLEET IS EYES TOO. D151.
        *

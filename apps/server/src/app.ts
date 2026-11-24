@@ -35,6 +35,7 @@ import { GameError } from './services/planet.js';
 import { databaseCode } from './services/commanderTransfer.js';
 import { isRead, registerAuthRoutes } from './routes/auth.js';
 import { registerPlanetRoutes } from './routes/planet.js';
+import { registerMoonRoutes } from './routes/moon.js';
 import { registerVacationRoutes } from './routes/vacation.js';
 import { registerNotificationCenterRoutes } from './routes/notificationCenter.js';
 import { registerRewardRoutes } from './routes/rewards.js';
@@ -579,6 +580,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerSeasonRoutes(app);
     registerLegacyRoutes(app);
     registerPlanetRoutes(app);
+    registerMoonRoutes(app);
     registerVacationRoutes(app);
     registerNotificationCenterRoutes(app);
     registerRewardRoutes(app);

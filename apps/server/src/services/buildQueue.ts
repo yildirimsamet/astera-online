@@ -14,6 +14,7 @@ import {
   SATELLITE_IDS,
   cancelRefund,
   coreTier,
+  hashSeed,
   investedInInstrument,
   satelliteSlots,
   type BuildQueueId,
@@ -31,6 +32,7 @@ import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import {
   buildOrders,
+  moons,
   playerResearch,
   planets,
   satellites,
@@ -596,6 +598,31 @@ export async function cancelRepairsForRadiation(tx: Tx, planetId: string, at: Da
   return { count: cancelled.length, refund };
 }
 
+/**
+ * Ay V1: a moon born in battle while a moon order stands. The order is the system's to drop, so its whole
+ * price comes back. Written as increments: the battle has already saved the defender's stock by now.
+ */
+export async function abandonMoonOrders(tx: Tx, planetId: string, now: Date): Promise<number> {
+  const active = await activeQueue(tx, planetId);
+  const doomed = active.filter((order) => order.kind === 'MOON');
+  if (doomed.length === 0) return 0;
+  const ids = doomed.map((order) => order.id);
+  await tx.update(buildOrders).set({ status: 'FAILED' })
+    .where(and(inArray(buildOrders.id, ids), eq(buildOrders.status, 'BUILDING')));
+  await tx.update(scheduledEvents).set({ status: 'done', claimedAt: null })
+    .where(and(eq(scheduledEvents.kind, 'build_complete'), inArray(scheduledEvents.refId, ids),
+      inArray(scheduledEvents.status, ['pending', 'processing'])));
+  const refund = doomed.reduce((total, order) => ({ alloy: total.alloy + order.cost.alloy,
+    crystal: total.crystal + order.cost.crystal, deuterium: total.deuterium + order.cost.deuterium }),
+  { alloy: 0, crystal: 0, deuterium: 0 });
+  await tx.update(planets).set({ alloy: sql`${planets.alloy} + ${refund.alloy}`,
+    crystal: sql`${planets.crystal} + ${refund.crystal}`, deuterium: sql`${planets.deuterium} + ${refund.deuterium}` })
+    .where(eq(planets.id, planetId));
+  const head = active.find((order) => order.queue === 'CONSTRUCTION');
+  await reflowQueue(tx, planetId, 'CONSTRUCTION', now, head !== undefined && !ids.includes(head.id));
+  return doomed.length;
+}
+
 /** System fault: fully refund the order and any tail whose meaning depended on it. */
 export async function abandonBuildOrder(db: Db, orderId: string, clock: Clock): Promise<boolean> {
   return db.transaction(async (tx) => {
@@ -771,6 +798,17 @@ async function applyOrderEffect(tx: Tx, planet: LockedPlanet, order: BuildOrder)
       }
       await publishShard(tx, planet.seasonId, 'world');
       return;
+    case 'MOON': {
+      /*
+        Ay S8: a built moon is always Common. A moon already standing here (V1 cancels the order when one is born
+        in battle, so this is only a guard) is never replaced by a commoner one.
+      */
+      const written = await tx.insert(moons).values({ planetId: planet.planetId, rarity: 'COMMON', origin: 'BUILT',
+        visualSeed: hashSeed('moon-visual', order.id) % 2_147_483_647, bornAt: order.readyAt })
+        .onConflictDoNothing({ target: moons.planetId }).returning({ planetId: moons.planetId });
+      if (written.length > 0) await publishShard(tx, planet.seasonId, 'moons');
+      return;
+    }
     case 'REPAIR':
       // Kalıcı gemi hasarı: the Repair Station's job is done; the ships stand at home, whole.
       await releaseRepairedLots(tx, {

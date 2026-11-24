@@ -998,6 +998,27 @@ describe('completed season archive', () => {
     expect(current?.stats?.competition.shipsBuiltByHull).toEqual({ PIKE: 1 });
   });
 
+  /** S43 (owner 2026-11-18): ships lost with a seceding colony count as lost, never as a battle. */
+  it('counts ships a commander lost outside battle in their season record', async () => {
+    const { recordShipLoss } = await import('../src/services/shipLossStats.js');
+    await fixture.db.transaction((tx) => recordShipLoss(tx, {
+      seasonId: fixture.seasonId,
+      playerId: fixture.playerIds[0]!,
+      sourcePlanetId: fixture.planetIds[0]!,
+      fleet: { DART: 5, PIKE: 2, THORN: 9 },
+      now: fixture.clock.now(),
+    }));
+
+    await freeze();
+    const results = await fixture.db
+      .select({ accountId: seasonResults.accountId, stats: seasonResults.stats })
+      .from(seasonResults);
+    const loser = results.find((row) => row.accountId === fixture.accountIds[0]);
+    expect(loser?.stats?.competition.shipsLost).toBe(7);
+    expect(loser?.stats?.competition.shipsLostByHull).toEqual({ DART: 5, PIKE: 2 });
+    expect(loser?.stats?.competition.battles).toBe(0);
+  });
+
   /**
    * A HAND-OVER THAT BYPASSED `transferPlanetControl` IS REPAIRED, NEVER FATAL.
    *

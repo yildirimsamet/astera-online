@@ -103,7 +103,8 @@ export interface BattleReplayOwner {
   wing: number;
   research: Pick<TechLevels, typeof BATTLE_REPLAY_RESEARCH[number]>;
 }
-export type BattleEnvironment = 'PLANET' | 'MONUMENT' | 'VESSEL';
+/** `MOON`: a battle for a world's moon (Ay S6) — the planet's ground and Aegis are not in it. */
+export type BattleEnvironment = 'PLANET' | 'MONUMENT' | 'VESSEL' | 'MOON';
 /** A viewer consumes the frozen fight, never recalculates it from today's fleet or balance. */
 export interface BattleReplayData {
   recording: BattleRecording;

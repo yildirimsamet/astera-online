@@ -12,6 +12,7 @@ the work up.
 | `astera.md` | What this project is, where it lives, and that the design phase is **over**. |
 | `user-execution-mode.md` | How the owner wants work done: decide small things yourself, ship, ask only on core product direction. |
 | `user-code-quality-bar.md` | Full typing, zero lint errors, tests for everything, root cause before fixing a test. |
+| `game-dev-handbook.md` | Use the external game development handbook for game-facing work, when it fits Astera. |
 
 ## They are not the source of truth
 

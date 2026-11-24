@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from '../unitLocation.js';
 import { planPlanetReturn } from '../returnPlanning.js';
 import { ACADEMY_STEPS, STARTER, WINDOW_FACTS, departureBlock, fleetEntries, holdIsFull, jumpHold, jumpWindowOpen, landingChoices, migrationCargo, vesselHull, type MigrationCargo } from '@astera/rules';
 import { and, desc, eq, gt, inArray, isNull, lte, ne, sql, asc, notInArray } from 'drizzle-orm';
@@ -209,7 +210,7 @@ const landCargo = (db: Db, vesselId: string, planetId: string, playerId: string,
       deuterium: sql`${planets.deuterium} + ${cargo.deuterium}`,
     }).where(eq(planets.id, planetId));
     for (const [hull, count] of fleetEntries(cargo.fleet)) {
-      await tx.insert(units).values({ planetId, ownerPlayerId: playerId, hull, count, location: 'home' })
+      await tx.insert(units).values({ planetId, ownerPlayerId: playerId, hull, count, location: PLANET_LOCATION })
         .onConflictDoUpdate({ target: [units.planetId, units.hull, units.location], set: { count: sql`${units.count} + ${count}` } });
     }
     await recomputeWealth(tx, planetId, clock.now());

@@ -884,8 +884,9 @@ export const faults = {
   loyalty: {
     title: "La lealtad de este mundo",
     battleLoss: "Derrota parcial −15 · derrota decisiva −30 · Estrella de la Muerte −{{strike}}",
-    why_one: "Baja por {{count}} avería. A cero, pierdes la colonia.",
-    why_other: "Baja por {{count}} averías. A cero, pierdes la colonia.",
+    why_one: "Baja por {{count}} avería. A cero, pierdes la colonia y la flota que hay en ella.",
+    why_other: "Baja por {{count}} averías. A cero, pierdes la colonia y la flota que hay en ella.",
+    stake: "A cero la colonia se separa: la flota en ella y las naves en reparación se van con ella. Las flotas en vuelo aterrizan en tu capital.",
     bar: "{{value}}%",
     left: "Quedan {{time}}",
   },

@@ -27,6 +27,16 @@ describe('the Base switch', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Ship' }));
     expect(onChange).toHaveBeenCalledWith('ship');
   });
+  it('offers the moon tab directly after planet when moons are enabled', async () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<BaseSwitch value="world" onChange={onChange} moonAvailable={false} />);
+    expect(screen.queryByRole('tab', { name: 'Moon' })).not.toBeInTheDocument();
+    rerender(<BaseSwitch value="world" onChange={onChange} moonAvailable />);
+    const tabs = screen.getAllByRole('tab').map((el) => el.textContent.trim());
+    expect(tabs.slice(0, 2)).toEqual(['Planet', 'Moon']);
+    await userEvent.click(screen.getByRole('tab', { name: 'Moon' }));
+    expect(onChange).toHaveBeenCalledWith('moon');
+  });
   it('offers this world and research, with the page it is on selected', async () => {
     const onChange = vi.fn();
     render(<BaseSwitch value="world" onChange={onChange} />);
@@ -64,8 +74,8 @@ describe('the galaxy hosts it on both Base pages', () => {
   it('heads the world page and the research page with the same switch', () => {
     const world = source.slice(source.indexOf("{panel === 'planet' && planet.data && !planet.data.vessel && ("), source.indexOf('<PlanetScreen'));
     const research = source.slice(source.indexOf("{panel === 'research' && ("), source.indexOf('<ResearchPanel'));
-    expect(world).toMatch(/<BaseSwitch value="world" onChange=\{openBase\} arenaAvailable=\{arenaAvailable\} \/>/);
-    expect(research).toMatch(/<BaseSwitch value="research" onChange=\{openBase\} arenaAvailable=\{arenaAvailable\} \/>/);
+    expect(world).toMatch(/<BaseSwitch value="world" onChange=\{openBase\} moonAvailable=\{moonsAvailable\} arenaAvailable=\{arenaAvailable\} \/>/);
+    expect(research).toMatch(/<BaseSwitch value="research" onChange=\{openBase\} moonAvailable=\{moonsAvailable\} arenaAvailable=\{arenaAvailable\} \/>/);
   });
 
   // Owner 2026-10-27: this world and the commander ship had no header art; research did.

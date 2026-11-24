@@ -22,6 +22,8 @@ import {
   clanDefenseApplies,
   colonyCapacity,
   combatValue,
+  crackLimit,
+  effectiveCracks,
   prospectorAvailability,
   distance,
   fleetCargo,
@@ -37,6 +39,8 @@ import {
   UNAIDED,
   type Fleet,
   type HullId,
+  type MoonRarity,
+  type WorldBody,
   siteCode,
   vesselHull,
 } from '@astera/rules';
@@ -54,6 +58,9 @@ import type {
   PublicMonument,
 } from '../api/schemas.js';
 import { useGalaxy, useProbe, useSetRival, useWatch } from '../api/queries.js';
+import { useMoonT } from '../i18n/moon.js';
+import { TargetBodyPicker } from '../screens/MoonControls.js';
+import { MissionRetarget } from '../screens/MissionRetarget.js';
 import { gateOf } from '../starter/gate.js';
 import { heroArt } from '../starter/shipScreen.js';
 import { radiationAt, toRadiationSources } from '../lib/radiation.js';
@@ -61,6 +68,7 @@ import { rivalColour } from './PlanetField.jsx';
 import type { TargetMiningRun } from './scene.js';
 import { hullLabel, hullName, monumentName, satelliteLabel } from '../i18n/names.js';
 import { compact, decimal, full } from '../lib/format.js';
+import { serverNow } from '../lib/clock.js';
 import {
   colonizationPhase,
   priorityWaitMinutes,
@@ -553,7 +561,7 @@ export function PlanetFocus({
   onClose: () => void;
   onAttack: () => void;
   onSettle?: () => void;
-  onDeathStar?: () => void;
+  onDeathStar?: (targetBody?: WorldBody) => void;
   onTransfer?: () => void;
   /** Takes the player to the orbit surface, where the instrument is bought. */
   onInstallTelescope: () => void;
@@ -574,6 +582,16 @@ export function PlanetFocus({
   const setRival = useSetRival();
   const say = useToast();
   const school = useSchoolPresentation();
+  const galaxy = useGalaxy();
+  const targetMoonEntry = galaxy.data?.moons?.list.find((m) => m.planetId === target.id) ?? null;
+  const targetMoonRarity = galaxy.data?.moons?.rarity[target.id];
+  const targetMoonInfo = targetMoonEntry
+    ? {
+        cracks: targetMoonEntry.cracks,
+        lastHitAt: targetMoonEntry.lastHitAt,
+        ...(targetMoonRarity ? { rarity: targetMoonRarity } : {}),
+      }
+    : null;
   // A ship opens these one by one, and it holds no marks: those belong to the main galaxy.
   const gate = gateOf(planet.vessel);
   // No tier in the starter galaxy, so no band to fall out of.
@@ -1158,6 +1176,7 @@ export function PlanetFocus({
           rivalSlot={rivalSlot}
           now={now}
           ownPeakCore={ownPeakCore}
+          moon={targetMoonInfo}
           {...(rivalControl ? { rival: rivalControl } : {})}
         />
       </div>}
@@ -1254,6 +1273,8 @@ export function PlanetFocus({
           target={target}
           origin={planet}
           report={intel?.probeReports.find((report) => report.spatiallyCurrent !== false && report.targetPlanetId === target.id)}
+          moon={targetMoonInfo}
+          now={now}
           disabledReason={deathStarBlock}
           onLaunch={onDeathStar}
         />
@@ -1261,6 +1282,8 @@ export function PlanetFocus({
       {planet.radiationBombsAvailable && !target.clanmate && <RadiationBombControl collapsible origin={planet}
         target={{ kind: 'PLANET', id: target.id }} targetName={anonymous ? t('focus.planet.unsurveyedTitle') : target.name}
         position={target.position} onLaunched={onClose}
+        hasMoon={targetMoonInfo !== null}
+        moonRarity={targetMoonRarity}
         disabledReason={originSilentSpace ? t('faults.launchBlock.SILENT_SPACE')
           : originShipyardRevolt ? t('faults.launchBlock.SHIPYARD_REVOLT')
           : outOfBand ? t('focus.planet.deathStarOutOfBand')
@@ -1376,17 +1399,30 @@ function WeaponHonor({ credit, children }: { credit: boolean; children: ReactNod
  * HELD, NOT CONFIRMED (K4, B9: every launch and the Death Star). The hold is the only press
  * that spends it; a tap does nothing, and folding the section is the way back.
  */
-export function DeathStarSection({ target, origin, report, disabledReason, onLaunch }: {
+export function DeathStarSection({ target, origin, report, moon = null, now, disabledReason, onLaunch }: {
   target: GalaxyPlanet;
   origin: PlanetView;
   report?: ProbeReading | undefined;
+  moon?: { cracks: number; lastHitAt: Date | null; rarity?: MoonRarity } | null;
+  now?: number;
   /** Why it cannot fly right now; the hold shows it instead of arming. */
   disabledReason: string | null;
-  onLaunch: () => void;
+  onLaunch: (targetBody?: WorldBody) => void;
 }) {
   const { t } = useTranslation();
+  const tMoon = useMoonT();
+  const [targetBody, setTargetBody] = useState<WorldBody>('PLANET');
+  const [lastTargetId, setLastTargetId] = useState(target.id);
+  if (lastTargetId !== target.id) {
+    setLastTargetId(target.id);
+    setTargetBody('PLANET');
+  }
+  const effectiveBody: WorldBody = moon ? targetBody : 'PLANET';
   const world = target.intel === 'UNKNOWN' ? t('focus.planet.unsurveyedTitle') : target.name;
   const ready = deathStarsOf(origin).filter((asset) => asset.status === 'READY').length;
+  const cracksNow = moon
+    ? effectiveCracks({ cracks: moon.cracks, lastHitAtMs: moon.lastHitAt?.getTime() ?? null }, now ?? serverNow())
+    : 0;
   return (
     <StrikeFold data-strike-section="" data-weapon="death-star" glyph="target" title={t('focus.planet.deathStarSection.title')}
       target={t('planet.radiationBomb.target', { target: world })} ready={t('focus.planet.strikeReady', { ready })}>
@@ -1395,10 +1431,34 @@ export function DeathStarSection({ target, origin, report, disabledReason, onLau
           need: `${t('planet.deathStar.needCore', { level: DEATH_STAR.requiredCore })}, ${t('planet.deathStar.needShipyard', { level: DEATH_STAR.requiredShipyard })}`,
         })}</p>
       )}
-      <StrikeDetails target={target} report={report} origin={origin} />
+      {moon && (
+        <div className="flex flex-col gap-1.5">
+          <TargetBodyPicker
+            value={effectiveBody}
+            hasMoon
+            knownRarity={moon.rarity}
+            showAttackHint={false}
+            onChange={setTargetBody}
+          />
+          {effectiveBody === 'MOON' && (
+            <div className="gk-well flex flex-col gap-1 text-caption">
+              <p className="font-semibold text-alloy gk-num">
+                {moon.rarity
+                  ? tMoon('body.deathStarMoonCracks', {
+                    remaining: Math.max(0, crackLimit(moon.rarity) - cracksNow),
+                    limit: crackLimit(moon.rarity),
+                  })
+                  : tMoon('body.deathStarMoonCracksUnknown', { cracks: cracksNow })}
+              </p>
+              <p className="text-dim">{tMoon('body.deathStarMoonHint')}</p>
+            </div>
+          )}
+        </div>
+      )}
+      {effectiveBody === 'PLANET' && <StrikeDetails target={target} report={report} origin={origin} />}
       {/* A weapon fired is gone and cannot be called back: the kit's final weight, 1.5 s. */}
       <GameHold weight="final" tone="danger" glyph="target" commitSound="impact" marks={{ 'data-death-star': '' }}
-        label={t('focus.planet.deathStarSection.hold')} disabledReason={disabledReason} onCommit={onLaunch} />
+        label={t('focus.planet.deathStarSection.hold')} disabledReason={disabledReason} onCommit={() => { onLaunch(effectiveBody); }} />
     </StrikeFold>
   );
 }
@@ -3183,6 +3243,7 @@ export function ThreadFocus({
   onFocusMonument,
   onRecall,
   recalling = false,
+  targetMoon = false,
   above,
 }: {
   thread: PendingThread;
@@ -3193,15 +3254,23 @@ export function ThreadFocus({
   onFocusMonument?: (monumentId: string) => void;
   onRecall?: () => void;
   recalling?: boolean;
+  /** The target is a held world with a moon, so an outbound raid may turn between the two (Ay §6.11). */
+  targetMoon?: boolean;
   /** Over the closed card (`Shell`). */
   above?: ReactNode;
 }) {
   const { t } = useTranslation();
+  const tMoon = useMoonT();
   const composition = thread.fleet ? describeThreadFleet(thread.fleet) : null;
   const now = useNow(1000);
   const remainingMs = thread.arriveAt.getTime() - now;
   const recallable = thread.recallable === true && thread.id !== undefined
     && thread.kind !== 'incoming' && thread.leg !== 'return' && remainingMs > 0;
+  const canRetarget = thread.kind === 'fleet' && thread.leg !== 'return' && thread.id !== undefined
+    && targetMoon && remainingMs > 0;
+  const currentBody: WorldBody = thread.targetBody ?? 'PLANET';
+  const titleBase = thread.kind === 'trade' ? t('trade.title') : thread.targetName;
+  const titleText = thread.targetBody === 'MOON' ? `${titleBase} · ${tMoon('body.MOON')}` : titleBase;
 
   return (
     <Shell
@@ -3217,17 +3286,21 @@ export function ThreadFocus({
             ? 'focus.thread.eyebrowFleetHome'
             : 'focus.thread.eyebrowFleetOut',
       )}
-      title={thread.kind === 'trade' ? t('trade.title') : thread.targetName}
+      title={titleText}
       open={open}
       onToggle={onToggle}
       onClose={onClose}
       peek={thread.admiral ? <FlightEscort admiral={thread.admiral} /> : undefined}
       summary={<span>{countdown(remainingMs)}</span>}
-      actions={recallable && onRecall ? (
-        // Once, and never undone, but nothing spent: the kit's light hold (owner 2026-11-14, 0.6 s).
-        <div className="gk-focus__wide">
-          <GameHold weight="reversible" size="md" tone="steel" glyph="recall" label={t('pendingStrip.recallFleet')}
-            disabledReason={recalling ? t('pendingStrip.recallingFleet') : null} onCommit={onRecall} />
+      actions={(recallable && onRecall) || canRetarget ? (
+        <div className="gk-focus__wide flex flex-col gap-2">
+          {canRetarget && thread.id && (
+            <MissionRetarget missionId={thread.id} currentBody={currentBody} />
+          )}
+          {recallable && onRecall && (
+            <GameHold weight="reversible" size="md" tone="steel" glyph="recall" label={t('pendingStrip.recallFleet')}
+              disabledReason={recalling ? t('pendingStrip.recallingFleet') : null} onCommit={onRecall} />
+          )}
         </div>
       ) : undefined}
     >

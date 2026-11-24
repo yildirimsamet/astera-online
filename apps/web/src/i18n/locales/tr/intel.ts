@@ -382,6 +382,8 @@ export const reports = {
   strategicCaptured: 'ELE GEÇİRİLDİ',
   strategicIneffective: 'ETKİSİZ',
   strategicIntercepted: 'HAVADA VURULDU',
+  strategicMoonCracked: 'AY ÇATLADI',
+  strategicMoonDestroyed: 'AY PARÇALANDI',
   radiationYouAttacked: "Radyasyon bombası hedefin: ",
   radiationAttackedBy: "Radyasyon bombası gönderen: ",
   strategicYouAttacked: 'Ölüm Yıldızı hedefin: ',

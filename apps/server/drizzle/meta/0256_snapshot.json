@@ -1,6 +1,6 @@
 {
-  "id": "c3cd15d8-35e9-4cd7-9192-15265e4f8e67",
-  "prevId": "6b2dbbfe-7131-474e-b4db-0100e81ace61",
+  "id": "7ae721b3-b3c0-412b-bda6-0da2ee65c976",
+  "prevId": "13d5f5d6-d97e-4b30-85c9-ce0f6954991a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2683,6 +2683,13 @@
           "notNull": true,
           "default": "'PLAYER'"
         },
+        "target_body": {
+          "name": "target_body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PLANET'"
+        },
         "grade": {
           "name": "grade",
           "type": "text",
@@ -3092,6 +3099,10 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "battle_reports_target_body_check": {
+          "name": "battle_reports_target_body_check",
+          "value": "\"battle_reports\".\"target_body\" in ('PLANET', 'MOON')"
+        },
         "battle_reports_one_target": {
           "name": "battle_reports_one_target",
           "value": "(\"battle_reports\".\"target_kind\" IN ('PLAYER', 'NEUTRAL')\n          AND \"battle_reports\".\"mission_id\" IS NOT NULL\n          AND \"battle_reports\".\"target_planet_id\" IS NOT NULL\n          AND \"battle_reports\".\"pirate_raid_id\" IS NULL)\n        OR (\"battle_reports\".\"target_kind\" = 'PIRATE'\n          AND \"battle_reports\".\"pirate_raid_id\" IS NOT NULL\n          AND \"battle_reports\".\"mission_id\" IS NULL\n          AND \"battle_reports\".\"target_planet_id\" IS NULL)"
@@ -14094,6 +14105,26 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "origin_body": {
+          "name": "origin_body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PLANET'"
+        },
+        "target_body": {
+          "name": "target_body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PLANET'"
+        },
+        "retargeted_at": {
+          "name": "retargeted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -14278,7 +14309,16 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "missions_origin_body_check": {
+          "name": "missions_origin_body_check",
+          "value": "\"missions\".\"origin_body\" in ('PLANET', 'MOON')"
+        },
+        "missions_target_body_check": {
+          "name": "missions_target_body_check",
+          "value": "\"missions\".\"target_body\" in ('PLANET', 'MOON')"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.monument_battle_participants": {
@@ -15750,6 +15790,346 @@
       },
       "isRLSEnabled": false
     },
+    "public.moon_moves": {
+      "name": "moon_moves",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "season_id": {
+          "name": "season_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_player_id": {
+          "name": "owner_player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "from_planet_id": {
+          "name": "from_planet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "to_planet_id": {
+          "name": "to_planet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fleet": {
+          "name": "fleet",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "damage": {
+          "name": "damage",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "depart_at": {
+          "name": "depart_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "arrive_at": {
+          "name": "arrive_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        }
+      },
+      "indexes": {
+        "moon_moves_owner_idx": {
+          "name": "moon_moves_owner_idx",
+          "columns": [
+            {
+              "expression": "owner_player_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "moon_moves_from_pending_idx": {
+          "name": "moon_moves_from_pending_idx",
+          "columns": [
+            {
+              "expression": "from_planet_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"moon_moves\".\"status\" = 'PENDING'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "moon_moves_to_pending_idx": {
+          "name": "moon_moves_to_pending_idx",
+          "columns": [
+            {
+              "expression": "to_planet_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"moon_moves\".\"status\" = 'PENDING'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "moon_moves_season_id_seasons_id_fk": {
+          "name": "moon_moves_season_id_seasons_id_fk",
+          "tableFrom": "moon_moves",
+          "tableTo": "seasons",
+          "columnsFrom": [
+            "season_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "moon_moves_owner_player_id_players_id_fk": {
+          "name": "moon_moves_owner_player_id_players_id_fk",
+          "tableFrom": "moon_moves",
+          "tableTo": "players",
+          "columnsFrom": [
+            "owner_player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "moon_moves_from_planet_id_planets_id_fk": {
+          "name": "moon_moves_from_planet_id_planets_id_fk",
+          "tableFrom": "moon_moves",
+          "tableTo": "planets",
+          "columnsFrom": [
+            "from_planet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "moon_moves_to_planet_id_planets_id_fk": {
+          "name": "moon_moves_to_planet_id_planets_id_fk",
+          "tableFrom": "moon_moves",
+          "tableTo": "planets",
+          "columnsFrom": [
+            "to_planet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "moon_moves_kind_check": {
+          "name": "moon_moves_kind_check",
+          "value": "\"moon_moves\".\"kind\" in ('HOP_UP', 'HOP_DOWN')"
+        },
+        "moon_moves_status_check": {
+          "name": "moon_moves_status_check",
+          "value": "\"moon_moves\".\"status\" in ('PENDING', 'LANDED', 'RETURNED')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.moon_seed_ledger": {
+      "name": "moon_seed_ledger",
+      "schema": "",
+      "columns": {
+        "season_id": {
+          "name": "season_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slot_index": {
+          "name": "slot_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "moon_seed_ledger_season_id_seasons_id_fk": {
+          "name": "moon_seed_ledger_season_id_seasons_id_fk",
+          "tableFrom": "moon_seed_ledger",
+          "tableTo": "seasons",
+          "columnsFrom": [
+            "season_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "moon_seed_ledger_season_id_slot_index_pk": {
+          "name": "moon_seed_ledger_season_id_slot_index_pk",
+          "columns": [
+            "season_id",
+            "slot_index"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.moons": {
+      "name": "moons",
+      "schema": "",
+      "columns": {
+        "planet_id": {
+          "name": "planet_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "rarity": {
+          "name": "rarity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "origin": {
+          "name": "origin",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cracks": {
+          "name": "cracks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "last_hit_at": {
+          "name": "last_hit_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_until": {
+          "name": "closed_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gate_ready_at": {
+          "name": "gate_ready_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "visual_seed": {
+          "name": "visual_seed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "born_at": {
+          "name": "born_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "born_mission_id": {
+          "name": "born_mission_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "moons_planet_id_planets_id_fk": {
+          "name": "moons_planet_id_planets_id_fk",
+          "tableFrom": "moons",
+          "tableTo": "planets",
+          "columnsFrom": [
+            "planet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "moons_rarity_check": {
+          "name": "moons_rarity_check",
+          "value": "\"moons\".\"rarity\" in ('COMMON', 'RARE', 'EPIC', 'LEGENDARY')"
+        },
+        "moons_origin_check": {
+          "name": "moons_origin_check",
+          "value": "\"moons\".\"origin\" in ('SEED', 'BUILT', 'BATTLE')"
+        },
+        "moons_cracks_check": {
+          "name": "moons_cracks_check",
+          "value": "\"moons\".\"cracks\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.native_sessions": {
       "name": "native_sessions",
       "schema": "",
@@ -15962,161 +16342,6 @@
         "neutral_planet_tier_check": {
           "name": "neutral_planet_tier_check",
           "value": "\"neutral_planet_state\".\"tier\" BETWEEN 1 AND 3"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.newcomer_scenario": {
-      "name": "newcomer_scenario",
-      "schema": "",
-      "columns": {
-        "player_id": {
-          "name": "player_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "season_id": {
-          "name": "season_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "step": {
-          "name": "step",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "pirate_index": {
-          "name": "pirate_index",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "-nextval('personal_pirate_index_seq')"
-        },
-        "pirate_spec": {
-          "name": "pirate_spec",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pirate_spawned_at": {
-          "name": "pirate_spawned_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pirate_defeated_at": {
-          "name": "pirate_defeated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "probe_sent_at": {
-          "name": "probe_sent_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "dismissed_at": {
-          "name": "dismissed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "newcomer_scenario_pirate_index_idx": {
-          "name": "newcomer_scenario_pirate_index_idx",
-          "columns": [
-            {
-              "expression": "pirate_index",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "newcomer_scenario_season_step_idx": {
-          "name": "newcomer_scenario_season_step_idx",
-          "columns": [
-            {
-              "expression": "season_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "step",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "newcomer_scenario_player_id_players_id_fk": {
-          "name": "newcomer_scenario_player_id_players_id_fk",
-          "tableFrom": "newcomer_scenario",
-          "tableTo": "players",
-          "columnsFrom": [
-            "player_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "newcomer_scenario_season_id_seasons_id_fk": {
-          "name": "newcomer_scenario_season_id_seasons_id_fk",
-          "tableFrom": "newcomer_scenario",
-          "tableTo": "seasons",
-          "columnsFrom": [
-            "season_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "newcomer_scenario_pirate_index_check": {
-          "name": "newcomer_scenario_pirate_index_check",
-          "value": "\"newcomer_scenario\".\"pirate_index\" < 0"
         }
       },
       "isRLSEnabled": false
@@ -16789,132 +17014,6 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.personal_rocks": {
-      "name": "personal_rocks",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "season_id": {
-          "name": "season_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "player_id": {
-          "name": "player_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "index": {
-          "name": "index",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "-nextval('personal_rock_index_seq')"
-        },
-        "spec": {
-          "name": "spec",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "personal_rocks_index_idx": {
-          "name": "personal_rocks_index_idx",
-          "columns": [
-            {
-              "expression": "index",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "personal_rocks_player_idx": {
-          "name": "personal_rocks_player_idx",
-          "columns": [
-            {
-              "expression": "player_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "expires_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "personal_rocks_season_id_seasons_id_fk": {
-          "name": "personal_rocks_season_id_seasons_id_fk",
-          "tableFrom": "personal_rocks",
-          "tableTo": "seasons",
-          "columnsFrom": [
-            "season_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "personal_rocks_player_id_players_id_fk": {
-          "name": "personal_rocks_player_id_players_id_fk",
-          "tableFrom": "personal_rocks",
-          "tableTo": "players",
-          "columnsFrom": [
-            "player_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "personal_rocks_index_check": {
-          "name": "personal_rocks_index_check",
-          "value": "\"personal_rocks\".\"index\" < 0"
-        }
-      },
       "isRLSEnabled": false
     },
     "public.pirate_raids": {
@@ -17925,12 +18024,6 @@
         },
         "signal_boost_until": {
           "name": "signal_boost_until",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "newcomer_boost_until": {
-          "name": "newcomer_boost_until",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
@@ -27479,7 +27572,7 @@
         "unknown_signal_return",
         "arena_ship_ready",
         "paid_alert",
-        "newcomer_hour"
+        "moon_move_land"
       ]
     },
     "public.event_status": {
@@ -27581,9 +27674,7 @@
         "arena_team_share",
         "arena_sortie_end",
         "clan_support_lifted",
-        "clan_alarm",
-        "newcomer_hour_ending",
-        "newcomer_hour_summary"
+        "clan_alarm"
       ]
     },
     "public.paid_alert_status": {
@@ -27672,28 +27763,7 @@
     }
   },
   "schemas": {},
-  "sequences": {
-    "public.personal_pirate_index_seq": {
-      "name": "personal_pirate_index_seq",
-      "schema": "public",
-      "increment": "1",
-      "startWith": "1",
-      "minValue": "1",
-      "maxValue": "9223372036854775807",
-      "cache": "1",
-      "cycle": false
-    },
-    "public.personal_rock_index_seq": {
-      "name": "personal_rock_index_seq",
-      "schema": "public",
-      "increment": "1",
-      "startWith": "1",
-      "minValue": "1",
-      "maxValue": "9223372036854775807",
-      "cache": "1",
-      "cycle": false
-    }
-  },
+  "sequences": {},
   "roles": {},
   "policies": {},
   "views": {},

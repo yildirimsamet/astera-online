@@ -630,3 +630,19 @@ hesaplanır; menziller `STARTER.telescope`, `STARTER.radar` ve `STARTER.nakedEye
 İki kural buraya özgüdür: enkaz ve karakoldaki parça yalnız `partsVisible` açıksa ve teleskop menzilinde veya bir sonda
 raporunda görünür (`partSight`), bot da gerçek oyuncunun avladığı açık parçadan önce alamaz (`mayTakePart`). Prolog görüş
 kurallarına dokunmaz: yerel çalışır, sunucudan görüş okumaz.
+
+## 12 · Ay görüşü (S53, ruleset 20)
+
+Ayrıntılı sızıntı tablosu: `docs/ay-entegrasyon-plani-2026-11-19.md` §8.
+
+| Bilgi | Kim görür |
+|---|---|
+| Ayın varlığı, dayanıklılığı (çatlak), son darbe anı | Herkes (kamusal ay listesi) |
+| Nadirlik | Dünyayı gören veya probe atan; hafızadan (`probe_world_memories`) |
+| Aydaki filo aralığı, geçişte gemi, kapı şarjı | Probe raporu (`report.moon`) |
+| Kapı varış parıltısı | Herkes; kalkış parıltısı yalnız sensörü dünyaya yeten |
+| Gözcü taraması | Yalnız tarayan; hedef haberdar olmaz |
+| Aydan kalkan / aya inen uçuş | Standart Gözcü'den gizli; yalnız Efsanevi ay görür |
+| Kapı sıçrama ve tarama efektleri | Yalnız eylemi yapan komutanın ekranı |
+
+Botlar aynı yoldan okur: nadirliği yalnız hafızadan bilir (bilgi eşitliği).

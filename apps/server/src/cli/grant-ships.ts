@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from '../services/unitLocation.js';
 import { systemClock } from '../clock.js';
 import { and, eq, ilike } from 'drizzle-orm';
 import { ALL_HULLS } from '@astera/rules';
@@ -58,7 +59,7 @@ try {
           and(
             eq(units.planetId, planet.id),
             eq(units.hull, hull),
-            eq(units.location, 'home'),
+            eq(units.location, PLANET_LOCATION),
           ),
         );
 
@@ -70,7 +71,7 @@ try {
           planetId: planet.id,
           ownerPlayerId: player.id,
           hull,
-          location: 'home',
+          location: PLANET_LOCATION,
           count: nextCount,
         })
         .onConflictDoUpdate({

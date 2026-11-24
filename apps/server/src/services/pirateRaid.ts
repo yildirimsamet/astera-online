@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { dispatchProvenance } from './commandOrigin.js';
 import { prepareBattleReplay, persistBattleReplay } from './battleReplay.js';
 import { recordPlayerLegacyFact } from './legacyEvents.js';
@@ -400,7 +401,7 @@ export async function launchPirateRaid(
     for (const [hull, count] of fleetEntries(requested)) {
       remaining[hull] = (remaining[hull] ?? 0) - count;
     }
-    await setUnits(tx, planetId, remaining, 'home');
+    await setUnits(tx, planetId, remaining, PLANET_LOCATION);
     // Namespaced so nothing that reads mission ids can mistake this for one, and
     // so `fleetTruthFor` reads the world as AWAY — this is a raid, not mining.
     await setUnits(tx, planetId, requested, raidLocation(raid!.id));

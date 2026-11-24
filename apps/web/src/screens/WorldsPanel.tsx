@@ -4,6 +4,7 @@ import { fleetCount } from '@astera/rules';
 import type { PlanetView } from '../api/schemas.js';
 import { compact } from '../lib/format.js';
 import { GameButton, Glyph, RoundButton, SectionTag, StoreGauge } from '../game-ui/index.js';
+import { useMoonT } from '../i18n/moon.js';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { Cells, type Cell } from '../ui/ArmCard.js';
@@ -265,8 +266,10 @@ function WorldCard({ world, kind, capital, active, onGo }: {
   onGo: () => void;
 }) {
   const { t } = useTranslation();
+  const tMoon = useMoonT();
   const own = useOwnPress(() => { playSound('tap'); haptic('tap'); onGo(); });
   const standing = fleetCount(world.fleet) + fleetCount(world.ground);
+  const moonShips = fleetCount(world.moon?.fleet ?? {});
   const { used, total } = world.flight;
   const bays: Cell[] = Array.from({ length: total }, (_unused, index): Cell => (index < total - used ? 'ready' : 'flight'));
   return (
@@ -285,6 +288,12 @@ function WorldCard({ world, kind, capital, active, onGo }: {
             <Glyph id={capital ? 'home' : 'colony'} />
             {kind}
           </span>
+          {world.moon && (
+            <span className="gk-chip" data-tone="gold">
+              <Glyph id="moon" />
+              {tMoon(`rarity.${world.moon.rarity}`)}
+            </span>
+          )}
           {active && <span className="gk-chip" data-on="">{t('worlds.active')}</span>}
           <span className="gk-wcard__go" aria-hidden="true"><Glyph id="next" /></span>
         </span>
@@ -305,7 +314,10 @@ function WorldCard({ world, kind, capital, active, onGo }: {
           })}
         </span>
         <span className="gk-wcard__foot">
-          <span className="gk-sub gk-num">{t('worlds.craft', { count: standing })}</span>
+          <span className="gk-sub gk-num">
+            {t('worlds.craft', { count: standing })}
+            {moonShips > 0 ? ` · ${tMoon('fleetSplit.onMoonBadge', { count: moonShips })}` : ''}
+          </span>
           <span className="gk-wcard__bays">
             <span className="gk-label">{t('worlds.bays')}</span>
             <Cells cells={bays} label={t('worlds.baysReading', { used, total })} />

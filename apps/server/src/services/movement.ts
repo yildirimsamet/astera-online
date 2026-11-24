@@ -1,3 +1,4 @@
+import { bodyLocation } from './unitLocation.js';
 import { dispatchProvenance } from './commandOrigin.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { recordPlayerLegacyFact } from './legacyEvents.js';
@@ -30,6 +31,7 @@ import {
   type NeutralTier,
   type Resources,
   type TransferReturnPlan,
+  type WorldBody,
   normalizeHpDamage,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
@@ -72,7 +74,9 @@ import { loadPlanetViewData, buildPlanetResult } from './planetView.js';
 import { pendingThreads } from './session.js';
 import { techOf } from './researchState.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
-import { selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
+import { assertNoArrivalPending, readHomeHealth, selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
+import { assertMoonTarget } from './moon.js';
+import { assertMoonShipsFree, landOnMoon, landingBodyOf, moonDockRoom } from './moonMovement.js';
 import { withdrawRaidWarning } from './notifications.js';
 
 const EMPTY: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
@@ -110,8 +114,9 @@ async function reserveFleet(
   fleet: Fleet,
   missionId: string,
   now: Date,
+  body: WorldBody = 'PLANET',
 ): Promise<void> {
-  const damage = await takeHomeHealth(tx, originPlanetId, fleet, now);
+  const damage = await takeHomeHealth(tx, originPlanetId, fleet, now, false, body);
   await tx.update(missions).set({ damage: damage.length ? damage : null }).where(eq(missions.id, missionId));
   const remaining: Fleet = { ...home };
   for (const [hull, count] of Object.entries(fleet) as [HullId, number][]) {
@@ -120,7 +125,7 @@ async function reserveFleet(
     }
     remaining[hull] = (remaining[hull] ?? 0) - count;
   }
-  await setUnits(tx, originPlanetId, remaining, 'home', ownerPlayerId);
+  await setUnits(tx, originPlanetId, remaining, bodyLocation(body), ownerPlayerId);
   await setUnits(tx, originPlanetId, fleet, missionId, ownerPlayerId);
 }
 
@@ -235,6 +240,9 @@ export async function launchTransfer(
   returnPlan?: TransferReturnPlan,
   /** The commander has read what radiation on this route would take (plan D10). */
   acknowledgeRadiation = false,
+  /** Ay S50: a transfer may land on the target world's moon; S34: it may leave from the origin's. */
+  targetBody: WorldBody = 'PLANET',
+  originBody: WorldBody = 'PLANET',
 ) {
   validateTransferFleet(fleet);
   if ((fleet.PROSPECTOR ?? 0) > 0) {
@@ -319,6 +327,22 @@ export async function launchTransfer(
     // the thing that cannot take it.
     const blocked = await landingBlock(tx, targetPlanetId, staying);
     if (blocked) throw new GameError(blocked.code, blocked.message, 409, blocked.params);
+    if (originBody === 'MOON') await assertMoonTarget(tx, { id: originPlanetId, seasonId: origin.seasonId, kind: origin.kind });
+    // K12: cargo comes out of the planet's store, so a raid due on the planet locks planet cargo even when ships launch from the moon.
+    if (originBody === 'MOON' && resourcesTotal(cargo) > 0) {
+      await assertNoArrivalPending(tx, originPlanetId, origin.now, 'PLANET');
+    }
+    const source = originBody === 'MOON'
+      ? await readHomeHealth(tx, originPlanetId, 'MOON')
+      : { fleet: origin.homeFleet, damage: origin.homeDamage };
+    if (originBody === 'MOON') await assertMoonShipsFree(tx, originPlanetId, source.fleet, fleet);
+    if (targetBody === 'MOON') {
+      await assertMoonTarget(tx, target);
+      // Room in the dock at launch (S50); one that fills meanwhile sends the wing to the planet on landing.
+      if (hangarLoad(staying) > await moonDockRoom(tx, targetPlanetId)) {
+        throw new GameError('DOCK_FULL', 'The moon’s dock has no room for this fleet', 409);
+      }
+    }
     const dist = distance(origin, target);
     /*
       THE PACE IS CHECKED BEFORE THE TANK, exactly as the attack lane checks it. Review finding 3,
@@ -370,7 +394,7 @@ export async function launchTransfer(
     await assertRadiationSafe(tx, {
       seasonId: origin.seasonId, from: origin, to: target, departAt: origin.now, arriveAt,
       fleet, tech, acknowledged: acknowledgeRadiation,
-      damage: selectHomeDispatch(origin.homeFleet, origin.homeDamage, fleet).selectedDamage,
+      damage: selectHomeDispatch(source.fleet, source.damage, fleet).selectedDamage,
       returning,
       path: [
         { from: origin, to: target, startMs: origin.now.getTime(), endMs: arriveAt.getTime() },
@@ -389,6 +413,8 @@ export async function launchTransfer(
       fleet,
       cargo,
       returnFleet: fleetCount(returning) > 0 ? returning : null,
+      originBody,
+      targetBody,
       tech,
       distance: dist,
       pace: chosenPace,
@@ -396,7 +422,7 @@ export async function launchTransfer(
       arriveAt,
     }).returning();
     if (!mission) throw new Error('transfer mission insert returned no row');
-    await reserveFleet(tx, originPlanetId, ownerPlayerId, origin.homeFleet, fleet, mission.id, origin.now);
+    await reserveFleet(tx, originPlanetId, ownerPlayerId, source.fleet, fleet, mission.id, origin.now, originBody);
     await saveResources(tx, originPlanetId, {
       alloy: origin.alloy - cargo.alloy,
       crystal: origin.crystal - cargo.crystal,
@@ -607,6 +633,8 @@ async function rerouteToSafeHome(
     ownerPlayerId: mission.ownerPlayerId,
     originPlanetId: fromId,
     targetPlanetId: homeId,
+    originBody: mission.originBody,
+    targetBody: homeId === mission.originPlanetId && mission.originBody === 'MOON' ? 'MOON' : 'PLANET',
     fleet: mission.fleet,
     cargo: mission.cargo ?? EMPTY,
     settlementEscrow: mission.settlementEscrow,
@@ -864,6 +892,8 @@ export async function resolveTransfer(
       ownerPlayerId: mission.ownerPlayerId,
       originPlanetId: mission.targetPlanetId,
       targetPlanetId: mission.originPlanetId,
+      originBody: mission.targetBody,
+      targetBody: mission.originBody,
       fleet: returning,
       cargo: EMPTY,
       damage: returningDamage.length > 0 ? returningDamage : null,
@@ -887,7 +917,9 @@ export async function resolveTransfer(
     await schedule(tx, { seasonId: mission.seasonId, kind: 'mission_arrival', refId: returnMission.id, resolveAt: returnMission.arriveAt });
   }
   await clearReservedFleet(tx, mission);
-  if (fleetCount(staying) > 0) {
+  const onMoon = fleetCount(staying) > 0 && landingBodyOf(mission) === 'MOON'
+    && await landOnMoon(tx, { planetId: target.id, ownerPlayerId: mission.ownerPlayerId, fleet: staying, damage: damageWithin(staying), at: now });
+  if (fleetCount(staying) > 0 && !onMoon) {
     await landShips(tx, {
       planetId: target.id,
       ownerPlayerId: mission.ownerPlayerId,

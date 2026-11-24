@@ -23,7 +23,7 @@ import {
   uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import type { AsteroidSpec, HpDamageLots, MigrationCargo, PirateSpec, StarterBattleRecord } from '@astera/rules';
+import type { AsteroidSpec, FleetSizeClass, HpDamageLots, MigrationCargo, MoonRarity, PirateSpec, StarterBattleRecord, WorldBody } from '@astera/rules';
 import type {
   BattleReplayData,
   CombatRound,
@@ -185,6 +185,10 @@ export const eventKind = pgEnum('event_kind', [
   'arena_ship_ready',
   /** A Bildirim Merkezi push due now: charge the wallet, then send. 2026-10-30. */
   'paid_alert',
+  /** A planet ↔ moon hop lands, or a Moon Gate jump ends its opening (ay planı §6.6, §6.11). */
+  'moon_move_land',
+  /** A moon's gate has charged again (§6.11); told to the moon's holder if nothing moved it since. */
+  'moon_gate_ready',
   /** Kuruluş Saati's two moments on a first game's capital: ten minutes left, and the end. Plan 2026-11-20 §4. */
   'newcomer_hour',
 ]);
@@ -303,6 +307,8 @@ export const notificationKind = pgEnum('notification_kind', [
    * support: the host's own warning, copied to every mature member of a level-2 clan.
    */
   'clan_alarm',
+  /** Ay §6.11: a moon's gate has charged and can jump again. */
+  'moon_gate_ready',
   /** KURULUŞ SAATİ (plan 2026-11-20 §4): ten minutes left of a first game's five-fold hour, and its sum at the end. */
   'newcomer_hour_ending',
   'newcomer_hour_summary',
@@ -628,6 +634,8 @@ export const seasons = pgTable('seasons', {
   radiationBombStartsAt: timestamp('radiation_bomb_starts_at', { withTimezone: true }),
   /** Y9: commander ship escorts switched on in a live season dealt before them (`season activate-admiral`). */
   admiralStartsAt: timestamp('admiral_starts_at', { withTimezone: true }),
+  /** Moons opened in a live season dealt before ruleset 20 (`season activate-moons`, owner 2026-11-24). */
+  moonsStartsAt: timestamp('moons_starts_at', { withTimezone: true }),
   /** Immutable: v1 capitals, v2 multi-world, v3 seasonal clans. */
   rulesetVersion: integer('ruleset_version').notNull().default(1),
   /** Zero is a legacy/partial season; newer versions promise the full sealed metric set. */
@@ -1339,6 +1347,8 @@ export type GalaxyEventLifecyclePayload =
 
 export type GalaxyEventPayload =
   | { planetName: string; commanderName: string }
+  | { planetName: string; rarity: MoonRarity }
+  | { planetName: string }
   | { planetName: string; commanderName: string; tier: number }
   | { planetName: string; tier: number; claimUntil: string }
   | {
@@ -1418,6 +1428,11 @@ export interface PlanetSeasonTelemetry {
   /** Seconds during which at least one Works resource was actually increasing. */
   productiveSeconds: number;
   shipsBuilt: Fleet;
+  /**
+   * Ships lost OUTSIDE a battle report: a colony seceding takes the fleet standing on it
+   * (owner 2026-11-18, S19c/S43). Never Dominion or Honor — only the season's own count.
+   */
+  shipsLost?: Fleet;
 }
 
 /**
@@ -1982,12 +1997,26 @@ export const missions = pgTable('missions', {
   damage: jsonb('damage').$type<HpDamageLot[]>(),
   /** Last HP interval paid on this physical leg; null on legacy rows. */
   radiationSettledAt: timestamp('radiation_settled_at', { withTimezone: true }),
+  /**
+   * WHICH BODY OF EACH WORLD THE LEG LEAVES AND REACHES (Ay, S2/S6/S34). A world with a moon is
+   * two bodies, and a raid picks one. `PLANET` on every row before moons and in every galaxy
+   * without them, so no reader of this table has to know moons exist.
+   */
+  originBody: text('origin_body').$type<WorldBody>().notNull().default('PLANET'),
+  targetBody: text('target_body').$type<WorldBody>().notNull().default('PLANET'),
+  /** The attacker's last switch between planet and moon (S13); the next waits `MOON.retargetSpacingSeconds` (V2). */
+  retargetedAt: timestamp('retargeted_at', { withTimezone: true }),
 }, (t) => [
+  check('missions_origin_body_check', sql`${t.originBody} in ('PLANET', 'MOON')`),
+  check('missions_target_body_check', sql`${t.targetBody} in ('PLANET', 'MOON')`),
   index('missions_analytics_order_idx').on(t.orderedAt).where(sql`${t.commandSource} = 'manual_http' AND ${t.analyticsVisitHash} IS NOT NULL`),
   index('missions_analytics_visit_idx').on(t.analyticsVisitHash).where(sql`${t.analyticsVisitHash} IS NOT NULL`),
   index('missions_status_arrive_idx').on(t.status, t.arriveAt),
   index('missions_origin_idx').on(t.originPlanetId),
   index('missions_target_idx').on(t.targetPlanetId),
+  // Ay F5 (V32): Gözcü and K12 by body read only the flights in the air, never the whole history.
+  index('missions_target_in_flight_idx').on(t.targetPlanetId).where(sql`${t.status} = 'in_flight'`),
+  index('missions_origin_in_flight_idx').on(t.originPlanetId).where(sql`${t.status} = 'in_flight'`),
   // A commander's own recent launches (probe cooldowns, launch counts). `status` is
   // useless here: almost every row is `resolved`, so the status index scans them all.
   index('missions_owner_kind_depart_idx').on(t.ownerPlayerId, t.kind, t.departAt),
@@ -2208,7 +2237,8 @@ export const strategicAssets = pgTable('strategic_assets', {
     .where(sql`${t.type} IN ('RADIATION_BOMB_L1', 'RADIATION_BOMB_L2', 'RADIATION_BOMB_L3') AND ${t.status} IN ('BUILDING', 'PAUSED', 'READY', 'LAUNCHED')`),
 ]);
 
-export type BuildOrderKind = 'BUILDING' | 'HULL' | 'INSTRUMENT' | 'SATELLITE' | 'RESEARCH' | 'REPAIR';
+/** `MOON` (Ay S8, V29): a Common moon built on the CONSTRUCTION line; its subject is the rarity. */
+export type BuildOrderKind = 'BUILDING' | 'HULL' | 'INSTRUMENT' | 'SATELLITE' | 'RESEARCH' | 'REPAIR' | 'MOON';
 export type BuildOrderStatus = 'BUILDING' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
 
 /**
@@ -2252,7 +2282,7 @@ export const buildOrders = pgTable('build_orders', {
   check('build_orders_queue_check', sql`${t.queue} IN ('CONSTRUCTION', 'YARD', 'REPAIR')`),
   check(
     'build_orders_kind_check',
-    sql`${t.kind} IN ('BUILDING', 'HULL', 'INSTRUMENT', 'SATELLITE', 'RESEARCH', 'REPAIR')`,
+    sql`${t.kind} IN ('BUILDING', 'HULL', 'INSTRUMENT', 'SATELLITE', 'RESEARCH', 'REPAIR', 'MOON')`,
   ),
   check(
     'build_orders_status_check',
@@ -2389,6 +2419,8 @@ export const hpRadiationSources = pgTable('hp_radiation_sources', {
   seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
   anchorKind: text('anchor_kind').$type<'ZONE' | 'PLANET' | 'MONUMENT'>().notNull(),
   anchorId: uuid('anchor_id'),
+  /** Ay S45: a PLANET-anchored source wears the planet's ships or, as MOON, only its moon's. */
+  body: text('body').$type<WorldBody>().notNull().default('PLANET'),
   x: doublePrecision('x').notNull(),
   y: doublePrecision('y').notNull(),
   z: doublePrecision('z').notNull(),
@@ -2420,6 +2452,7 @@ export const hpRadiationSources = pgTable('hp_radiation_sources', {
   check('hp_radiation_sources_level_check', sql`${t.radiationLevel} IS NULL OR (${t.radiationLevel} IN (1, 2, 3) AND ${t.mode} = 'EMIT')`),
   check('hp_radiation_sources_origin_check', sql`(${t.origin} = 'ENVIRONMENT' AND ${t.bombFlightId} IS NULL)
     OR (${t.origin} = 'BOMB' AND ${t.mode} = 'EMIT' AND ${t.radiationLevel} IS NOT NULL AND ${t.anchorKind} <> 'ZONE' AND ${t.activeUntil} IS NOT NULL)`),
+  check('hp_radiation_sources_body_check', sql`${t.body} = 'PLANET' OR (${t.body} = 'MOON' AND ${t.anchorKind} = 'PLANET')`),
   check('hp_radiation_sources_anchor_check', sql`(${t.anchorKind} = 'ZONE' AND ${t.anchorId} IS NULL)
     OR (${t.anchorKind} IN ('PLANET', 'MONUMENT') AND ${t.anchorId} IS NOT NULL)`),
   check('hp_radiation_sources_window_check', sql`${t.activeUntil} IS NULL OR ${t.activeUntil} >= ${t.activeFrom}`),
@@ -2443,6 +2476,8 @@ export const radiationBombFlights = pgTable('radiation_bomb_flights', {
   ownerPlayerId: uuid('owner_player_id').notNull().references(() => players.id),
   originPlanetId: uuid('origin_planet_id').notNull().references(() => planets.id),
   targetKind: text('target_kind').$type<'PLANET' | 'MONUMENT'>().notNull(),
+  /** Ay S45: a bomb on a world hits its planet or its moon, never both. */
+  targetBody: text('target_body').$type<WorldBody>().notNull().default('PLANET'),
   targetPlanetId: uuid('target_planet_id').references(() => planets.id),
   targetMonumentId: uuid('target_monument_id').references(() => monuments.id),
   level: integer('level').$type<RadiationBombLevel>().notNull(),
@@ -2465,6 +2500,7 @@ export const radiationBombFlights = pgTable('radiation_bomb_flights', {
   check('radiation_bomb_flights_level_check', sql`${t.level} IN (1, 2, 3)`),
   check('radiation_bomb_flights_target_check', sql`(${t.targetKind} = 'PLANET' AND ${t.targetPlanetId} IS NOT NULL AND ${t.targetMonumentId} IS NULL)
     OR (${t.targetKind} = 'MONUMENT' AND ${t.targetMonumentId} IS NOT NULL AND ${t.targetPlanetId} IS NULL)`),
+  check('radiation_bomb_flights_body_check', sql`${t.targetBody} = 'PLANET' OR (${t.targetBody} = 'MOON' AND ${t.targetKind} = 'PLANET')`),
   check('radiation_bomb_flights_status_check', sql`${t.status} IN ('OUTBOUND', 'HIT', 'INTERCEPTED', 'INEFFECTIVE')`),
   check('radiation_bomb_flights_window_check', sql`${t.arriveAt} > ${t.departAt}`),
   check('radiation_bomb_flights_resolution_check', sql`(${t.status} = 'OUTBOUND' AND ${t.resolvedAt} IS NULL)
@@ -2782,6 +2818,12 @@ export const battleReports = pgTable('battle_reports', {
     (): AnyPgColumn => clanWarOperations.id,
   ),
   targetKind: text('target_kind').$type<'PLAYER' | 'NEUTRAL' | 'PIRATE'>().notNull().default('PLAYER'),
+  /**
+   * THE BODY THE BATTLE WAS FOUGHT FOR (Ay, S2/S6). A moon battle has no ground, no Aegis and no
+   * loot; a MOON report with no rounds is the empty moon (S31), which still counts toward the
+   * personal raid cooldown like any raid that arrived.
+   */
+  targetBody: text('target_body').$type<WorldBody>().notNull().default('PLANET'),
   grade: text('grade').$type<Grade>().notNull(),
   rounds: jsonb('rounds').$type<CombatRound[]>().notNull(),
   loot: jsonb('loot').$type<Resources>().notNull(),
@@ -2944,6 +2986,7 @@ export const battleReports = pgTable('battle_reports', {
   defenderCount: integer('defender_count').notNull().default(1),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
+  check('battle_reports_target_body_check', sql`${t.targetBody} in ('PLANET', 'MOON')`),
   // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
   index('reports_target_planet_idx').on(t.targetPlanetId),
   index('reports_defender_idx').on(t.defenderPlayerId, t.createdAt),
@@ -3694,7 +3737,7 @@ export const strategicImpacts = pgTable('strategic_impacts', {
   defenderPlayerId: uuid('defender_player_id').references(() => players.id),
   targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
   outcome: text('outcome')
-    .$type<'FIRST_STRIKE' | 'CAPTURED' | 'INEFFECTIVE' | 'INTERCEPTED'>()
+    .$type<'FIRST_STRIKE' | 'CAPTURED' | 'INEFFECTIVE' | 'INTERCEPTED' | 'MOON_CRACKED' | 'MOON_DESTROYED'>()
     .notNull(),
   damage: real('damage').notNull().default(0),
   destroyedFleet: jsonb('destroyed_fleet').$type<Fleet>().notNull().default({}),
@@ -3863,6 +3906,10 @@ export const probeReports = pgTable('probe_reports', {
     coreLevel: number;
     satellites: string[];
     shielded: boolean;
+    /** The moon at the look (S23, S53): its rarity exactly, its fleet as a band. Absent where there is none. */
+    moon?: ProbeMoonReading;
+    /** The rarity the observer now remembers (S53); kept when the record becomes a world memory. */
+    moonRarity?: MoonRarity;
     /**
      * WHAT THIS COMMANDER HAS RESEARCHED INTO THEIR HULLS. T9 · D124.
      *
@@ -3956,7 +4003,7 @@ export const probeWorldMemories = pgTable('probe_world_memories', {
   /** The probe report this came from. NULL when a fleet took the look. */
   reportId: uuid('report_id').references(() => probeReports.id),
   /** Which craft's eyes these were. Never shown; it is here to be debuggable. */
-  source: text('source').$type<'PROBE' | 'BATTLE'>().notNull().default('PROBE'),
+  source: text('source').$type<'PROBE' | 'BATTLE' | 'SCAN'>().notNull().default('PROBE'),
   /**
    * The outside of the world as it was at `seenAt`. Same shape a probe report
    * carries, minus the two readings only a probe takes — a battle learns what a
@@ -3977,6 +4024,8 @@ export const probeWorldMemories = pgTable('probe_world_memories', {
     research?: Partial<Record<ResearchProjectId, { low: number; high: number }>>;
     interceptors?: number;
     loyalty?: number;
+    /** Frozen like the rest (S53, D127): a moon that later changed is read again only by looking again. */
+    moonRarity?: MoonRarity;
   }>().notNull(),
   seenAt: timestamp('seen_at', { withTimezone: true }).notNull(),
 }, (t) => [
@@ -4262,6 +4311,8 @@ export const debrisFields = pgTable('debris_fields', {
   missionId: uuid('mission_id').references(() => missions.id),
   /** The pirate raid that made it. NULL on every world battle. D150. */
   pirateRaidId: uuid('pirate_raid_id').references((): AnyPgColumn => pirateRaids.id),
+  /** Ay §4.2: drawn beside the moon when a moon broke. Drawing only; the field is still collected at the world. */
+  body: text('body').$type<WorldBody>().notNull().default('PLANET'),
   alloy: real('alloy').notNull(),
   crystal: real('crystal').notNull(),
   deuterium: real('deuterium').notNull().default(0),
@@ -4275,6 +4326,7 @@ export const debrisFields = pgTable('debris_fields', {
   index('debris_season_idx').on(t.seasonId, t.createdAt),
   index('debris_planet_idx').on(t.planetId),
   index('debris_pirate_raid_idx').on(t.pirateRaidId),
+  check('debris_fields_body_check', sql`${t.body} in ('PLANET', 'MOON')`),
   /**
    * Exactly one anchor, and it is a constraint rather than a convention.
    *
@@ -6022,3 +6074,115 @@ export const welcomeWeek = pgTable('welcome_week', {
   opened: integer('opened').notNull().default(0),
   lastOpenedAt: timestamp('last_opened_at', { withTimezone: true }).notNull(),
 });
+
+/**
+ * A WORLD'S MOON (ay planı S1–S56, entegrasyon planı §4.1). At most one a world, so the planet id is the key.
+ *
+ * No season column: a commander transfer moves the planet row between seasons, and the moon goes with it.
+ * The row changes only under the planet lock. `cracks` is the raw counter; read it through `effectiveCracks`,
+ * which heals 24 hours after `lastHitAt` without any event clearing it.
+ */
+/** What a probe reads of a moon (S23): the rarity exactly, the fleet standing on it as a band. */
+export interface ProbeMoonReading {
+  rarity: MoonRarity;
+  cracks: number;
+  lastHitAt: string | null;
+  closedUntil: string | null;
+  gateReadyAt?: string | null;
+  fleet: { low: number; high: number };
+  /** A hop between the bodies was under way at the look (V10). */
+  hopping: boolean;
+}
+
+export const moons = pgTable('moons', {
+  planetId: uuid('planet_id').primaryKey().references(() => planets.id, { onDelete: 'cascade' }),
+  rarity: text('rarity').$type<MoonRarity>().notNull(),
+  /** Owner-only (§8): how this moon came to be. */
+  origin: text('origin').$type<'SEED' | 'BUILT' | 'BATTLE'>().notNull(),
+  cracks: integer('cracks').notNull().default(0),
+  /** Public (S53): the client heals the cracks itself from this instant. */
+  lastHitAt: timestamp('last_hit_at', { withTimezone: true }),
+  /** A Death Star hit shuts the gate and the Gözcü until this instant (S19). */
+  closedUntil: timestamp('closed_until', { withTimezone: true }),
+  /** The gate's own charge (S51). */
+  gateReadyAt: timestamp('gate_ready_at', { withTimezone: true }),
+  /** Surface and orbit come from this, so every client draws the same moon. */
+  visualSeed: integer('visual_seed').notNull(),
+  bornAt: timestamp('born_at', { withTimezone: true }).notNull(),
+  /** The battle a moon was born in, for its report and the Chronicle. */
+  bornMissionId: uuid('born_mission_id'),
+}, (t) => [
+  check('moons_rarity_check', sql`${t.rarity} in ('COMMON', 'RARE', 'EPIC', 'LEGENDARY')`),
+  check('moons_origin_check', sql`${t.origin} in ('SEED', 'BUILT', 'BATTLE')`),
+  check('moons_cracks_check', sql`${t.cracks} >= 0`),
+]);
+
+/**
+ * SLOTS THAT HAVE ALREADY HAD THEIR SEEDED MOON (§6.3). Written when a seeded moon first stands in a slot,
+ * so a moon destroyed or carried away never comes back when the census reopens that slot.
+ */
+export const moonSeedLedger = pgTable('moon_seed_ledger', {
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  slotIndex: integer('slot_index').notNull(),
+}, (t) => [primaryKey({ columns: [t.seasonId, t.slotIndex] })]);
+
+/**
+ * A FLEET MOVING BETWEEN A WORLD'S TWO BODIES (§4.1, S13, S37). Not a mission: it never leaves its world
+ * and no other commander's screen shows it as traffic. While it moves its ships stand at `hop:<id>`,
+ * counted on no body. `fleet` and `damage` are what left; the landing writes them onto the other body.
+ */
+export const moonMoves = pgTable('moon_moves', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  ownerPlayerId: uuid('owner_player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  kind: text('kind').$type<'HOP_UP' | 'HOP_DOWN' | 'JUMP'>().notNull(),
+  fromPlanetId: uuid('from_planet_id').notNull().references(() => planets.id, { onDelete: 'cascade' }),
+  toPlanetId: uuid('to_planet_id').notNull().references(() => planets.id, { onDelete: 'cascade' }),
+  fleet: jsonb('fleet').$type<Fleet>().notNull(),
+  damage: jsonb('damage').$type<HpDamageLot[]>().notNull().default([]),
+  departAt: timestamp('depart_at', { withTimezone: true }).notNull(),
+  arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),
+  /**
+   * PENDING → LANDED; RETURNED when the fleet came down somewhere else (V36); a JUMP is CANCELLED when the far
+   * moon or world is gone (E6, V8: ships stay, fuel stays spent) and LOST when nobody was left to carry (E4).
+   */
+  status: text('status').$type<'PENDING' | 'LANDED' | 'RETURNED' | 'CANCELLED' | 'LOST'>().notNull().default('PENDING'),
+  /** Only a JUMP pays fuel; a hop is free (S49). */
+  fuelPaid: real('fuel_paid').notNull().default(0),
+}, (t) => [
+  check('moon_moves_kind_check', sql`${t.kind} in ('HOP_UP', 'HOP_DOWN', 'JUMP')`),
+  check('moon_moves_status_check', sql`${t.status} in ('PENDING', 'LANDED', 'RETURNED', 'CANCELLED', 'LOST')`),
+  // Reclaim and account deletion read a commander's moves; every key into a commander has its own index.
+  index('moon_moves_owner_idx').on(t.ownerPlayerId),
+  index('moon_moves_from_pending_idx').on(t.fromPlanetId).where(sql`${t.status} = 'PENDING'`),
+  index('moon_moves_to_pending_idx').on(t.toPlanetId).where(sql`${t.status} = 'PENDING'`),
+  index('moon_moves_season_jump_arrive_idx').on(t.seasonId, t.arriveAt).where(sql`${t.kind} = 'JUMP'`),
+]);
+
+/** One route a Gözcü photographed (S14, S33): never the flight's kind, only its direction and rough size. */
+export interface MoonScanRow {
+  direction: 'IN' | 'OUT';
+  otherPlanetId: string;
+  arriveAt: string;
+  size: FleetSizeClass;
+}
+
+/**
+ * GÖZCÜ REPORTS (Ay F5, plan §4.1, §6.12). The planet ids are NOT foreign keys: a report is the record of a
+ * moment and adds no work to the delete paths; a world that is gone is drawn as gone.
+ */
+export const moonScans = pgTable('moon_scans', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  scannerPlayerId: uuid('scanner_player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  scannerPlanetId: uuid('scanner_planet_id').notNull(),
+  targetPlanetId: uuid('target_planet_id').notNull(),
+  scannedAt: timestamp('scanned_at', { withTimezone: true }).notNull(),
+  fuelPaid: real('fuel_paid').notNull(),
+  /** A Legendary moon saw through the moons' cloak too (S20). */
+  pierced: boolean('pierced').notNull(),
+  rows: jsonb('rows').$type<{ v: 1; rows: MoonScanRow[] }>().notNull(),
+}, (t) => [
+  index('moon_scans_scanner_idx').on(t.scannerPlayerId, t.scannedAt.desc()),
+  index('moon_scans_scanner_planet_idx').on(t.scannerPlanetId, t.scannedAt.desc()),
+]);

@@ -342,7 +342,13 @@ Seasonal and permanent tables, with **nothing storing a value derivable from a f
 `clan_messages` · `clan_events` · `attack_commitments` · `clan_aid_commitments` ·
 `clan_raid_roster` · `clan_loot_shares` · `clan_score_events` · `clan_treasury_events` ·
 `clan_war_operations` · `clan_war_contributions` · `clan_war_missions` ·
-`clan_war_participant_results` · `clan_war_dominion_events`
+`clan_war_participant_results` · `clan_war_dominion_events` · `moons` · `moon_moves` · `moon_scans` · `moon_seed_ledger`
+
+**Moons (Ay):** a moon's ships are `units` rows at `location = 'moon'`; a hop in flight is `hop:<move id>`
+(`services/unitLocation.ts`). `moon_moves` (HOP_UP / HOP_DOWN / JUMP) land through the `moon_move_land`
+event, gates announce through `moon_gate_ready`. Moon usage for the F10 week is an admin read,
+`GET /api/admin/analytics/moons` (`services/moonUsage.ts`); stage and local galaxies take a moon of a
+chosen rarity with `src/cli/grant-moon.ts` (refused in production).
 
 Schema: `apps/server/src/db/schema.ts`. Migrations: `apps/server/drizzle/`.
 

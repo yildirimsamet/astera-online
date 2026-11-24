@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { createHmac, randomUUID } from 'node:crypto';
 import { and, desc, eq, gt, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
 import {
@@ -198,7 +199,7 @@ export async function dispatchUnknownSignal(db: Db, playerId: string, id: string
     const damage = await takeHomeHealth(tx, originId, fleet, origin.now);
     const remaining = { ...origin.homeFleet };
     for (const [ship, count] of fleetEntries(fleet)) remaining[ship] = (remaining[ship] ?? 0) - count;
-    await setUnits(tx, originId, remaining, 'home', playerId);
+    await setUnits(tx, originId, remaining, PLANET_LOCATION, playerId);
     await setUnits(tx, originId, fleet, location(id), playerId);
     const tier = Math.min(3, coreTier((await peakCoreLevels(tx, [playerId])).get(playerId) ?? 1));
     await tx.update(unknownSignals).set({ status: 'outbound', originPlanetId: originId,

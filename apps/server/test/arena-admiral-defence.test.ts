@@ -1,10 +1,12 @@
+import { randomUUID } from 'node:crypto';
 import { pino } from 'pino';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Fleet } from '@astera/rules';
-import { arenaShips, battleReports, clanSupportWaves, missions, seasons } from '../src/db/schema.js';
+import { arenaShips, battleReports, clanSupportWaves, missions, planets, seasons, units } from '../src/db/schema.js';
 import { chooseShip } from '../src/services/arenaShips.js';
 import { quoteClanSupport, recallClanSupport, sendClanSupport, setDefencePosture } from '../src/services/clanSupport.js';
+import { secedeColony } from '../src/services/loyalty.js';
 import { launchAttack } from '../src/services/mission.js';
 import { pendingThreads } from '../src/services/session.js';
 import { EventWorker } from '../src/worker/loop.js';
@@ -125,5 +127,32 @@ describe('the admiral on a clan support wave', () => {
     await stand({ PIKE: 40 }, false);
     const report = await raid({ DART: 5 });
     expect(report.admirals).toEqual([]);
+  });
+});
+
+/** F1 (owner 2026-11-18, S42): a host colony seceding loses the wave, never the commander ship. */
+describe('the admiral when its host colony secedes', () => {
+  it('flies home alone to repair; the ship itself is never lost', async () => {
+    const f = await supportWorld(5, 19_191, 19);
+    const me = f.playerIds[0]!;
+    await formClan(f, 0, [1]);
+    const host = f.planetIds[4]!;
+    await f.db.update(planets).set({ kind: 'COLONY', controllerPlayerId: f.playerIds[1]! }).where(eq(planets.id, host));
+    await f.db.update(units).set({ ownerPlayerId: f.playerIds[1]! }).where(eq(units.planetId, host));
+    await f.db.transaction(tx => setDefencePosture(tx, { planetId: host, playerId: f.playerIds[1]!, toggles: { escape: false, support: true }, clock: f.clock }));
+    await giveUnits(f.db, f.planetIds[0]!, { PIKE: 50 });
+    await chooseShip(f.db, f.clock, f.accountIds[0]!, 'muhafiz');
+    const { wave } = await f.db.transaction(tx => sendClanSupport(tx, {
+      senderPlayerId: me, originPlanetId: f.planetIds[0]!, hostPlanetId: host, fleet: { PIKE: 20 }, clock: f.clock, admiral: true,
+    }));
+    f.clock.set(new Date(new Date(wave.arriveAt).getTime() + 1_000));
+    await new EventWorker(f.db, f.clock, { pollMs: 1, batch: 100, staleMinutes: 5 }, silent).tick();
+    expect((await f.db.select().from(clanSupportWaves).where(eq(clanSupportWaves.id, wave.id)))[0]!.status).toBe('STATIONED');
+
+    await f.db.transaction(tx => secedeColony(tx, host, f.clock.now(), randomUUID()));
+
+    expect((await f.db.select().from(clanSupportWaves).where(eq(clanSupportWaves.id, wave.id)))[0]!.status).toBe('LOST');
+    const [ship] = await f.db.select().from(arenaShips).where(eq(arenaShips.playerId, me));
+    expect(ship).toMatchObject({ admiralId: null, readyReason: 'repair' });
   });
 });

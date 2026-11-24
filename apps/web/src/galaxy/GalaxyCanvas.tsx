@@ -45,6 +45,7 @@ import type {
   StrategicInterceptionImpact,
   RadiationSourceView,
   HpRadiationSourceView,
+  GalaxyMoons,
   PublicMonument,
   UnknownSignalView,
 } from '../api/schemas.js';
@@ -111,6 +112,13 @@ import {
   strategicInterceptionMissilePosition,
 } from './StrategicInterception.jsx';
 import { PlanetField, rivalColour, LIMB_SCALE } from './PlanetField.jsx';
+import { Moons } from './Moons.js';
+import { moonOrbitPosition, moonRadiusFor } from './moonOrbit.js';
+import { MOON_WARP_DURATION_MS, MoonGateWarpFx, type MoonGateWarpEvent } from './MoonGateWarpFx.js';
+import { moonWarpPose } from './moonWarpShot.js';
+import { MoonGateFlashes } from './MoonGateFlashes.js';
+import { MoonScanFx, type MoonScanFxEvent } from './MoonScanFx.js';
+import { MoonActivityFx, type MoonHopFxItem } from './MoonActivityFx.js';
 import { SCENE_LIGHT } from './planetSurface.js';
 import { SpaceLighting } from './SpaceLighting.js';
 import { FirstSceneFrame, SceneRenderGate, SceneWarmup } from './SceneWarmup.js';
@@ -316,6 +324,20 @@ export interface GalaxyCanvasProps {
   radiation?: readonly RadiationSourceView[];
   hpRadiation?: readonly HpRadiationSourceView[];
   monuments?: readonly PublicMonument[];
+  /** Ay F9d: public moon list, observer-filtered rarities, and gate flashes. */
+  moons?: GalaxyMoons | undefined;
+  /** Private owner-only Moon Gate aperture + directional fleet warp animations. */
+  moonWarps?: readonly MoonGateWarpEvent[] | undefined;
+  /** Fires at mid-warp so the camera can smoothly pan to the destination moon for arrival. */
+  onMoonWarpArrive?: ((toPlanetId: string) => void) | undefined;
+  /** Owner-only Gözcü moon scanner wave & holographic target lock animations. */
+  moonScans?: readonly MoonScanFxEvent[] | undefined;
+  /** Called when the player taps a moon on the disc; owns opening Moon tab for owned worlds. */
+  onSelectMoon?: ((planetId: string) => void) | undefined;
+  /** Owner-only active 90s Planet <-> Moon shuttle hops. */
+  moonHops?: readonly MoonHopFxItem[] | undefined;
+  /** Planets currently running an 8h Common moon construction queue. */
+  moonBuildPlanetIds?: readonly string[] | undefined;
   /**
    * Whether each instrument's boundaries are drawn AT ALL. Owner instruction.
    *
@@ -352,6 +374,8 @@ export interface GalaxyCanvasProps {
   inspectionPlanetId?: string;
   /** Local asset review may start closer to small debris and rocks. */
   reviewFocusDistance?: number;
+  /** Optional pulled-back framing range when a Moon Gate warp or Gözcü scan is playing. */
+  focusDistanceOverride?: number | undefined;
   /**
    * Open on the whole disc, with nothing selected. D56.
    *
@@ -449,6 +473,13 @@ export function GalaxyCanvas({
   radiation,
   hpRadiation = EMPTY_HP_RADIATION,
   monuments = EMPTY_MONUMENTS,
+  moons,
+  moonWarps,
+  onMoonWarpArrive,
+  onSelectMoon,
+  moonScans,
+  moonHops,
+  moonBuildPlanetIds,
   unknownSignals = EMPTY_UNKNOWN_SIGNALS,
   furnaceOverload = false,
   clanAlarms = NO_CLAN_ALARMS,
@@ -470,6 +501,7 @@ export function GalaxyCanvas({
   centerSignal = 0,
   inspectionPlanetId,
   reviewFocusDistance,
+  focusDistanceOverride,
   aim = null,
   openWide = false,
   wideDistance = WHOLE_DISC_DISTANCE,
@@ -740,6 +772,66 @@ export function GalaxyCanvas({
       }
     }
   }, [directing, directorLive, shotHull, home, mainOffset, resolveSubject, sensors]);
+
+  // The Moon Gate warp camera: one glide to an unlocked over-the-shoulder shot (see `moonWarpPose`).
+  const latestWarp = moonWarps && moonWarps.length > 0 ? moonWarps[moonWarps.length - 1] ?? null : null;
+  // The commander's own gates are drawn by their own warp, never again as the public flash the others see.
+  const warpingWorlds = useMemo(() => new Set([
+    ...(moonWarps ?? []).flatMap((w) => [w.fromPlanetId, w.toPlanetId]),
+    ...nodes.filter((n) => n.isOwned).map((n) => n.id),
+  ]), [moonWarps, nodes]);
+  const warpKeyCounter = useRef(1_000);
+  const [warpShotState, setWarpShotState] = useState<{ id: string; key: number } | null>(null);
+
+  useEffect(() => {
+    if (!latestWarp) {
+      setWarpShotState(null);
+      return;
+    }
+    setWarpShotState((prev) => {
+      if (prev?.id === latestWarp.id) return prev;
+      warpKeyCounter.current += 1;
+      return { id: latestWarp.id, key: warpKeyCounter.current };
+    });
+  }, [latestWarp]);
+
+  const moonWarpShot = useMemo<DirectorShot | null>(() => {
+    if (!latestWarp || warpShotState?.id !== latestWarp.id) return null;
+    const fromNode = nodes.find((n) => n.id === latestWarp.fromPlanetId);
+    const toNode = nodes.find((n) => n.id === latestWarp.toPlanetId);
+    if (!fromNode || !toNode) return null;
+
+    const list = moons?.list ?? [];
+    const fromMoon = list.find((m) => m.planetId === latestWarp.fromPlanetId);
+    const toMoon = list.find((m) => m.planetId === latestWarp.toPlanetId);
+    const fromR = moonRadiusFor(fromNode.radius, moons?.rarity[latestWarp.fromPlanetId] ?? latestWarp.rarity);
+    const depUnit = Math.max(fromR * 2.25, fromNode.radius * 0.68);
+
+    // Owner 2026-11-24: a little behind and above the departing moon, both moons in frame (`moonWarpPose`).
+    // Read once when the shot starts; the camera stays free to orbit and zoom. Framed on where the moons are
+    // halfway through the warp: a moon keeps orbiting its world, and this keeps it in frame from start to end.
+    const pose = () => {
+      const timeSec = (latestWarp.startedAtMs + MOON_WARP_DURATION_MS / 2) / 1_000;
+      const originMoon = { x: 0, y: 0, z: 0 };
+      const destMoon = { x: 0, y: 0, z: 0 };
+      moonOrbitPosition({ x: fromNode.position[0], y: fromNode.position[1], z: fromNode.position[2] }, fromNode.radius, fromMoon?.visualSeed ?? 1, timeSec, originMoon);
+      moonOrbitPosition({ x: toNode.position[0], y: toNode.position[1], z: toNode.position[2] }, toNode.radius, toMoon?.visualSeed ?? 2, timeSec, destMoon);
+      return moonWarpPose([originMoon.x, originMoon.y, originMoon.z], [destMoon.x, destMoon.y, destMoon.z], depUnit * 9, { centre: [fromNode.position[0], fromNode.position[1], fromNode.position[2]], radius: fromNode.radius });
+    };
+    const first = pose();
+
+    return {
+      key: warpShotState.key,
+      stays: true,
+      allowOrbit: true,
+      seconds: 0.75,
+      range: first.range,
+      at: () => first.at,
+      towards: () => first.towards,
+    };
+  }, [latestWarp, warpShotState, nodes, moons]);
+
+  const activeShot = directorShot ?? moonWarpShot;
 
   /**
    * How close the camera is pulled in when it takes a new subject.
@@ -1024,6 +1116,42 @@ export function GalaxyCanvas({
           identify: 0, detect: unknownSignalRadar.range, telescope: false }]} showTelescope={false} showRadar />}
         <Monuments monuments={monuments} planets={nodes} hpRadiation={hpRadiation} focusedId={focus?.kind === 'monument' ? focus.id : null}
           onSelect={(id) => { onFocus({ kind: 'monument', id }); }} />
+        <Suspense fallback={null}>
+          <Moons
+            moons={moons}
+            nodes={nodes}
+            onSelectPlanet={(id) => {
+              if (isMainWorld(id)) return;
+              if (allowFocus && !allowFocus(id)) return;
+              if (onSelectMoon) {
+                onSelectMoon(id);
+                return;
+              }
+              onFocus({ kind: 'planet', id });
+            }}
+          />
+        </Suspense>
+        <MoonGateFlashes moons={moons} nodes={nodes} quiet={warpingWorlds} />
+        {moonWarps && moonWarps.length > 0 && (
+          <Suspense fallback={null}>
+            <MoonGateWarpFx events={moonWarps} moons={moons} nodes={nodes} onArriveCamera={onMoonWarpArrive} />
+          </Suspense>
+        )}
+        {moonScans && moonScans.length > 0 && (
+          <Suspense fallback={null}>
+            <MoonScanFx events={moonScans} moons={moons} nodes={nodes} />
+          </Suspense>
+        )}
+        {((moonHops?.length ?? 0) > 0 || (moonBuildPlanetIds?.length ?? 0) > 0) && (
+          <Suspense fallback={null}>
+            <MoonActivityFx
+              hops={moonHops ?? []}
+              buildingPlanetIds={moonBuildPlanetIds ?? []}
+              moons={moons}
+              nodes={nodes}
+            />
+          </Suspense>
+        )}
         {sensors && sensors.length > 0 && (
           <SensorRings
             posts={sensors}
@@ -1125,7 +1253,7 @@ export function GalaxyCanvas({
             onFocus({ kind: 'contact', id });
           }}
         />
-        <DeathStarImpacts pending={pending} contacts={contacts} nodes={nodes} intercepted={interceptedWeapons} />
+        <DeathStarImpacts pending={pending} contacts={contacts} nodes={nodes} intercepted={interceptedWeapons} moons={moons} />
         <StrategicInterceptions
           events={interceptions ?? []}
           impacts={interceptionImpacts ?? []}
@@ -1222,7 +1350,10 @@ export function GalaxyCanvas({
         subject={subject}
         focusKey={focusKey}
         approach={reviewFocusDistance !== undefined && Number.isFinite(reviewFocusDistance)
-          ? Math.max(1.2, reviewFocusDistance) : approach}
+          ? Math.max(1.2, reviewFocusDistance)
+          : focusDistanceOverride !== undefined && Number.isFinite(focusDistanceOverride)
+            ? focusDistanceOverride
+            : approach}
         focusRadius={reviewFocusDistance === undefined ? focusRadius : 0}
         inspectionRadius={focus?.kind === 'planet' && focus.id === inspectionPlanetId ? nodes.find(node => node.id === inspectionPlanetId)?.radius : undefined}
         exactApproach={focus !== null || coachTap !== null}
@@ -1236,7 +1367,7 @@ export function GalaxyCanvas({
         openingPrepared={prepared && openingDataReady && gpu.live}
         openingWork={openingWork}
         openingMark={openingMark}
-        shot={directorShot}
+        shot={activeShot}
       />}
       {/* E11: a page docked on the right does not hide the camera's subject. */}
       <ViewOffset />
@@ -1949,13 +2080,13 @@ function Rig({
     const goingHome = ease.current !== null && ease.current === homewardEase.current;
     if (!directed.current && !goingHome) beforeShots.current = { target: controls.target.toArray(), camera: controls.object.position.toArray() };
     lastShotStays.current = current.stays === true;
-    directed.current = true;
+    directed.current = current.allowOrbit !== true;
     mode.current = 'released';
     acquired.current = false;
-    controls.enabled = false;
+    controls.enabled = current.allowOrbit === true;
     controls.maxDistance = Math.max(controls.maxDistance, current.range);
     const pose = shotPose({ target: controls.target.toArray(), camera: controls.object.position.toArray() }, { to: at, range: current.range, turn: current.turn, towards: current.towards?.() ?? undefined });
-    ease.current = { to: new THREE.Vector3(...pose.to), left: current.seconds, duration: current.seconds, rangeTo: pose.range, exactRange: true, waitForScene: false, towards: new THREE.Vector3(...pose.towards), held: true };
+    ease.current = { to: new THREE.Vector3(...pose.to), left: current.seconds, duration: current.seconds, rangeTo: pose.range, exactRange: true, waitForScene: false, towards: new THREE.Vector3(...pose.towards), held: current.allowOrbit !== true };
     invalidate();
   }, [shotKey, invalidate]);
 

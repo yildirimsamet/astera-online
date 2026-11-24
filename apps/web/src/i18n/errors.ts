@@ -1,6 +1,8 @@
 import i18n from './index.js';
 import { ApiError } from '../api/client.js';
 import { en } from './locales/en/index.js';
+import { moon as enMoon } from './locales/en/moon.js';
+import { moonT } from './moon.js';
 import { hullName, instrumentName } from './names.js';
 
 /**
@@ -26,6 +28,10 @@ const NOT_A_CODE = new Set(['unknown', 'unreachable', 'streamFailed']);
 
 const isKnown = (code: string): code is keyof typeof CATALOGUE =>
   Object.hasOwn(CATALOGUE, code) && !NOT_A_CODE.has(code);
+
+type MoonErrorCode = keyof typeof enMoon.errors;
+const isMoonError = (code: string): code is MoonErrorCode =>
+  Object.hasOwn(enMoon.errors, code);
 
 /**
  * NAMED THINGS ARRIVE AS IDS AND ARE RESOLVED HERE.
@@ -58,6 +64,8 @@ export function describeError(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.code === 'UNREACHABLE') return i18n.t('errors.unreachable');
     if (err.code === 'STREAM_FAILED') return i18n.t('errors.streamFailed');
+    // OUT_OF_RANGE is shared with ships, probes and the Telescope: only the Gözcü's own refusal says Gözcü.
+    if (isMoonError(err.code) && (err.code !== 'OUT_OF_RANGE' || err.params?.context === 'gozcu')) return moonT(`errors.${err.code}`);
     if (err.code === 'PERSONAL_RAID_COOLDOWN') {
       const until = err.params?.until;
       const at = typeof until === 'string' ? Date.parse(until) : NaN;

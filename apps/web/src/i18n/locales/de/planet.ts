@@ -884,8 +884,9 @@ export const faults = {
   loyalty: {
     title: "Die Loyalität dieser Welt",
     battleLoss: "Teilniederlage −15 · entscheidende Niederlage −30 · Todesstern −{{strike}}",
-    why_one: "Sinkt durch {{count}} Störung. Bei null verlierst du die Kolonie.",
-    why_other: "Sinkt durch {{count}} Störungen. Bei null verlierst du die Kolonie.",
+    why_one: "Sinkt durch {{count}} Störung. Bei null verlierst du die Kolonie und die Flotte darauf.",
+    why_other: "Sinkt durch {{count}} Störungen. Bei null verlierst du die Kolonie und die Flotte darauf.",
+    stake: "Bei null fällt die Kolonie ab: Die Flotte darauf und Schiffe in Reparatur gehen mit. Flotten im Flug landen in deiner Hauptwelt.",
     bar: "{{value}}%",
     left: "{{time}} übrig",
   },

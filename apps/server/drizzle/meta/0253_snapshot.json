@@ -1,5 +1,5 @@
 {
-  "id": "86f0022f-5398-4296-ac94-3041ccf6d224",
+  "id": "cee51552-02f5-4531-8926-77ddb27e734c",
   "prevId": "0874dabb-1092-4543-9660-5c77522d9dca",
   "version": "7",
   "dialect": "postgresql",
@@ -15750,6 +15750,154 @@
       },
       "isRLSEnabled": false
     },
+    "public.moon_seed_ledger": {
+      "name": "moon_seed_ledger",
+      "schema": "",
+      "columns": {
+        "season_id": {
+          "name": "season_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slot_index": {
+          "name": "slot_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "moon_seed_ledger_season_id_seasons_id_fk": {
+          "name": "moon_seed_ledger_season_id_seasons_id_fk",
+          "tableFrom": "moon_seed_ledger",
+          "tableTo": "seasons",
+          "columnsFrom": [
+            "season_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "moon_seed_ledger_season_id_slot_index_pk": {
+          "name": "moon_seed_ledger_season_id_slot_index_pk",
+          "columns": [
+            "season_id",
+            "slot_index"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.moons": {
+      "name": "moons",
+      "schema": "",
+      "columns": {
+        "planet_id": {
+          "name": "planet_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "rarity": {
+          "name": "rarity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "origin": {
+          "name": "origin",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cracks": {
+          "name": "cracks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "last_hit_at": {
+          "name": "last_hit_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_until": {
+          "name": "closed_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gate_ready_at": {
+          "name": "gate_ready_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "visual_seed": {
+          "name": "visual_seed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "born_at": {
+          "name": "born_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "born_mission_id": {
+          "name": "born_mission_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "moons_planet_id_planets_id_fk": {
+          "name": "moons_planet_id_planets_id_fk",
+          "tableFrom": "moons",
+          "tableTo": "planets",
+          "columnsFrom": [
+            "planet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "moons_rarity_check": {
+          "name": "moons_rarity_check",
+          "value": "\"moons\".\"rarity\" in ('COMMON', 'RARE', 'EPIC', 'LEGENDARY')"
+        },
+        "moons_origin_check": {
+          "name": "moons_origin_check",
+          "value": "\"moons\".\"origin\" in ('SEED', 'BUILT', 'BATTLE')"
+        },
+        "moons_cracks_check": {
+          "name": "moons_cracks_check",
+          "value": "\"moons\".\"cracks\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.native_sessions": {
       "name": "native_sessions",
       "schema": "",
@@ -17644,12 +17792,6 @@
         },
         "signal_boost_until": {
           "name": "signal_boost_until",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "newcomer_boost_until": {
-          "name": "newcomer_boost_until",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false

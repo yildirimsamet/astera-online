@@ -6,6 +6,7 @@ import type { CraftFocus } from '../galaxy/ownCraft.js';
 import { threadKey } from '../galaxy/threadKey.js';
 import { arenaCopy } from '../arena/copy.js';
 import i18n from '../i18n/index.js';
+import { moonT } from '../i18n/moon.js';
 import { monumentName } from '../i18n/names.js';
 import { serverNow } from './clock.js';
 
@@ -96,42 +97,34 @@ export const contactFor = (
   : contacts.find((c) => c.id === thread.contactId));
 
 export const flightTitle = (thread: PendingThread): string => {
+  const moonSuffix = thread.targetBody === 'MOON' ? ` · ${moonT('body.MOON')}` : '';
   if (thread.kind === 'unknown_signal') return i18n.t(thread.leg === 'return' ? 'unknownSignal.flightHome' : 'unknownSignal.flightOut');
   if (thread.kind === 'radiation_bomb') return `${i18n.t('planet.radiationBomb.title')} · L${String(thread.radiationBombLevel ?? 1)} → ${thread.monumentOrdinal
-    ? monumentName(thread.monumentOrdinal) : thread.targetName}`;
+    ? monumentName(thread.monumentOrdinal) : thread.targetName}${moonSuffix}`;
   if (thread.monumentOrdinal !== undefined) {
     return `${monumentName(thread.monumentOrdinal)} · ${i18n.t(`monument.status.${thread.leg === 'return' ? 'RETURNING' : 'OUTBOUND'}`)}`;
   }
   if (thread.kind === 'incoming') {
-    /**
-     * WHICH OF YOUR WORLDS, AND — AT RADAR L5 — WHERE FROM.
-     *
-     * The two are different products and they were collapsed into one. The origin
-     * is the top of the radar ladder and stays there; the TARGET is your own world
-     * and was simply missing, so a commander with four worlds was told a fleet was
-     * six minutes out and could not tell which world to defend.
-     *
-     * `targetPlanetId` gates the pair rather than `targetName`, because the server
-     * used to send the literal string "inbound fleet" in that field and a client
-     * running against an older build must not print it.
-     */
+    const incomingMoonTag = thread.targetBody === 'MOON' ? ` · ${moonT('body.toMoonTag')}` : '';
     const world = thread.targetPlanetId === undefined ? undefined : thread.targetName;
     if (world === undefined) {
-      return thread.originName === undefined
+      const base = thread.originName === undefined
         ? i18n.t('pendingStrip.incoming')
         : i18n.t('pendingStrip.incomingFrom', { origin: thread.originName });
+      return `${base}${incomingMoonTag}`;
     }
-    return thread.originName === undefined
+    const base = thread.originName === undefined
       ? i18n.t('pendingStrip.incomingAt', { world })
       : i18n.t('pendingStrip.incomingFromAt', { world, origin: thread.originName });
+    return `${base}${incomingMoonTag}`;
   }
   if (thread.kind === 'probe') return i18n.t('pendingStrip.probe', { target: thread.targetName });
-  if (thread.kind === 'death_star') return i18n.t('pendingStrip.deathStar', { target: thread.targetName });
+  if (thread.kind === 'death_star') return `${i18n.t('pendingStrip.deathStar', { target: thread.targetName })}${moonSuffix}`;
   if (thread.kind === 'settlement') return i18n.t('pendingStrip.settlement', { target: thread.targetName });
   if (thread.kind === 'transfer' && thread.clanSupport === true) {
     return i18n.t(thread.leg === 'return' ? 'clanSupport.flightHome' : 'clanSupport.flight', { target: thread.targetName });
   }
-  if (thread.kind === 'transfer') return i18n.t('pendingStrip.transfer', { target: thread.targetName });
+  if (thread.kind === 'transfer') return `${i18n.t('pendingStrip.transfer', { target: thread.targetName })}${moonSuffix}`;
   /*
     THE MERCHANT IS NAMED FROM THE LOCALE FILES, never from `targetName`. D156.
 

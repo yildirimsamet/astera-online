@@ -6,6 +6,7 @@ import {
   type ResearchProjectId,
   defenceMinutes,
   researchMinutes,
+  researchOrderMinutes,
   satelliteMinutes,
   shipMinutes,
   upgradeOrderMinutes,
@@ -152,7 +153,7 @@ export function orderMinutes(
   if (subject && 'research' in subject) {
     // The subject supplies the row's identity; the live clock still comes from
     // its bill and the capital's current Core, exactly as it does on the server.
-    return researchMinutes(cost, researchCoreOf(view));
+    return researchOrderMinutes(subject.research, cost, researchCoreOf(view));
   }
   if (subject && 'hull' in subject) return hullWorkMinutes(subject.hull, count, projectedShipyard(view), techOf({ research: research(view) }));
   const priced: Resources = count === 1

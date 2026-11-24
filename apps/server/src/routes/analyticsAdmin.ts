@@ -8,9 +8,23 @@ import { requireAdmin } from './community.js';
 import { summarizePlayerObservations } from '../../../web/src/api/analyticsReportModel.js';
 import { analyticsAdminQuerySchema, analyticsFiltersSchema, type AnalyticsFilters } from '../../../web/src/api/analyticsAdminSchemas.js';
 import { analyticsCohorts, signupRetention } from '../services/analyticsCohorts.js';
+import { moonUsage } from '../services/moonUsage.js';
+
+/** Ay review B5: a window of whole days, the live galaxy unless one is named. */
+const moonUsageQuery = z.object({ seasonId: z.string().uuid().optional(), days: z.coerce.number().int().min(1).max(60).default(7) });
 
 export function registerAnalyticsAdmin(app: FastifyInstance): void {
   registerJourneyAnalytics(app);
+  app.get('/api/admin/analytics/moons', { preHandler: requireAdmin }, async (req, reply) => {
+    const parsed = moonUsageQuery.safeParse(req.query);
+    if (!parsed.success) return reply.code(400).send({ error: 'BAD_REQUEST' });
+    const { days } = parsed.data;
+    const [live] = parsed.data.seasonId ? [{ id: parsed.data.seasonId }]
+      : await app.db.select({ id: seasons.id }).from(seasons).where(eq(seasons.status, 'live')).orderBy(desc(seasons.startsAt)).limit(1);
+    if (!live) return reply.code(404).send({ error: 'NO_SEASON' });
+    const since = new Date(app.clock.now().getTime() - days * 86_400_000);
+    return { seasonId: live.id, days, ...await moonUsage(app.db, live.id, since) };
+  });
   const excluded = () => and(notExists(app.db.select({ id: botProfiles.accountId }).from(botProfiles).where(eq(botProfiles.accountId, accounts.id))),
     app.adminUsernames.size ? notInArray(accounts.username, [...app.adminUsernames]) : undefined);
   const matchingVisits = (filters: AnalyticsFilters, start: Date) => app.db.select({ id: analyticsVisitors.id }).from(analyticsVisitors)

@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { createHmac } from 'node:crypto';
 import { and, eq, isNull, ne } from 'drizzle-orm';
 import {
@@ -356,7 +357,7 @@ export async function launchIntergalacticConvoy(
   for (const [hull, count] of fleetEntries(requested)) {
     remaining[hull] = (remaining[hull] ?? 0) - count;
   }
-  await setUnits(tx, input.planetId, remaining, 'home');
+  await setUnits(tx, input.planetId, remaining, PLANET_LOCATION);
   await setUnits(
     tx,
     input.planetId,

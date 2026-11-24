@@ -1,6 +1,6 @@
+import { awaySql } from './unitLocation.js';
 import { randomUUID } from 'node:crypto';
 import { eq, sql } from 'drizzle-orm';
-import { dockLocation } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable } from '../db/client.js';
 import {
@@ -65,7 +65,7 @@ async function blockers(db: Queryable, world: World, now: Date): Promise<Abandon
         in (select ${missions.id} from ${missions} where ${missions.originPlanetId} = ${id})))`,
     // Docked ships are here, damaged, and move with the fleet; other locations owe a landing.
     AWAY_SHIPS: sql<boolean>`exists (select 1 from ${units} where ${units.planetId} = ${id}
-      and ${units.count} > 0 and ${units.location} <> 'home' and ${units.location} not like ${dockLocation('%')})`,
+      and ${units.count} > 0 and ${awaySql(units.location)})`,
     core: sql<number>`coalesce((select ${buildings.level} from ${buildings}
       where ${buildings.planetId} = ${id} and ${buildings.type} = 'CORE'), 0)`,
     plant: sql<number>`coalesce((select ${buildings.level} from ${buildings}

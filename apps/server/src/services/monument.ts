@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { dispatchProvenance } from './commandOrigin.js';
 import { commitHonor } from './honorCommitment.js';
 import { commitLegacyAttack } from './legacyEvents.js';
@@ -665,7 +666,7 @@ export async function sendMonument(tx: Tx, input: MonumentSendInput): Promise<{ 
   await markProgress(tx, input.senderPlayerId, origin.now); // D212
   const remaining: Fleet = { ...origin.homeFleet };
   for (const [hull, count] of fleetEntries(fleet)) remaining[hull] = (remaining[hull] ?? 0) - count;
-  await setUnits(tx, origin.planetId, remaining, 'home', input.senderPlayerId);
+  await setUnits(tx, origin.planetId, remaining, PLANET_LOCATION, input.senderPlayerId);
   await setUnits(tx, origin.planetId, fleet, wave.unitLocation, input.senderPlayerId);
   const groups = shipHealthGroups(fleet, carriedDamage);
   const manifest = await tx.insert(monumentShipLots).values(MOBILE_HULLS.flatMap((hull) => groups

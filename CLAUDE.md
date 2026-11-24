@@ -198,6 +198,21 @@ Geliştirme yaparken elindeki konuya göre bu SKILL'lerden gerekli olanları kul
 
 > Oyuncu API'yi anlamaz. Oyuncu gördüğünü anlar, gösterileni bilir!
 
+### 7. Oyun Geliştirme El Kitabı — owner, 2026-11-24
+
+`~/Desktop/Coding/MyProjects/game-dev-handbook/` (repo dışı) oyun tasarımı ve oyun mühendisliği ilkelerinin başvuru kaynağıdır. Her ilkenin kalıcı bir ID'si vardır (`GF-03`, `SB-04`, `EN-03`). Kullanılması zorunludur:
+
+1. Geliştirmeye başlamadan `README.md` yönlendirme tablosundan konuya uyan bölümü bul ve oku: oyun hissi, HUD/UI, ödül ve satın alma anları, savaş formülleri ve denge, ilerleme ve ekonomi, zorluk ve adalet, onboarding, seviye ve harita, ses ve haptik, erişilebilirlik, sunucu/ödeme/eşzamanlılık, kayıt, performans, multiplayer, anlatı, monetizasyon.
+2. Uyan ilkeleri tasarıma ve koda uygula. Teslimden önce `checklists.md` içindeki ilgili bölümü geçir. Plan ve teslim notunda kullandığın ilkeleri ID'siyle yaz.
+3. **Uygunluk filtresi:** İlkeyi yalnız Astera'ya uyuyor ve oyunu iyileştiriyorsa uygula. Astera mobil öncelikli, kalıcı, asenkron (filo gönder, offline bekle) bir istihbarat ve strateji oyunudur. Anlık aksiyon ilkeleri (coyote time, frame data, hit stop, parry) yalnız Komutan Gemisi / Savaş Alanı gibi gerçek zamanlı yüzeylerde anlamlıdır. Uymayan ilkeyi zorla uygulama.
+4. **Öncelik:** Bu dosya, `docs/` ve owner kararları el kitabından üstündür. Mekanik gerçekler için kod ve testler esastır. El kitabı mevcut bir kuralla çatışıyor ama oyunu iyileştirecekse §2'ye göre ödünleşim olarak owner'a sor. Bilinen çatışmalar:
+   - Reduced motion (`UI-10`, `AC-03`): oyun hareketleri işletim sistemi tercihinden bağımsızdır (§4.5).
+   - Parlama, hale, glow (`UI-02`, `UI-07`, `GF-08`): VFX briefi kuralı ve genel parlama yasağı geçerlidir (§4.5).
+   - Metin boyutları (`UI-14`, `AC-02`): verilen değerler konsol ve PC içindir. Mobil yazı tabanı owner kararıdır.
+   - Botlar (`DI-06` ve benzeri): botlar hiçbir koşulda ayırt edilemez (§1).
+5. Basis etiketi `Elaboration` veya `Claimed, unverified` olan bir ilkeyi kanıt gibi sunma. Astera için işe yaradığını söylemek ölçüm veya playtest gerektirir.
+6. `ML-05` anti-pattern tablosundaki uygulamalar (gelire göre zorluk, kasıtlı kaybettirme, gizli fiyat ayrımı, gizli profilleme) owner'ın yazılı onayı olmadan uygulanmaz. Bir istek bunlara benziyorsa işaretle.
+
 ## 5. Kalite ve doğrulama
 
 **Temiz, sürdürülebilir, performanslı ve kaliteli geliştir. Test gerektiren kod, testleri olmadan tamamlanmış sayılmaz; tasarım istisnası Bölüm 3'te tanımlıdır.**
@@ -265,6 +280,7 @@ Ekonomi/sezon simülasyonları, snowball audit'leri ve benzeri uzun ekonomi ince
 | `docs/komutan-gemisi/README.md` | Komutan Gemisi / Savaş Alanı'na (gerçek zamanlı pilot arenası) dokunurken |
 | `docs/baslangic-galaksisi-plani-2026-11-04.md` | Koloni gemisi, başlangıç galaksileri, prolog ve göçe dokunurken || `~/Desktop/Coding/MyProjects/game-assets/AGENTS.md` | Hazır GUI, ikon, VFX, model veya ses ararken (repo dışı ortak kütüphane; çizmeden önce bak) |
 | `docs/yeni-oyuncu-yolculugu-plani-2026-11-13.md` | Yeni oyuncunun ilk oturumu, sıçrama kararı, ilk hafta ve tutunma ölçümüne dokunurken |
+| `~/Desktop/Coding/MyProjects/game-dev-handbook/README.md` | Oyuncuya dokunan veya oyun sistemine giren her geliştirmede (repo dışı el kitabı; bkz. §4.7) |
 
 Diğer konular için `docs/` klasörüne bak.
 

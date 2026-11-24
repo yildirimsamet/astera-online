@@ -1,9 +1,11 @@
 import { and, asc, desc, eq, gt, lt, notInArray, or } from 'drizzle-orm';
+import type { MoonRarity } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import {
   accounts,
   galaxyEvents,
+  moons,
   planets,
   players,
   type GalaxyEventLifecyclePayload,
@@ -42,7 +44,11 @@ export interface GalaxyEventPayloadByKind {
     range: number;
     trigger?: 'RADAR' | 'TELESCOPE';
   };
-  control_transfer: { planetName: string; commanderName: string };
+  control_transfer: { planetName: string; commanderName: string; hasMoon?: boolean };
+  /** Ay V18: a broken moon is public news, with its rarity — the public crack count already told it. */
+  moon_destroyed: { planetName: string; rarity: MoonRarity };
+  /** Ay V18: a moon born in battle is public news; its rarity is learnt only by looking (S53). */
+  moon_born: { planetName: string };
   galaxy_event_started: GalaxyEventLifecyclePayload;
   galaxy_event_ended: GalaxyEventLifecyclePayload;
 }
@@ -71,6 +77,14 @@ export async function publicPlanetIdentity(tx: Tx, planetId: string) {
     .where(eq(planets.id, planetId))
     .limit(1);
   return row;
+}
+
+/** Public control-transfer identity: includes whether a moon orbits the captured world, never its rarity (S41/V18). */
+export async function publicControlTransferIdentity(tx: Tx, planetId: string) {
+  const identity = await publicPlanetIdentity(tx, planetId);
+  if (!identity) return undefined;
+  const [moon] = await tx.select({ planetId: moons.planetId }).from(moons).where(eq(moons.planetId, planetId)).limit(1);
+  return moon ? { ...identity, hasMoon: true } : identity;
 }
 
 /** The same public ordering as `/api/leaderboard`, including both tie-breakers. */

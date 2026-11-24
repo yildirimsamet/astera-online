@@ -2,10 +2,14 @@ import i18n, { type BackendModule } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { en } from './locales/en/index.js';
 import { tr } from './locales/tr/index.js';
+import { moon as enMoon } from './locales/en/moon.js';
+import { moon as trMoon } from './locales/tr/moon.js';
 import { FALLBACK_LANGUAGE, detectLanguage, isLanguage, type Language } from './languages.js';
 
-/** The single namespace every key lives under. See the note by `resources`. */
+/** The default namespace every legacy key lives under. */
 export const NS = 'game';
+/** Dedicated namespace for Moon copy (keeps the `game` key union within the 3 GiB tsc ceiling). */
+export const MOON_NS = 'moon';
 
 /**
  * ONE LANGUAGE FOR THE WHOLE GAME, DECIDED BEFORE THE FIRST FRAME.
@@ -41,8 +45,8 @@ export const NS = 'game';
  * rather than about the API.
  */
 const resources = {
-  en: { [NS]: en },
-  tr: { [NS]: tr },
+  en: { [NS]: en, [MOON_NS]: enMoon },
+  tr: { [NS]: tr, [MOON_NS]: trMoon },
 } as const;
 
 const deferred = {
@@ -51,14 +55,21 @@ const deferred = {
   es: () => import('./locales/es/index.js').then(module => module.es),
   ja: () => import('./locales/ja/index.js').then(module => module.ja),
 };
+const deferredMoon = {
+  fr: () => import('./locales/fr/moon.js').then(module => module.moon),
+  de: () => import('./locales/de/moon.js').then(module => module.moon),
+  es: () => import('./locales/es/moon.js').then(module => module.moon),
+  ja: () => import('./locales/ja/moon.js').then(module => module.moon),
+};
 const backend: BackendModule = {
   type: 'backend',
   init: () => undefined,
-  read(language, _namespace, callback) {
+  read(language, namespace, callback) {
     if (language !== 'fr' && language !== 'de' && language !== 'es' && language !== 'ja') {
       callback(new Error('Unsupported deferred language'), false); return;
     }
-    void deferred[language]().then(resource => { callback(null, resource); }, (error: unknown) => {
+    const loader = namespace === MOON_NS ? deferredMoon[language] : deferred[language];
+    void loader().then(resource => { callback(null, resource); }, (error: unknown) => {
       callback(error instanceof Error ? error : new Error('Language failed to load'), false);
     });
   },
@@ -69,7 +80,7 @@ export const i18nReady = i18n.use(backend).use(initReactI18next).init({
   partialBundledLanguages: true,
   lng: detectLanguage(),
   fallbackLng: FALLBACK_LANGUAGE,
-  ns: [NS],
+  ns: [NS, MOON_NS],
   defaultNS: NS,
   /**
    * `t('planet.tabs.growProblem')` is one lookup into a nested object rather than

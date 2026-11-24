@@ -59,6 +59,7 @@ export const RESEARCH_SCENES = {
   STRATEGIC_STOCKPILE: { src: `${BASE}/research-strategic-stockpile-scene-v1.webp`, position: '60% 46%' },
   INDUSTRIAL: { src: `${BASE}/research-industrial-scene-v1.webp`, position: '60% 46%' },
   RADIATION_SHIELDING: { src: RESEARCH_ART.RADIATION_SHIELDING, position: '50% 50%', fit: 'contain' },
+  LUNAR_CAPTURE: { src: RESEARCH_ART.LUNAR_CAPTURE, position: '50% 50%', fit: 'contain' },
 } satisfies Record<ResearchProjectId, AtmosphereArt>;
 
 const CARD_SCENES: Readonly<Record<string, AtmosphereArt>> = {

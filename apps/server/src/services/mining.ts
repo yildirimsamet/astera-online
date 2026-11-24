@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { dispatchProvenance } from './commandOrigin.js';
 import { and, asc, eq, gt, inArray, isNotNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
@@ -238,6 +239,7 @@ export function projectVisibleDebris(snapshot: MiningSnapshot, now: Date) {
         id: field.id,
         /** NULL for a pirate battle: open space has no world to orbit. D150. */
         planetId: field.planetId,
+        body: field.body,
         x: field.x,
         y: field.y,
         z: field.z,
@@ -566,7 +568,7 @@ export async function launchMining(
     // that reads mission ids can mistake them for one.
     const damage = await takeHomeHealth(tx, planetId, { PROSPECTOR: craft }, origin.now);
     const remaining = { ...origin.homeFleet, PROSPECTOR: available - craft };
-    await setUnits(tx, planetId, remaining, 'home');
+    await setUnits(tx, planetId, remaining, PLANET_LOCATION);
     await setUnits(tx, planetId, { PROSPECTOR: craft }, `mine:${run!.id}`);
     await tx.update(units).set({ damage }).where(and(eq(units.planetId, planetId), eq(units.location, `mine:${run!.id}`)));
 
@@ -1549,7 +1551,7 @@ export async function launchHarvest(
 
     const damage = await takeHomeHealth(tx, planetId, { PROSPECTOR: craft }, origin.now);
     const remaining = { ...origin.homeFleet, PROSPECTOR: available - craft };
-    await setUnits(tx, planetId, remaining, 'home');
+    await setUnits(tx, planetId, remaining, PLANET_LOCATION);
     await setUnits(tx, planetId, { PROSPECTOR: craft }, `mine:${run!.id}`);
     await tx.update(units).set({ damage }).where(and(eq(units.planetId, planetId), eq(units.location, `mine:${run!.id}`)));
 

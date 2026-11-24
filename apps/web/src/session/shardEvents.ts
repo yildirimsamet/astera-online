@@ -76,6 +76,9 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
     /** A ship landed in this main season: watch it come in. */
     case 'inbound':
       return [keys.inbound];
+    // Ay §6.22: gate flashes, births, cracks and breaks update the map and the holder's world view.
+    case 'moons':
+      return [keys.galaxy, keys.planet, keys.planets];
     /** What this commander can see moved. Sent only to a client that asked for it. */
     case 'traffic':
       return [keys.traffic];
@@ -345,6 +348,9 @@ export function readsForPrivateEvent(kind: string): readonly (readonly string[])
     /** A clanmate's world opened or closed to clan support: the door on its Focus rail. */
     case 'clan-posture':
       return [keys.galaxy];
+    /** Ay §6.6/§6.11: a hop or Moon Gate jump belonging to this commander settled. */
+    case 'moon-move':
+      return [keys.planet, keys.planets, keys.galaxy];
     default:
       return null;
   }

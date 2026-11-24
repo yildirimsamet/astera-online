@@ -9,6 +9,7 @@ import { unknownSignalOutcomeSchema } from '../api/schemas.js';
 import { HULLS } from '@astera/rules';
 import { cosmeticCopy } from '../ui/cosmeticCopy.js';
 import i18n from '../i18n/index.js';
+import { moonT } from '../i18n/moon.js';
 import { hullName, monumentName, researchName, unlockCopy } from '../i18n/names.js';
 import { battleOutcome, monumentControlKey, monumentGradeKey, type BattleOutcome } from './battleOutcome.js';
 import { compact, decimal, full, signed } from './format.js';
@@ -90,6 +91,8 @@ const incoming = z.object({
    * rows written before this existed do not carry it.
    */
   targetPlanetName: z.string().optional(),
+  /** Ay S24: whether this incoming warning is aimed at the defender's planet or moon. */
+  targetBody: z.enum(['PLANET', 'MOON']).optional(),
   /** Y9: the commander ship escorting the raid. Absent on unescorted raids and older rows. */
   admiral: z.object({ ship: z.enum(SHIP_CLASSES), level: z.number().int().min(1) }).optional(),
 });
@@ -153,8 +156,11 @@ const supportDeparted = z.object({
   hostPlanetName: z.string(),
 });
 const supportResult = z.object({
-  /** The raid's grade, which is the raider's: REPELLED is the line holding. */
-  grade: z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']),
+  /**
+   * The raid's grade, which is the raider's: REPELLED is the line holding. COLONY_LOST is no
+   * raid at all: the host colony seceded and the wave standing there fell with it (S42).
+   */
+  grade: z.enum(['DECISIVE', 'PARTIAL', 'REPELLED', 'COLONY_LOST']),
   hostPlanetName: z.string(),
   lost: z.number().int().nonnegative(),
   survived: z.number().int().nonnegative(),
@@ -180,6 +186,9 @@ const raided = z.object({
   /** Taktik geri çekilme: the ships ran, or would have and the tank was dry. */
   escape: z.enum(['ESCAPED', 'STRANDED']).optional(),
   escapeShips: z.number().int().nonnegative().optional(),
+  targetBody: z.enum(['PLANET', 'MOON']).optional(),
+  moonBorn: z.boolean().optional(),
+  moonEmpty: z.boolean().optional(),
   ...dockFields,
 });
 
@@ -213,6 +222,9 @@ const raidResult = z.object({
   dominion: z.number().int().safe().optional(),
   /** The line emptied in front of the raid. Nothing about what it held. */
   targetFled: z.boolean().optional(),
+  targetBody: z.enum(['PLANET', 'MOON']).optional(),
+  moonBorn: z.boolean().optional(),
+  moonEmpty: z.boolean().optional(),
   /** Survivors flying home damaged; the Repair Station judges them when they land. */
   damaged: z.number().int().nonnegative().optional(),
 });
@@ -409,7 +421,7 @@ const unlocked = z.object({
 });
 
 const strategicResult = z.object({
-  outcome: z.enum(['FIRST_STRIKE', 'CAPTURED', 'INEFFECTIVE']),
+  outcome: z.enum(['FIRST_STRIKE', 'CAPTURED', 'INEFFECTIVE', 'MOON_CRACKED', 'MOON_DESTROYED']),
   targetPlanetId: z.string(),
   /** A colony's loyalty before and after the hit (owner, 2026-10-01); absent off a colony. */
   loyalty: z.object({ before: z.number(), after: z.number() }).optional(),
@@ -418,7 +430,12 @@ const strategicResult = z.object({
 const colonyEvent = z.object({ targetPlanetId: z.string() });
 
 /** A secession (`loyalty.ts`) names the world it lost; older rows may not. */
-const colonySeceded = z.object({ planetName: z.string().optional(), cause: z.string().optional() });
+const colonySeceded = z.object({
+  planetName: z.string().optional(),
+  cause: z.string().optional(),
+  /** Ships standing on the colony and in its dock, lost with it (S19c). */
+  lostShips: z.number().int().nonnegative().optional(),
+});
 const wasAbandoned = (notification: NotificationView): boolean => {
   if (notification.kind !== 'colony_lost') return false;
   const parsed = colonySeceded.safeParse(notification.payload);
@@ -609,10 +626,19 @@ export function notificationBattleOutcome(notification: NotificationView): Battl
   }
   if (notification.kind === 'clan_support_result') {
     const result = supportResult.safeParse(notification.payload);
-    return result.success ? battleOutcome({ attacking: false, grade: result.data.grade,
-      survivors: result.data.survived, losses: result.data.lost }) : 'neutral';
+    if (!result.success) return 'neutral';
+    if (result.data.grade === 'COLONY_LOST') return 'loss';
+    return battleOutcome({ attacking: false, grade: result.data.grade,
+      survivors: result.data.survived, losses: result.data.lost });
   }
   return null;
+}
+
+/** A wave lost with a seceding colony: no battle report exists to open (S42). */
+export function supportLostWithColony(notification: NotificationView): boolean {
+  if (notification.kind !== 'clan_support_result') return false;
+  const parsed = supportResult.safeParse(notification.payload);
+  return parsed.success && parsed.data.grade === 'COLONY_LOST';
 }
 
 /** Native target payloads cannot be treated as historical planet-shaped news. */
@@ -918,7 +944,7 @@ export function describeNotification(notification: NotificationView, now: number
       const {
         arriveAt, etaMinutes, estimatedShips, mass, fleet: ships,
         originUsername, originClanTag, originPlanetName, originName,
-        targetPlanetName, admiral,
+        targetPlanetName, targetBody, admiral,
       } = parsed.data;
 
       /**
@@ -938,12 +964,15 @@ export function describeNotification(notification: NotificationView, now: number
               duration: duration((arriveAt.getTime() - now) / 60_000),
             });
 
-      const parts = [i18n.t(
-        notification.kind === 'strategic_incoming'
-          ? 'notifications.strategicIncomingHead'
-          : 'notifications.incomingHead',
-        { clock },
-      )];
+      const parts = [
+        ...(targetBody === 'MOON' ? [moonT('body.incomingMoon')] : []),
+        i18n.t(
+          notification.kind === 'strategic_incoming'
+            ? 'notifications.strategicIncomingHead'
+            : 'notifications.incomingHead',
+          { clock },
+        ),
+      ];
       // Composition is the better line when radar has bought it — it says what
       // to build against, which a count cannot.
       if (ships && Object.keys(ships).length > 0) parts.push(composition(ships));
@@ -1016,24 +1045,26 @@ export function describeNotification(notification: NotificationView, now: number
       if (!parsed.success) return i18n.t('notifications.raidedFallback');
       const {
         grade, lootAlloy, lootCrystal, lootDeuterium, unitsLost, theirLosses, disruptedMinutes,
-        originUsername, originClanTag, originPlanetName,
+        originUsername, originClanTag, originPlanetName, targetBody, moonBorn, moonEmpty,
       } =
         parsed.data;
+      const moonTag = targetBody === 'MOON' ? `${moonT('body.battleMoonBadge')}${JOIN()}` : '';
+      const bornTail = moonBorn === true ? `${JOIN()}${moonT('body.notifMoonBorn')}` : '';
       const raider = originUsername
         ? i18n.t('notifications.raidedBy', {
             origin: identity(originUsername, originPlanetName, undefined, originClanTag),
           })
         : '';
       if (grade === 'REPELLED') {
-        // What it cost to hold, on both sides. "You repelled a raid" on its own
-        // reads as a free win, and a defence that looks free is not one anybody
-        // maintains.
         const cost = [i18n.t('notifications.repelledLost', { count: unitsLost })];
         if (theirLosses !== undefined && theirLosses > 0) {
           cost.push(i18n.t('notifications.repelledTheirs', { count: theirLosses }));
         }
         cost.push(...dockClauses(parsed.data));
-        return `${raider}${i18n.t('notifications.repelledHead', { cost: cost.join(JOIN()) })}`;
+        return `${moonTag}${raider}${i18n.t('notifications.repelledHead', { cost: cost.join(JOIN()) })}${bornTail}`;
+      }
+      if (moonEmpty === true) {
+        return `${moonTag}${raider}${moonT('body.battleMoonEmpty')}${bornTail}`;
       }
       /**
        * SAY WHAT HAPPENED, NOT WHAT DID NOT.
@@ -1078,8 +1109,8 @@ export function describeNotification(notification: NotificationView, now: number
        * defenders to lose and, on an older row, no works figure to report. Saying
        * so plainly is better than assembling an empty sentence.
        */
-      if (clauses.length === 0) return `${raider}${i18n.t('notifications.raidedNothing')}`;
-      return `${raider}${i18n.t('notifications.raided', { detail: clauses.join(JOIN()) })}`;
+      if (clauses.length === 0) return `${moonTag}${raider}${i18n.t('notifications.raidedNothing')}${bornTail}`;
+      return `${moonTag}${raider}${i18n.t('notifications.raided', { detail: clauses.join(JOIN()) })}${bornTail}`;
     }
 
     case 'radiation_lost': {
@@ -1100,17 +1131,22 @@ export function describeNotification(notification: NotificationView, now: number
       const {
         grade, targetUsername, targetClanTag, targetPlanetName, targetName,
         lootAlloy, lootCrystal, lootDeuterium, unitsLost, shipsHome,
-        targetKind, pirateLevel, pirateCallsign, capturedHull,
+        targetKind, pirateLevel, pirateCallsign, capturedHull, targetBody, moonBorn, moonEmpty,
       } = parsed.data;
-      const target = targetKind === 'PIRATE'
+      const baseTarget = targetKind === 'PIRATE'
         ? (pirateLevel === undefined
             ? i18n.t('pirate.title')
             : i18n.t('pirate.name', { level: pirateLevel, callsign: pirateCallsign ?? '' }))
         : identity(targetUsername, targetPlanetName, targetName, targetClanTag);
+      const target = targetBody === 'MOON' ? `${baseTarget} (${moonT('body.MOON')})` : baseTarget;
+      const bornTail = moonBorn === true ? `${JOIN()}${moonT('body.notifMoonBorn')}` : '';
+      if (moonEmpty === true) {
+        return `${moonT('body.notifMoonEmpty', { planet: targetPlanetName ?? targetName ?? baseTarget })}${bornTail}`;
+      }
       // The fleet is gone. This is the line the whole notification exists for —
       // before it, nothing in the game told a player their raid had been wiped out.
       if (shipsHome === 0) {
-        return i18n.t('notifications.raidWiped', { target, count: unitsLost });
+        return `${i18n.t('notifications.raidWiped', { target, count: unitsLost })}${bornTail}`;
       }
       const took = spoils(lootAlloy, lootCrystal, lootDeuterium);
       // After the loot and apart from it: wreck the collectors lifted, never plunder.
@@ -1137,12 +1173,12 @@ export function describeNotification(notification: NotificationView, now: number
         took.length > 0 ? took.join(JOIN()) : i18n.t('notifications.raidNothing'),
         ...(damaged !== undefined && damaged > 0 ? [i18n.t('notifications.damagedClause', { count: damaged })] : []),
       ].join(JOIN());
-      return i18n.t('notifications.raidResult', {
+      return `${i18n.t('notifications.raidResult', {
         grade: gradeWord(grade),
         target,
         detail,
         count: unitsLost,
-      });
+      })}${bornTail}`;
     }
 
     case 'convoy_result': {
@@ -1364,6 +1400,11 @@ export function describeNotification(notification: NotificationView, now: number
       return i18n.t('notifications.unlock', { title: copy.title, body: copy.body });
     }
 
+    case 'moon_gate_ready': {
+      const payload = notification.payload as { planetName?: string } | null;
+      return moonT('body.gateReadyBody', { planet: payload?.planetName ?? '' });
+    }
+
     case 'death_star_result': {
       const parsed = strategicResult.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('notifications.deathStarFallback');
@@ -1402,9 +1443,11 @@ export function describeNotification(notification: NotificationView, now: number
           ? i18n.t('notifications.colonyAbandoned', { planet })
           : i18n.t('notifications.colonyAbandonedUnnamed');
       }
-      return planet
+      const line = planet
         ? i18n.t('notifications.colonyLost', { planet })
         : i18n.t('notifications.colonyLostUnnamed');
+      const lost = parsed.success ? parsed.data.lostShips ?? 0 : 0;
+      return lost > 0 ? `${line} · ${i18n.t('notifications.colonyLostShips', { count: lost })}` : line;
     }
 
     case 'settlement_lost': {
@@ -1510,6 +1553,9 @@ export function describeNotification(notification: NotificationView, now: number
       const parsed = supportResult.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('clanSupport.noticeFallback');
       const { hostPlanetName, lost, survived } = parsed.data;
+      if (parsed.data.grade === 'COLONY_LOST') {
+        return i18n.t('clanSupport.noticeColonyLost', { world: hostPlanetName, count: lost });
+      }
       return `${i18n.t(`clanSupport.verdict.${parsed.data.grade}`)} · ${i18n.t('clanSupport.noticeResult', { world: hostPlanetName, lost, kept: survived })}`;
     }
     case 'clan_support_lifted': {
@@ -1727,6 +1773,7 @@ export function signalFamily(notification: NotificationView): SignalFamily {
     case 'colony_captured':
     case 'settlement_success':
     case 'death_star_result':
+    case 'moon_gate_ready':
       return 'gain';
     default:
       return 'note';
@@ -1826,6 +1873,7 @@ export type SignalGlyph =
   | 'conquest'
   | 'world-lost'
   | 'galaxy'
+  | 'moon'
   | 'bell';
 
 export function signalGlyph(notification: NotificationView): SignalGlyph {
@@ -1883,6 +1931,8 @@ export function signalGlyph(notification: NotificationView): SignalGlyph {
     case 'galaxy_event_started':
     case 'galaxy_event_ended':
       return 'galaxy';
+    case 'moon_gate_ready':
+      return 'moon';
     default:
       return 'bell';
   }

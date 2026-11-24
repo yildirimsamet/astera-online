@@ -1,4 +1,6 @@
 import { profileResearch } from './economy-profile.js';
+import { researchMinutes } from './economy.js';
+import { MOON } from './moon.js';
 import { ANTI_STRATEGIC, DEATH_STAR, DEUTERIUM, RESEARCH_TECH, SEASON } from './constants.js';
 import { ECONOMY_TEMPO, scalePrice } from './tempo.js';
 import { cargoMult, hullTech, prospectorHoldMult, radiationDamageMult, repairPct, robotSpeedMult, shipShieldMult, yardSpeedMult } from './tech.js';
@@ -31,6 +33,12 @@ export interface ResearchProject {
    */
   prerequisiteLevel?: number;
   requiredCore?: number;
+  /**
+   * AN OWNER-SET PRICE AND TIME (Ay V28). The project costs exactly `costAt` — no economy profile, no crystal
+   * discount — and takes exactly this long whatever the Core's construction speed. Read through
+   * `researchOrderMinutes`, so the server, the simulator and the screen agree.
+   */
+  fixedMinutes?: number;
 }
 
 /** Whether `levelOf` (held, or held-plus-queued) clears this project's prerequisite. */
@@ -143,6 +151,7 @@ export function researchEffectAt(id: ResearchProjectId, level: number): number {
     case 'ISOTOPE_SPECTROMETRY':
     case 'DENSE_FUEL_CELLS':
     case 'GRAVITIC_CHARGES':
+    case 'LUNAR_CAPTURE':
       return rung > 0 ? 1 : 0;
   }
 }
@@ -388,6 +397,10 @@ const withResearchCostMix = (
   for (const id of RESEARCH_PROJECT_IDS) {
     const project = projects[id];
     const baseCostAt = project.costAt;
+    if (project.fixedMinutes !== undefined) {
+      BASE_COST.set(id, baseCostAt);
+      continue;
+    }
     const priced = (level: number) => researchCostMix(id, baseCostAt(level));
     BASE_COST.set(id, priced);
     projects[id] = {
@@ -606,7 +619,24 @@ export const RESEARCH_PROJECTS: Record<ResearchProjectId, ResearchProject> = wit
     prerequisite: 'GRAVITIC_CHARGES',
     requiredCore: DEATH_STAR.requiredCore,
   },
+  /**
+   * AY ÇEKİMİ (Ay S7, V28). The door to a moon: build one, and see one born over your world in battle (S9).
+   * Open from the first minute behind Core 9 alone; only a galaxy with moons offers it (server and screen).
+   */
+  LUNAR_CAPTURE: {
+    id: 'LUNAR_CAPTURE',
+    maxLevel: RESEARCH_MAX_LEVEL.LUNAR_CAPTURE,
+    costAt: flat(MOON.capture.cost),
+    availableAtMinutes: 0,
+    prerequisite: null,
+    requiredCore: MOON.capture.requiredCore,
+    fixedMinutes: MOON.capture.minutes,
+  },
 });
+
+/** How long an order for a rung takes: the Core's construction speed, unless the owner set the time (V28). */
+export const researchOrderMinutes = (id: ResearchProjectId, cost: Resources, coreLevel: number): number =>
+  RESEARCH_PROJECTS[id].fixedMinutes ?? researchMinutes(cost, coreLevel);
 
 export const researchAvailable = (id: ResearchProjectId, nowMinutes: number): boolean =>
   nowMinutes >= RESEARCH_PROJECTS[id].availableAtMinutes;

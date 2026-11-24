@@ -1,10 +1,12 @@
-import { HULLS, fleetEntries, type Fleet, type HpDamageLots } from '@astera/rules';
+import { HULLS, fleetCount, fleetEntries, type Fleet, type HpDamageLots } from '@astera/rules';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ClanSupportWave, Monuments } from '../../api/schemas.js';
 import {
   Chip, DOCK_ART, Emblem, GameButton, GameHold, GameTabs, Glyph, InfoPeek, ProgressBar, SectionTag, TimerRow, artIconSrc,
 } from '../../game-ui/index.js';
+import { useMoonT } from '../../i18n/moon.js';
+import { MissionRetarget } from '../../screens/MissionRetarget.js';
 import { hullLabel, hullName, monumentName } from '../../i18n/names.js';
 import type { AirborneItem } from '../../lib/airborne.js';
 import { supportVerdict } from '../../lib/clanAlarm.js';
@@ -30,6 +32,9 @@ export interface FleetWorld {
   active: boolean;
   /** Ships standing at home. */
   fleet: Fleet;
+  /** Whether this world has a moon and what ships are docked on it. */
+  hasMoon?: boolean;
+  moonFleet?: Fleet;
   damage?: HpDamageLots;
   workshopRadiation?: boolean;
   /** How many of its craft are off the world. */
@@ -114,6 +119,7 @@ export function FlightRow({
   recalling,
   onFocus,
   onRecall,
+  retarget = false,
 }: {
   item: AirborneItem;
   now: number;
@@ -121,6 +127,8 @@ export function FlightRow({
   onFocus: (item: AirborneItem) => void;
   /** Absent where the row is a glance: the recall lives on the Fleet page. */
   onRecall?: (item: AirborneItem) => void;
+  /** The world/moon turn, offered where the recall is: on the Fleet page. */
+  retarget?: boolean;
 }) {
   const { t } = useTranslation();
   const pace = paceShown(item.pace);
@@ -142,6 +150,11 @@ export function FlightRow({
         at={t('now.at', { time: clockTime(new Date(item.arrival)) })}
         {...(item.focus ? { onPress: () => { onFocus(item); } } : {})}
       />
+      {item.retarget && retarget && (
+        <div className="gk-flight__more">
+          <MissionRetarget missionId={item.retarget.missionId} currentBody={item.retarget.currentBody} />
+        </div>
+      )}
       {turnable && (recalling ? (
         <p role="status" className="gk-flight__more gk-flight__turning">{t('fleetPage.recalling')}</p>
       ) : (
@@ -296,7 +309,10 @@ function Garrison({ world, aboard, onOpenRepairStation, onFocusWorld, onDock, do
   docking?: boolean;
 }) {
   const { t } = useTranslation();
+  const tMoon = useMoonT();
   const rows = garrisonOf(world.fleet);
+  const moonRows = garrisonOf(world.moonFleet ?? {});
+  const moonTotal = fleetCount(world.moonFleet ?? {});
   const [quantities, setQuantities] = useState<Readonly<Record<string, number>>>({});
   const damaged = homeMaintenanceRows(world.fleet, world.damage).filter((row) => row.damageBp > 0 || (row.remainderBp ?? 0) > 0);
   const choice = maintenanceChoice(damaged, quantities, 100);
@@ -311,24 +327,51 @@ function Garrison({ world, aboard, onOpenRepairStation, onFocusWorld, onDock, do
       <WorldDoor world={world} onFocus={aboard && damaged.length > 0 ? onOpenRepairStation : onFocusWorld} />
       <div className="gk-world__counts">
         {total > 0 && <span className="gk-num">{t('fleetPage.shipsHome', { count: total })}</span>}
+        {moonTotal > 0 && (
+          <span className="gk-num inline-flex items-center gap-1 text-alloy">
+            <Glyph id="moon" className="size-3 shrink-0" />
+            {tMoon('fleetSplit.onMoonBadge', { count: moonTotal })}
+          </span>
+        )}
         {world.away > 0 && <span className="gk-num" data-tone="away">{t('fleetPage.away', { count: world.away })}</span>}
         {/* Why the count is lower than the ships owned: they wait for repair, and one tap opens that station. */}
         {world.docked > 0 && (
           <Chip onPress={onOpenRepairStation}><Glyph id="repair" />{t('repairStation.docked', { count: world.docked })}</Chip>
         )}
       </div>
-      {rows.length === 0 ? (
+      {rows.length === 0 && moonRows.length === 0 ? (
         <p className="gk-sub">{t('fleetPage.noShips')}</p>
       ) : (
-        <p className="gk-garrison">
-          {rows.map(({ hull, count }) => (
-            <span key={hull} data-testid="garrison-hull" className="gk-garrison__hull">
-              <Emblem cls={HULLS[hull].cls} />
-              <span>{hullLabel(hull)}</span>
-              <span className="gk-num">{count}</span>
-            </span>
-          ))}
-        </p>
+        <>
+          {rows.length > 0 && (
+            <p className="gk-garrison">
+              {rows.map(({ hull, count }) => (
+                <span key={hull} data-testid="garrison-hull" className="gk-garrison__hull">
+                  <Emblem cls={HULLS[hull].cls} />
+                  <span>{hullLabel(hull)}</span>
+                  <span className="gk-num">{count}</span>
+                </span>
+              ))}
+            </p>
+          )}
+          {moonRows.length > 0 && (
+            <div className="mt-1.5 flex flex-col gap-1 border-t border-white/10 pt-1.5">
+              <span className="inline-flex items-center gap-1 text-caption font-medium text-alloy/90">
+                <Glyph id="moon" className="size-3 shrink-0" />
+                {tMoon('fleetSplit.moon')}
+              </span>
+              <p className="gk-garrison">
+                {moonRows.map(({ hull, count }) => (
+                  <span key={`moon-${hull}`} className="gk-garrison__hull">
+                    <Emblem cls={HULLS[hull].cls} />
+                    <span>{hullLabel(hull)}</span>
+                    <span className="gk-num">{count}</span>
+                  </span>
+                ))}
+              </p>
+            </div>
+          )}
+        </>
       )}
       {/* A ship's station takes everything hurt at home, so there is nothing to choose and nothing to transfer. */}
       {damaged.length > 0 && aboard && (
@@ -476,6 +519,7 @@ export function FleetPage({
                 recalling={recalling === item.key}
                 onFocus={onFocus}
                 onRecall={onRecall}
+                retarget
               />
             ))}
           </ul>

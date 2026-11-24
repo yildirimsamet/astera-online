@@ -2,10 +2,11 @@ import { planetRadiationPath } from './planetAegis.js';
 import { recordPlayerLegacyFact } from './legacyEvents.js';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { RADIATION_BOMB, RADIATION_BOMB_VISUAL, RADIATION_LEVEL_HP_PER_MINUTE, radiationBombBuildSeconds,
-  distance, travelExact, visualLeg, worldRadius, monumentVisualScale, segmentsExposureHp, type FaultKind, type RadiationBombLevel, type Vec3 } from '@astera/rules';
+  distance, travelExact, visualLeg, worldRadius, monumentVisualScale, segmentsExposureHp, type FaultKind, type RadiationBombLevel, type Vec3, type WorldBody } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
-import { buildings, hpRadiationSources, planets, radiationBombFlights, seasons, strategicAssets } from '../db/schema.js';
+import { buildings, hpRadiationSources, moons, planets, radiationBombFlights, seasons, strategicAssets } from '../db/schema.js';
+import { assertMoonTarget } from './moon.js';
 import { schedule } from '../worker/queue.js';
 import { GameError, assertSeasonOpenThrough, assertWorldOperational, loadLocked, lockSeason, saveResources } from './planet.js';
 import { assertFliesOutsideMaintenance } from './maintenanceWindow.js';
@@ -76,7 +77,8 @@ export async function buildRadiationBomb(db: Db, planetId: string, level: Radiat
 export interface RadiationBombLaunch {
   playerId: string;
   originPlanetId: string;
-  target: { kind: 'PLANET' | 'MONUMENT'; id: string };
+  /** `body` MOON aims at the world's moon (Ay S45); a monument has none. */
+  target: { kind: 'PLANET' | 'MONUMENT'; id: string; body?: WorldBody };
   level: RadiationBombLevel;
   key: string;
   acknowledgeShieldLoss?: boolean;
@@ -109,6 +111,7 @@ export async function launchRadiationBomb(db: Db, input: RadiationBombLaunch) {
       if (!target) throw new GameError('PLANET_NOT_FOUND', 'No such world', 404);
       if (target.seasonId !== origin.seasonId) throw new GameError('CROSS_SEASON', 'That world is in another galaxy', 403);
       if (target.controllerPlayerId === origin.playerId) throw new GameError('SELF_ATTACK', 'You cannot target your own world', 403);
+      if (input.target.body === 'MOON') await assertMoonTarget(tx, target);
       if (target.controllerPlayerId) {
         honorDefenders = [target.controllerPlayerId];
         await lockClanPlayers(tx, [origin.playerId, target.controllerPlayerId]);
@@ -128,6 +131,7 @@ export async function launchRadiationBomb(db: Db, input: RadiationBombLaunch) {
       targetRadius = worldRadius(core?.level ?? 1);
       arriveAt = new Date(Math.ceil(origin.now.getTime() + travelExact(distance(origin, target), RADIATION_BOMB.speed) * 60000));
     } else {
+      if (input.target.body === 'MOON') throw new GameError('BAD_TARGET', 'A monument has no moon', 400);
       const locked = await lockMonument(tx, input.target.id, true, [origin.playerId]);
       honorDefenders = [...new Set(locked.waves.filter(wave => wave.status === 'HOLD').map(wave => wave.playerId))];
       if (locked.season.id !== origin.seasonId) throw new GameError('CROSS_SEASON', 'That monument is in another galaxy', 403);
@@ -161,6 +165,7 @@ export async function launchRadiationBomb(db: Db, input: RadiationBombLaunch) {
       seasonId: origin.seasonId, ownerPlayerId: origin.playerId, originPlanetId: origin.planetId,
       targetKind: input.target.kind, targetPlanetId: input.target.kind === 'PLANET' ? input.target.id : null,
       targetMonumentId: input.target.kind === 'MONUMENT' ? input.target.id : null, level: input.level,
+      targetBody: input.target.body ?? 'PLANET',
       departAt: origin.now, arriveAt, originPosition: trajectory.from, targetPosition: trajectory.to }).returning();
     if (!flight) throw new Error('radiation bomb flight insert returned no row');
     await commitStrategicHonor(tx, { seasonId: origin.seasonId, id: `bomb:${flight.id}`, owner: origin.playerId,
@@ -210,7 +215,11 @@ export async function resolveRadiationBombInTx(tx: Tx, flightId: string, clock: 
   const monument = flight.targetMonumentId ? await lockMonument(tx, flight.targetMonumentId, false) : undefined;
   const protection = planet?.controllerPlayerId
     ? (await protectionsOf(tx, [planet.controllerPlayerId], at)).get(planet.controllerPlayerId) : null;
-  const ineffective = season.status !== 'live' || at >= season.endsAt
+  const onMoon = flight.targetBody === 'MOON';
+  // A moon broken while the bomb flew leaves it nothing to wear.
+  const moonGone = onMoon && planet !== undefined
+    && (await tx.select({ id: moons.planetId }).from(moons).where(eq(moons.planetId, planet.id))).length === 0;
+  const ineffective = season.status !== 'live' || at >= season.endsAt || moonGone
     || (planet !== undefined && ((planet.protectedUntil !== null && planet.protectedUntil > at) || protection != null));
   if (monument && !ineffective) await settleLockedMonument(tx, monument, at, clock.now());
   if (planet && !ineffective) {
@@ -235,14 +244,15 @@ export async function resolveRadiationBombInTx(tx: Tx, flightId: string, clock: 
   const position = planet ?? monument?.monument;
   if (!position) throw new Error('radiation bomb lost its target');
   await tx.insert(hpRadiationSources).values({ seasonId: flight.seasonId, origin: 'BOMB', bombFlightId: flight.id,
-    anchorKind: flight.targetKind, anchorId: flight.targetPlanetId ?? flight.targetMonumentId,
+    anchorKind: flight.targetKind, anchorId: flight.targetPlanetId ?? flight.targetMonumentId, body: flight.targetBody,
     x: position.x, y: position.y, z: position.z, radius: 1, mode: 'EMIT', radiationLevel: flight.level,
     intensityHpPerMinute: RADIATION_LEVEL_HP_PER_MINUTE[flight.level], activeFrom: at, activeUntil: until,
     label: `Radiation Bomb L${String(flight.level)}` });
   let loyalty: { before: number; after: number } | null = null;
   let faults: FaultKind[] = [];
   let repairs: Awaited<ReturnType<typeof cancelRepairsForRadiation>> | null = null;
-  if (planet?.kind === 'COLONY' && planet.controllerPlayerId) {
+  // A hit on the moon touches nothing on the planet: no loyalty, no faults, no repairs cancelled (Ay S45).
+  if (!onMoon && planet?.kind === 'COLONY' && planet.controllerPlayerId) {
     // Close the clean economy/loyalty interval before introducing faults. Historical
     // arrivals must not move an already-observed economic clock backwards; health
     // keeps the actual arrival boundary independently through radiationAt.
@@ -259,7 +269,7 @@ export async function resolveRadiationBombInTx(tx: Tx, flightId: string, clock: 
       repairs = effects.repairs ?? null;
     }
   }
-  if (planet) {
+  if (planet && !onMoon) {
     const end = new Date(at.getTime() + 1);
     const sources = await hpSourcesForTarget(tx, season, { kind: 'PLANET', id: planet.id }, at, end);
     if (segmentsExposureHp(await planetRadiationPath(tx, planet, at.getTime(), end.getTime()), sources) > 0) {
@@ -275,7 +285,7 @@ export async function resolveRadiationBombInTx(tx: Tx, flightId: string, clock: 
   for (const playerId of recipients) {
     await notify(tx, { playerId, kind: 'radiation_bomb_result', refId: flight.id, at,
       payload: { outcome: 'HIT', targetKind: flight.targetKind, targetId: flight.targetPlanetId ?? flight.targetMonumentId,
-        targetName: planet?.name, defended: playerId === planet?.controllerPlayerId,
+        targetName: planet?.name, defended: playerId === planet?.controllerPlayerId, ...(onMoon ? { targetBody: 'MOON' } : {}),
         ...(monument ? { monumentId: monument.monument.id, monumentOrdinal: monument.monument.ordinal }
           : { targetPlanetId: planet?.id }),
         level: flight.level, activeUntil: until.toISOString(),

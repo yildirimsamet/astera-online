@@ -848,8 +848,9 @@ export const faults = {
   loyalty: {
     title: "Loyauté de ce monde",
     battleLoss: "Défaite légère −15 · défaite lourde −30 · Étoile de la Mort −{{strike}}",
-    why_one: "Baisse à cause de {{count}} panne. À zéro, tu perds la colonie.",
-    why_other: "Baisse à cause de {{count}} pannes. À zéro, tu perds la colonie.",
+    why_one: "Baisse à cause de {{count}} panne. À zéro, tu perds la colonie et la flotte qui s’y trouve.",
+    why_other: "Baisse à cause de {{count}} pannes. À zéro, tu perds la colonie et la flotte qui s’y trouve.",
+    stake: "À zéro, la colonie fait sécession : la flotte qui s’y trouve et les vaisseaux en réparation partent avec. Les flottes en vol atterrissent sur ta capitale.",
     bar: "{{value}} %",
     left: "{{time}} restantes",
   },

@@ -422,6 +422,8 @@ export const reports = {
   strategicCaptured: 'CAPTURED',
   strategicIneffective: 'INEFFECTIVE',
   strategicIntercepted: 'INTERCEPTED',
+  strategicMoonCracked: 'LUNA AGRIETADA',
+  strategicMoonDestroyed: 'LUNA DESTRUIDA',
   radiationYouAttacked: "Tu bomba de radiación apuntó a ",
   radiationAttackedBy: "Bomba de radiación enviada por ",
   strategicYouAttacked: "Objetivo de tu Estrella de la Muerte: ",

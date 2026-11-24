@@ -1,0 +1,5 @@
+-- Ay F7c (S45, plan §6.15): a Radiation Bomb hits a world's planet or its moon; its source wears only that body's ships.
+ALTER TABLE "hp_radiation_sources" ADD COLUMN "body" text DEFAULT 'PLANET' NOT NULL;--> statement-breakpoint
+ALTER TABLE "radiation_bomb_flights" ADD COLUMN "target_body" text DEFAULT 'PLANET' NOT NULL;--> statement-breakpoint
+ALTER TABLE "hp_radiation_sources" ADD CONSTRAINT "hp_radiation_sources_body_check" CHECK ("hp_radiation_sources"."body" = 'PLANET' OR ("hp_radiation_sources"."body" = 'MOON' AND "hp_radiation_sources"."anchor_kind" = 'PLANET'));--> statement-breakpoint
+ALTER TABLE "radiation_bomb_flights" ADD CONSTRAINT "radiation_bomb_flights_body_check" CHECK ("radiation_bomb_flights"."target_body" = 'PLANET' OR ("radiation_bomb_flights"."target_body" = 'MOON' AND "radiation_bomb_flights"."target_kind" = 'PLANET'));

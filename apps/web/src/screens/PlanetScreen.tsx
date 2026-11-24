@@ -1496,7 +1496,7 @@ function Defend({
   // Taktik geri çekilme: stated on this tab only in a season dealt the rule.
   const escapeRuled = fleetEscapeApplies(planet.rulesetVersion ?? 0);
   const stationed = sumFleets(...(planet.clanSupport?.waves ?? []).filter((wave) => wave.status === 'STATIONED').map((wave) => wave.fleet));
-  const owned = fleetCount(planet.fleet) + fleetCount(planet.fleetAway) + fleetCount(planet.fleetDocked ?? {});
+  const owned = fleetCount(planet.fleet) + fleetCount(planet.fleetAway) + fleetCount(planet.fleetDocked ?? {}) + fleetCount(planet.moon?.fleet ?? {});
   const showForce = !lesson && owned > 0;
   // The escape line speaks of ships standing here, the clan's included; with none it has nothing to say.
   const hasLine = fleetCount(planet.fleet) + fleetCount(stationed) > 0;
@@ -1512,7 +1512,14 @@ function Defend({
       */}
       {(showForce || (escapeRuled && hasLine)) && (
         <Fold data-defence-line="" glyph="rocket" title={t('planet.defend.lineFold')} value={compact(fleetCount(planet.fleet))}>
-          {showForce && <FleetCards fleet={planet.fleet} fleetAway={planet.fleetAway} fleetDocked={planet.fleetDocked ?? {}} />}
+          {showForce && (
+            <FleetCards
+              fleet={planet.fleet}
+              fleetAway={planet.fleetAway}
+              fleetDocked={planet.fleetDocked ?? {}}
+              fleetMoon={planet.moon?.fleet ?? {}}
+            />
+          )}
           {escapeRuled && (
             <EscapeReadout fleet={planet.fleet} ground={planet.ground} deuterium={planet.planet.deuterium}
               rulesetVersion={planet.rulesetVersion ?? 0}

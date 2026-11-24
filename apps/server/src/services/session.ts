@@ -214,6 +214,8 @@ export interface PendingThread {
    * to a selected world without comparing a translated or hidden name.
    */
   targetPlanetId?: string;
+  /** Ay S24: a raid aimed at the world's MOON says so; absent means the planet, as before moons. */
+  targetBody?: 'MOON';
   /**
    * THE CONTACT ON THE DISC THIS WARNING IS ABOUT. `incoming` ONLY. D162.
    *
@@ -829,6 +831,7 @@ export async function pendingThreads(
         kind: 'incoming',
         targetName: row.targetName,
         targetPlanetId: m.targetPlanetId,
+        ...(m.targetBody === 'MOON' ? { targetBody: 'MOON' as const } : {}),
         // The key the same craft carries on the public contact list, so the strip
         // can focus what the disc is already drawing. See `contactId`. D162.
         contactId: m.id,
@@ -897,6 +900,8 @@ export async function pendingThreads(
       targetPlanetId: m.kind === 'transfer'
         ? (m.recalledAt !== null ? m.originPlanetId : m.targetPlanetId)
         : backwards ? m.originPlanetId : m.targetPlanetId,
+      // Ay S13: where an own raid is aimed, so its switch reads back on the strip.
+      ...(m.kind === 'attack' && m.targetBody === 'MOON' ? { targetBody: 'MOON' as const } : {}),
       /*
         WHETHER THE COMMANDER MAY STILL TURN THIS AROUND. Owner decision, 2026-09-21.
 

@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { BUILDING_IDS, FIRST_SEASON_START, MULTI_WORLD, PLANET_START, START_BUILDINGS, academyExitCheckpoint, fleetEntries, findRewardTier, newcomerBoostUntil, newcomerShieldUntil, pickSpawnSlot } from '@astera/rules';
 import type { Db, Queryable, Tx } from '../db/client.js';
@@ -367,7 +368,7 @@ export async function joinSeason(
           })));
           const fleet = fleetEntries(opening.fleet);
           if (fleet.length) await tx.insert(units).values(fleet.map(([hull, count]) => ({
-            planetId: planet.id, ownerPlayerId: player.id, hull, count, location: 'home',
+            planetId: planet.id, ownerPlayerId: player.id, hull, count, location: PLANET_LOCATION,
           })));
           const preclaimed = 'claimedRewards' in opening ? opening.claimedRewards : [];
           for (const id of preclaimed) {

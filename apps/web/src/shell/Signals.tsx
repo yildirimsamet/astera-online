@@ -19,6 +19,7 @@ import {
   signalFamily,
   signalGlyph,
   signalOutcome,
+  supportLostWithColony,
   type SignalFamily,
   type SignalGlyph,
 } from '../lib/notifications.js';
@@ -366,6 +367,7 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   // The active-event chip lives on the galaxy itself; closing Signals is the route.
   galaxy_event_started: { panel: null },
   galaxy_event_ended: { panel: null },
+  moon_gate_ready: { panel: 'moon' },
 };
 
 /**
@@ -459,6 +461,7 @@ const SIGNAL_MARK: Record<SignalGlyph, GlyphId> = {
   conquest: 'banner',
   'world-lost': 'colony',
   galaxy: 'star',
+  moon: 'moon',
   bell: 'bell',
 };
 
@@ -504,7 +507,7 @@ function Event({
   const line = describeNotification(event, now);
   if (!line) return null;
   const family = signalFamily(event);
-  const destination = DESTINATION[event.kind];
+  const destination = supportLostWithColony(event) ? undefined : DESTINATION[event.kind];
   const age = staleness((now - event.at.getTime()) / 60_000);
   const subject = notificationIdentity(event);
 

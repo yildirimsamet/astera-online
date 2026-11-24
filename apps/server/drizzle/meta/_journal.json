@@ -1776,29 +1776,113 @@
     {
       "idx": 253,
       "version": "7",
-      "when": 1795186471565,
-      "tag": "0253_newcomer_hour",
+      "when": 1795080390858,
+      "tag": "0253_moons",
       "breakpoints": true
     },
     {
       "idx": 254,
       "version": "7",
-      "when": 1795186531565,
-      "tag": "0254_newcomer_hour_news",
+      "when": 1795081301822,
+      "tag": "0254_moon_move_event",
       "breakpoints": true
     },
     {
       "idx": 255,
       "version": "7",
-      "when": 1795192422902,
-      "tag": "0255_personal_rocks",
+      "when": 1795084146433,
+      "tag": "0255_moon_moves",
       "breakpoints": true
     },
     {
       "idx": 256,
       "version": "7",
-      "when": 1795386225370,
-      "tag": "0256_newcomer_scenario",
+      "when": 1795098646144,
+      "tag": "0256_mission_bodies",
+      "breakpoints": true
+    },
+    {
+      "idx": 257,
+      "version": "7",
+      "when": 1795104481508,
+      "tag": "0257_moon_gate_enums",
+      "breakpoints": true
+    },
+    {
+      "idx": 258,
+      "version": "7",
+      "when": 1795104493964,
+      "tag": "0258_moon_gate",
+      "breakpoints": true
+    },
+    {
+      "idx": 259,
+      "version": "7",
+      "when": 1795107877097,
+      "tag": "0259_moon_scans",
+      "breakpoints": true
+    },
+    {
+      "idx": 260,
+      "version": "7",
+      "when": 1795108534205,
+      "tag": "0260_debris_body",
+      "breakpoints": true
+    },
+    {
+      "idx": 261,
+      "version": "7",
+      "when": 1795109422325,
+      "tag": "0261_radiation_body",
+      "breakpoints": true
+    },
+    {
+      "idx": 262,
+      "version": "7",
+      "when": 1795123294541,
+      "tag": "0262_moon_build_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 263,
+      "version": "7",
+      "when": 1795370000000,
+      "tag": "0263_moon_moves_cascade_and_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 264,
+      "version": "7",
+      "when": 1795480000000,
+      "tag": "0264_season_moons_starts_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 265,
+      "version": "7",
+      "when": 1795499822068,
+      "tag": "0265_newcomer_hour",
+      "breakpoints": true
+    },
+    {
+      "idx": 266,
+      "version": "7",
+      "when": 1795499823068,
+      "tag": "0266_newcomer_hour_news",
+      "breakpoints": true
+    },
+    {
+      "idx": 267,
+      "version": "7",
+      "when": 1795499824068,
+      "tag": "0267_personal_rocks",
+      "breakpoints": true
+    },
+    {
+      "idx": 268,
+      "version": "7",
+      "when": 1795499825068,
+      "tag": "0268_newcomer_scenario",
       "breakpoints": true
     }
   ]

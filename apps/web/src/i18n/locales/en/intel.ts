@@ -423,6 +423,8 @@ export const reports = {
   strategicCaptured: 'CAPTURED',
   strategicIneffective: 'INEFFECTIVE',
   strategicIntercepted: 'INTERCEPTED',
+  strategicMoonCracked: 'MOON CRACKED',
+  strategicMoonDestroyed: 'MOON DESTROYED',
   radiationYouAttacked: "Your radiation bomb targeted ",
   radiationAttackedBy: "Radiation bomb sent by ",
   strategicYouAttacked: 'Your Death Star targeted ',

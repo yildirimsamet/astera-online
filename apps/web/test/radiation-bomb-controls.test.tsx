@@ -86,7 +86,8 @@ it('requires a deliberate confirmation of the selected ready level and keeps its
   expect(send).not.toHaveBeenCalled();
   fireEvent.keyDown(button, { key: 'Enter' });
   fireEvent.keyDown(button, { key: 'Enter' });
-  expect(send).toHaveBeenCalledWith(1, expect.any(String), false);
+  // A monument has no moon: the bomb is always aimed at the planet body (Ay §6.12).
+  expect(send).toHaveBeenCalledWith(1, expect.any(String), false, 'PLANET');
   const first = send.mock.calls[0];
   view.rerender(<RadiationBombLaunchPanel origin={origin()} target={{ kind: 'MONUMENT', id: 'monument' }}
     targetName="Monument 4" flightMs={60000} pending={false} onLaunch={send} />);

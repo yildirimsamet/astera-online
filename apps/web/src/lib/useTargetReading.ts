@@ -18,10 +18,12 @@ import {
   type LineReading,
   type PowerRange,
   type TechLevels,
+  type WorldBody,
   togglesOf,
 } from '@astera/rules';
 import type { AdmiralBonuses } from '@astera/rules/arena';
 import type { IntelView, Report } from '../api/schemas.js';
+import { moonT } from '../i18n/moon.js';
 import { combatClassLabel } from '../i18n/names.js';
 import { serverNow } from './clock.js';
 import { fieldedAtLeast, sourceLabel } from './dossier.js';
@@ -49,6 +51,7 @@ export function useTargetReading({
   rulesetVersion,
   escort,
   aboard = false,
+  targetBody = 'PLANET',
 }: {
   target: LaunchTarget;
   intel?: IntelView | undefined;
@@ -63,8 +66,11 @@ export function useTargetReading({
   escort?: AdmiralBonuses | null | undefined;
   /** Reading from a ship: this galaxy's wall, and nobody here runs. */
   aboard?: boolean;
+  /** Ay S13: when aiming at a moon, planet guns/Aegis/escape do not apply. */
+  targetBody?: WorldBody;
 }) {
   const { t } = useTranslation();
+  const aimingMoon = target.kind === 'world' && targetBody === 'MOON';
 
   /**
    * WHERE THE READING OF THE TARGET CAME FROM, AND HOW OLD IT IS.
@@ -86,11 +92,13 @@ export function useTargetReading({
     : undefined;
   const pirateCrew = target.kind === 'pirate' ? target.pirate.fleet : undefined;
   const pirateHandicap = target.kind === 'pirate' ? target.pirate.damageMult : undefined;
-  const opposing: ForceReading | null = pirateCrew
-    ? { source: sourceLabel('public'), ageMinutes: null }
-    : report
-      ? { source: sourceLabel('probe'), ageMinutes: Math.max(0, (serverNow() - report.at.getTime()) / 60_000) }
-      : null;
+  const opposing: ForceReading | null = aimingMoon
+    ? null
+    : pirateCrew
+      ? { source: sourceLabel('public'), ageMinutes: null }
+      : report
+        ? { source: sourceLabel('probe'), ageMinutes: Math.max(0, (serverNow() - report.at.getTime()) / 60_000) }
+        : null;
 
   /*
     AN UNMEASURED DOME IS ANYTHING UP TO THE MOST THIS WORLD CAN HOLD. The dome is
@@ -130,6 +138,7 @@ export function useTargetReading({
     // The wing alone, at neutral counters: what it holds before anybody has looked. Null for no ships.
     const alone = readPowerRange(flying, [], { low: 0, high: 0 });
     if (alone === null) return null;
+    if (aimingMoon) return alone;
     if (pirateCrew) {
       return exactPowerRange(flying, pirateCrew, { tech: {}, ...(pirateHandicap === undefined ? {} : { damageMult: pirateHandicap }) });
     }
@@ -144,22 +153,11 @@ export function useTargetReading({
       lines.push({ value: report.support.defence, shape: report.support.classReading });
     }
     return readPowerRange(flying, lines, report.shield ?? { low: 0, high: domeCeiling });
-  }, [settled, settledDamage, tech, pirateCrew, pirateHandicap, report, caretaker, domeCeiling, escortDamage, escortHull]);
+  }, [settled, settledDamage, tech, aimingMoon, pirateCrew, pirateHandicap, report, caretaker, domeCeiling, escortDamage, escortHull]);
 
-  /**
-   * WHAT THE WING'S CLASSES DO AGAINST THE WALL THE PROBE READ — AND WHAT IT DID NOT READ.
-   *
-   * The counter cycle decides the fight: measured, the correct class loses a quarter of what a
-   * mirror loses against the same wall. Until now its numbers lived only in the battle report,
-   * which a commander reads after the fleet is gone.
-   *
-   * IT CARRIES THE UNREAD SHARE ON PURPOSE. A par probe names only the majority, so a pure wall
-   * and a 51/49 wall read identically — and the same advice against those two costs 256,277 and
-   * 504,946 alloy-equivalent. The surface states what was bought and never more.
-   */
   const matchups = useMemo(
-    () => matchupsAgainst(settled, report?.classReading),
-    [settled, report?.classReading],
+    () => (aimingMoon ? null : matchupsAgainst(settled, report?.classReading)),
+    [aimingMoon, settled, report?.classReading],
   );
 
   /** The single most useful next action, or nothing when the wing already covers what was read. */
@@ -191,6 +189,7 @@ export function useTargetReading({
     ? stance
     : null;
   const escapeRuled = !aboard
+    && !aimingMoon
     && target.kind === 'world'
     && target.world.kind !== 'NEUTRAL'
     && fleetEscapeApplies(rulesetVersion)
@@ -215,7 +214,12 @@ export function useTargetReading({
    * narrow range is never mistaken for a certain one.
    */
   const notes: string[] = [];
-  if (target.kind === 'world') {
+  if (aimingMoon) {
+    if (report?.moon) {
+      notes.push(moonT('body.probeFleet', { low: report.moon.fleetSize.low, high: report.moon.fleetSize.high }));
+      if (report.moon.hopping) notes.push(moonT('body.probeHopping'));
+    }
+  } else if (target.kind === 'world') {
     const world = target.world;
     if (world.shielded && !report?.shield) notes.push(t('counter.noteShieldUnmeasured'));
     if (report) {
@@ -253,8 +257,8 @@ export function useTargetReading({
   }
 
   return {
-    report, opposing, power, matchups, hint, escape, notes, domeCeiling,
+    report, opposing, power, matchups, hint, escape, notes, domeCeiling: aimingMoon ? 0 : domeCeiling,
     /** What the probe read of the wall, for the matchup line (B6); null where nobody looked. */
-    classReading: report?.classReading ?? null,
+    classReading: aimingMoon ? null : report?.classReading ?? null,
   };
 }

@@ -888,8 +888,9 @@ export const faults = {
   loyalty: {
     title: "This world's loyalty",
     battleLoss: "Partial defeat −15 · decisive defeat −30 · Death Star −{{strike}}",
-    why_one: "Falling with {{count}} active fault. At zero you lose the colony.",
-    why_other: "Falling with {{count}} active faults. At zero you lose the colony.",
+    why_one: "Falling with {{count}} active fault. At zero you lose the colony and the fleet on it.",
+    why_other: "Falling with {{count}} active faults. At zero you lose the colony and the fleet on it.",
+    stake: "At zero the colony secedes: the fleet on it and the ships under repair go with it. Fleets in flight land at your capital.",
     bar: "{{value}}%",
     left: "{{time}} left",
   },

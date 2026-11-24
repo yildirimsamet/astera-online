@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { and, asc, desc, eq, gt, inArray, or, sql } from 'drizzle-orm';
 import {
   CLAN,
@@ -463,7 +464,7 @@ async function reserveAidFleet(
     }
     remaining[hull] = (remaining[hull] ?? 0) - quantity;
   }
-  await setUnits(tx, input.originPlanetId, remaining, 'home', input.ownerPlayerId);
+  await setUnits(tx, input.originPlanetId, remaining, PLANET_LOCATION, input.ownerPlayerId);
   await setUnits(tx, input.originPlanetId, input.fleet, input.missionId, input.ownerPlayerId);
 }
 

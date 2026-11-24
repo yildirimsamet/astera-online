@@ -1,11 +1,13 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RADIATION_BOMB, RADIATION_LEVEL_HP_PER_MINUTE, radiationBombBuildSeconds,
-  distance, interceptMotion, travelExact, type RadiationBombLevel, type Vec3, type Resources } from '@astera/rules';
+  distance, interceptMotion, travelExact, type MoonRarity, type RadiationBombLevel, type Vec3, type Resources, type WorldBody } from '@astera/rules';
 import { createIdempotencyKey, ApiError } from '../api/client.js';
 import { useBuildRadiationBomb, useLaunchRadiationBomb } from '../api/queries.js';
 import type { PlanetView, PublicMonument } from '../api/schemas.js';
 import { describeError } from '../i18n/errors.js';
+import { useMoonT } from '../i18n/moon.js';
+import { TargetBodyPicker } from './MoonControls.js';
 import { countdown, useNow } from '../lib/time.js';
 import { decimal } from '../lib/format.js';
 import { useToast } from '../ui/Toast.js';
@@ -134,12 +136,14 @@ export function RadiationBombForgeHost({ planet, held, disabledReason }: {
       onError: error => { say(describeError(error), 'error'); } }); }} />;
 }
 
-interface Target { kind: 'PLANET' | 'MONUMENT'; id: string }
+interface Target { kind: 'PLANET' | 'MONUMENT'; id: string; body?: WorldBody }
 export function RadiationBombLaunchPanel({ origin, target, targetName, flightMs, pending, onLaunch,
-  disabledReason = null, error, collapsible = false }: {
+  disabledReason = null, error, collapsible = false, hasMoon = false, moonRarity }: {
   origin: PlanetView; target: Target; targetName: string; flightMs: number | null; pending: boolean;
-  onLaunch: (level: RadiationBombLevel, key: string, acknowledgeShieldLoss: boolean) => void;
+  onLaunch: (level: RadiationBombLevel, key: string, acknowledgeShieldLoss: boolean, targetBody: WorldBody) => void;
   disabledReason?: string | null; error?: Error | null;
+  hasMoon?: boolean;
+  moonRarity?: MoonRarity | undefined;
   /**
    * An accordion whose header names the strike, its target and the ready bombs. Owner,
    * 2026-10-16: on the focus panel both strike sections fold; a monument's sheet keeps it open.
@@ -147,11 +151,14 @@ export function RadiationBombLaunchPanel({ origin, target, targetName, flightMs,
   collapsible?: boolean;
 }) {
   const { t } = useTranslation();
+  const tMoon = useMoonT();
   const [level, setLevel] = useState<RadiationBombLevel>(() => origin.radiationBombs.find(asset => asset.status === 'READY')?.level ?? 1);
+  const [targetBody, setTargetBody] = useState<WorldBody>('PLANET');
+  const effectiveBody: WorldBody = target.kind === 'PLANET' && hasMoon ? targetBody : 'PLANET';
   const [shield, setShield] = useState(false);
   const asset = origin.radiationBombs.find(item => item.level === level && item.status === 'READY');
   const shieldRequired = error instanceof ApiError && error.code === 'SHIELD_WOULD_DROP';
-  const signature = JSON.stringify([origin.planet.id, target.kind, target.id, asset?.id, level, shield]);
+  const signature = JSON.stringify([origin.planet.id, target.kind, target.id, effectiveBody, asset?.id, level, shield]);
   const confirmation = useRef({ signature: '', key: '' });
   if (confirmation.current.signature !== signature) confirmation.current = { signature, key: createIdempotencyKey() };
   const refusal = disabledReason ?? (pending ? t('monument.sending') : !asset ? t('planet.radiationBomb.noBomb')
@@ -160,6 +167,15 @@ export function RadiationBombLaunchPanel({ origin, target, targetName, flightMs,
   const title = t('planet.radiationBomb.launchTitle');
   const aimed = t('planet.radiationBomb.target', { target: targetName });
   const body = <>
+    {target.kind === 'PLANET' && hasMoon && (
+      <TargetBodyPicker
+        value={effectiveBody}
+        hasMoon={hasMoon}
+        knownRarity={moonRarity}
+        showAttackHint={false}
+        onChange={setTargetBody}
+      />
+    )}
     <div className="gk-strike__levels" role="radiogroup" aria-label={t('planet.radiationBomb.title')} {...OWN_SOUND}>{LEVELS.map(value => {
       const stocked = origin.radiationBombs.find(item => item.level === value && item.status === 'READY');
       return <button key={value} type="button" role="radio" className="gk-strike__level" aria-checked={value === level} disabled={!stocked || pending}
@@ -167,9 +183,9 @@ export function RadiationBombLaunchPanel({ origin, target, targetName, flightMs,
         <b className="gk-num">L{value}</b><span className="gk-num">{t('planet.radiationBomb.rate', { rate: decimal(RADIATION_LEVEL_HP_PER_MINUTE[value]) })}</span>
       </button>;
     })}</div>
-    <p className="gk-sub">{t('planet.radiationBomb.effect')}</p>
+    <p className="gk-sub">{effectiveBody === 'MOON' ? tMoon('body.radiationMoonHint') : t('planet.radiationBomb.effect')}</p>
     {/* What a colony loses stays on the face; the rule behind it waits one press away. */}
-    {target.kind === 'PLANET' && <InfoPeek about={t('itemSheet.howItWorks')} lead={<Glyph id="colony" />}
+    {target.kind === 'PLANET' && effectiveBody === 'PLANET' && <InfoPeek about={t('itemSheet.howItWorks')} lead={<Glyph id="colony" />}
       fact={<span className="gk-tone-hostile" data-colony-payload>{t('planet.radiationBomb.colonyEffects', {
         loyalty: RADIATION_BOMB.levels[level].colonyLoyaltyLoss, faults: RADIATION_BOMB.levels[level].colonyFaults,
       })}</span>}
@@ -185,7 +201,7 @@ export function RadiationBombLaunchPanel({ origin, target, targetName, flightMs,
     {error && <p role="alert" className="gk-inote" data-tone="warn">{describeError(error)}</p>}
     {/* A weapon fired is gone and cannot be called back: the kit's final weight, 1.5 s. */}
     <GameHold weight="final" tone="danger" glyph="radiation" commitSound="impact" label={t('planet.radiationBomb.launch', { level })}
-      disabledReason={refusal} onCommit={() => { onLaunch(level, confirmation.current.key, shield); }} />
+      disabledReason={refusal} onCommit={() => { onLaunch(level, confirmation.current.key, shield, effectiveBody); }} />
   </>;
   if (collapsible) {
     const ready = origin.radiationBombs.filter(item => item.status === 'READY').length;
@@ -198,9 +214,11 @@ export function RadiationBombLaunchPanel({ origin, target, targetName, flightMs,
   </section>;
 }
 
-export function RadiationBombControl({ origin, target, targetName, position, motion, disabledReason, onLaunched, collapsible }: {
+export function RadiationBombControl({ origin, target, targetName, position, motion, disabledReason, onLaunched, collapsible, hasMoon, moonRarity }: {
   origin: PlanetView; target: Target; targetName: string; position: Vec3; motion?: PublicMonument['motion'];
   disabledReason?: string | null; onLaunched?: () => void;
+  hasMoon?: boolean;
+  moonRarity?: MoonRarity | undefined;
   /** Folded behind its header, as on the focus panel beside the Death Star's section. */
   collapsible?: boolean;
 }) {
@@ -216,9 +234,12 @@ export function RadiationBombControl({ origin, target, targetName, position, mot
   return <RadiationBombLaunchPanel key={`${origin.planet.id}:${target.kind}:${target.id}`} origin={origin} target={target}
     targetName={targetName} flightMs={flightMs} pending={action.isPending} error={action.error}
     {...(collapsible === undefined ? {} : { collapsible })}
+    {...(hasMoon === undefined ? {} : { hasMoon })}
+    {...(moonRarity === undefined ? {} : { moonRarity })}
     disabledReason={locked ? t('errors.SEASON_FROZEN') : disabledReason ?? null}
-    onLaunch={(level, key, acknowledgeShieldLoss) => {
-      action.mutate({ level, target, key, acknowledgeShieldLoss }, { onSuccess: () => {
+    onLaunch={(level, key, acknowledgeShieldLoss, body) => {
+      const aimedTarget = target.kind === 'PLANET' && body === 'MOON' ? { ...target, body: 'MOON' as const } : target;
+      action.mutate({ level, target: aimedTarget, key, acknowledgeShieldLoss }, { onSuccess: () => {
         say(t('planet.radiationBomb.launched')); onLaunched?.();
       } });
     }} />;
