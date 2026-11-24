@@ -72,6 +72,16 @@ describe('Moon page — takeover review', () => {
     expect(within(card).queryByText(moonT('build.needResearch'))).toBeNull();
   });
 
+  it('owner 2026-11-24: without Lunar Capture the card says "research first" once and its one action is the research', () => {
+    const onOpenResearch = vi.fn();
+    show({ planet: planet({ lunarCapture: false }), onOpenResearch });
+    const card = screen.getByTestId('moon-panel-empty');
+    expect(within(card).getAllByText(moonT('build.needResearch'))).toHaveLength(1);
+    expect(within(card).queryByTestId('moon-build-btn')).toBeNull();
+    fireEvent.click(within(card).getByRole('button', { name: new RegExp(moonT('guide.openResearch'), 'i') }));
+    expect(onOpenResearch).toHaveBeenCalledTimes(1);
+  });
+
   it('U7: without a moon the page does not list the planet fleet', () => {
     show({ planet: planet() });
     expect(within(screen.getByTestId('moon-panel-empty')).queryByText(moonT('fleetSplit.planet'))).toBeNull();

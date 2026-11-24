@@ -372,6 +372,9 @@ function NoMoonCard({
             ? mt('build.action')
             : null;
 
+  // Without a way to the research line the disabled hold alone says "research first".
+  const lockedOnResearch = !hasResearch && !researching && onOpenResearch !== undefined;
+
   useMoonExpiryWakeup([pendingOrder?.finishesAt, researching?.finishesAt], now, onRefresh);
 
   const handleBuild = async () => {
@@ -429,33 +432,25 @@ function NoMoonCard({
                 />
               </div>
             )}
-            {!hasResearch && !researching && (
-              <Banner
-                tone="warn"
-                glyph="lock"
-                title={mt('build.needResearch')}
-                {...(onOpenResearch ? {
-                  action: (
-                    <GameButton size="sm" glyph="star" onPress={onOpenResearch}>
-                      {mt('guide.openResearch')}
-                    </GameButton>
-                  ),
-                } : {})}
-              />
-            )}
+            {/* Locked: say it once, and make the research the card's one action (not a dead hold under it). */}
+            {lockedOnResearch && <Banner tone="warn" glyph="lock" title={mt('build.needResearch')} />}
             {hasResearch && !hasResources && (
               <Banner tone="hostile" title={mt('build.needResources')} />
             )}
             {err && <Banner tone="hostile" role="alert" title={err} />}
-            {/* U3: pulling a rock into orbit is a commitment that spends — the kit's 1 s hold, like the Gate. */}
-            <GameHold
-              weight="spends"
-              glyph="moon"
-              marks={{ 'data-testid': 'moon-build-btn' }}
-              label={mt('build.action')}
-              disabledReason={buildDisabledReason}
-              onCommit={() => { void handleBuild(); }}
-            />
+            {lockedOnResearch ? (
+              <GameButton wide glyph="star" onPress={() => onOpenResearch?.()}>{mt('guide.openResearch')}</GameButton>
+            ) : (
+              /* U3: pulling a rock into orbit is a commitment that spends — the kit's 1 s hold, like the Gate. */
+              <GameHold
+                weight="spends"
+                glyph="moon"
+                marks={{ 'data-testid': 'moon-build-btn' }}
+                label={mt('build.action')}
+                disabledReason={buildDisabledReason}
+                onCommit={() => { void handleBuild(); }}
+              />
+            )}
           </div>
         )}
       </Plate>
