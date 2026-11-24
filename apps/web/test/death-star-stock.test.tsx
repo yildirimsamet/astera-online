@@ -97,7 +97,8 @@ describe('Death Star stock across launches and world switches', () => {
     await waitFor(() => { expect(result.current.active.data && readyDeathStar(result.current.active.data)).toBeUndefined(); });
 
     expect(vi.mocked(api.launchDeathStar).mock.calls).toEqual([
-      ['capital', 'target-1'], ['colony', 'target-2'], ['capital', 'target-3'],
+      // The third argument is the struck body (Ay §6.12); a planet strike leaves it unset.
+      ['capital', 'target-1', undefined], ['colony', 'target-2', undefined], ['capital', 'target-3', undefined],
     ]);
   });
 

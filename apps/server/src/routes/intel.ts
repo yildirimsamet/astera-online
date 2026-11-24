@@ -125,6 +125,9 @@ export function registerIntelRoutes(app: FastifyInstance): void {
         ...(r.report.silhouette?.notificationCenter === undefined
           ? {}
           : { notificationCenter: r.report.silhouette.notificationCenter }),
+        ...(r.report.silhouette?.moon === undefined
+          ? {}
+          : { moon: r.report.silhouette.moon }),
         /*
           THE THREE READINGS D199 ADDED — the shape of what fires, the Aegis charge
           and the unarmed hulls in the line. ABSENT on a report written before them,

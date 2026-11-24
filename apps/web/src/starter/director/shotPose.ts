@@ -85,5 +85,7 @@ export interface DirectorShot {
   towards?: (() => [number, number, number] | null) | undefined;
   /** A scene that ends on this shot leaves the camera on its subject (a rock, a contact), not on the ship. */
   stays?: boolean | undefined;
+  /** When true, the player may freely orbit/zoom at any time during the shot. */
+  allowOrbit?: boolean | undefined;
   seconds: number;
 }

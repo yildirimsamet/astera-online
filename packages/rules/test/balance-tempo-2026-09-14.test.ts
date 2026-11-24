@@ -123,6 +123,8 @@ describe('research prices', () => {
   it('takes a fifth off the crystal of every rung and leaves the other two alone', () => {
     let rungs = 0;
     for (const id of RESEARCH_PROJECT_IDS) {
+      // Lunar Capture's price is the owner's own figure (Ay V28): no profile, no discount.
+      if (RESEARCH_PROJECTS[id].fixedMinutes !== undefined) continue;
       for (let level = 1; level <= RESEARCH_MAX_LEVEL[id]; level++) {
         const quoted = RESEARCH_PROJECTS[id].costAt(level);
         const before = profileResearch(id, level).cost;
@@ -134,7 +136,8 @@ describe('research prices', () => {
     }
     // Industrial (owner K6, 2026-09-29) added the seventeenth project and its two rungs;
     // the Death Star Protocol's retirement (owner, 2026-10-01) took one project and one rung.
-    expect(RESEARCH_PROJECT_IDS.length).toBe(18);
+    // Lunar Capture (owner, 2026-11-19) is the nineteenth, priced outside this rule.
+    expect(RESEARCH_PROJECT_IDS.length).toBe(19);
     // Interception Grid now adds a second useful level (owner, 2026-10-15).
     expect(rungs).toBe(62);
   });

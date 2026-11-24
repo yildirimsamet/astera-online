@@ -378,6 +378,8 @@ const researchWork: Record<ResearchProjectId, { stage: number; hours: number; gr
   /** Owner K6, 2026-09-29: Yard Automation's own first two rungs. */
   INDUSTRIAL: { stage: 6, hours: 3, growth: 1.8, fuel: 0 },
   RADIATION_SHIELDING: { stage: 4, hours: 1.5, growth: 1.8, fuel: 0 },
+  /** Never priced from here: the owner set its price and time (Ay V28, `RESEARCH_PROJECTS.LUNAR_CAPTURE`). */
+  LUNAR_CAPTURE: { stage: 9, hours: 4, growth: 1, fuel: 0.5 },
 };
 
 export function profileResearch(id: ResearchProjectId, level: number, days: number = ECONOMY_PROFILE.progressionDays) {

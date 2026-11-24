@@ -197,6 +197,10 @@ devastated by a Death Star, and cannot be abandoned or captured.
 Death Star strike. A commander may retain up to three, with new acquisition capacity derived
 from their capital's Command Core.
 
+**Secession** — A colony whose loyalty reaches zero turns neutral. The fleet standing on it, the
+ships in its Repair Station and clanmates' support standing there are lost with it; fleets in
+flight land at a world the owner still holds. Abandoning a colony on purpose brings its fleet home.
+
 **Neutral world** — One of seventeen deterministic, shared-stock worlds created with a v2
 season. It has no commander, grants no Dominion and is never replaced after capture.
 
@@ -320,6 +324,32 @@ line power ÷ host power (the host's ships and the guns that fire), at most ×5.
 **Defending line** — Every stack in a defence: the host first, then each standing wave
 (`DefenderStack[]` in `resolveBattle`). A report with more than one commander in it carries
 `defender_count > 1` and a `defenseLine` projection.
+
+
+## Moons (Ay)
+
+Full rules: `docs/ay-entegrasyon-plani-2026-11-19.md`. Numbers live in `packages/rules/src/moon.ts` (`MOON`).
+
+**Moon / Ay** — A second body of a world: an orbital dock with its own fleet, gate and Gözcü.
+At most one per world. Planet guns, Aegis and tactical escape never reach it; a moon battle has no loot.
+
+**Rarity / nadirlik** — Common · Rare · Epic (tr "Destansı") · Legendary. Sets dock, gate charge,
+Gözcü range and durability. Only a commander who sees or probes the world knows it (S53).
+
+**Dock / rıhtım** — How much hangar bulk can stand on the moon (`MOON.gateCapacity`). Moon ships
+still count toward the planet's Hangar.
+
+**Hop / geçiş** — Planet ↔ moon move, `MOON.hopSeconds`, free; ships in transit cannot be hit.
+
+**Moon Gate / Ay Kapısı** — Jumps ships between two of the commander's own moons after a
+`MOON.gateOpenSeconds` opening; both gates then charge. The smaller dock limits a jump.
+
+**Gözcü** — A moon's route scanner: for `MOON.scanCost` it photographs player fleets flying to or
+from a world in range, silently. Moon-bound flights stay hidden except from a Legendary moon.
+
+**Durability / dayanıklılık (code: cracks)** — `crackLimit − cracks`. A Death Star hit takes 1 and shuts
+gate and Gözcü for `MOON.strikeCloseHours`; at 0 the moon shatters with every ship on it. Full again
+`MOON.crackHealHours` after the last hit.
 
 
 ## Design vocabulary

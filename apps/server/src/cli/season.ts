@@ -24,6 +24,7 @@ import { activateSpawnGate } from '../services/spawnGate.js';
 import { activateMonumentRadiation } from '../services/monumentRadiationAdoption.js';
 import { activateRadiationBombs } from '../services/radiationBombAdoption.js';
 import { activateAdmiral } from '../services/admiralActivation.js';
+import { activateMoons } from '../services/moonActivation.js';
 import { activateTempoSlowdown } from '../services/tempoAdoption.js';
 import { activateHonorShadow, hideHonorRanking, openHonorRanking, refreshHonorEligibility } from '../services/honorActivation.js';
 import { enableHonorBenefits } from '../services/honorBenefits.js';
@@ -119,6 +120,12 @@ season activate-admiral --shard CODE [--yes]
                                    open commander ship escorts in a LIVE season dealt
                                    before ruleset 19, from now on. Flights already in the
                                    air keep their rules. Dry run unless --yes; safe to rerun.
+
+season activate-moons --shard CODE [--yes]
+                                   open moons in a LIVE MAIN season dealt before ruleset 20,
+                                   from now on: colonies get T1 Common / T2 Rare / T3 Epic,
+                                   capitals none, unowned neutrals the seeded plan. The ruleset
+                                   stays. Dry run (prints the counts) unless --yes; safe to rerun.
 
 season activate-radiation-bombs --shard CODE [--yes]
                                    enable bombs, parked-ship exposure and the 50 HP/min cap
@@ -382,6 +389,19 @@ async function main(): Promise<void> {
         const result = await activateAdmiral(db, { seasonId: live.season.id, clock: systemClock, apply: values.yes === true });
         console.log(`${values.shard}: ${result.status}; start=${result.startsAt?.toISOString() ?? '-'}`);
         console.log(result.applied ? 'Opened commander ship escorts. Season rules and flights in the air were preserved.'
+          : result.status === 'READY' ? 'Nothing was written; pass --yes to apply.' : 'Nothing was written.');
+        break;
+      }
+      case 'activate-moons': {
+        if (!values.shard) throw new Error('activate-moons requires an explicit --shard CODE');
+        const live = await liveSeason(db, values.shard);
+        if (!live) throw new Error(`no live season on ${values.shard}`);
+        const result = await activateMoons(db, { seasonId: live.season.id, clock: systemClock, apply: values.yes === true });
+        const counts = (tally: Record<string, number>) => Object.entries(tally).map(([rarity, n]) => `${rarity} ${String(n)}`).join(', ');
+        console.log(`${values.shard}: ${result.status}; start=${result.startsAt.toISOString()}`);
+        console.log(`colonies: ${counts(result.colonies)}`);
+        console.log(`unowned neutrals: ${counts(result.neutrals)}`);
+        console.log(result.applied ? 'Opened moons. The season ruleset and everything earned were preserved.'
           : result.status === 'READY' ? 'Nothing was written; pass --yes to apply.' : 'Nothing was written.');
         break;
       }

@@ -19,7 +19,7 @@ import {
   type UseMutationOptions,
 } from '@tanstack/react-query';
 import { TRAFFIC, engagementEndsAt } from '@astera/rules';
-import type { ChatLanguage, MissionPace, ReactionEmoji, TransferReturnPlan } from '@astera/rules';
+import type { ChatLanguage, MissionPace, ReactionEmoji, TransferReturnPlan, WorldBody } from '@astera/rules';
 import type {
   Fleet,
   Resources,
@@ -2569,17 +2569,18 @@ export function useLaunch() {
   return useMutation({
     meta: lane.meta,
     mutationFn: (
-      { targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral }:
+      { targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, originBody, targetBody }:
       {
         targetPlanetId: string; fleet: Fleet; acknowledgeShieldLoss?: boolean; pace?: MissionPace;
-        acknowledgeRadiation?: boolean; admiral?: boolean;
+        acknowledgeRadiation?: boolean; admiral?: boolean; originBody?: WorldBody; targetBody?: WorldBody;
       },
       context,
     ) => {
       const planetId = planetMutationOrigin(context);
+      const bodies = originBody || targetBody ? { originBody, targetBody } : undefined;
       return planetId
-        ? api.launch(planetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral)
-        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral);
+        ? api.launch(planetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies)
+        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies);
     },
     onMutate: lane.enter,
     onSuccess: async (result, { targetPlanetId }) => {
@@ -2623,7 +2624,7 @@ export function useTransfer(originPlanetId: string) {
   const lane = usePlanetMutationLane(originPlanetId);
   return useMutation({
     meta: lane.meta,
-    mutationFn: ({ targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation }: {
+    mutationFn: ({ targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation, originBody, targetBody }: {
       targetPlanetId: string;
       fleet: Fleet;
       cargo: { alloy: number; crystal: number; deuterium: number };
@@ -2631,7 +2632,12 @@ export function useTransfer(originPlanetId: string) {
       returnPlan: TransferReturnPlan;
       /** The commander has read what radiation on this route would take (plan D10). */
       acknowledgeRadiation?: boolean;
-    }, context) => api.transfer(requiredPlanetMutationOrigin(context), targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation),
+      originBody?: WorldBody;
+      targetBody?: WorldBody;
+    }, context) => api.transfer(
+      requiredPlanetMutationOrigin(context), targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation,
+      originBody || targetBody ? { originBody, targetBody } : undefined,
+    ),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       playSound('cargo');
@@ -2706,7 +2712,7 @@ export function useLaunchRadiationBomb(planetId: string) {
   const lane = usePlanetMutationLane(planetId);
   return useMutation({
     meta: lane.meta,
-    mutationFn: (input: { level: 1 | 2 | 3; target: { kind: 'PLANET' | 'MONUMENT'; id: string };
+    mutationFn: (input: { level: 1 | 2 | 3; target: { kind: 'PLANET' | 'MONUMENT'; id: string; body?: WorldBody };
       key: string; acknowledgeShieldLoss: boolean }, context) => api.launchRadiationBomb(
       requiredPlanetMutationOrigin(context), input.level, input.target, input.key, input.acknowledgeShieldLoss),
     onMutate: lane.enter,
@@ -2749,7 +2755,11 @@ export function useLaunchDeathStar() {
   const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
     meta: lane.meta,
-    mutationFn: (targetPlanetId: string, context) => api.launchDeathStar(requiredPlanetMutationOrigin(context), targetPlanetId),
+    mutationFn: (input: string | { targetPlanetId: string; targetBody?: WorldBody }, context) => {
+      const targetPlanetId = typeof input === 'string' ? input : input.targetPlanetId;
+      const targetBody = typeof input === 'string' ? undefined : input.targetBody;
+      return api.launchDeathStar(requiredPlanetMutationOrigin(context), targetPlanetId, targetBody);
+    },
     onMutate: lane.enter,
     onSuccess: async (result) => {
       playSound('launch');
@@ -2761,5 +2771,29 @@ export function useLaunchDeathStar() {
       invalidate(keys.traffic, keys.galaxy, keys.planets, keys.leaderboard);
     },
     onSettled: (_data, _error, _targetPlanetId, turn) => { lane.leave(turn); },
+  });
+}
+
+/** Ay F5/F9: list this commander's Gözcü route scans. */
+export function useMoonScans(enabled = true) {
+  const api = useApi();
+  return useQuery({
+    queryKey: ['moon-scans'] as const,
+    queryFn: api.moonScans,
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+/** Ay F3b/F9: switch an in-flight single raid between PLANET and MOON. */
+export function useRetargetMission() {
+  const api = useApi();
+  const invalidate = useInvalidator();
+  return useMutation({
+    mutationFn: ({ missionId, body }: { missionId: string; body: WorldBody }) =>
+      api.retargetMission(missionId, body),
+    onSuccess: () => {
+      invalidate(keys.pending, keys.traffic);
+    },
   });
 }

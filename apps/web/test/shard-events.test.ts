@@ -94,6 +94,12 @@ describe('what a shard event asks the client to read', () => {
    * the costliest payload in the game on every launch in a fifty-player shard,
    * for a payload a flight cannot change.
    */
+  /** Ay §6.22: a gate flash, a birth, a crack or a break all live in the galaxy payload's moon view. */
+  it('sends a moon event to the map', () => {
+    // The holder's own world view carries the moon too, as a battle's `impact` already refreshes it.
+    expect(readsForShardEvent('shard:moons')).toEqual([keys.galaxy, keys.planet, keys.planets]);
+  });
+
   it('never sends a flight to the galaxy payload', () => {
     for (const kind of ['shard:launch', 'shard:arrival', 'shard:mining']) {
       expect(readsForShardEvent(kind), kind).not.toContainEqual(keys.galaxy);

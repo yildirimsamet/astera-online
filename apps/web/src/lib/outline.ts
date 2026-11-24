@@ -10,6 +10,9 @@ export interface OutlineWorld {
   active: boolean;
   /** Ships standing at home, and how many of its craft are off it. */
   ships: number;
+  /** Ships standing on this world's moon, when it has one. */
+  moonShips?: number;
+  hasMoon?: boolean;
   away: number;
   /** Attacks on their way to it. */
   threats: number;
@@ -37,6 +40,7 @@ export function outlineWorlds(
     capital: world.planet.id === at.capitalPlanetId,
     active: world.planet.id === at.activePlanetId,
     ships: fleetCount(world.fleet),
+    ...(world.moon ? { hasMoon: true, moonShips: fleetCount(world.moon.fleet) } : {}),
     away: fleetCount(world.fleetAway),
     threats: threads.filter((thread) => thread.kind === 'incoming' && thread.targetPlanetId === world.planet.id).length,
   }));

@@ -67,6 +67,7 @@ import { developGuard } from './guard.js';
 import {
   isBully, planPirateRaid, planWorldRaid, researchOf, type ForecastBudget, type WallReading,
 } from './judgement.js';
+import { tendBotMoon } from './moon.js';
 
 /**
  * WHAT ONE OF THEM DOES WHEN IT PICKS UP THE PHONE. D159.
@@ -171,6 +172,7 @@ export async function runBotTurn(
     view = await buyShips(db, clock, seat, persona, view, did, log, rng);
   }
   view = await tendNotificationCenter(db, clock, seat, persona, view, did, log);
+  view = await tendBotMoon(db, clock, seat, persona, view, did, log, rng);
   await commitOneFlight(db, clock, seat, persona, view, did, log, rng);
 
   return { did };

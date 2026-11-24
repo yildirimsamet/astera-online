@@ -675,5 +675,7 @@ export function researchGain(id: ResearchProjectId, level: number, top: number =
       return permission(i18n.t('gains.research.denseOpens'));
     case 'GRAVITIC_CHARGES':
       return permission(i18n.t('gains.research.graviticOpens'));
+    case 'LUNAR_CAPTURE':
+      return permission(i18n.t('gains.research.lunarCaptureOpens'));
   }
 }

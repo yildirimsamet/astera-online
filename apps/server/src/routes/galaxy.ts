@@ -3,7 +3,7 @@ import { and, asc, desc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { applyHonorPodium } from '../services/honorPodium.js';
 import { readHonorBenefits } from '../services/honorBenefits.js';
-import { honorSoloCredit, isSupportedHonorVersion, coreTier, distance, planetSkinById, honorRankRewards, honorResourceValue, clanTagTier } from '@astera/rules';
+import { honorSoloCredit, isSupportedHonorVersion, coreTier, distance, planetSkinById, honorRankRewards, honorResourceValue, clanTagTier, sensorZone } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import {
   accounts,
@@ -29,6 +29,7 @@ import { requireAuth } from './auth.js';
 import { galaxyFactsAt } from '../services/galaxyFacts.js';
 import { activeClanMembership } from '../services/clanCombat.js';
 import { GameError } from '../services/planet.js';
+import { moonsSeenBy, seasonHasMoons } from '../services/moon.js';
 
 /**
  * THE GALAXY, AS EVERYBODY SEES IT PLUS WHAT YOU HAVE EARNED.
@@ -126,7 +127,21 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
       && sensors.some(post => post.telescope && distance(post.at, world.position) <= post.identify),
     ).map(world => world.id), now);
 
+    // Absent, not empty, in a galaxy without moons (E13).
+    const worldById = new Map(worlds.map((world) => [world.id, world]));
+    const moonView = await seasonHasMoons(app.db, self.seasonId)
+      ? await moonsSeenBy(app.db, self.seasonId, new Set(worldById.keys()), (id) => {
+        const world = worldById.get(id);
+        return world !== undefined && resolves(world);
+      }, (id) => remembered.get(id)?.silhouette.moonRarity, (id) => {
+        if (mineSet.has(id)) return 'IDENTIFIED';
+        const world = worldById.get(id);
+        return world ? sensorZone(sensors, world.position) : 'NONE';
+      }, now)
+      : null;
+
     return {
+      ...(moonView ? { moons: moonView } : {}),
       /** Radyasyon (plan F9): public, like the worlds — every commander flies through the same sky. */
       radiation,
       radiationModel,

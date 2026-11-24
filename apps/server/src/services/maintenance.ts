@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { and, eq } from 'drizzle-orm';
 import { HULLS, dockLocation, fleetCount, fleetEntries, selectHealthGroups, shipScrapReturn, type Fleet, type HpDamageLot, type HpDamageLots } from '@astera/rules';
 import type { Db } from '../db/client.js';
@@ -44,7 +45,7 @@ export async function maintenanceAction(db: Db, playerId: string, planetId: stri
       }
       const counts = { ...chosen.remaining };
       for (const [hull] of fleetEntries(chosen.selected)) counts[hull] ??= 0;
-      await setUnits(tx, planetId, counts, 'home', playerId);
+      await setUnits(tx, planetId, counts, PLANET_LOCATION, playerId);
       await writeHomeHealth(tx, planetId, chosen.remaining, chosen.remainingDamage);
     } else {
       if (action === 'DOCK') throw new GameError('BAD_MAINTENANCE_SELECTION', 'Those ships are already docked', 400);

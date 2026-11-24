@@ -1,4 +1,5 @@
-import { and, eq, inArray, isNull, ne, notLike, or, sql } from 'drizzle-orm';
+import { PLANET_LOCATION, awaySql } from './unitLocation.js';
+import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { observeHonorOwner } from './honorReference.js';
 import { pendingRadiationImpacts, persistPlanetRadiation, projectPlanetRadiation } from './planetRadiation.js';
 import { planetAnchoredSources } from './radiationSources.js';
@@ -20,7 +21,6 @@ import {
   investedInInstrument,
   satelliteSlots,
   wealth,
-  dockLocation,
   normalizeHpDamage,
   type HpDamageLot,
   type BuildingId,
@@ -290,6 +290,7 @@ export interface LockedPlanet {
   /** Reuse the season row already read for active-season shielding availability. */
   monumentRadiationStartsAt?: Date | null;
   radiationBombStartsAt?: Date | null;
+  moonsStartsAt?: Date | null;
   /** D212: this world is in Silent Space — no fights, no farming, works at half pace. */
   silentSpace: boolean;
   /** F2 Ortak Ocak: the clan's share on what the works make, 0 outside a clan. */
@@ -549,7 +550,7 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     tx.select().from(buildings).where(eq(buildings.planetId, planetId)),
     tx.select().from(satellites).where(eq(satellites.planetId, planetId)),
     tx.select().from(units).where(and(eq(units.planetId, planetId),
-      season.radiationBombStartsAt ? undefined : eq(units.location, 'home'))),
+      season.radiationBombStartsAt ? undefined : eq(units.location, PLANET_LOCATION))),
     tx.select().from(planetFaults).where(eq(planetFaults.planetId, planetId)),
     // F2 Ortak Ocak: the clan's share is read fresh only by a write, which freezes it on the row.
     tx.select({ role: shards.role, ...(options.mutate
@@ -778,7 +779,7 @@ function planetEconomy(inputs: PlanetInputs, clock: Clock) {
   const homeFleet: Fleet = {};
   const ground: Fleet = {};
   for (const u of unitRows) {
-    if (u.count <= 0 || u.location !== 'home') continue;
+    if (u.count <= 0 || u.location !== PLANET_LOCATION) continue;
     (HULLS[u.hull].ground ? ground : homeFleet)[u.hull] = u.count;
   }
 
@@ -824,6 +825,7 @@ function lockedPlanetFrom(inputs: PlanetInputs, economy: ReturnType<typeof plane
     rulesetVersion: season.rulesetVersion,
     monumentRadiationStartsAt: season.monumentRadiationStartsAt,
     radiationBombStartsAt: season.radiationBombStartsAt,
+    moonsStartsAt: season.moonsStartsAt,
     silentSpace,
     clanBonus,
     vacationUntil: row.vacationUntil && row.vacationUntil > clock.now() ? row.vacationUntil : null,
@@ -857,7 +859,7 @@ function lockedPlanetFrom(inputs: PlanetInputs, economy: ReturnType<typeof plane
     loyalty,
     faultProtectedUntil: row.faultProtectedUntil,
     homeFleet,
-    homeDamage: normalizeHpDamage(homeFleet, unitRows.filter((row) => row.location === 'home' && !HULLS[row.hull].ground).flatMap((row) => row.damage)),
+    homeDamage: normalizeHpDamage(homeFleet, unitRows.filter((row) => row.location === PLANET_LOCATION && !HULLS[row.hull].ground).flatMap((row) => row.damage)),
     ground,
     nowMinutes: minutesSince(season.startsAt, clock.now()),
     now: clock.now() <= season.endsAt ? clock.now() : season.endsAt,
@@ -949,7 +951,7 @@ export async function setUnits(
   tx: Tx,
   planetId: string,
   fleet: Fleet,
-  location = 'home',
+  location = PLANET_LOCATION,
   ownerPlayerId?: string,
 ): Promise<void> {
   const entries = Object.entries(fleet) as [HullId, number][];
@@ -974,7 +976,7 @@ export async function addUnits(tx: Tx, planetId: string, fleet: Fleet): Promise<
   const current = await tx
     .select()
     .from(units)
-    .where(and(eq(units.planetId, planetId), eq(units.location, 'home')));
+    .where(and(eq(units.planetId, planetId), eq(units.location, PLANET_LOCATION)));
   const merged: Fleet = {};
   for (const u of current) merged[u.hull] = u.count;
   for (const [hull, n] of Object.entries(fleet) as [HullId, number][]) {
@@ -1197,17 +1199,13 @@ export async function awayFleet(tx: Queryable, planetId: string): Promise<Fleet>
     .from(units)
     .where(and(
       eq(units.planetId, planetId),
-      ne(units.location, 'home'),
       // A docked ship is on the world, just not fit to fly: `dockLotsOf` reads those.
-      notLike(units.location, DOCK_PATTERN),
+      awaySql(units.location),
     ));
   const out: Fleet = {};
   for (const r of rows) if (r.count > 0) out[r.hull] = (out[r.hull] ?? 0) + r.count;
   return out;
 }
-
-const DOCK_PATTERN = dockLocation('%');
-
 
 /**
  * What is in a planet's orbit, without taking a lock. D25.

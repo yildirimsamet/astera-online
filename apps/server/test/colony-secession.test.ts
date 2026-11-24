@@ -4,7 +4,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { FAULT, FAULT_KINDS, SERVERS } from '@astera/rules';
 import {
   buildOrders, buildings, neutralPlanetState, notifications, planetFaults, planets,
-  satellites, scheduledEvents, units,
+  satellites, scheduledEvents, seasonTelemetrySegments, units,
 } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { colonyStanding } from '../src/services/ownership.js';
@@ -226,20 +226,48 @@ describe('koloni koptuğunda', () => {
     expect(armed).toHaveLength(1);
   });
 
-  /** Filo savaşsız kaybedilmez: mobil gemiler eve alınır, emplasmanlar dünyayla kalır. */
-  it('mobil filo capitale alınır, yer savunması bakıcıya kalır', async () => {
-    await giveUnits(f.db, colony, { DART: 12, THORN: 4 });
+  /**
+   * SADAKATİ BİTEN KOLONİDE FİLO YOK OLUR (owner 2026-11-18, S19c). Gönüllü terk
+   * (`colony-abandonment.test.ts`) bugünkü gibi gemileri başkente taşır; burada yalnız
+   * sadakatle düşüş var. Yer savunması bakıcıya kalır.
+   */
+  it('mobil filo düşüşte yok olur, başkente gitmez; yer savunması bakıcıya kalır', async () => {
+    await giveUnits(f.db, colony, { DART: 12, THORN: 4, PROSPECTOR: 2 });
     await giveUnits(f.db, capital, { DART: 3 });
     await secede();
 
     const left = await f.db.select().from(units).where(eq(units.planetId, colony));
     expect(left.find((u) => u.hull === 'DART')?.count ?? 0).toBe(0);
+    // A craft that never fights is still a ship standing there (§13 F1).
+    expect(left.find((u) => u.hull === 'PROSPECTOR')?.count ?? 0).toBe(0);
+    const home0 = await f.db.select().from(units).where(eq(units.planetId, capital));
+    expect(home0.find((u) => u.hull === 'PROSPECTOR')?.count ?? 0).toBe(0);
     const thorn = left.find((u) => u.hull === 'THORN');
     expect(thorn!.count).toBe(4);
     expect(thorn!.ownerPlayerId).toBeNull();
 
     const home = await f.db.select().from(units).where(eq(units.planetId, capital));
-    expect(home.find((u) => u.hull === 'DART')?.count).toBe(15);
+    expect(home.find((u) => u.hull === 'DART')?.count).toBe(3);
+  });
+
+  it('kaybedilen gemiler düşüş bildiriminde sayılır', async () => {
+    await giveUnits(f.db, colony, { DART: 12, THORN: 4 });
+    await secede();
+    const [note] = await f.db.select().from(notifications).where(eq(notifications.kind, 'colony_lost'));
+    expect(note!.payload).toMatchObject({ cause: 'SECESSION', lostShips: 12 });
+  });
+
+  /** S43: kayıp skor değildir ama sezon istatistiğinde görünür. */
+  it('kayıp sezon istatistiğine yazılır, dominion üretmez', async () => {
+    await giveUnits(f.db, colony, { DART: 12 });
+    await secede();
+    const segments = await f.db.select().from(seasonTelemetrySegments)
+      .where(eq(seasonTelemetrySegments.playerId, f.playerIds[1]!));
+    const lost = segments.map((row) => row.telemetry.shipsLost ?? {});
+    expect(lost).toContainEqual({ DART: 12 });
+    const { dominionEvents, honorEvents } = await import('../src/db/schema.js');
+    expect(await f.db.select().from(dominionEvents)).toHaveLength(0);
+    expect(await f.db.select().from(honorEvents)).toHaveLength(0);
   });
 
   /**

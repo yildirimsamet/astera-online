@@ -1,16 +1,16 @@
+import { PLANET_LOCATION, awaySql, isAway } from './unitLocation.js';
 import { dispatchProvenance } from './commandOrigin.js';
 import { commanderPvpBalance } from './pvpBalance.js';
 import { recordLegacyActivity } from './legacy.js';
 import { recordPlayerLegacyFact } from './legacyEvents.js';
 import { spatialHistory } from './spatialHistory.js';
-import { isNull, and, desc, eq, gt, inArray, isNotNull, ne, notLike, sql } from 'drizzle-orm';
+import { isNull, and, desc, eq, gt, inArray, isNotNull, ne, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
   COMBAT_RESEARCH_PROJECTS,
   FEATURE_FLAGS,
   PROBE,
   partitionCombatFleet,
-  dockLocation,
   isDockLocation,
   DEATH_STAR,
   bearingBetween,
@@ -101,6 +101,7 @@ import { researchLevels } from './researchState.js';
 import { publicWorlds, silhouetteOf } from './publicGalaxy.js';
 import { lockWorlds } from './ownership.js';
 import { assertClanHostilityAllowed, lockClanPlayers } from './clanCombat.js';
+import { moonRarityOf, moonWatchStatus, probeMoon, seasonHasMoons, type MoonWatchStatus } from './moon.js';
 
 /* ── satellite levels ───────────────────────────────────────── */
 
@@ -175,7 +176,7 @@ export async function fleetTruthFor(
     .where(
       and(
         inArray(units.planetId, [...planetIds]),
-        ne(units.location, 'home'),
+        awaySql(units.location),
         gt(units.count, 0),
         /**
          * A Prospector is not a fleet. D19.
@@ -193,8 +194,8 @@ export async function fleetTruthFor(
          * It has not left: it is on the world and cannot fly. Counting it would make a
          * world whose whole garrison stands at home read AWAY because one damaged hull
          * waits for repair — the same lie the Prospector line above exists to prevent.
+         * (`awaySql` above already leaves docked rows out.)
          */
-        notLike(units.location, dockLocation('%')),
       ),
     )
     .groupBy(units.planetId);
@@ -250,6 +251,11 @@ export interface WatchView {
   targetName: string;
   ownerName: string;
   reading: TelescopeReading;
+  /**
+   * THE MOON ROW (S40), only in a galaxy with moons. It shares the planet row's fog: where the Veil hides
+   * the planet's fleet, it hides the moon's too.
+   */
+  moon?: MoonWatchStatus | 'UNKNOWN';
   /** When this slot may be re-pointed. Null means now. D18. */
   cooldownUntil: Date | null;
 }
@@ -486,6 +492,9 @@ export async function readTelescopes(
   });
 
   const truth = await fleetTruthFor(db, eligible.map((r) => r.planet.id), now);
+  const moonRows = await seasonHasMoons(db, me.seasonId)
+    ? await moonWatchStatus(db, eligible.map((r) => r.planet.id))
+    : null;
   const views: WatchView[] = [];
   const confirmations: {
     observerPlanetId: string;
@@ -556,6 +565,7 @@ export async function readTelescopes(
       targetName: target.name,
       ownerName: row.owner ?? `Neutral ${target.name}`,
       reading,
+      ...(moonRows ? { moon: reading.status === 'UNKNOWN' ? 'UNKNOWN' as const : moonRows.get(target.id) ?? 'NONE' } : {}),
       cooldownUntil: row.watch.cooldownUntil,
     });
   }
@@ -808,7 +818,8 @@ export async function rememberWorld(
     targetPlanetId: string;
     seasonId: string;
     seenAt: Date;
-    source: 'PROBE' | 'BATTLE';
+    /** `SCAN`: a Gözcü saw the world on a route (Ay S53). */
+    source: 'PROBE' | 'BATTLE' | 'SCAN';
     reportId?: string;
     /** Provided by the probe, which reads more than a silhouette. */
     silhouette?: NonNullable<typeof probeWorldMemories.$inferSelect['silhouette']>;
@@ -824,7 +835,9 @@ export async function rememberWorld(
   if (!silhouette) {
     const [outside] = await publicWorlds(tx, input.seasonId, input.seenAt, [input.targetPlanetId]);
     if (!outside) return;
-    silhouette = silhouetteOf(outside);
+    // A battle sees the moon over the world it fought at (S53).
+    const moonRarity = await moonRarityOf(tx, input.targetPlanetId);
+    silhouette = { ...silhouetteOf(outside), ...(moonRarity ? { moonRarity } : {}) };
   }
 
   await tx
@@ -972,13 +985,15 @@ export async function resolveProbe(
   let anyAway = false;
   for (const u of unitRows) {
     if (u.count <= 0) continue;
-    if (u.location === 'home') {
+    if (u.location === PLANET_LOCATION) {
       home[u.hull] = (home[u.hull] ?? 0) + u.count;
       presentCount += u.count;
     } else if (isDockLocation(u.location)) {
       // Workshop ships are physically here, but never belong to the defending line.
       presentCount += u.count;
-    } else anyAway = true;
+    } else if (isAway(u.location)) {
+      anyAway = true;
+    }
   }
   const homeFleet = home as Partial<Record<HullId, number>>;
 
@@ -1080,7 +1095,7 @@ export async function resolveProbe(
     reported five hulls at a world holding eleven would be hiding the transports
     rather than pricing them.
   */
-  const ready = partitionCombatFleet(homeFleet, unitRows.filter(row => row.location === 'home').flatMap(row => row.damage)).eligible;
+  const ready = partitionCombatFleet(homeFleet, unitRows.filter(row => row.location === PLANET_LOCATION).flatMap(row => row.damage)).eligible;
   const defence = fuzzBand(combatValue(ready), accuracy, rng);
   const size = fuzzBand(presentCount, accuracy, rng);
   /*
@@ -1252,9 +1267,17 @@ export async function resolveProbe(
     that misses as often as the probe is inaccurate. The wallet itself never leaves.
   */
   const notificationCenter = owner === null ? undefined : await readCenterForProbe(tx, owner, accuracy, mission.id, now);
+  /*
+    AND THE MOON (S23, S53): rarity exactly, the fleet on it through this probe's band on a stream of its
+    own so no band above moves, and whether a hop was under way. The rarity becomes the observer's memory.
+  */
+  const moon = await seasonHasMoons(tx, target.seasonId)
+    ? await probeMoon(tx, target.id, (count) => fuzzBand(count, accuracy, seededFrom(mission.id, 0x300_f1e)), now)
+    : undefined;
   const silhouette = outside
     ? {
       ...silhouetteOf(outside),
+      ...(moon === undefined ? {} : { moon, moonRarity: moon.rarity }),
       ...(research === undefined ? {} : { research }),
       ...(owner === null ? {} : { interceptors: charges.length }),
       ...(loyalty === undefined ? {} : { loyalty }),

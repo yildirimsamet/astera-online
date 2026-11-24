@@ -88,6 +88,10 @@ const RESEARCH = zodEnum(RESEARCH_PROJECT_IDS);
 const launchBody = z.object({
   originPlanetId: z.string().uuid().optional(),
   targetPlanetId: z.string().uuid(),
+  /** Ay S2/S6: the planet or its moon. Omitted is the planet, as every launch before moons. */
+  targetBody: z.enum(['PLANET', 'MOON']).optional(),
+  /** Ay S34: a raid may leave from the origin world's moon. */
+  originBody: z.enum(['PLANET', 'MOON']).optional(),
   fleet: z.record(MOBILE, z.number().int().min(0)).refine(
     (f) => Object.values(f).some((n) => n > 0),
     'Send at least one ship',
@@ -476,6 +480,8 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       body.acknowledgeRadiation ?? false,
       app.adminUsernames,
       body.admiral ?? false,
+      body.targetBody ?? 'PLANET',
+      body.originBody ?? 'PLANET',
     );
   });
 
@@ -483,7 +489,9 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
     const body = z.object({
       originPlanetId: z.string().uuid(),
       level: BOMB_LEVEL,
-      target: z.object({ kind: z.enum(['PLANET', 'MONUMENT']), id: z.string().uuid() }).strict(),
+      target: z.object({ kind: z.enum(['PLANET', 'MONUMENT']), id: z.string().uuid(),
+        /** Ay S45: the world's moon instead of its planet. */
+        body: z.enum(['PLANET', 'MOON']).optional() }).strict(),
       acknowledgeShieldLoss: z.boolean().optional(),
     }).strict().parse(req.body);
     const key = z.string().min(8).max(128).parse(req.headers['idempotency-key']);
@@ -497,6 +505,8 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       targetPlanetId: z.string().uuid(),
       /** The same acknowledgement the raid lane takes, for the same reason. D183. */
       acknowledgeShieldLoss: z.boolean().optional(),
+      /** Ay S19: strike the world's moon instead. */
+      targetBody: z.enum(['PLANET', 'MOON']).optional(),
     }).strict().parse(req.body);
     const owner = await ownedPlanet(app.db, req.accountId!, body.originPlanetId);
     return launchDeathStar(
@@ -507,6 +517,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       owner.playerId,
       body.acknowledgeShieldLoss ?? false,
       app.adminUsernames,
+      body.targetBody,
     );
   });
 
@@ -528,6 +539,9 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       }).strict().default({ cargoShips: 'RETURN', otherShips: 'STAY' }),
       /** The commander has read what radiation on this route would take. Plan D10. */
       acknowledgeRadiation: z.boolean().optional(),
+      /** Ay S34/S50: leave from or land on a moon. Omitted is the planet. */
+      originBody: z.enum(['PLANET', 'MOON']).optional(),
+      targetBody: z.enum(['PLANET', 'MOON']).optional(),
     }).strict().parse(req.body);
     const origin = await ownedPlanet(app.db, req.accountId!, body.originPlanetId);
     return launchTransfer(
@@ -541,6 +555,8 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       body.pace,
       body.returnPlan,
       body.acknowledgeRadiation ?? false,
+      body.targetBody ?? 'PLANET',
+      body.originBody ?? 'PLANET',
     );
   });
 

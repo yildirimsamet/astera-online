@@ -13,14 +13,17 @@ import {
   distance,
   maxRadarRange,
   travelExact,
+  strikeMoon,
   type Fleet,
   type Resources,
+  type WorldBody,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import {
   buildings,
   missions,
+  moons,
   planets,
   strategicAssets,
   type StrategicDestroyedOrder,
@@ -42,6 +45,9 @@ import {
 } from './planet.js';
 import { assertFliesOutsideMaintenance } from './maintenanceWindow.js';
 import { assertNoArrivalPending } from './homeHealth.js';
+import { assertMoonTarget } from './moon.js';
+import { explodeMoon, scoreMoonBreak } from './moonExplosion.js';
+import { settlePlanetRadiationAt } from './planetRadiation.js';
 import { loadPlanetViewData, buildPlanetResult } from './planetView.js';
 import { pendingThreads } from './session.js';
 import { inboundRadarLead } from './radar.js';
@@ -50,7 +56,7 @@ import { researchLevels } from './researchState.js';
 import { rescheduleLoyaltyWatch } from './loyalty.js';
 import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
 import { observeHonorOwner } from './honorReference.js';
-import { commitStrategicHonor, settleEmpHonor } from './honorStrategic.js';
+import { commitStrategicHonor, settleEmpHonor, settleMoonBreakHonor } from './honorStrategic.js';
 import { breakFaults, defenceOnline } from './faults.js';
 
 export async function buildDeathStar(db: Db, planetId: string, clock: Clock, expectedPlayerId?: string) {
@@ -249,6 +255,8 @@ export async function launchDeathStar(
   /** The commander has been told this spends their own first-day shield. D183. */
   acknowledgeShieldLoss?: boolean,
   adminUsernames: ReadonlySet<string> = new Set(),
+  /** Ay S19: the weapon may be aimed at the world's moon instead, a neutral world's seeded one too (S54). */
+  targetBody: WorldBody = 'PLANET',
 ) {
   if (originPlanetId === targetPlanetId) {
     throw new GameError('SELF_ATTACK', 'You cannot target your own world', 400);
@@ -276,6 +284,7 @@ export async function launchDeathStar(
     if (target.controllerPlayerId === origin.playerId) {
       throw new GameError('SELF_ATTACK', 'You cannot target your own world', 403);
     }
+    if (targetBody === 'MOON') await assertMoonTarget(tx, target, true);
     if (target.controllerPlayerId) {
       await lockClanPlayers(tx, [origin.playerId, target.controllerPlayerId]);
       await assertClanHostilityAllowed(
@@ -361,6 +370,7 @@ export async function launchDeathStar(
         ownerPlayerId: origin.playerId,
         originPlanetId,
         targetPlanetId,
+        targetBody,
         /*
           NO FLEET, AND SO NO FUEL. T6.
 
@@ -449,8 +459,10 @@ export async function applyDeathStarStrike(
   tx: Tx,
   mission: typeof missions.$inferSelect,
   now: Date,
+  /** Admins move no Dominion, here as in a battle (a broken moon's dead, S35). */
+  adminUsernames: ReadonlySet<string> = new Set(),
 ): Promise<{
-  outcome: 'FIRST_STRIKE' | 'CAPTURED' | 'INEFFECTIVE';
+  outcome: 'FIRST_STRIKE' | 'CAPTURED' | 'INEFFECTIVE' | 'MOON_CRACKED' | 'MOON_DESTROYED';
   previousPlayerId: string | null;
   damage: number;
   destroyedFleet: Fleet;
@@ -461,7 +473,7 @@ export async function applyDeathStarStrike(
   loyaltyBefore: number | null;
   loyaltyAfter: number | null;
 }> {
-  const empty = (previousPlayerId: string | null, outcome: 'FIRST_STRIKE' | 'INEFFECTIVE') => ({
+  const empty = (previousPlayerId: string | null, outcome: 'FIRST_STRIKE' | 'INEFFECTIVE' | 'MOON_CRACKED' | 'MOON_DESTROYED') => ({
     outcome,
     previousPlayerId,
     damage: 0,
@@ -490,6 +502,33 @@ export async function applyDeathStarStrike(
   }
   if (target.protectedUntil !== null && target.protectedUntil > now) {
     return ineffective(target.controllerPlayerId);
+  }
+  if (mission.targetBody === 'MOON') {
+    /*
+      A HIT ON THE MOON (Ay S19, S36): a crack, the gate and the Gözcü shut for three hours, and nothing on
+      the planet — no EMP, no shield, no loyalty. The committed Honor settles as a hit that took nothing (V49).
+    */
+    const [moon] = await tx.select().from(moons).where(eq(moons.planetId, target.id)).for('update');
+    if (!moon) return ineffective(target.controllerPlayerId);
+    const hit = strikeMoon({ rarity: moon.rarity, cracks: moon.cracks, lastHitAtMs: moon.lastHitAt?.getTime() ?? null }, now.getTime());
+    const holder = target.kind === 'NEUTRAL' ? null : target.controllerPlayerId;
+    if (hit.explodes) {
+      // Close the moon's radiation dose first so ships already killed by radiation do not inflate wreck/honor/dominion.
+      await settlePlanetRadiationAt(tx, target.id, now);
+      const { destroyedFleet } = await explodeMoon(tx, { missionId: mission.id, world: target, holder, rarity: moon.rarity, now });
+      await settleMoonBreakHonor(tx, { seasonId: mission.seasonId, id: mission.id, at: now, defender: holder, destroyed: destroyedFleet });
+      if (holder) {
+        await scoreMoonBreak(tx, { seasonId: mission.seasonId, missionId: mission.id, striker: mission.ownerPlayerId, holder,
+          destroyed: destroyedFleet, now, adminUsernames });
+      }
+      return { ...empty(target.controllerPlayerId, 'MOON_DESTROYED'), destroyedFleet };
+    }
+    await settleEmpHonor(tx, { seasonId: mission.seasonId, id: mission.id, at: now, defender: target.controllerPlayerId,
+      ground: {}, coreOnline: false, groundWasOnline: false, shieldDestroyed: 0, addedBlackoutPpm: 0, loyaltyLost: 0, effective: false });
+    await tx.update(moons).set({ cracks: hit.cracks, lastHitAt: now, closedUntil: new Date(hit.closedUntilMs) })
+      .where(eq(moons.planetId, target.id));
+    await publishShard(tx, mission.seasonId, 'moons');
+    return empty(target.controllerPlayerId, 'MOON_CRACKED');
   }
 
   const owned = target.controllerPlayerId && target.kind !== 'NEUTRAL'

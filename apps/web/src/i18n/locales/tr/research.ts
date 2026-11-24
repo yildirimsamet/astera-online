@@ -171,4 +171,9 @@ export const research = {
   stockpileTag: "Dünya başına iki Ölüm Yıldızı",
   stockpileRole: "Her gezegende Ölüm Yıldızı kapasitesini 1’den 2’ye çıkarır. Her silah ayrı üretilir ve ödenir.",
   stockpileDetail: "Sınır, bütün filona ortak değil her gezegene ayrı uygulanır. İkinci silah, birincinin üretimi bitince başlar; tam bedelini ve süresini kullanır. Birden fazla silah, hazır önleyici şarj sayısını aşabilir; isabet garanti değildir.",
+  lunarCaptureName: "Ay Çekimi",
+  lunarCaptureTag: "Gezegenlerine ay kazandırır",
+  lunarCaptureRole: "Her gezegenine Yaygın bir ay kurabilirsin. Elindeki bir gezegenin üstünde büyük bir savaş olursa daha nadir bir ay doğabilir.",
+  lunarCaptureDetail: "Ay, gezegenin yanında ikinci bir duraktır: filon orada bekleyebilir, kendi ayların arasında sıçrayabilir ve yakındaki rotaları tarayabilir. Kurulan ay her zaman Yaygın’dır. Savaşta doğan ay yalnız daha nadirse eskisinin yerini alır. Araştırma için ana gezegende Çekirdek 9 gerekir.",
+  moonOrder: "Yaygın ay",
 } as const;

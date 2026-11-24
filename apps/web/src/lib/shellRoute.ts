@@ -4,6 +4,7 @@ import type { DockTab } from './dock.js';
 /** The pages each dock tab owns. The galaxy owns none: it is what they open over. */
 const OWNER: Partial<Record<NonNullable<Panel>, DockTab>> = {
   planet: 'base',
+  moon: 'base',
   research: 'base',
   ship: 'base',
   intel: 'intel',

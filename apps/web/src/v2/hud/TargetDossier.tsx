@@ -2,7 +2,9 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   FAULT,
+  crackLimit,
   distance,
+  effectiveCracks,
   fleetCargo,
   fleetCount,
   matchupsAgainst,
@@ -10,8 +12,11 @@ import {
   type ClassReading,
   type CombatClass,
   type Fleet,
+  type MoonRarity,
 } from '@astera/rules';
 import type { GalaxyPlanet, IntelView, PlanetView, Report } from '../../api/schemas.js';
+import { useMoonT } from '../../i18n/moon.js';
+import { MoonProbeSection } from '../../screens/MoonControls.js';
 import { combatClassLabel } from '../../i18n/names.js';
 import { rivalColour } from '../../galaxy/PlanetField.js';
 import { dossier, sourceLabel } from '../../lib/dossier.js';
@@ -54,6 +59,8 @@ export interface TargetDossierProps {
    * while their worlds have not arrived. Feeds the development band chip (D168).
    */
   ownPeakCore?: number | null;
+  /** Public moon data for this world when moons are active on the galaxy. */
+  moon?: { cracks: number; lastHitAt: Date | null; rarity?: MoonRarity } | null;
 }
 
 /** The mark's own colour, on the chip that states or toggles it (D183). */
@@ -79,8 +86,9 @@ const answer = (): void => {
  * The readings come from the same hook the launch uses (`useTargetReading`), so what
  * this page promises and what the launch then draws cannot disagree.
  */
-export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, rival, ownPeakCore = null }: TargetDossierProps) {
+export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, rival, ownPeakCore = null, moon = null }: TargetDossierProps) {
   const { t } = useTranslation();
+  const tMoon = useMoonT();
   const [bandOpen, setBandOpen] = useState(false);
   const markPress = useOwnPress(() => { answer(); rival?.onToggle(); });
   const bandPress = useOwnPress(() => { answer(); setBandOpen((open) => !open); });
@@ -212,6 +220,34 @@ export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, 
           heading={t('dossier.page.power')}
         />
       </div>
+
+      {moon && (
+        <section data-dossier-moon className="gk-dossier__part">
+          <div className="gk-well flex flex-col gap-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 text-caption font-semibold text-alloy">
+                <Glyph id="moon" className="size-3.5 shrink-0" />
+                {tMoon('body.dossierMoonTitle')}
+              </span>
+              {moon.rarity ? (
+                <span className="gk-num text-caption text-dim">
+                  {tMoon(`rarity.${moon.rarity}`)} · {tMoon('status.cracks')}{' '}
+                  {Math.max(0, crackLimit(moon.rarity) - effectiveCracks({ cracks: moon.cracks, lastHitAtMs: moon.lastHitAt?.getTime() ?? null }, now))}/
+                  {crackLimit(moon.rarity)}
+                </span>
+              ) : (
+                <span className="gk-num text-caption text-faint">
+                  {tMoon('status.hitsTaken')}: {effectiveCracks({ cracks: moon.cracks, lastHitAtMs: moon.lastHitAt?.getTime() ?? null }, now)}
+                </span>
+              )}
+            </div>
+            {!moon.rarity && !report?.moon && (
+              <p className="text-caption text-faint">{tMoon('body.dossierMoonUnknown')}</p>
+            )}
+            {report?.moon && <MoonProbeSection moon={report.moon} />}
+          </div>
+        </section>
+      )}
 
       {reading.classReading && reading.classReading.kind !== 'NONE' && (
         <section data-dossier-shape className="gk-dossier__part">

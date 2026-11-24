@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from '../services/unitLocation.js';
 /**
  * Deterministic capacity-fixture seeding. NEVER production.
  *
@@ -204,7 +205,7 @@ async function main(): Promise<void> {
         planetId: placement.planetId,
         ownerPlayerId: placement.playerId,
         hull,
-        location: 'home',
+        location: PLANET_LOCATION,
         count,
       }))));
 

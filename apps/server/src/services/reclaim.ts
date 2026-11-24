@@ -30,6 +30,7 @@ import {
   debrisFields,
   intergalacticConvoyRuns,
   miningRuns,
+  moonMoves,
   pirateRaids,
   pirateState,
   missions,
@@ -68,6 +69,7 @@ import {
 import { prepareClanReclaimMonuments, reconcileClanPlayerReclaim } from './clan.js';
 import { addDominionCounters } from './dominion.js';
 import { hasMonumentActivity, removeTerminalMonumentWaves } from './monumentLifecycle.js';
+import { moonMovePending } from './moon.js';
 
 /**
  * RECLAIMING THE SEAT OF A COMMANDER WHO STOPPED COMING BACK. Owner instruction.
@@ -308,6 +310,7 @@ export async function busy(
     if (bomb) return true;
   }
   if (await hasMonumentActivity(tx, playerId, planetIds)) return true;
+  if (await moonMovePending(tx, playerId, planetIds)) return true;
   const [flight] = await tx
     .select({ id: missions.id })
     .from(missions)
@@ -676,14 +679,25 @@ export async function demolish(
     .select({ id: buildOrders.id })
     .from(buildOrders)
     .where(inArray(buildOrders.planetId, planetIds))).map((order) => order.id);
+  const moonMoveIds = (await tx
+    .select({ id: moonMoves.id })
+    .from(moonMoves)
+    .where(or(
+      eq(moonMoves.ownerPlayerId, playerId),
+      inArray(moonMoves.fromPlanetId, planetIds),
+      inArray(moonMoves.toPlanetId, planetIds),
+    ))).map((row) => row.id);
   const refs = [
     ...missionIds, ...runIds, ...raidIds, ...tradeIds, ...convoyIds,
-    ...planetIds, ...assetIds, ...buildOrderIds, ...bombIds,
+    ...planetIds, ...assetIds, ...buildOrderIds, ...bombIds, ...moonMoveIds,
     playerId,
     ...(await tx.select({ id: unknownSignals.id }).from(unknownSignals).where(eq(unknownSignals.playerId, playerId))).map(row => row.id),
   ];
   if (refs.length > 0) {
     await tx.delete(scheduledEvents).where(inArray(scheduledEvents.refId, refs));
+  }
+  if (moonMoveIds.length > 0) {
+    await tx.delete(moonMoves).where(inArray(moonMoves.id, moonMoveIds));
   }
 
   if (runIds.length > 0) await tx.delete(miningRuns).where(inArray(miningRuns.id, runIds));

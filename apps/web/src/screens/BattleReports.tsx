@@ -14,6 +14,7 @@ import { outpostReportLines } from '../starter/outpostReport.js';
 import { vesselToPlanetView } from '../starter/adapter.js';
 import type { BattleReport, Report, StrategicBattleReport } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
+import { moonT } from '../i18n/moon.js';
 import { buildingNameOf, hullLabel, hullName, instrumentName, monumentName, satelliteNameOf } from '../i18n/names.js';
 import { compact, decimal, full, signed } from '../lib/format.js';
 import { factorLabel } from '../lib/supportFactor.js';
@@ -324,6 +325,8 @@ const STRATEGIC_OUTCOME = {
   CAPTURED: 'reports.strategicCaptured',
   INEFFECTIVE: 'reports.strategicIneffective',
   INTERCEPTED: 'reports.strategicIntercepted',
+  MOON_CRACKED: 'reports.strategicMoonCracked',
+  MOON_DESTROYED: 'reports.strategicMoonDestroyed',
 } as const;
 
 /** A strike read from your side: yours landed or was stopped, theirs hit you or was stopped. */
@@ -428,7 +431,11 @@ function BattleRow({ report, now, onOpen, onFocusPlanet }: {
       </>}
       verdict={verdictTitle(report)}
       // the world is named once: on its own door when there is one, else here
-      meta={[seam ? null : listedPlanet, report.rounds.length > 0 ? t('reports.rounds', { count: report.rounds.length }) : null]}
+      meta={[
+        seam ? null : listedPlanet,
+        report.targetBody === 'MOON' ? moonT('body.battleMoonBadge') : null,
+        report.rounds.length > 0 ? t('reports.rounds', { count: report.rounds.length }) : null,
+      ]}
       ladder={<LadderLine honor={report.honor?.delta} dominion={report.dominion} />}
       age={staleness((now - report.at.getTime()) / 60_000)}
     />
@@ -764,6 +771,14 @@ function ReportSheet({
       onClose={onClose}
     >
       <div data-battle-report className="gk-report">
+      {report.targetBody === 'MOON' && (
+        <p data-testid="battle-moon-note" className="gk-inote" data-tone={report.rounds.length === 0 ? 'self' : 'warn'}>
+          <Glyph id="moon" />
+          {report.rounds.length === 0 && report.grade === 'DECISIVE'
+            ? moonT('body.battleMoonEmpty')
+            : moonT('body.battleMoonBadge')}
+        </p>
+      )}
       <TempoNote aboard={aboard} />
       <BattleReplayAction kind="BATTLE" id={report.id} status={report.replayStatus} {...(report.pirate ? { pirateLevel: report.pirate.level } : {})} />
       {/*

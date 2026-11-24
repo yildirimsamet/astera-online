@@ -2,7 +2,8 @@ import { readBattleReplay } from '../src/services/battleReplay.js';
 import { battleReplays } from '../src/db/schema.js';
 import { pino } from 'pino';
 import { eq } from 'drizzle-orm';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
+import * as birthModule from '../src/services/moonBirth.js';
 import { CLAN, MULTI_WORLD, SERVERS, UNAIDED, distance, pvpBalanceForTier, escapeFuel, fleetTravelExact, fleetValue } from '@astera/rules';
 import {
   battleReports,
@@ -252,6 +253,16 @@ describe('a combined strike settling', () => {
     expect(report!.raidableBefore).toBe(expected);
     const total = report!.loot.alloy + report!.loot.crystal + report!.loot.deuterium;
     expect(total).toBeLessThanOrEqual(expected);
+  });
+
+  it('rolls a moon over the defender’s world from the joint battle’s whole wreck (Ay V16)', async () => {
+    const roll = vi.spyOn(birthModule, 'settleMoonBirth');
+    const f = await setup();
+    await fightIt(f);
+    expect(roll).toHaveBeenCalledTimes(1);
+    expect(roll.mock.calls[0]![1].planetId).toBe(f.planetIds[2]);
+    expect(roll.mock.calls[0]![1].wreck).toBeGreaterThan(0);
+    roll.mockRestore();
   });
 
   it('writes one report bound to the operation and one result per commander', async () => {

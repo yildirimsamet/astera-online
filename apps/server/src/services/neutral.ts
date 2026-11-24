@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { prepareBattleReplay, persistBattleReplay } from './battleReplay.js';
 import { refreshPlanetAegis, syncPlanetAegis } from './planetAegis.js';
 import { and, eq, inArray, isNull, lte, or } from 'drizzle-orm';
@@ -141,7 +142,7 @@ async function setNeutralFleet(tx: Tx, planetId: string, fleet: Fleet, damage: H
       planetId,
       ownerPlayerId: null,
       hull,
-      location: 'home',
+      location: PLANET_LOCATION,
       count,
       damage: hullDamage,
     }).onConflictDoUpdate({
@@ -154,7 +155,7 @@ async function setNeutralFleet(tx: Tx, planetId: string, fleet: Fleet, damage: H
   if (absent.length > 0) {
     await tx.delete(units).where(and(
       eq(units.planetId, planetId),
-      eq(units.location, 'home'),
+      eq(units.location, PLANET_LOCATION),
       inArray(units.hull, absent),
     ));
   }
@@ -461,6 +462,9 @@ export async function resolveNeutralBattle(
       ownerPlayerId: mission.ownerPlayerId,
       originPlanetId: mission.targetPlanetId,
       targetPlanetId: mission.originPlanetId,
+      // Back to the body it left (Ay S34).
+      originBody: mission.targetBody,
+      targetBody: mission.originBody,
       fleet: result.attackerSurvivors,
       loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
       salvage: lifted ? salvage : null,
@@ -519,6 +523,8 @@ export async function returnAttackUntouched(
     ownerPlayerId: mission.ownerPlayerId,
     originPlanetId: mission.targetPlanetId,
     targetPlanetId: mission.originPlanetId,
+    originBody: mission.targetBody,
+    targetBody: mission.originBody,
     fleet,
     loot: { alloy: 0, crystal: 0, deuterium: 0 },
     // Whatever the wing already carried (radiation) goes home with it.

@@ -1,3 +1,4 @@
+import { isAway, MOON_LOCATION } from './unitLocation.js';
 import { commanderPvpBalance } from './pvpBalance.js';
 import { and, asc, desc, eq, gt, inArray, isNull, lte, ne, or } from 'drizzle-orm';
 import {
@@ -13,11 +14,15 @@ import {
   buildingCost,
   alloyRate,
   collectorCap,
+  crackLimit,
   crystalRate,
   deuteriumCollectorCap,
   deuteriumRate,
   deuteriumStorageCap,
+  dockFree,
   dominion,
+  effectiveCracks,
+  gateCapacity,
   groundLoad,
   groundSlots,
   hangarCapacity,
@@ -28,6 +33,8 @@ import {
   planetSkinById,
   satelliteCost,
   satelliteSlots,
+  scanPierces,
+  scanRange,
   shieldHp,
   storageCap,
   vaultProtects,
@@ -35,13 +42,13 @@ import {
   silentSpaceDueAt,
   type BuildingId,
   type Fleet,
-  dockLocation,
+  type HpDamageLot,
   clanDefenseApplies,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
 import { batchReads } from '../db/readBatch.js';
-import { buildOrders, galaxyEventOccurrences, intergalacticConvoyRuns, players, strategicAssets } from '../db/schema.js';
+import { buildOrders, galaxyEventOccurrences, intergalacticConvoyRuns, moonMoves, moons, players, strategicAssets } from '../db/schema.js';
 import { baysFor } from './flight.js';
 import { loadPlanetViewStates, type LockedPlanet } from './planet.js';
 import { asTech, buildResearchView, loadResearchViewData, type ResearchInsight } from './researchState.js';
@@ -172,7 +179,7 @@ export async function loadPlanetViewsData(tx: Tx, planetIds: readonly string[], 
   const head = states[0]!.planet;
   const ids = states.map(state => state.planet.planetId);
   const rows = <T extends { planetId: string }>(all: readonly T[], id: string) => all.filter(row => row.planetId === id);
-  const [commander, assets, queued, active, spent, dockLots, flight, clanSupport, workshop] = await Promise.all([
+  const [commander, assets, queued, active, spent, dockLots, flight, clanSupport, workshop, moonRows, pendingMoonMoves] = await Promise.all([
     loadCommanderViewData(tx, head, options.insight),
     tx.select().from(strategicAssets).where(and(inArray(strategicAssets.planetId, ids), PAD_HARDWARE))
       .orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id)),
@@ -195,7 +202,13 @@ export async function loadPlanetViewsData(tx: Tx, planetIds: readonly string[], 
       aegisLevel: state.satelliteRows.find(row => row.type === 'AEGIS')?.level ?? 0,
       coreOffline: state.faultRows.some(row => row.kind === 'CORE_OUTAGE'),
     } }))),
+    tx.select().from(moons).where(inArray(moons.planetId, ids)),
+    tx.select().from(moonMoves).where(and(
+      eq(moonMoves.status, 'PENDING'),
+      or(inArray(moonMoves.fromPlanetId, ids), inArray(moonMoves.toPlanetId, ids)),
+    )).orderBy(asc(moonMoves.arriveAt)),
   ]);
+  const moonByPlanet = new Map(moonRows.map((row) => [row.planetId, row]));
   return states.map(({ planet: p, unitRows, faultRows }) => ({
     p, commander, unitRows, faultRows,
     assets: rows(assets, p.planetId),
@@ -206,6 +219,8 @@ export async function loadPlanetViewsData(tx: Tx, planetIds: readonly string[], 
     flight: flight.get(p.planetId)!,
     clanSupport: clanSupport.get(p.planetId) ?? null,
     workshopIrradiated: workshop.get(p.planetId) ?? false,
+    moonRow: moonByPlanet.get(p.planetId) ?? null,
+    moonMoveRows: pendingMoonMoves.filter((m) => m.fromPlanetId === p.planetId || m.toPlanetId === p.planetId),
   }));
 }
 
@@ -232,18 +247,57 @@ export function buildPlanetResult<T extends { planet: PlanetViewData }>(result: 
 /** No queries or writes: safe to run after the capturing transaction commits. */
 export function buildPlanetView(data: PlanetViewData) {
   const { p, commander, assets, queued, activeConvoy, spentConvoy, unitRows, faultRows,
-    dockLots, flight, clanSupport, workshopIrradiated } = data;
+    dockLots, flight, clanSupport, workshopIrradiated, moonRow, moonMoveRows } = data;
   const { player, researchData, researchQueue, colonies, hasMembership, queuedResearch, benefits, honorTacticalCredit } = commander;
   const pad = assets.filter(row => row.type === 'DEATH_STAR').toSorted(padOrder);
   const interceptors = assets.filter(row => row.type === 'INTERCEPTOR').toSorted(padOrder);
   const owned: Fleet = {};
   const fleetAway: Fleet = {};
+  const moonFleet: Fleet = {};
+  const moonDamage: HpDamageLot[] = [];
   for (const row of unitRows) {
     owned[row.hull] = (owned[row.hull] ?? 0) + row.count;
-    if (row.count > 0 && row.location !== 'home' && !row.location.startsWith(dockLocation(''))) {
+    if (row.count > 0 && isAway(row.location)) {
       fleetAway[row.hull] = (fleetAway[row.hull] ?? 0) + row.count;
     }
+    if (row.count > 0 && row.location === MOON_LOCATION) {
+      moonFleet[row.hull] = (moonFleet[row.hull] ?? 0) + row.count;
+      if (row.damage.length > 0) moonDamage.push(...row.damage);
+    }
   }
+  const moon = moonRow ? (() => {
+    const dockUsed = hangarLoad(moonFleet);
+    const inboundBulk = moonMoveRows
+      .filter((m) => m.toPlanetId === p.planetId && (m.kind === 'HOP_UP' || m.kind === 'JUMP'))
+      .reduce((sum, m) => sum + hangarLoad(m.fleet), 0);
+    return {
+      rarity: moonRow.rarity,
+      origin: moonRow.origin,
+      cracks: effectiveCracks({ cracks: moonRow.cracks, lastHitAtMs: moonRow.lastHitAt?.getTime() ?? null }, p.now.getTime()),
+      crackLimit: crackLimit(moonRow.rarity),
+      lastHitAt: moonRow.lastHitAt?.toISOString() ?? null,
+      gateReadyAt: moonRow.gateReadyAt?.toISOString() ?? null,
+      closedUntil: moonRow.closedUntil?.toISOString() ?? null,
+      visualSeed: moonRow.visualSeed,
+      fleet: moonFleet,
+      fleetDamage: moonDamage,
+      fleetCombatReady: partitionCombatFleet(moonFleet, moonDamage).eligible,
+      dockUsed,
+      dockCapacity: gateCapacity(moonRow.rarity),
+      dockFree: dockFree(moonRow.rarity, dockUsed, inboundBulk),
+      scanRange: scanRange(moonRow.rarity),
+      scanPierces: scanPierces(moonRow.rarity),
+      moves: moonMoveRows.map((m) => ({
+        id: m.id,
+        kind: m.kind,
+        fromPlanetId: m.fromPlanetId,
+        toPlanetId: m.toPlanetId,
+        fleet: m.fleet,
+        departAt: m.departAt.toISOString(),
+        arriveAt: m.arriveAt.toISOString(),
+      })),
+    };
+  })() : null;
   const research = buildResearchView(p, researchData, queuedResearch);
   /**
    * THE RATES THE ECONOMY ACTUALLY RUNS AT — Foundry included. D52a.
@@ -507,6 +561,7 @@ export function buildPlanetView(data: PlanetViewData) {
       return level === null ? [] : [{ ...strategicView(row), level }];
     }),
     colonies,
+    moon,
     fleet: p.homeFleet,
     fleetDamage: p.homeDamage,
     workshopRadiation: workshopIrradiated,

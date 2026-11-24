@@ -443,6 +443,8 @@ describe('Fleet V2 research identity contract', () => {
       'INDUSTRIAL',
       'RADIATION_SHIELDING',
       'SHIP_SHIELDS',
+      // Ay S7: the permission to build a moon (owner, 2026-11-19).
+      'LUNAR_CAPTURE',
     ];
 
     expect([...RESEARCH_PROJECT_IDS].sort()).toEqual(expected.sort());

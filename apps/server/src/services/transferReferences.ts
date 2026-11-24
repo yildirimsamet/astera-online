@@ -82,6 +82,10 @@ export const TRANSFER_EVENT_POLICIES = {
   // These clocks belong to the public target, independent of a holder's account.
   monument_loss: 'MONUMENT',
   monument_respawn: 'MONUMENT',
+  // A hop in progress holds a transfer back like any flight (E16).
+  moon_move_land: 'BLOCKER',
+  // Bolted to the moon: whoever holds it when the gate has charged is told (§6.11).
+  moon_gate_ready: 'WORLD',
 } as const satisfies Record<EventKind, Policy>;
 
 /**

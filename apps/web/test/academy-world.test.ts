@@ -25,7 +25,8 @@ describe('the local Academy world', () => {
   });
   it('introduces the actual research catalogue without granting a project', () => {
     const planet = academyPlanet(openAcademy(now, ACADEMY_STEPS.findIndex((s) => s.id === 'research')));
-    expect(planet.research.map((r) => r.id)).toEqual(RESEARCH_PROJECT_IDS);
+    // Ay S7: the academy's galaxy has no moons, so the one moon permission is the only project it leaves out.
+    expect(planet.research.map((r) => r.id)).toEqual(RESEARCH_PROJECT_IDS.filter((id) => id !== 'LUNAR_CAPTURE'));
     expect(planet.research.every((r) => r.level === 0 && !r.completed)).toBe(true);
   });
   it.each(['pirate', 'mine', 'raid'] as const)('flies %s out and home before delivering its result exactly once', (kind) => {

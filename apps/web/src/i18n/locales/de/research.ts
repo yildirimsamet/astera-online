@@ -182,4 +182,9 @@ export const research = {
   stockpileTag: "Zwei Todessterne pro Welt",
   stockpileRole: "Erhöht die Todessterne, die jede deiner Welten halten kann, von 1 auf 2. Der zweite beginnt, sobald der erste fertig ist.",
   stockpileDetail: "Ohne Forschung hält jede Welt 1 Todesstern; diese Forschung macht daraus 2 auf jeder Welt, nicht im ganzen Reich. Der zweite kostet den vollen Preis und die volle Bauzeit und wird nach dem ersten gebaut. Aus mehreren Welten gleichzeitig zuzuschlagen ist der Weg an den Ladungen eines Verteidigers vorbei.",
+  lunarCaptureName: "Mondfang",
+  lunarCaptureTag: "Gibt deinen Welten einen Mond",
+  lunarCaptureRole: "Du kannst auf jeder deiner Welten einen gewöhnlichen Mond bauen. Eine große Schlacht über einer Welt, die du hältst, kann einen selteneren hervorbringen.",
+  lunarCaptureDetail: "Ein Mond ist ein zweiter Halt neben dem Planeten: Deine Flotte kann dort warten, zwischen deinen eigenen Monden springen und nahe Routen abtasten. Ein gebauter Mond ist immer gewöhnlich. Ein in der Schlacht geborener Mond ersetzt den alten nur, wenn er seltener ist. Die Forschung erfordert Kern 9 auf deiner Hauptstadt.",
+  moonOrder: "Gewöhnlicher Mond",
 } as const;

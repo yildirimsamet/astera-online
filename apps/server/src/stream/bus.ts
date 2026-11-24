@@ -76,7 +76,9 @@ export type ShardEventKind =
   /** A ship left the starter galaxy for the main one. */
   | 'departure'
   /** A colony ship landed in this main season: its watchers fetch the inbound flight (owner, 2026-11-09). */
-  | 'inbound';
+  | 'inbound'
+  /** Ay §6.22: a gate flashed, or a moon was born, cracked or broke. The moon view lives in the galaxy payload. */
+  | 'moons';
 
 /** Events that affect every signed-in commander, regardless of their season. */
 export type GlobalEventKind = 'announcement' | 'chat-badges';
@@ -647,6 +649,11 @@ export async function publishReward(tx: Queryable, playerId: string): Promise<vo
  */
 export async function publishWorldMemory(tx: Queryable, playerId: string): Promise<void> {
   await publish(tx, playerId, `${PRIVATE_PREFIX}memory`);
+}
+
+/** A hop or Moon Gate jump belonging to this commander landed or settled; refresh their world state. */
+export async function publishMoonMove(tx: Queryable, playerId: string): Promise<void> {
+  await publish(tx, playerId, `${PRIVATE_PREFIX}moon-move`);
 }
 
 /**

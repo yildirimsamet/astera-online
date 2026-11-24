@@ -51,14 +51,14 @@ describe('home injuries follow owned combat dispatches', () => {
     expect(flight?.damage).toEqual(injury);
   });
 
-  it('moves home wounds to the capital when a colony secedes', async () => {
+  it('moves home wounds to the capital when a colony is abandoned', async () => {
     const { f } = await fixture();
     const colony = f.planetIds[1]!;
     await f.db.update(planets).set({ controllerPlayerId: f.playerIds[0]!, kind: 'COLONY' }).where(eq(planets.id, colony));
     await giveUnits(f.db, colony, { DART: 0 });
     await f.db.transaction((tx) => landHpShips(tx, { planetId: colony, ownerPlayerId: f.playerIds[0]!,
       fleet: { DART: 2 }, damage: [{ hull: 'DART', count: 2, damageBp: 6000, remainderBp: 0.5 }], at: f.clock.now() }));
-    await f.db.transaction((tx) => secedeColony(tx, colony, f.clock.now(), colony));
+    await f.db.transaction((tx) => secedeColony(tx, colony, f.clock.now(), colony, 'ABANDONED'));
     const health = await readHomeHealth(f.db, f.planetIds[0]!);
     expect(health.damage).toContainEqual({ hull: 'DART', count: 2, damageBp: 6000, remainderBp: 0.5 });
     expect(health.damage).toContainEqual(damage[0]);

@@ -42,11 +42,12 @@ describe('Honor references follow ownership transitions', () => {
     expect(await referenceAfterWindow(1)).toEqual({ tier: 4, navy: honorFleetValue(catalogue, { DART: 5 }, true) });
   });
 
-  it('secession removes the ground navy but does not count returning mobile ships as new production', async () => {
+  /** S19c (owner 2026-11-18): the standing fleet is lost with the colony; only the airborne one stays theirs. */
+  it('secession removes the ground navy and the standing fleet, keeping only ships in flight', async () => {
     await f.db.transaction(async tx => {
       await lockWorlds(tx, f.planetIds);
       expect(await secedeColony(tx, f.planetIds[2]!, f.clock.now(), randomUUID())).toBe(true);
     });
-    expect(await referenceAfterWindow(1)).toEqual({ tier: 4, navy: honorFleetValue(createHonorCatalogue(), { DART: 15 }, true) });
+    expect(await referenceAfterWindow(1)).toEqual({ tier: 4, navy: honorFleetValue(createHonorCatalogue(), { DART: 5 }, true) });
   });
 });

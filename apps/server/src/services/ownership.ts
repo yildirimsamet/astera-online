@@ -1,3 +1,4 @@
+import { standingSql } from './unitLocation.js';
 import { and, count, eq, inArray, isNull, like, or } from 'drizzle-orm';
 import { FAULT, colonyCapacity, coreTier, dockLocation } from '@astera/rules';
 import type { Clock } from '../clock.js';
@@ -401,7 +402,7 @@ export async function transferPlanetControl(
     .where(and(
       eq(units.planetId, input.targetPlanetId),
       // A ship waiting in the Repair Station stands on the world like any other. Kalıcı gemi hasarı.
-      or(eq(units.location, 'home'), eq(units.hull, 'PROSPECTOR'), like(units.location, dockLocation('%'))),
+      or(standingSql(units.location), eq(units.hull, 'PROSPECTOR'), like(units.location, dockLocation('%'))),
     ));
   /*
     THE OLD OWNER'S COUNTDOWN IS THEIRS AND DIES WITH THE HANDOVER, and the new owner's

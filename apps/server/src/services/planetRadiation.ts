@@ -1,6 +1,7 @@
+import { MOON_LOCATION, PLANET_LOCATION } from './unitLocation.js';
 import { and, asc, eq, gt, inArray, lt, lte, or } from 'drizzle-orm';
 import { HULLS, applyHpDose, dockLocation, firstHpLossAtMs, hpRadiationRateProfile, segmentsExposureHp,
-  type Fleet, type HpDamageLot, type HpDamageLots, type HpRadiationSource, type TechLevels } from '@astera/rules';
+  type Fleet, type HpDamageLot, type HpDamageLots, type HpRadiationSource, type Segment, type TechLevels } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
 import { beforeCommit } from '../db/finalizers.js';
 import { buildOrders, planets, radiationBombFlights, researchOrders, seasons, shipDamageLots, units } from '../db/schema.js';
@@ -19,6 +20,15 @@ import { planetRadiationPath } from './planetAegis.js';
 type Planet = typeof planets.$inferSelect;
 type Season = typeof seasons.$inferSelect;
 type Unit = typeof units.$inferSelect;
+
+/** The moon has no Aegis (Ay S45): one unshielded span over the world it circles. */
+function moonRadiationPath(world: Planet, from: number, until: number): Segment[] {
+  return until <= from ? [] : [{ from: world, to: world, startMs: from, endMs: until,
+    target: { kind: 'PLANET', id: world.id }, radiationProtectionHpPerMinute: 0 }];
+}
+
+/** A moon's standing ships, as the planet's are read: no ground, no mining craft. */
+const wornOnMoon = (row: Unit) => row.location === MOON_LOCATION && row.count > 0 && !HULLS[row.hull].ground && row.hull !== 'PROSPECTOR';
 
 const inventoryFinalizers = new WeakMap<Tx, { owners: Map<string, Date>; planets: Map<string, { season: Season; at: Date }> }>();
 function radiationFinalizer(tx: Tx) {
@@ -79,22 +89,24 @@ export async function projectPlanetRadiation(tx: Queryable, planet: Planet, seas
   const from = new Date(Math.max(epoch?.getTime() ?? until.getTime(), planet.radiationSettledAt?.getTime() ?? epoch?.getTime() ?? until.getTime()));
   const noSources: HpRadiationSource[] = [];
   const noTech: TechLevels = {};
-  const unchanged = { rows: [...inventory], from, until, sources: noSources, tech: noTech,
+  const unchanged = { rows: [...inventory], from, until, sources: noSources, moonSources: noSources, tech: noTech,
     dock: new Map<string, HpDamageLot>(), changed: false, lostHome: false,
     pendingImpact: pendingImpact !== undefined, pendingResearch: false, pendingSource: false };
   if (!epoch || until <= from) return unchanged;
-  const sources = prefetched
-    ? targetSourcesFrom(season, prefetched.anchored.filter(row => row.activeFrom < until
-      && (row.activeUntil === null || row.activeUntil > from)))
-    : await hpSourcesForTarget(tx, season, { kind: 'PLANET', id: planet.id }, from, until);
-  if (sources.length === 0) return unchanged;
+  // The planet's sources and its moon's are separate targets (Ay S45).
+  const anchoredFor = (body: 'PLANET' | 'MOON') => prefetched
+    ? Promise.resolve(targetSourcesFrom(season, prefetched.anchored.filter(row => row.body === body && row.activeFrom < until
+      && (row.activeUntil === null || row.activeUntil > from))))
+    : hpSourcesForTarget(tx, season, { kind: 'PLANET', id: planet.id }, from, until, body);
+  const [sources, moonSources] = await Promise.all([anchoredFor('PLANET'), anchoredFor('MOON')]);
+  if (sources.length === 0 && moonSources.length === 0) return unchanged;
   const sourceBoundary = sources.some(source => source.origin === 'ENVIRONMENT'
     && [source.activeFromMs, source.activeUntilMs].some(at => at !== null && at >= from.getTime() && at < until.getTime()));
   const [repair] = sourceBoundary ? await tx.select({ id: buildOrders.id }).from(buildOrders).where(and(
     eq(buildOrders.planetId, planet.id), eq(buildOrders.kind, 'REPAIR'), eq(buildOrders.status, 'BUILDING'),
   )).limit(1) : [];
   const repairBoundary = repair ? hpRadiationRateProfile(await planetRadiationPath(tx, planet, from.getTime(), until.getTime()), sources)[0]?.startMs : undefined;
-  if (repairBoundary !== undefined) return { ...unchanged, sources, until: new Date(repairBoundary), pendingSource: true };
+  if (repairBoundary !== undefined) return { ...unchanged, sources, moonSources, until: new Date(repairBoundary), pendingSource: true };
   const [pendingResearch] = planet.controllerPlayerId ? await tx.select({ readyAt: researchOrders.readyAt }).from(researchOrders)
     .where(and(eq(researchOrders.playerId, planet.controllerPlayerId), eq(researchOrders.status, 'BUILDING'),
       inArray(researchOrders.projectId, ['SHIP_ARMOR', 'RADIATION_SHIELDING']), lt(researchOrders.readyAt, until)))
@@ -108,7 +120,8 @@ export async function projectPlanetRadiation(tx: Queryable, planet: Planet, seas
   if (pendingResearch) until = pendingResearch.readyAt;
   if (pendingHardware && pendingHardware.readyAt < until) until = pendingHardware.readyAt;
   if (until <= from) return { ...unchanged, until, pendingResearch: pendingProtection };
-  const dose = segmentsExposureHp(await planetRadiationPath(tx, planet, from.getTime(), until.getTime()), sources);
+  const dose = sources.length === 0 ? 0 : segmentsExposureHp(await planetRadiationPath(tx, planet, from.getTime(), until.getTime()), sources);
+  const moonDose = moonSources.length === 0 ? 0 : segmentsExposureHp(moonRadiationPath(planet, from.getTime(), until.getTime()), moonSources);
   const dockRows = inventory.filter(row => row.location.startsWith('dock:') && row.count > 0);
   const dockIds = dockRows.map(row => row.location.slice('dock:'.length));
   const [tech, lots] = await Promise.all([
@@ -122,17 +135,18 @@ export async function projectPlanetRadiation(tx: Queryable, planet: Planet, seas
   const rows = inventory.map(row => {
     if (row.count <= 0 || HULLS[row.hull].ground || row.hull === 'PROSPECTOR') return row;
     const lot = row.location.startsWith('dock:') ? byId.get(row.location.slice('dock:'.length)) : undefined;
-    if (row.location !== 'home' && !lot) return row;
+    const onMoon = row.location === MOON_LOCATION;
+    if (row.location !== PLANET_LOCATION && !lot && !onMoon) return row;
     const damage = lot ? [{ hull: row.hull, count: row.count, damageBp: lot.damageBp, remainderBp: lot.remainderBp }] : row.damage;
-    const outcome = applyHpDose({ [row.hull]: row.count }, damage, dose, tech);
+    const outcome = applyHpDose({ [row.hull]: row.count }, damage, onMoon ? moonDose : dose, tech);
     const count = outcome.fleet[row.hull] ?? 0;
-    if (row.location === 'home' && count < row.count) lostHome = true;
+    if ((row.location === PLANET_LOCATION || onMoon) && count < row.count) lostHome = true;
     if (lot && outcome.lots[0]) dock.set(lot.id, outcome.lots[0]);
     const next = { ...row, count, damage: outcome.lots };
     changed ||= count !== row.count || JSON.stringify(next.damage) !== JSON.stringify(row.damage);
     return next;
   });
-  return { rows, from, until, sources, tech, dock, changed, lostHome,
+  return { rows, from, until, sources, moonSources, tech, dock, changed, lostHome,
     pendingImpact: pendingImpact !== undefined, pendingResearch: pendingProtection, pendingSource: false };
 }
 
@@ -158,7 +172,7 @@ export async function persistPlanetRadiation(tx: Tx, planet: Planet, season: Sea
   for (const row of inventory) {
     if (row.count <= 0 || HULLS[row.hull].ground || row.hull === 'PROSPECTOR' || !row.ownerPlayerId) continue;
     const dock = row.location.startsWith('dock:') ? docksById.get(row.location.slice(5)) : undefined;
-    if (row.location !== 'home' && !dock) continue;
+    if (row.location !== PLANET_LOCATION && !dock) continue;
     const health = owners.get(row.ownerPlayerId) ?? { fleet: {}, damage: [] };
     health.fleet[row.hull] = (health.fleet[row.hull] ?? 0) + row.count;
     health.damage.push(...(dock ? [{ hull: row.hull, count: row.count, damageBp: dock.damageBp, remainderBp: dock.remainderBp }] : row.damage));
@@ -170,6 +184,21 @@ export async function persistPlanetRadiation(tx: Tx, planet: Planet, season: Sea
     await recordRadiationHonor(tx, { seasonId: season.id, victim: owner,
       slice: `planet:${planet.id}`, until: projection.until, fleet: health.fleet, damage: health.damage,
       tech: projection.tech, segments: await planetRadiationPath(tx, planet, projection.from.getTime(), projection.until.getTime()), sources: projection.sources });
+  }
+  if (projection.moonSources.length > 0) {
+    const moonOwners = new Map<string, { fleet: Fleet; damage: HpDamageLot[] }>();
+    for (const row of inventory) {
+      if (!wornOnMoon(row) || !row.ownerPlayerId) continue;
+      const health = moonOwners.get(row.ownerPlayerId) ?? { fleet: {}, damage: [] };
+      health.fleet[row.hull] = (health.fleet[row.hull] ?? 0) + row.count;
+      health.damage.push(...row.damage);
+      moonOwners.set(row.ownerPlayerId, health);
+    }
+    for (const [owner, health] of moonOwners) {
+      await recordRadiationHonor(tx, { seasonId: season.id, victim: owner,
+        slice: `moon:${planet.id}`, until: projection.until, fleet: health.fleet, damage: health.damage, tech: projection.tech,
+        segments: moonRadiationPath(planet, projection.from.getTime(), projection.until.getTime()), sources: projection.moonSources });
+    }
   }
   const originals = new Map(inventory.map(row => [`${row.location}:${row.hull}`, row]));
   let lostShips = false;
@@ -264,8 +293,11 @@ export async function projectLateHomeArrival(tx: Queryable,
 /** Replan only this planet, at a real casualty or source expiry, never a global timer. */
 export async function schedulePlanetRadiation(tx: Tx, planet: Planet, season: Season, at: Date): Promise<void> {
   if (!season.radiationBombStartsAt || season.closedAt || at >= season.endsAt) return;
-  const sources = await hpSourcesForTarget(tx, season, { kind: 'PLANET', id: planet.id }, at, season.endsAt);
-  if (sources.length === 0) return;
+  const [sources, moonSources] = await Promise.all([
+    hpSourcesForTarget(tx, season, { kind: 'PLANET', id: planet.id }, at, season.endsAt),
+    hpSourcesForTarget(tx, season, { kind: 'PLANET', id: planet.id }, at, season.endsAt, 'MOON'),
+  ]);
+  if (sources.length === 0 && moonSources.length === 0) return;
   const rows = await tx.select().from(units).where(eq(units.planetId, planet.id));
   const tech = planet.controllerPlayerId ? await techOf(tx, planet.controllerPlayerId) : {};
   const dockRows = await tx.select().from(shipDamageLots).where(eq(shipDamageLots.planetId, planet.id));
@@ -273,15 +305,25 @@ export async function schedulePlanetRadiation(tx: Tx, planet: Planet, season: Se
   const fleet: Fleet = {};
   const damage: HpDamageLot[] = [];
   for (const row of rows) {
-    if (row.count <= 0 || HULLS[row.hull].ground || (row.location !== 'home' && !docks.has(row.location))) continue;
+    if (row.count <= 0 || HULLS[row.hull].ground || (row.location !== PLANET_LOCATION && !docks.has(row.location))) continue;
     fleet[row.hull] = (fleet[row.hull] ?? 0) + row.count;
     const lot = docks.get(row.location);
     damage.push(...(lot ? [{ hull: row.hull, count: row.count, damageBp: lot.damageBp, remainderBp: lot.remainderBp }] : row.damage));
   }
-  const nextLoss = firstHpLossAtMs(await planetRadiationPath(tx, planet, at.getTime(), season.endsAt.getTime()), sources, fleet, damage, tech);
-  const boundaries = sources.flatMap(source => [source.activeFromMs, source.activeUntilMs]
+  const nextLoss = sources.length === 0 ? null
+    : firstHpLossAtMs(await planetRadiationPath(tx, planet, at.getTime(), season.endsAt.getTime()), sources, fleet, damage, tech);
+  const moonFleet: Fleet = {};
+  const moonDamage: HpDamageLot[] = [];
+  for (const row of rows.filter(wornOnMoon)) {
+    moonFleet[row.hull] = (moonFleet[row.hull] ?? 0) + row.count;
+    moonDamage.push(...row.damage);
+  }
+  const nextMoonLoss = moonSources.length === 0 ? null
+    : firstHpLossAtMs(moonRadiationPath(planet, at.getTime(), season.endsAt.getTime()), moonSources, moonFleet, moonDamage, tech);
+  const boundaries = [...sources, ...moonSources].flatMap(source => [source.activeFromMs, source.activeUntilMs]
     .filter((boundary): boundary is number => boundary !== null && boundary > at.getTime()));
   if (nextLoss !== null) boundaries.push(nextLoss);
+  if (nextMoonLoss !== null) boundaries.push(nextMoonLoss);
   const supportLoss = await nextSupportRadiationLoss(tx, planet, season, at);
   if (supportLoss !== null) boundaries.push(supportLoss);
   const stagingLoss = await nextStagedWarRadiationLoss(tx, planet, season, at, sources);

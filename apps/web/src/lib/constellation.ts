@@ -20,6 +20,8 @@ export const RESEARCH_GROUPS = [
     projects: [
       'ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES',
       'RADIATION_SHIELDING',
+      // Ay S7: a permission, offered only in a galaxy with moons; elsewhere its spot stays dark.
+      'LUNAR_CAPTURE',
     ],
   },
   {

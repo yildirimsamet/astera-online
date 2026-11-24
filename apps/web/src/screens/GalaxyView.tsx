@@ -157,9 +157,12 @@ import {
   HULLS,
   MOBILE_HULLS,
   combatValue,
+  distance,
   engagementEndsAt,
+  fleetCount,
   UNAIDED,
   transferCargoCapacity,
+  type Fleet,
   type MobileHullId,
   type ResearchProjectId,
 } from '@astera/rules';
@@ -170,6 +173,10 @@ import { TransferSheet } from './TransferSheet.js';
 import { ClanSupportSheet, type SupportHost } from './ClanSupportSheet.js';
 import { WorldsPanel } from './WorldsPanel.js';
 import { PlanetScreen, TAB_OF } from './PlanetScreen.jsx';
+import { MoonPanel } from './MoonPanel.js';
+import { MOON_WARP_DURATION_MS, type MoonGateWarpEvent } from '../galaxy/MoonGateWarpFx.js';
+import { MOON_SCAN_DURATION_MS, type MoonScanFxEvent, type MoonScanRouteFx } from '../galaxy/MoonScanFx.js';
+import type { MoonHopFxItem } from '../galaxy/MoonActivityFx.js';
 import { researchNeedWorld } from '../lib/researchNeed.js';
 import { ResearchPanel } from './ResearchPanel.js';
 import { IntelScreen } from './IntelScreen.jsx';
@@ -288,7 +295,7 @@ const WikiScreen = lazy(async () => { const module = await import('./WikiScreen.
 export const PERF_PANEL_CODES = [
   'planet', 'research', 'intel', 'report', 'leaderboard', 'clan', 'chat', 'chronicle',
   'rewards', 'announcements', 'feedback', 'donate', 'skin-shop', 'skin-inventory', 'admin',
-  'recap', 'menu', 'return', 'wiki', 'ship', 'profile',
+  'recap', 'menu', 'return', 'wiki', 'ship', 'profile', 'moon',
 ] as const;
 const NO_LANDMARKS: MainSky['monuments'] = [];
 const NO_CLOUDS: MainSky['clouds'] = [];
@@ -296,7 +303,7 @@ const NO_CLOUDS: MainSky['clouds'] = [];
 export const perfPanelCode = (panel: Panel): number =>
   panel === null ? 0 : PERF_PANEL_CODES.indexOf(panel) + 1;
 
-export type Panel = 'planet' | 'research' | 'ship' | 'intel' | 'report' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'announcements' | 'feedback' | 'donate' | 'skin-shop' | 'skin-inventory' | 'admin' | 'recap' | 'menu' | 'return' | 'wiki' | 'profile' | null;
+export type Panel = 'planet' | 'moon' | 'research' | 'ship' | 'intel' | 'report' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'announcements' | 'feedback' | 'donate' | 'skin-shop' | 'skin-inventory' | 'admin' | 'recap' | 'menu' | 'return' | 'wiki' | 'profile' | null;
 
 /**
  * WHICH SHELF INSIDE A PANEL, WHEN THE PANEL ALONE IS NOT AN ANSWER. D121.
@@ -1354,15 +1361,91 @@ export function GalaxyView({
   useEffect(() => lendFocusClose(close));
 
   // The shell's requests, answered once each (`useRequest`): see `homeRequest`.
-  /** K6: the Base's two pages, one switch apart. */
+  /** K6: the Base's pages (Planet | Moon | Research | Ship), one switch apart. */
   const openBase = (view: BaseView): void => {
     setResearchFocus(null);
-    onPanel(view === 'world' ? 'planet' : view === 'ship' ? 'ship' : 'research');
+    onPanel(view === 'world' ? 'planet' : view === 'moon' ? 'moon' : view === 'ship' ? 'ship' : 'research');
   };
+  const moonsAvailable = season.data?.features?.moons === true;
   const arenaAvailable = onEnterArena !== undefined;
   const commanderShip = useCommanderShip(arenaAvailable);
   const park = parkedShip(commanderShip.data, Date.now());
   const homeward = homewardShip(commanderShip.data, Date.now());
+
+  // Private owner-only 3D VFX queues for Moon Gate warps & Gözcü scans (never shared with other players).
+  const [moonWarps, setMoonWarps] = useState<readonly MoonGateWarpEvent[]>([]);
+  const [moonScans, setMoonScans] = useState<readonly MoonScanFxEvent[]>([]);
+  const triggerMoonWarp = useCallback((fromPlanetId: string, toPlanetId: string, jumped: Fleet) => {
+    const id = `warp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const rarity = galaxy.data?.moons?.rarity[fromPlanetId] ?? planet.data?.moon?.rarity ?? 'COMMON';
+    const event: MoonGateWarpEvent = {
+      id,
+      fromPlanetId,
+      toPlanetId,
+      startedAtMs: serverNow(),
+      shipCount: fleetCount(jumped),
+      rarity,
+    };
+    setMoonWarps((prev) => [...prev, event]);
+    window.setTimeout(() => {
+      setMoonWarps((prev) => prev.filter((item) => item.id !== id));
+    }, MOON_WARP_DURATION_MS + 400);
+  }, [galaxy.data?.moons?.rarity, planet.data?.moon?.rarity]);
+
+  const triggerMoonScan = useCallback((
+    fromPlanetId: string,
+    targetPlanetId: string,
+    pierced: boolean,
+    routes?: readonly MoonScanRouteFx[],
+  ) => {
+    const id = `scan-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const event: MoonScanFxEvent = {
+      id,
+      fromPlanetId,
+      targetPlanetId,
+      startedAtMs: serverNow(),
+      pierced,
+      ...(routes && routes.length > 0 ? { routes } : {}),
+    };
+    setMoonScans((prev) => [...prev, event]);
+    window.setTimeout(() => {
+      setMoonScans((prev) => prev.filter((item) => item.id !== id));
+    }, MOON_SCAN_DURATION_MS + 400);
+  }, []);
+
+  const moonHops = useMemo<readonly MoonHopFxItem[]>(() => {
+    const allOwned = planet.data ? [planet.data, ...worlds] : worlds;
+    const seen = new Set<string>();
+    const out: MoonHopFxItem[] = [];
+    for (const w of allOwned) {
+      const moves = w.moon?.moves;
+      if (!moves || moves.length === 0) continue;
+      for (const mv of moves) {
+        if (seen.has(mv.id)) continue;
+        if (mv.kind === 'HOP_UP' || mv.kind === 'HOP_DOWN') {
+          seen.add(mv.id);
+          out.push({
+            id: mv.id,
+            planetId: w.planet.id,
+            direction: mv.kind === 'HOP_UP' ? 'UP' : 'DOWN',
+            arriveAtMs: mv.arriveAt.getTime(),
+          });
+        }
+      }
+    }
+    return out;
+  }, [planet.data, worlds]);
+
+  const moonBuildPlanetIds = useMemo<readonly string[]>(() => {
+    const allOwned = planet.data ? [planet.data, ...worlds] : worlds;
+    const ids = new Set<string>();
+    for (const w of allOwned) {
+      if (w.queues?.CONSTRUCTION.some((q) => q.kind === 'MOON')) {
+        ids.add(w.planet.id);
+      }
+    }
+    return [...ids];
+  }, [planet.data, worlds]);
 
   const tryCosmetic = (cosmeticId: CosmeticId): void => {
     const item = cosmeticById(cosmeticId);
@@ -1538,6 +1621,22 @@ export function GalaxyView({
           probeId: cosmetics.data?.equipment?.PROBE, flagId: cosmetics.data?.clanFlagId ?? undefined,
           shipSkins: cosmetics.data?.equipment?.SHIP }}
         planets={displayPlanets}
+        moons={galaxy.data?.moons}
+        moonWarps={moonWarps}
+        onSelectMoon={(planetId) => {
+          const mine = new Set(galaxy.data?.you.planetIds ?? [galaxy.data?.you.planetId]);
+          if (mine.has(planetId)) {
+            if (planetId !== activePlanetId) selectPlanet(planetId);
+            focusPlanet(planetId);
+            onPanel('moon');
+            return;
+          }
+          onFocus({ kind: 'planet', id: planetId });
+        }}
+        moonScans={moonScans}
+        moonHops={moonHops}
+        moonBuildPlanetIds={moonBuildPlanetIds}
+        focusDistanceOverride={moonWarps.length > 0 ? 15.5 : moonScans.length > 0 ? 11.5 : undefined}
         unknownSignals={signalData?.signals}
         clanAlarms={clanAlarms}
         unknownSignalRadar={focusedSignalId ? personalSignals.data?.radar ?? undefined : undefined}
@@ -1775,8 +1874,8 @@ export function GalaxyView({
           */
           outOfBand={outOfBandAbove(planets, selected)}
           ownPeakCore={ownPeakCore(planets)}
-          onDeathStar={() => {
-            deathStar.mutate(selected.id, {
+          onDeathStar={(targetBody) => {
+            deathStar.mutate({ targetPlanetId: selected.id, ...(targetBody ? { targetBody } : {}) }, {
               onSuccess: () => {
                 say(t('galaxy.deathStarAway', {
                   world: selected.intel === 'UNKNOWN'
@@ -1965,6 +2064,9 @@ export function GalaxyView({
               above={nextStep}
               onFocusMonument={(id) => { setFocus({ kind: 'monument', id }); setDetail(true); setAttacking(false); }}
               thread={thread}
+              targetMoon={thread.targetPlanetId !== undefined
+                && (galaxy.data?.moons?.list.some((m) => m.planetId === thread.targetPlanetId) ?? false)
+                && galaxy.data?.planets.find((w) => w.id === thread.targetPlanetId)?.kind !== 'NEUTRAL'}
               recalling={recallFlight.isPending}
               onRecall={() => {
                 const input = flightRecallInput(thread);
@@ -2150,7 +2252,7 @@ export function GalaxyView({
             onPanel(null);
           }}
         >
-          <BaseSwitch value="world" onChange={openBase} arenaAvailable={arenaAvailable} />
+          <BaseSwitch value="world" onChange={openBase} moonAvailable={moonsAvailable} arenaAvailable={arenaAvailable} />
           <PlanetScreen
             onOpenResearch={(project) => {
               setResearchFocus(project);
@@ -2160,6 +2262,103 @@ export function GalaxyView({
               ? { focusGroup: requestedPlanetGroup ?? planetGroup }
               : {})}
             {...(requestedItem ? { focusItem: requestedItem } : {})}
+          />
+        </V2Sheet>
+      )}
+
+      {panel === 'moon' && moonsAvailable && planet.data && !planet.data.vessel && (
+        <V2Sheet
+          bleed
+          detents={['full']}
+          headerArt={ATMOSPHERE.baseWorld}
+          kit={{ tone: 'self' }}
+          eyebrow={commander}
+          title={planet.data.planet.name}
+          titleLang="en"
+          onClose={() => {
+            onPanel(null);
+          }}
+        >
+          <BaseSwitch value="moon" onChange={openBase} moonAvailable={moonsAvailable} arenaAvailable={arenaAvailable} />
+          <MoonPanel
+            key={planet.data.planet.id}
+            planet={planet.data}
+            moonsEnabled={moonsAvailable}
+            otherMoons={(() => {
+              const p = planet.data;
+              const fromWorlds = worlds
+                .filter((w) => w.planet.id !== p.planet.id && w.moon !== null && w.moon !== undefined)
+                .map((w) => ({
+                  planetId: w.planet.id,
+                  name: w.planet.name,
+                  position: w.planet.position,
+                  rarity: w.moon!.rarity,
+                  dockFree: w.moon!.dockFree,
+                  dockCapacity: w.moon!.dockCapacity,
+                  gateReadyAt: w.moon!.gateReadyAt,
+                  closedUntil: w.moon!.closedUntil,
+                }));
+              if (fromWorlds.length > 0) return fromWorlds;
+              const g = galaxy.data;
+              if (!g?.moons) return [];
+              const mine = new Set(g.you.planetIds ?? [g.you.planetId]);
+              return g.planets
+                .filter((w) => w.id !== p.planet.id && mine.has(w.id) && g.moons?.rarity[w.id])
+                .map((w) => ({
+                  planetId: w.id,
+                  name: w.name,
+                  position: w.position,
+                  rarity: g.moons!.rarity[w.id]!,
+                }));
+            })()}
+            scanTargets={(() => {
+              const g = galaxy.data;
+              const p = planet.data;
+              if (!g || !p.moon) return [];
+              const mine = new Set(g.you.planetIds ?? [g.you.planetId]);
+              return g.planets
+                .filter((w) => !mine.has(w.id) && w.name.trim().length > 0)
+                .map((w) => {
+                  const isPlayer = w.controller?.kind === 'PLAYER';
+                  const ownerLabel = w.controller?.kind === 'PLAYER'
+                    ? w.controller.displayName
+                    : undefined;
+                  return {
+                    planetId: w.id,
+                    name: w.name,
+                    distance: distance(p.planet.position, w.position),
+                    isPlayer,
+                    ...(ownerLabel ? { ownerLabel } : {}),
+                  };
+                })
+                .filter((w) => w.distance <= p.moon!.scanRange)
+                .sort((a, b) => Number(b.isPlayer) - Number(a.isPlayer) || a.distance - b.distance);
+            })()}
+            worldNames={new Map((galaxy.data?.planets ?? []).map((w) => [w.id, w.name]))}
+            onOpenResearch={() => { onPanel('research'); }}
+            onRefresh={() => {
+              void queryClient.invalidateQueries({ queryKey: keys.planet });
+              void queryClient.invalidateQueries({ queryKey: keys.planets });
+              void queryClient.invalidateQueries({ queryKey: keys.galaxy });
+            }}
+            onOrderMoon={(id) => api.orderMoon(id)}
+            onHop={(id, dir, fl) => api.hopMoonFleet(id, dir, fl)}
+            onJump={(id, toId, fl) => api.jumpMoonFleet(id, toId, fl)}
+            onScan={(id, targetId) => api.scanFromMoon(id, targetId)}
+            onJumpStarted={(fromId, toId, fl) => {
+              triggerMoonWarp(fromId, toId, fl);
+              onPanel(null);
+              onFocus(null);
+            }}
+            onScanVisual={(fromId, targetId, pierced, routes) => {
+              triggerMoonScan(fromId, targetId, pierced, routes);
+            }}
+            onWatchTarget={(targetId) => {
+              const p = planet.data;
+              if (p.moon) triggerMoonScan(p.planet.id, targetId, p.moon.scanPierces);
+              onPanel(null);
+              onFocus({ kind: 'planet', id: targetId });
+            }}
           />
         </V2Sheet>
       )}
@@ -2188,7 +2387,7 @@ export function GalaxyView({
           }}
         >
           {/* Bled like the world page, so the switch keeps one width and one gutter on all three (owner 2026-11-17, ek-13). */}
-          <BaseSwitch value="research" onChange={openBase} arenaAvailable={arenaAvailable} />
+          <BaseSwitch value="research" onChange={openBase} moonAvailable={moonsAvailable} arenaAvailable={arenaAvailable} />
           <div className="gk-sheet__pad">
           <ResearchPanel
             {...(researchFocus === null ? {} : { focus: researchFocus })}
@@ -2206,7 +2405,7 @@ export function GalaxyView({
 
       {panel === 'ship' && onEnterArena && (
         <V2Sheet bleed detents={['full']} headerArt={ATMOSPHERE.commanderShip} kit={{ art: artIconSrc('cos-ship'), tone: 'self' }} eyebrow={commander} title={t('arena.nav')} onClose={() => { onPanel(null); }}>
-          <BaseSwitch value="ship" onChange={openBase} arenaAvailable />
+          <BaseSwitch value="ship" onChange={openBase} moonAvailable={moonsAvailable} arenaAvailable />
           <Suspense fallback={null}><HangarPanel credential={() => arenaCredential(api)} onEnter={onEnterArena}
             onSpent={() => { for (const queryKey of [keys.planet, keys.commanderShip]) void queryClient.invalidateQueries({ queryKey }); }} /></Suspense>
         </V2Sheet>
@@ -2681,6 +2880,7 @@ export function GalaxyView({
           : contact;
         return target ? (
           <TransferSheet
+            key={target.id}
             target={target}
             {...(owned ? { targetPlanet: owned } : {})}
             planet={transferOrigin}

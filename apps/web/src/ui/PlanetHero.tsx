@@ -90,6 +90,7 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
         <div data-loyalty data-testid="loyalty-line" className="gk gk-loyalty">
           <LoyaltyRow loyalty={loyalty} />
           <p className="gk-sub">{t('faults.loyalty.battleLoss', { strike: DEATH_STAR.colonyLoyaltyLoss })}</p>
+          <p className="gk-sub">{t('faults.loyalty.stake')}</p>
           <div data-testid="fault-protection" className="gk-loyalty__guard">
             {faultProtectionRemaining > 0 && (
               <p className="gk-loyalty__guarded gk-num">

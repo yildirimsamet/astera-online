@@ -101,6 +101,15 @@ describe('colony abandonment confirmation', () => {
     expect(signalFamily(notice)).toBe('threat');
     expect(signalOutcome(notice)).toBe('loss');
   });
+  /** S19c (owner 2026-11-18): a colony lost to loyalty takes the fleet standing on it. */
+  it('names the ships lost with a seceding colony', () => {
+    const notice = { id: 'notice', kind: 'colony_lost', seen: false, at: new Date(),
+      refId: null, payload: { planetId: colonyId, planetName: 'Haven', cause: 'SECESSION', lostShips: 12 } };
+    expect(describeNotification(notice, Date.now())).toBe('Haven seceded and turned neutral · 12 ships stationed there were lost');
+    const empty = { ...notice, payload: { ...notice.payload, lostShips: 0 } };
+    expect(describeNotification(empty, Date.now())).toBe('Haven seceded and turned neutral');
+  });
+
   it('only offers abandonment for a colony', () => {
     renderDoor(capital);
     expect(screen.queryByRole('button', { name: 'Abandon colony' })).not.toBeInTheDocument();

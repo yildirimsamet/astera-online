@@ -57,6 +57,9 @@ export function buildOrderLabel(order: BuildOrderView): string {
     /** A Repair Station job: one hull, or every damaged ship at once. Kalıcı gemi hasarı. */
     case 'REPAIR':
       return i18n.t('repairStation.order', { name: repairSubject(order) });
+    /** Ay S8: a built moon is always Common. */
+    case 'MOON':
+      return i18n.t('research.moonOrder');
   }
 }
 
@@ -91,6 +94,9 @@ export function buildOrderArt(order: BuildOrderView): string | null {
         : null;
     case 'REPAIR':
       return Object.hasOwn(HULLS, order.subject) ? HULL_ART[order.subject as HullId] ?? null : null;
+    /** The rig that pulls the rock into orbit, until the moon has art of its own (F9). */
+    case 'MOON':
+      return RESEARCH_ART.LUNAR_CAPTURE;
   }
 }
 

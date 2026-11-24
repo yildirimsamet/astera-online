@@ -4,7 +4,7 @@ import {
   BUILD,
   RESEARCH_PROJECTS,
   legacyResearchMastered,
-  researchMinutes,
+  researchOrderMinutes,
   type ResearchProjectId,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
@@ -140,7 +140,7 @@ export async function completeResearch(
     }
     const durationSeconds = Math.max(
       1,
-      Math.ceil(researchMinutes(cost, researchCore) * 60),
+      Math.ceil(researchOrderMinutes(projectId, cost, researchCore) * 60),
     );
     const startedAt = queue.at(-1)?.readyAt ?? planet.now;
     const readyAt = new Date(startedAt.getTime() + durationSeconds * 1_000);

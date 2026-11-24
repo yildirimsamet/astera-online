@@ -422,6 +422,8 @@ export const reports = {
   strategicCaptured: "捕獲されました",
   strategicIneffective: "無効です",
   strategicIntercepted: "傍受されました",
+  strategicMoonCracked: "月に亀裂",
+  strategicMoonDestroyed: "月が崩壊",
   radiationYouAttacked: "放射線爆弾の対象：",
   radiationAttackedBy: "放射線爆弾の発射者：",
   strategicYouAttacked: "デス・スターの標的：",

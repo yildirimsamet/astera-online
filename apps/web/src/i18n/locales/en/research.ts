@@ -182,4 +182,9 @@ export const research = {
   stockpileTag: "Two Death Stars per world",
   stockpileRole: "Raises Death Star capacity from 1 to 2 on each planet. Each weapon is built and paid for separately.",
   stockpileDetail: "The limit applies to each planet, not to your whole fleet combined. The second weapon starts after the first finishes and uses its own full cost and build time. More launched weapons can exceed ready interceptor charges, but do not guarantee a hit.",
+  lunarCaptureName: "Lunar Capture",
+  lunarCaptureTag: "Gives your worlds a moon",
+  lunarCaptureRole: "You can build a Common moon on each of your worlds. A big battle over a world you hold may give birth to a rarer one.",
+  lunarCaptureDetail: "A moon is a second stop beside the planet: your fleet can wait there, jump between your own moons and scan nearby routes. A built moon is always Common. A moon born in battle replaces the old one only if it is rarer. Needs Core 9 on your capital.",
+  moonOrder: "Common moon",
 } as const;

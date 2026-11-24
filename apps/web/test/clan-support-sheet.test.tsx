@@ -68,6 +68,21 @@ describe('the clan support sheet', () => {
     await pick(3);
     expect(screen.getByRole('textbox', { name: /pike.*quantity/i })).toHaveValue('1');
   });
+  /** S42 (owner 2026-11-18): a wave standing on a colony is lost if the colony secedes. */
+  it('names a colony host’s loyalty and what secession would cost, before sending', async () => {
+    show(quote({ hostLoyalty: 37 }));
+    await pick(4);
+    const line = await screen.findByText(/Vega’s loyalty is 37%/);
+    expect(line).toHaveTextContent(/at zero it secedes and the ships standing there are lost/i);
+    expect(line.closest('[data-tone]')).toHaveAttribute('data-tone', 'warn');
+  });
+  it('says nothing of loyalty when the host is a capital', async () => {
+    show(quote({ hostLoyalty: null }));
+    await pick(4);
+    expect(await screen.findByText(/out and back · no refund/i)).toBeInTheDocument();
+    expect(screen.queryByText(/loyalty is/)).toBeNull();
+  });
+
   it('names the host world and asks for ships before anything else', () => {
     show(quote());
     expect(screen.getByText(/Ali · Vega/)).toBeInTheDocument();

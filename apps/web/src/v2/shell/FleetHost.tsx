@@ -76,6 +76,7 @@ export function FleetHost({ onFocus, onFocusWorld, onClose, onOpenRepairStation 
         capital: world.planet.id === capitalPlanetId,
         active: world.planet.id === activePlanetId,
         fleet: world.fleet,
+        ...(world.moon ? { hasMoon: true, moonFleet: world.moon.fleet } : {}),
         damage: world.fleetDamage,
         workshopRadiation: world.workshopRadiation,
         away: fleetCount(world.fleetAway),

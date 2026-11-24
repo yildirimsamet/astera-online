@@ -1,3 +1,5 @@
+import { PLANET_LOCATION } from './unitLocation.js';
+import { seasonHasMoons, seedMoonAt } from './moon.js';
 import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import {
   ECONOMY_PROFILE,
@@ -15,6 +17,8 @@ import {
   neutralOpeningOrder,
   neutralOpenings,
   selectNeutralSlots,
+  seedMoonPlan,
+  type MoonRarity,
   shieldHp,
   storageCap,
   CURRENT_SEASON_RANK_REWARD_PROGRAM_VERSION,
@@ -352,6 +356,8 @@ async function openNeutralWorlds(
     generateGalaxy(seed, MULTI_WORLD.neutralSlotPool).slots,
   );
   const ordered = neutralOpeningOrder(seed, selected);
+  // Planned from the WHOLE selection, so a slot opened late gets the moon it would have had first (§6.3).
+  const moonPlan = await seasonHasMoons(tx, seasonId) ? seedMoonPlan(seed, selected) : new Map<number, MoonRarity>();
   const existingRows = await tx
     .select({ slotIndex: planets.slotIndex })
     .from(planets)
@@ -367,7 +373,9 @@ async function openNeutralWorlds(
     for (const [ordinal, neutral] of tierOrder.entries()) {
       if (remaining <= 0) break;
       if (occupied.has(neutral.slot.index)) continue;
-      await createNeutralWorld(tx, seasonId, neutral, startsAt, ordinal + 1);
+      const planetId = await createNeutralWorld(tx, seasonId, neutral, startsAt, ordinal + 1);
+      const rarity = moonPlan.get(neutral.slot.index);
+      if (rarity) await seedMoonAt(tx, { seasonId, planetId, slotIndex: neutral.slot.index, rarity, now: startsAt });
       occupied.add(neutral.slot.index);
       opened[tier] += 1;
       remaining -= 1;
@@ -379,7 +387,7 @@ async function openNeutralWorlds(
 /** Shared seed template for a new galaxy and a colony reset after inactivity. */
 export async function createNeutralWorld(
   tx: Tx, seasonId: string, neutral: ReturnType<typeof selectNeutralSlots>[number], startsAt: Date, number: number,
-): Promise<void> {
+): Promise<string> {
   const tier = neutral.tier;
   const template = MULTI_WORLD.neutral[tier];
   const alloyCap = storageCap(alloyRate(template.buildings.REFINERY), template.buildings.VAULT);
@@ -446,7 +454,7 @@ export async function createNeutralWorld(
       // system garrisons and is contracted only for player-owned units.
       ownerPlayerId: null,
       hull: hull as keyof typeof fleet,
-      location: 'home',
+      location: PLANET_LOCATION,
       count,
     }));
   if (unitRows.length > 0) await tx.insert(units).values(unitRows);
@@ -466,6 +474,7 @@ export async function createNeutralWorld(
       resolveAt: nextReinforcementAt,
     });
   }
+  return world.id;
 }
 
 const NEUTRAL_CENSUS_INTERVAL_MS = NEUTRAL_OPENING.censusEveryHours * 60 * 60_000;

@@ -44,6 +44,16 @@ describe('clan support in the bell', () => {
     expect(DESTINATION.clan_support_departed).toEqual({ panel: 'planet' });
   });
 
+  /** S42 (owner 2026-11-18): the host colony seceded and the wave standing there fell with it. */
+  it('tells a supporter their wave was lost with a colony that seceded', () => {
+    const payload = { grade: 'COLONY_LOST', hostPlanetId: 'vega', hostPlanetName: 'Vega', lost: 10, survived: 0 };
+    const line = say('clan_support_result', payload);
+    expect(line).toMatch(/Vega seceded — the line you held there is gone/);
+    expect(line).toMatch(/10 ships lost/);
+    expect(line).not.toMatch(/fought/);
+    expect(signalOutcome(news('clan_support_result', payload))).toBe('loss');
+  });
+
   it('tells a supporter what their ships did, and opens the report', () => {
     const payload = { reportId: 'r', grade: 'PARTIAL', hostPlanetId: 'vega', hostPlanetName: 'Vega',
       lost: 5, survived: 7 };

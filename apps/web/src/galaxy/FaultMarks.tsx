@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { SELECTION_RING, eyeMarkerScale } from './PlanetField.js';
+import { eyeMarkerScale } from './PlanetField.js';
 import { screenFloorScale } from './publicMoments.js';
 import type { PlanetNode } from './scene.js';
 
@@ -27,8 +27,6 @@ export const faultMarkNodes = (nodes: readonly PlanetNode[]): PlanetNode[] =>
 
 /** Badge width as a multiple of the world's radius, before the marker scale. */
 const BADGE = 0.62;
-/** Where it sits: out along the shoulder, past the edge marker. */
-const SHOULDER = SELECTION_RING * 0.82;
 const WAVE_SECONDS = 2.4;
 /** The badge never reads smaller than this across, so a broken colony is found from afar. */
 const BADGE_MIN_PIXELS = 18;
@@ -106,11 +104,14 @@ function FaultBadge({ node }: { node: PlanetNode }) {
       eyeMarkerScale(camera.position.distanceTo(centre), node.radius, size.height, camera.fov),
       screenFloorScale(node.radius * BADGE, centre, camera, size.height, BADGE_MIN_PIXELS),
     );
-    const out = node.radius * SHOULDER * scale;
+    const badgeSize = node.radius * scale * BADGE;
+    // Anchor snugly to the world's upper-right rim at every zoom level: close up it clears the
+    // sphere, and zoomed out it stays next to the colony dot instead of drifting away by `scale`.
+    const out = (node.radius * 0.92 + badgeSize * 0.36) * Math.SQRT1_2;
     offset.set(out, out, 0).applyQuaternion(camera.quaternion);
     group.current.position.copy(centre).add(offset);
     group.current.quaternion.copy(camera.quaternion);
-    group.current.scale.setScalar(node.radius * scale * BADGE);
+    group.current.scale.setScalar(badgeSize);
     if (wave.current) {
       const t = (clock.elapsedTime % WAVE_SECONDS) / WAVE_SECONDS;
       wave.current.scale.setScalar(1 + t * 0.9);

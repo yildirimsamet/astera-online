@@ -1,7 +1,13 @@
 import { localized as l, type WikiArticle } from './model.js';
 import { topic } from './concepts.js';
+import { MOON, MOON_RARITIES, crackLimit, gateCapacity, scanRange, type MoonRarity } from '@astera/rules';
 import { unknownSignal as signalEn } from '../i18n/locales/en/unknownSignal.js';
 import { unknownSignal as signalTr } from '../i18n/locales/tr/unknownSignal.js';
+const RARITY_EN: Record<MoonRarity, string> = { COMMON: 'Common', RARE: 'Rare', EPIC: 'Epic', LEGENDARY: 'Legendary' };
+const RARITY_TR: Record<MoonRarity, string> = { COMMON: 'Yaygın', RARE: 'Nadir', EPIC: 'Destansı', LEGENDARY: 'Efsanevi' };
+/** The Wiki is written in two languages with their own grouping (1,550 / 1.550). */
+const n = (value: number, language: 'en' | 'tr'): string => value.toLocaleString(language === 'en' ? 'en-US' : 'tr-TR');
+
 export const galaxyArticles: readonly WikiArticle[] = [
   topic('galaxy', 'unknown-signals', l(signalEn.title, signalTr.title), l(signalEn.description, signalTr.description),
     l([signalEn.wiki, signalEn.resourcesInfo,
@@ -168,4 +174,29 @@ export const galaxyArticles: readonly WikiArticle[] = [
       "Sonraki etkinliği ve haftalık rehberi görmek için Görünüm → Galaksi etkinliklerini aç. Kısa etkinlikler için uygun gemileri ve boş uçuş rampalarını hazır tut. Takvimde etkinlik olması, filonun hedef ayrılmadan yetişeceğini garanti etmez.",
       "Güncel buluşma zamanını ve kalan etkinlik süresini kontrol et. Sezon sonuna yakın yeni siparişler ve görevler, kalan sezon süresine de sığmalıdır.",
     ]), ['galaxy.mining', 'galaxy.trade', 'galaxy.convoys']),
+  topic('galaxy', 'moons', l('Moons, Moon Gates & Gözcü', 'Aylar, Ay Kapısı ve Gözcü'),
+    l(
+      'An orbiting dock independent of your planet: hidden fleet staging, Moon Gate jumps between your own moons, and silent Gözcü route snapshots.',
+      'Gezegenden bağımsız yörünge rıhtımı: gizli filo bekletme, kendi ayların arasında Ay Kapısı sıçraması ve sessiz Gözcü rota fotoğrafları.',
+    ),
+    l([
+      `Every world can hold at most one moon, in four rarity tiers: ${MOON_RARITIES.map((r) => `${RARITY_EN[r]} (${n(gateCapacity(r), 'en')} dock, ${MOON.gateChargeHours[r]}h gate charge, ${n(scanRange(r), 'en')} Gözcü range, ${crackLimit(r)} durability)`).join(', ')}. Only a Legendary moon's Gözcü sees moon-bound flights.`,
+      `There are three ways to get a moon: research [[research.LUNAR_CAPTURE|Lunar Capture]] and build a Common moon (${n(MOON.build.cost.alloy, 'en')} Alloy + ${n(MOON.build.cost.crystal, 'en')} Crystal, ${MOON.build.minutes / 60}h); a Rare, Epic or Legendary moon may be born from large battle wreckage once Lunar Capture is done; or conquer a world that already has a moon.`,
+      `Planet ↔ Moon transfers take ${MOON.hopSeconds} seconds and cost nothing; ships in transit cannot be hit on either body. Ground defences and Aegis never protect the moon, and a moon battle has no tactical escape and no loot. A single raid on its way out can switch between planet and moon until it arrives.`,
+      `The Moon Gate jumps ships between two of your own moons after a ${MOON.gateOpenSeconds}-second opening, whatever the distance (the smaller dock limits the jump; both gates then charge). Gözcü spends ${MOON.scanCost.deuterium} Deuterium to silently photograph the player fleets flying in to or out of any world in range; flights leaving or landing on a moon stay hidden from it except from a Legendary moon.`,
+      `A Death Star aimed at a moon takes 1 durability and shuts its Gate and Gözcü for ${MOON.strikeCloseHours} hours. Durability fully restores ${MOON.crackHealHours} hours after the last hit. At 0 the moon shatters and every ship docked there is lost.`,
+    ], [
+      `Her dünya en fazla bir ay taşıyabilir; aylar dört nadirlik kademesindedir: ${MOON_RARITIES.map((r) => `${RARITY_TR[r]} (${n(gateCapacity(r), 'tr')} rıhtım, ${MOON.gateChargeHours[r]} sa kapı şarjı, ${n(scanRange(r), 'tr')} Gözcü menzili, ${crackLimit(r)} dayanıklılık)`).join(', ')}. Ayla ilgili uçuşları yalnız Efsanevi ayın Gözcü'sü görür.`,
+      `Ay edinmenin üç yolu vardır: [[research.LUNAR_CAPTURE|Ay Çekimi]] araştırmasını tamamlayıp ${n(MOON.build.cost.alloy, 'tr')} Alaşım + ${n(MOON.build.cost.crystal, 'tr')} Kristal ile ${MOON.build.minutes / 60} saatte Yaygın Ay kurmak; Ay Çekimi açıkken büyük savaş enkazından Nadir, Destansı veya Efsanevi bir ayın doğması; ya da aylı bir dünyayı fethetmek.`,
+      `Gezegen ↔ Ay geçişi ${MOON.hopSeconds} sn sürer ve ücretsizdir; geçişteki gemiler ne gezegende ne ayda vurulabilir. Yer silahları ve Aegis ayı korumaz; ay savaşında taktik kaçış ve ganimet yoktur. Gidiş yolundaki tekli akın, varana kadar gezegen ile ay arasında hedef değiştirebilir.`,
+      `Ay Kapısı, mesafe ne olursa olsun ${MOON.gateOpenSeconds} sn açılıştan sonra gemileri kendi iki ayın arasında taşır (küçük rıhtım sıçramayı sınırlar; iki kapı da şarja girer). Gözcü ${MOON.scanCost.deuterium} Döteryum ile menzildeki herhangi bir dünyaya gelen ve oradan giden oyuncu filolarını sessizce fotoğraflar; aydan kalkan veya aya inen uçuşları yalnız Efsanevi ay görür.`,
+      `Aya yöneltilen Ölüm Yıldızı darbesi dayanıklılığı 1 düşürür, Kapı ve Gözcü'yü ${MOON.strikeCloseHours} saat kapatır. Son darbeden ${MOON.crackHealHours} saat sonra dayanıklılık tamamen yenilenir. 0'da ay parçalanır ve üzerindeki tüm gemiler yok olur.`,
+    ]),
+    l([
+      'Stage mobile fleets on a moon to hide their departures from standard Gözcü scans and threaten sudden Moon Gate reinforcements.',
+      'Probe a hostile world before striking its moon to learn its rarity, durability, docked fleet band and gate charge.',
+    ], [
+      'Kalkışlarını standart Gözcü taramalarından gizlemek ve ani Ay Kapısı takviyesi kurmak için hareketli filolarını ayda beklet.',
+      'Düşman bir aya saldırmadan önce nadirliğini, dayanıklılığını, aydaki filo aralığını ve kapı şarjını öğrenmek için sonda gönder.',
+    ]), ['research.LUNAR_CAPTURE', 'fleet.flights', 'intel.probes']),
 ];

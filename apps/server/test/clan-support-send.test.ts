@@ -326,3 +326,20 @@ describe('the HTTP surface', () => {
     }
   });
 });
+
+/** S42 (owner 2026-11-18): a wave standing on a colony is lost if the colony secedes, so the sender sees its loyalty first. */
+describe('the host colony’s loyalty in the quote', () => {
+  it('is null for a capital', async () => {
+    const f = await ready(15_290);
+    expect((await quote(f, 0, 1, { DART: 5 })).hostLoyalty).toBeNull();
+  });
+
+  it('reads a colony’s loyalty as it stands now, rounded up as a probe reads it', async () => {
+    const f = await ready(15_291);
+    const host = f.planetIds[3]!;
+    await f.db.update(planets).set({ kind: 'COLONY', controllerPlayerId: f.playerIds[1]!, loyalty: 41.6, lastTickAt: f.clock.now() })
+      .where(eq(planets.id, host));
+    await f.db.update(planets).set({ defencePosture: 'SUPPORT' }).where(eq(planets.id, host));
+    expect((await quote(f, 0, 3, { DART: 5 })).hostLoyalty).toBe(42);
+  });
+});

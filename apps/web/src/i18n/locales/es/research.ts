@@ -182,4 +182,9 @@ export const research = {
   stockpileTag: "Dos Estrellas de la Muerte por mundo",
   stockpileRole: "Aumenta de 1 a 2 las Estrellas de la Muerte que puede tener cada uno de tus mundos. La segunda empieza cuando termina la primera.",
   stockpileDetail: "Sin investigación, cada mundo tiene 1 Estrella de la Muerte; esta investigación la eleva a 2 en cada mundo, no en todo tu imperio. La segunda cuesta el precio completo y el tiempo de construcción completo, y se construye después de la primera. Atacar desde varios mundos a la vez es la forma de superar las cargas de un defensor.",
+  lunarCaptureName: "Captura lunar",
+  lunarCaptureTag: "Da una luna a tus mundos",
+  lunarCaptureRole: "Puedes construir una luna común en cada uno de tus mundos. Una gran batalla sobre un mundo que controlas puede hacer nacer una más rara.",
+  lunarCaptureDetail: "Una luna es una segunda parada junto al planeta: tu flota puede esperar allí, saltar entre tus propias lunas y escanear rutas cercanas. Una luna construida siempre es común. Una luna nacida en batalla solo sustituye a la anterior si es más rara. Requiere Núcleo 9 en tu capital.",
+  moonOrder: "Luna común",
 } as const;

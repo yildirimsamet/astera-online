@@ -289,6 +289,9 @@ export function ResearchPanel({ onNeed, focus }: {
           role: t('research.gridRole'),
           detail: t('research.gridDetail'),
         };
+      case 'LUNAR_CAPTURE':
+        return { name: t('research.lunarCaptureName'), tag: t('research.lunarCaptureTag'),
+          role: t('research.lunarCaptureRole'), detail: t('research.lunarCaptureDetail') };
       case 'STRATEGIC_STOCKPILE':
         return {
           name: t('research.stockpileName'),

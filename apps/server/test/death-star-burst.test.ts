@@ -178,8 +178,9 @@ describe('rapid Death Star launches and independent impacts', () => {
     await release();
     expect(await world()).toMatchObject({ kind: 'NEUTRAL', controllerPlayerId: null, statsOwnerPlayerId: null, empHits: 4 });
     expect(await f.db.select().from(neutralPlanetState).where(eq(neutralPlanetState.planetId, target))).toHaveLength(1);
+    // S19c (owner 2026-11-18): loyalty run out by any cause takes the standing fleet with the world.
     const [returned] = await f.db.select().from(units).where(and(eq(units.planetId, defenderCapital), eq(units.hull, 'DART'), eq(units.location, 'home')));
-    expect(returned?.count).toBe((before?.count ?? 0) + 3);
+    expect(returned?.count ?? 0).toBe(before?.count ?? 0);
     expect(await f.db.select().from(units).where(and(eq(units.planetId, target), eq(units.hull, 'DART'), eq(units.location, 'home')))).toHaveLength(0);
   });
 

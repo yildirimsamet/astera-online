@@ -25,6 +25,8 @@ import {
   type TransferReturnPlan,
 } from '@astera/rules';
 import { useGalaxy, useTransfer } from '../api/queries.js';
+import { useMoonT } from '../i18n/moon.js';
+import { OriginBodyPicker, TargetBodyPicker } from './MoonControls.js';
 import {
   lethalAfterRefusal, radiationRefusalCount, routeRadiation, transferHpRadiation, toHpRadiationSources, toRadiationSources, type RadiationRefusal,
 } from '../lib/radiation.js';
@@ -149,10 +151,18 @@ export function TransferSheet({
   onLaunched: () => void;
 }) {
   const { t } = useTranslation();
+  const tMoon = useMoonT();
   const say = useToast();
   // Both route ends travel explicitly; target focus and later world selection
   // must never change the source of an already-open transfer picker.
   const transfer = useTransfer(planet.planet.id);
+  const [originBody, setOriginBody] = useState<'PLANET' | 'MOON'>('PLANET');
+  const [targetBody, setTargetBody] = useState<'PLANET' | 'MOON'>('PLANET');
+  const hasOriginMoonShips = fleetCount(planet.moon?.fleet ?? {}) > 0;
+  const activeOriginBody: 'PLANET' | 'MOON' = hasOriginMoonShips ? originBody : 'PLANET';
+  const originFleet = activeOriginBody === 'MOON' ? (planet.moon?.fleet ?? {}) : planet.fleet;
+  const originDamage = activeOriginBody === 'MOON' ? (planet.moon?.fleetDamage ?? []) : planet.fleetDamage;
+  const originGround: Fleet = activeOriginBody === 'MOON' ? {} : planet.ground;
   const launchBlocked = launchFault(planet.faults, 'fleet') !== null;
   /**
    * THE FIVE MINUTES AFTER A SQUADRON LANDED HERE. Faz 2A.3.
@@ -183,24 +193,24 @@ export function TransferSheet({
   const mods = flightModifiers(planet);
   const capacity = fleetCargo(fleet, mods.tech);
   const loaded = resourcesTotal(cargo);
-  const ownsHold = fleetCargo(planet.fleet, mods.tech) > 0;
+  const ownsHold = fleetCargo(originFleet, mods.tech) > 0;
   const returningFleet = transferReturningFleet(fleet, returnPlan);
   const selectedHealth = useMemo(() => {
-    try { return splitHealthFleet(planet.fleet, planet.fleetDamage, fleet); }
+    try { return splitHealthFleet(originFleet, originDamage, fleet); }
     catch (error) { if (!(error instanceof RangeError)) throw error; return null; }
-  }, [planet.fleet, planet.fleetDamage, fleet]);
+  }, [originFleet, originDamage, fleet]);
   const stayingFleet = transferStayingFleet(fleet, returningFleet);
   const remainingFleet = useMemo<Fleet>(() => Object.fromEntries(
-    (Object.keys(planet.fleet) as HullId[]).map((id) => [
+    (Object.keys(originFleet) as HullId[]).map((id) => [
       id,
-      Math.max(0, (planet.fleet[id] ?? 0) - (fleet[id] ?? 0)),
+      Math.max(0, (originFleet[id] ?? 0) - (fleet[id] ?? 0)),
     ]),
-  ), [fleet, planet.fleet]);
+  ), [fleet, originFleet]);
   // Firepower, the one force unit the launch sheet and a probe use. D199.
   const homeDefence = combatValue(garrisonOf(selectedHealth
-    ? partitionCombatFleet(selectedHealth.remaining, selectedHealth.remainingDamage).eligible : remainingFleet, planet.ground));
+    ? partitionCombatFleet(selectedHealth.remaining, selectedHealth.remainingDamage).eligible : remainingFleet, originGround));
   /** What the origin holds before anything is packed, so the bar has a whole. */
-  const defencePowerNow = combatValue(garrisonOf(partitionCombatFleet(planet.fleet, planet.fleetDamage).eligible, planet.ground));
+  const defencePowerNow = combatValue(garrisonOf(partitionCombatFleet(originFleet, originDamage).eligible, originGround));
   /** The one distance this sheet is about: the ETA, the fuel and the trim share it. */
   const span = distance(planet.planet.position, target.position);
   /**
@@ -226,6 +236,8 @@ export function TransferSheet({
    * settles at the landing, and a lethal route's hold is the acknowledgement it asks for.
    */
   const galaxy = useGalaxy();
+  const targetHasMoon = galaxy.data?.moons?.list.some((m) => m.planetId === target.id) ?? false;
+  const targetMoonRarity = galaxy.data?.moons?.rarity[target.id];
   const clouds = galaxy.data?.radiation;
   const sources = useMemo(() => toRadiationSources(clouds ?? []), [clouds]);
   const departMs = serverNow();
@@ -290,9 +302,13 @@ export function TransferSheet({
   const incomingRoom = hangarLoad(stayingFleet);
   const destinationFits = destinationTotal === undefined || destinationUsed === undefined
     || destinationUsed + incomingRoom <= destinationTotal;
+  const effectiveTargetBody: 'PLANET' | 'MOON' = targetHasMoon ? targetBody : 'PLANET';
+  const destinationMoonFits = effectiveTargetBody !== 'MOON'
+    || !targetPlanet?.moon
+    || incomingRoom <= targetPlanet.moon.dockFree;
 
   const setShip = (id: HullId, value: number) => {
-    const max = planet.fleet[id] ?? 0;
+    const max = originFleet[id] ?? 0;
     const next = { ...fleet, [id]: Math.max(0, Math.min(max, value)) };
     setFleet(next);
     setCargoAdjustment(null);
@@ -320,7 +336,9 @@ export function TransferSheet({
           ? t('errors.SHIP_SELECTION_CHANGED')
         : !destinationFits
           ? t('transfer.noRoom')
-          : loaded > capacity
+          : !destinationMoonFits
+            ? tMoon('body.moonDockFull')
+            : loaded > capacity
               || cargo.alloy > planet.planet.alloy
               || cargo.crystal > planet.planet.crystal
               || cargo.deuterium > planet.planet.deuterium
@@ -332,7 +350,7 @@ export function TransferSheet({
   const homeAt = returnMinutes > 0 && eta > 0
     ? clockTime(new Date(serverNow() + (eta + returnMinutes) * 60_000)) : null;
   const holdsLine = t('transfer.homeDefence', {
-    ships: fleetCount(remainingFleet) + fleetCount(planet.ground),
+    ships: fleetCount(remainingFleet) + fleetCount(originGround),
     power: compact(homeDefence),
   });
 
@@ -355,6 +373,8 @@ export function TransferSheet({
             onCommit={() => {
               transfer.mutate({
                 targetPlanetId: target.id, fleet, cargo, pace, returnPlan,
+                ...(activeOriginBody === 'MOON' ? { originBody: 'MOON' as const } : {}),
+                ...(effectiveTargetBody === 'MOON' ? { targetBody: 'MOON' as const } : {}),
                 ...(radiation !== null && radiation.destroyed > 0 ? { acknowledgeRadiation: true } : {}),
               }, {
                 onSuccess: () => {
@@ -386,6 +406,29 @@ export function TransferSheet({
           <p className="gk-sub gk-num">{holdsLine}</p>
         </div>
 
+        {(hasOriginMoonShips || targetHasMoon) && (
+          <div className={`grid gap-2.5 ${hasOriginMoonShips && targetHasMoon ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+            <OriginBodyPicker
+              value={activeOriginBody}
+              hasMoonShips={hasOriginMoonShips}
+              planetCount={fleetCount(Object.fromEntries(MOVABLE.map((h) => [h, planet.fleet[h] ?? 0])))}
+              moonCount={fleetCount(Object.fromEntries(MOVABLE.map((h) => [h, planet.moon?.fleet[h] ?? 0])))}
+              onChange={(body) => {
+                setOriginBody(body);
+                setFleet({});
+                setCargo({ alloy: 0, crystal: 0, deuterium: 0 });
+              }}
+            />
+            <TargetBodyPicker
+              value={targetBody}
+              hasMoon={targetHasMoon}
+              knownRarity={targetMoonRarity}
+              onChange={setTargetBody}
+              showAttackHint={false}
+            />
+          </div>
+        )}
+
         <section className="gk-launch__fleet">
           <SectionTag as="h3">{t('transfer.fleet')}</SectionTag>
           {/*
@@ -393,8 +436,8 @@ export function TransferSheet({
             its reason beside it is the sentence the server's refusal never had on screen.
           */}
           <div className="gk-ledger gk-launch__rows">
-            {MOVABLE.filter((id) => (planet.fleet[id] ?? 0) > 0 || IS_HAULER(id)).map((id) => {
-              const held = planet.fleet[id] ?? 0;
+            {MOVABLE.filter((id) => (originFleet[id] ?? 0) > 0 || IS_HAULER(id)).map((id) => {
+              const held = originFleet[id] ?? 0;
               const packed = fleet[id] ?? 0;
               const art = HULL_ART[id];
               return (

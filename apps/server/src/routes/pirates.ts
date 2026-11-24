@@ -1,3 +1,4 @@
+import { PLANET_LOCATION } from '../services/unitLocation.js';
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -135,7 +136,7 @@ export function registerPirateRoutes(app: FastifyInstance): void {
         app.db
           .select({ hull: units.hull, count: units.count })
           .from(units)
-          .where(and(eq(units.planetId, originId), eq(units.location, 'home'))),
+          .where(and(eq(units.planetId, originId), eq(units.location, PLANET_LOCATION))),
         techOf(app.db, self.playerId),
         orbitOf(app.db, originId),
       ]);

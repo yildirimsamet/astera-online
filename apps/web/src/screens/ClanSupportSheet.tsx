@@ -202,6 +202,11 @@ export function ClanSupportSheet({ host, worlds, onClose, onSent }: {
                 <Glyph id="ranking" />{t('clanSupport.band', { mine: quote.band.mine, theirs: quote.band.theirs })} · {
                   quote.band.ok ? t('clanSupport.bandOk') : t('clanSupport.bandOut')}
               </li>
+              {quote.hostLoyalty !== null && (
+                <li className="gk-inote" data-tone={quote.hostLoyalty < 50 ? 'warn' : undefined}>
+                  <Glyph id="hull" />{t('clanSupport.hostLoyalty', { world: host.planetName, loyalty: quote.hostLoyalty })}
+                </li>
+              )}
               <li className="gk-inote"><Glyph id="lock" />{t('clanSupport.noEscapeNote')}</li>
               <li className="gk-inote"><Glyph id="share" />{t('clanSupport.share')}</li>
             </ul>

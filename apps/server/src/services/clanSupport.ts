@@ -1,7 +1,8 @@
+import { PLANET_LOCATION } from './unitLocation.js';
 import { recordLegacyActivity } from './legacy.js';
 import { randomUUID } from 'node:crypto';
 import { settlePlanetRadiationAt } from './planetRadiation.js';
-import { and, eq, inArray, isNull, or } from 'drizzle-orm';
+import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import {
   HULLS,
   NON_COMBATANT_HULLS,
@@ -35,10 +36,12 @@ import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import {
   accounts,
+  buildings,
   clanMemberships,
   clanAlarms,
   clanSupportWaves,
   missions,
+  planetFaults,
   planets,
   players,
   seasons,
@@ -63,11 +66,13 @@ import { activeClanMembership } from './clanCombat.js';
 import { assertDeparturesAllowed, baysOf } from './flight.js';
 import { fuelAvailable } from './fuel.js';
 import { notify } from './notifications.js';
+import { recordShipLoss } from './shipLossStats.js';
 import { capitalPlanet, lockWorlds, safeHomePlanet } from './ownership.js';
 import {
   GameError,
   assertWorldOperational,
   loadLocked,
+  loyaltyAt,
   orbitOf,
   recomputePlayerWealth,
   saveResources,
@@ -381,6 +386,27 @@ export interface ClanSupportQuote {
   /** Unchanged by the send: the ships keep their place in the sender's own Hangar (K2). */
   personalHangar: { used: number; total: number };
   senderShieldUntil: string | null;
+  /**
+   * The host colony's loyalty now, rounded up as a probe reads it; null on a capital. A wave
+   * standing on a colony is lost if it secedes (owner 2026-11-18, S42), so the sender weighs it.
+   */
+  hostLoyalty: number | null;
+}
+
+/** A host world's loyalty at `now`, by the one reading (`loyaltyAt`); null where it cannot fall. */
+async function hostLoyaltyOf(tx: Tx, planetId: string, now: Date): Promise<number | null> {
+  const [world] = await tx.select({
+    kind: planets.kind,
+    loyalty: planets.loyalty,
+    lastTickAt: planets.lastTickAt,
+    core: sql<number>`coalesce((select ${buildings.level} from ${buildings}
+      where ${buildings.planetId} = ${planetId} and ${buildings.type} = 'CORE'), 0)`,
+    plant: sql<number>`coalesce((select ${buildings.level} from ${buildings}
+      where ${buildings.planetId} = ${planetId} and ${buildings.type} = 'DEUTERIUM_PLANT'), 0)`,
+    faults: sql<number>`(select count(*)::int from ${planetFaults} where ${planetFaults.planetId} = ${planetId})`,
+  }).from(planets).where(eq(planets.id, planetId));
+  if (world?.kind !== 'COLONY') return null;
+  return Math.ceil(loyaltyAt(world, { CORE: world.core, DEUTERIUM_PLANT: world.plant }, world.faults, now));
 }
 
 /**
@@ -406,6 +432,7 @@ export async function quoteClanSupport(db: Db, input: SupportInput): Promise<Cla
       seasonClipped: context.seasonClipped,
       personalHangar: context.personalHangar,
       senderShieldUntil: context.senderShieldUntil?.toISOString() ?? null,
+      hostLoyalty: await hostLoyaltyOf(tx, input.hostPlanetId, input.clock.now()),
     };
   });
 }
@@ -460,7 +487,7 @@ export async function sendClanSupport(
   for (const [hull, n] of Object.entries(input.fleet) as [HullId, number][]) {
     remaining[hull] = (remaining[hull] ?? 0) - n;
   }
-  await setUnits(tx, origin.planetId, remaining, 'home', input.senderPlayerId);
+  await setUnits(tx, origin.planetId, remaining, PLANET_LOCATION, input.senderPlayerId);
   await setUnits(tx, origin.planetId, input.fleet, unitLocation, input.senderPlayerId);
   await saveResources(tx, origin.planetId, {
     alloy: origin.alloy,
@@ -704,6 +731,40 @@ export async function loseWave(tx: Tx, wave: WaveRow, now: Date): Promise<void> 
   await admiralHomeward(tx, 'defence', { id: wave.id, departAt: wave.sentAt, arriveAt: wave.arriveAt }, null, now);
   await recomputePlayerWealth(tx, wave.senderPlayerId, now);
   await publishSupport(tx, wave);
+}
+
+/**
+ * A HOST COLONY SECEDED UNDER A STANDING WAVE (owner 2026-11-18, S42). The line falls with the
+ * world: the ships standing there are lost, the sender is told and the loss enters their
+ * season record (S43). Waves still flying there turn home in `releaseSupportForWorldChange`.
+ */
+export async function loseSupportAtWorld(
+  tx: Tx,
+  input: { planetId: string; planetName: string; now: Date },
+): Promise<void> {
+  const standing = await tx.select({ id: clanSupportWaves.id }).from(clanSupportWaves)
+    .where(and(eq(clanSupportWaves.hostPlanetId, input.planetId), eq(clanSupportWaves.status, 'STATIONED')));
+  for (const wave of await lockWaves(tx, standing.map((row) => row.id))) {
+    if (wave.status !== 'STATIONED') continue;
+    const fleet = await shipsOf(tx, wave);
+    await loseWave(tx, wave, input.now);
+    await recordShipLoss(tx, {
+      seasonId: wave.seasonId, playerId: wave.senderPlayerId, sourcePlanetId: wave.originPlanetId, fleet, now: input.now,
+    });
+    await notify(tx, {
+      playerId: wave.senderPlayerId,
+      kind: 'clan_support_result',
+      payload: {
+        grade: 'COLONY_LOST',
+        hostPlanetId: input.planetId,
+        hostPlanetName: input.planetName,
+        lost: fleetCount(fleet),
+        survived: 0,
+      },
+      at: input.now,
+      refId: wave.id,
+    });
+  }
 }
 
 /** Put a wave's ships back on the world they land at, through the Repair Station's eyes. */

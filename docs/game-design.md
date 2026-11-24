@@ -458,6 +458,13 @@ A defending colony loses 30 loyalty on a decisive defeat and 15 on a partial def
 even below the Core fault gate. A repelled attack costs no loyalty. Loyalty cannot fall
 below zero; at zero the colony secedes.
 
+**What a secession costs (owner 2026-11-18, S19c/S42/S43).** The mobile fleet standing on the
+colony and every ship in its Repair Station are destroyed with it; clanmates' support waves
+standing there are lost and their senders told. Ground guns stay as the caretaker's garrison.
+Fleets in the air are untouched and land at the owner's nearest still-held world through
+`safeHomePlanet` (V22). The loss scores no Dominion or Honor but shows in the season record.
+Voluntary abandonment keeps the old rule: the fleet and the dock move to the capital.
+
 Starting any building upgrade protects only that colony against all new faults for
 at least 12 hours, including attack-induced faults. Each accepted building order
 renews this window immediately; completion is not required. Existing faults still
@@ -894,6 +901,25 @@ capital address is allocated. New registrations remain capped. The oldest eligib
 returns first; blocked applicants retain priority. Maintenance runs every five minutes, up
 to five successful moves. The placement notice links to return applications. Normal season
 reset continues. Activation status and measured acceptance are recorded in deployment docs.
+
+## Moons — Ay (ruleset 20, owner 2026-11-18/19)
+
+A moon is the world's second body: a dock where a fleet can stand apart from the planet, a Gate that
+crosses the galaxy between the commander's own moons, and a Gözcü that photographs routes in silence.
+It deepens the information game (where is the fleet? what is coming?) without a new resource.
+
+- **Getting one:** research Lunar Capture (Core 9), then build a Common moon on the construction line;
+  or have a rarer moon born from large battle wreckage; or conquer a world that has one (seeded moons).
+- **Fighting:** a raid or Death Star picks a body. A moon battle is fought only by the moon's fleet — no
+  ground guns, no Aegis, no escape, no loot. A single outbound raid may switch body until it lands.
+- **Durability:** Death Star hits take durability and shut the gate and Gözcü; at 0 the moon and every
+  ship on it are gone. Durability heals a day after the last hit.
+- **Silent Space (V55, owner 2026-11-23):** every moon order — build, hop, jump, scan, retarget — counts
+  as playing and restarts the 30-hour clock. The rule exists for commanders who stopped playing.
+- **Notifications (V56, owner 2026-11-23):** moon events reach the in-game bell; no new push kind.
+  Attacks on a moon already push through `incoming_attack`, strikes through `incoming_strategic`.
+
+Every number, rule and decision: `docs/ay-entegrasyon-plani-2026-11-19.md` (V1–V58) and `docs/ay-plani-2026-11-18.md`.
 
 ## Galaxy, travel and mining
 
