@@ -79,9 +79,9 @@ describe('moon API schemas (F9a)', () => {
       lastHitAt: null,
       closedUntil: null,
       gateReadyAt: null,
-      fleetSize: { low: 10, high: 20 },
+      fleet: { low: 10, high: 20 }, // the server's ProbeMoonReading band
       hopping: false,
-    }).rarity).toBe('LEGENDARY');
+    })).toMatchObject({ rarity: 'LEGENDARY', fleetSize: { low: 10, high: 20 } });
 
     expect(moonHopSchema.parse({
       id: 'h1', kind: 'HOP_UP', fleet: { DART: 3 },

@@ -986,15 +986,20 @@ export const planetMoonSchema = z.object({
   moves: z.array(moonMoveSchema),
 });
 
+/**
+ * A probe's moon reading. On the wire it is the server's `ProbeMoonReading`, whose band is `fleet`;
+ * the client reads it as `fleetSize` like every other probe band (live bug 2026-11-24: asking the wire
+ * for `fleetSize` broke the whole Intel parse at the first probe of a world with a moon).
+ */
 export const probeMoonSchema = z.object({
   rarity: moonRaritySchema,
   cracks: z.number().int().nonnegative(),
   lastHitAt: z.coerce.date().nullable(),
   closedUntil: z.coerce.date().nullable(),
-  gateReadyAt: z.coerce.date().nullable(),
-  fleetSize: z.object({ low: z.number(), high: z.number() }),
+  gateReadyAt: z.coerce.date().nullable().optional(),
+  fleet: z.object({ low: z.number(), high: z.number() }),
   hopping: z.boolean(),
-});
+}).transform(({ fleet, gateReadyAt, ...reading }) => ({ ...reading, gateReadyAt: gateReadyAt ?? null, fleetSize: fleet }));
 
 export const galaxyMoonsSchema = z.object({
   list: z.array(z.object({
