@@ -183,7 +183,7 @@ export const readsTrafficFor = (kind: string, woken: boolean): boolean =>
   readsForShardEvent(kind).some((key) => key[0] === keys.traffic[0]) && !(woken && WATCHED_KINDS.has(kind));
 
 const OWN_LANDING = [
-  keys.planet, keys.planets, keys.pending, keys.notifications, keys.reports, keys.rewards, keys.traffic, keys.miningStatus,
+  keys.planet, keys.planets, keys.pending, keys.notifications, keys.reports, keys.rewards, keys.dailyQuests, keys.traffic, keys.miningStatus,
   // Read only while the clan screen is open, so they cost nothing the rest of the time.
   keys.clanHome, keys.clanStrength, keys.clanEvents, keys.clanDepot, keys.clanAid, keys.clanWar,
 ] as const;

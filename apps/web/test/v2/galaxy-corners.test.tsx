@@ -184,11 +184,11 @@ describe('the galaxy’s tools', () => {
     expect(onOpen).toHaveBeenCalledOnce();
   });
 
-  it('is where the galaxy puts its tools: the finds first, then home, view, shop, bell and gift; no online count', () => {
+  it('is where the galaxy puts its tools: the finds first, then home, view, shop, gift, the daily key and the bell; no online count', () => {
     const source = readFileSync('src/screens/GalaxyView.tsx', 'utf8');
     const corner = source.slice(source.indexOf('<GalaxyReadout'), source.indexOf('</HudTools>'));
     // owner 2026-11-16: "Telescope-Gezegen, Mağaza-Ödül, Alarm" — two to a row, the bell alone under them
-    expect(corner).toMatch(/<HudTools[\s\S]*<ViewChip[\s\S]*<HomeChip[\s\S]*<ShopChip[\s\S]*<GiftChip[\s\S]*bellButton/);
+    expect(corner).toMatch(/<HudTools[\s\S]*<ViewChip[\s\S]*<HomeChip[\s\S]*<ShopChip[\s\S]*<GiftChip[\s\S]*<DailyChip[\s\S]*bellButton/);
     expect(corner).toMatch(/<GalaxyReadout census=\{Boolean\(ship\)\}/);
     expect(source).not.toMatch(/onlineToday: season\.data\.onlineToday/);
   });

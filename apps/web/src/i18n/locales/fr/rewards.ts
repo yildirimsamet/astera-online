@@ -18,7 +18,7 @@ export const rewards = {
   summaryReady: "À récupérer",
   summaryClaimed: "Paliers récupérés",
   allMilestones: "Tous les paliers",
-  eyebrow: "Objectifs permanents",
+  eyebrow: "Missions et objectifs",
   title: "Récompenses",
   intro:
     "Sans expiration ni série. Tout va au Magasin ; le non protégé peut être pillé.",
@@ -39,6 +39,27 @@ export const rewards = {
     poured: 'Dans ton entrepôt : {{purse}}',
     skinRingHelios: 'Anneau Hélios',
     skinEngineTitan: 'Propulsion Titan',
+  },
+  /** GÜNLÜK GÖREVLER (owner, 2026-11-24): four acts, each paying a small purse once a UTC day. */
+  /** Rewards in two tabs (owner 2026-11-24): the day's quests, and the standing goals. */
+  tabs: {
+    label: 'Sections des récompenses',
+    daily: 'Du jour',
+    goals: 'Objectifs',
+  },
+  daily: {
+    title: 'Missions du jour',
+    granted: '+{{alloy}} alliage · +{{crystal}} cristal · +{{honor}} Honor',
+    resets: 'Renouvelées dans {{time}}',
+    about: 'Comment fonctionnent les missions du jour',
+    fact: 'Chaque mission paie une fois par jour.',
+    rule: 'Ce que tu fais aujourd\'hui compte ; la journée repart à 00:00 UTC, au même instant pour tous. Récupère une mission terminée : la récompense va dans l\'entrepôt de ta capitale, où elle peut être pillée. Un jour manqué ne te coûte rien.',
+    quests: {
+      PROBES: 'Envoie 3 sondes',
+      RIFT: 'Entre dans le Yarık',
+      PIRATE: 'Chasse un pirate',
+      ASTEROID: 'Exploite un astéroïde',
+    },
   },
   takeAll: 'Tout prendre · {{count}}',
   go: 'Y aller',

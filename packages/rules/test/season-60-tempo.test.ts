@@ -86,7 +86,7 @@ describe('60-day season transition', () => {
   it('preserves Death Star and every Radiation Bomb while ordinary work slows', () => {
     expect(DEATH_STAR.buildMinutes).toBe(73.125);
     expect(DEATH_STAR.speed).toBe(1500);
-    expect(DEATH_STAR.cost).toEqual({ alloy: 50000, crystal: 35000, deuterium: 3000 });
+    expect(DEATH_STAR.cost).toEqual({ alloy: 37500, crystal: 26250, deuterium: 2250 });
     expect(([1, 2, 3] as const).map(radiationBombBuildSeconds)).toEqual([2194, 3291, 4388]);
     expect(RADIATION_BOMB.speed).toBe(1300);
     expect(RADIATION_BOMB.durationMinutes).toBe(30);

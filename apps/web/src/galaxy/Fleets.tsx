@@ -56,6 +56,8 @@ import { Bombardment, bombardmentIntensity } from './Bombardment.jsx';
 import { returnVolleyFrame } from './volley.js';
 import { TRAIL_MAP } from './vfx.js';
 import { EngineJets, type EngineUnit } from './EngineJets.js';
+import { LaneStreaks } from './LaneStreaks.js';
+import { corridorSpeedLook } from './corridorStreaks.js';
 import { nativeEngineAnchors } from './engineAnchors.js';
 import { formationEngineUnits } from './engineUnits.js';
 import { StrategicExhaust, RadiationBombExhaust } from './StrategicExhaust.jsx';
@@ -1038,6 +1040,7 @@ function Flight({
    */
   const line = useLine();
   const look = routeLook(thread);
+  const speed = corridorSpeedLook(thread.corridor);
   const corridor = useMemo(() => (look.flow ? corridorMaterial(look.colour) : null), [look.flow, look.colour]);
   useEffect(() => () => { corridor?.dispose(); }, [corridor]);
 
@@ -1150,6 +1153,8 @@ function Flight({
         {!isProbe && !isDeathStar && !isBomb && appearance?.flagId &&
           <Suspense fallback={null}><FleetCosmeticFlag id={appearance.flagId} scale={formationScale} /></Suspense>}
 
+        {speed.streaks && <LaneStreaks unit={Math.max(0.05, formationScale)} colour={look.colour} />}
+
         <TrackingMark
           kind={isBomb ? 'radiation_bomb' : isDeathStar ? 'death_star' : isProbe ? 'probe' : 'fleet'}
           scale={isDeathStar ? style.scale * STRATEGIC_HULL_SCALE_MULT : style.scale}
@@ -1173,6 +1178,8 @@ function Flight({
                 scale={style.scale}
                 aimDistance={formationAim}
                 focused={focused}
+                intensity={speed.intensity}
+                plume={speed.plume}
                 showPips
               />
               <FormationWakes
@@ -1316,6 +1323,7 @@ export function FormationLightField({
   showPips,
   name = 'formation-lights',
   intensity = 1,
+  plume = 1,
   customEngine = false,
   shipSkins,
   longitudinalOffset,
@@ -1329,14 +1337,16 @@ export function FormationLightField({
   showPips: boolean;
   name?: string;
   intensity?: number;
+  /** How much longer every engine plume reaches: a clan corridor leg burns long. */
+  plume?: number;
   customEngine?: boolean;
   shipSkins?: ShipCosmeticEquipment;
   longitudinalOffset?: (markerIndex: number, elapsedSeconds: number) => number;
   longitudinalOffsetBound?: number;
 }) {
   const failureVersion = useReferenceShipFailures();
-  const units = useMemo(() => formationEngineUnits(markers, slots, scale, shipSkins, intensity),
-    [markers, slots, scale, shipSkins, failureVersion, intensity]);
+  const units = useMemo(() => formationEngineUnits(markers, slots, scale, shipSkins, intensity, plume),
+    [markers, slots, scale, shipSkins, failureVersion, intensity, plume]);
 
   return (
     <>

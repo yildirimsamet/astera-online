@@ -23,7 +23,7 @@ import { grant, seedWorld, testDb, testEnv, TEST_DATABASE_URL } from './helpers.
  * the write.
  */
 // `/api/rewards` reads world levels the same way and had the same locked tick.
-const GETS = ['/api/planet', '/api/planets', '/api/planets/:id', '/api/rewards'] as const;
+const GETS = ['/api/planet', '/api/planets', '/api/planets/:id', '/api/rewards', '/api/daily-quests'] as const;
 
 let built: ReturnType<typeof buildApp> | undefined;
 afterEach(async () => { await built?.close(); built = undefined; });

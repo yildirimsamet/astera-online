@@ -186,7 +186,7 @@ export async function launchSortieIn(tx: Tx, clock: Clock, accountId: string, re
       await recomputePlayerWealth(tx, who.playerId, now);
     }
     const load = launchLoad(row.ship, row.level, row.fuel, row.ammo, planOf(row)); const sortieId = randomUUID();
-    await tx.update(arenaShips).set({ fuel: load.fuel, ammo: load.ammo, sortieId }).where(eq(arenaShips.playerId, who.playerId));
+    await tx.update(arenaShips).set({ fuel: load.fuel, ammo: load.ammo, sortieId, lastSortieAt: now }).where(eq(arenaShips.playerId, who.playerId));
     const [clan] = await tx.select({ id: clanMemberships.clanId }).from(clanMemberships).where(and(eq(clanMemberships.playerId, who.playerId), eq(clanMemberships.seasonId, who.seasonId), isNull(clanMemberships.leftAt)));
     return { clanId: clan?.id ?? null, sortieId, ship: row.ship, level: row.level, fuel: load.fuel, ammo: load.ammo, hold: holdOf(row), refilled: cost.total, abilities: row.abilities };
 }

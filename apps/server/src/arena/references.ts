@@ -16,10 +16,10 @@ const TYPES: Record<string, string> = {
 /**
  * THE PRIVATE PLAYTEST'S REFERENCE PACK (owner 2026-10-20: friends only, owned art before
  * any public launch). The pack lives on the server beside the arena, never in git or the
- * web build; a seated pilot trades an access token for a six-hour signed cookie that
+ * web build; a signed-in commander trades an access token for a six-hour signed cookie that
  * only `/__ref/` reads. Every refusal is a 404, so the door is not advertised.
  */
-export function registerArenaReferences(app: FastifyInstance, env: Env, seated: (token: string) => Promise<{ accountId: string } | 'auth' | 'denied'>): void {
+export function registerArenaReferences(app: FastifyInstance, env: Env, seated: (token: string) => Promise<{ accountId: string } | 'auth'>): void {
   const root = env.ARENA_REF_DIR;
   const sign = (body: string): string => createHmac('sha256', env.JWT_SECRET).update(`arena-ref:${body}`).digest('base64url');
   const valid = (ticket: string | undefined): boolean => {
@@ -36,7 +36,6 @@ export function registerArenaReferences(app: FastifyInstance, env: Env, seated: 
     if (!header?.startsWith('Bearer ')) return reply.code(401).send({ error: 'AUTH' });
     const result = await seated(header.slice(7));
     if (result === 'auth') return reply.code(401).send({ error: 'AUTH' });
-    if (result === 'denied') return reply.code(403).send({ error: 'DENIED' });
     const body = `${String(app.clock.now().getTime() + LIFETIME_S * 1000)}.${result.accountId}`;
     return reply.setCookie(COOKIE, `${body}.${sign(body)}`, { httpOnly: true, sameSite: 'strict', path: '/__ref',
       maxAge: LIFETIME_S, secure: env.NODE_ENV === 'production' }).code(204).send();

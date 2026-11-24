@@ -111,6 +111,23 @@ about an hour of the capital's current output (60 % crystal, at least 150 an hou
 three hours; it goes to the capital's store, where it can be raided. The reward panel and the landing's
 reward moment show all seven as one board. Rules: `packages/rules/src/welcomeWeek.ts`.
 
+**Daily quests (owner 2026-11-24).** Four acts the loop already has: three probes sent, a Yarık sortie,
+a pirate beaten with ships left, an asteroid run that reached its rock. Each pays its own small purse
+once a UTC day (00:00 UTC for everyone): hours of the capital's output, 1.4 h in all, into the store
+where it can be raided. It pays for acts, not attendance: progress is counted from the day's own rows
+(never accumulated), a missed day loses nothing, a player who only leaves the tab open completes none
+of it. Each quest also pays a quarter of one Honor with its purse (owner 2026-11-24; one Honor on a day
+all four are taken, at most 60 in a season). **It is ordinary Honor** (owner 2026-11-24, "normal Honor"):
+it counts toward the benefit tiers, the Honor ladder and podium, and the season's Honor rank and prizes, and it can
+lift a commander out of a negative tier. It sits beside the ledger, never in it (the ledger replays battles and
+rewrites its totals), in `honor_quest_totals` per season and commander like the ledger's own totals, and the four
+readers add it; a commander who changes galaxy leaves it with the season that paid it. Where a season has no ranked
+Honor (Silent Space, a closed one) a quest pays none and the panel says nothing of it. Every signed-in account may fly the Yarık, so every
+quest is reachable. On the galaxy the day has a key of its own among the round tools (beside the gift): it
+stands while any quest is not taken, lights a red count for each finished one that waits, and is gone once the last
+purse is in; it opens the Rewards sheet on its **Daily** tab (the sheet's other tab, **Goals**, holds the milestone
+ladders and the seven boxes, and the gift counts those only). Rules: `packages/rules/src/dailyQuests.ts`.
+
 ## The loop
 
 ```
@@ -1050,7 +1067,8 @@ commander's tier moves.
 Honor in every environment. Startup initializes missing or still-shadow rankings in ongoing
 main seasons at the actual opening time; existing ranked points and boundaries are preserved.
 The former hide operation is rejected. Silent Space and closed historical seasons are not
-competitive races.
+competitive races. Honor has two sources: battles, which the ledger scores, and the daily quests (see
+*Daily quests*), a quarter Honor each, added on top of the ledger's total.
 
 **Honor attack table (owner, 2026-11-09):** own navy : enemy navy, 24-hour peaks. Full return up to
 1.5:1 against a lower tier, 2:1 at the same tier and 2.5:1 against a higher one; half return up to 3:1; none beyond.

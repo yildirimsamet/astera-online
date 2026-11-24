@@ -375,6 +375,18 @@
   font-size: var(--gk-t-body);
   padding: 0 var(--gk-s3) 2px;
 }
+/* A seldom-used, destructive key in a header strip (the DM's Block): small enough not to compete with the conversation. */
+.gk-btn--compact {
+  --cut: 7px;
+  min-height: 28px;
+  gap: 5px;
+  padding: 0 var(--gk-s2) 2px;
+  font-size: var(--gk-t-small);
+  letter-spacing: 0.06em;
+}
+.gk-btn--compact .gk-btn__glyph {
+  font-size: 13px;
+}
 .gk-btn--wide {
   width: 100%;
 }
@@ -5044,6 +5056,12 @@ html:lang(ja) .gk-tab {
   position: absolute;
   top: -5px;
   right: -4px;
+}
+/* The row scrolls sideways, and a scroller clips: a count standing off the last plate's corner was cut
+   in half. The row takes the dot's overhang as padding and gives it back as margin, so no plate moves. */
+.gk-tabs:has(.gk-dot) {
+  padding: 6px 5px 0 0;
+  margin: -6px -5px 0 0;
 }
 .gk-tabs__status {
   margin-top: 4px;
@@ -15158,6 +15176,8 @@ button.gk-fact__head:active .gk-fact__line {
   color: var(--gk-ink);
 }
 .gk-rewards--state { padding-top: var(--gk-s3); }
+/* Under the tabs the goals and the daily list stand in one panel: the panel's own padding is not doubled. */
+.gk-rewards--tabs > [role='tabpanel'] > .gk-rewards { padding: 0; }
 .gk-rewards__ghost { height: 83px; opacity: 0.6; }
 .gk-rewards__pod { display: grid; justify-items: center; }
 .gk-rewards__sum { grid-template-columns: repeat(2, minmax(0, 1fr)); }

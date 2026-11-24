@@ -24,9 +24,9 @@ export const RADIATION_BOMB = {
   durationMinutes: 30,
   maxHpPerMinute: 50,
   levels: {
-    1: { type: 'RADIATION_BOMB_L1', cost: { alloy: 30000, crystal: 20000, deuterium: 2000 }, nominalMinutes: 30, colonyLoyaltyLoss: 5, colonyFaults: 0 },
-    2: { type: 'RADIATION_BOMB_L2', cost: { alloy: 40000, crystal: 28000, deuterium: 2500 }, nominalMinutes: 45, colonyLoyaltyLoss: 10, colonyFaults: 1 },
-    3: { type: 'RADIATION_BOMB_L3', cost: { alloy: 50000, crystal: 35000, deuterium: 3000 }, nominalMinutes: 60, colonyLoyaltyLoss: 15, colonyFaults: 2 },
+    1: { type: 'RADIATION_BOMB_L1', cost: { alloy: 22500, crystal: 15000, deuterium: 1500 }, nominalMinutes: 30, colonyLoyaltyLoss: 5, colonyFaults: 0 },
+    2: { type: 'RADIATION_BOMB_L2', cost: { alloy: 30000, crystal: 21000, deuterium: 1875 }, nominalMinutes: 45, colonyLoyaltyLoss: 10, colonyFaults: 1 },
+    3: { type: 'RADIATION_BOMB_L3', cost: { alloy: 37500, crystal: 26250, deuterium: 2250 }, nominalMinutes: 60, colonyLoyaltyLoss: 15, colonyFaults: 2 },
   },
 } as const;
 

@@ -44,10 +44,8 @@ describe('arena feature flags', () => {
     for (const value of ['-1', '4', '1.5', 'some']) expect(() => loadEnv({ ...base, ARENA_BOTS: value })).toThrow(/ARENA_BOTS/);
   });
 
-  it('reads the arena pilot list as canonical usernames, empty by default', () => {
-    expect(loadEnv(base).ARENA_PILOTS).toEqual([]);
-    expect(loadEnv({ ...base, ARENA_PILOTS: ' Alice, bob ,,' }).ARENA_PILOTS).toEqual(['alice', 'bob']);
-    expect(loadEnv({ ...base, ARENA_PILOTS: '*' }).ARENA_PILOTS).toEqual(['*']);
+  it('no longer reads a pilot list: the Yarık is open to every signed-in account (owner 2026-11-24)', () => {
+    expect(loadEnv({ ...base, ARENA_PILOTS: 'alice' })).not.toHaveProperty('ARENA_PILOTS');
   });
 
   it('accepts the separate arena process role next to the existing ones', () => {

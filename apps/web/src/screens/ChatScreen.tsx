@@ -581,7 +581,7 @@ function DmPanel({ isAdmin }: { isAdmin: boolean }) {
             ) : activeConversation ? (
               /* A word, not the round key of the blocked list above it: what this does, and to whom for a reader. */
               <Press
-                className={`gk-btn gk-btn--sm${activeConversation.blockedByMe ? '' : ' gk-btn--danger'}`}
+                className={`gk-btn gk-btn--sm gk-btn--compact${activeConversation.blockedByMe ? '' : ' gk-btn--danger'}`}
                 aria-label={t(activeConversation.blockedByMe ? 'chat.dm.unblock' : 'chat.dm.block', { name: activePeer.username })}
                 onPress={() => {
                   if (!block.isPending) block.mutate({ targetPlayerId: activePeerId, blocked: !activeConversation.blockedByMe });

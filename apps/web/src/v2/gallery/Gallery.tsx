@@ -1182,11 +1182,24 @@ function GalleryRewards({ state }: { state: string }) {
     next.setQueryData(keys.rewards, { chains: state === 'empty' ? [] : chains, claimable: chains.reduce((sum, chain) => sum + chain.tiers.filter((tier) => tier.state === 'claimable').length, 0) });
     next.setQueryData(keys.planet, planetView({}, { alloy: 5500, crystal: 2500 }));
     next.setQueryData(keys.welcome, galleryWelcome());
+    next.setQueryData(keys.dailyQuests, galleryDailyQuests());
     return next;
   });
   return <QueryClientProvider client={client}><div className="[--v2-top-h:3rem]"><Sheet detents={['full']} kit={{ art: artIconSrc('gift') }} title={t('rewards.title')} eyebrow={t('rewards.eyebrow')} onClose={noop}>
-    <RewardsScreen commander="Samet_The_Long_Commander_Name" />
+    <RewardsScreen commander="Samet_The_Long_Commander_Name" initialTab={new URLSearchParams(window.location.search).get('tab') === 'daily' ? 'daily' : 'goals'} />
   </Sheet></div></QueryClientProvider>;
+}
+
+/** `&daily=mixed|fresh|done`: the day's four quests — one ready, one taken, two to do; none done; all taken. */
+function galleryDailyQuests() {
+  const at = new URLSearchParams(window.location.search).get('daily');
+  const row = (id: string, goal: number, progress: number, state: 'locked' | 'claimable' | 'claimed', alloy: number, crystal: number) => ({ id, goal, progress, state, alloy, crystal, honor: 250_000 });
+  const quests = at === 'fresh'
+    ? [row('PROBES', 3, 0, 'locked', 480, 210), row('RIFT', 1, 0, 'locked', 770, 330), row('PIRATE', 1, 0, 'locked', 960, 410), row('ASTEROID', 1, 0, 'locked', 480, 210)]
+    : at === 'done'
+      ? [row('PROBES', 3, 3, 'claimed', 480, 210), row('RIFT', 1, 1, 'claimed', 770, 330), row('PIRATE', 1, 1, 'claimed', 960, 410), row('ASTEROID', 1, 1, 'claimed', 480, 210)]
+      : [row('PROBES', 3, 2, 'locked', 480, 210), row('RIFT', 1, 1, 'claimable', 770, 330), row('PIRATE', 1, 0, 'locked', 960, 410), row('ASTEROID', 1, 1, 'claimed', 480, 210)];
+  return { day: '2026-11-24', resetsAt: new Date(Date.now() + 5 * 3_600_000), quests, claimable: quests.filter((quest) => quest.state === 'claimable').length };
 }
 
 /**

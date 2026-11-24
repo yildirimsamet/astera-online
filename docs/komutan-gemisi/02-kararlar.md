@@ -559,8 +559,9 @@ yumuşar. Test: `smoothing.test.ts`.
 
 #### KG-T45
 **Özel deneme erişimi ve referans paketi.**
-- `arena_pilots` tablosu (migration 0196); admin `GET/POST /api/admin/arena-pilots`. Arena kimliği
-  `pilot` bayrağını döner; `ARENA_PILOTS` (`*` veya ad listesi) geliştirme içindir.
+- **Sahip 2026-11-24: `ARENA_PILOTS` ve oturma kapısı koddan kaldırıldı**; arena kimliği artık `pilot` bayrağı
+  döndürmez, oturum açmış her hesap girer. Aynı gün `arena_pilots` tablosu (migration 0196 kurmuştu, 0267 düşürdü)
+  ve admin `GET/POST /api/admin/arena-pilots` uçları silindi.
 - Paket depoda değil: üretimde `ARENA_REF_DIR` altındaki `dist/` ve `audio/`, yalnız oturmuş pilota
   `POST /arena/ref-session` ile verilen 6 saatlik HMAC çerezle (`/__ref`, HttpOnly, SameSite=Strict)
   servis edilir; her ret 404'tür, yol kaçışı realpath ile engellenir (`references.ts`).
@@ -996,7 +997,7 @@ Y6a: gerçek gemi ve gerçek kargo (2026-10-23, sahibin kararları). Seviye, XP 
 - **Doldurma:** her kalkışta depo ve şarjör başkentin döteryumuyla tamamlanır; yalnız eksik
   ödenir. Tam depo 30/40/50 D, tam şarjör 15/22/30 D (Akıncı/Kılavuz/Muhafız). Bilerek pahalı:
   "sabahtan akşama yalnız bu mod oynanmasın; ölmenin cezası olsun".
-- **Herkese açılış (sahip 2026-10-27):** Yarık her komutana açık (`ARENA_PILOTS='*'`), amiral eskortu canlı
+- **Herkese açılış (sahip 2026-10-27):** Yarık her komutana açık (2026-11-24'ten beri bunun için bayrak yok), amiral eskortu canlı
   sezonlarda `season activate-admiral` ile açık. Gerçek uçuş odasında ev botu yok ("botları kapat";
   `ARENA_BOTS`, varsayılan 0, en çok 3). Antrenmanda 20 bot uçar, roller sırayla (`ARENA_TUNING.practiceBots`).
 - **Gövde +%50 (sahip 2026-10-27, "gemiler biraz çabuk ölüyor"):** Akıncı 510, Kılavuz 600, Muhafız 900

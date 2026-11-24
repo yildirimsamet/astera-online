@@ -23,13 +23,6 @@ const schema = z.object({
   ARENA_BOTS: z.coerce.number().int().min(0).max(3).default(0),
   /** Private playtest reference pack on this host; unset serves none and the arena draws its procedural set. */
   ARENA_REF_DIR: z.string().min(1).optional(),
-  /** Usernames that may fly the live playtest arena; `*` admits every signed-in account. */
-  ARENA_PILOTS: z.string().default('').transform((value) =>
-    value
-      .split(',')
-      .map((username) => username.trim().toLocaleLowerCase('en-US'))
-      .filter((username) => username.length > 0),
-  ),
   PORT: z.coerce.number().default(3000),
   DATABASE_URL: z.string().min(1),
   /** Request-pool budget per process; LISTEN uses one additional connection. */

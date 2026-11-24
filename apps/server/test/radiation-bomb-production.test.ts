@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
-import { RADIATION_BOMB, radiationBombBuildSeconds } from '@astera/rules';
+import { RADIATION_BOMB, radiationBombBuildSeconds, resourcesTotal } from '@astera/rules';
 import { buildOrders, planets, radiationBombFlights, scheduledEvents, seasons, strategicAssets } from '../src/db/schema.js';
 import { buildRadiationBomb } from '../src/services/radiationBomb.js';
 import { abandonDeathStarBuild, finishDeathStarBuild } from '../src/services/strategic.js';
@@ -33,9 +33,10 @@ it('builds all three levels in parallel with exact invoices, deadlines and no or
     expect(event).toMatchObject({ kind: 'death_star_ready', resolveAt: result.readyAt });
   }
   const [after] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
-  expect(after!.alloy).toBeCloseTo(before!.alloy - 120000);
-  expect(after!.crystal).toBeCloseTo(before!.crystal - 83000);
-  expect(after!.deuterium).toBeCloseTo(before!.deuterium - 7500);
+  const paid = (good: 'alloy' | 'crystal' | 'deuterium') => ([1, 2, 3] as const).reduce((sum, level) => sum + RADIATION_BOMB.levels[level].cost[good], 0);
+  expect(after!.alloy).toBeCloseTo(before!.alloy - paid('alloy'));
+  expect(after!.crystal).toBeCloseTo(before!.crystal - paid('crystal'));
+  expect(after!.deuterium).toBeCloseTo(before!.deuterium - paid('deuterium'));
   expect(await f.db.select().from(buildOrders)).toHaveLength(0);
 });
 
@@ -114,7 +115,7 @@ it('values stored and launched bombs at their own price without changing the fro
   await f.db.update(strategicAssets).set({ status: 'LAUNCHED' }).where(eq(strategicAssets.id, result.assetId));
   expect(await value()).toBeCloseTo(before);
   await f.db.update(strategicAssets).set({ status: 'CONSUMED' }).where(eq(strategicAssets.id, result.assetId));
-  expect(await value()).toBeCloseTo(before - 52000);
+  expect(await value()).toBeCloseTo(before - resourcesTotal(RADIATION_BOMB.levels[1].cost));
 });
 
 it('keeps ready bombs outside an existing frozen Honor military catalogue', async () => {

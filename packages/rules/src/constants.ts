@@ -1933,11 +1933,14 @@ export const ANTI_STRATEGIC = {
   charges: { base: 2, perLevel: 2, researched: 6 },
   /** Immediate launch, with enough screen time for every entitled client to join the scene. */
   flightSeconds: 8,
-  /** Half-price owner retune; still cheaper and faster than the weapon it stops. */
+  /**
+   * Half-price owner retune; still cheaper and faster than the weapon it stops. OWNER, 2026-11-24:
+   * a quarter off, rounded to tens — 24,910 in all, still about 38% of the 66,000 weapon.
+   */
   cost: {
-    alloy: 21_550,
-    crystal: 10_776,
-    deuterium: 894,
+    alloy: 16_160,
+    crystal: 8_080,
+    deuterium: 670,
   },
   buildMinutes: 30 * ECONOMY_ADJUSTMENT.buildTime,
 } as const;
@@ -3876,9 +3879,10 @@ export const DEATH_STAR = {
   perWorld: { base: 1, researched: 2 },
   /**
    * OWNER FIGURES, 2026-10-01, kept as an explicit final price: 88,000 in all, so the
-   * 33,220 charge that stops it is about 38% of it rather than 30%.
+   * 33,220 charge that stops it was about 38% of it rather than 30%. OWNER, 2026-11-24:
+   * a quarter off ("%25 civarı") — 66,000 in all; the battery fell with it, so the share holds.
    */
-  cost: { alloy: 50_000, crystal: 35_000, deuterium: 3_000 },
+  cost: { alloy: 37_500, crystal: 26_250, deuterium: 2_250 },
   /**
    * ONE HOUR. Owner instruction, 2026-09-11: *"ölüm yıldızı üretim süresi 1 saat
    * olmalı"*. The economy table had taken it to four. Retains the current 73.125

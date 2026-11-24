@@ -1,4 +1,5 @@
 import { and, eq } from 'drizzle-orm';
+import { ANTI_STRATEGIC, DEATH_STAR, RADIATION_BOMB, honorResourceValue } from '@astera/rules';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { honorObservations, honorSeasons, missions, planets, scheduledEvents, strategicAssets } from '../src/db/schema.js';
 import { prepareHonorSeason } from '../src/services/honorLedger.js';
@@ -8,6 +9,11 @@ import { lockWorlds, transferPlanetControl } from '../src/services/ownership.js'
 import { buildDeathStar, launchDeathStar } from '../src/services/strategic.js';
 import { onDeathStarReady, onMissionArrival } from '../src/worker/handlers.js';
 import { giveUnits, grant, levelWorld, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+
+/** What the Honor navy counts a stocked weapon at: its price, valued once. They follow the price list. */
+const DEATH_STAR_VALUE = honorResourceValue(DEATH_STAR.cost);
+const BATTERY_VALUE = honorResourceValue(ANTI_STRATEGIC.cost);
+const BOMB_L1_VALUE = honorResourceValue(RADIATION_BOMB.levels[1].cost);
 
 describe('candidate strategic navy history uses frozen prices and real owners', () => {
   let f: Fixture;
@@ -32,10 +38,10 @@ describe('candidate strategic navy history uses frozen prices and real owners', 
     await giveUnits(f.db, f.planetIds[0]!, { DART: 1, COURIER: 1 });
     await prepare();
     const [config] = await f.db.select().from(honorSeasons);
-    expect(config?.strategicCatalogue).toEqual({ DEATH_STAR: 216000, INTERCEPTOR: 71710 });
-    expect(await current()).toBe(216000 + 71710 + 546);
+    expect(config?.strategicCatalogue).toEqual({ DEATH_STAR: DEATH_STAR_VALUE, INTERCEPTOR: BATTERY_VALUE });
+    expect(await current()).toBe(DEATH_STAR_VALUE + BATTERY_VALUE + 546);
     expect(await honorOwnerReference(f.db, f.seasonId, f.playerIds[0]!, f.clock.now()))
-      .toMatchObject({ navy: 216000 + 71710 + 546 });
+      .toMatchObject({ navy: DEATH_STAR_VALUE + BATTERY_VALUE + 546 });
   });
 
   it('includes real strategic stock in the launch candidate with its own frozen catalogue', async () => {
@@ -43,16 +49,16 @@ describe('candidate strategic navy history uses frozen prices and real owners', 
     await asset('INTERCEPTOR', 'READY');
     await giveUnits(f.db, f.planetIds[0]!, { DART: 1 });
     await prepare(4);
-    expect(await current()).toBe(216000 + 71710 + 546);
+    expect(await current()).toBe(DEATH_STAR_VALUE + BATTERY_VALUE + 546);
     expect((await f.db.select().from(honorSeasons))[0]?.strategicCatalogue)
-      .toMatchObject({ DEATH_STAR: 216000, INTERCEPTOR: 71710 });
+      .toMatchObject({ DEATH_STAR: DEATH_STAR_VALUE, INTERCEPTOR: BATTERY_VALUE });
   });
 
   it('launch candidate counts a ready radiation bomb at frozen price and keeps exactly one airborne owner', async () => {
     await f.db.insert(strategicAssets).values({ planetId: f.planetIds[0]!, type: 'RADIATION_BOMB_L1', status: 'READY',
       startedAt: f.clock.now(), remainingSeconds: 0 });
     await prepare(4);
-    expect(await current()).toBe(134000);
+    expect(await current()).toBe(BOMB_L1_VALUE);
   });
 
   it('does not turn queued, paused or consumed stocks into a military reference', async () => {
@@ -91,14 +97,14 @@ describe('candidate strategic navy history uses frozen prices and real owners', 
     f.clock.set(new Date(order.readyAt.getTime() + 60_000));
     const [event] = await f.db.select().from(scheduledEvents).where(and(eq(scheduledEvents.refId, order.assetId), eq(scheduledEvents.kind, 'death_star_ready')));
     await onDeathStarReady({ db: f.db, clock: f.clock }, event!);
-    expect(await current()).toBe(216000);
+    expect(await current()).toBe(DEATH_STAR_VALUE);
     const samples = await f.db.select().from(honorObservations).where(eq(honorObservations.playerId, f.playerIds[0]!));
-    expect(samples.some(row => row.at.getTime() === f.clock.now().getTime() && row.navy === 216000)).toBe(true);
+    expect(samples.some(row => row.at.getTime() === f.clock.now().getTime() && row.navy === DEATH_STAR_VALUE)).toBe(true);
     await f.db.update(strategicAssets).set({ status: 'CONSUMED' });
     f.clock.advance(1);
     await f.db.transaction(tx => observeHonorOwner(tx, f.playerIds[0]!, f.clock.now()));
     expect(await current()).toBe(0);
-    expect((await honorOwnerReference(f.db, f.seasonId, f.playerIds[0]!, f.clock.now())).navy).toBe(216000);
+    expect((await honorOwnerReference(f.db, f.seasonId, f.playerIds[0]!, f.clock.now())).navy).toBe(DEATH_STAR_VALUE);
   });
 
   it('launch movement does not duplicate a weapon and a real impact removes only current stock', async () => {
@@ -106,7 +112,7 @@ describe('candidate strategic navy history uses frozen prices and real owners', 
     await prepare();
     f.clock.advance(250);
     const launch = await launchDeathStar(f.db, f.planetIds[0]!, f.planetIds[1]!, f.clock);
-    expect(await current()).toBe(216000);
+    expect(await current()).toBe(DEATH_STAR_VALUE);
     expect((await f.db.select().from(honorObservations).where(eq(honorObservations.playerId, f.playerIds[0]!))).length).toBe(1);
     f.clock.set(launch.arriveAt);
     const [event] = await f.db.select().from(scheduledEvents).where(and(eq(scheduledEvents.refId, launch.missionId), eq(scheduledEvents.kind, 'mission_arrival')));
@@ -115,7 +121,7 @@ describe('candidate strategic navy history uses frozen prices and real owners', 
     const [last] = (await f.db.select().from(honorObservations).where(eq(honorObservations.playerId, f.playerIds[0]!)))
       .sort((a, b) => b.id - a.id);
     expect(last).toMatchObject({ navy: 0, at: f.clock.now() });
-    expect((await honorOwnerReference(f.db, f.seasonId, f.playerIds[0]!, f.clock.now())).navy).toBe(216000);
+    expect((await honorOwnerReference(f.db, f.seasonId, f.playerIds[0]!, f.clock.now())).navy).toBe(DEATH_STAR_VALUE);
   });
 
   it('a moved launch world transfers ready stock but never steals the airborne owner’s weapon', async () => {
@@ -134,8 +140,8 @@ describe('candidate strategic navy history uses frozen prices and real owners', 
       await transferPlanetControl(tx, { targetPlanetId: colony, newPlayerId: f.playerIds[1]!,
         expectedControllerPlayerId: f.playerIds[0]!, now: f.clock.now(), protectedUntil: f.clock.now() });
     });
-    expect(await current(0)).toBe(216000);
-    expect(await current(1)).toBe(71710);
+    expect(await current(0)).toBe(DEATH_STAR_VALUE);
+    expect(await current(1)).toBe(BATTERY_VALUE);
     expect((await f.db.select().from(missions).where(eq(missions.id, launch.missionId)))[0]?.ownerPlayerId).toBe(f.playerIds[0]);
   });
 });

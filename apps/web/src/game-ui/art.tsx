@@ -17,6 +17,8 @@ export const ART_ICONS = [
   'hud-timers',
   // the way home and the view at the galaxy's top right (G1-d2, 2026-11-14)
   'hud-home', 'hud-view',
+  // the day's quests, the seventh round key at the galaxy's top right (owner 2026-11-24; drawn with Antigravity from the house icons)
+  'hud-daily',
   // the menu
   'menu-clan', 'menu-friends', 'menu-missions', 'menu-news', 'menu-ranking', 'menu-reports', 'menu-shop',
   // cosmetic collections

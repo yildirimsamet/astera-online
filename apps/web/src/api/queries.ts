@@ -61,6 +61,7 @@ import { CONTACT_WINDOW_SETTLE_OFFSETS } from '../session/arrivalTiming.js';
 import { readIntelSnapshot } from './sightCache.js';
 import { CHAT_READ_COALESCE_MS, coalesceLatest } from './coalesceLatest.js';
 import { serverNow } from '../lib/clock.js';
+import { dailyRefetchDelay } from '../lib/dailyQuests.js';
 import { worksAt } from '../lib/projection.js';
 import {
   predictBuild,
@@ -647,6 +648,39 @@ export function useClaimReward() {
   });
 }
 
+/**
+ * GÜNLÜK GÖREVLER (owner, 2026-11-24): today's four quests, counted by the server from what was done today.
+ * A launch, a landing or a private reward event refreshes it; a stale read costs one request when the panel opens.
+ */
+export function useDailyQuests() {
+  const api = useApi();
+  return useQuery({
+    queryKey: keys.dailyQuests, queryFn: api.dailyQuests, ...READ, retry: false,
+    // The galaxy's daily key lives on this read, so the new day arrives by itself, just past the reset.
+    refetchInterval: (query) => dailyRefetchDelay(query.state.data?.resetsAt, Date.now()),
+  });
+}
+
+/** Take one purse: the same two writes as a reward claim — the panel and the capital — out of one answer. */
+export function useClaimDailyQuest() {
+  const api = useApi();
+  const client = useQueryClient();
+  const { capitalPlanetId } = useWorld();
+  const invalidate = useInvalidator();
+  const apply = useApplyPlanet();
+  const lane = usePlanetMutationLane(capitalPlanetId);
+  return useMutation({
+    mutationFn: (id: string) => api.claimDailyQuest(id),
+    onMutate: lane.enter,
+    onSuccess: async (result) => {
+      await Promise.all([apply(result.planet), client.cancelQueries({ queryKey: keys.dailyQuests })]);
+      client.setQueryData(keys.dailyQuests, result.quests);
+      invalidate(keys.leaderboard, keys.galaxy);
+    },
+    onSettled: (_data, _error, _id, turn) => { lane.leave(turn); },
+  });
+}
+
 /** Every waiting tier in one move (plan 2026-11-06 §7.1 R4): the same two writes as a single claim. */
 export function useClaimAllRewards() {
   const api = useApi();
@@ -778,12 +812,21 @@ export function useWelcome() {
   return useQuery({ queryKey: keys.welcome, queryFn: api.welcome, staleTime: 60_000 });
 }
 
-/** What the gift icon counts: the reward tiers waiting, and the welcome week's box when it is ready. */
-export function useRewardsWaiting(): number {
+/** What the gift icon counts: the goal tiers waiting, and the welcome week's box when it is ready. */
+export function useGoalRewardsWaiting(): number {
   const tiers = useRewards().data?.claimable ?? 0;
   const welcome = useWelcome().data?.welcome;
   const box = welcome?.box != null && welcome.readyAt !== null && welcome.readyAt.getTime() <= Date.now() ? 1 : 0;
   return tiers + box;
+}
+
+/**
+ * Everything waiting under Rewards, goals and daily purses alike: what the menu and the status bar mark. The
+ * galaxy keeps the two apart (the gift counts goals, the daily key its own purses), so one waiting thing is never
+ * counted by two neighbouring keys.
+ */
+export function useRewardsWaiting(): number {
+  return useGoalRewardsWaiting() + (useDailyQuests().data?.claimable ?? 0);
 }
 
 /** Opens the next box; the store it fell into (the ship's or the capital's) is read again. */
@@ -2266,7 +2309,7 @@ export function useProbe() {
       if (isStarterMode()) firstTimeOnly('ship', 'vessel_first_probe_sent');
       await Promise.all([keys.planet, keys.planets]
         .map((queryKey) => refreshQueries(client, { queryKey })));
-      invalidate(keys.intel, keys.pending, keys.rewards);
+      invalidate(keys.intel, keys.pending, keys.rewards, keys.dailyQuests);
     },
     onSettled: (_data, _error, _targetPlanetId, turn) => { lane.leave(turn); },
   });
@@ -2648,7 +2691,7 @@ export function useLaunch() {
       ]);
       client.setQueryData(keys.pending, { pending: result.pending });
       // The commander ship may have left with it (Y9).
-      invalidate(keys.galaxy, keys.intel, keys.rewards, keys.commanderShip);
+      invalidate(keys.galaxy, keys.intel, keys.rewards, keys.dailyQuests, keys.commanderShip);
     },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });

@@ -32,6 +32,10 @@ export function seedEverything(client: QueryClient, { calm = false }: { calm?: b
   if (season) seed(keys.season, { ...season, startsAt: at(-600), shieldUntil: at(71 * 60), shieldKind: 'NEWCOMER', onlineToday: 42, players: 28 });
 
   seed(keys.rewards, { chains: [], claimable: 7 });
+  // The day's quests: one finished and waiting (the key's red count), one taken, two still to do.
+  const quest = (id: string, state: 'locked' | 'claimable' | 'claimed') => ({ id, goal: 1, progress: state === 'locked' ? 0 : 1, state, alloy: 480, crystal: 210, honor: 250_000 });
+  seed(keys.dailyQuests, { day: '2026-11-24', resetsAt: at(5 * 60), claimable: 1,
+    quests: [quest('PROBES', 'locked'), quest('RIFT', 'claimable'), quest('PIRATE', 'locked'), quest('ASTEROID', 'claimed')] });
   const news = (id: string, kind: string, minutes: number, payload: Record<string, unknown>) => ({ id, kind, payload, refId: null, seen: false, at: at(-minutes) });
   seed(keys.notifications, notificationsSchema.parse({ notifications: [
     news('n-incoming', 'incoming_fleet', 1, { arriveAt: at(9).toISOString(), etaMinutes: 9, targetPlanetName: 'Kestrel' }),

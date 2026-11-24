@@ -303,7 +303,7 @@ services:
 
   # Komutan Gemisi live playtest (docs/komutan-gemisi/13). One shared real-time room
   # on its own process: a 30 Hz loop must never share an event loop with the API.
-  # Closed unless ARENA_ENABLED=true; only ARENA_PILOTS usernames may fly (`*` = all).
+  # Closed unless ARENA_ENABLED=true; then every signed-in account may fly (owner 2026-11-24).
   # Reads accounts to identify a pilot and writes nothing.
   arena:
     image: astera-server
@@ -318,7 +318,6 @@ services:
       DB_POOL_MAX: 2
       PLACEMENT_POOL_MAX: 1
       ARENA_ENABLED: ${ARENA_ENABLED:-false}
-      ARENA_PILOTS: ${ARENA_PILOTS:-}
       ARENA_ALLOWED_ORIGINS: ${ARENA_ALLOWED_ORIGINS:-https://asteraonline.space}
       # Private playtest only: the reference pack is copied to the host by hand, never
       # built into an image; seated pilots read it through a signed cookie.

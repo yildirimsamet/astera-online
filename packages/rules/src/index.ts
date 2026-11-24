@@ -22,6 +22,7 @@ export * from './honorHistory.js';
 export * from './honorTactical.js';
 export * from './notificationCenter.js';
 export * from './welcomeWeek.js';
+export * from './dailyQuests.js';
 export * from './honorRadiation.js';
 export * from './constants.js';
 export * from './firstSeason.js';

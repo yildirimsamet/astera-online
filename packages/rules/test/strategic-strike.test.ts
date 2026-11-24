@@ -79,8 +79,8 @@ describe('the tactical EMP contract', () => {
  */
 describe('what the strategic pair costs', () => {
   it('carries the owner’s figures exactly', () => {
-    expect(DEATH_STAR.cost).toEqual({ alloy: 50_000, crystal: 35_000, deuterium: 3_000 });
-    expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 21_550, crystal: 10_776, deuterium: 894 });
+    expect(DEATH_STAR.cost).toEqual({ alloy: 37_500, crystal: 26_250, deuterium: 2_250 });
+    expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 16_160, crystal: 8_080, deuterium: 670 });
   });
 
   it('never lets stopping a strike cost more than making one', () => {
@@ -88,9 +88,10 @@ describe('what the strategic pair costs', () => {
   });
 
   /**
-   * OWNER, 2026-10-01: the weapon falls to 88,000 and the charge stays at 33,220, so
-   * one shot is about 38% of what it stops — up from 30%, the gap the owner called
-   * unfair. The narrow band allows only component rounding.
+   * OWNER, 2026-10-01: the weapon fell to 88,000 and the charge stayed at 33,220, so one
+   * shot is about 38% of what it stops — up from 30%, the gap the owner called unfair.
+   * OWNER, 2026-11-24: both lost about a quarter (66,000 and 24,910), the share unchanged.
+   * The narrow band allows only component rounding.
    */
   it('keeps the battery a real share of the weapon it answers', () => {
     const share = total(ANTI_STRATEGIC.cost) / total(DEATH_STAR.cost);

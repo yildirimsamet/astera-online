@@ -7,7 +7,7 @@ import type { PlanetGroup } from './directives.js';
  * to go for it; each chain now names the place that moves it: the map for an act, its row for a building.
  */
 export type RewardGate =
-  | { kind: 'probe' | 'mine' | 'salvage' | 'pirate' | 'intel' }
+  | { kind: 'probe' | 'mine' | 'salvage' | 'pirate' | 'intel' | 'hangar' }
   | { kind: 'build'; group: PlanetGroup; item: string };
 
 const GATES: Record<RewardChainId, RewardGate | null> = {

@@ -1884,6 +1884,20 @@
       "when": 1795499825068,
       "tag": "0268_newcomer_scenario",
       "breakpoints": true
+    },
+    {
+      "idx": 269,
+      "version": "7",
+      "when": 1795547969569,
+      "tag": "0269_daily_quests",
+      "breakpoints": true
+    },
+    {
+      "idx": 270,
+      "version": "7",
+      "when": 1795547973691,
+      "tag": "0270_drop_arena_pilots",
+      "breakpoints": true
     }
   ]
 }

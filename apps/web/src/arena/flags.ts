@@ -4,7 +4,7 @@ interface ArenaEnvironment {
   VITE_VISUAL_TEST?: string;
 }
 
-/** `allowed` is the arena process's own answer for this account (ARENA_PILOTS). */
+/** `allowed` is the arena process's own answer: it is up, and this is a signed-in account. */
 export function canEnterArena(env: ArenaEnvironment, allowed = false): boolean {
   return env.DEV || (env.VITE_ARENA === '1' && allowed);
 }

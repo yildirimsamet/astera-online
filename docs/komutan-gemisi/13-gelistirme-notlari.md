@@ -139,7 +139,7 @@ Bulunan ve düzeltilenler:
 ## Özel deneme: canlıya çıkış adımları (sahip onayıyla)
 
 1. Dalı it; VPS'te `VITE_ARENA=1` ile web derle.
-2. Migration 0196 (`arena_pilots`); `when` sırasını kontrol et (drizzle sıra dışı zamanı atlar).
+2. Migration 0196 `arena_pilots` kurmuştu; 2026-11-24'te 0267 onu düşürdü. `when` sırasını kontrol et (drizzle sıra dışı zamanı atlar).
 3. `.env`: `ARENA_ENABLED=true`; compose `arena` servisi (`ARENA_REF_DIR=/refs`, salt okunur birim).
 4. nginx: `/arena/` ve `/__ref/` → 3220.
 5. Paketin kullanılan alt kümesini (~76 MB, `manifest.json`'daki dosyalar + `audio/`)

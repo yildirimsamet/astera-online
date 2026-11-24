@@ -17,7 +17,7 @@ export const rewards = {
   summaryReady: "Ready to claim",
   summaryClaimed: "Claimed milestones",
   allMilestones: "All milestones",
-  eyebrow: 'Standing offers',
+  eyebrow: 'Quests and goals',
   title: 'Rewards',
   intro:
     "No expiry, no streak. Rewards go to your store; unprotected ones can be raided.",
@@ -40,6 +40,27 @@ export const rewards = {
     poured: 'To your store: {{purse}}',
     skinRingHelios: 'Helios Ring',
     skinEngineTitan: 'Titan Drive',
+  },
+  /** GÜNLÜK GÖREVLER (owner, 2026-11-24): four acts, each paying a small purse once a UTC day. */
+  /** Rewards in two tabs (owner 2026-11-24): the day's quests, and the standing goals. */
+  tabs: {
+    label: 'Reward sections',
+    daily: 'Daily',
+    goals: 'Goals',
+  },
+  daily: {
+    title: 'Daily quests',
+    granted: '+{{alloy}} alloy · +{{crystal}} crystal · +{{honor}} Honor',
+    resets: 'Resets in {{time}}',
+    about: 'How daily quests work',
+    fact: 'Each quest pays once a day.',
+    rule: 'What you do today counts; the day starts again at 00:00 UTC, at the same moment for everyone. Take a finished quest: the purse goes into your capital\'s store, where it can be raided. A missed day costs you nothing.',
+    quests: {
+      PROBES: 'Send 3 probes',
+      RIFT: 'Fly into the Yarık',
+      PIRATE: 'Hunt a pirate',
+      ASTEROID: 'Mine an asteroid',
+    },
   },
   takeAll: 'Take all · {{count}}',
   go: 'Go',

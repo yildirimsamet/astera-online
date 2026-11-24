@@ -4935,6 +4935,24 @@ export const rewardGrants = pgTable('reward_grants', {
 }, (t) => [primaryKey({ columns: [t.playerId, t.rewardId] })]);
 
 /**
+ * GÜNLÜK GÖREVLER (owner, 2026-11-24): the claim and nothing else. Progress is counted from the
+ * day's own rows (`missions`, `mining_runs`, `battle_reports`, `arena_ships.last_sortie_at`), so
+ * the only thing written is that a quest was paid on a UTC day — and the primary key makes a
+ * second payment for the same quest and day impossible.
+ */
+export const dailyQuestClaims = pgTable('daily_quest_claims', {
+  playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  /** `YYYY-MM-DD`, the UTC day the quest was done and paid. */
+  day: text('day').notNull(),
+  questId: text('quest_id').notNull(),
+  alloy: real('alloy').notNull().default(0),
+  crystal: real('crystal').notNull().default(0),
+  /** Micro-Honor this claim paid (owner 2026-11-24), frozen here so a later change of the amount rewrites nothing. */
+  honorMicros: integer('honor_micros').notNull(),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }).notNull(),
+}, (t) => [primaryKey({ columns: [t.playerId, t.day, t.questId] })]);
+
+/**
  * A REWARD THAT IS PAID ONCE PER PERSON, FOR EVER. Owner instruction: *"twitter
  * takip bonusu kişiye 1 kez verilebilmeli. her sezon her sezon alamaz."*
  *
@@ -5017,13 +5035,6 @@ export const cosmeticEntitlements = pgTable('cosmetic_entitlements', {
   uniqueIndex('cosmetic_entitlements_order_idx').on(t.source, t.orderRef),
 ]);
 
-/** Komutan Gemisi playtest seats, granted by name from the admin desk. */
-export const arenaPilots = pgTable('arena_pilots', {
-  accountId: uuid('account_id').primaryKey().references(() => accounts.id, { onDelete: 'cascade' }),
-  grantedByAccountId: uuid('granted_by_account_id').references(() => accounts.id, { onDelete: 'set null' }),
-  grantedAt: timestamp('granted_at', { withTimezone: true }).notNull(),
-});
-
 /**
  * A COMMANDER'S YARIK SHIP (Y6a, plan 14 §7). One per commander, so a wipe that deletes the
  * commander deletes the ship: a new season chooses again. Repair and maintenance are stored as
@@ -5049,6 +5060,8 @@ export const arenaShips = pgTable('arena_ships', {
   readyAt: timestamp('ready_at', { withTimezone: true }),
   readyReason: text('ready_reason').$type<'repair' | 'service'>(),
   sortieId: uuid('sortie_id'),
+  /** When the ship last flew into the Yarık: the one fact "enter the Yarık today" is counted from. */
+  lastSortieAt: timestamp('last_sortie_at', { withTimezone: true }),
   /** The UTC day `sent_*` count for; another day starts them from zero. */
   transferDay: text('transfer_day'),
   sentAlloy: doublePrecision('sent_alloy').notNull().default(0),
@@ -5354,6 +5367,18 @@ export const honorTotals = pgTable('honor_totals', {
   index('honor_totals_rank_idx').on(t.seasonId, t.score),
   check('honor_totals_score_check', sql`${t.score} BETWEEN -9007199254740991 AND 9007199254740991`),
 ]);
+
+/**
+ * THE HONOR THE DAILY QUESTS PAID, per season and commander like the ledger's own totals (owner 2026-11-24:
+ * ordinary Honor). Beside the ledger, never in it: the ledger replays battles and rewrites `honor_totals` on every
+ * settlement. Added in the claim's own transaction (it equals the season's `daily_quest_claims.honor_micros`) and
+ * added to the ledger's total by the four readers. Keyed by season, so a commander who moves galaxy leaves it behind.
+ */
+export const honorQuestTotals = pgTable('honor_quest_totals', {
+  seasonId: uuid('season_id').notNull().references(() => honorSeasons.seasonId, { onDelete: 'cascade' }),
+  playerId: uuid('player_id').notNull(),
+  micros: bigint('micros', { mode: 'number' }).notNull(),
+}, (t) => [primaryKey({ columns: [t.seasonId, t.playerId] })]);
 
 /** State changes only; movement between locations does not create extra navy value. */
 export const honorObservations = pgTable('honor_observations', {

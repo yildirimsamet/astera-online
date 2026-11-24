@@ -1,5 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, expect, it } from 'vitest';
+import { DEATH_STAR, honorResourceValue } from '@astera/rules';
 import { honorCommitments, honorEvents, planets, scheduledEvents, strategicAssets } from '../src/db/schema.js';
 import { prepareHonorSeason } from '../src/services/honorLedger.js';
 import { launchDeathStar } from '../src/services/strategic.js';
@@ -76,9 +77,9 @@ it('a real intercepted weapon rewards its defender and records only the attacker
   const [entry] = await f.db.select().from(honorEvents);
   expect(entry?.sourceId).toBe(sent.missionId);
   expect(entry?.source).toBe('STRATEGIC_INTERCEPTION');
-  expect(entry?.outcome.attack.total).toBe(-21_600_000);
+  expect(entry?.outcome.attack.total).toBe(-100 * honorResourceValue(DEATH_STAR.cost));
   expect(entry?.outcome.defence.total).toBeGreaterThan(0);
-  expect(entry?.evidence.attack[0]?.loss).toBe(216000);
+  expect(entry?.evidence.attack[0]?.loss).toBe(honorResourceValue(DEATH_STAR.cost));
   expect(entry?.evidence.defence[0]?.loss).toBe(0);
 });
 it('a protected ineffective impact records zero tactical success', async () => {

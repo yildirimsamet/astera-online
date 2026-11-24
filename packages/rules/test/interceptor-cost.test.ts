@@ -15,7 +15,7 @@ import { ANTI_STRATEGIC, DEATH_STAR } from '../src/index.js';
  */
 describe('the strategic battery price', () => {
   it('is the owner’s table exactly', () => {
-    expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 21_550, crystal: 10_776, deuterium: 894 });
+    expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 16_160, crystal: 8_080, deuterium: 670 });
   });
 
   /** Still under the weapon; owner 2026-10-01 cheapened the weapon, so about 38%. */

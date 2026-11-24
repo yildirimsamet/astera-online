@@ -3,21 +3,23 @@ import { HONOR_BENEFIT_PROGRAM_VERSION, HONOR_BENEFIT_THRESHOLDS_V1, HONOR_LAUNC
   type HonorBenefitTier } from '@astera/rules';
 import type { Db, Queryable } from '../db/client.js';
 import type { Clock } from '../clock.js';
-import { honorSeasons, honorTotals, players, seasons } from '../db/schema.js';
+import { honorQuestTotals, honorSeasons, honorTotals, players, seasons } from '../db/schema.js';
 import { GameError } from './planet.js';
 import { publishShard } from '../stream/bus.js';
 import { isSilentSpaceShard } from './waitingRoom.js';
 
 /** One private commander snapshot; never a ranking-derived or client-selected tier. */
 export async function readHonorPlayerPolicy(db: Queryable, seasonId: string, playerId: string) {
-  const [row] = await db.select({ benefitsVersion: honorSeasons.benefitsVersion, version: honorSeasons.version, score: honorTotals.score })
+  const [row] = await db.select({ benefitsVersion: honorSeasons.benefitsVersion, version: honorSeasons.version, score: honorTotals.score, quest: honorQuestTotals.micros })
     .from(honorSeasons).innerJoin(players, and(eq(players.id, playerId), eq(players.seasonId, seasonId)))
     .leftJoin(honorTotals, and(eq(honorTotals.seasonId, seasonId), eq(honorTotals.playerId, playerId)))
+    .leftJoin(honorQuestTotals, and(eq(honorQuestTotals.seasonId, seasonId), eq(honorQuestTotals.playerId, playerId)))
     .where(and(eq(honorSeasons.seasonId, seasonId), eq(honorSeasons.mode, 'ACTIVE')));
   const tacticalCredit = row?.version === HONOR_LAUNCH_VERSION;
   if (row?.benefitsVersion === null || row?.benefitsVersion === undefined) return { benefits: null, tacticalCredit };
   if (row.benefitsVersion !== HONOR_BENEFIT_PROGRAM_VERSION) throw new Error('Unsupported frozen Honor benefit program');
-  const score = row.score ?? 0;
+  // The ledger's total plus what the daily quests paid the seat (owner 2026-11-24: ordinary Honor).
+  const score = (row.score ?? 0) + (row.quest ?? 0);
   return { tacticalCredit, benefits: { version: HONOR_BENEFIT_PROGRAM_VERSION, score, thresholds: HONOR_BENEFIT_THRESHOLDS_V1,
     ...honorBenefits(score, HONOR_BENEFIT_THRESHOLDS_V1) } };
 }

@@ -171,6 +171,8 @@ import {
   researchCompleteSchema,
   rewardClaimSchema,
   rewardClaimAllSchema,
+  dailyQuestsSchema,
+  dailyQuestClaimSchema,
   clanSuggestionSchema,
   welcomeSchema,
   welcomeOpenSchema,
@@ -1527,6 +1529,10 @@ export class Api {
     this.send('/api/rewards/claim', rewardClaimSchema, { method: 'POST', body: { id } });
   claimAllRewards = () =>
     this.send('/api/rewards/claim-all', rewardClaimAllSchema, { method: 'POST', body: {} });
+
+  dailyQuests = () => this.send('/api/daily-quests', dailyQuestsSchema);
+  claimDailyQuest = (id: string) =>
+    this.send('/api/daily-quests/claim', dailyQuestClaimSchema, { method: 'POST', body: { id } });
 
   mining = (planetId?: string) => this.send(
     `/api/mining${planetId ? `?planetId=${encodeURIComponent(planetId)}` : ''}`,

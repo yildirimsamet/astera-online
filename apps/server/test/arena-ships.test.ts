@@ -504,3 +504,29 @@ describe('levels (Y6b)', () => {
       fuel: shipStats('muhafiz', 4).fuelTank });
   });
 });
+
+/**
+ * GÜNLÜK GÖREVLER (owner, 2026-11-24): "enter the Yarık today" is counted from one stamp, written
+ * when the ship flies in and never cleared, so the quest can ask whether it falls inside a day.
+ */
+describe('the last flight is stamped', () => {
+  it('writes the moment the ship flew into the Yarık, and keeps it when the flight ends', async () => {
+    await chooseShip(f.db, f.clock, account, 'akinci');
+    expect((await shipRow())?.lastSortieAt).toBeNull();
+    const flight = await launchSortie(f.db, f.clock, account);
+    expect((await shipRow())?.lastSortieAt).toEqual(f.clock.now());
+    await endSortie(f.db, f.clock, account, flight.sortieId, { ...empty, outcome: 'recalled' });
+    expect((await shipRow())?.lastSortieAt).toEqual(new Date(f.clock.now().getTime()));
+  });
+
+  it('is renewed by the next flight', async () => {
+    await chooseShip(f.db, f.clock, account, 'akinci');
+    const first = await launchSortie(f.db, f.clock, account);
+    const firstAt = f.clock.now();
+    await endSortie(f.db, f.clock, account, first.sortieId, { ...empty, outcome: 'recalled' });
+    f.clock.advance(E.repairMinutes + 5);
+    await launchSortie(f.db, f.clock, account);
+    expect((await shipRow())?.lastSortieAt).toEqual(f.clock.now());
+    expect((await shipRow())?.lastSortieAt).not.toEqual(firstAt);
+  });
+});

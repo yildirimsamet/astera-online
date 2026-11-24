@@ -1542,6 +1542,34 @@ export const rewardClaimSchema = z.object({
   ...withPlanet,
 });
 
+/**
+ * GÜNLÜK GÖREVLER (owner, 2026-11-24). `id` is a plain string for the rewards rule's reason: a quest
+ * added a deploy ahead must cost a phone one unrenderable row, never the whole panel.
+ */
+export const dailyQuestsSchema = z.object({
+  /** `YYYY-MM-DD`, UTC. */
+  day: z.string(),
+  /** The instant every quest starts again. */
+  resetsAt: z.coerce.date(),
+  quests: z.array(z.object({
+    id: z.string(),
+    goal: z.number().int().positive(),
+    progress: z.number().int().nonnegative(),
+    state: z.enum(['locked', 'claimable', 'claimed']),
+    alloy: z.number(),
+    crystal: z.number(),
+    /** Micro-Honor this quest pays with its purse; show it with `honorScore`. */
+    honor: z.number().int().nonnegative(),
+  })),
+  claimable: z.number().int().nonnegative(),
+});
+export const dailyQuestClaimSchema = z.object({
+  granted: z.object({ alloy: z.number(), crystal: z.number(), honor: z.number().int().nonnegative() }),
+  quests: dailyQuestsSchema,
+  ...withPlanet,
+});
+export type DailyQuests = z.infer<typeof dailyQuestsSchema>;
+
 /** New Commander 7 Days (plan 2026-11-06 §7.2): the next box, from when, and what it holds; null when not for this account. */
 const welcomeBoxRewardSchema = z.object({
   alloy: z.number(),

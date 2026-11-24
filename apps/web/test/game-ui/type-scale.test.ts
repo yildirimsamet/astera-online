@@ -18,6 +18,7 @@ const css = readFileSync(join(KIT, 'game-ui.css'), 'utf8').replace(/\/\*[\s\S]*?
 /** Rules whose font size sizes a glyph or a picture, never a word. */
 const NOT_TEXT = new Map([
   ['.gk-btn__glyph', 'the glyph beside a button word'],
+  ['.gk-btn--compact .gk-btn__glyph', 'the glyph beside the compact button\'s word'],
   ['.gk-round', 'the glyph on a round button'],
   ['.gk-round--small .gk-round__face', 'the glyph on a small round button'],
   ['.gk-hold__dial', 'the glyph in the hold dial'],

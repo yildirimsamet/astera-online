@@ -11,7 +11,7 @@ import { ABILITIES, ARENA_LAYOUT, ARENA_PROTOCOL, ARENA_TUNING as T, CLASS_STATS
   REMOTE_BAND, REMOTE_FAR_RANGE, REMOTE_FULL_RANGE, REMOTE_NEAR_RANGE, ROLE_SHIPS, SHIP_CLASSES, TACTICS, alive, sameSide, scanTargets, spawnFlight, stepArenaWorld, pilotVisible,
   type Ability, type ArenaFeed, type ArenaIntent, type ArenaWorld, type LoadoutPlan, type Pilot, type ShipClass, type SteeringSettings, type Tactic } from '@astera/rules/arena';
 import { InvalidSessionError } from '../auth/tokens.js';
-import { accounts, arenaPilots } from '../db/schema.js';
+import { accounts } from '../db/schema.js';
 import type { Env } from '../env.js';
 import { chooseShip, endSortie, launchSortie, readHangar, recallOpenSorties, repairShip, setLoadout, spendAbility, upgradeShip, type HangarView, type Launch, type SortieEnd,
   type SortieOutcome, type SortieResult } from '../services/arenaShips.js';
@@ -105,8 +105,8 @@ const abilitySchema = z.object({ ability: z.enum(ABILITIES) }).strict();
 /** Whole percents; the steps themselves are the rules' (LOADOUT), checked by the hangar. */
 const loadoutSchema = z.object({ fuel: z.number().int(), ammo: z.number().int() }).strict();
 
-/** Who an access token belongs to, and whether the admin desk seated them; null when it is not a live session. */
-export type ArenaIdentify = (token: string) => Promise<{ accountId: string; username: string; name: string; pilot: boolean } | null>;
+/** Who an access token belongs to; null when it is not a live session. */
+export type ArenaIdentify = (token: string) => Promise<{ accountId: string; username: string; name: string } | null>;
 
 function accountIdentity(app: FastifyInstance): ArenaIdentify {
   return async token => {
@@ -115,22 +115,19 @@ function accountIdentity(app: FastifyInstance): ArenaIdentify {
       if (error instanceof InvalidSessionError) return null;
       throw error;
     }
-    const [row] = await app.db.select({ username: accounts.username, name: accounts.displayName, seat: arenaPilots.accountId }).from(accounts)
-      .leftJoin(arenaPilots, eq(arenaPilots.accountId, accounts.id)).where(eq(accounts.id, accountId));
-    return row ? { accountId, username: row.username, name: row.name, pilot: row.seat !== null } : null;
+    const [row] = await app.db.select({ username: accounts.username, name: accounts.displayName }).from(accounts).where(eq(accounts.id, accountId));
+    return row ? { accountId, username: row.username, name: row.name } : null;
   };
 }
 
 /**
  * One shared room of ARENA_SEATS pilots and three bots. ARENA_DEV admits guests and keeps debug actions; the live
- * playtest admits accounts seated from the admin desk (or named in ARENA_PILOTS), with no debug actions.
+ * room admits every signed-in account (owner 2026-11-24), with no debug actions.
  * A commander flies the ship their hangar holds and lands its hold in their capital (Y6a); a guest's
  * flight, and one a debug action touched, writes nothing.
  */
 export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIdentify = accountIdentity(app),
   ships: ArenaShips = dbShips(app)): { world: ArenaWorld } {
-  const admits = (account: { username: string; pilot: boolean }): boolean =>
-    account.pilot || env.ARENA_PILOTS.includes('*') || env.ARENA_PILOTS.includes(account.username);
   // The bundled app's page origin is trusted by the API's CORS; its socket is the same app.
   const origins = new Set([...env.ARENA_ALLOWED_ORIGINS.split(',').map(value => value.trim()).filter(Boolean), ...env.NATIVE_APP_ORIGINS]);
   const sockets = new WebSocketServer({ noServer: true, perMessageDeflate: false, maxPayload: 4096 });
@@ -375,20 +372,17 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
       pilots: participants.size, connected: Array.from(participants.values()).filter(p => p.socket !== null).length,
       tickP95: ordered[Math.floor(ordered.length * 0.95)] ?? 0, droppedTicks };
   });
-  const seatedBy = async (token: string): Promise<{ accountId: string } | 'auth' | 'denied'> => {
-    const account = await identify(token);
-    return !account ? 'auth' : admits(account) ? account : 'denied';
-  };
+  const seatedBy = async (token: string): Promise<{ accountId: string } | 'auth'> => (await identify(token)) ?? 'auth';
   registerArenaReferences(app, env, seatedBy);
   registerGalaxyShips(app, env, identify);
   /** The hangar desk (Y6a): the ship, its timers and the day's cap; the one class choice. */
-  const bearer = (header: string | undefined): Promise<{ accountId: string } | 'auth' | 'denied'> =>
+  const bearer = (header: string | undefined): Promise<{ accountId: string } | 'auth'> =>
     header?.startsWith('Bearer ') ? seatedBy(header.slice(7)) : Promise.resolve('auth');
   registerArenaTeams(app, env.ARENA_ENABLED, bearer, ensureRecalled);
   /** The hangar desk, with who flies the Yarık now: the entry's "is it worth going in" (plan 14 §13). Bots are not pilots. */
   app.get('/arena/hangar', async (request, reply) => {
     const who = await bearer(request.headers.authorization);
-    if (typeof who === 'string') return reply.status(who === 'auth' ? 401 : 403).send({ error: who });
+    if (typeof who === 'string') return reply.status(401).send({ error: who });
     const pilots = [...participants.values()].filter(entry => alive(entry.pilot)).length;
     // A ship still in the air, its page gone or not: the hangar offers the way back to it (F22).
     const mine = participants.get(who.accountId);
@@ -396,7 +390,7 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
   });
   app.post('/arena/ship', async (request, reply) => {
     const who = await bearer(request.headers.authorization);
-    if (typeof who === 'string') return reply.status(who === 'auth' ? 401 : 403).send({ error: who });
+    if (typeof who === 'string') return reply.status(401).send({ error: who });
     const body = shipSchema.safeParse(request.body);
     if (!body.success) return reply.status(400).send({ error: 'invalid' });
     return ships.choose(who.accountId, body.data.ship);
@@ -404,18 +398,18 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
   /** Buys the ship's next level (Y6b): the hangar checks the bar, the Çekirdeği and the price. */
   app.post('/arena/upgrade', async (request, reply) => {
     const who = await bearer(request.headers.authorization);
-    if (typeof who === 'string') return reply.status(who === 'auth' ? 401 : 403).send({ error: who });
+    if (typeof who === 'string') return reply.status(401).send({ error: who });
     return ships.upgrade(who.accountId);
   });
   app.post('/arena/repair', async (request, reply) => {
     const who = await bearer(request.headers.authorization);
-    if (typeof who === 'string') return reply.status(who === 'auth' ? 401 : 403).send({ error: who });
+    if (typeof who === 'string') return reply.status(401).send({ error: who });
     if (!repairSchema.safeParse(request.body).success) return reply.status(400).send({ error: 'invalid' });
     return ships.repair(who.accountId);
   });
   app.post('/arena/ability', async (request, reply) => {
     const who = await bearer(request.headers.authorization);
-    if (typeof who === 'string') return reply.status(who === 'auth' ? 401 : 403).send({ error: who });
+    if (typeof who === 'string') return reply.status(401).send({ error: who });
     const body = abilitySchema.safeParse(request.body);
     if (!body.success) return reply.status(400).send({ error: 'invalid' });
     return ships.ability(who.accountId, body.data.ability);
@@ -423,7 +417,7 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
   /** What the next launch tops the tank and the magazine up to (owner 2026-10-27). */
   app.post('/arena/loadout', async (request, reply) => {
     const who = await bearer(request.headers.authorization);
-    if (typeof who === 'string') return reply.status(who === 'auth' ? 401 : 403).send({ error: who });
+    if (typeof who === 'string') return reply.status(401).send({ error: who });
     const body = loadoutSchema.safeParse(request.body);
     if (!body.success) return reply.status(400).send({ error: 'invalid' });
     return ships.loadout(who.accountId, body.data);
@@ -433,7 +427,7 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
     const header = request.headers.authorization;
     if (!env.ARENA_ENABLED || !header?.startsWith('Bearer ')) return { allowed: false };
     const account = await identify(header.slice(7));
-    return { allowed: account !== null && admits(account) };
+    return { allowed: account !== null };
   });
   app.server.on('upgrade', (request, socket, head) => {
     if (request.url !== '/arena/ws') { socket.destroy(); return; }
@@ -504,7 +498,6 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
         if (!token) { kick(socket, 'auth'); return; }
         identify(token).then(account => {
           if (!account) { kick(socket, 'auth'); return; }
-          if (!admits(account)) { kick(socket, 'denied'); return; }
           const key = account.accountId; const name = account.name.slice(0, 32); const existing = participants.get(key);
           if (msg.mode === 'spectate' || (msg.mode === 'resume' && !existing)) {
             ensureRecalled().then(() => ships.spectate(key)).then(flight => { seat(key, name, key, flight); },

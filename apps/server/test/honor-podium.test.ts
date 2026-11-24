@@ -58,7 +58,7 @@ describe('the public podium follows the active Honor competition', () => {
             const rank = ranks[index];
             return rank === undefined ? [] : [[id, rank] as const];
           })));
-          expect(wire.some(query => query.includes('from "honor_totals"') && query.includes('offset')), 'threshold query').toBe(true);
+          expect(wire.some(query => query.includes('from "players"') && query.includes('"honor_totals"') && query.includes('offset')), 'threshold query').toBe(true);
         } finally { await client.end(); }
       });
     }

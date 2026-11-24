@@ -24,6 +24,7 @@ import {
   TRAFFIC,
 } from '@astera/rules';
 import {
+  arenaShips,
   accounts,
   accountRewards,
   battleReports,
@@ -154,6 +155,8 @@ import {
   returnSchema,
   returnSeenSchema,
   rewardClaimSchema,
+  dailyQuestsSchema,
+  dailyQuestClaimSchema,
   rivalSetSchema,
   rewardsSchema,
   satelliteInstallSchema,
@@ -2327,6 +2330,32 @@ describe('every payload the client parses', () => {
       );
     }
     expect(parsed.chains.find((c) => c.id === 'SOCIAL')?.scope).toBe('account');
+  });
+
+  it('GET /api/daily-quests parses, names the day and when it starts again, and lists the four quests locked', async () => {
+    const parsed = dailyQuestsSchema.parse(await get('/api/daily-quests'));
+    expect(parsed.quests.map((row) => row.id)).toEqual(['PROBES', 'RIFT', 'PIRATE', 'ASTEROID']);
+    expect(parsed.quests.every((row) => row.state === 'locked' && row.progress === 0)).toBe(true);
+    expect(parsed.resetsAt.getTime()).toBeGreaterThan(Date.parse(`${parsed.day}T00:00:00Z`));
+    expect(parsed.claimable).toBe(0);
+  });
+
+  it('POST /api/daily-quests/claim refuses what is not done, in a code the client has words for', async () => {
+    const locked = await app.inject({ method: 'POST', url: '/api/daily-quests/claim', headers: auth, payload: { id: 'PROBES' } });
+    expect(locked.statusCode).toBe(400);
+    expect(locked.json<{ error: string }>().error).toBe('DAILY_QUEST_LOCKED');
+    const unknown = await app.inject({ method: 'POST', url: '/api/daily-quests/claim', headers: auth, payload: { id: 'NOPE' } });
+    expect(unknown.statusCode).toBe(404);
+    expect(unknown.json<{ error: string }>().error).toBe('NO_SUCH_DAILY_QUEST');
+  });
+
+  it('POST /api/daily-quests/claim parses, and carries the panel as well as the planet', async () => {
+    await f.db.insert(arenaShips).values({ playerId: f.playerIds[0]!, ship: 'akinci', chosenAt: f.clock.now(), fuel: 100, ammo: 100,
+      lastSortieAt: f.clock.now() });
+    const parsed = dailyQuestClaimSchema.parse(await post('/api/daily-quests/claim', { id: 'RIFT' }));
+    expect(parsed.granted.alloy + parsed.granted.crystal).toBeGreaterThan(0);
+    expect(parsed.quests.quests.find((row) => row.id === 'RIFT')?.state).toBe('claimed');
+    expect(parsed.quests).toEqual(dailyQuestsSchema.parse(await get('/api/daily-quests')));
   });
 
   it('POST /api/rewards/claim parses, and carries the panel as well as the planet', async () => {

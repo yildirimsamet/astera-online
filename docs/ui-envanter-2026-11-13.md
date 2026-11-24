@@ -263,6 +263,8 @@ Yerel oyunda yeni bir komutanla beş sekmeye basıldı: sayfa açıkken menü me
 
 Kite eklenenler (galeri: `ui-kit` "Üst bar" bölümü): `Medallion`, `RoundButton` haber sallanması, üç Codex sanatı (`hud-medallion`, `hud-bell`, `hud-chat`, ev stilinde, 160 px webp).
 
+Günlük görev tuşu (owner 2026-11-24): `hud-daily`, masa takvimi, 160 px webp. Antigravity (`agy`, `generate_image`) ile, mevcut `hud-*` ve `menu-*` simgeleri referans verilerek üretildi (üç aday: tablet, kadran, takvim; takvim seçildi). Araç şeffaf PNG vermediği için magenta fonda üretilip fon anahtarlanarak temizlendi (kenar sızıntısı giderildi). Tuş, galaksinin sağ üst araç kümesinde hediyenin yanında durur.
+
 Palet: owner 2026-11-14'te üç temayı karşılaştırdı ve Gözlemevi lacivertini seçti (grafit solgun kalıyordu). Kitin bütün metal, cam ve çelik token'ları `tokens.css`'te bu lacivertle yeniden yazıldı; koruyucu test mavi tonu ve v2 zeminine eşitliği arar.
 
 Yerel oyunda 350 px'te (tr, ja) denendi: madalyon menüyü açıyor; zil "Neler oldu" sheet'ini açıyor; kalkan ve hediye solda, Mağaza sağda; sohbet ve zil bağlam kartının üstünde.
