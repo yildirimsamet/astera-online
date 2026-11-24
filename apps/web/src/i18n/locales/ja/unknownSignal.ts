@@ -21,7 +21,7 @@ export const unknownSignal = {
   "build": "{{ship}}を建造",
   "needsShipyard": "クーリエには造船所レベル1が必要です。",
   "origin": "出発する惑星",
-  "oneWay": "片道",
+  "oneWay": "片道・4倍速",
   "roundTrip": "往復",
   "fuel": "燃料",
   "odds": "起こりうる結果",

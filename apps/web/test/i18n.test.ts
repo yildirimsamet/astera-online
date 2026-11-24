@@ -123,9 +123,13 @@ describe('risk and defence explanations follow the current rules', () => {
     expect(tr.launch.holdPirate_other).not.toContain('geri dönüşü yok');
   });
 
-  it('does not promise loss-free convoy flights through radiation', () => {
-    expect(en.convoy.boundary).toMatch(/radiation/i);
-    expect(tr.convoy.boundary).toMatch(/radyasyon/i);
+  // Current entity radiation does not damage transit; legacy warnings are not the current rule.
+  it('explains convoy outbound speed without a legacy route-radiation warning or a blanket safety promise', () => {
+    for (const locale of Object.values(LOCALES)) expect(locale.convoy.boundary).toContain('{{multiplier}}×');
+    expect(en.convoy.boundary).toMatch(/return at normal speed/i);
+    expect(tr.convoy.boundary).toMatch(/dönüş normal hızda/i);
+    expect(en.convoy.boundary).not.toMatch(/route radiation/i);
+    expect(tr.convoy.boundary).not.toMatch(/rota radyasyonu/i);
     expect(en.convoy.boundary).not.toMatch(/no losses/i);
     expect(tr.convoy.boundary).not.toMatch(/kayıp vermez/i);
   });

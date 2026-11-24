@@ -47,6 +47,7 @@ import { registerMonumentRoutes } from './routes/monuments.js';
 import { registerMiningRoutes } from './routes/mining.js';
 import { registerPirateRoutes } from './routes/pirates.js';
 import { registerUnknownSignalRoutes } from './routes/unknownSignals.js';
+import { registerNewcomerScenarioRoutes } from './routes/newcomerScenario.js';
 import { registerTradeRoutes } from './routes/trade.js';
 import { registerIntergalacticConvoyRoutes } from './routes/intergalacticConvoy.js';
 import { registerHealthRoutes } from './routes/health.js';
@@ -590,6 +591,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerMiningRoutes(app);
     registerPirateRoutes(app);
     registerUnknownSignalRoutes(app, opts.env.NODE_ENV);
+    registerNewcomerScenarioRoutes(app);
     registerTradeRoutes(app);
     registerIntergalacticConvoyRoutes(app);
     registerSessionRoutes(app);

@@ -80,6 +80,30 @@ describe('predicting an upgrade', () => {
     expect(after?.orbitSlots).toBe(rich.orbitSlots);
   });
 
+  // The five-minute rule (owner, 2026-11-20): the server finishes it in its answer, so the tap does too.
+  it('grants an upgrade of five minutes or less at once on a free queue, as the server does', () => {
+    const small = planetView(
+      { buildings: { CORE: 3, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1 }, nextCosts: { VAULT: buildingCost('VAULT', 1) } },
+      { alloy: 500_000, crystal: 500_000 },
+    );
+    const after = predictUpgrade(small, 'VAULT');
+    expect(after?.buildings.VAULT).toBe(2);
+    expect(after?.queues?.CONSTRUCTION ?? []).toHaveLength(0);
+    expect(after?.nextCosts.VAULT).toEqual(buildingCost('VAULT', 2));
+    expect(after?.planet.alloy).toBe(500_000 - buildingCost('VAULT', 1).alloy);
+  });
+
+  it('queues a short upgrade behind an order already in the queue, as the server does', () => {
+    const small = planetView(
+      { buildings: { CORE: 3, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1 },
+        nextCosts: { VAULT: buildingCost('VAULT', 1), REFINERY: buildingCost('REFINERY', 2) } },
+      { alloy: 500_000, crystal: 500_000 },
+    );
+    const after = predictUpgrade(predictUpgrade(small, 'REFINERY')!, 'VAULT');
+    expect(after?.buildings.VAULT).toBe(1);
+    expect(lastOrder(after, 'CONSTRUCTION')).toMatchObject({ subject: 'VAULT', optimistic: true });
+  });
+
   it('declines when the player cannot afford it', () => {
     const poor = planetView(
       { buildings: rich.buildings, nextCosts: rich.nextCosts },
@@ -122,13 +146,15 @@ describe('predicting an upgrade', () => {
   });
 
   it('projects gates through earlier orders in the same queue', () => {
+    // Rungs long enough to queue: the five-minute rule finishes the first ones at once (owner, 2026-11-20).
     const fresh = planetView(
       {
-        buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 },
-        nextCosts: { CORE: upgradeCost(1), REFINERY: upgradeCost(1) },
+        buildings: { CORE: 5, REFINERY: 5, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 },
+        nextCosts: { CORE: buildingCost('CORE', 5), REFINERY: buildingCost('REFINERY', 5) },
       },
       { alloy: 500_000, crystal: 500_000 },
     );
+    expect(predictUpgrade(fresh, 'REFINERY')).toBeNull();
     const coreQueued = predictUpgrade(fresh, 'CORE');
     expect(coreQueued).not.toBeNull();
     const refineryQueued = predictUpgrade(coreQueued!, 'REFINERY');
@@ -138,8 +164,8 @@ describe('predicting an upgrade', () => {
       subject: 'REFINERY',
     });
     expect(projectedQueueState(refineryQueued!, 'CONSTRUCTION').buildings).toMatchObject({
-      CORE: 2,
-      REFINERY: 2,
+      CORE: 6,
+      REFINERY: 6,
     });
   });
 

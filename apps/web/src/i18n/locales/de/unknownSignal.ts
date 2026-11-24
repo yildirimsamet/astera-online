@@ -21,7 +21,7 @@ export const unknownSignal = {
   "build": "{{ship}} bauen",
   "needsShipyard": "Der Kurier benötigt Werftstufe 1.",
   "origin": "Startwelt",
-  "oneWay": "Hinflug",
+  "oneWay": "Hinflug · 4× Tempo",
   "roundTrip": "Hin und zurück",
   "fuel": "Treibstoff",
   "odds": "Mögliche Ergebnisse",

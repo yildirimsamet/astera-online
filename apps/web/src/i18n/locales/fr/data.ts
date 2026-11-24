@@ -565,6 +565,10 @@ export const directives = {
 
 export const notifications = {
   arenaShipReady: "Ton vaisseau de commandement est prêt. Ouvre le hangar.",
+  newcomerHourEnding: "Heure de fondation : encore {{time}} de production quintuplée. Lance ta prochaine construction maintenant.",
+  newcomerHourEnded: "L’Heure de fondation est terminée.",
+  newcomerHourSummary_one: "Heure de fondation terminée : tes usines ont produit {{alloy}} alliage et {{crystal}} cristal, et {{count}} construction s’est achevée. Elles reprennent leur rythme.",
+  newcomerHourSummary_other: "Heure de fondation terminée : tes usines ont produit {{alloy}} alliage et {{crystal}} cristal, et {{count}} constructions se sont achevées. Elles reprennent leur rythme.",
   arenaRepairReady: "Les réparations de ton vaisseau de commandement sont terminées. Ouvre le hangar.",
   arenaServiceReady: "La maintenance de ton vaisseau de commandement est terminée. Ouvre le hangar.",
   arenaTeamShare: "Ta part d’équipe est prête : {{loot}}. Récupère-la au hangar.",

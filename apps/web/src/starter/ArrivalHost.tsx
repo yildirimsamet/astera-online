@@ -1,8 +1,10 @@
-import { FIRST_SEASON_START, fleetEntries, type Fleet } from '@astera/rules';
+import { FIRST_SEASON_START, fleetEntries, isScenarioActive, type Fleet } from '@astera/rules';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
-import { useGalaxy, usePirates, usePlanet, useReports } from '../api/queries.js';
-import { Banner, Glyph, type GlyphId } from '../game-ui/index.js';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useGalaxy, useNewcomerScenario, useNewcomerScenarioActions, usePirates, usePlanet, useReports } from '../api/queries.js';
+import { triggerFurnaceFlare } from '../galaxy/FurnaceOverloadFx.js';
+import { Banner, CostLine, CutPlate, Dialog, GameButton, Glyph, MultiplierBadge, SectionTag, Well, type GlyphId } from '../game-ui/index.js';
+import { describe, useToast } from '../ui/Toast.js';
 import { landedWorld } from './jumpWorld.js';
 import { useTranslation } from 'react-i18next';
 import { useApi } from '../api/context.js';
@@ -20,6 +22,8 @@ import { arrivalQuery, useMarkArrivalSeen } from './queries.js';
 import { ProtectionLines } from './ProtectionLines.js';
 import { LandingRewards, useLandingRewardsDue } from './LandingRewards.js';
 import { nearestPirate } from '../lib/rewardGates.js';
+import { useAttention } from '../shell/attention/store.js';
+import { SURFACES } from '../shell/attention/surfaces.js';
 
 const CARD_LINES = ['battle', 'opened', 'alerts'] as const;
 
@@ -80,6 +84,7 @@ const TIP_GLYPH: Record<LandingTip, GlyphId> = { core: 'target', colony: 'colony
 export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; onFocusContact?: (id: string) => void }) {
   const { t } = useTranslation();
   const api = useApi();
+  const say = useToast();
   const jump = useJump();
   const seen = useMarkArrivalSeen();
   const { data } = useQuery(arrivalQuery(api));
@@ -117,19 +122,128 @@ export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; 
   const pirates = usePirates().data?.pirates;
   const prey = arrival && !arrival.hunted && onFocusContact ? nearestPirate(pirates) : null;
 
+  const scenario = useNewcomerScenario().data?.scenario ?? null;
+  const scenarioActions = useNewcomerScenarioActions();
+  // Within the founding hour only, as the lock that holds the other windows (review 2026-11-23).
+  const scenarioPreVictory = scenario !== null && isScenarioActive(scenario.step) && !scenario.pirateDefeated
+    && scenario.holdsScreenUntil.getTime() > now;
+
   // Held open once it starts: taking the rewards empties the count that called it.
-  const rewardsDue = useLandingRewardsDue(landedAt, now);
+  // Plan 2026-11-20 §5.5: during the pirate scenario, the reward box opens on the first pirate victory.
+  const rewardsDue = useLandingRewardsDue(landedAt, now) && !scenarioPreVictory;
   const [rewards, setRewards] = useState<'idle' | 'open' | 'done'>('idle');
   useEffect(() => { if (rewardsDue && !arrival) setRewards(state => (state === 'idle' ? 'open' : state)); }, [rewardsDue, arrival]);
 
+  // Each waits its turn on the screen (plan 2026-11-20 §5.5); the note never shows beside the rewards.
+  const card = useAttention('arrival_card', arrival !== null && !jump, SURFACES.arrival_card);
+  const payout = useAttention('landing_rewards', !arrival && rewards === 'open' && !jump, SURFACES.landing_rewards);
+  const note = useAttention('landing_tip', !arrival && rewards !== 'open' && tip !== null && !jump, SURFACES.landing_tip);
+  // Tasks begun without the card (another screen, a rock mined under a held card) leave it nothing to start:
+  // it is put away rather than hold the screen with nothing drawn (review 2026-11-23).
+  const tasksBegun = scenario !== null && isScenarioActive(scenario.step) && scenario.step !== 'LANDING';
+  const releaseCard = card.release;
+  const markSeen = seen.mutate;
+  // Once: a server still sending the arrival back (a seen that did not land) must not be asked again in a loop.
+  const putAway = useRef(false);
+  useEffect(() => {
+    if (!arrival || !tasksBegun || putAway.current) return;
+    putAway.current = true;
+    releaseCard('dismiss');
+    markSeen();
+  }, [arrival, tasksBegun, releaseCard, markSeen]);
+
   if (jump) return null;
   if (arrival) {
-    const pick = (go: () => void) => { playSound('tap'); haptic('tap'); seen.mutate(); go(); };
+    if (!card.shown) return null;
+    const close = (code: string) => { card.release(code); seen.mutate(); };
+    // First-game Kuruluş Saati single-tap landing card (plan 2026-11-20 §4 An 1; Game Kit Dialog).
+    // If the scenario has already advanced past LANDING while arrival is being marked seen, render nothing instead of falling through to the legacy sheet.
+    if (scenario !== null && isScenarioActive(scenario.step)) {
+      if (scenario.step !== 'LANDING') return null;
+      const startHour = () => {
+        playSound('unseal');
+        haptic('thunk');
+        triggerFurnaceFlare();
+        scenarioActions.start.mutate(undefined, {
+          onError: (err) => { say(describe(err), 'error'); },
+        });
+        close('act:hour_start');
+      };
+      const totalTreasury = {
+        alloy: arrival.cargo.alloy + FIRST_SEASON_START.resources.alloy,
+        crystal: arrival.cargo.crystal + FIRST_SEASON_START.resources.crystal,
+        deuterium: arrival.cargo.deuterium + FIRST_SEASON_START.resources.deuterium,
+      };
+      const totalShips = ships(arrival.cargo.fleet) + ships(FIRST_SEASON_START.fleet);
+      return (
+        <Dialog
+          ribbon={t('starter.scenario.hourTitle')}
+          tone="good"
+          rays
+          sound="unseal"
+          onBack={startHour}
+          actions={(
+            <GameButton tone="action" size="lg" wide heavy glyph="up" onPress={startHour}>
+              {t('starter.scenario.hourStart')}
+            </GameButton>
+          )}
+        >
+          <div data-testid="landing-card" data-scenario-landing="true" className="grid gap-2.5 pt-1 text-left">
+            <CutPlate tone="self" className="grid gap-2 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <MultiplierBadge value={5} />
+                  <span className="gk-display text-title font-bold text-v2-ink">{t('starter.scenario.hourHeadline')}</span>
+                </div>
+                <span className="gk-chip gk-chip--good">
+                  <Glyph id="clock" />
+                  <span>{t('starter.scenario.hourBadge')}</span>
+                </span>
+              </div>
+              <p className="gk-body m-0 text-body leading-snug text-v2-ink-2">{t('starter.scenario.hourPrivilege')}</p>
+            </CutPlate>
+
+            <Well className="grid gap-2 p-2.5">
+              <div className="flex items-start gap-2.5">
+                <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded border border-v2-self/40 bg-v2-self/15 text-v2-self">
+                  <Glyph id="speed" className="size-3.5" />
+                </span>
+                <div className="min-w-0">
+                  <div className="text-body font-bold text-v2-ink">{t('starter.scenario.hourInstantTitle')}</div>
+                  <p className="m-0 text-caption leading-snug text-v2-ink-2">{t('starter.scenario.hourInstantBody')}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5 border-t border-v2-line pt-2">
+                <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded border border-v2-self/40 bg-v2-self/15 text-v2-self">
+                  <Glyph id="shield" className="size-3.5" />
+                </span>
+                <div className="min-w-0">
+                  <div className="text-body font-bold text-v2-ink">{t('starter.scenario.hourShieldTitle')}</div>
+                  <p className="m-0 text-caption leading-snug text-v2-ink-2">{t('starter.scenario.hourShieldBody')}</p>
+                </div>
+              </div>
+            </Well>
+
+            <div className="grid gap-1">
+              <SectionTag>{t('starter.scenario.hourTreasury')}</SectionTag>
+              <Well className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                <CostLine cost={totalTreasury} />
+                <span className="gk-sub gk-num inline-flex items-center gap-1 font-semibold text-v2-self">
+                  <Glyph id="rocket" className="size-3.5" />
+                  {t('starter.arrival.ships', { count: totalShips })}
+                </span>
+              </Well>
+            </div>
+          </div>
+        </Dialog>
+      );
+    }
+    const pick = (move: string, go: () => void) => { playSound('tap'); haptic('tap'); close(`act:${move}`); go(); };
     const fuel = arrival.cargo.deuterium + FIRST_SEASON_START.resources.deuterium;
     return (
       <Sheet
         title={t('starter.landing.title', { name: arrival.shardName })}
-        onClose={() => { seen.mutate(); }}
+        onClose={() => { close('dismiss'); }}
         footer={
           <div className="flex items-center gap-2">
             {/* Watched again only through the map it crosses: without it the scene had nothing to fly in. */}
@@ -137,7 +251,7 @@ export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; 
               onClick={() => { if (world) startJump({ shardName: arrival.shardName, hull: arrival.hull, look: 'RENEWED', world, landing: null, start: 0, replay: true }); }}>
               {t('starter.jump.replay')}
             </button>
-            <button type="button" onClick={() => { seen.mutate(); }}
+            <button type="button" onClick={() => { close('act:go'); }}
               className="min-h-[var(--gk-hit)] flex-1 rounded-control border border-v2-self bg-gradient-to-b from-v2-self to-v2-self/55 text-body font-bold uppercase tracking-wide text-v2-void">
               {t('starter.landing.go')}
             </button>
@@ -154,11 +268,11 @@ export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; 
             <div className="flex gap-1.5">
               {prey && onFocusContact
                 ? <Move id="hunt" icon="i-attack" title={t('starter.arrival.hunt')} line={t('starter.arrival.huntLine', { minutes: prey.minutes })}
-                    onPick={() => { pick(() => { onFocusContact(prey.id); }); }} />
+                    onPick={() => { pick('hunt', () => { onFocusContact(prey.id); }); }} />
                 : <Move id="outward" icon="i-fleet" title={t('starter.arrival.outward')} line={t('starter.arrival.outwardLine', { deuterium: full(fuel) })}
-                    onPick={() => { pick(() => { onPanel('intel'); }); }} />}
+                    onPick={() => { pick('outward', () => { onPanel('intel'); }); }} />}
               <Move id="grow" icon="i-mine" title={t('starter.arrival.grow')} line={t('starter.arrival.growLine', { research: t('research.synthesisName'), plant: buildingName('DEUTERIUM_PLANT') })}
-                onPick={() => { pick(() => { onPanel('planet', undefined, undefined, { group: 'grow', itemId: 'DEUTERIUM_PLANT' }); }); }} />
+                onPick={() => { pick('grow', () => { onPanel('planet', undefined, undefined, { group: 'grow', itemId: 'DEUTERIUM_PLANT' }); }); }} />
             </div>
           </section>
           {/* How the new world is kept, in its own numbers (plan 2026-11-13 §4.7). */}
@@ -177,14 +291,14 @@ export function ArrivalHost({ onPanel, onFocusContact }: { onPanel: ShellRoute; 
     );
   }
   // The landing pays first (plan 2026-11-06 §7.1 R1); the first-week note waits until it is closed.
-  if (rewards === 'open') return <LandingRewards onDone={() => { setRewards('done'); }} />;
-  if (!tip) return null;
+  if (rewards === 'open') return payout.shown ? <LandingRewards onDone={(code) => { payout.release(code); setRewards('done'); }} /> : null;
+  if (!tip || !note.shown) return null;
   // Under the top bar and any note it holds (`--v2-top-h` measures both): two notes never stack (owner 2026-11-18).
   return (
     <div data-testid="landing-tip" data-tip={tip} role="status" className="gk pointer-events-auto fixed inset-x-3 top-[calc(var(--v2-top-h,86px)+5px)] z-[60] mx-auto max-w-[396px]">
       <Banner tone="info" variant="strip" glyph={TIP_GLYPH[tip]} title={t(`starter.landing.tip.${tip}`)}
         action={(
-          <button type="button" aria-label={t('starter.landing.dismiss')} onClick={() => { playSound('tap'); haptic('tap'); dismissTip(tip); setTip(null); }}
+          <button type="button" aria-label={t('starter.landing.dismiss')} onClick={() => { playSound('tap'); haptic('tap'); note.release('dismiss'); dismissTip(tip); setTip(null); }}
             className="-my-2 -mr-1 grid size-[var(--gk-hit)] shrink-0 place-items-center text-v2-ink-2">
             <Glyph id="close" className="gk-glyph size-4" />
           </button>

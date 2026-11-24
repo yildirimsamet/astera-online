@@ -1,12 +1,18 @@
 import { FIRST_SEASON_START } from '@astera/rules';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import i18n from '../src/i18n/index.js';
+import type * as Runtime from '../src/lib/playerAnalytics/runtime.js';
 import { ArrivalHost } from '../src/starter/ArrivalHost.js';
+import { ToastProvider } from '../src/ui/Toast.js';
+import { HOLDER_CLOSE, WindowHolder } from './attentionFixture.js';
 import { urlOf } from './starterVesselFixture.js';
+
+const telemetry = vi.hoisted(() => ({ observe: vi.fn(), analyticsRecording: vi.fn(() => true) }));
+vi.mock('../src/lib/playerAnalytics/runtime.js', async (original) => ({ ...await original<typeof Runtime>(), ...telemetry }));
 
 /**
  * THE FIRST MOVE IN THE MAIN GALAXY (plan 2026-11-08 F7, moment 17). The card after the landing
@@ -24,7 +30,7 @@ const harness = () => {
   const api = new Api({ fetch: fetcher as unknown as typeof globalThis.fetch });
   const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const onPanel = vi.fn();
-  render(<QueryClientProvider client={queries}><ApiProvider api={api}><ArrivalHost onPanel={onPanel} /></ApiProvider></QueryClientProvider>);
+  render(<QueryClientProvider client={queries}><ApiProvider api={api}><ToastProvider><ArrivalHost onPanel={onPanel} /></ToastProvider></ApiProvider></QueryClientProvider>);
   return { fetcher, onPanel };
 };
 
@@ -34,10 +40,32 @@ beforeEach(async () => {
   await i18n.changeLanguage('en');
   // The scene has played: the card itself is what these cases read.
   window.sessionStorage.setItem('astera:jump-scene-played', '1');
+  telemetry.observe.mockClear();
 });
 afterEach(() => { cleanup(); window.sessionStorage.clear(); });
 
 describe('the card after the landing', () => {
+  // Review 2026-11-23: tasks already begun (on another screen, or a rock mined under a held card) leave the
+  // founding-hour card nothing to start; it is put away, or it would hold the screen with nothing drawn.
+  it('is put away once the founding hour\'s tasks have begun without it', async () => {
+    const fetcher = vi.fn((input: RequestInfo | URL) => {
+      const url = urlOf(input);
+      const body = url.includes('/api/starter/arrival/seen') ? { ok: true }
+        : url.includes('/api/newcomer-scenario')
+          ? { scenario: { step: 'PIRATE', pirateDefeated: false, holdsScreenUntil: new Date(Date.now() + 30 * 60_000).toISOString() } }
+          : { arrival, landedAt: new Date().toISOString() };
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } }));
+    });
+    const api = new Api({ fetch: fetcher as unknown as typeof globalThis.fetch });
+    const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={queries}><ApiProvider api={api}><ToastProvider><ArrivalHost onPanel={vi.fn()} /></ToastProvider></ApiProvider></QueryClientProvider>);
+    await waitFor(() => { expect(fetcher.mock.calls.some(([input]) => urlOf(input).includes('/api/starter/arrival/seen'))).toBe(true); });
+    expect(screen.queryByTestId('landing-card')).toBeNull();
+    // A server still sending the arrival back (a seen that did not land) is not asked again in a loop.
+    await new Promise(resolve => { setTimeout(resolve, 300); });
+    expect(fetcher.mock.calls.filter(([input]) => urlOf(input).includes('/api/starter/arrival/seen'))).toHaveLength(1);
+  });
+
   // Pressed before the map was in, the flight had no world to fly through: a black screen for the scene.
   it('lets the flight be watched again only once the map it crosses is in', async () => {
     harness();
@@ -97,6 +125,15 @@ describe('the card after the landing', () => {
     fireEvent.click(move.getByRole('button', { name: /Open Deuterium output/u }));
     expect(onPanel).toHaveBeenCalledWith('planet', undefined, undefined, { group: 'grow', itemId: 'DEUTERIUM_PLANT' });
   });
+
+  // Plan 2026-11-20 Faz 0: which first move the player picked, or that they only closed the card.
+  it('records the move that closed it', async () => {
+    harness();
+    const move = within(await screen.findByTestId('arrival-decide'));
+    expect(telemetry.observe).toHaveBeenCalledWith('surface_visible', { surface: 'arrival_card' }, 'live');
+    fireEvent.click(move.getByRole('button', { name: /Plan a first sortie/u }));
+    expect(telemetry.observe).toHaveBeenCalledWith('surface_closed', { surface: 'arrival_card', code: 'act:outward' }, 'live');
+  });
 });
 
 /** A defender's report of a raid: what was taken is written below zero (`reports.ts`). */
@@ -115,7 +152,7 @@ const tipHarness = (reports: object[], daysAgo: number) => {
   });
   const api = new Api({ fetch: fetcher as unknown as typeof globalThis.fetch });
   const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(<QueryClientProvider client={queries}><ApiProvider api={api}><ArrivalHost onPanel={vi.fn()} /></ApiProvider></QueryClientProvider>);
+  render(<QueryClientProvider client={queries}><ApiProvider api={api}><ToastProvider><ArrivalHost onPanel={vi.fn()} /></ToastProvider></ApiProvider></QueryClientProvider>);
 };
 
 /** The first week's note comes with the need (plan 2026-11-13 §4.8); the calendar is the fallback. */
@@ -130,6 +167,17 @@ describe('the first-week note', () => {
   it('says the clan line once the player has been raided', async () => {
     tipHarness([raid], 4);
     await waitFor(() => { expect(screen.getByTestId('landing-tip')).toHaveTextContent(/clan/iu); });
+  });
+
+  // Plan 2026-11-20 §5.5: a light note never lies over a window.
+  it('waits while a window has the screen, and comes once it is closed and the player is back on the map', async () => {
+    render(<WindowHolder />);
+    tipHarness([], 4);
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 30)); });
+    expect(screen.queryByTestId('landing-tip')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: HOLDER_CLOSE }));
+    fireEvent.pointerDown(window);
+    expect(await screen.findByTestId('landing-tip')).toBeInTheDocument();
   });
 
   it('closes on a thumb-sized button and stays closed', async () => {
@@ -165,7 +213,7 @@ describe('the first move of a ship that never hunted', () => {
     const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const onFocusContact = vi.fn();
     const onPanel = vi.fn();
-    render(<QueryClientProvider client={queries}><ApiProvider api={api}><ArrivalHost onPanel={onPanel} onFocusContact={onFocusContact} /></ApiProvider></QueryClientProvider>);
+    render(<QueryClientProvider client={queries}><ApiProvider api={api}><ToastProvider><ArrivalHost onPanel={onPanel} onFocusContact={onFocusContact} /></ToastProvider></ApiProvider></QueryClientProvider>);
     return { onFocusContact, onPanel };
   };
 

@@ -1,0 +1,2 @@
+-- KURULUŞ SAATİ (plan 2026-11-20 §5.1): when a first game's capital stops making five-fold alloy and crystal. Null elsewhere; additive only.
+ALTER TABLE "planets" ADD COLUMN "newcomer_boost_until" timestamp with time zone;

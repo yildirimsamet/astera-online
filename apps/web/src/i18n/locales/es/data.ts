@@ -491,6 +491,10 @@ export const directives = {
 /** The seven kinds of news, turned into the sentences a player reads. */
 export const notifications = {
   arenaShipReady: "Tu nave de comandante está lista. Abre el hangar.",
+  newcomerHourEnding: "Hora fundacional: quedan {{time}} de producción quíntuple. Empieza ya tu próxima construcción.",
+  newcomerHourEnded: "La Hora fundacional ha terminado.",
+  newcomerHourSummary_one: "Hora fundacional terminada: tus fábricas produjeron {{alloy}} de aleación y {{crystal}} de cristal, y terminó {{count}} construcción. Ahora vuelven a su ritmo.",
+  newcomerHourSummary_other: "Hora fundacional terminada: tus fábricas produjeron {{alloy}} de aleación y {{crystal}} de cristal, y terminaron {{count}} construcciones. Ahora vuelven a su ritmo.",
   arenaRepairReady: "La reparación de tu nave de comandante ha terminado. Abre el hangar.",
   arenaServiceReady: "El mantenimiento de tu nave de comandante ha terminado. Abre el hangar.",
   arenaTeamShare: "Tu parte del equipo está lista: {{loot}}. Recógela en el hangar.",

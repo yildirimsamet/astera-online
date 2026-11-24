@@ -32,6 +32,7 @@ import {
   type TechLevels,
 } from '@astera/rules';
 import type { BuildOrderView, PlanetView } from '../api/schemas.js';
+import { orderMinutes } from './orderTime.js';
 
 /**
  * WHAT A TAP DOES, BEFORE THE SERVER SAYS SO. D53.
@@ -262,6 +263,12 @@ export function predictUpgrade(view: PlanetView, type: BuildingId): Prediction {
   if (type === 'HANGAR' ? level >= hangarCeiling(core) : type !== 'CORE' && level >= core) return null;
 
   const next = spend(view, cost);
+  // The five-minute rule: on a free queue the server finishes it in its answer (owner, 2026-11-20).
+  if (queueOrders(view, 'CONSTRUCTION').length === 0
+    && orderMinutes('BUILDING', cost, view, 1, { building: type, level: level + 1 }) === 0) {
+    return { ...next, buildings: { ...next.buildings, [type]: level + 1 },
+      nextCosts: { ...next.nextCosts, [type]: buildingCost(type, level + 1) } };
+  }
   return appendOrder(next, 'CONSTRUCTION', 'BUILDING', type, 1, cost);
 }
 
@@ -342,6 +349,10 @@ export function predictInstrument(view: PlanetView, type: InstrumentId): Predict
   if (instrumentMaxed(type, level)) return null;
 
   const next = spend(view, cost);
+  // The five-minute rule, as for a building: a free queue finishes it at once.
+  if (queueOrders(view, 'CONSTRUCTION').length === 0 && orderMinutes('INSTRUMENT', cost, view) === 0) {
+    return { ...next, instruments: { ...next.instruments, [type]: level + 1 } };
+  }
   return appendOrder(next, 'CONSTRUCTION', 'INSTRUMENT', type, 1, cost);
 }
 

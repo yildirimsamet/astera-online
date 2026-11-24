@@ -12,7 +12,7 @@ import { canPayDart, timeToAfford } from '../steps.js';
 import { useAdviceMemory } from './adviceMemory.js';
 import { useRockSheet } from './rockSheet.js';
 import { useTargetSheet } from './targetSheet.js';
-import { sceneToCome, scenePlayedFor, useDirector, useSceneToCome } from '../director/director.js';
+import { directorNow, sceneToCome, scenePlayedFor, useDirector, useSceneToCome } from '../director/director.js';
 import { JUMP_SCENE, announcedByScene, sceneAnnouncing } from '../director/scenes.js';
 import { useLandingSheet } from './landingSheet.js';
 import { useMigration } from '../queries.js';
@@ -146,6 +146,7 @@ export function useStarterTutorial(view: TutorialView): StarterTutorial | null {
     noRocks: mining.fieldData?.asteroids.length === 0,
     rockShown: scenePlayedFor(vessel.id, 'rock'),
     jumpWaiting: sceneToCome(vessel.id, JUMP_SCENE),
+    jumpPlaying: directorNow()?.vesselId === vessel.id && directorNow()?.scene.id === JUMP_SCENE,
     ...(jumpBlock ? { jumpBlock } : {}),
     landing,
     acked: list,

@@ -21,7 +21,7 @@ export const unknownSignal = {
   "build": "{{ship}} üret",
   "needsShipyard": "Kurye için Tersane seviye 1 gerekir.",
   "origin": "Kalkış gezegeni",
-  "oneWay": "Tek yön",
+  "oneWay": "Tek yön · 4× hız",
   "roundTrip": "Gidiş-dönüş",
   "fuel": "Yakıt",
   "odds": "Olası sonuçlar",

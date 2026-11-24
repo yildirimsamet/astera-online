@@ -70,7 +70,11 @@ export function useMarkArrivalSeen() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () => api.markArrivalSeen(),
-    onSuccess: () => { void client.invalidateQueries({ queryKey: keys.arrival }); },
+    onMutate: () => {
+      client.setQueryData(keys.arrival, (old: { arrival: unknown; landedAt: Date | null } | undefined) =>
+        old ? { ...old, arrival: null } : old);
+    },
+    onSettled: () => { void client.invalidateQueries({ queryKey: keys.arrival }); },
   });
 }
 

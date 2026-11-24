@@ -18,7 +18,7 @@ import {
   type QueryClient,
   type UseMutationOptions,
 } from '@tanstack/react-query';
-import { TRAFFIC, engagementEndsAt } from '@astera/rules';
+import { TRAFFIC, engagementEndsAt, isScenarioActive } from '@astera/rules';
 import type { ChatLanguage, MissionPace, ReactionEmoji, TransferReturnPlan, WorldBody } from '@astera/rules';
 import type {
   Fleet,
@@ -50,7 +50,7 @@ import type {
   SeasonInfo,
   notificationsSchema,
   FeedbackKind,
-  ClanWar, GalaxyView } from './schemas.js';
+  ClanWar, GalaxyView, NewcomerScenario } from './schemas.js';
 import type { ClanAidInput, FlightRecallInput, IntergalacticConvoyLaunchInput, MonumentRecallSelection, MonumentSendInput } from './client.js';
 import { useApi } from './context.js';
 import { keys } from './keys.js';
@@ -795,6 +795,10 @@ export function useOpenWelcome() {
     onSuccess: (result) => {
       client.setQueryData(keys.welcome, { welcome: result.welcome });
       void client.invalidateQueries({ queryKey: keys.planet });
+      if (result.granted.cosmeticId) {
+        void client.invalidateQueries({ queryKey: keys.skins });
+        void client.invalidateQueries({ queryKey: keys.galaxy });
+      }
     },
   });
 }
@@ -873,6 +877,36 @@ export function useUnknownSignalActions() {
 export function useUnknownSignalDetail(id: string | null, enabled = true) {
   const api = useApi();
   return useQuery({ queryKey: [...keys.unknownSignals, id], queryFn: ({ signal }) => api.unknownSignal(id!, { signal }), enabled: enabled && id !== null, ...READ });
+}
+
+export function useNewcomerScenario(enabled = true) {
+  const api = useApi();
+  return useQuery({
+    queryKey: keys.newcomerScenario,
+    queryFn: ({ signal }) => api.newcomerScenario({ signal }),
+    enabled,
+    ...READ,
+    // A finished or absent task list never changes again: only a live one is polled (review 2026-11-23).
+    refetchInterval: (query) => {
+      const step = query.state.data?.scenario?.step;
+      return step !== undefined && isScenarioActive(step) ? safetyNetMs() : false;
+    },
+  });
+}
+
+export function useNewcomerScenarioActions() {
+  const api = useApi();
+  const client = useQueryClient();
+  const apply = (data: { scenario: NewcomerScenario | null }) => {
+    client.setQueryData(keys.newcomerScenario, data);
+    void refreshQueries(client, { queryKey: keys.pirates });
+    void refreshQueries(client, { queryKey: keys.traffic });
+  };
+  return {
+    start: useMutation({ mutationFn: () => api.startNewcomerScenario(), onSuccess: apply }),
+    complete: useMutation({ mutationFn: () => api.completeNewcomerScenario(), onSuccess: apply }),
+    dismiss: useMutation({ mutationFn: () => api.dismissNewcomerScenario(), onSuccess: apply }),
+  };
 }
 
 export function useMonumentActions() {
@@ -1992,6 +2026,8 @@ export function useUpgrade() {
       rollback(context);
     },
     onSuccess: async (result) => {
+      // The five-minute rule finished it in this answer (owner, 2026-11-20): the building rises now.
+      if ((result.planet.buildings[result.type] ?? 0) >= result.level) { playSound('confirm'); haptic('commit'); }
       await apply(result.planet);
       // The ladder because Wealth moved. The order only joined a queue: the galaxy
       // moves when it completes, and `build_complete` reads it then.
@@ -2165,6 +2201,8 @@ export function useRaiseInstrument() {
     },
     // A new Telescope level changes what every reading is allowed to say.
     onSuccess: async (result) => {
+      // The five-minute rule finished it in this answer, as for a building.
+      if ((result.planet.instruments[result.type] ?? 0) >= result.level) { playSound('confirm'); haptic('commit'); }
       await apply(result.planet);
       invalidate(keys.intel, keys.galaxy, keys.leaderboard);
     },

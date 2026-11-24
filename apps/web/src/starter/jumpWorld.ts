@@ -41,7 +41,7 @@ export function pressedWorld({ ordinal, berth, landing, planetId, starter, main 
   const centre = starterGalaxyCentre(ordinal);
   const here = starter.map(planet => ({ ...planet, position: moved(planet.position, centre) }));
   const [destination] = planetNodes([galaxySchema.shape.planets.element.parse({
-    id: planetId, position: landing, intel: 'UNKNOWN', isSelf: false, isOwned: false, state: { kind: 'NORMAL' },
+    id: planetId, position: landing, intel: 'RESOLVED', isSelf: true, isOwned: true, state: { kind: 'NORMAL' },
   })]);
   const others = main.filter(point => Math.hypot(point.x - landing.x, point.y - landing.y, point.z - landing.z) >= SAME_PLACE);
   return {
@@ -59,7 +59,7 @@ export function pressedWorld({ ordinal, berth, landing, planetId, starter, main 
 export function landedWorld(planets: readonly GalaxyPlanet[], ordinal: number, berth: Vec3 | null = null): JumpWorld | null {
   const home = planets.find(planet => planet.isSelf);
   if (!home) return null;
-  const worlds = planetNodes(planets);
+  const worlds = planetNodes(planets.map(planet => (planet.id === home.id ? { ...planet, intel: 'RESOLVED' as const } : planet)));
   return {
     from: toWorld(moved(berth ?? { x: 0, y: 0, z: 0 }, starterGalaxyCentre(ordinal))),
     planet: toWorld(home.position),

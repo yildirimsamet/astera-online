@@ -70,6 +70,8 @@ const EVERY_KIND = [
   'unlock',
   'unknown_signal_result',
   'defence_posture_reset',
+  'newcomer_hour_ending',
+  'newcomer_hour_summary',
 ] as const;
 
 /**
@@ -145,6 +147,8 @@ const PAYLOAD: Record<(typeof EVERY_KIND)[number], Record<string, unknown>> = {
   strategic_intercepted: { defended: true, range: 1300 },
   target_gone: { targetKind: 'PIRATE', callsign: 'BLACKJAW', level: 3, ships: 40 },
   unlock: { unlock: 'RADAR', title: 'Radar unlocked', body: 'Catches anyone looking.' },
+  newcomer_hour_ending: { until: '2026-08-26T12:10:00.000Z' },
+  newcomer_hour_summary: { alloy: 840, crystal: 310, builds: 4 },
 };
 
 const notification = (kind: (typeof EVERY_KIND)[number]): NotificationView => ({

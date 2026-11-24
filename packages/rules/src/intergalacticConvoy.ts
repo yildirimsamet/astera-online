@@ -342,6 +342,7 @@ export function interceptIntergalacticConvoy(input: {
     'appearsAt' | 'expiresAt' | 'from' | 'to' | 'velocity'
   >;
   readonly departAtMinute: number;
+  /** Normal fleet speed, including research/Beacon, before the convoy-only multiplier. */
   readonly fleetUnitsPerMinute: number;
 }): IntergalacticConvoyIntercept | null {
   if (!Number.isFinite(input.departAtMinute)
@@ -357,7 +358,7 @@ export function interceptIntergalacticConvoy(input: {
     origin: input.origin,
     targetAtQuoteTime: targetAtDeparture,
     targetVelocity: input.spec.velocity,
-    fleetUnitsPerMinute: input.fleetUnitsPerMinute,
+    fleetUnitsPerMinute: input.fleetUnitsPerMinute * INTERGALACTIC_CONVOY.outboundSpeedMultiplier,
     minMeetMinute: 0,
     maxMeetMinute: latestMeetAfterDeparture,
   });

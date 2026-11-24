@@ -218,7 +218,7 @@ async function inboundArrival(tx: Tx, refId: string): Promise<Date | null> {
 
 /* ── sending ───────────────────────────────────────────────────────── */
 
-export interface PushMessage { kind: PaidAlertKind | 'raid_over' | 'raided' | 'system_open' | 'shield_falling' | 'repair_done' | 'miner_home' | 'repair_funded' | 'while_away'; title: string; body: string; data: Record<string, string> }
+export interface PushMessage { kind: PaidAlertKind | 'raid_over' | 'raided' | 'system_open' | 'shield_falling' | 'repair_done' | 'miner_home' | 'repair_funded' | 'while_away' | 'newcomer_hour_ending'; title: string; body: string; data: Record<string, string> }
 export interface PushTransport {
   /** `accepted` counts the phones the provider took the message for. */
   send(tokens: string[], message: PushMessage): Promise<{ invalid: string[]; accepted: number }>;
@@ -330,10 +330,11 @@ export async function settlePaidAlert(db: Db, clock: Clock, alertId: string): Pr
  * One message per language on these phones, and a token the provider has given up on is
  * forgotten. Answers how many phones the provider took it for.
  */
-export async function sendPush(db: Db, devices: readonly { token: string; locale: Locale }[], write: (locale: Locale) => PushMessage, now = new Date(), options: { paid?: boolean } = {}): Promise<number> {
+export async function sendPush(db: Db, devices: readonly { token: string; locale: Locale }[], write: (locale: Locale) => PushMessage, now = new Date(), options: { paid?: boolean; nowOrNever?: boolean } = {}): Promise<number> {
   if (!transport) return 0;
   const byLocale = new Map<Locale, string[]>();
-  const ready = options.paid ? devices : await deferQuietPushes(db, devices, write, now);
+  // `nowOrNever`: news whose moment passes (Kuruluş Saati's last ten minutes) is dropped in quiet hours, not kept for the morning.
+  const ready = options.paid ? devices : await deferQuietPushes(db, devices, write, now, options.nowOrNever === true);
   for (const device of ready) byLocale.set(device.locale, [...(byLocale.get(device.locale) ?? []), device.token]);
   let accepted = 0;
   for (const [locale, tokens] of byLocale) {

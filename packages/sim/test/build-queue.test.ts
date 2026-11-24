@@ -11,6 +11,30 @@ import {
 const cost = (alloy = 10, crystal = 0, deuterium = 0) => ({ alloy, crystal, deuterium });
 
 describe('the simulator build queue mirror', () => {
+  // The five-minute rule, as the server places it (owner, 2026-11-20): done now on a free queue, else a second behind.
+  it('finishes an instant order on a free queue at once and a second behind an order ahead', () => {
+    const world = buildWorld({ players: 1, days: 1, seed: 42 });
+    const player = world.players[0]!;
+    player.alloy = 10_000;
+    const vault = player.buildings.VAULT;
+
+    expect(enqueueSimBuild(player, 0, world, {
+      queue: 'CONSTRUCTION', kind: 'BUILDING', subject: 'VAULT', count: 1, cost: cost(), minutes: 0,
+    })).toBe(true);
+    expect(player.buildings.VAULT).toBe(vault + 1);
+    expect(player.queues.CONSTRUCTION).toHaveLength(0);
+    expect(player.alloy).toBe(9_990);
+
+    enqueueSimBuild(player, 0, world, {
+      queue: 'CONSTRUCTION', kind: 'BUILDING', subject: 'CORE', count: 1, cost: cost(), minutes: 10,
+    });
+    enqueueSimBuild(player, 0, world, {
+      queue: 'CONSTRUCTION', kind: 'BUILDING', subject: 'VAULT', count: 1, cost: cost(), minutes: 0,
+    });
+    expect(player.queues.CONSTRUCTION.map((order) => order.readyAt)).toEqual([10, 10 + 1 / 60]);
+    expect(player.buildings.VAULT).toBe(vault + 1);
+  });
+
   it('runs commander Research independently from Construction and Yard', () => {
     const world = buildWorld({ players: 1, days: 1, seed: 40 });
     const player = world.players[0]!;

@@ -94,6 +94,7 @@ import { QUALITY_PRESETS, useRenderQuality } from '../lib/quality.js';
 import { useScaledDprCap } from '../lib/uiScale.js';
 import { Wrecks, wreckPosition, type WreckView } from './Wrecks.js';
 import { Asteroids } from './Asteroids.jsx';
+import { FurnaceOverloadFx } from './FurnaceOverloadFx.js';
 import { TradeShip, TRADE_SHIP_SCALE } from './TradeShip.jsx';
 import type { TradeShipEvent } from '../lib/trade.js';
 import {
@@ -267,6 +268,8 @@ export interface GalaxyCanvasProps {
     /** Bays with a short repair under way, and what each repairs: they weld in its colours. */
     working?: readonly { system: VesselSystem; module: VesselModule }[] };
   unknownSignals?: readonly UnknownSignalView[];
+  /** Kuruluş Saati (plan §4 An 1): capital refinery furnace burns in 5x overload. */
+  furnaceOverload?: boolean;
   /** F2 Klan Alarmı: clanmate worlds under a raid still in the air, from the reader's bell. */
   clanAlarms?: readonly ActiveClanAlarm[];
   unknownSignalRadar?: { capitalPlanetId: string; at: { x: number; y: number; z: number }; range: number };
@@ -478,6 +481,7 @@ export function GalaxyCanvas({
   moonHops,
   moonBuildPlanetIds,
   unknownSignals = EMPTY_UNKNOWN_SIGNALS,
+  furnaceOverload = false,
   clanAlarms = NO_CLAN_ALARMS,
   unknownSignalRadar,
   showTelescopeReach = false,
@@ -1101,6 +1105,11 @@ export function GalaxyCanvas({
         {clanAlarms.length > 0 && <AlarmRings nodes={nodes} alarms={clanAlarms} />}
         {unknownSignals.length > 0 && <UnknownSignals signals={unknownSignals} focusedId={focus?.kind === 'unknownSignal' ? focus.id : null}
           onSelect={id => { onFocus({ kind: 'unknownSignal', id }); }} />}
+        {furnaceOverload && (
+          <Suspense fallback={null}>
+            <FurnaceOverloadFx position={home} radius={nodes.find((n) => n.id === activePlanetId)?.radius ?? 0.6} active />
+          </Suspense>
+        )}
         <UnknownSignalGuideTracker signals={unknownSignals} element={signalGuide} />
         <OutpostGuideTracker nodes={nodes} elements={outpostFlags} locks={outpostLocks} focusedId={selectedId} />
         {unknownSignalRadar && <SensorRings posts={[{ planetId: unknownSignalRadar.capitalPlanetId, at: unknownSignalRadar.at,

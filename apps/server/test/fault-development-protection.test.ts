@@ -43,9 +43,11 @@ describe('colony-local twelve-hour protection from accepted building orders', ()
   });
 
   it('publishes the deadline immediately, before construction finishes', async () => {
+    // A rung long enough to wait: the five-minute rule finishes Refinery 2 at once (owner, 2026-11-20).
+    await setLevel(f.db, colony, 'REFINERY', 3);
     const result = await start();
     expect(result.planet).toMatchObject({ faultProtectedUntil: new Date(started.getTime() + 12 * HOURS) });
-    expect(result.planet.buildings.REFINERY).toBe(1);
+    expect(result.planet.buildings.REFINERY).toBe(3);
   });
 
   it.each(BUILDING_IDS)('%s orders qualify as building development', async type => {
@@ -65,6 +67,8 @@ describe('colony-local twelve-hour protection from accepted building orders', ()
   });
 
   it('keeps the earned protection after cancellation', async () => {
+    // Only an order still under way can be cancelled; Refinery 2 would finish at once.
+    await setLevel(f.db, colony, 'REFINERY', 3);
     const result = await start();
     const order = result.planet.queues.CONSTRUCTION[0]!;
     await cancelBuildOrder(f.db, colony, order.id, f.clock, f.playerIds[0]);

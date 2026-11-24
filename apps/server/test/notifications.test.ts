@@ -818,6 +818,9 @@ describe('the kinds of news the server can send', () => {
       'monument_returning',
       // Ay F4: a moon's gate charged again. The client copy and route arrive with the gate screen (F9, V46).
       'moon_gate_ready',
+      // Kuruluş Saati (plan 2026-11-20 §4): ten minutes left, and the hour's sum.
+      'newcomer_hour_ending',
+      'newcomer_hour_summary',
       'probe_report',
       'radiation_bomb_result',
       // Radyasyon (plan F9): ships a cloud finished; the client routes it to the fleet board.

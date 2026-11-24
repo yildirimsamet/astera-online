@@ -558,6 +558,20 @@ export async function setLevel(
 }
 
 /**
+ * A WORLD WHOSE NEXT RUNGS TAKE TIME. Since the five-minute rule (owner, 2026-11-20) a seeded world's
+ * first rungs finish in the answer that ordered them, and a test about a queue needs orders that wait.
+ * Core 3 → 4 and Refinery 3 → 4 are both over five minutes. The purse is written straight into the row:
+ * `grant` raises the producers and the Core to hold what it hands out.
+ */
+export async function rungsThatTakeTime(db: Db, planetId: string): Promise<void> {
+  const { planets } = await import('../src/db/schema.js');
+  const { eq } = await import('drizzle-orm');
+  await setLevel(db, planetId, 'CORE', 3);
+  await setLevel(db, planetId, 'REFINERY', 3);
+  await db.update(planets).set({ alloy: 200_000, crystal: 200_000, deuterium: 10_000 }).where(eq(planets.id, planetId));
+}
+
+/**
  * Install one thing on a planet directly, for arranging a test's preconditions.
  *
  * D25 split installed hardware in two: ground INSTRUMENTS carry a level, orbit

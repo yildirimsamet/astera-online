@@ -90,6 +90,8 @@ describe('commander vacation', () => {
     const playerId = f.playerIds[0]!;
     await f.db.update(planets).set({ alloy: 5000, crystal: 5000, deuterium: 10000 });
     await setLevel(f.db, id, 'CORE', 4);
+    // Refinery 2 → 3 is over five minutes: a shorter rung would finish at once (owner, 2026-11-20).
+    await setLevel(f.db, id, 'REFINERY', 2);
     await upgradeBuilding(f.db, id, 'REFINERY', f.clock);
     const q = await vacationStatus(f.db, playerId, f.clock);
     const [order] = await f.db.select().from(buildOrders);
@@ -241,6 +243,8 @@ describe('commander vacation', () => {
     const id = f.planetIds[0]!;
     const playerId = f.playerIds[0]!;
     await setLevel(f.db, id, 'CORE', 4);
+    // Refinery 2 → 3 is over five minutes: a shorter rung would finish at once (owner, 2026-11-20).
+    await setLevel(f.db, id, 'REFINERY', 2);
     await f.db.update(planets).set({ alloy: 5000, crystal: 5000, deuterium: 1, bufferDeuterium: 5000 }).where(eq(planets.id, id));
     await upgradeBuilding(f.db, id, 'REFINERY', f.clock);
     const [order] = await f.db.select().from(buildOrders);

@@ -53,7 +53,6 @@ export function BrandQuiz({ result, message, pending, reward, onAnswer, onClose 
         })}</div>
         {message && <Banner tone="warn" role="alert" title={t(message === 'wrong' ? 'brand.wrong' : 'brand.requestFailed')} />}
         {pending && <p role="status" className="gk-note">{t('brand.waiting')}</p>}
-        <GameButton tone="ghost" disabledReason={pending ? t('brand.waiting') : null} onPress={() => { onAnswer(null); }}>{t('brand.skip')}</GameButton>
       </>}
     </div>
   </Sheet>;

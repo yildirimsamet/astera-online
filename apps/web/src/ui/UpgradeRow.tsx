@@ -113,6 +113,13 @@ function CardEffect({ gain }: { gain: Gain }) {
 export function CardTime({ minutes }: { minutes: number }) {
   const { t } = useTranslation();
   const spoken = useOrderDuration(minutes);
+  // The five-minute rule says itself where the time would be (owner, 2026-11-20).
+  if (minutes === 0) return (
+    <span data-testid="order-time" className="gk-cost__time" aria-label={t('upgradeRow.instantLabel')}>
+      <Glyph id="clock" />
+      {t('upgradeRow.instant')}
+    </span>
+  );
   return (
     <span data-testid="order-time" className="gk-cost__time" aria-label={t('upgradeRow.takesLabel', { duration: spoken })}>
       <Glyph id="clock" />

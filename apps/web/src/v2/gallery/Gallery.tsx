@@ -8,7 +8,7 @@ import { CosmeticTrialGallery } from './CosmeticTrialGallery.jsx';
 import { StoreDiscoveryGallery } from './StoreDiscoveryGallery.js';
 import { PlanetSelectionGallery } from './PlanetSelectionGallery.jsx';
 import { CosmeticPreview } from '../../screens/CosmeticPreview.jsx';
-import { cosmeticById, groundSlots, hangarCapacity, hullBulk, RESEARCH_PROJECTS, type HullId } from '@astera/rules';
+import { cosmeticById, GALAXY, groundSlots, hangarCapacity, hullBulk, INTERGALACTIC_CONVOY, RESEARCH_PROJECTS, type HullId } from '@astera/rules';
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
@@ -104,7 +104,7 @@ import { LandingRewards } from '../../starter/LandingRewards.js';
 import { SkinInventoryContent } from '../../screens/SkinInventoryScreen.js';
 import AdminPanel from '../../screens/AdminPanel.js';
 import { PLANET_SKIN_CATALOG, SKIN_COLLECTIONS } from '../../ui/skinCatalog.js';
-import { PLANET_SKIN_IDS, REWARD_CHAINS, type PlanetSkinId } from '@astera/rules';
+import { PLANET_SKIN_IDS, REWARD_CHAINS, welcomeBox, type PlanetSkinId, type WelcomeBoxReward } from '@astera/rules';
 
 /**
  * THE v2 GALLERY — every kit and HUD piece with fixture data, for the camera.
@@ -179,6 +179,7 @@ const statusLine: StatusLineProps = {
   shield: null,
   recoveryUntil: null,
   signalUntil: null,
+  newcomerUntil: null,
   vacationUntil: null,
   onWorld: noop,
   onHint: noop,
@@ -1025,9 +1026,11 @@ function GalleryMonumentFocus() {
 /** The convoy and the merchant every gallery view of them shares: one crossing, one window. */
 const GALLERY_CONVOY: IntergalacticConvoyEvent = {
   id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'INTERGALACTIC_CONVOY',
-  startsAt: new Date(NOW - 10 * MIN), endsAt: new Date(NOW + 110 * MIN),
-  appearsAtMinute: 1140, expiresAtMinute: 1260,
-  route: { from: { x: -2000, y: 0, z: 0 }, to: { x: 2000, y: 0, z: 0 }, velocity: { x: 100 / 3, y: 0, z: 0 }, speed: 100 / 3 },
+  // The live route: across the whole galaxy in the event's own window (d6b7f46d).
+  startsAt: new Date(NOW - 10 * MIN), endsAt: new Date(NOW + (INTERGALACTIC_CONVOY.durationMinutes - 10) * MIN),
+  appearsAtMinute: 1140, expiresAtMinute: 1140 + INTERGALACTIC_CONVOY.durationMinutes,
+  route: { from: { x: -GALAXY.radius, y: 0, z: 0 }, to: { x: GALAXY.radius, y: 0, z: 0 },
+    velocity: { x: 2 * GALAXY.radius / INTERGALACTIC_CONVOY.durationMinutes, y: 0, z: 0 }, speed: 2 * GALAXY.radius / INTERGALACTIC_CONVOY.durationMinutes },
   visual: { formationVersion: 1 },
   rewardPolicy: { resourceCapHours: 4, fullRewardForceRatio: 1, shipDropFullFirepower: 5780, shipDropChanceAtFullQuality: 0.15, maxAwardedShips: 3 },
 };
@@ -1190,13 +1193,14 @@ function GalleryRewards({ state }: { state: string }) {
  * `&welcome=first|ready|wait|last`: New Commander 7 Days on the reward panel and the landing's moment
  * (owner 2026-11-18): the first box on landing, the third ready, the third's wait, the big seventh.
  */
-function galleryWelcome(): { welcome: { opened: number; box: number | null; readyAt: Date | null; preview: { alloy: number; crystal: number } | null } | null } {
+function galleryWelcome(): { welcome: { opened: number; box: number | null; readyAt: Date | null; preview: WelcomeBoxReward | null } | null } {
   const at = new URLSearchParams(window.location.search).get('welcome');
   const now = Date.now();
-  if (at === 'first') return { welcome: { opened: 0, box: 1, readyAt: new Date(now - 1000), preview: { alloy: 160, crystal: 240 } } };
-  if (at === 'ready') return { welcome: { opened: 2, box: 3, readyAt: new Date(now - 1000), preview: { alloy: 380, crystal: 570 } } };
-  if (at === 'wait') return { welcome: { opened: 3, box: 4, readyAt: new Date(now + 14 * 3_600_000 + 20 * 60_000), preview: { alloy: 380, crystal: 570 } } };
-  if (at === 'last') return { welcome: { opened: 6, box: 7, readyAt: new Date(now - 1000), preview: { alloy: 1_620, crystal: 2_430 } } };
+  // What the server serves: each box's fixed reward (owner 2026-11-23).
+  if (at === 'first') return { welcome: { opened: 0, box: 1, readyAt: new Date(now - 1000), preview: welcomeBox(1) } };
+  if (at === 'ready') return { welcome: { opened: 2, box: 3, readyAt: new Date(now - 1000), preview: welcomeBox(3) } };
+  if (at === 'wait') return { welcome: { opened: 3, box: 4, readyAt: new Date(now + 14 * 3_600_000 + 20 * 60_000), preview: welcomeBox(4) } };
+  if (at === 'last') return { welcome: { opened: 6, box: 7, readyAt: new Date(now - 1000), preview: welcomeBox(7) } };
   return { welcome: null };
 }
 
@@ -1523,7 +1527,7 @@ function Views({ view }: { view: string }) {
       onClose={noop} onTrade={noop} open onToggle={noop} />;
   }
   if (view === 'focus-convoy') {
-    return <IntergalacticConvoyFocus convoy={GALLERY_CONVOY} minutesLeft={110} reachMinutes={14} hasCombatCraft launchLocked={false}
+    return <IntergalacticConvoyFocus convoy={GALLERY_CONVOY} minutesLeft={INTERGALACTIC_CONVOY.durationMinutes - 10} reachMinutes={14} hasCombatCraft launchLocked={false}
       occurrenceSpent={false} onClose={noop} onRaid={noop} open onToggle={noop} />;
   }
   if (view === 'focus-run') {
@@ -2046,6 +2050,8 @@ export function Gallery({ view }: { view: string | null }) {
         <StatusLine {...statusLine} shield={{ until: NOW + 7 * 60 * MIN, kind: 'NEWCOMER' }} />
         <StatusLine {...statusLine} world={{ capital: false, name: 'Hollow' }} shield={{ until: NOW + 50 * 60 * MIN, kind: 'RECOVERY' }} recoveryUntil={NOW + 50 * 60 * MIN} />
         <StatusLine {...statusLine} world={{ capital: true, name: 'Kestrel-12' }} signalUntil={NOW + 95 * MIN} vacationUntil={NOW + 40 * 60 * MIN} />
+        <StatusLine {...statusLine} newcomerUntil={NOW + 47 * MIN + 12_000} shield={{ until: NOW + 72 * 60 * MIN, kind: 'NEWCOMER' }} />
+        <StatusLine {...statusLine} newcomerUntil={NOW + 8 * MIN + 30_000} signalUntil={NOW + 50 * MIN} />
       </Section>
 
       <Section title="B2 · now line">

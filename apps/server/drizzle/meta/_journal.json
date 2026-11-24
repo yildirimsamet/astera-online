@@ -1856,6 +1856,34 @@
       "when": 1795480000000,
       "tag": "0264_season_moons_starts_at",
       "breakpoints": true
+    },
+    {
+      "idx": 265,
+      "version": "7",
+      "when": 1795499822068,
+      "tag": "0265_newcomer_hour",
+      "breakpoints": true
+    },
+    {
+      "idx": 266,
+      "version": "7",
+      "when": 1795499823068,
+      "tag": "0266_newcomer_hour_news",
+      "breakpoints": true
+    },
+    {
+      "idx": 267,
+      "version": "7",
+      "when": 1795499824068,
+      "tag": "0267_personal_rocks",
+      "breakpoints": true
+    },
+    {
+      "idx": 268,
+      "version": "7",
+      "when": 1795499825068,
+      "tag": "0268_newcomer_scenario",
+      "breakpoints": true
     }
   ]
 }

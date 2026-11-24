@@ -3,8 +3,16 @@ import { COSMETICS, type CosmeticId } from './cosmeticCatalog.js';
 import { HULLS, MOBILE_HULLS } from './hulls.js';
 import { radarContactRange } from './intel.js';
 import { seededFrom } from './rng.js';
-import { distance } from './travel.js';
-import type { MobileHullId, Resources, Rng, Vec3 } from './types.js';
+import { distance, fleetTravelExact, type FlightModifiers } from './travel.js';
+import type { Fleet, MobileHullId, Resources, Rng, Vec3 } from './types.js';
+
+/**
+ * ONE SIGNAL LEG'S TIME (owner, 2026-11-20; plan §5.4). Every signal flight — out, back, and home from a
+ * recall — moves at `UNKNOWN_SIGNAL.speedMultiplier` times the wing's pace. The server's three legs and the
+ * client's quote all read this one function.
+ */
+export const signalTravelExact = (dist: number, fleet: Fleet, mods: FlightModifiers): number =>
+  fleetTravelExact(dist, fleet, mods) / UNKNOWN_SIGNAL.speedMultiplier;
 
 export type UnknownSignalTier = typeof UNKNOWN_SIGNAL.tiers[number];
 export type UnknownSignalWarshipHull = typeof UNKNOWN_SIGNAL.warshipHulls[number];

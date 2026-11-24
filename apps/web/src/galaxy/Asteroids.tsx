@@ -110,6 +110,54 @@ export function Asteroids({
         </SkinAssetBoundary>
       ))}
       <Tails asteroids={asteroids} seasonStart={seasonStart} />
+      <PersonalRockMarkers asteroids={asteroids} seasonStart={seasonStart} />
+    </>
+  );
+}
+
+/**
+ * Plan 2026-11-20 §4 An 2 / Faz 3: a first game's personal rocks, marked in the scene and tracked along their orbit.
+ * Subtle visual hint on the two landing rocks beside the capital (playtest 2026-11-23):
+ * NO text badges or loud tags, just a very faint thin ring so a brand-new player spots a nearby
+ * asteroid without getting used to a badge that does not exist in normal play.
+ */
+function PersonalRockMarkers({ asteroids, seasonStart }: { asteroids: readonly AsteroidView[]; seasonStart: Date }) {
+  const personal = useMemo(() => asteroids.filter((a) => a.personal === true), [asteroids]);
+  const groups = useRef<Map<string, THREE.Group>>(new Map());
+
+  useFrame(() => {
+    if (personal.length === 0) return;
+    const nowMs = serverNow();
+    for (const rock of personal) {
+      const group = groups.current.get(rock.id);
+      if (!group) continue;
+      const [x, y, z] = asteroidWorldPosition(rock, seasonStart, nowMs);
+      group.position.set(x, y, z);
+    }
+  });
+  if (personal.length === 0) return null;
+  const initialMs = serverNow();
+  return (
+    <>
+      {personal.map((rock) => {
+        const [x, y, z] = asteroidWorldPosition(rock, seasonStart, initialMs);
+        const r = asteroidRadius(rock.level);
+        return (
+          <group
+            key={`personal-${rock.id}`}
+            ref={(el) => {
+              if (el) groups.current.set(rock.id, el);
+              else groups.current.delete(rock.id);
+            }}
+            position={[x, y, z]}
+          >
+            <mesh rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+              <ringGeometry args={[r * 1.38, r * 1.48, 32]} />
+              <meshBasicMaterial color="#38e8c6" transparent opacity={0.22} side={THREE.DoubleSide} depthWrite={false} />
+            </mesh>
+          </group>
+        );
+      })}
     </>
   );
 }

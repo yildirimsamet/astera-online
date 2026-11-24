@@ -145,6 +145,24 @@ it('a commander\'s own private event still reaches their entries and no one else
   expectSame(await privateView(other.accountId), there);
 });
 
+// The traffic read is served from memory (placement-cache): the onboarding pirate is too, until its scenario moves.
+it('keeps a commander\'s personal pirate warm until their own scenario event, and no one else\'s', async () => {
+  await start();
+  const [mine, theirs] = [f.playerIds[0]!, f.playerIds[1]!];
+  await projections.personalPirateFor(mine, f.seasonId);
+  await projections.personalPirateFor(theirs, f.seasonId);
+  await projections.personalPirateFor(mine, f.seasonId);
+  expect(projections.status().personalPirate).toMatchObject({ misses: 2, hits: 1, invalidations: 0 });
+
+  await publish(f.db, mine, 'private:newcomer-scenario');
+  await settle();
+
+  expect(projections.status().personalPirate).toMatchObject({ invalidations: 1 });
+  await projections.personalPirateFor(theirs, f.seasonId);
+  await projections.personalPirateFor(mine, f.seasonId);
+  expect(projections.status().personalPirate).toMatchObject({ misses: 3, hits: 2 });
+});
+
 it('a moved commander sees neither galaxy\'s old topology, even before any notification', async () => {
   await start();
   const accountId = f.accountIds[1]!;

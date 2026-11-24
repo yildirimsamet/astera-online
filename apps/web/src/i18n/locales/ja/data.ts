@@ -491,6 +491,10 @@ export const directives = {
 /** The seven kinds of news, turned into the sentences a player reads. */
 export const notifications = {
   arenaShipReady: "司令官の艦が準備できました。格納庫を開いてください。",
+  newcomerHourEnding: "創設の一時間：5倍生産の残りは{{time}}です。次の建設を今すぐ始めましょう。",
+  newcomerHourEnded: "創設の一時間が終了しました。",
+  newcomerHourSummary_one: "創設の一時間が終了：施設は合金{{alloy}}とクリスタル{{crystal}}を生産し、建設が{{count}}件完了しました。これからは通常の速度です。",
+  newcomerHourSummary_other: "創設の一時間が終了：施設は合金{{alloy}}とクリスタル{{crystal}}を生産し、建設が{{count}}件完了しました。これからは通常の速度です。",
   arenaRepairReady: "司令官の艦の修理が完了しました。格納庫を開いてください。",
   arenaServiceReady: "司令官の艦の整備が完了しました。格納庫を開いてください。",
   arenaTeamShare: "チームの取り分が用意できました：{{loot}}。格納庫で受け取ってください。",

@@ -520,6 +520,14 @@ export function Price({
  */
 export function TimeCost({ minutes }: { minutes: number }) {
   const spoken = useOrderDuration(minutes);
+  // The five-minute rule says itself where the time would be (owner, 2026-11-20).
+  if (minutes === 0) return (
+    <span data-testid="order-time" className="num inline-flex items-center gap-1 text-micro text-faint"
+      aria-label={i18n.t('upgradeRow.instantLabel')}>
+      <ClockIcon className="size-3 shrink-0" />
+      {i18n.t('upgradeRow.instant')}
+    </span>
+  );
   return (
     <span
       data-testid="order-time"

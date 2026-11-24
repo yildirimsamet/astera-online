@@ -5,9 +5,9 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as bus from '../src/stream/bus.js';
 import { forceSeasonEnd, onSeasonEnd, HANDLERS } from '../src/worker/handlers.js';
 import { startVacation, endVacation, vacationStatus } from '../src/services/vacation.js';
-import { COSMETICS, HULLS, distance, repairPct, shipHpRepairCost, rollUnknownSignalOutcome, type UnknownSignalOutcome } from '@astera/rules';
+import { COSMETICS, HULLS, distance, fleetSpeedMult, fleetTravelExact, missionFuel, repairPct, shipHpRepairCost, rollUnknownSignalOutcome, type UnknownSignalOutcome } from '@astera/rules';
 import { FixedClock } from '../src/clock.js';
-import { botProfiles, buildOrders, cosmeticEntitlements, hpRadiationSources, notifications, planets, players, scheduledEvents, seasons, shards, shipDamageLots, unknownSignals, unknownSignalState, units } from '../src/db/schema.js';
+import { accounts, botProfiles, buildOrders, cosmeticEntitlements, hpRadiationSources, notifications, planets, players, scheduledEvents, seasons, shards, shipDamageLots, unknownSignals, unknownSignalState, units } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { pendingThreads } from '../src/services/session.js';
 import {
@@ -61,6 +61,8 @@ beforeEach(async () => {
 describe('a first game\'s first signal', () => {
   const firstGame = async () => {
     const account = await registerAccount(f.db, { username: 'FirstPilot', password: 'correct-horse-battery' }, true);
+    // Guide off so the opening pirate scenario does not defer the first regular signal (plan 2026-11-20 §5.3).
+    await f.db.update(accounts).set({ starterGuideOffAt: f.clock.now() }).where(eq(accounts.id, account.id));
     return (await joinSeason(f.db, account.id, f.seasonId, f.clock)).playerId;
   };
   const spawn = async (id: string) => {
@@ -203,6 +205,45 @@ describe('unknown signal personal scheduling', () => {
     f.clock.advance(61);
     await f.db.transaction(tx => resolveUnknownSignalExpire(tx, signal.id, f.clock));
     expect((await row(signal.id)).status).toBe('outbound');
+  });
+});
+
+/*
+  Sinyal 4× (owner, 2026-11-20; plan §5.4): out, back and home from a recall at four times the wing's
+  pace, fuel unchanged. The reference is the ordinary flight time, divided here, not the rule's own helper.
+*/
+describe('a signal flight at four times the pace', () => {
+  const ordinary = async (from: { x: number; y: number; z: number }, to: { x: number; y: number; z: number }, ships: Record<string, number> = fleet) => {
+    const home = await f.db.transaction(tx => loadLocked(tx, originId, f.clock));
+    return fleetTravelExact(distance(from, to), ships, { boost: fleetSpeedMult(home.orbit), tech: {} }) * 60_000;
+  };
+  const position = async () => {
+    const [world] = await f.db.select().from(planets).where(eq(planets.id, originId));
+    return { x: world!.x, y: world!.y, z: world!.z };
+  };
+
+  it('flies out and home in a quarter of the time and burns the same fuel', async () => {
+    const signal = await nowSignal();
+    const before = await f.db.transaction(tx => loadLocked(tx, originId, f.clock));
+    await launch(signal.id);
+    const out = await row(signal.id);
+    const home = await position();
+    expect(out.arriveAt!.getTime() - out.departAt!.getTime()).toBeCloseTo(await ordinary(home, out) / 4, -1);
+    const after = await f.db.transaction(tx => loadLocked(tx, originId, f.clock));
+    expect(before.deuterium - after.deuterium).toBeCloseTo(missionFuel(fleet, distance(home, out), 2), 3);
+    await arrive(signal.id);
+    const back = await row(signal.id);
+    expect(back.returnAt!.getTime() - back.arriveAt!.getTime()).toBeCloseTo(await ordinary(back, home) / 4, -1);
+  });
+
+  it('comes home from a recall in a quarter of the time from where it turned', async () => {
+    const signal = await nowSignal();
+    await launch(signal.id);
+    const out = await row(signal.id);
+    f.clock.set(new Date((out.departAt!.getTime() + out.arriveAt!.getTime()) / 2));
+    await recallUnknownSignal(f.db, playerId, signal.id, randomUUID(), f.clock);
+    const turned = await row(signal.id);
+    expect(turned.returnAt!.getTime() - f.clock.now().getTime()).toBeCloseTo(await ordinary(turned, await position()) / 4, -1);
   });
 });
 

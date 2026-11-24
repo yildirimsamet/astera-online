@@ -10,14 +10,14 @@ const convoy: IntergalacticConvoyEvent = {
   id: '3f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d12',
   kind: 'INTERGALACTIC_CONVOY',
   startsAt: new Date(NOW - 10 * 60_000),
-  endsAt: new Date(NOW + 110 * 60_000),
+  endsAt: new Date(NOW + 170 * 60_000),
   appearsAtMinute: 420,
-  expiresAtMinute: 540,
+  expiresAtMinute: 600,
   route: {
-    from: { x: -2_000, y: 0, z: 0 },
-    to: { x: 2_000, y: 0, z: 0 },
-    velocity: { x: 100 / 3, y: 0, z: 0 },
-    speed: 100 / 3,
+    from: { x: -4500, y: 0, z: 0 },
+    to: { x: 4500, y: 0, z: 0 },
+    velocity: { x: 50, y: 0, z: 0 },
+    speed: 50,
   },
   visual: { formationVersion: 1 },
   rewardPolicy: {
@@ -100,4 +100,16 @@ describe('the Intergalactic Convoy rail', () => {
     expect(document.body).toHaveTextContent('Galaksilerarası Konvoy');
     expect(screen.getByTestId('convoy-open')).toHaveTextContent('Akın planla');
   });
+});
+
+
+it.each(['en', 'tr', 'de', 'fr', 'es', 'ja'])('explains the convoy-only speed in %s', async language => {
+  await i18n.changeLanguage(language);
+  rail();
+  expect(document.body).toHaveTextContent('2×');
+  expect(document.body).not.toHaveTextContent('{{');
+  if (language === 'en') {
+    expect(document.body).toHaveTextContent(/return.*normal speed/i);
+    expect(document.body).not.toHaveTextContent(/route radiation can damage/i);
+  }
 });

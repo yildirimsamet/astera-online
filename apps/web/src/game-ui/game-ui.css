@@ -4656,8 +4656,9 @@ button:active > .gk-sheet__grab {
 }
 
 .gk-scrim {
-  position: absolute;
+  position: fixed;
   inset: 0;
+  z-index: 70;
   display: grid;
   place-items: center;
   padding: var(--gk-s4);
@@ -16611,35 +16612,35 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-langselect:active { border-color: var(--gk-self); }
 
 /* ── G13-d (2026-11-16): the address quiz and the return card ────────────── */
-.gk-quiz { display: grid; gap: var(--gk-s3); padding: 0 var(--gk-s4) var(--gk-s4); outline: none; color: var(--gk-ink); font-family: var(--gk-font-text); }
+.gk-quiz { display: grid; gap: var(--gk-s2); padding: 0 var(--gk-s3) var(--gk-s3); outline: none; color: var(--gk-ink); font-family: var(--gk-font-text); }
 .gk-quizbrand { display: flex; align-items: center; gap: 9px; color: var(--gk-self); }
-.gk-quizbrand__sigil { display: block; width: 24px; height: 24px; }
-.gk-quizbrand__word { display: block; width: 90px; height: 15px; color: var(--gk-ink); }
+.gk-quizbrand__sigil { display: block; width: 22px; height: 22px; }
+.gk-quizbrand__word { display: block; width: 84px; height: 14px; color: var(--gk-ink); }
 .gk-quizbrand svg { display: block; width: 100%; height: 100%; }
 .gk-quizbrand > span:last-child { padding-left: 9px; border-left: 1px solid var(--gk-metal-edge); font-size: var(--gk-t-floor); font-weight: 700; letter-spacing: .2em; }
-.gk-quiz__eyebrow { margin: 0 0 calc(-1 * var(--gk-s2)); color: var(--gk-self); }
-.gk-quiz__title { margin: 0; font-size: var(--gk-t-title); line-height: 1.15; }
-.gk-quiz__done { display: flex; align-items: center; gap: var(--gk-s3); }
-.gk-quiz__mark { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 50%; color: var(--gk-self);
+.gk-quiz__eyebrow { margin: 0 0 calc(-1 * var(--gk-s1)); color: var(--gk-self); }
+.gk-quiz__title { margin: 0; font-size: var(--gk-t-lead); line-height: 1.15; }
+.gk-quiz__done { display: flex; align-items: center; gap: var(--gk-s2); }
+.gk-quiz__mark { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 50%; color: var(--gk-self);
   border: 1px solid color-mix(in srgb, var(--gk-self) 45%, var(--gk-metal-edge)); background: color-mix(in srgb, var(--gk-self) 12%, var(--gk-deep));
   box-shadow: 0 0 18px color-mix(in srgb, var(--gk-self) 35%, transparent); animation: gk-quiz-pop .5s var(--gk-pop) both; }
-.gk-quiz__mark .gk-glyph { width: 20px; height: 20px; }
+.gk-quiz__mark .gk-glyph { width: 18px; height: 18px; }
 @keyframes gk-quiz-pop { from { transform: scale(.4); opacity: 0; } }
-.gk-quiz__address { margin: 0; font: 700 var(--gk-t-lead) var(--gk-font-display); font-stretch: var(--gk-display-stretch); letter-spacing: .02em; }
+.gk-quiz__address { margin: 0; font: 700 var(--gk-t-body) var(--gk-font-display); font-stretch: var(--gk-display-stretch); letter-spacing: .02em; }
 .gk-quiz__address span, .gk-quizopt__address span, .gk-returncard__address span { color: var(--gk-self); }
-.gk-quizreward { padding: var(--gk-s2) var(--gk-s3); }
+.gk-quizreward { padding: var(--gk-s1) var(--gk-s2); }
 .gk-quizreward > .gk-label { margin: 0; }
-.gk-quizreward dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: var(--gk-s2) 0 0; }
+.gk-quizreward dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: var(--gk-s1) 0 0; }
 .gk-quizreward dl > div { text-align: center; }
 .gk-quizreward dl > div + div { border-left: 1px solid var(--gk-glass-edge); }
 .gk-quizreward dt { display: grid; justify-items: center; gap: 2px; font-size: var(--gk-t-floor); color: var(--gk-ink-2); }
-.gk-quizreward dt img { width: 29px; height: 29px; object-fit: contain; }
-.gk-quizreward dd { margin: 2px 0 0; font-size: var(--gk-t-lead); font-weight: 700; }
+.gk-quizreward dt img { width: 24px; height: 24px; object-fit: contain; }
+.gk-quizreward dd { margin: 1px 0 0; font-size: var(--gk-t-body); font-weight: 700; }
 .gk-quizreward [data-resource='alloy'] dd { color: var(--gk-alloy-hi); }
 .gk-quizreward [data-resource='crystal'] dd { color: var(--gk-crystal); }
 .gk-quizreward [data-resource='deuterium'] dd { color: var(--gk-deut); }
-.gk-quiz__choices { display: grid; gap: var(--gk-s2); }
-.gk-quizopt { display: flex; align-items: center; gap: var(--gk-s3); width: 100%; min-height: 47px; padding: 7px 11px; text-align: left; color: var(--gk-ink);
+.gk-quiz__choices { display: grid; gap: 6px; }
+.gk-quizopt { display: flex; align-items: center; gap: var(--gk-s2); width: 100%; min-height: 44px; padding: 5px 10px; text-align: left; color: var(--gk-ink);
   border: 1px solid var(--gk-metal-edge); border-radius: var(--gk-r-sm); background: linear-gradient(180deg, var(--gk-metal-1), var(--gk-metal-2));
   box-shadow: inset 0 1px 0 var(--gk-metal-hi); transition: border-color var(--gk-quick) var(--gk-ease), transform var(--gk-quick) var(--gk-pop); }
 .gk-quizopt:active:not(:disabled) { transform: scale(.98); }
@@ -17449,6 +17450,28 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+/* Progressive HUD reveal during landing modal (-1) and MainHudTour steps (0..3). */
+html[data-hud-stage="-1"] [data-hud-badges] {
+  opacity: 0;
+  pointer-events: none;
+}
+html[data-hud-stage="-1"] [data-dock],
+html[data-hud-stage="0"] [data-dock],
+html[data-hud-stage="1"] [data-dock],
+html[data-hud-stage="2"] [data-dock] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+[data-testid="newcomer-scenario"] .gk-ccard {
+  grid-template-areas: "head head head" ". title actions" ". body body";
+}
+[data-testid="newcomer-scenario"] .gk-ccard__body {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.38;
+}
 .gk-ccard .gk-btn--sm { min-height: 31px; padding-inline: var(--gk-s2); font-size: var(--gk-t-small); }
 .gk-ccard .gk-btn--sm .gk-glyph { width: 14px; height: 14px; }
 .gk-crow { padding: 3px 0; }
@@ -17676,14 +17699,37 @@ html:lang(ja) .gk-cosmo__catname { word-break: keep-all; }
 .gk-pod { overflow: visible; overflow-x: clip; }
 .gk-rewards__pod .gk-pod { justify-self: stretch; }
 .gk-rewards__podname {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 4px var(--gk-s3);
-  text-align: center;
+  justify-self: stretch;
+  display: grid;
+  gap: 6px;
+  padding: 9px 13px;
+  margin-bottom: 4px;
 }
-.gk-rewards__podname .gk-label { color: var(--gk-ink); }
+.gk-rewards__podrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gk-s3);
+}
+.gk-rewards__podkey {
+  color: var(--gk-ink-2);
+  flex: none;
+}
+.gk-rewards__podval {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--gk-t-body);
+  font-weight: 700;
+  color: var(--gk-ink);
+  text-align: right;
+}
+.gk-rewards__podval .gk-glyph {
+  width: 15px;
+  height: 15px;
+  color: var(--gk-self);
+  flex: none;
+}
 
 /* ── the monument sheet (owner 2026-11-17): the monument beside its facts, three pages, the flight on four plates ── */
 .gk-mon__facts {

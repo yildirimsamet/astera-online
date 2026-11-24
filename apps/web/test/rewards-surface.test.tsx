@@ -524,15 +524,18 @@ describe('the reward panel on the kit', () => {
 
   // E5 (owner review 2026-11-16, items 13–14): the pod said only "Open the pod" — not which reward it
   // held — and a claim set every other Claim spinning as if they were all being taken.
-  it('names on the pod which reward it holds and what is inside, before it opens', async () => {
+  it('names on a card above the pod which task and reward it holds, before it opens', async () => {
     const { wrapper: Wrapper, queries } = harness();
     queries.setQueryData(['rewards'], rewards([probeChain(3, ['claimable', 'claimable', 'locked'])], 2));
     render(<Wrapper><RewardsScreen commander="Vantage" /></Wrapper>);
-    await screen.findByRole('button', { name: 'Open the pod' });
+    const openBtn = await screen.findByRole('button', { name: 'Open the pod' });
     const caption = document.querySelector<HTMLElement>('[data-pod-reward]')!;
+    expect(caption).toHaveTextContent('Task:');
     expect(caption).toHaveTextContent('Probes sent');
+    expect(caption).toHaveTextContent('Reward:');
     expect(caption).toHaveTextContent('200');
     expect(caption).toHaveTextContent('70');
+    expect(caption.compareDocumentPosition(openBtn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('spins only the claim being taken; the others rest, not loading', async () => {

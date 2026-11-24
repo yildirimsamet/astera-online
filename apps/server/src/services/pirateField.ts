@@ -22,6 +22,7 @@ import { pirateState, seasons } from '../db/schema.js';
 import { applySpawnGate } from './spawnGateRead.js';
 import type { Queryable } from '../db/client.js';
 import { loadPirateHour, loadPirateHours } from './asteroidSpawn.js';
+import { personalPirateAt } from './newcomerScenario.js';
 
 /**
  * THE SEASON'S PIRATE LANE, KEYED BY A SECRET THAT NEVER CROSSES THE API. D150.
@@ -151,6 +152,7 @@ export async function pirateSpecAt(
   seasonId: string,
   index: number,
 ): Promise<PirateSpec | undefined> {
+  if (index < 0) return personalPirateAt(db, seasonId, index);
   const [season] = await db.select().from(seasons).where(eq(seasons.id, seasonId));
   if (!season) return undefined;
   const hourOrdinal = dynamicPirateHourOf(index);

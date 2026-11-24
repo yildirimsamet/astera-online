@@ -15,6 +15,7 @@ import {
   projectVisibleDebris,
 } from '../services/mining.js';
 import { projectPlayerAsteroidField } from '../services/asteroidField.js';
+import { personalRockViews } from '../services/personalRocks.js';
 import { requireAuth } from './auth.js';
 import { ownedPlanet } from '../services/ownership.js';
 import type { Queryable } from '../db/client.js';
@@ -161,8 +162,11 @@ export function registerMiningRoutes(app: FastifyInstance): void {
       now,
       revealIsotopes,
     );
+    // The commander's own rocks (plan 2026-11-20 §5.2), outside the shared snapshot and its cache.
+    const own = await personalRockViews(app.db, { seasonId, playerId, asteroidKey: snapshot.asteroidKey,
+      seasonStartsAt: snapshot.startsAt, now });
     return {
-      asteroids: field.asteroids.map((asteroid) => ({
+      asteroids: [...field.asteroids.map((asteroid) => ({
         id: asteroid.id,
         level: asteroid.level,
         ore: asteroid.ore,
@@ -181,7 +185,7 @@ export function registerMiningRoutes(app: FastifyInstance): void {
         deuteriumShare: asteroid.deuteriumShare === null
           ? null
           : Math.round(asteroid.deuteriumShare * 100) / 100,
-      })),
+      })), ...own],
       debris: projectVisibleDebris(snapshot, now).map((field) => ({
         id: field.id,
         /** NULL when the battle happened in open space — a pirate fight. D150. */

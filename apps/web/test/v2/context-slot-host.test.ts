@@ -33,7 +33,8 @@ describe('the galaxy host', () => {
   it('keeps the slot out of the Academy and the rehearsal', () => {
     expect(source).toMatch(/const slotShown = showGuidance && Boolean\(planet\.data\) && panel === null/);
     expect(source).toMatch(/bottomSurface\(\{[^\n]*context: slotShown/);
-    expect(source).toMatch(/\{slotShown && planet\.data && season\.data && \(\s*<ContextSlot/);
+    // The opening HUD tour holds the slot until its dock step (playtest 2026-11-23).
+    expect(source).toMatch(/\{slotShown && hudStage >= 3 && planet\.data && season\.data && \(\s*<ContextSlot/);
     expect(source).toMatch(/selected=\{slotSelected\}/);
   });
 });
@@ -82,7 +83,7 @@ describe('the galaxy corners (owner, 2026-09-24)', () => {
 
   /** Owner, 2026-09-24: low on the right, riding the slot's corner, opening chat's own page. */
   it('opens chat from low on the right, above the slot, and never in the rehearsal', () => {
-    expect(source).toMatch(/const chatButton = showGuidance && showChat && gate\.open\('chat'\)\s*\?\s*<ChatChip[\s\S]*?onPanel\('chat'\)/);
+    expect(source).toMatch(/const chatButton = showGuidance && showChat && gate\.open\('chat'\) && hudStage >= 3\s*\?\s*<div data-hud-tour="dock"><ChatChip[\s\S]*?onPanel\('chat'\)/);
   });
 
   /** Owner 2026-11-14: "Zil butonunu galaksi ekranında sağ alttaki chat butonunun soluna taşısak". */

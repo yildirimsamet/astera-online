@@ -2226,6 +2226,9 @@ describe('every payload the client parses', () => {
    */
   it('answers every mutation with exactly what GET /api/planet would say', async () => {
     f.clock.advance(42 * 60);
+    // A Vault rung long enough to queue, so a cancel has an order to answer; the Radar's first rung is
+    // under five minutes and finishes in its answer (owner, 2026-11-20) — both answers are checked.
+    await setLevel(f.db, f.planetIds[0]!, 'VAULT', 5);
     const cases: { url: string; body: Record<string, unknown> }[] = [
       { url: '/api/planet/upgrade', body: { type: 'VAULT' } },
       { url: '/api/planet/build', body: { hull: 'DART', count: 1 } },

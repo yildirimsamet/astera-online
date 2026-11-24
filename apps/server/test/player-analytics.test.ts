@@ -5,7 +5,7 @@ import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { players } from '../src/db/schema.js';
-import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
+import { rungsThatTakeTime, seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 import { purgeAnalytics } from '../src/services/playerAnalytics.js';
 import * as dailyAnalytics from '../src/services/analyticsDaily.js';
 
@@ -142,6 +142,8 @@ describe('first-party analytics isolation', () => {
     expect((await app.inject({ method: 'POST', url: '/api/analytics/events', headers, payload: { events: [event()] } })).statusCode).toBe(200);
     const { accounts, buildOrders } = await import('../src/db/schema.js');
     const { upgradeBuilding } = await import('../src/services/build.js');
+    // An order that waits: the five-minute rule would finish a seeded world's first Core rung at once.
+    await rungsThatTakeTime(f.db, f.planetIds[1]!);
     await upgradeBuilding(f.db, f.planetIds[1]!, 'CORE', f.clock);
     // A surviving order on somebody else's world keeps its original actor snapshot after control changes.
     await f.db.update(buildOrders).set({ actorAccountId: f.accountIds[0]!, actorPlayerId: f.playerIds[0]!,

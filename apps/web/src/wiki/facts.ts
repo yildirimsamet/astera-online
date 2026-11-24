@@ -1,4 +1,5 @@
 import {
+  INSTANT_BUILD,
   combatOutcomeTable,
   LOW_TIER_PVP_BALANCE, STANDARD_PVP_BALANCE,
   ABUSE, ANTI_STRATEGIC, BUILD, BUILDING_IDS, COMBAT, CORE_TOP_LEVEL, DEATH_STAR, DEUTERIUM, FIRST_SEASON_START,
@@ -24,6 +25,10 @@ export const number = (value: number, language: WikiLanguage): string => new Int
 const hours = (value: number, language: WikiLanguage): string => `${number(value, language)} ${language === 'en' ? 'h' : 'sa'}`;
 const percent = (value: number, language: WikiLanguage): string => language === 'tr' ? `%${number(value * 100, language)}` : `${number(value * 100, language)}%`;
 const label = (language: WikiLanguage, en: string, tr: string): string => language === 'en' ? en : tr;
+/** The five-minute rule beside every upgrade table (owner, 2026-11-20): the minutes are the base clock. */
+const instantNote = (language: WikiLanguage) => ({ kind: 'note' as const, text: label(language,
+  `An upgrade whose time is ${String(INSTANT_BUILD.maxMinutes)} minutes or less finishes instantly.`,
+  `Süresi ${String(INSTANT_BUILD.maxMinutes)} dakika veya daha kısa olan yükseltme anında biter.`) });
 /** F2: the perk a clan rung opens, named as the clan screen's banner names it. */
 function perkName(rung: ClanPerkRung | undefined, language: WikiLanguage): string {
   if (!rung) return '';
@@ -106,7 +111,7 @@ export function subjectReference(subject: WikiSubject, language: WikiLanguage): 
       blocks = [{ kind: 'note', text: words.priceNote }, table(label(language, 'Upgrade reference levels', 'Yükseltme referans seviyeleri'),
         [level, ...resourceColumns(language), ...(id === 'CORE' ? [label(language, 'Flight bays', 'Uçuş rampaları'), label(language, 'Orbit slots', 'Yörünge yuvaları'), label(language, 'Ground-defence capacity', 'Yer savunması kapasitesi')] : [effectName]), label(language, 'Base build minutes', 'Temel kurulum dakikası')],
         Array.from({ length: max }, (_, index) => { const rung = index + 1; return [n(rung), ...costCells(buildingCost(id, rung - 1), language), ...(id === 'CORE' ? [n(flightSlots(rung)), n(satelliteSlots(rung)), n(groundSlots(rung))] : [effect(rung)]), n(buildingMinutes(id, rung, {}))]; })),
-        { kind: 'note', text: label(language, 'The table shows reference levels, not a universal building cap. The Hangar has its own fixed top; other local buildings obey the Core, and Deuterium Refinery also obeys Synthesis. Production rows exclude satellites and temporary effects.', 'Tablo referans seviyelerini gösterir; tüm binalara ortak tavan değildir. Hangarın sabit kendi tavanı vardır; diğer yerel binalar Çekirdeğe, Döteryum Rafinerisi ayrıca Senteze bağlıdır. Üretim satırları uydu ve geçici etki içermez.') }];
+        { kind: 'note', text: label(language, 'The table shows reference levels, not a universal building cap. The Hangar has its own fixed top; other local buildings obey the Core, and Deuterium Refinery also obeys Synthesis. Production rows exclude satellites and temporary effects.', 'Tablo referans seviyelerini gösterir; tüm binalara ortak tavan değildir. Hangarın sabit kendi tavanı vardır; diğer yerel binalar Çekirdeğe, Döteryum Rafinerisi ayrıca Senteze bağlıdır. Üretim satırları uydu ve geçici etki içermez.') }, instantNote(language)];
       if (id === 'SHIPYARD') blocks.unshift({ kind: 'note', text: label(language, 'Time saved applies to ships and ground defences. Each row compares with the previous Shipyard level, with the same research bonuses.', 'Süre azalması gemiler ve yer savunmaları için geçerlidir. Her satır, araştırma bonusları aynı kalırken bir önceki Tersane seviyesiyle karşılaştırılır.') });
       break;
     }
@@ -124,7 +129,7 @@ export function subjectReference(subject: WikiSubject, language: WikiLanguage): 
           if (id === 'RADAR') cells.push(n(radarRange(rung)));
           if (id === 'AEGIS') cells.push(n(shieldHp(rung)));
           return cells;
-        })), { kind: 'note', text: max === null ? label(language, 'These are example levels. This instrument has no fixed maximum level, but cannot exceed the local Command Core level.', 'Bunlar örnek seviyelerdir. Bu cihazın sabit bir seviye sınırı yoktur; gezegenin Komuta Çekirdeği seviyesini aşamaz.') : label(language, `This instrument can reach level ${n(max)}. The local Command Core must also support the level you want to build.`, `Bu cihaz en fazla ${n(max)}. seviyeye yükseltilebilir. Kurmak istediğin seviyeye gezegenin Komuta Çekirdeği de izin vermelidir.`) }];
+        })), { kind: 'note', text: max === null ? label(language, 'These are example levels. This instrument has no fixed maximum level, but cannot exceed the local Command Core level.', 'Bunlar örnek seviyelerdir. Bu cihazın sabit bir seviye sınırı yoktur; gezegenin Komuta Çekirdeği seviyesini aşamaz.') : label(language, `This instrument can reach level ${n(max)}. The local Command Core must also support the level you want to build.`, `Bu cihaz en fazla ${n(max)}. seviyeye yükseltilebilir. Kurmak istediğin seviyeye gezegenin Komuta Çekirdeği de izin vermelidir.`) }, instantNote(language)];
       break;
     }
     case 'satellite':

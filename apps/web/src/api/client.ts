@@ -10,7 +10,7 @@ import { buildHeader, reportUpdateRequired } from '../platform/updateGate.js';
 import { reportIfInsideWindow, reportMaintenance } from '../platform/maintenanceGate.js';
 import { accountSecuritySchema, securityChallengeSchema, securityCompleteSchema, accountDeletionStatusSchema, accountDeletionSubmittedSchema, moonBuildSchema, moonHopSchema, moonJumpSchema, moonRetargetSchema, moonScanSchema, moonScansSchema } from './schemas.js';
 import { contentReportReceiptSchema, contentReportQueueSchema, contentReportDecisionSchema, communityBlocksSchema, communityBlockResultSchema, type ReportTarget, type ReportReason } from './contentReportSchemas.js';
-import { unknownSignalsSchema, unknownSignalDetailsSchema, unknownSignalLaunchSchema, unknownSignalRecallSchema } from './schemas.js';
+import { unknownSignalsSchema, unknownSignalDetailsSchema, unknownSignalLaunchSchema, unknownSignalRecallSchema, newcomerScenarioResponseSchema } from './schemas.js';
 import { COSMETIC_IDS, type AlertTiming, type CosmeticCategory, type CosmeticId, type MobileHullId, type PaidAlertKind, type VesselHull } from '@astera/rules';
 import { cosmeticEquipSchema } from './schemas.js';
 import { vacationSchema } from './schemas.js';
@@ -931,6 +931,14 @@ export class Api {
   recallUnknownSignal = (id: string, key = createIdempotencyKey()) =>
     this.send(`/api/unknown-signals/${encodeURIComponent(id)}/recall`, unknownSignalRecallSchema,
       { method: 'POST', body: {}, idempotencyKey: key });
+  newcomerScenario = (options?: Pick<RequestOptions, 'signal'>) =>
+    this.send('/api/newcomer-scenario', newcomerScenarioResponseSchema, options);
+  startNewcomerScenario = () =>
+    this.send('/api/newcomer-scenario/start', newcomerScenarioResponseSchema, { method: 'POST', body: {} });
+  completeNewcomerScenario = () =>
+    this.send('/api/newcomer-scenario/complete', newcomerScenarioResponseSchema, { method: 'POST', body: {} });
+  dismissNewcomerScenario = () =>
+    this.send('/api/newcomer-scenario/dismiss', newcomerScenarioResponseSchema, { method: 'POST', body: {} });
   quoteMonument = (monumentId: string, input: MonumentSendInput) =>
     this.send(`/api/monuments/${encodeURIComponent(monumentId)}/quote`, monumentQuoteSchema, { method: 'POST', body: { ...input } });
   sendMonument = (monumentId: string, input: MonumentSendInput, key: string) =>

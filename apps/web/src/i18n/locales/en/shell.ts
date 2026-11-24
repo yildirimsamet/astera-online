@@ -38,6 +38,10 @@ export const statusBar = {
     name: "Recovery shield",
     hint: 'Recovery shield — you cannot be raided for {{duration}}',
   },
+  founding: {
+    name: 'Founding hour',
+    hint: 'Founding hour: your works make five times the alloy and crystal for {{time}} more. Collect and build while it runs; then they return to their rate.',
+  },
   recoveryBoost: {
     name: "Recovery production",
     value: "+50%",

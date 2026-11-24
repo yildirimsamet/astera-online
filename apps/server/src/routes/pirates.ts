@@ -12,6 +12,8 @@ import {
   hullTech,
   interceptOrbit,
   massClass,
+  personalPirateFleetSpeed,
+  pirateActive,
   piratePosition,
   pirateZone,
   sensorZone,
@@ -23,7 +25,8 @@ import { admiralBonuses, admiralOpen } from '@astera/rules/arena';
 import { arenaShips, planets, players, seasons, units } from '../db/schema.js';
 import { GameError, orbitOf } from '../services/planet.js';
 import { ownedPlanet } from '../services/ownership.js';
-import { pirateCallsign, pirateId } from '../services/pirateField.js';
+import { livingRoster, pirateCallsign, pirateId } from '../services/pirateField.js';
+import { personalPirateOf } from '../services/newcomerScenario.js';
 import { launchPirateRaid, recallPirateRaid } from '../services/pirateRaid.js';
 import { techOf } from '../services/researchState.js';
 import { requireAuth } from './auth.js';
@@ -94,11 +97,12 @@ export function registerPirateRoutes(app: FastifyInstance): void {
       throw new GameError('NOT_YOUR_PLANET', 'That world is not yours', 403);
     }
 
-    const [snapshot, sensors, epochs] = await Promise.all([
+    const [snapshot, sensors, epochs, ownPirate] = await Promise.all([
       app.projections.pirateSnapshot(self.seasonId, now),
       app.projections.sensorsFor(self.playerId, self.seasonId, self.planetIds),
       // The commander's own sensor history: what memory is still holding open. D158.
       app.projections.historyFor(self.playerId, self.seasonId),
+      personalPirateOf(app.db, self.playerId),
     ]);
     const nowMinutes = minutesSince(snapshot.startsAt, now);
 
@@ -161,15 +165,25 @@ export function registerPirateRoutes(app: FastifyInstance): void {
     const escortTime = season && ship?.ship === 'kilavuz' && admiralOpen(season, now)
       ? admiralBonuses(ship.ship, ship.level).time : null;
 
-    const pirates = snapshot.standing(now).flatMap((spec) => {
+    const standing = snapshot.standing(now);
+    const candidates = ownPirate
+      && pirateActive(ownPirate, nowMinutes)
+      && snapshot.destroyedAt(ownPirate.index) === null
+      ? [...standing, ownPirate]
+      : standing;
+
+    const pirates = candidates.flatMap((spec) => {
+      const isPersonal = spec.index < 0;
       const at = piratePosition(spec, nowMinutes);
-      const zone = pirateZone(sensors, spec, at, epochs, nowMinutes);
+      const zone = isPersonal ? 'IDENTIFIED' as const : pirateZone(sensors, spec, at, epochs, nowMinutes);
       // Radar-only returns stay anonymous in galaxy traffic. This named list must
       // never join their opaque handle to a callsign, location or launch quote.
       if (zone !== 'IDENTIFIED') return [];
       /** Nothing of this commander's covers it right now: the reading is frozen. */
-      const remembered = sensorZone(sensors, at) === 'NONE';
-      const crew = snapshot.livingRosterOf(spec.index);
+      const remembered = !isPersonal && sensorZone(sensors, at) === 'NONE';
+      const crew = isPersonal
+        ? livingRoster(spec.roster, snapshot.state.get(spec.index)?.losses)
+        : snapshot.livingRosterOf(spec.index);
       if (fleetCount(crew) === 0) return [];
 
       /*
@@ -191,9 +205,10 @@ export function registerPirateRoutes(app: FastifyInstance): void {
       const byHullSpeed = new Map<number, { minutes: number; distance: number; at: Vec3 }>();
       if (origin) {
         for (const speed of distinctSpeeds) {
+          const effectiveSpeed = isPersonal ? personalPirateFleetSpeed(speed) : speed;
           const solved = interceptOrbit(
             origin,
-            speed,
+            effectiveSpeed,
             spec,
             spec.expiresAt,
             nowMinutes,
@@ -233,7 +248,8 @@ export function registerPirateRoutes(app: FastifyInstance): void {
           : [{ hull, minutes: solved.minutes, distance: solved.distance, at: solved.at }];
       });
       const escortReach = escortTime === null || !origin ? null : [...speedOf.entries()].flatMap(([hull, speed]) => {
-        const solved = interceptOrbit(origin, speed / escortTime, spec, spec.expiresAt, nowMinutes);
+        const effectiveSpeed = (isPersonal ? personalPirateFleetSpeed(speed) : speed) / escortTime;
+        const solved = interceptOrbit(origin, effectiveSpeed, spec, spec.expiresAt, nowMinutes);
         return solved ? [{ hull, minutes: solved.flightMinutes, distance: distance(origin, solved.at), at: solved.at }] : [];
       });
 

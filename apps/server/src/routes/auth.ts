@@ -9,6 +9,7 @@ import { latestSeasonResult } from '../services/season.js';
 import { GameError } from '../services/planet.js';
 import { isAdminAccount } from '../services/admin.js';
 import { starterStanding } from '../services/starter/enlist.js';
+import { dismissNewcomerScenarioForAccount } from '../services/newcomerScenario.js';
 import { accounts } from '../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import type { CountryCode } from '@astera/rules';
@@ -198,6 +199,7 @@ export function registerAuthRoutes(app: FastifyInstance, firstGameShieldEnabled 
       .where(eq(accounts.id, req.accountId!))
       .returning({ off: sql<boolean>`${accounts.starterGuideOffAt} IS NOT NULL` });
     if (!updated) throw new GameError('BAD_SESSION', 'Session is invalid', 401);
+    if (off) await dismissNewcomerScenarioForAccount(app.db, req.accountId!, app.clock);
     return updated;
   });
 }

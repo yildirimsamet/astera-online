@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { ACADEMY_STEPS, COMMUNITY_POLICY_VERSION, PLANET_START, START_BUILDINGS, sensorReach } from '@astera/rules';
+import { ACADEMY_STEPS, COMMUNITY_POLICY_VERSION, FIRST_SEASON_START, PLANET_START, START_BUILDINGS, sensorReach } from '@astera/rules';
 import { eq, sql } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -50,12 +50,15 @@ describe('one first-season opening per account', () => {
     expect(await started(account.id)).toEqual(f.clock.now());
     const [world] = await f.db.select().from(planets).where(eq(planets.id, joined.planetId));
     expect(world).toMatchObject({ academyStep: null, builtEver: {}, seasonTelemetry: { shipsBuilt: {} } });
-    expect(await f.db.select().from(rewardGrants)).toEqual([]);
+    // The tiers the opening capital already meets are counted as taken at the landing (owner, 2026-11-23).
+    const grants = await f.db.select({ rewardId: rewardGrants.rewardId, claimedAt: rewardGrants.claimedAt }).from(rewardGrants);
+    expect(grants.map(grant => grant.rewardId).sort()).toEqual([...FIRST_SEASON_START.claimedRewards].sort());
+    expect(grants.every(grant => grant.claimedAt !== null)).toBe(true);
     const rewards = await rewardsView(f.db, joined.planetId, f.clock);
     for (const id of ['PIRATE', 'MINE', 'RAID', 'SHIPS'] as const) {
       expect(rewards.chains.find(chain => chain.id === id)?.progress).toBe(0);
     }
-    expect(rewards.chains.find(chain => chain.id === 'CORE')?.tiers.find(tier => tier.goal === 3)?.state).toBe('claimable');
+    expect(rewards.chains.find(chain => chain.id === 'CORE')?.tiers.find(tier => tier.goal === 3)?.state).toBe('claimed');
   });
 
   it('is independent of the first-game shield feature flag', async () => {

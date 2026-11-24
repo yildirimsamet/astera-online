@@ -29,6 +29,10 @@ export const statusBar = {
     name: "Bouclier de récupération",
     hint: "Bouclier de récupération : aucun raid ne peut te viser pendant {{duration}}",
   },
+  founding: {
+    name: 'Heure de fondation',
+    hint: 'Heure de fondation : tes usines produisent cinq fois plus d’alliage et de cristal pendant encore {{time}}. Collecte et construis tant qu’elle dure ; ensuite, elles reviennent à leur rythme.',
+  },
   recoveryBoost: {
     name: "Production de récupération",
     value: "+50 %",

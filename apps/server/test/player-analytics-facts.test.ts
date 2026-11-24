@@ -3,7 +3,7 @@ import { eq, sql } from 'drizzle-orm';
 import { pino } from 'pino';
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
-import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
+import { rungsThatTakeTime, seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 import { buildApp } from '../src/app.js';
 import { analyticsEvents, analyticsVisitors, buildOrders } from '../src/db/schema.js';
 import { recoverAnalyticsCommands } from '../src/services/analyticsFacts.js';
@@ -16,6 +16,8 @@ beforeEach(async () => {
 afterEach(async () => { await close(); });
 afterAll(async () => { await (await testDb()).close(); });
 it('recovers committed manual orders once, with original actor and acceptance time, outside the game transaction', async () => {
+  // An order that waits: the five-minute rule would also record a completion here.
+  await rungsThatTakeTime(f.db, f.planetIds[0]!);
   const visit = await app.inject({ method: 'POST', url: '/api/analytics/visitors', headers: { authorization: `Bearer ${await app.tokens.issueAccess(f.accountIds[0]!)}` }, payload: { scope: 'player', policyVersion: 1,
     contextId: randomUUID(), platform: 'web', locale: 'tr', build: 'test', campaign: {} } });
   const g = visit.json<{ credential: string; visitorId: string }>();
@@ -64,6 +66,7 @@ it('recovers a manual harvest with its original dispatch reference', async () =>
 });
 
 it('separates committed work completion from command acceptance and never fabricates a result view', async () => {
+  await rungsThatTakeTime(f.db, f.planetIds[0]!);
   const visit = await app.inject({ method: 'POST', url: '/api/analytics/visitors', headers: { authorization: `Bearer ${await app.tokens.issueAccess(f.accountIds[0]!)}` }, payload: { scope: 'player', policyVersion: 1,
     contextId: randomUUID(), platform: 'web', locale: 'tr', build: 'test', campaign: {} } });
   const headers = { authorization: `Bearer ${await app.tokens.issueAccess(f.accountIds[0]!)}`, 'x-analytics-visitor': visit.json<{ credential: string }>().credential };
@@ -135,4 +138,18 @@ it('projects an actual Silent Space transfer without moving old observations to 
   const rows = await f.db.select().from(analyticsEvents);
   expect(rows).toHaveLength(1); expect(rows[0]).toMatchObject({ name: 'commander_transfer', seasonId: f.seasonId,
     accountId: f.accountIds[0], occurredAt: now, properties: { code: 'OUT', phase: 'transfer_committed' } });
+});
+
+// The five-minute rule (owner, 2026-11-20): an order finished in its answer is accepted and completed at one instant.
+it('records an instant upgrade as accepted and completed at the same instant', async () => {
+  const visit = await app.inject({ method: 'POST', url: '/api/analytics/visitors', headers: { authorization: `Bearer ${await app.tokens.issueAccess(f.accountIds[0]!)}` }, payload: { scope: 'player', policyVersion: 1,
+    contextId: randomUUID(), platform: 'web', locale: 'tr', build: 'test', campaign: {} } });
+  const headers = { authorization: `Bearer ${await app.tokens.issueAccess(f.accountIds[0]!)}`, 'x-analytics-visitor': visit.json<{ credential: string }>().credential };
+  expect((await app.inject({ method: 'POST', url: '/api/planet/upgrade', headers, payload: { type: 'CORE' } })).statusCode).toBe(200);
+  await recoverAnalyticsCommands(f.db, f.clock); await recoverAnalyticsCommands(f.db, f.clock);
+  const [order] = await f.db.select().from(buildOrders);
+  expect(order).toMatchObject({ status: 'COMPLETED', readyAt: f.clock.now() });
+  const rows = await f.db.select().from(analyticsEvents).where(eq(analyticsEvents.source, 'server_fact'));
+  expect(rows.map(row => row.name).sort()).toEqual(['command_accepted', 'outcome_resolved']);
+  expect(rows.every(row => row.occurredAt.getTime() === f.clock.now().getTime())).toBe(true);
 });

@@ -139,7 +139,9 @@ describe('onboarding claim', () => {
     expect(rewards.chains.find(chain => chain.id === 'PIRATE')?.progress).toBe(0);
     expect(rewards.chains.find(chain => chain.id === 'MINE')?.progress).toBe(0);
     expect(rewards.chains.find(chain => chain.id === 'RAID')?.progress).toBe(0);
-    expect(rewards.chains.flatMap(chain => chain.tiers).some(tier => tier.state === 'claimed')).toBe(false);
+    // The landing counts the start's own tiers as already taken (owner 2026-11-23): those and no others.
+    expect(rewards.chains.flatMap(chain => chain.tiers.filter(tier => tier.state === 'claimed').map(tier => `${chain.id}:${String(tier.goal)}`)).sort())
+      .toEqual([...FIRST_SEASON_START.claimedRewards].sort());
     await expect(claimReward(db, body.placement.planetId, 'PIRATE:1', clock)).rejects.toMatchObject({ code: 'REWARD_LOCKED' });
     const again = await claim({ ...payload, step: ACADEMY_STEPS.length });
     expect(again.statusCode).toBe(200);
@@ -226,24 +228,15 @@ describe('onboarding claim', () => {
     })).json<Claim>();
 
     expect(body.applied.every((a) => a.ok)).toBe(true);
-    expect(body.planet.buildings.CORE).toBe(1);
-    expect(body.planet.buildings.REFINERY).toBe(1);
-    expect(body.planet.buildings.EXTRACTOR).toBe(1);
-    expect(body.planet.queues.CONSTRUCTION.map((order) => order.subject))
-      .toEqual(['CORE', 'REFINERY', 'EXTRACTOR']);
+    // The five-minute rule (INSTANT_BUILD, owner 2026-11-20): the opening's three first raises finish on the
+    // spot; only the hulls wait in the yard.
+    expect(body.planet.buildings.CORE).toBe(2);
+    expect(body.planet.buildings.REFINERY).toBe(2);
+    expect(body.planet.buildings.EXTRACTOR).toBe(2);
+    expect(body.planet.queues.CONSTRUCTION).toEqual([]);
     expect(body.planet.queues.YARD).toMatchObject([
       { kind: 'HULL', subject: 'DART', count: 2 },
     ]);
-    const constructionFinishes = body.planet.queues.CONSTRUCTION
-      .map((order) => new Date(order.finishesAt).getTime());
-    expect(constructionFinishes[0]).toBeLessThan(constructionFinishes[1]!);
-    expect(constructionFinishes[1]).toBeLessThan(constructionFinishes[2]!);
-    expect(body.planet.queues.CONSTRUCTION[1]?.startedAt)
-      .toBe(body.planet.queues.CONSTRUCTION[0]?.finishesAt);
-    expect(body.planet.queues.CONSTRUCTION[2]?.startedAt)
-      .toBe(body.planet.queues.CONSTRUCTION[1]?.finishesAt);
-    expect(body.planet.queues.YARD[0]?.startedAt)
-      .toBe(body.planet.queues.CONSTRUCTION[0]?.startedAt);
     /**
          * THE ARITHMETIC GRANT IS SPENT TO THE LAST UNIT — that is the lesson the
          * beat teaches, and it still holds. WHAT IS LEFT IS THE CUSHION, exactly
@@ -266,7 +259,8 @@ describe('onboarding claim', () => {
     const stored = await db.select().from(buildOrders)
       .where(eq(buildOrders.planetId, body.placement.planetId));
     expect(stored).toHaveLength(4);
-    expect(stored.every((order) => order.status === 'BUILDING')).toBe(true);
+    // Only the hulls are still being built: the three raises finished on the spot (INSTANT_BUILD).
+    expect(stored.filter((order) => order.status === 'BUILDING').map((order) => order.subject)).toEqual(['DART']);
   });
 
   it('leaves the first session with paid work pending and no hull granted early', async () => {
@@ -329,7 +323,9 @@ describe('onboarding claim', () => {
     expect(body.applied[4]).toMatchObject({
       kind: 'launch', ok: false, error: 'NOT_ENOUGH_SHIPS',
     });
-    expect(body.planet.queues.CONSTRUCTION).toHaveLength(3);
+    // The three raises finished on the spot (INSTANT_BUILD); the hulls wait in the yard.
+    expect(body.planet.buildings.CORE).toBe(2);
+    expect(body.planet.queues.CONSTRUCTION).toEqual([]);
     expect(body.planet.queues.YARD).toHaveLength(1);
   });
 
@@ -374,7 +370,8 @@ describe('onboarding claim', () => {
     const body = second.json<Claim>();
     expect(await db.select().from(accounts)).toHaveLength(2); // the neighbour and this one
     expect(await db.select().from(players)).toHaveLength(2);
-    expect(body.planet.buildings.CORE).toBe(1);
+    // Raised once, on the spot (INSTANT_BUILD), and not again by the retry.
+    expect(body.planet.buildings.CORE).toBe(2);
     expect(body.applied.every((a) => !a.ok && a.error === 'ALREADY_OPENED')).toBe(true);
 
     const queued = await db.select().from(buildOrders)
@@ -513,8 +510,9 @@ describe('onboarding claim', () => {
 
     expect(body.applied[0]?.ok).toBe(true);
     expect(body.applied[1]?.ok).toBe(false);
-    expect(body.planet.buildings.CORE).toBe(1);
-    expect(body.planet.queues.CONSTRUCTION).toHaveLength(1);
+    // The raise finished on the spot (INSTANT_BUILD) and stays, though the launch after it was refused.
+    expect(body.planet.buildings.CORE).toBe(2);
+    expect(body.planet.queues.CONSTRUCTION).toEqual([]);
     expect(await db.select().from(planets).where(eq(planets.kind, 'CAPITAL'))).toHaveLength(1);
   });
 

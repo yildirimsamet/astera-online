@@ -20,6 +20,8 @@ import { keys } from '../api/keys.js';
 import { coverGalaxy } from '../lib/galaxyCover.js';
 import { useNativeBack } from '../platform/nativeBack.js';
 import { isAppActive, watchAppActivity } from '../platform/activity.js';
+import { useAttention } from '../shell/attention/store.js';
+import { SURFACES } from '../shell/attention/surfaces.js';
 import type { LegacyAward } from '../api/legacySchemas.js';
 import { GameButton, Glyph } from '../game-ui/index.js';
 import { AwardEngines, StudioLight, TurntableFrames, useBuiltAward } from './AwardScene.js';
@@ -58,12 +60,14 @@ export function LegacyRevealHost({ ready, live = true }: { ready: boolean; live?
   const ack = useMutation({ mutationFn: (ids: readonly string[]) => api.revealLegacyAwards(ids) });
   const [queue, setQueue] = useState<LegacyAward[] | null>(null);
   const waiting = reveals.data?.awards.filter(award => !played.current.has(award.id)) ?? [];
+  // Its turn on the screen (plan 2026-11-20 §5.5).
+  const turn = useAttention('legacy_reveal', queue !== null, SURFACES.legacy_reveal);
 
   useEffect(() => {
     if (queue === null && ready && waiting.length > 0) setQueue(sortLegacyAwards(waiting));
   }, [queue, ready, waiting]);
 
-  if (!queue) return null;
+  if (!queue || !turn.shown) return null;
   return createPortal(
     <AwardReveal queue={queue} live={live}
       onSeen={ids => {
@@ -72,6 +76,7 @@ export function LegacyRevealHost({ ready, live = true }: { ready: boolean; live?
         ack.mutate(ids);
       }}
       onDone={() => {
+        turn.release(queue.every(award => played.current.has(award.id)) ? 'act:seen' : 'dismiss');
         // Dismissal skips only this visit; unseen pieces stay on the server for next time.
         for (const award of queue) played.current.add(award.id);
         setQueue(null);
@@ -149,7 +154,7 @@ function AwardReveal({ queue, live, onSeen, onDone }: {
           event.preventDefault(); (event.shiftKey ? last : first).focus();
         }
       }}
-      className="legacy-reveal fixed inset-0 z-[70] flex select-none flex-col items-center overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-6 gk gk-reveal outline-none">
+      className="legacy-reveal fixed inset-0 z-[70] flex select-none flex-col items-center overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-3 gk gk-reveal outline-none">
       <div key={`fx-${String(step)}`} aria-hidden="true" className="pointer-events-none absolute inset-0">
         <div className="legacy-reveal-rays" />
         <div className="legacy-reveal-core" />
@@ -166,7 +171,7 @@ function AwardReveal({ queue, live, onSeen, onDone }: {
 
       <div key={`piece-${String(step)}`} className="legacy-reveal-piece relative flex w-full max-w-sm flex-col items-center">
         {piece ? <>
-          <div className="legacy-reveal-stage relative aspect-square w-[min(74vw,288px)]">
+          <div className="legacy-reveal-stage relative aspect-square w-[min(62vw,calc(var(--app-h,100dvh)*0.34),236px)]">
             {live
               ? <RevealCanvas award={piece} settled={shown} />
               : <AwardPicture award={piece} className="legacy-reveal-picture size-full" />}
@@ -176,7 +181,7 @@ function AwardReveal({ queue, live, onSeen, onDone }: {
           <>
             <p className="legacy-reveal-eyebrow gk-label">{t('legacy.reveal.eyebrowMany')}</p>
             <h2 className="legacy-reveal-name gk-display gk-reveal__name">{t('legacy.reveal.restTitle', { count: rest.length })}</h2>
-            <ul className="mt-4 grid max-h-[calc(52*var(--app-vh))] w-full grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">
+            <ul className="mt-2 grid max-h-[calc(46*var(--app-vh))] w-full grid-cols-3 gap-1.5 overflow-y-auto sm:grid-cols-4">
               {rest.map((award, index) => (
                 <li key={award.id} data-testid="legacy-reveal-rest-piece" data-rarity={award.rarity}
                   className="legacy-tile legacy-reveal-pop gk-reveal__tile"
@@ -190,7 +195,7 @@ function AwardReveal({ queue, live, onSeen, onDone }: {
         )}
       </div>
 
-      <div className={`legacy-reveal-actions relative mt-5 flex w-full max-w-sm flex-col gap-2 ${shown ? '' : 'invisible'}`}>
+      <div className={`legacy-reveal-actions relative mt-3 flex w-full max-w-sm flex-col gap-1.5 ${shown ? '' : 'invisible'}`}>
         {piece && <ShelfButton award={piece} />}
         {piece && !lastSingle && <GameButton tone="action" size="lg" wide glyph="next" onPress={() => { setStep(step + 1); }}>{t('legacy.reveal.next')}</GameButton>}
         {piece && lastSingle && rest.length > 0 && (

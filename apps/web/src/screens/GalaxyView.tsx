@@ -15,7 +15,7 @@ import { useRadarLessonContact } from '../starter/director/useRadarLesson.js';
 import { bottomSurface, selectionGone } from '../starter/bottomSurface.js';
 import { applyCosmeticTrial, type CosmeticTrial } from '../galaxy/cosmeticTrial.js';
 import { CosmeticTrialBar } from './CosmeticTrialBar.js';
-import { cosmeticById, planetSkinStatus, type CosmeticId } from '@astera/rules';
+import { cosmeticById, isScenarioActive, planetSkinStatus, type CosmeticId } from '@astera/rules';
 import { SilentSpaceNotice } from '../shell/SilentSpaceNotice.js';
 import { useReturnStatus, useApplyToReturn } from '../api/returnQueries.js';
 import { useRequest } from '../lib/useRequest.js';
@@ -54,7 +54,11 @@ import { JUMP_ITEM, VesselScreen } from '../starter/VesselScreen.js';
 import { BaseSwitch, type BaseView } from '../v2/hud/BaseSwitch.js';
 import { arenaCredential } from '../arena/access.js';
 import { useApi } from '../api/context.js';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { arrivalQuery } from '../starter/queries.js';
+import { MainHudTour, hasSeenMainHudTour, markMainHudTourSeen, nextHudTourStep, type HudTourStep } from '../starter/MainHudTour.js';
+import { hudStageOf } from '../starter/hudStage.js';
+import { NewcomerScenarioCard } from '../starter/NewcomerScenarioHost.js';
 import { keys } from '../api/keys.js';
 import { activeEvents, slotSuggestion } from '../lib/contextSlot.js';
 import { SeasonLockProvider } from '../session/seasonLock.js';
@@ -100,6 +104,7 @@ import {
   useUnknownSignals,
   useUnknownSignalActions,
   useUnknownSignalDetail,
+  useNewcomerScenario,
   useCollect,
   useNotifications,
   useRewardsWaiting,
@@ -143,10 +148,9 @@ import type { ChatChannel } from './ChatScreen.js';
 import { activeTradeShip } from '../lib/trade.js';
 import { compact } from '../lib/format.js';
 import { knownPirateContacts, pirateTargetName } from '../lib/galaxyTargets.js';
-import { activeIntergalacticConvoy } from '../lib/intergalacticConvoy.js';
+import { activeIntergalacticConvoy, convoyOpportunity } from '../lib/intergalacticConvoy.js';
 import {
   flightModifiers,
-  planIntergalacticConvoyRoute,
   planTradeRoute,
 } from '../lib/navigation.js';
 import { outOfBandAbove, ownPeakCore } from '../lib/band.js';
@@ -156,7 +160,6 @@ import { minuteTick, minutesLeft, useNow } from '../lib/time.js';
 import {
   HULLS,
   MOBILE_HULLS,
-  combatValue,
   distance,
   engagementEndsAt,
   fleetCount,
@@ -196,6 +199,7 @@ import { useArrivals } from '../session/useArrivals.js';
 import { HitboxLegend } from '../galaxy/hitboxDebug.jsx';
 import { CommanderLegacy } from '../legacy/LegacyPeek.js';
 import { LegacyRevealHost } from '../legacy/AwardReveal.js';
+import { useAttentionBusy } from '../shell/attention/store.js';
 import {
   SeasonRecap,
   seasonRecapShowsPrimaryAction,
@@ -519,6 +523,23 @@ export function GalaxyView({
   const season = useSeason();
   const monumentCatalog = useMonuments(hpRadiationApplies(planet.data?.rulesetVersion ?? 0));
   const personalSignals = useUnknownSignals();
+  const newcomerScenario = useNewcomerScenario(!ship);
+  const scenario = newcomerScenario.data?.scenario ?? null;
+  const arrivalPending = useQuery({ ...arrivalQuery(api), enabled: !ship && scenario?.step === 'LANDING' }).data?.arrival ?? null;
+  const [hudTourDone, setHudTourDone] = useState(hasSeenMainHudTour);
+  const [hudTourStep, setHudTourStep] = useState<HudTourStep>(0);
+  // Progressive HUD reveal during the opening Landing -> HUD Tour sequence (-1 = landing modal, 0..3 = tour steps, 4 = all open).
+  const hudStage = hudStageOf({ aboard: Boolean(ship), step: scenario?.step ?? null, arrivalPending: arrivalPending !== null,
+    tourDone: hudTourDone, tourStep: hudTourStep });
+  useEffect(() => {
+    if (hudStage < 4) {
+      document.documentElement.dataset.hudStage = String(hudStage);
+    } else {
+      delete document.documentElement.dataset.hudStage;
+    }
+    return () => { delete document.documentElement.dataset.hudStage; };
+  }, [hudStage]);
+  const furnaceOverload = Boolean(!ship && planet.data?.planet.newcomerBoostUntil && planet.data.planet.newcomerBoostUntil.getTime() > serverNow());
   const signalActions = useUnknownSignalActions();
   const pending = usePending();
   const traffic = useTraffic();
@@ -900,6 +921,8 @@ export function GalaxyView({
   const covered = useOpeningCover(assets.ready && dataSettled && drawn, undefined, byJump && assets.ready && dataSettled ? JUMP_OPEN_GRACE_MS : null);
   // A scene waits for the sky: under the opening cover, a sheet or a launch its shots would play to no one.
   const directorLive = !covered && panel === null && !launchingNow && !trading && !mainRowOpen && !targetOpen;
+  // The opening cover, or a card, sheet or launch of the player's own: nothing opens over it by itself (plan 2026-11-20 §5.5).
+  useAttentionBusy('galaxy', covered || targetOpen || legacyOf !== null || launchingNow || trading || mainRowOpen);
   // A jump's last frame waits over this view until it has drawn whole.
   useEffect(() => { if (!covered) markGameDrawn(); }, [covered]);
   useEffect(() => { if (drawn && !covered) onSceneReady?.(); }, [drawn, covered, onSceneReady]);
@@ -952,27 +975,11 @@ export function GalaxyView({
     return route?.oneWayMinutes ?? null;
   }, [tradeShip, planet.data, season.data, tradeMinute]);
 
-  const convoyReach = useMemo(() => {
-    if (!intergalacticConvoy || !planet.data || !season.data) return null;
-    const home = planet.data;
-    const armed = MOBILE_HULLS.filter(
-      (hull) => (home.fleet[hull] ?? 0) > 0 && combatValue({ [hull]: 1 }) > 0,
-    );
-    let best: number | null = null;
-    for (const hull of armed) {
-      const route = planIntergalacticConvoyRoute(
-        home.planet.position,
-        intergalacticConvoy,
-        (tradeMinute * 60_000 - season.data.startsAt.getTime()) / 60_000,
-        { [hull]: 1 },
-        home.fleet,
-        home.ground,
-        flightModifiers(home),
-      );
-      if (route && (best === null || route.oneWayMinutes < best)) best = route.oneWayMinutes;
-    }
-    return best;
-  }, [intergalacticConvoy, planet.data, season.data, tradeMinute]);
+  // The strike sheet's own fleet and clock (convoy 2×, d6b7f46d): only ships that can be sent, from now.
+  const convoyAccess = useMemo(
+    () => convoyOpportunity(intergalacticConvoy, planet.data, season.data?.startsAt, now),
+    [intergalacticConvoy, planet.data, season.data?.startsAt, now],
+  );
 
   const planets = useMemo(() => planetsWithClanPresence(galaxy.data), [galaxy.data]);
   const trialWorlds = useMemo(() => planets.filter(world => world.isOwned && world.intel !== 'UNKNOWN'), [planets]);
@@ -1175,18 +1182,20 @@ export function GalaxyView({
       contact on the disc, which is exactly the state a tap on a foreign fleet
       produces. D163.
     */
-    const exists = requested.kind === 'monument' ? (galaxy.data?.monuments ?? []).some((row) => row.id === requested.id) : requested.kind === 'run'
-      ? runs.some((run) => run.id === requested.id && run.status !== 'done')
-      : requested.kind === 'contact'
-        ? contacts.some((c) => c.id === requested.id)
-        : threads.some((thread, index) => threadKey(thread, index) === requested.key && thread.path);
+    const exists = requested.kind === 'monument' ? (galaxy.data?.monuments ?? []).some((row) => row.id === requested.id)
+      : requested.kind === 'asteroid' ? asteroids.some((a) => a.id === requested.id)
+      : requested.kind === 'run'
+        ? runs.some((run) => run.id === requested.id && run.status !== 'done')
+        : requested.kind === 'contact'
+          ? contacts.some((c) => c.id === requested.id)
+          : threads.some((thread, index) => threadKey(thread, index) === requested.key && thread.path);
     if (!exists) return;
     handledCraftFocusRequest.current = craftFocusRequest.request;
     setFocus(requested);
     setTransferOriginId(null);
-    setDetail(requested.kind === 'monument');
+    setDetail(requested.kind === 'monument' || requested.kind === 'asteroid');
     setAttacking(false);
-  }, [craftFocusRequest, runs, threads, contacts, galaxy.data?.monuments]);
+  }, [craftFocusRequest, runs, threads, contacts, asteroids, galaxy.data?.monuments]);
 
   /**
    * EVERY PROP THE DISC TAKES IS STABLE. D53.
@@ -1342,6 +1351,9 @@ export function GalaxyView({
     contacts: (traffic.data?.contacts ?? []).filter(contact => contact.effectOnly !== true).map(contact => contact.id),
   });
   const slotSelected = showPlanetFocus || (focus !== null && !focusGone && !(focus.kind === 'planet' && focus.id === activePlanetId));
+  const hudTourActive = hudStage >= 0 && hudStage < 4 && panel === null && !slotSelected;
+  const showOnboarding = !ship && scenario !== null && isScenarioActive(scenario.step)
+    && !(scenario.step === 'LANDING' && arrivalPending !== null);
   const settlementInFlight = selected !== undefined && threads.some((thread) =>
     thread.kind === 'settlement'
     && thread.leg === 'outbound'
@@ -1524,8 +1536,8 @@ export function GalaxyView({
    * where a thumb reaches it — people chat live, and it keeps them coming back. It rides the
    * context slot's corner so it stands above a card and never under one.
    */
-  const chatButton = showGuidance && showChat && gate.open('chat')
-    ? <ChatChip unread={chatUnread + dmUnread + (clanBadge.data?.clanChatUnread ?? 0)} onOpen={() => { onPanel('chat'); }} />
+  const chatButton = showGuidance && showChat && gate.open('chat') && hudStage >= 3
+    ? <div data-hud-tour="dock"><ChatChip unread={chatUnread + dmUnread + (clanBadge.data?.clanChatUnread ?? 0)} onOpen={() => { onPanel('chat'); }} /></div>
     : null;
   /**
    * THE BELL, LEFT OF THE CHAT (owner, 2026-11-14): "Zil butonunu galaksi ekranında sağ
@@ -1638,6 +1650,7 @@ export function GalaxyView({
         moonBuildPlanetIds={moonBuildPlanetIds}
         focusDistanceOverride={moonWarps.length > 0 ? 15.5 : moonScans.length > 0 ? 11.5 : undefined}
         unknownSignals={signalData?.signals}
+        furnaceOverload={furnaceOverload}
         clanAlarms={clanAlarms}
         unknownSignalRadar={focusedSignalId ? personalSignals.data?.radar ?? undefined : undefined}
         inspectionPlanetId={cosmeticTrial?.planetId ?? (coachFocus?.inspect && coachFocus.focus.kind === 'planet' ? coachFocus.focus.id : undefined)}
@@ -1699,7 +1712,7 @@ export function GalaxyView({
       */}
       <div data-galaxy-top-corners="" style={{ paddingTop: 'var(--v2-float-h, 0px)' }} className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between px-[var(--gk-gutter)] pb-2">
         {/* Under the status column the top bar's float hangs on the left (H1): the events stack below it. */}
-        <div style={{ marginTop: 'calc(var(--v2-badges-h, 0px) + 2px)' }} className="gk-hudcol pointer-events-none flex min-w-0 flex-col items-start gap-1">
+        <div data-hud-tour="status" style={{ marginTop: 'calc(var(--v2-badges-h, 0px) + 2px)' }} className="gk-hudcol pointer-events-none flex min-w-0 flex-col items-start gap-1">
           <UnknownSignalHud data={signalData} planet={planet.data} worlds={worlds}
             focusedId={focus?.kind === 'unknownSignal' ? focus.id : null}
             busy={signalActions.send.isPending || signalActions.recall.isPending}
@@ -1717,7 +1730,7 @@ export function GalaxyView({
             says it once and is closed; this stays. Not while something is selected — the
             selection keeps its screen (B3), and the attack pill takes this corner then.
           */}
-          {showGuidance && season.data?.status === 'live' && !slotSelected && (
+          {showGuidance && hudStage >= 0 && season.data?.status === 'live' && !slotSelected && (
             <EventChips
               events={activeEvents(galaxyEvents.data?.events ?? [], now)}
               now={now}
@@ -1744,20 +1757,24 @@ export function GalaxyView({
         */}
         <div className="pointer-events-none flex flex-col items-end gap-1">
           {/* What is out there, at a glance (owner, 2026-09-24): back at the top right, first (H1). */}
-          {showGuidance && (!ship || gate.open('fleet')) && <GalaxyReadout census={Boolean(ship)} {...galaxyReadout} targets={findableTargets} onFocusTarget={onFocus} />}
+          {showGuidance && hudStage >= 1 && (!ship || gate.open('fleet')) && <GalaxyReadout census={Boolean(ship)} {...galaxyReadout} targets={findableTargets} onFocusTarget={onFocus} />}
           {/* Under the finds, the round keys in two columns (H1, owner 2026-11-16). */}
-          <HudTools label={t('view.tools')}>
-            {/* Owner 2026-11-16: "Telescope-Gezegen, Mağaza-Ödül, Alarm" — two to a row, the bell under them. */}
-            {gate.open('telescope') && <div data-sensor-toggles className="pointer-events-none">
-              <ViewChip layersOn={showTelescopeReach || (hasRadar && showRadarReach)} onOpen={() => { setViewOpen(true); }} />
-            </div>}
-            {showGuidance && <HomeChip onHome={homeKey} aboard={gate.aboard} />}
-            {!ship && showGuidance && capabilities().webCheckout && <ShopChip onOpen={() => { onPanel('skin-shop'); }} />}
-            {showGuidance && <GiftChip waiting={rewardsWaiting} onOpen={() => { onPanel('rewards'); }} />}
-            {!ship && bellButton}
-          </HudTools>
-          {/* Below the telescope (owner, 2026-11-09): the way out to the universe and back. */}
-          {showGuidance && <UniverseChip open={universeOpen} atLimit={atUniverseLimit} available={universeAvailable} onOpen={openUniverse} onClose={closeUniverse} />}
+          {hudStage >= 2 && (
+            <div data-hud-tour="tools" className="pointer-events-none flex flex-col items-end gap-1">
+              <HudTools label={t('view.tools')}>
+                {/* Owner 2026-11-16: "Telescope-Gezegen, Mağaza-Ödül, Alarm" — two to a row, the bell under them. */}
+                {gate.open('telescope') && <div data-sensor-toggles className="pointer-events-none">
+                  <ViewChip layersOn={showTelescopeReach || (hasRadar && showRadarReach)} onOpen={() => { setViewOpen(true); }} />
+                </div>}
+                {showGuidance && <HomeChip onHome={homeKey} aboard={gate.aboard} />}
+                {!ship && showGuidance && capabilities().webCheckout && <ShopChip onOpen={() => { onPanel('skin-shop'); }} />}
+                {showGuidance && <GiftChip waiting={rewardsWaiting} onOpen={() => { onPanel('rewards'); }} />}
+                {!ship && bellButton}
+              </HudTools>
+              {/* Below the telescope (owner, 2026-11-09): the way out to the universe and back. */}
+              {showGuidance && <UniverseChip open={universeOpen} atLimit={atUniverseLimit} available={universeAvailable} onOpen={openUniverse} onClose={closeUniverse} />}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1996,8 +2013,8 @@ export function GalaxyView({
               0,
               (intergalacticConvoy.endsAt.getTime() - now) / 60_000,
             )}
-            reachMinutes={convoyReach}
-            hasCombatCraft={combatValue(planet.data?.fleet ?? {}) > 0}
+            reachMinutes={convoyAccess.reachMinutes}
+            hasCombatCraft={convoyAccess.hasCombatCraft}
             launchLocked={planet.data?.convoyLaunchLocked === true}
             occurrenceSpent={planet.data?.convoyOccurrenceSpent === true}
             launchBlock={launchFault(planet.data?.faults, 'fleet', planet.data?.silentSpace === true)}
@@ -2155,9 +2172,29 @@ export function GalaxyView({
         commander who came through the Academy is coached, and the shield is read
         against this host's clock (H1) — `shieldUntil: season.data.shieldUntil`.
       */}
-      {slotShown && planet.data && season.data && (
+      {hudTourActive && (
+        <MainHudTour
+          step={hudTourStep}
+          onNext={() => {
+            const next = nextHudTourStep(hudTourStep);
+            if (next !== null) {
+              setHudTourStep(next);
+            } else {
+              markMainHudTourSeen();
+              setHudTourDone(true);
+            }
+          }}
+          onSkip={() => {
+            markMainHudTourSeen();
+            setHudTourDone(true);
+          }}
+        />
+      )}
+
+      {slotShown && hudStage >= 3 && planet.data && season.data && (
         <ContextSlot
           {...(cornerButtons ? { corner: cornerButtons } : {})}
+          {...(showOnboarding ? { onboarding: <NewcomerScenarioCard /> } : {})}
           now={now}
           selected={slotSelected}
           threats={threads.filter((thread) => thread.kind === 'incoming')}

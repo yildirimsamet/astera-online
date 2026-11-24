@@ -286,6 +286,9 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   arena_team_share: { panel: 'ship' },
   arena_sortie_end: { panel: 'ship' },
   unknown_signal_result: { panel: null },
+  // Kuruluş Saati: the next build is ordered on the capital.
+  newcomer_hour_ending: { panel: 'planet' },
+  newcomer_hour_summary: { panel: 'planet' },
   monument_inbound: { panel: null },
   monument_probe_lost: { panel: null },
   monument_returning: { panel: null },

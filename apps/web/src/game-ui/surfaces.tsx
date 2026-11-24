@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, type ReactNode, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { haptic } from '../lib/haptics.js';
+import { coverGalaxy } from '../lib/galaxyCover.js';
 import { OWN_SOUND, playSound, type SoundCue } from '../lib/sound.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
 import { useNativeBack } from '../platform/nativeBack.js';
@@ -120,6 +121,7 @@ export function Dialog({
   const box = useRef<HTMLDivElement>(null);
   // Focus starts inside, so a keyboard or a reader is in the dialog it was shown.
   useEffect(() => { box.current?.focus(); }, []);
+  useEffect(() => coverGalaxy('whole'), []);
   useNativeBack(box, onBack, onBack !== undefined);
   useEffect(() => {
     if (sound === undefined || rang.current) return;

@@ -21,6 +21,7 @@ import {
   giveSatellite,
   grant,
   seedWorld,
+  rungsThatTakeTime,
   setLevel,
   testDb,
   type Fixture,
@@ -76,14 +77,16 @@ describe('ordinary build queues', () => {
   });
 
   it('reads gates through earlier orders in the same queue', async () => {
+    await rungsThatTakeTime(f.db, planetId);
+    await expect(upgradeBuilding(f.db, planetId, 'REFINERY', f.clock)).rejects.toMatchObject({ code: 'CORE_CEILING' });
     await upgradeBuilding(f.db, planetId, 'CORE', f.clock);
     await expect(upgradeBuilding(f.db, planetId, 'REFINERY', f.clock)).resolves.toMatchObject({
-      level: 2,
+      level: 4,
     });
 
     const before = await f.db.transaction((tx) => loadLocked(tx, planetId, f.clock));
-    expect(before.buildings.CORE).toBe(1);
-    expect(before.buildings.REFINERY).toBe(1);
+    expect(before.buildings.CORE).toBe(3);
+    expect(before.buildings.REFINERY).toBe(3);
     const orders = await f.db
       .select()
       .from(buildOrders)
@@ -94,14 +97,14 @@ describe('ordinary build queues', () => {
     f.clock.set(orders[0]!.readyAt);
     await worker(f).tick();
     const middle = await f.db.transaction((tx) => loadLocked(tx, planetId, f.clock));
-    expect(middle.buildings.CORE).toBe(2);
-    expect(middle.buildings.REFINERY).toBe(1);
+    expect(middle.buildings.CORE).toBe(4);
+    expect(middle.buildings.REFINERY).toBe(3);
 
     f.clock.set(orders[1]!.readyAt);
     await worker(f).tick();
     const after = await f.db.transaction((tx) => loadLocked(tx, planetId, f.clock));
-    expect(after.buildings.CORE).toBe(2);
-    expect(after.buildings.REFINERY).toBe(2);
+    expect(after.buildings.CORE).toBe(4);
+    expect(after.buildings.REFINERY).toBe(4);
   });
 
   it('requires the Uplink to occupy an active slot and projects a queued Core reopening it', async () => {
@@ -132,6 +135,7 @@ describe('ordinary build queues', () => {
   });
 
   it('caps each queue at three while allowing the other queue to run', async () => {
+    await rungsThatTakeTime(f.db, planetId);
     for (let i = 0; i < 3; i++) await upgradeBuilding(f.db, planetId, 'CORE', f.clock);
     await expect(upgradeBuilding(f.db, planetId, 'CORE', f.clock)).rejects.toMatchObject({
       code: 'QUEUE_FULL',
@@ -206,6 +210,7 @@ describe('ordinary build queues', () => {
   });
 
   it('cannot cancel a queued prerequisite out from under a dependent order', async () => {
+    await rungsThatTakeTime(f.db, planetId);
     await upgradeBuilding(f.db, planetId, 'CORE', f.clock);
     await upgradeBuilding(f.db, planetId, 'REFINERY', f.clock);
     const before = await f.db
@@ -228,6 +233,7 @@ describe('ordinary build queues', () => {
   });
 
   it('fully refunds a dependent tail when the system abandons its prerequisite', async () => {
+    await rungsThatTakeTime(f.db, planetId);
     const [stockBefore] = await f.db.select().from(planets).where(eq(planets.id, planetId));
     await upgradeBuilding(f.db, planetId, 'CORE', f.clock);
     await upgradeBuilding(f.db, planetId, 'REFINERY', f.clock);
@@ -255,6 +261,7 @@ describe('ordinary build queues', () => {
   });
 
   it('serialises concurrent placements into three unique slots and refuses the fourth', async () => {
+    await rungsThatTakeTime(f.db, planetId);
     const attempts = await Promise.allSettled(
       Array.from({ length: 4 }, () => upgradeBuilding(f.db, planetId, 'CORE', f.clock)),
     );
@@ -403,11 +410,12 @@ describe('ordinary build queues', () => {
   });
 
   it('keeps the stored building unchanged until completion', async () => {
+    await rungsThatTakeTime(f.db, planetId);
     await upgradeBuilding(f.db, planetId, 'CORE', f.clock);
     const [row] = await f.db
       .select()
       .from(buildings)
       .where(and(eq(buildings.planetId, planetId), eq(buildings.type, 'CORE')));
-    expect(row?.level).toBe(1);
+    expect(row?.level).toBe(3);
   });
 });

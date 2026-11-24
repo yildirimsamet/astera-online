@@ -145,6 +145,7 @@ export const errors = {
   BAD_CLAN_TAG: 'Klan etiketi için 2–5 harf veya rakam kullan',
   BAD_CREDENTIALS: 'Giriş bilgileri eşleşmiyor',
   BAD_FLEET: '{{hull}} sayısı geçersiz',
+  NEEDS_WARSHIP: 'Korsana saldırmak için filoda en az bir savaş gemisi olmalı',
   BAD_REQUEST: "İşlem bilgileri okunamadı. Seçimlerini kontrol et.",
   BAD_SESSION: "Oturumun geçersiz veya süresi dolmuş. Yeniden giriş yap.",
   BAD_SLOT: '{{level}}. seviye Teleskop en fazla {{slots}} gezegen izleyebilir',

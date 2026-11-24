@@ -536,6 +536,8 @@ export const upgradeRow = {
    */
   takes: "{{duration}}",
   takesLabel: "Takes {{duration}} to build",
+  instant: "Instant · ≤5 min",
+  instantLabel: "Instant: upgrades of 5 minutes or less take no time",
   /** A row whose level has a top: research ladders are the only ones so far. T12. */
   ladder: "L{{level}} / {{max}}",
   level: "Level {{level}}",

@@ -10,6 +10,7 @@ import {
   satelliteCost,
   satelliteMinutes,
   shipMinutes,
+  upgradeOrderMinutes,
   type HullId,
 } from '@astera/rules';
 import { orderMinutes, projectedCore, projectedShipyard } from '../src/lib/orderTime.js';
@@ -107,7 +108,7 @@ describe('the projection the server prices against', () => {
 describe('orderMinutes agrees with the rules the server charges', () => {
   it('prices a building against the projected Core', () => {
     const cost = buildingCost('REFINERY', 6);
-    expect(orderMinutes('BUILDING', cost, planet())).toBe(buildMinutes(cost, 5, {}));
+    expect(orderMinutes('BUILDING', cost, planet())).toBe(upgradeOrderMinutes(buildMinutes(cost, 5, {})));
   });
 
   /**
@@ -133,8 +134,19 @@ describe('orderMinutes agrees with the rules the server charges', () => {
 
   it('prices an instrument and a satellite as construction too', () => {
     const cost = { alloy: 900, crystal: 400, deuterium: 0 };
-    expect(orderMinutes('INSTRUMENT', cost, planet())).toBe(buildMinutes(cost, 5, {}));
+    expect(orderMinutes('INSTRUMENT', cost, planet())).toBe(upgradeOrderMinutes(buildMinutes(cost, 5, {})));
     expect(orderMinutes('SATELLITE', cost, planet())).toBe(buildMinutes(cost, 5, {}));
+  });
+
+  // The five-minute rule (owner, 2026-11-20; plan §5.6): the quote says what the server will do.
+  it('quotes an upgrade of five minutes or less as no time, and keeps the satellite and hull clocks', () => {
+    const view = planet({ buildings: { CORE: 3, SHIPYARD: 1 } });
+    expect(orderMinutes('BUILDING', buildingCost('VAULT', 1), view, 1, { building: 'VAULT', level: 2 })).toBe(0);
+    expect(orderMinutes('BUILDING', buildingCost('REFINERY', 2), view, 1, { building: 'REFINERY', level: 3 })).toBeGreaterThan(5);
+    const small = { alloy: 60, crystal: 20, deuterium: 0 };
+    expect(orderMinutes('INSTRUMENT', small, view)).toBe(0);
+    expect(orderMinutes('SATELLITE', small, view)).toBe(buildMinutes(small, 3, {}));
+    expect(orderMinutes('HULL', priceOf('DART'), view, 1, { hull: 'DART' })).toBeGreaterThan(0);
   });
 
   it('prices a warship against the Shipyard, through the yard multiplier', () => {

@@ -27,6 +27,10 @@ export const statusBar = {
     name: "Toparlanma kalkanı",
     hint: 'Toparlanma kalkanı: {{duration}} boyunca sana akın yapılamaz',
   },
+  founding: {
+    name: 'Kuruluş Saati',
+    hint: 'Kuruluş Saati: tesislerin {{time}} daha beş kat alaşım ve kristal üretiyor. Süre bitmeden topla ve inşa et; sonra normal hızına döner.',
+  },
   recoveryBoost: {
     name: "Toparlanma üretimi",
     value: "+%50",

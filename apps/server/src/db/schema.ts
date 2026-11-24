@@ -13,6 +13,7 @@ import {
   doublePrecision,
   foreignKey,
   pgEnum,
+  pgSequence,
   pgTable,
   primaryKey,
   real,
@@ -22,7 +23,7 @@ import {
   uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import type { FleetSizeClass, HpDamageLots, MigrationCargo, MoonRarity, StarterBattleRecord, WorldBody } from '@astera/rules';
+import type { AsteroidSpec, FleetSizeClass, HpDamageLots, MigrationCargo, MoonRarity, PirateSpec, StarterBattleRecord, WorldBody } from '@astera/rules';
 import type {
   BattleReplayData,
   CombatRound,
@@ -188,6 +189,8 @@ export const eventKind = pgEnum('event_kind', [
   'moon_move_land',
   /** A moon's gate has charged again (§6.11); told to the moon's holder if nothing moved it since. */
   'moon_gate_ready',
+  /** Kuruluş Saati's two moments on a first game's capital: ten minutes left, and the end. Plan 2026-11-20 §4. */
+  'newcomer_hour',
 ]);
 /**
  * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
@@ -306,6 +309,9 @@ export const notificationKind = pgEnum('notification_kind', [
   'clan_alarm',
   /** Ay §6.11: a moon's gate has charged and can jump again. */
   'moon_gate_ready',
+  /** KURULUŞ SAATİ (plan 2026-11-20 §4): ten minutes left of a first game's five-fold hour, and its sum at the end. */
+  'newcomer_hour_ending',
+  'newcomer_hour_summary',
 ]);
 export type NotificationKind = (typeof notificationKind.enumValues)[number];
 
@@ -1531,6 +1537,12 @@ export const planets = pgTable('planets', {
    */
   recoveryBoostUntil: timestamp('recovery_boost_until', { withTimezone: true }),
   signalBoostUntil: timestamp('signal_boost_until', { withTimezone: true }),
+  /**
+   * KURULUŞ SAATİ (plan 2026-11-20 §5.1): when a first game's capital stops making five-fold alloy
+   * and crystal. Stamped once at the landing and never moved, not by a vacation either: the hour runs
+   * on the wall clock (owner, 2026-11-20). Null on every other world.
+   */
+  newcomerBoostUntil: timestamp('newcomer_boost_until', { withTimezone: true }),
   /**
    * DEAD SINCE D179, AND KEPT ONLY SO OLD ROWS CAN BE CLEARED.
    *
@@ -4103,6 +4115,56 @@ export const asteroidClaims = pgTable('asteroid_claims', {
   oreTaken: real('ore_taken').notNull().default(0),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
 }, (t) => [primaryKey({ columns: [t.seasonId, t.index] })]);
+
+/**
+ * KİŞİSEL KAYALAR (plan 2026-11-20 §5.2, Faz 3). The two rocks a first game's landing lays beside the
+ * capital, seen and mined by that commander alone. `index` is negative and drawn from its own sequence, so a
+ * personal rock shares the season's claim ledger (`asteroid_claims`) and a run's `asteroid_index` without
+ * ever meeting a rock of the shared field, whose indexes are never negative. Both keys cascade: a reclaimed
+ * seat or a wiped season takes its rocks with it.
+ */
+export const personalRockIndexSeq = pgSequence('personal_rock_index_seq');
+export const personalRocks = pgTable('personal_rocks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  index: integer('index').notNull().default(sql`-nextval('personal_rock_index_seq')`),
+  spec: jsonb('spec').$type<Omit<AsteroidSpec, 'index'>>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex('personal_rocks_index_idx').on(t.index),
+  index('personal_rocks_player_idx').on(t.playerId, t.expiresAt),
+  check('personal_rocks_index_check', sql`${t.index} < 0`),
+]);
+
+/**
+ * İNİŞ SONRASI İLK SAAT GÖREVLERİ (plan 2026-11-20 §5.3, Faz 4; playtest 2026-11-23).
+ *
+ * One row per first-game commander: tracks authentic player-driven step progression and holds the
+ * commander's personal pirate spec under a negative index (`pirate_index < 0`, mirroring
+ * `personal_rocks`) so it shares `pirate_state` and `pirate_raids` without ever colliding with the
+ * shared pirate lane. Cascade-deleted with the player or season.
+ */
+export const personalPirateIndexSeq = pgSequence('personal_pirate_index_seq');
+export const newcomerScenario = pgTable('newcomer_scenario', {
+  playerId: uuid('player_id').primaryKey().references(() => players.id, { onDelete: 'cascade' }),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  step: text('step').$type<'LANDING' | 'MINE' | 'PIRATE' | 'PROBE' | 'WRAP_UP' | 'DONE' | 'DISMISSED'>().notNull(),
+  pirateIndex: integer('pirate_index').notNull().default(sql`-nextval('personal_pirate_index_seq')`),
+  pirateSpec: jsonb('pirate_spec').$type<Omit<PirateSpec, 'index'>>(),
+  pirateSpawnedAt: timestamp('pirate_spawned_at', { withTimezone: true }),
+  pirateDefeatedAt: timestamp('pirate_defeated_at', { withTimezone: true }),
+  probeSentAt: timestamp('probe_sent_at', { withTimezone: true }),
+  dismissedAt: timestamp('dismissed_at', { withTimezone: true }),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex('newcomer_scenario_pirate_index_idx').on(t.pirateIndex),
+  index('newcomer_scenario_season_step_idx').on(t.seasonId, t.step),
+  check('newcomer_scenario_pirate_index_check', sql`${t.pirateIndex} < 0`),
+]);
 
 /**
  * ONE HOUR OF THE DYNAMIC ASTEROID FIELD. 2026-09-16.

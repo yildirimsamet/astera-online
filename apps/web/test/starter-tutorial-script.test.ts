@@ -390,8 +390,14 @@ describe('the jump is shown, then asked', () => {
     expect(at({ ...open, view: 'galaxy' })).toMatchObject({ id: 'jumpAsk', step: 'press', nav: 'openShip', marks: ['[data-jump-call]', '[data-guide="dock-base"]'] });
   });
 
-  it('waits for the drive\'s scene: until it has been shown the yard\'s work goes on', () => {
-    expect(at({ ...open, jumpWaiting: true })).toMatchObject({ id: 'buildShip' });
+  it('asks immediately when already aboard on the ship screen, and waits quietly on the galaxy for the drive\'s scene instead of hijacking into buildShip', () => {
+    expect(at({ ...open, view: 'ship', jumpWaiting: true })).toMatchObject({ id: 'jumpAsk' });
+    expect(at({ ...open, view: 'galaxy', jumpWaiting: true })).toEqual({ kind: 'advise' });
+  });
+
+  // Review 2026-11-23: item 24 still holds on the ship's page: never asked over the drive's own scene.
+  it('does not ask on the ship screen while the drive\'s scene is on the screen', () => {
+    expect(at({ ...open, view: 'ship', jumpWaiting: true, jumpPlaying: true })).not.toMatchObject({ id: 'jumpAsk' });
   });
 
   it('puts the hand on the jump\'s control for a commander who goes now', () => {

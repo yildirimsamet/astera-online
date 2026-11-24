@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { useNotifications } from '../api/queries.js';
-import { describeNotification, isAlarming, isUrgent } from '../lib/notifications.js';
+import { describeNotification, isAlarming, isThreat, isUrgent } from '../lib/notifications.js';
 import { useToast } from '../ui/Toast.js';
 import { serverNow } from '../lib/clock.js';
+import { attentionIsQuiet, useAttentionQuiet } from '../shell/attention/store.js';
 import { observeOutcomes } from './outcomeVisible.js';
+import i18n from '../i18n/index.js';
 
 /**
  * Events that arrive while the player is actually looking.
@@ -34,6 +36,16 @@ export function useLiveAlerts(enabled: boolean): void {
   const say = useToast();
   const primed = useRef(false);
   const announced = useRef(new Set<string>());
+  const heldEvents = useRef(0);
+  const quietNow = useAttentionQuiet();
+
+  // Plan 2026-11-20 §5.5 & Faz 1: galaxy-event alerts held during a quiet lock arrive once, batched.
+  useEffect(() => {
+    if (!enabled || quietNow || heldEvents.current <= 0) return;
+    const count = heldEvents.current;
+    heldEvents.current = 0;
+    say(i18n.t('starter.scenario.batchedEvents', { count }), 'info');
+  }, [enabled, quietNow, say]);
 
   useEffect(() => {
     if (!enabled || !data) return;
@@ -60,7 +72,15 @@ export function useLiveAlerts(enabled: boolean): void {
      * showed the less important one. An inbound fleet losing its toast to a mining
      * run that got home is the exact failure the whole surface exists to prevent.
      */
-    const ordered = [...fresh].sort((a, b) => {
+    // A window or the landing scenario has the screen: only a threat interrupts it. Galaxy-event
+    // starts held during the lock are summarised once when the lock lifts; the rest waits in Signals.
+    const quiet = attentionIsQuiet();
+    if (quiet) {
+      for (const n of fresh) {
+        if (n.kind === 'galaxy_event_started') heldEvents.current += 1;
+      }
+    }
+    const ordered = fresh.filter((n) => !quiet || isThreat(n)).sort((a, b) => {
       if (isUrgent(a) !== isUrgent(b)) return isUrgent(a) ? -1 : 1;
       return b.at.getTime() - a.at.getTime();
     });

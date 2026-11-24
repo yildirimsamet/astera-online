@@ -145,6 +145,7 @@
   BAD_CLAN_TAG: 'Utilise 2 à 5 lettres ou chiffres pour le tag du clan',
   BAD_CREDENTIALS: 'Les informations de connexion ne correspondent pas',
   BAD_FLEET: 'Le nombre de {{hull}} est invalide',
+  NEEDS_WARSHIP: 'Envoie au moins un vaisseau de guerre pour attaquer ce pirate',
   BAD_REQUEST: "Les détails de l’action n’ont pas pu être lus. Vérifie tes choix.",
   BAD_SESSION: "Ta session n’est plus valide ou a expiré. Reconnecte-toi.",
   BAD_SLOT: 'Un Télescope de niveau {{level}} peut surveiller au maximum {{slots}} planètes',

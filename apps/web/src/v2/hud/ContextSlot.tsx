@@ -152,6 +152,12 @@ export interface ContextSlotProps {
    * screen, its panel has the foot and the corner gives way (H5).
    */
   corner?: ReactNode;
+  /**
+   * First-game onboarding mission card (playtest 2026-11-23). Rides in the same bottom column under
+   * `corner` (the chat icon), gives way to any selected FocusPanel or incoming threat, and takes
+   * precedence over galaxy events / suggestions so there is never more than one card at the foot.
+   */
+  onboarding?: ReactNode;
 }
 
 /**
@@ -189,6 +195,7 @@ export function ContextSlot({
   dismissed,
   onDismiss,
   corner,
+  onboarding,
 }: ContextSlotProps) {
   const { t } = useTranslation();
   const [lookingAtThreat, setLookingAtThreat] = useState(false);
@@ -221,28 +228,31 @@ export function ContextSlot({
     </div>
   );
 
-  if (slot.card === 'selected' || slot.card === null) {
-    const lone = slot.card === null && corner !== undefined ? foot(null) : null;
-    if (slot.threatPill === 0) return lone;
+  if (slot.card === 'selected') {
+    if (slot.threatPill === 0) return null;
     return (
-      <>
-        {lone}
-        {/* The top-left corner, under the status and Now lines that float over the galaxy, as the corners start. */}
-        <div className="pointer-events-none absolute left-[var(--gk-gutter)] top-[calc(var(--v2-float-h,0px)+0.25rem)] z-20 [&_button]:pointer-events-auto">
-          <StatusChip
-            // The siren is an attack coming for you everywhere it is drawn (the Now line, the card).
-            glyph="siren"
-            tone="hostile"
-            label={t('slot.pill', { count: slot.threatPill })}
-            value={String(slot.threatPill)}
-            onPress={() => {
-              setLookingAtThreat(true);
-              onClearSelection();
-            }}
-          />
-        </div>
-      </>
+      <div className="pointer-events-none absolute left-[var(--gk-gutter)] top-[calc(var(--v2-float-h,0px)+0.25rem)] z-20 [&_button]:pointer-events-auto">
+        <StatusChip
+          // The siren is an attack coming for you everywhere it is drawn (the Now line, the card).
+          glyph="siren"
+          tone="hostile"
+          label={t('slot.pill', { count: slot.threatPill })}
+          value={String(slot.threatPill)}
+          onPress={() => {
+            setLookingAtThreat(true);
+            onClearSelection();
+          }}
+        />
+      </div>
     );
+  }
+
+  if (slot.card !== 'threat' && onboarding !== undefined && onboarding !== null) {
+    return foot(<div className="pointer-events-auto">{onboarding}</div>);
+  }
+
+  if (slot.card === null) {
+    return corner === undefined ? null : foot(null);
   }
 
   let card: ReactNode = null;

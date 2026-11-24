@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { combatValue, HONOR_BENEFIT_THRESHOLDS_V1, honorBenefits, type Fleet, type HpDamageLots } from '@astera/rules';
@@ -18,14 +18,14 @@ const event: IntergalacticConvoyEvent = {
   id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11',
   kind: 'INTERGALACTIC_CONVOY',
   startsAt: new Date('2026-09-12T16:00:00.000Z'),
-  endsAt: new Date('2026-09-12T18:00:00.000Z'),
+  endsAt: new Date('2026-09-12T19:00:00.000Z'),
   appearsAtMinute: 1140,
-  expiresAtMinute: 1260,
+  expiresAtMinute: 1320,
   route: {
-    from: { x: -2000, y: 0, z: 0 },
-    to: { x: 2000, y: 0, z: 0 },
-    velocity: { x: 100 / 3, y: 0, z: 0 },
-    speed: 100 / 3,
+    from: { x: -4500, y: 0, z: 0 },
+    to: { x: 4500, y: 0, z: 0 },
+    velocity: { x: 50, y: 0, z: 0 },
+    speed: 50,
   },
   visual: { formationVersion: 1 },
   rewardPolicy: {
@@ -50,7 +50,7 @@ describe('the intergalactic convoy commitment surface', () => {
     vi.restoreAllMocks();
   });
 
-  function openSheet(fleet: Fleet = { DART: 12 }, hpRate?: number, fleetDamage?: HpDamageLots, honor?: number) {
+  function openSheet(fleet: Fleet = { DART: 12 }, hpRate?: number, fleetDamage?: HpDamageLots, honor?: number, entitySource = false) {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(NOW);
     const launch = vi.fn().mockRejectedValue(new Error('test stop after request'));
@@ -59,7 +59,7 @@ describe('the intergalactic convoy commitment surface', () => {
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     });
     client.setQueryData(keys.galaxy, { radiationModel: hpRate === undefined ? 'PCT' : 'HP', radiation: [], hpRadiation: hpRate === undefined ? [] : [
-      { id: 'hp', mode: 'EMIT', center: { x: 0, y: 0, z: 0 }, radius: 100_000, intensityHpPerMinute: hpRate,
+      { id: 'hp', ...(entitySource ? { target: { kind: 'PLANET', id: 'affected-world' } } : {}), mode: 'EMIT', center: { x: 0, y: 0, z: 0 }, radius: 100_000, intensityHpPerMinute: hpRate,
         activeFrom: new Date(0), activeUntil: null },
     ] });
     const wrapper = ({ children }: { children: ReactNode }) => (
@@ -101,6 +101,25 @@ describe('the intergalactic convoy commitment surface', () => {
     );
     return launch;
   }
+
+  it('names the selected fleet when only that selection is too late', () => {
+    openSheet({ PIKE: 1 });
+    fireEvent.click(screen.getByRole('button', { name: 'Send every Pike' }));
+    act(() => {
+      vi.setSystemTime(event.endsAt.getTime() - 7000);
+      vi.advanceTimersByTime(5000);
+    });
+    expect(commitControl()).toHaveTextContent('The selected fleet cannot meet the convoy in time');
+  });
+
+  it('does not add flight damage or loss consent for an entity aura', async () => {
+    const launch = openSheet({ DART: 2 }, 1000000, undefined, undefined, true);
+    fireEvent.click(screen.getByRole('button', { name: 'Send every Dart' }));
+    expect(document.querySelector('[data-radiation-warning]')).toBeNull();
+    hold();
+    await waitFor(() => { expect(launch).toHaveBeenCalled(); });
+    expect(launch.mock.calls[0]?.[0]).not.toHaveProperty('acknowledgeRadiationLoss');
+  });
 
   it('shows the actual Honor penalty before sending and commits the reviewed tier', async () => {
     const launch = openSheet({ DART: 12 }, undefined, undefined, -100_000_000);

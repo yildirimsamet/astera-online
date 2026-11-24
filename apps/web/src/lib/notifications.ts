@@ -879,6 +879,18 @@ export function describeNotification(notification: NotificationView, now: number
       case 'SKIN': return i18n.t('unknownSignal.skinResult', { name: i18n.t(cosmeticCopy(outcome.cosmeticId).nameKey) });
     }
   }
+  // Kuruluş Saati (plan 2026-11-20 §4): the time left while it runs, and what the hour made.
+  if (notification.kind === 'newcomer_hour_ending') {
+    const parsed = z.object({ until: z.coerce.date() }).safeParse(notification.payload);
+    if (!parsed.success) return null;
+    const left = parsed.data.until.getTime() - now;
+    return left > 0 ? i18n.t('notifications.newcomerHourEnding', { time: duration(left / 60_000) }) : i18n.t('notifications.newcomerHourEnded');
+  }
+  if (notification.kind === 'newcomer_hour_summary') {
+    const amount = z.number().int().nonnegative();
+    const parsed = z.object({ alloy: amount, crystal: amount, builds: amount }).safeParse(notification.payload);
+    return parsed.success ? i18n.t('notifications.newcomerHourSummary', { alloy: full(parsed.data.alloy), crystal: full(parsed.data.crystal), count: parsed.data.builds }) : null;
+  }
   const native = notificationMonumentTarget(notification);
   if (native) {
     const name = native.label;
@@ -1589,6 +1601,16 @@ export const isUrgent = (notification: NotificationView): boolean =>
   notification.kind === 'galaxy_event_ended' || transferWasRerouted(notification);
 
 /**
+ * Someone is coming for the player now. The one kind of news that still speaks while a window or
+ * the landing scenario has the screen (plan 2026-11-20 §5.5): everything else waits in Signals.
+ */
+export const isThreat = (notification: NotificationView): boolean =>
+  notification.kind === 'incoming_fleet' ||
+  notification.kind === 'clan_alarm' ||
+  notification.kind === 'strategic_incoming' ||
+  notification.kind === 'monument_inbound';
+
+/**
  * Bad news, which is a different question from urgent news.
  *
  * Completed battles use their own result, including personal fleet destruction.
@@ -1658,6 +1680,7 @@ const isPirateNews = (notification: NotificationView): boolean => {
 export function signalFamily(notification: NotificationView): SignalFamily {
   // The commander's own ship: a gain when it is ready or a share waits, a loss to watch when a flight went unseen.
   if (notification.kind === 'arena_ship_ready' || notification.kind === 'arena_team_share') return 'gain';
+  if (notification.kind === 'newcomer_hour_ending' || notification.kind === 'newcomer_hour_summary') return 'gain';
   if (notification.kind === 'arena_sortie_end') return 'watch';
   if (notification.kind === 'unknown_signal_result') {
     const parsed = z.object({ outcome: unknownSignalOutcomeSchema }).safeParse(notification.payload);

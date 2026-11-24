@@ -49,6 +49,14 @@ profile; cargo keeps its `2.5×` lift, and pirate/merchant anchors follow the sa
 Probe speed is `2369.25`, Prospector speed `891` and its laden return `445.5`.
 Asteroids retain `262.5–562.5`; the Beacon, Derrick and Propulsion ratios are unchanged.
 Death Star speed stays `1500`, Radiation Bomb speed stays `1300`.
+An unknown-signal flight — out, back, and home from a recall — moves at `4×` the wing's pace
+(owner, 2026-11-20; `UNKNOWN_SIGNAL.speedMultiplier`, `signalTravelExact`); its fuel is unchanged.
+
+**Personal rocks** (owner, 2026-11-20; `PERSONAL_ROCKS`, `personal_rocks`). A first game's landing lays
+two rocks 300 and 420 units from the capital: 800–1,200 ore, 35% crystal, six hours. Only their
+commander sees and mines them; another commander's order at one is "not found". They drift at
+`3` units per minute on ordinary orbits, share the season's claim ledger under negative indexes,
+and never enter the shared field, its spawn gate or its counts.
 
 All three refinery outputs fall **15% below the previous live output**, at every level.
 Store and Works resource capacities stay fixed, so Works now fill in about `14.71` hours.
@@ -214,6 +222,12 @@ system-abandoned order refunds everything. The Death Star
 keeps its separate sixty-minute strategic build (D97), and so does the interception charge that
 answers it (D139) — both are strategic assets on the world rather than queue orders, and both are
 stopped by a bombardment and resumed by the recovery that follows.
+
+**The five-minute rule** (owner, 2026-11-20; `INSTANT_BUILD`, `upgradeOrderMinutes`). A building or
+instrument upgrade whose whole time, research applied, is five minutes or less takes no time: on a
+free CONSTRUCTION lane it completes in the answer that ordered it; behind another order it completes
+one second after that order. Price, Core ceiling and queue depth still apply. Hulls, defence,
+research and satellites keep their clocks. The card says "Instant · ≤5 min" where the time would be.
 
 **Research is bought on a surface of its own** (D140). The selected world pays, but the order enters
 the commander's three-deep RESEARCH lane; no planet gains an extra lane and no Construction or Yard
@@ -1386,8 +1400,11 @@ when the radius-3000 galaxy made the rim-to-route reach longer), a
 twenty-two-craft double formation crosses an
 isotropic galaxy diameter. Its centre is the gameplay anchor and reaches the galaxy centre at minute
 90. The active route is public; future routes remain server-secret. A commander sends an armed
-mobile wing to the moving intercept, fires alongside it for exactly five seconds, receives no return
-fire, then follows a separately frozen return leg. In the current entity-based radiation model,
+mobile wing to the moving intercept at twice its normal fleet speed (including launch propulsion
+and Beacon), fires alongside it for exactly five seconds, receives no return
+fire, then follows a separately frozen return leg at normal speed. Only convoy outbound travel
+gets the multiplier; other mission types do not. The full strike must fit the crossing; return
+may finish after the convoy leaves, provided it is before season end. In the current entity-based radiation model,
 the outbound leg, five-second pass and return leg take no environmental radiation damage:
 crossing a planet's or monument's visible aura does not mean occupying that target. Existing
 ship damage is preserved. Both legs' fuel is paid at launch and the flight cannot be recalled.

@@ -16,6 +16,7 @@ import {
   isConvoyEngaging,
   massClass,
   orbitStandoff,
+  pirateActive,
   piratePosition,
   pirateSightZone,
   sensorSphere,
@@ -27,6 +28,7 @@ import {
   type MassClass,
   type Fleet,
   type PirateLevel,
+  type PirateSpec,
   type SensorSphere,
   type SensorZone,
   type ShipCosmeticEquipment,
@@ -56,10 +58,12 @@ import { loadMiningSnapshot } from './mining.js';
 import { discoveredAsteroidIndexes } from './asteroidField.js';
 import {
   discoveredPirateIndexes,
+  livingRoster,
   loadPirateSnapshot,
   pirateId,
   type PirateSnapshot,
 } from './pirateField.js';
+import { personalPirateOf } from './newcomerScenario.js';
 import { dockEndsAt, tradeReturnPoint, tradeReturnDepartAt, tradeReturnHome } from './trade.js';
 import { minutesSince } from '../clock.js';
 import { sensorHistoryForPlayer } from './sensorHistory.js';
@@ -1019,12 +1023,13 @@ export async function galaxyTraffic(
   ownPlayerId: string | null = null,
   ownPlanetIds: string[] = ownPlanetId === null ? [] : [ownPlanetId],
 ): Promise<Contact[]> {
-  const [snapshot, sensors, mining, epochs, pirates] = await Promise.all([
+  const [snapshot, sensors, mining, epochs, pirates, ownPirate] = await Promise.all([
     loadTrafficSnapshot(db, seasonId, now),
     sensorPosts(db, ownPlanetIds),
     ownPlayerId === null ? Promise.resolve(null) : loadMiningSnapshot(db, seasonId, now),
     ownPlayerId === null ? Promise.resolve([]) : sensorHistoryForPlayer(db, ownPlayerId, seasonId),
     loadPirateSnapshot(db, seasonId, now),
+    ownPlayerId === null ? Promise.resolve(undefined) : personalPirateOf(db, ownPlayerId),
   ]);
   const discovered = mining === null
     ? new Set<number>()
@@ -1039,6 +1044,7 @@ export async function galaxyTraffic(
     discovered,
     pirates,
     discoveredPirateIndexes(pirates, epochs, now),
+    ownPirate ?? null,
   );
 }
 
@@ -1078,6 +1084,8 @@ export function projectGalaxyTraffic(
    * had one inside a post.
    */
   discoveredPirates: ReadonlySet<number>,
+  /** This commander's personal onboarding pirate, visible to its owner alone. */
+  personalPirate: PirateSpec | null = null,
 ): Contact[] {
   const {
     missionRows,
@@ -1658,7 +1666,16 @@ export function projectGalaxyTraffic(
       });
     }
 
-    for (const spec of pirates.standing(now)) {
+    const standingPirates = pirates.standing(now);
+    const allPirates = personalPirate
+      && ownPlayerId !== null
+      && pirateActive(personalPirate, nowMinutes)
+      && pirates.destroyedAt(personalPirate.index) === null
+      ? [...standingPirates, personalPirate]
+      : standingPirates;
+
+    for (const spec of allPirates) {
+      const isPersonal = spec.index < 0;
       const engaging = engagedAt.get(spec.index);
       const at = engaging ? engaging.at : piratePosition(spec, nowMinutes);
       /*
@@ -1677,9 +1694,11 @@ export function projectGalaxyTraffic(
         floor out inline here instead made it the SECOND statement of a sight rule,
         which is the thing `sight.ts` exists to prevent — and the two had already
         drifted at the expiry boundary before the floor was shared.
+
+        The commander's own onboarding pirate is known to them wherever it is (plan 2026-11-20 §5.3).
       */
       const live = zoneAt(at);
-      const zone = pirateSightZone(live, discoveredPirates.has(spec.index));
+      const zone = isPersonal ? 'IDENTIFIED' : pirateSightZone(live, discoveredPirates.has(spec.index));
       /**
        * NO CIRCLE COVERS IT — which is a statement about SIGHT, not about age. D160.
        *
@@ -1688,7 +1707,7 @@ export function projectGalaxyTraffic(
        * are looking at from what they are remembering. A discovered rock publishes
        * its live `oreRemaining` on exactly these terms.
        */
-      const frozen = live === 'NONE' ? { remembered: true as const } : {};
+      const frozen = !isPersonal && live === 'NONE' ? { remembered: true as const } : {};
       if (zone === 'NONE') {
         /*
           THE FLASH IS PUBLIC AT ANY RANGE; THE CRAFT IS NOT. D52 — owner rule.
@@ -1731,7 +1750,9 @@ export function projectGalaxyTraffic(
         continue;
       }
 
-      const crew = pirates.livingRosterOf(spec.index);
+      const crew = isPersonal
+        ? livingRoster(spec.roster, pirates.state.get(spec.index)?.losses)
+        : pirates.livingRosterOf(spec.index);
       /*
         THE WINDOW IS DERIVED FROM THE CLIENT'S POLL INTERVAL, and it is far
         shorter than a straight leg's. `TRAFFIC.bearingMinutes` was written for a
@@ -1825,6 +1846,8 @@ export function projectGalaxyTraffic(
       ? ownedPlanets.has(raid.planetId)
       : raid.ownerPlayerId === ownPlayerId;
     if (mine) continue;
+    // Another commander's personal onboarding pirate raid stays private to them.
+    if (raid.pirateIndex < 0) continue;
     const home = positions.get(raid.planetId);
     if (!home) continue;
     const meet = { x: raid.interceptX, y: raid.interceptY, z: raid.interceptZ };

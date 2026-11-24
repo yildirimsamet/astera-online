@@ -1135,6 +1135,8 @@ export const planetSchema = z.object({
      */
     productionBoostUntil: z.coerce.date().nullable().optional(),
     signalBoostUntil: z.coerce.date().nullable().optional(),
+    /** Kuruluş Saati's end while it runs (plan 2026-11-20 §5.1): five-fold alloy and crystal until then. */
+    newcomerBoostUntil: z.coerce.date().nullable().optional(),
   }),
   pvpBalance: pvpBalanceSchema.optional(),
   buildings: z.record(buildingId, z.number()),
@@ -1541,16 +1543,23 @@ export const rewardClaimSchema = z.object({
 });
 
 /** New Commander 7 Days (plan 2026-11-06 §7.2): the next box, from when, and what it holds; null when not for this account. */
+const welcomeBoxRewardSchema = z.object({
+  alloy: z.number(),
+  crystal: z.number(),
+  deuterium: z.number().optional().default(0),
+  cosmeticId: z.string().optional(),
+});
+
 const welcomeStateSchema = z.object({
   welcome: z.object({
     opened: z.number().int().nonnegative(),
     box: z.number().int().positive().nullable(),
     readyAt: z.coerce.date().nullable(),
-    preview: z.object({ alloy: z.number(), crystal: z.number() }).nullable(),
+    preview: welcomeBoxRewardSchema.nullable(),
   }).nullable(),
 });
 export const welcomeSchema = welcomeStateSchema;
-export const welcomeOpenSchema = welcomeStateSchema.extend({ granted: z.object({ alloy: z.number(), crystal: z.number() }) });
+export const welcomeOpenSchema = welcomeStateSchema.extend({ granted: welcomeBoxRewardSchema });
 export type WelcomeState = z.infer<typeof welcomeStateSchema>;
 
 /** The one clan suggested on the landing day, with how many former starter neighbours are in it. */
@@ -3475,6 +3484,8 @@ export const asteroidSchema = z.object({
   active: z.boolean(),
   isotopeRich: z.boolean(),
   deuteriumShare: z.number().nullable(),
+  /** Kişisel kaya (plan 2026-11-20 §5.2): laid at this commander's landing, seen and mined by them alone. */
+  personal: z.literal(true).optional(),
 }).strict();
 
 export const miningSchema = z.object({
@@ -4298,3 +4309,14 @@ export const accountDeletionRequestSchema = z.object({
 });
 export const accountDeletionStatusSchema = z.object({ request: accountDeletionRequestSchema.nullable() });
 export const accountDeletionSubmittedSchema = z.object({ request: accountDeletionRequestSchema });
+
+export const newcomerScenarioSchema = z.object({
+  step: z.enum(['LANDING', 'MINE', 'PIRATE', 'PROBE', 'WRAP_UP', 'DONE', 'DISMISSED']),
+  pirateDefeated: z.boolean(),
+  /** The founding hour: until then the tasks keep other windows waiting (review 2026-11-23). */
+  holdsScreenUntil: z.coerce.date(),
+});
+export const newcomerScenarioResponseSchema = z.object({
+  scenario: newcomerScenarioSchema.nullable(),
+});
+export type NewcomerScenario = z.infer<typeof newcomerScenarioSchema>;

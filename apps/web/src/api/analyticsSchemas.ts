@@ -10,7 +10,7 @@ export const ANALYTICS_NAMES = [
   'training_action_ready', 'training_action_accepted', 'training_result_visible',
   'training_scene_completed', 'training_exit_requested', 'training_completed',
   'auth_attempted', 'auth_result', 'claim_step_visible', 'placement_failed', 'game_ready',
-  'command_attempted', 'command_blocked', 'command_result', 'surface_visible', 'blocker_visible', 'outcome_visible',
+  'command_attempted', 'command_blocked', 'command_result', 'surface_visible', 'surface_closed', 'blocker_visible', 'outcome_visible',
   'load_phase', 'client_error', 'network_recovered', 'performance_summary',
   'alert_scheduled', 'alert_opened', 'alert_permission', 'install_offer', 'install_result', 'recovery_result',
   'vessel_enlisted', 'vessel_step_completed', 'vessel_feature_opened', 'vessel_first_probe_sent', 'vessel_first_probe_received',

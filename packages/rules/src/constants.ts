@@ -2447,6 +2447,27 @@ export const RIVAL = {
   max: 5,
 } as const;
 
+/**
+ * THE FIVE-MINUTE RULE (owner, 2026-11-20; plan docs/inis-sonrasi-ilk-saat-plani-2026-11-20.md §5.6). A
+ * building or instrument upgrade whose whole time is this or less takes no time at all, for everyone.
+ * Ships, defence, research and satellites keep their clocks: panic defence is priced in seconds already.
+ */
+export const INSTANT_BUILD = {
+  maxMinutes: 5,
+} as const;
+
+/**
+ * KURULUŞ SAATİ (owner, 2026-11-20; plan docs/inis-sonrasi-ilk-saat-plani-2026-11-20.md §5.1). A first
+ * game's first hour in the main galaxy, on the wall clock from the landing: the capital's alloy and
+ * crystal works run at five times their rate. Deuterium is not boosted. A new newcomer perk is one more
+ * key here and the one place it is applied.
+ */
+export const NEWCOMER_HOUR = {
+  minutes: 60,
+  /** Added to the ordinary rate: 4 makes it five-fold (owner, 2026-11-20). */
+  productionBonus: 4,
+} as const;
+
 /** Personal radar discoveries for early-tier commanders; owner decisions, 2026-10-17. */
 export const UNKNOWN_SIGNAL = {
   tiers: [1, 2, 3],
@@ -2454,6 +2475,8 @@ export const UNKNOWN_SIGNAL = {
   /** A first game's first signal (owner, 2026-10-20): soon, and never pirates. */
   firstGameGapMinutes: [2, 10],
   lifetimeMinutes: 60,
+  /** Sinyal 4× (owner, 2026-11-20; plan §5.4): out, back and home from a recall, four times as fast. Fuel unchanged. */
+  speedMultiplier: 4,
   minFromCapital: 400,
   minFromAnyPlanet: 250,
   noRadarRangeLevel: 1,
@@ -2751,6 +2774,8 @@ export const INTERGALACTIC_CONVOY = {
    * units per minute and passes the centre halfway through the window.
    */
   durationMinutes: 180,
+  /** Applies only inside the convoy intercept solver; return travel uses normal speed. */
+  outboundSpeedMultiplier: 2,
   engagementSeconds: 5,
   quoteToleranceSeconds: 5,
   /**

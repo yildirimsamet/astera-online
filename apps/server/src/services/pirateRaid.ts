@@ -20,6 +20,7 @@ import {
   claimPirateLoot,
   interceptOrbit,
   missionFuel,
+  personalPirateFleetSpeed,
   pirateActive,
   pirateCapture,
   piratePosition,
@@ -92,6 +93,7 @@ import {
 import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
 import { admiralForFlight, admiralHomeward, admiralTime, attachAdmiral, escortedBattle, finishAdmiralLeg, prepareAdmiral, recordAdmiralBattle, reportAdmirals } from './admiral.js';
 import { withAdmiral } from '@astera/rules/arena';
+import { onScenarioPirateDefeated, personalPirateOf } from './newcomerScenario.js';
 
 /**
  * RAIDING A PIRATE. D150.
@@ -226,9 +228,17 @@ export async function launchPirateRaid(
     }
 
     const snapshot = await loadPirateSnapshot(tx, origin.seasonId, origin.now);
-    const index = pirateIndexFromId(snapshot.key, snapshot.pirates, target);
-    const spec = index === null ? undefined : snapshot.spec(index);
+    const ownPirate = await personalPirateOf(tx, origin.playerId);
+    const personalIndex = ownPirate ? pirateIndexFromId(snapshot.key, [ownPirate], target) : null;
+    const index = personalIndex ?? pirateIndexFromId(snapshot.key, snapshot.pirates, target);
+    const spec = index === null
+      ? undefined
+      : (personalIndex !== null ? ownPirate : snapshot.spec(index));
     if (!spec || index === null) throw new GameError('NO_SUCH_PIRATE', 'No such pirate', 404);
+    // The onboarding crew is beaten without loss, which only a wing with a gun can claim (review 2026-11-23).
+    if (personalIndex !== null && !fleetEntries(requested).some(([hull]) => HULLS[hull].atk > 0)) {
+      throw new GameError('NEEDS_WARSHIP', 'Send at least one warship', 400);
+    }
 
     // Before the rendezvous solve: there is no point finding a meeting point for a
     // launch that has nowhere to launch from. D28, in mining's order.
@@ -238,7 +248,10 @@ export async function launchPirateRaid(
     if (!pirateActive(spec, nowMinutes) || snapshot.destroyedAt(index) !== null) {
       throw new GameError('PIRATE_GONE', 'That pirate is no longer out there', 409);
     }
-    if (fleetCount(snapshot.livingRosterOf(index)) === 0) {
+    const living = personalIndex !== null
+      ? livingRoster(spec.roster, snapshot.state.get(index)?.losses)
+      : snapshot.livingRosterOf(index);
+    if (fleetCount(living) === 0) {
       throw new GameError('PIRATE_GONE', 'That pirate is no longer out there', 409);
     }
 
@@ -273,21 +286,24 @@ export async function launchPirateRaid(
      * CONTACT stays an anonymous Radar mark. IDENTIFIED can come from live
      * Telescope sight or from the same Telescope discovery memory rocks use.
      */
-    const spheres = await sensorPosts(tx, await ownWorldIds(tx, origin.playerId));
-    const epochs = await sensorHistoryForPlayer(tx, origin.playerId, origin.seasonId);
-    const zone = pirateZone(spheres, spec, piratePosition(spec, nowMinutes), epochs, nowMinutes);
-    if (zone === 'NONE') {
-      throw new GameError('PIRATE_OUT_OF_SIGHT', 'That pirate is not on your sensors', 403);
-    }
-    if (zone !== 'IDENTIFIED') {
-      throw new GameError('PIRATE_NOT_IDENTIFIED', 'Identify this pirate with a Telescope before attacking', 403);
+    if (personalIndex === null) {
+      const spheres = await sensorPosts(tx, await ownWorldIds(tx, origin.playerId));
+      const epochs = await sensorHistoryForPlayer(tx, origin.playerId, origin.seasonId);
+      const zone = pirateZone(spheres, spec, piratePosition(spec, nowMinutes), epochs, nowMinutes);
+      if (zone === 'NONE') {
+        throw new GameError('PIRATE_OUT_OF_SIGHT', 'That pirate is not on your sensors', 403);
+      }
+      if (zone !== 'IDENTIFIED') {
+        throw new GameError('PIRATE_NOT_IDENTIFIED', 'Identify this pirate with a Telescope before attacking', 403);
+      }
     }
 
     const tech = await techOf(tx, origin.playerId);
     const escort = await prepareAdmiral(tx, origin, admiral);
     // A Kılavuz shortens the road, so the meeting is solved at its faster speed (the quote's `escortReach`).
     const escortTime = escort?.bonuses.time ?? 1;
-    const speed = fleetSpeed(requested, tech) * fleetSpeedMult(origin.orbit) / escortTime;
+    const baseSpeed = fleetSpeed(requested, tech) * fleetSpeedMult(origin.orbit);
+    const speed = (personalIndex !== null ? personalPirateFleetSpeed(baseSpeed) : baseSpeed) / escortTime;
     const hit = interceptOrbit(
       origin,
       speed,
@@ -340,11 +356,14 @@ export async function launchPirateRaid(
     // Nothing hostile lands in a planned maintenance window (F0.9, K7).
     await assertLandsOutsideMaintenance(tx, [arriveAt]);
     const resolveAt = new Date(engagementEndsAt(arriveAt.getTime()));
-    const homeMinutes = fleetTravelExact(
+    const rawHomeMinutes = fleetTravelExact(
       reach,
       requested,
       { boost: fleetSpeedMult(origin.orbit), tech },
     ) * escortTime;
+    const homeMinutes = personalIndex !== null
+      ? rawHomeMinutes * (baseSpeed / personalPirateFleetSpeed(baseSpeed))
+      : rawHomeMinutes;
     if (hpRadiationApplies(origin.rulesetVersion)) await assertRadiationSafe(tx, {
       seasonId: origin.seasonId, from: origin, to: hit.at, departAt: origin.now, arriveAt, fleet: requested,
       damage: selectHomeDispatch(origin.homeFleet, origin.homeDamage, requested, true).selectedDamage,
@@ -597,12 +616,30 @@ async function settleArrival(
     UNESCORTED HOLDS DO NOT ESCAPE (owner report, 2026-10-06): once the crew's last warship is down
     and this wing still has a gun, the holds left are taken — destroyed, wreckage, a DECISIVE grade.
   */
-  const result = pirateOverrun(fought, partitionCombatFleet(attacking, raid.damage).eligible);
+  const isPersonal = raid.pirateIndex < 0;
+  const overrun = pirateOverrun(fought, partitionCombatFleet(attacking, raid.damage).eligible);
+  // Playtest 2026-11-23: during the onboarding pirate mission, player ships never die or take damage,
+  // and any combat fleet dispatched by the newcomer defeats the personal pirate in one raid.
+  const result: typeof overrun = isPersonal
+    ? {
+        ...overrun,
+        grade: 'DECISIVE',
+        attackerSurvivors: { ...attacking },
+        attackerLosses: {},
+        attackerRetreated: {},
+        attackerDamage: [],
+        defenderSurvivors: {},
+        defenderLosses: { ...crew },
+        defenderRetreated: {},
+      }
+    : overrun;
   /*
     KALICI GEMİ HASARI. The hunters carry their part-hit ships home to be judged on
     landing; the crew is nobody's and carries nothing (plan D1).
   */
-  const attackerDamage = shipDamageApplies(origin.rulesetVersion) ? result.attackerDamage : [];
+  const attackerDamage = isPersonal
+    ? []
+    : (shipDamageApplies(origin.rulesetVersion) ? result.attackerDamage : []);
 
   const losses: Fleet = { ...(state?.losses ?? {}) };
   for (const [hull, count] of fleetEntries(result.defenderLosses)) {
@@ -631,6 +668,7 @@ async function settleArrival(
 
   if (wiped) {
     await turnRaidsFromDestroyedPirate(tx, raid, spec, key, now);
+    await onScenarioPirateDefeated(tx, raid.ownerPlayerId, now);
   }
 
   /**
@@ -692,7 +730,7 @@ async function settleArrival(
 
   // Only a ship physically destroyed in this fight can be towed. Retreats
   // are living ships, and raiders that left cannot claim a capture.
-  const captured = fleetCount(activeBattleFleet(result.attackerSurvivors, result.attackerRetreated)) > 0
+  const captured = !isPersonal && fleetCount(activeBattleFleet(result.attackerSurvivors, result.attackerRetreated)) > 0
     ? pirateCapture(spec.level, result.defenderLosses, result.grade, seededFrom('pirate:capture', raid.id))
     : null;
 
@@ -713,10 +751,12 @@ async function settleArrival(
     Settled once, so the report, the field and the leg home read one remainder.
     A squadron annihilated here has no collector left to lift anything.
   */
-  const { salvage, field: wreck } = settleWreck(
-    pirateBattleWreck(result.attackerLosses, result.defenderLosses),
-    activeBattleFleet(result.attackerSurvivors, result.attackerRetreated),
-  );
+  const { salvage, field: wreck } = isPersonal
+    ? { salvage: { alloy: 0, crystal: 0, deuterium: 0 }, field: null }
+    : settleWreck(
+        pirateBattleWreck(result.attackerLosses, result.defenderLosses),
+        activeBattleFleet(result.attackerSurvivors, result.attackerRetreated),
+      );
   const lifted = salvage.alloy + salvage.crystal + salvage.deuterium > 0;
   const wreckValue = wreck ? wreck.alloy + wreck.crystal + wreck.deuterium : 0;
   await createVoidDebris(tx, raid, wreck, now);
@@ -772,7 +812,7 @@ async function settleArrival(
   }
   await persistBattleReplay(tx, { source: { kind: 'BATTLE', id: replayReport.id }, seasonId: raid.seasonId, capture: replayCapture, result,
     context: { environment: 'MONUMENT', aegisCapacity: 0, defenceOffline: false, escape: null, control: null,
-      ...(result !== fought ? { aftermath: 'PIRATE_OVERRUN' } : {}) }, at: now });
+      ...(overrun !== fought ? { aftermath: 'PIRATE_OVERRUN' } : {}) }, at: now });
 
   await notify(tx, {
     // The same rule as the report above and the delivery below: D150's column.
@@ -941,13 +981,18 @@ async function turnRaidNow(
     z: outbound.from.z + (outbound.to.z - outbound.from.z) * progress,
   };
   const returnAnchor = pirateReturnAnchor(turn, home);
+  const turnBoost = fleetSpeedMult(orbit);
+  const turnBaseSpeed = fleetSpeed(fleet, raid.tech ?? {}) * turnBoost;
+  const turnScale = raid.pirateIndex < 0 && turnBaseSpeed > 0
+    ? turnBaseSpeed / personalPirateFleetSpeed(turnBaseSpeed)
+    : 1;
   const homeAt = addMinutes(
     now,
     fleetTravelExact(
       distance(turn, outbound.from),
       fleet,
-      { boost: fleetSpeedMult(orbit), tech: raid.tech ?? {} },
-    ) * await admiralTime(tx, 'pirate', raid.id),
+      { boost: turnBoost, tech: raid.tech ?? {} },
+    ) * turnScale * await admiralTime(tx, 'pirate', raid.id),
   );
 
   const claimed = await tx
@@ -1098,11 +1143,16 @@ async function turnForHome(
   }
 
   const meet = { x: raid.interceptX, y: raid.interceptY, z: raid.interceptZ };
+  const returnBoost = fleetSpeedMult(await orbitOf(tx, raid.planetId));
+  const returnBaseSpeed = fleetSpeed(survivors, raid.tech ?? {}) * returnBoost;
+  const returnScale = raid.pirateIndex < 0 && returnBaseSpeed > 0
+    ? returnBaseSpeed / personalPirateFleetSpeed(returnBaseSpeed)
+    : 1;
   const back = fleetTravelExact(
     distance(meet, origin),
     survivors,
-    { boost: fleetSpeedMult(await orbitOf(tx, raid.planetId)), tech: raid.tech ?? {} },
-  ) * await admiralTime(tx, 'pirate', raid.id);
+    { boost: returnBoost, tech: raid.tech ?? {} },
+  ) * returnScale * await admiralTime(tx, 'pirate', raid.id);
   const returnDepartAt = hpRadiationApplies(origin.rulesetVersion)
     ? new Date(engagementEndsAt(raid.arriveAt.getTime())) : origin.now;
   const homeAt = addMinutes(returnDepartAt, back);

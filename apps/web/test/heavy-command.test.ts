@@ -193,8 +193,13 @@ describe('what goes through the launcher', () => {
   };
   const LAUNCHER = 'node ../../tools/heavy.mjs';
 
-  it.each(['apps/server', 'apps/web', 'packages/rules', 'packages/sim'])('%s queues its typecheck at 3 GiB', (workspace) => {
+  it.each(['apps/server', 'packages/rules', 'packages/sim'])('%s queues its typecheck at 3 GiB', (workspace) => {
     expect(scripts(`${workspace}/package.json`).typecheck).toBe(`${LAUNCHER} --heap 3072 tsc --noEmit`);
+  });
+
+  // 2026-11-24: the web's one program outgrew 3 GiB; it is checked in parts under the same ceiling.
+  it('apps/web queues its typecheck at 3 GiB, in parts', () => {
+    expect(scripts('apps/web/package.json').typecheck).toBe(`${LAUNCHER} --heap 3072 node ../../tools/typecheck-parts.mjs`);
   });
 
   it.each(['apps/server', 'apps/web', 'packages/rules'])('%s queues its tests, at most four workers of 1 GiB', (workspace) => {
