@@ -7,7 +7,7 @@ import { MOON, type MoonRarity, type Vec3 } from '@astera/rules';
  * so the server never ships per-frame moon coordinates. Zero allocations in hot loops.
  */
 
-const RARITY_RING_HEX: Record<MoonRarity, number> = {
+const RARITY_RIM_HEX: Record<MoonRarity, number> = {
   COMMON: 0x94a3b8,
   RARE: 0x38bdf8,
   EPIC: 0xc084fc,
@@ -116,11 +116,11 @@ export function moonRadiusFor(parentRadius: number, rarity: MoonRarity | undefin
 }
 
 /**
- * V17: Unknown rarity returns `null` (rendered WITHOUT a ring) so undiscovered moons
- * never confuse with Common's grey ring.
+ * V17: Unknown rarity returns `null` (drawn WITHOUT a coloured limb) so an undiscovered moon
+ * never passes for a Common one. Since 2026-11-24 the colour lights the moon's limb, not a ring.
  */
-export function moonRarityRingColor(rarity: MoonRarity | undefined): number | null {
-  return rarity ? RARITY_RING_HEX[rarity] : null;
+export function moonRarityRimColor(rarity: MoonRarity | undefined): number | null {
+  return rarity ? RARITY_RIM_HEX[rarity] : null;
 }
 
 /** Rocky regolith base shade with warm fissure shift when cracked by Death Star hits. */

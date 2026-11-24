@@ -113,6 +113,7 @@ import { Moons } from './Moons.js';
 import { moonOrbitPosition, moonRadiusFor } from './moonOrbit.js';
 import { MOON_WARP_DURATION_MS, MoonGateWarpFx, type MoonGateWarpEvent } from './MoonGateWarpFx.js';
 import { moonWarpPose } from './moonWarpShot.js';
+import { MoonGateFlashes } from './MoonGateFlashes.js';
 import { MoonScanFx, type MoonScanFxEvent } from './MoonScanFx.js';
 import { MoonActivityFx, type MoonHopFxItem } from './MoonActivityFx.js';
 import { SCENE_LIGHT } from './planetSurface.js';
@@ -768,6 +769,11 @@ export function GalaxyCanvas({
 
   // The Moon Gate warp camera: one glide to an unlocked over-the-shoulder shot (see `moonWarpPose`).
   const latestWarp = moonWarps && moonWarps.length > 0 ? moonWarps[moonWarps.length - 1] ?? null : null;
+  // The commander's own gates are drawn by their own warp, never again as the public flash the others see.
+  const warpingWorlds = useMemo(() => new Set([
+    ...(moonWarps ?? []).flatMap((w) => [w.fromPlanetId, w.toPlanetId]),
+    ...nodes.filter((n) => n.isOwned).map((n) => n.id),
+  ]), [moonWarps, nodes]);
   const warpKeyCounter = useRef(1_000);
   const [warpShotState, setWarpShotState] = useState<{ id: string; key: number } | null>(null);
 
@@ -804,7 +810,7 @@ export function GalaxyCanvas({
       const destMoon = { x: 0, y: 0, z: 0 };
       moonOrbitPosition({ x: fromNode.position[0], y: fromNode.position[1], z: fromNode.position[2] }, fromNode.radius, fromMoon?.visualSeed ?? 1, timeSec, originMoon);
       moonOrbitPosition({ x: toNode.position[0], y: toNode.position[1], z: toNode.position[2] }, toNode.radius, toMoon?.visualSeed ?? 2, timeSec, destMoon);
-      return moonWarpPose([originMoon.x, originMoon.y, originMoon.z], [destMoon.x, destMoon.y, destMoon.z], depUnit * 8);
+      return moonWarpPose([originMoon.x, originMoon.y, originMoon.z], [destMoon.x, destMoon.y, destMoon.z], depUnit * 9, { centre: [fromNode.position[0], fromNode.position[1], fromNode.position[2]], radius: fromNode.radius });
     };
     const first = pose();
 
@@ -1112,6 +1118,7 @@ export function GalaxyCanvas({
             }}
           />
         </Suspense>
+        <MoonGateFlashes moons={moons} nodes={nodes} quiet={warpingWorlds} />
         {moonWarps && moonWarps.length > 0 && (
           <Suspense fallback={null}>
             <MoonGateWarpFx events={moonWarps} moons={moons} nodes={nodes} onArriveCamera={onMoonWarpArrive} />

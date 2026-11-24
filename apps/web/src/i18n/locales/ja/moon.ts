@@ -80,7 +80,8 @@ export const moon = {
   },
   gate: {
     title: 'ムーンゲート',
-    subtitle: '別の所有月へ{{gateSeconds}}秒ジャンプ · 両ゲートが充電に入ります',
+    subtitle: '別の所有月へ{{gateSeconds}}秒ジャンプ',
+    rechargeAfter: 'ジャンプ後、このゲートは{{fromHours}}時間、目的地のゲートは{{toHours}}時間チャージされます。',
     noOtherMoons: 'ゲートを開くには2つ目の月を建造または占領してください。',
     destination: '移動先の月',
     holdLabel: '長押しでジャンプ',

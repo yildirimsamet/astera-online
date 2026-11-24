@@ -7,12 +7,11 @@ import type { GalaxyMoons } from '../api/schemas.js';
 import { serverNow } from '../lib/clock.js';
 import { NIGHT_FLOOR } from './planetSurface.js';
 import {
-  moonFlashProgress,
   moonListChanges,
   type MoonListState,
   moonOrbitPosition,
   moonRadiusFor,
-  moonRarityRingColor,
+  moonRarityRimColor,
   moonSurfaceColor,
 } from './moonOrbit.js';
 
@@ -25,13 +24,12 @@ import {
   - Draw budget: 2 instanced meshes (regolith + ancient) across all moons in the galaxy; clickable
     to focus their parent world; zero per-frame heap allocations.
 
-  VFX BRIEF 2 — Moon Rarity Telemetry Ring (S53 / V17)
-  - Physical event: Orbital telemetry ring locking onto a discovered moon's gravitational resonance;
-    undiscovered moons render ringless (V17).
+  VFX BRIEF 2 — Rarity on the limb (V17, owner 2026-11-24)
+  - In the world: a discovered moon's limb catches a thin light of its rarity's colour; an unknown one has none.
+  - Asset: the lunar material itself (one fresnel term in its emissive), no extra draw.
+  - Why: the old ring read as a planetary ring; the moon's own edge carries the rarity instead.
 
-  VFX BRIEF 3 — Public Moon Gate Aperture Flash (§9.3)
-  - Public gate arrivals flash crisp cyan (`#38bdf8`); sensor-gated departures flash violet
-    (`#c084fc`) using `/assets/vfx/library/gate-ring-scifi.webp` (`AdditiveBlending`): the gate's own ring.
+  The public gate flash moved to `MoonGateFlashes` (the Astral Gate itself, not a ring sprite).
 
   VFX BRIEF 4 — Birth from wreckage (review V1, §9.3)
   - In the world: the battle's wreck cloud spirals in around the planet and packs into a new moon.
@@ -47,11 +45,9 @@ import {
 
 const MOON_REGOLITH_TEX = '/assets/textures/moons/moon-regolith-2x1.webp';
 const MOON_ANCIENT_TEX = '/assets/textures/moons/moon-ancient-2x1.webp';
-const GATE_RING_TEX = '/assets/vfx/library/gate-ring-scifi.webp';
 
 useTexture.preload(MOON_REGOLITH_TEX);
 useTexture.preload(MOON_ANCIENT_TEX);
-useTexture.preload(GATE_RING_TEX);
 
 const MAX_INSTANCES = 4_096;
 const SHATTER_SHARDS = 22;
@@ -66,6 +62,7 @@ const _pos = { x: 0, y: 0, z: 0 };
 const _dummy = new THREE.Object3D();
 const _color = new THREE.Color();
 const _crackColor = new THREE.Color();
+const _rimColor = new THREE.Color();
 const _ringTilt = new THREE.Euler(Math.PI / 2, 0, 0);
 
 interface MoonHostNode {
@@ -107,16 +104,16 @@ function makeLunarMaterial(map: THREE.Texture, cacheKey: string): THREE.MeshStan
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
-        '#include <common>\nattribute float aCrack;\nvarying float vCrack;\nvarying vec3 vLocalPos;',
+        '#include <common>\nattribute float aCrack;\nattribute vec3 aRim;\nvarying float vCrack;\nvarying vec3 vRim;\nvarying vec3 vLocalPos;',
       )
       .replace(
         '#include <begin_vertex>',
-        '#include <begin_vertex>\nvCrack = aCrack;\nvLocalPos = position;',
+        '#include <begin_vertex>\nvCrack = aCrack;\nvRim = aRim;\nvLocalPos = position;',
       );
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
-        '#include <common>\nvarying float vCrack;\nvarying vec3 vLocalPos;',
+        '#include <common>\nvarying float vCrack;\nvarying vec3 vRim;\nvarying vec3 vLocalPos;',
       )
       .replace(
         '#include <emissivemap_fragment>',
@@ -134,7 +131,10 @@ function makeLunarMaterial(map: THREE.Texture, cacheKey: string): THREE.MeshStan
     float core = 1.0 - smoothstep(0.0, width * 0.45, ridge);
     vec3 magma = mix(vec3(0.95, 0.28, 0.04), vec3(1.0, 0.78, 0.35), core);
     totalEmissiveRadiance += magma * vein * (0.65 + vCrack * 1.45);
-  }`,
+  }
+  // V17 (rim, 2026-11-24): a known rarity reads as a thin limb of its colour; an unknown one has none.
+  float limb = smoothstep(0.55, 1.0, 1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0));
+  totalEmissiveRadiance += vRim * limb * 0.85;`,
       );
   };
   mat.customProgramCacheKey = () => cacheKey;
@@ -153,7 +153,6 @@ export function Moons({
   const regolithRef = useRef<THREE.InstancedMesh>(null);
   const ancientRef = useRef<THREE.InstancedMesh>(null);
   const ringRef = useRef<THREE.InstancedMesh>(null);
-  const flashRef = useRef<THREE.InstancedMesh>(null);
   const shardRef = useRef<THREE.InstancedMesh>(null);
 
   const regIdsRef = useRef<string[]>([]);
@@ -165,10 +164,9 @@ export function Moons({
   const birthsRef = useRef<BirthEvent[]>([]);
   const shattersRef = useRef<ShatterEvent[]>([]);
 
-  const [regolithTex, ancientTex, gateRingTex] = useTexture([
+  const [regolithTex, ancientTex] = useTexture([
     MOON_REGOLITH_TEX,
     MOON_ANCIENT_TEX,
-    GATE_RING_TEX,
   ]);
 
   const nodeById = useMemo(() => {
@@ -183,21 +181,30 @@ export function Moons({
     const regCracks = new Float32Array(MAX_INSTANCES);
     const regCrackAttr = new THREE.InstancedBufferAttribute(regCracks, 1);
     regSphere.setAttribute('aCrack', regCrackAttr);
+    const regRims = new Float32Array(MAX_INSTANCES * 3);
+    const regRimAttr = new THREE.InstancedBufferAttribute(regRims, 3);
+    regSphere.setAttribute('aRim', regRimAttr);
 
     const ancSphere = new THREE.SphereGeometry(1, 24, 16);
     const ancCracks = new Float32Array(MAX_INSTANCES);
     const ancCrackAttr = new THREE.InstancedBufferAttribute(ancCracks, 1);
     ancSphere.setAttribute('aCrack', ancCrackAttr);
+    const ancRims = new Float32Array(MAX_INSTANCES * 3);
+    const ancRimAttr = new THREE.InstancedBufferAttribute(ancRims, 3);
+    ancSphere.setAttribute('aRim', ancRimAttr);
 
     return {
       regSphere,
       regCracks,
       regCrackAttr,
+      regRims,
+      regRimAttr,
       ancSphere,
       ancCracks,
       ancCrackAttr,
+      ancRims,
+      ancRimAttr,
       ring: new THREE.RingGeometry(1.30, 1.42, 48),
-      flash: new THREE.PlaneGeometry(3.8, 3.8),
       shard: new THREE.IcosahedronGeometry(0.18, 0),
     };
   }, []);
@@ -205,37 +212,22 @@ export function Moons({
   const materials = useMemo(() => {
     const reg = regolithTex!;
     const anc = ancientTex!;
-    const gate = gateRingTex!;
     for (const tex of [reg, anc]) {
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.wrapS = THREE.RepeatWrapping;
       tex.wrapT = THREE.ClampToEdgeWrapping;
       tex.needsUpdate = true;
     }
-    gate.colorSpace = THREE.SRGBColorSpace;
-    gate.generateMipmaps = false;
-    gate.minFilter = THREE.LinearFilter;
-    gate.needsUpdate = true;
 
     return {
       regolith: makeLunarMaterial(reg, 'lunar-regolith-v2'),
       ancient: makeLunarMaterial(anc, 'lunar-ancient-v2'),
+      // Owner 2026-11-24: no drawn rarity ring (it read as a planetary ring). It stays as the tap target
+      // that makes a small moon easy to touch, and writes no colour or depth.
       ring: new THREE.MeshBasicMaterial({
         side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.88,
+        colorWrite: false,
         depthWrite: false,
-      }),
-      flash: new THREE.MeshBasicMaterial({
-        map: gate,
-        color: 0xffffff,
-        side: THREE.DoubleSide,
-        forceSinglePass: true,
-        transparent: true,
-        opacity: 0.92,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        toneMapped: false,
       }),
       // Lit regolith boulders: the same rock the moon is drawn in (V1/V2), never a flat coloured sticker.
       shard: new THREE.MeshStandardMaterial({
@@ -246,18 +238,16 @@ export function Moons({
         flatShading: true,
       }),
     };
-  }, [regolithTex, ancientTex, gateRingTex]);
+  }, [regolithTex, ancientTex]);
 
   useEffect(() => () => {
     geometries.regSphere.dispose();
     geometries.ancSphere.dispose();
     geometries.ring.dispose();
-    geometries.flash.dispose();
     geometries.shard.dispose();
     materials.regolith.dispose();
     materials.ancient.dispose();
     materials.ring.dispose();
-    materials.flash.dispose();
     materials.shard.dispose();
   }, [geometries, materials]);
 
@@ -277,13 +267,12 @@ export function Moons({
     }
   }, [moons?.list]);
 
-  useFrame(({ camera }) => {
+  useFrame(() => {
     const regMesh = regolithRef.current;
     const ancMesh = ancientRef.current;
     const ringMesh = ringRef.current;
-    const flashMesh = flashRef.current;
     const shardMesh = shardRef.current;
-    if (!regMesh || !ancMesh || !ringMesh || !flashMesh || !shardMesh) return;
+    if (!regMesh || !ancMesh || !ringMesh || !shardMesh) return;
 
     const list = moons?.list ?? [];
     const nowMs = serverNow();
@@ -333,12 +322,17 @@ export function Moons({
         _crackColor.setHex(moonSurfaceColor(item.visualSeed, cracks));
         _color.lerp(_crackColor, 0.42);
       }
+      // V17: only a discovered rarity lights the limb.
+      const rimHex = moonRarityRimColor(rarity);
+      if (rimHex === null) _rimColor.setRGB(0, 0, 0);
+      else _rimColor.setHex(rimHex);
 
       if (isAncient) {
         if (ancCount < MAX_INSTANCES) {
           ancMesh.setMatrixAt(ancCount, _dummy.matrix);
           ancMesh.setColorAt(ancCount, _color);
           geometries.ancCracks[ancCount] = crackNorm;
+          _rimColor.toArray(geometries.ancRims, ancCount * 3);
           ancIds.push(item.planetId);
           ancCount++;
         }
@@ -347,6 +341,7 @@ export function Moons({
           regMesh.setMatrixAt(regCount, _dummy.matrix);
           regMesh.setColorAt(regCount, _color);
           geometries.regCracks[regCount] = crackNorm;
+          _rimColor.toArray(geometries.regRims, regCount * 3);
           regIds.push(item.planetId);
           regCount++;
         }
@@ -375,16 +370,13 @@ export function Moons({
         known.r = r;
       }
 
-      // V17: rarity ring only for discovered moons (present in moons.rarity map)
-      const ringColor = moonRarityRingColor(rarity);
-      if (ringColor !== null && ringCount < MAX_INSTANCES) {
+      // The undrawn tap ring: a small moon is as easy to touch as its old ring was.
+      if (ringCount < MAX_INSTANCES) {
         _dummy.position.set(_pos.x, _pos.y, _pos.z);
         _dummy.rotation.copy(_ringTilt);
         _dummy.scale.setScalar(r);
         _dummy.updateMatrix();
         ringMesh.setMatrixAt(ringCount, _dummy.matrix);
-        _color.setHex(ringColor);
-        ringMesh.setColorAt(ringCount, _color);
         ringIds.push(item.planetId);
         ringCount++;
       }
@@ -395,65 +387,19 @@ export function Moons({
     regMesh.boundingSphere = null;
     if (regMesh.instanceColor) regMesh.instanceColor.needsUpdate = true;
     geometries.regCrackAttr.needsUpdate = true;
+    geometries.regRimAttr.needsUpdate = true;
 
     ancMesh.count = ancCount;
     ancMesh.instanceMatrix.needsUpdate = true;
     ancMesh.boundingSphere = null;
     if (ancMesh.instanceColor) ancMesh.instanceColor.needsUpdate = true;
     geometries.ancCrackAttr.needsUpdate = true;
+    geometries.ancRimAttr.needsUpdate = true;
 
     ringMesh.count = ringCount;
     ringMesh.instanceMatrix.needsUpdate = true;
     ringMesh.boundingSphere = null;
     if (ringMesh.instanceColor) ringMesh.instanceColor.needsUpdate = true;
-
-    // Public gate flashes (cyan arrivals, violet sensor-gated departures) + Birth accretion rings
-    let flashCount = 0;
-    const emitFlash = (
-      x: number,
-      y: number,
-      z: number,
-      r: number,
-      p: number,
-      hex: number,
-      spinDir: number,
-      scaleMult: number,
-    ) => {
-      if (flashCount >= MAX_INSTANCES) return;
-      const easeOut = 1 - (1 - p) * (1 - p);
-      const env = Math.sin(p * Math.PI);
-      const scale = r * (0.9 + easeOut * scaleMult);
-      _dummy.position.set(x, y, z);
-      _dummy.quaternion.copy(camera.quaternion);
-      _dummy.rotateZ(spinDir * (timeSec * 1.9 + p * 3.14));
-      _dummy.scale.setScalar(scale);
-      _dummy.updateMatrix();
-      flashMesh.setMatrixAt(flashCount, _dummy.matrix);
-      _color.setHex(hex).multiplyScalar(Math.max(0.02, env));
-      flashMesh.setColorAt(flashCount, _color);
-      flashCount++;
-    };
-
-    const arrivals = moons?.flashes.arrivals;
-    if (arrivals) {
-      for (const fl of arrivals) {
-        const p = moonFlashProgress(fl.at.getTime(), nowMs);
-        if (p === null) continue;
-        const target = pool.get(fl.planetId);
-        if (!target) continue;
-        emitFlash(target.x, target.y, target.z, target.r, p, 0x38bdf8, 1, 1.55);
-      }
-    }
-    const departures = moons?.flashes.departures;
-    if (departures) {
-      for (const fl of departures) {
-        const p = moonFlashProgress(fl.at.getTime(), nowMs);
-        if (p === null) continue;
-        const target = pool.get(fl.planetId);
-        if (!target) continue;
-        emitFlash(target.x, target.y, target.z, target.r, p, 0xc084fc, -1, 1.45);
-      }
-    }
 
     // Moon Birth Accretion Swirl (§9.3)
     let shardCount = 0;
@@ -523,9 +469,6 @@ export function Moons({
       }
     }
 
-    flashMesh.count = flashCount;
-    flashMesh.instanceMatrix.needsUpdate = true;
-    if (flashMesh.instanceColor) flashMesh.instanceColor.needsUpdate = true;
 
     shardMesh.count = shardCount;
     shardMesh.instanceMatrix.needsUpdate = true;
@@ -562,14 +505,6 @@ export function Moons({
         count={0}
         frustumCulled={false}
         onClick={handleClick(ringIdsRef.current)}
-      />
-      <instancedMesh
-        ref={flashRef}
-        args={[geometries.flash, materials.flash, MAX_INSTANCES]}
-        count={0}
-        frustumCulled={false}
-        raycast={() => undefined}
-        renderOrder={4}
       />
       <instancedMesh
         ref={shardRef}

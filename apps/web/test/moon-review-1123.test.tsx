@@ -165,4 +165,23 @@ describe('Moon page — takeover review', () => {
     expect(ship).not.toContain('Gözcü');
     expect(ship).toContain('340');
   });
+
+  it('gate card: the chosen destination’s distance and free room, and both gates’ recharge, are on the card', () => {
+    show({ planet: planet({ moon: moon() }), otherMoons: [{
+      planetId: 'p-2', name: 'Beta', position: { x: 300, y: 0, z: 0 }, rarity: 'LEGENDARY', dockFree: 5_000, dockCapacity: 7_270,
+    }] });
+    fireEvent.click(screen.getByRole('tab', { name: new RegExp(moonT('tabs.gate')) }));
+    const card = screen.getByTestId('moon-gate-card');
+    expect(within(card).getByTestId('moon-gate-dest-facts').textContent).toContain('300');
+    expect(card.textContent).toContain(moonT('gate.rechargeAfter', {
+      fromHours: MOON.gateChargeHours.RARE, toHours: MOON.gateChargeHours.LEGENDARY,
+    }));
+  });
+
+  it('English names the room ships take as space, not "bulk"', () => {
+    for (const text of [enMoon.fleetSplit.bulk, enMoon.picker.selected, enMoon.picker.selectedLimit, enMoon.picker.fillGate]) {
+      expect(text.replace(/\{\{[^}]+\}\}/g, '').toLowerCase()).not.toContain('bulk');
+      expect(text).not.toContain('Cap');
+    }
+  });
 });

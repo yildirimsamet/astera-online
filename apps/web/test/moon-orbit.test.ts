@@ -5,7 +5,7 @@ import {
   moonFlashProgress,
   moonOrbitPosition,
   moonRadiusFor,
-  moonRarityRingColor,
+  moonRarityRimColor,
 } from '../src/galaxy/moonOrbit.js';
 
 describe('moon 3D orbit & visual rules (F9d)', () => {
@@ -30,13 +30,13 @@ describe('moon 3D orbit & visual rules (F9d)', () => {
     expect(later.x).not.toBeCloseTo(out1.x, 3);
   });
 
-  it('draws no ring for unknown rarity (V17) and distinct colors for each known rarity', () => {
-    expect(moonRarityRingColor(undefined)).toBeNull();
+  it('lights no limb for an unknown rarity (V17) and distinct colors for each known rarity', () => {
+    expect(moonRarityRimColor(undefined)).toBeNull();
     const colors = new Set([
-      moonRarityRingColor('COMMON'),
-      moonRarityRingColor('RARE'),
-      moonRarityRingColor('EPIC'),
-      moonRarityRingColor('LEGENDARY'),
+      moonRarityRimColor('COMMON'),
+      moonRarityRimColor('RARE'),
+      moonRarityRimColor('EPIC'),
+      moonRarityRimColor('LEGENDARY'),
     ]);
     expect(colors.size).toBe(4);
     expect(colors.has(null)).toBe(false);

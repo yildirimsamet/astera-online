@@ -1045,6 +1045,16 @@ function ActiveMoonCard({
                   options={destOptions}
                   onChange={(id) => { setDestId(id); }}
                 />
+                {destMoon && (
+                  <div className="-mt-1 flex flex-col gap-0.5 text-caption">
+                    <p data-testid="moon-gate-dest-facts" className="gk-num text-dim">
+                      {destOptions.find((o) => o.id === effectiveDestId)?.sub}
+                    </p>
+                    <p className="text-faint">
+                      {mt('gate.rechargeAfter', { fromHours: MOON.gateChargeHours[moon.rarity], toHours: MOON.gateChargeHours[destMoon.rarity] })}
+                    </p>
+                  </div>
+                )}
 
                 {destClosedMs > 0 && (
                   <Banner tone="warn" title={mt('gate.destClosed', { time: countdown(destClosedMs) })} />

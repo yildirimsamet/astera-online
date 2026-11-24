@@ -55,4 +55,30 @@ describe('the Moon Gate warp shot', () => {
       if (Math.abs(axis.y) < 0.9) expect(lift.dot(up)).toBeGreaterThan(0);
     });
   }
+
+  it('looks past the departing moon’s own world, never through it, to the destination', () => {
+    // The moon orbits its world; the jump line runs right past that world.
+    const planet: V = [0, 1.6, 2.4]; // above the line: an inclined orbit puts the world over the jump
+    const planetRadius = 1;
+    const origin: V = [0, 0, 0];
+    const dest: V = [0.3, -1, 60];
+    const pose = moonWarpPose(origin, dest, 6, { centre: planet, radius: planetRadius });
+    const camera = new THREE.Vector3(...pose.at).addScaledVector(new THREE.Vector3(...pose.towards), pose.range);
+    const ray = new THREE.Ray(camera, new THREE.Vector3(...dest).sub(camera).normalize());
+    expect(ray.distanceToPoint(new THREE.Vector3(...planet))).toBeGreaterThan(planetRadius * 1.1);
+    // Still a shot from above: the screen's up is the galaxy's up, so the camera stays over the jump.
+    expect(camera.y).toBeGreaterThan(origin[1]);
+    for (const aspect of [350 / 812, 16 / 9]) {
+      for (const p of [project(pose, aspect, origin), project(pose, aspect, dest)]) {
+        expect(Math.abs(p.x)).toBeLessThan(0.8);
+        expect(Math.abs(p.y)).toBeLessThan(0.8);
+      }
+    }
+  });
+
+  it('keeps the plain shot from straight above when the moon’s world is out of the way', () => {
+    const plain = moonWarpPose([0, 0, 0], [0, 0, 60], 6);
+    const beside = moonWarpPose([0, 0, 0], [0, 0, 60], 6, { centre: [-2.6, 0, 0.3], radius: 1 });
+    expect(beside.towards.map((v) => v.toFixed(4))).toEqual(plain.towards.map((v) => v.toFixed(4)));
+  });
 });

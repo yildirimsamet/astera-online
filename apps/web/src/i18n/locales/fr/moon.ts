@@ -80,7 +80,8 @@ export const moon = {
   },
   gate: {
     title: 'Porte Lunaire',
-    subtitle: 'Saut de {{gateSeconds}} s vers une autre de vos lunes · Met les deux portes en charge',
+    subtitle: 'Saut de {{gateSeconds}} s vers une autre de vos lunes',
+    rechargeAfter: 'Après le saut, cette porte se recharge {{fromHours}} h, la porte d’arrivée {{toHours}} h.',
     noOtherMoons: 'Établissez ou capturez une seconde lune pour ouvrir une Porte.',
     destination: 'Lune de destination',
     holdLabel: 'Maintenir pour Sauter',

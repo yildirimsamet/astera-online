@@ -211,11 +211,13 @@ function makeGateShader(
     varying vec3 vN, vP;
     varying float vAlpha, vTone, vPart;
     void main() {
-      float light = dot(normalize(vN), normalize(mat3(viewMatrix) * vec3(-.4, .8, .55))) * .5 + .5;
+      // Lit the same from either side (Astera 2026-11-24): the warp camera looks at the gate's back.
+      float light = dot(normalize(gl_FrontFacing ? vN : -vN), normalize(mat3(viewMatrix) * vec3(-.4, .8, .55))) * .5 + .5;
       float shade = mix(.28, .82, smoothstep(.38, .41, light));
       shade = mix(shade, 1.16, smoothstep(.7, .73, light));
       vec3 color = mix(uColor * shade, mix(uColor, vec3(1.0), .7), clamp(vTone, 0.0, 1.0));
-      if (vTone < 0.0) color = mix(uColor * .13, vec3(.10, .12, .14), .65) * (.65 + shade * .4);
+      // The inner stones carry the gate's colour, so a closing gate never hangs as a dead grey ring.
+      if (vTone < 0.0) color = mix(uColor * .34, vec3(.16, .17, .22), .45) * (.7 + shade * .5);
       float alpha = vAlpha;
       ${fragmentExtra}
       if (alpha < .003) discard;

@@ -80,7 +80,8 @@ export const moon = {
   },
   gate: {
     title: 'Mondtor',
-    subtitle: '{{gateSeconds}} Sek. Sprung zu einem anderen deiner Monde · Lädt beide Tore auf',
+    subtitle: '{{gateSeconds}} Sek. Sprung zu einem anderen deiner Monde',
+    rechargeAfter: 'Nach dem Sprung lädt dieses Tor {{fromHours}} Std., das Zieltor {{toHours}} Std.',
     noOtherMoons: 'Errichte oder erobere einen zweiten Mond, um ein Tor zu öffnen.',
     destination: 'Zielmond',
     holdLabel: 'Halten zum Springen',

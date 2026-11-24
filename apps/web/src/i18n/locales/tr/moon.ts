@@ -56,7 +56,7 @@ export const moon = {
   },
   picker: {
     selectAll: 'Tümünü Seç',
-    fillGate: 'Kapasiteye Doldur',
+    fillGate: 'Kapı sınırına kadar doldur',
     clear: 'Temizle',
     chooseShips: 'Gönderilecek gemileri seç',
     selected: 'Seçilen: {{ships}} gemi · {{bulk}} yer',
@@ -80,7 +80,8 @@ export const moon = {
   },
   gate: {
     title: 'Ay Kapısı',
-    subtitle: 'Kendi başka ayına {{gateSeconds}} sn sıçrama · İki kapı da şarja girer',
+    subtitle: 'Kendi başka ayına {{gateSeconds}} sn sıçrama',
+    rechargeAfter: 'Sıçramadan sonra bu kapı {{fromHours}} sa, hedef kapı {{toHours}} sa şarj olur.',
     noOtherMoons: 'Kapı açmak için ikinci bir ay kur veya ele geçir.',
     destination: 'Hedef Ay',
     holdLabel: 'Sıçramak için Basılı Tut',
