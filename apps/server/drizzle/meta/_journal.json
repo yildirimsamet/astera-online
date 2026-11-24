@@ -1849,6 +1849,13 @@
       "when": 1795370000000,
       "tag": "0263_moon_moves_cascade_and_index",
       "breakpoints": true
+    },
+    {
+      "idx": 264,
+      "version": "7",
+      "when": 1795480000000,
+      "tag": "0264_season_moons_starts_at",
+      "breakpoints": true
     }
   ]
 }

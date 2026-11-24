@@ -88,11 +88,15 @@ export const scanRange = (rarity: MoonRarity): number => MOON.scanRange[rarity];
 export const scanPierces = (rarity: MoonRarity): boolean => rarity === 'LEGENDARY';
 export const crackLimit = (rarity: MoonRarity): number => MOON.crackLimit[rarity];
 
+/**
+ * A MAIN galaxy has moons when its season was dealt ruleset 20+, or when a live season dealt before it
+ * opened them from one instant (`season activate-moons`, owner 2026-11-24).
+ */
 export function moonsEnabled(
-  season: { rulesetVersion: number },
+  season: { rulesetVersion: number; moonsStartsAt?: Date | null },
   shard: { role: 'MAIN' | 'WAITING' },
 ): boolean {
-  return season.rulesetVersion >= MOON.rulesetVersion && shard.role === 'MAIN';
+  return (season.rulesetVersion >= MOON.rulesetVersion || (season.moonsStartsAt ?? null) !== null) && shard.role === 'MAIN';
 }
 
 /** Read-time healing: no event or cron ever clears a crack (plan §3 ilke 4). */

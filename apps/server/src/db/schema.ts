@@ -628,6 +628,8 @@ export const seasons = pgTable('seasons', {
   radiationBombStartsAt: timestamp('radiation_bomb_starts_at', { withTimezone: true }),
   /** Y9: commander ship escorts switched on in a live season dealt before them (`season activate-admiral`). */
   admiralStartsAt: timestamp('admiral_starts_at', { withTimezone: true }),
+  /** Moons opened in a live season dealt before ruleset 20 (`season activate-moons`, owner 2026-11-24). */
+  moonsStartsAt: timestamp('moons_starts_at', { withTimezone: true }),
   /** Immutable: v1 capitals, v2 multi-world, v3 seasonal clans. */
   rulesetVersion: integer('ruleset_version').notNull().default(1),
   /** Zero is a legacy/partial season; newer versions promise the full sealed metric set. */

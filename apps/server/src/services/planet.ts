@@ -290,6 +290,7 @@ export interface LockedPlanet {
   /** Reuse the season row already read for active-season shielding availability. */
   monumentRadiationStartsAt?: Date | null;
   radiationBombStartsAt?: Date | null;
+  moonsStartsAt?: Date | null;
   /** D212: this world is in Silent Space — no fights, no farming, works at half pace. */
   silentSpace: boolean;
   /** F2 Ortak Ocak: the clan's share on what the works make, 0 outside a clan. */
@@ -824,6 +825,7 @@ function lockedPlanetFrom(inputs: PlanetInputs, economy: ReturnType<typeof plane
     rulesetVersion: season.rulesetVersion,
     monumentRadiationStartsAt: season.monumentRadiationStartsAt,
     radiationBombStartsAt: season.radiationBombStartsAt,
+    moonsStartsAt: season.moonsStartsAt,
     silentSpace,
     clanBonus,
     vacationUntil: row.vacationUntil && row.vacationUntil > clock.now() ? row.vacationUntil : null,

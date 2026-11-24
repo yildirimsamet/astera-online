@@ -9,9 +9,9 @@ import { GameError } from './planet.js';
  * MOONS ON THE SERVER (ay entegrasyon planı §6). A moon row changes only under its planet's lock.
  */
 
-/** Whether this season's galaxy has moons at all (ruleset 20+, MAIN galaxy; plan §6.2). */
+/** Whether this season's galaxy has moons at all (ruleset 20+ or activated, MAIN galaxy; plan §6.2). */
 export async function seasonHasMoons(tx: Queryable, seasonId: string): Promise<boolean> {
-  const [row] = await tx.select({ rulesetVersion: seasons.rulesetVersion, role: shards.role })
+  const [row] = await tx.select({ rulesetVersion: seasons.rulesetVersion, moonsStartsAt: seasons.moonsStartsAt, role: shards.role })
     .from(seasons).innerJoin(shards, eq(shards.id, seasons.shardId)).where(eq(seasons.id, seasonId));
   return row !== undefined && moonsEnabled(row, row);
 }

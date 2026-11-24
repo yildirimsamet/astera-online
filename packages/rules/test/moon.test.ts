@@ -60,6 +60,13 @@ describe('moonsEnabled', () => {
     expect(moonsEnabled({ rulesetVersion: 19 }, { role: 'MAIN' })).toBe(false);
     expect(moonsEnabled({ rulesetVersion: 20 }, { role: 'WAITING' })).toBe(false);
   });
+
+  it('opens in a live season dealt an older ruleset once moons are activated there (owner 2026-11-24)', () => {
+    const at = new Date('2026-11-25T00:00:00Z');
+    expect(moonsEnabled({ rulesetVersion: 19, moonsStartsAt: at }, { role: 'MAIN' })).toBe(true);
+    expect(moonsEnabled({ rulesetVersion: 19, moonsStartsAt: null }, { role: 'MAIN' })).toBe(false);
+    expect(moonsEnabled({ rulesetVersion: 19, moonsStartsAt: at }, { role: 'WAITING' })).toBe(false);
+  });
 });
 
 describe('cracks (S19)', () => {

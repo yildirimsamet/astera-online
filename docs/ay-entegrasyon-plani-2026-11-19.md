@@ -17,7 +17,7 @@ Durum: **final; uygulama sürüyor (§17).**
 | Sürüm | Ne | Ne zaman |
 |---|---|---|
 | R1 | F1: koloni düşüşünde gemiler yok olur (§13 F1) | Canlıya ayrı çıkar. Ruleset gerekmez. Önce oyuncuya duyurulur, deploy owner'ın emriyle yapılır. |
-| R2 | Ay (F0, F2–F10) | Ruleset 20 ile bir sonraki sezon sınırında açılır. Hedef sınır: EU-1'in bittiği 2026-12-27. |
+| R2 | Ay (F0, F2–F10) | ~~Ruleset 20 ile bir sonraki sezon sınırında açılır.~~ **Owner 2026-11-24 (V62):** canlı sezonda `season activate-moons` ile tek bir anda açılır; yeni sezonlar ruleset 20 ile gelir. |
 | R3 | Rakam ayarı | Playtest, canlı ölçüm ve (owner isterse) sim sonrasında. |
 
 **Ana mimari kararlar**
@@ -964,3 +964,4 @@ Kıyas için `profileIncome(9)`: dünya başına saatte ~1.740 alloy, ~870 cryst
 | V59 | **Owner kararı (2026-11-24).** Ayın etrafına nadirlik halkası çizilmez (gezegen halkası gibi okunuyordu). Bilinen nadirlik ayın kenarında (fresnel) kendi renginde ince bir ışıkla okunur; bilinmeyen nadirlikte kenar ışığı yoktur (V17 korunur). Görünmez halka küçük ayın dokunma alanı olarak kalır. | Owner incelemesi 2026-11-24. |
 | V60 | **Owner kararı (2026-11-24).** Herkese açık kapı flaşı kesik çizgili büyüyen daire değil, Astral Kapı'nın kendisidir: flaş penceresi (`MOON.flashSeconds`) boyunca ayın dış yanında açık durur, sonunda kapanır. Kendi dünyalarında oyuncu bu flaşı görmez; kendi sıçraması kapıları zaten çizer. Kapı iki yüzünden de aydınlatılır; iç taşlar kapının rengini taşır (gri halka kalmaz). | Owner incelemesi 2026-11-24. |
 | V61 | **Owner kararı (2026-11-24).** Sıçrama kamerası: kalkış ayının biraz arkasında ve üstünde; kalkış ayı alt kadrajda, hedef ay üst kadrajda, sıçrama boyunca ikisi de görünür (ayların sıçramanın ortasındaki konumuna göre kurulur). Kalkış ayının gezegeni görüşü kapatırsa kamera sıçrama ekseni etrafında 15° adımlarla döner. Kamera kilitlenmez. | Owner talimatı 2026-11-24. |
+| V62 | **Owner kararı (2026-11-24).** Ay canlı sezona gelir, sezon sonunu beklemez. Ruleset değişmez (aynı döngüdeki galaksilerin ruleset'i eşit kalmalı: dönüş ve transfer). Sezona `seasons.moons_starts_at` yazılır (`season activate-moons --shard KOD [--yes]`, varsayılan kuru çalıştırma). O anda: oyuncunun her kolonisi yuvasının tier'ına göre ay alır (T1 Common, T2 Rare, T3 Epic; hak geçmesin diye); başkentler ve ele geçirilmiş başkentler almaz (nötr yuva değiller); sahipsiz nötrler sezonun tohum planını (§6.3) alır; zaten ayı olan dünya dokunulmaz; hepsi tohum defterine yazılır. Android uygulaması beklenmez (owner kabul etti: eski uygulamadaki oyuncu ayı göremez). Bir sonraki sezon için varsayılan ruleset 19 → 20 ayrıca çıkarılmalı. | Owner 2026-11-24. |
