@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- The activity is locked upright on phones; portrait is not a device requirement, so Play keeps tablets, PCs and XR. -->
+    <uses-feature android:name="android.hardware.screen.portrait" android:required="false" />
+
     <application
         android:allowBackup="false"
         android:hardwareAccelerated="true"

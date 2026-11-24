@@ -24,6 +24,13 @@ describe('the local Android host', () => {
     expect(manifest.querySelector('activity')?.getAttribute('android:screenOrientation')).toBe('portrait');
   });
 
+  it('does not make portrait a required feature, so Play keeps tablets, PCs and XR (Play pre-review, 2026-11-24)', () => {
+    const manifest = new DOMParser().parseFromString(readAndroid('app/src/main/AndroidManifest.xml'), 'text/xml');
+    const portrait = [...manifest.querySelectorAll('uses-feature')]
+      .find((feature) => feature.getAttribute('android:name') === 'android.hardware.screen.portrait');
+    expect(portrait?.getAttribute('android:required')).toBe('false');
+  });
+
   it('shares only the camera capture folder through its file provider', () => {
     const paths = new DOMParser().parseFromString(readAndroid('app/src/main/res/xml/file_paths.xml'), 'text/xml');
     expect([...paths.documentElement.children].map(node => `${node.tagName}:${node.getAttribute('path') ?? ''}`))
