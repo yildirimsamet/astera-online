@@ -3595,8 +3595,10 @@ export const MULTI_WORLD = {
    * Older live seasons adopt them through a separate idle cutover, preserving all other rules.
    * 18 → 19 on 2026-10-26: the commander ship escorts fleets (`ADMIRAL_RULESET`). A live v18
    * season takes it through `season activate-admiral`, from one explicit instant.
+   * 19 → 20 on 2026-11-24: moons (`MOON.rulesetVersion`, owner). A live v19 season takes them
+   * through `season activate-moons`, from one explicit instant (V62).
    */
-  rulesetVersion: 19,
+  rulesetVersion: 20,
   /** Monument and fixed HP radiation are dealt together, after every adapter is complete. */
   monumentRulesetVersion: 16,
   /**

@@ -128,4 +128,12 @@ describe('activating moons in a live season', () => {
     await db.update(seasons).set({ status: 'frozen' }).where(eq(seasons.id, seasonId));
     await expect(activate()).rejects.toMatchObject({ code: 'SEASON_FROZEN' });
   });
+
+  it('owner 2026-11-24: a season opened with the defaults is dealt moons, with nothing to activate', async () => {
+    const { season } = await createSeason(db, { shardCode: 'EU-NEXT', seed: 9, startsAt: clock.now() });
+    expect(season.rulesetVersion).toBe(MOON.rulesetVersion);
+    expect(await seasonHasMoons(db, season.id)).toBe(true);
+    expect(await activateMoons(db, { seasonId: season.id, clock, apply: true })).toMatchObject({ status: 'DEALT', applied: false });
+  });
 });
+

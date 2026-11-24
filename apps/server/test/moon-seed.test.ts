@@ -87,9 +87,13 @@ describe('seeded moons', () => {
   it('a galaxy wipe takes its moons with the worlds (§6.17)', async () => {
     const { season } = await open(MOON.rulesetVersion);
     expect((await db.select().from(moons)).length).toBeGreaterThan(0);
+    const before = (await db.select({ id: moons.planetId }).from(moons)).map((row) => row.id);
     await forceSeasonEnd({ db, clock }, season.id);
     await wipeAllServers(db, clock, { count: 1, capacity: 4 });
-    expect(await db.select().from(moons)).toEqual([]);
+    // The next cycle is dealt its own seeded moons (ruleset 20 default); none of the old ones survive.
+    const after = await db.select({ id: moons.planetId, seasonId: planets.seasonId }).from(moons)
+      .innerJoin(planets, eq(planets.id, moons.planetId));
+    expect(after.filter((row) => before.includes(row.id) || row.seasonId === season.id)).toEqual([]);
   });
 
   it('never seeds a slot twice, even on a new world row in that slot', async () => {
