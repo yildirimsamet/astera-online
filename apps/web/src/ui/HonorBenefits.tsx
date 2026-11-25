@@ -8,45 +8,64 @@ import { Glyph, HonorBadge, InfoPeek } from '../game-ui/index.js';
 import { RulesRow } from './RulesRow.js';
 import { RESOURCE_ART } from './assets.js';
 
-const tiers: readonly HonorBenefitTier[] = [2, 1, 0, -1, -2];
+const V1_TIERS: readonly HonorBenefitTier[] = [2, 1, 0, -1, -2];
+const V2_TIERS: readonly HonorBenefitTier[] = [2, 1, 0, -1, -2, -3, -4];
 const goods = ['alloy', 'crystal', 'deuterium'] as const;
 const signedPercent = (value: number): string => value > 0 ? `+${value}` : value < 0 ? `−${Math.abs(value)}` : '0';
 type Tone = 'good' | 'hostile' | undefined;
 const tone = (beneficial: boolean, adverse: boolean): Tone => beneficial ? 'good' : adverse ? 'hostile' : undefined;
-/** What each effect does to me: a cheaper repair and a bigger convoy are good, a commission is harm. */
-const effectTones = (tier: HonorBenefitTier): readonly Tone[] => {
+/** What each effect does to me: cheaper repair and bigger convoy are good; commission, fuel surcharge and production cut are harm. */
+const effectTones = (tier: HonorBenefitTier, v2: boolean): readonly Tone[] => {
   const rate = HONOR_BENEFIT_RATES[tier];
-  return [tone(rate.repairPct < 0, rate.repairPct > 0), tone(rate.convoyPct > 0, rate.convoyPct < 0), tone(false, rate.tradePct > 0)];
+  const base: Tone[] = [
+    tone(rate.repairPct < 0, rate.repairPct > 0),
+    tone(rate.convoyPct > 0, rate.convoyPct < 0),
+    tone(false, rate.tradePct > 0),
+  ];
+  if (!v2) return base;
+  return [...base, tone(false, rate.fuelPct > 0), tone(false, rate.productionPct < 0)];
 };
 
 /**
  * All economic effects in one place; current terms come from the private server quote (G9-a, on the
- * kit): the tier's badge, the three effects in their colour, the Honor the next tier needs, the
+ * kit): the tier's badge, the effects in their colour, the Honor the next tier needs, the
  * ladder one press away.
  */
 export function HonorBenefitsSection({ value }: { value: HonorBenefitsView | null | undefined }) {
   const { t } = useTranslation();
   if (!value) return null;
+  const v2 = value.version === 2;
+  const tiers = v2 ? V2_TIERS : V1_TIERS;
   const tierName = (tier: HonorBenefitTier) => tier > 0 ? t('honorBenefits.positiveTier', { tier })
     : tier < 0 ? t('honorBenefits.negativeTier', { tier: Math.abs(tier) }) : t('honorBenefits.neutral');
   const rates = (tier: HonorBenefitTier) => {
     const rate = HONOR_BENEFIT_RATES[tier];
-    return [rate.repairPct, rate.convoyPct, rate.tradePct];
+    return v2
+      ? [rate.repairPct, rate.convoyPct, rate.tradePct, rate.fuelPct, rate.productionPct]
+      : [rate.repairPct, rate.convoyPct, rate.tradePct];
   };
-  const headings = [t('honorBenefits.repair'), t('honorBenefits.convoy'), t('honorBenefits.trade')];
+  const headings = v2
+    ? [t('honorBenefits.repair'), t('honorBenefits.convoy'), t('honorBenefits.trade'), t('honorBenefits.fuel'), t('honorBenefits.production')]
+    : [t('honorBenefits.repair'), t('honorBenefits.convoy'), t('honorBenefits.trade')];
   const { positive: p, negative: n } = value.thresholds;
+  const minTier = -n.length;
   const range = (tier: HonorBenefitTier): string => {
     if (tier === 2) return t('honorBenefits.atLeast', { amount: honorScore(p[1]) });
-    if (tier === -2) return t('honorBenefits.atMost', { amount: honorScore(-n[1]) });
     if (tier === 1) return t('honorBenefits.range', { low: honorScore(p[0]), high: honorScore(p[1]) });
-    if (tier === -1) return t('honorBenefits.negativeRange', { low: honorScore(-n[1]), high: honorScore(-n[0]) });
-    return t('honorBenefits.neutralRange', { low: honorScore(-n[0]), high: honorScore(p[0]) });
+    if (tier === 0) return t('honorBenefits.neutralRange', { low: honorScore(-n[0]), high: honorScore(p[0]) });
+    if (tier === minTier) return t('honorBenefits.atMost', { amount: honorScore(-n[n.length - 1]!) });
+    const idx = Math.abs(tier);
+    return t('honorBenefits.negativeRange', { low: honorScore(-n[idx]!), high: honorScore(-n[idx - 1]!) });
   };
   // A positive tier is reached AT its threshold, so the gap is exact; a penalty is left only ABOVE its line.
   const next = value.tier === 2 ? null
     : value.tier >= 0 ? t('honorBenefits.next', { amount: honorScore(BigInt(p[value.tier === 0 ? 0 : 1]) - BigInt(value.score)), tier: tierName(value.tier === 0 ? 1 : 2) })
-      : t('honorBenefits.climb', { amount: honorScore(-n[value.tier === -1 ? 0 : 1]), tier: tierName(value.tier === -1 ? 0 : -1) });
-  const now = effectTones(value.tier);
+      : t('honorBenefits.climb', {
+        amount: honorScore(-n[Math.abs(value.tier) - 1]!),
+        tier: tierName((value.tier + 1) as HonorBenefitTier),
+      });
+  const now = effectTones(value.tier, v2);
+  const ladderHeadings = headings.slice(0, 3);
   return <section data-honor-benefits className="gk gk-well gk-honorperk" data-tone={value.tier > 0 ? 'good' : value.tier < 0 ? 'hostile' : undefined}>
     <div className="gk-honorperk__head">
       <HonorBadge tier={value.tier} label={tierName(value.tier)} height={36} />
@@ -63,14 +82,28 @@ export function HonorBenefitsSection({ value }: { value: HonorBenefitsView | nul
     </dl>
     {next ? <p data-honor-next className="gk-honorperk__next"><Glyph id="up" />{next}</p> : null}
     <RulesRow glyph="ranking" title={t('honorBenefits.allTiers')}>
-      <div className="gk-honorperk__cols" aria-hidden="true">{headings.map((heading) => <span key={heading}>{heading}</span>)}</div>
+      <div className="gk-honorperk__cols" aria-hidden="true">{ladderHeadings.map((heading) => <span key={heading}>{heading}</span>)}</div>
       <ol className="gk-honorperk__ladder">
         {tiers.map(tier => {
-          const paint = effectTones(tier);
+          const paint = effectTones(tier, v2);
+          const allRates = rates(tier);
+          const coreRates = allRates.slice(0, 3);
+          const extra = v2 ? [
+            ...(allRates[3] ? [{ label: headings[3]!, pct: allRates[3], tone: paint[3] }] : []),
+            ...(allRates[4] ? [{ label: headings[4]!, pct: allRates[4], tone: paint[4] }] : []),
+          ] : [];
           return <li key={tier} data-honor-tier={tier} data-current-honor-tier={tier === value.tier ? true : undefined} className="gk-honorperk__rung">
             <HonorBadge tier={tier} label="" height={23} />
-            <span className="gk-honorperk__rungname"><strong>{tierName(tier)}</strong><span className="gk-num">{range(tier)}</span></span>
-            <span className="gk-honorperk__rates">{rates(tier).map((percent, index) => <span key={index} className="gk-num gk-honorperk__rate" data-tone={paint[index]}
+            <span className="gk-honorperk__rungname">
+              <strong>{tierName(tier)}</strong>
+              <span className="gk-num">{range(tier)}</span>
+              {extra.length > 0 ? <span className="gk-honorperk__extra">{extra.map((item, i) => (
+                <span key={i} className="gk-num" data-tone={item.tone}>
+                  {item.label} {t('honorBenefits.percent', { amount: signedPercent(item.pct) })}
+                </span>
+              ))}</span> : null}
+            </span>
+            <span className="gk-honorperk__rates">{coreRates.map((percent, index) => <span key={index} className="gk-num gk-honorperk__rate" data-tone={paint[index]}
               aria-label={`${headings[index]} ${t('honorBenefits.percent', { amount: signedPercent(percent) })}`}>
               {t('honorBenefits.percent', { amount: signedPercent(percent) })}</span>)}</span>
           </li>;

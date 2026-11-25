@@ -4,7 +4,7 @@ import { prepareBattleReplay, persistBattleReplay } from '../services/battleRepl
 import { shipReadyNotice } from '../services/arenaReady.js';
 import { finishArenaTeamSeason } from '../services/arenaTeams.js';
 import { commanderPvpBalance } from '../services/pvpBalance.js';
-import { and, eq, inArray, isNotNull, isNull, lte, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, lte, ne, sql } from 'drizzle-orm';
 import {
   activeBattleFleet,
   FAULT,
@@ -3374,6 +3374,26 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   probe_defence: onProbeDefence,
   radar_warning: onRadarWarning,
   newcomer_hour: ({ db, clock }, event) => resolveNewcomerHour(db, clock, event),
+  honor_penalty_sync: async ({ db, clock }, event) => {
+    const playerId = event.refId;
+    if (!playerId) return;
+    const owned = await db.select({ id: planets.id, lastTickAt: planets.lastTickAt }).from(planets)
+      .where(and(eq(planets.seasonId, event.seasonId), eq(planets.controllerPlayerId, playerId)))
+      .orderBy(asc(planets.id));
+    for (const world of owned) {
+      const syncAt = world.lastTickAt > event.resolveAt ? clock.now() : event.resolveAt;
+      const syncClock: Clock = { now: () => syncAt };
+      try {
+        await db.transaction(async (tx) => {
+          await loadLocked(tx, world.id, syncClock, { expectedPlayerId: playerId, requireLive: false });
+          await publish(tx, playerId, 'planet');
+        });
+      } catch (error) {
+        if (error instanceof Error && error.name === 'GameError') continue;
+        throw error;
+      }
+    }
+  },
   paid_alert: async ({ db, clock }, event) => {
     if (!event.refId) throw new Error('paid_alert without refId');
     await settlePaidAlert(db, clock, event.refId);

@@ -1117,6 +1117,7 @@ async function sendRaid(
       nerve: persona.nerve,
       distance: pick.distance,
       deuterium: view.planet.deuterium,
+      fuelPct: view.honorBenefits?.fuelPct ?? 0,
       reading,
     }, budget);
     if (!plan) continue;
@@ -1225,6 +1226,7 @@ async function raidPirate(
       nerve: persona.nerve,
       distance: d,
       deuterium: view.planet.deuterium,
+      fuelPct: view.honorBenefits?.fuelPct ?? 0,
       crew,
       damageMult: pirateStats(spec.level).damageMult,
       hoard: snapshot.remainingLootOf(spec.index),

@@ -16,6 +16,7 @@ import {
   hangarCapacity,
   hangarLoad,
   interpolatePosition,
+  honorFuelCost,
   missionFuel,
   prospectorCeiling,
   TRANSFER_COOLDOWN_MINUTES,
@@ -27,6 +28,7 @@ import {
   capLoadToSurvivors,
   fleetEntries,
   type Fleet,
+  type HonorBenefitTier,
   type HullId,
   type NeutralTier,
   type Resources,
@@ -50,6 +52,7 @@ import { publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { assertFreeBay } from './flight.js';
 import { assertFuel } from './fuel.js';
+import { assertHonorBenefitsQuote, readHonorBenefits } from './honorBenefits.js';
 import {
   assertColonyCapacity,
   capitalPlanet,
@@ -243,6 +246,7 @@ export async function launchTransfer(
   /** Ay S50: a transfer may land on the target world's moon; S34: it may leave from the origin's. */
   targetBody: WorldBody = 'PLANET',
   originBody: WorldBody = 'PLANET',
+  expectedHonorTier?: HonorBenefitTier,
 ) {
   validateTransferFleet(fleet);
   if ((fleet.PROSPECTOR ?? 0) > 0) {
@@ -371,8 +375,10 @@ export async function launchTransfer(
       flight the discount is for: it reaches nobody else, so cutting its price cannot cut the price
       of reach. `FUEL.laneShare` states the whole argument.
     */
-    const fuel = missionFuel(fleet, dist, 1, 'HOMEWARD', chosenPace)
-      + (fleetCount(returning) > 0 ? missionFuel(returning, dist, 1, 'HOMEWARD', chosenPace) : 0);
+    const benefits = await readHonorBenefits(tx, origin.seasonId, ownerPlayerId);
+    if (expectedHonorTier !== undefined) assertHonorBenefitsQuote(benefits, expectedHonorTier);
+    const fuel = honorFuelCost(missionFuel(fleet, dist, 1, 'HOMEWARD', chosenPace), benefits)
+      + (fleetCount(returning) > 0 ? honorFuelCost(missionFuel(returning, dist, 1, 'HOMEWARD', chosenPace), benefits) : 0);
     /*
       THE CARGO IS ALREADY SPOKEN FOR. T6.
 
@@ -510,7 +516,8 @@ export async function launchSettlement(
       RATE because the far end is not their world yet — the homeward discount is for moving ships
       between worlds a commander already holds, and a claim flight reaches somewhere new.
     */
-    const fuel = missionFuel(fleet, dist, 1);
+    const benefits = await readHonorBenefits(tx, origin.seasonId, ownerPlayerId);
+    const fuel = honorFuelCost(missionFuel(fleet, dist, 1), benefits);
     /*
       THE FOUNDING STOCK TRAVELS WITH THEM, SO IT IS SPENT BEFORE THE FLIGHT IS. T6.
 

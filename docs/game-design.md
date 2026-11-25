@@ -478,7 +478,7 @@ composition are applied.
 
 | Grade | Condition | Loot |
 |---|---|---|
-| `DECISIVE` | No defending units stand at contact, or none remain fighting after the shield is depleted | Tier 1–3 defender: 25% of unprotected stock + 15% of Works; otherwise 60% + 30% |
+| `DECISIVE` | No defending units stand at contact, or none remain fighting after the shield is depleted | Tier 1–3 defender: 25% of unprotected stock + 15% of Works; Tier 4–5 defender: 45% + 22.5%; Tier 6+ or Neutral: 60% + 30% |
 | `PARTIAL` | ≥42% of defender value destroyed or retreated | Half of the decisive stock and Works shares |
 | `REPELLED` | Below that | Nothing |
 
@@ -1124,6 +1124,16 @@ previous season. Same return bands as 2026-11-09, plus four changes for new laun
   is read at landing and frozen into the evidence relation (`repeatRaid: true`). The first such raid against an
   equal or higher tier is neutral. The launch card warns from the same journal plus own attack flights already
   on the way to that commander.
+- **Escalating weak-repeat penalty & Honor Benefits V2 (owner, 2026-11-24):** New launches freeze
+  `weakRepeatScale: 100` so repeated weak-target sanctions against the same defender within 24 hours scale at
+  **1× / 2× / 3×** (historical V1 evidence without `weakRepeatScale` retains 1.0× / 1.5× / 2.0×). Pre-launch
+  Honor cards warn when a prior weak-target sanction or in-flight raid already puts the next launch at 2× or 3×.
+  Honor Benefits V2 (`HONOR_BENEFIT_PROGRAM_VERSION = 2`, auto-enabled on live `MAIN` seasons while historical
+  V1 seasons stay readable) expands negative Honor to four cumulative tiers (`-25 / -50 / -150 / -200`):
+  Tier `-3` (`≤ -150`) adds **+25% Deuterium fuel** on all player fleet launches (tactical retreat `escapeFuel`
+  exempt); Tier `-4` (`≤ -200`) adds **-25% hourly Alloy, Crystal and Deuterium production** across all owned
+  planets (storage/collector caps, Vault protection floor, and the recovery shield's production denominator stay
+  nominal).
 
 **Honor's galaxy leader exception (owner, 2026-10-19):** a commander at the
 galaxy/season's highest Honor tier treats an attack on exactly one tier below as
@@ -1138,15 +1148,15 @@ upgrades or transfers cannot rewrite the flight's conditions. Old commitments
 without this term retain their previous policy. This does not change the ±1
 attack band. See `docs/honor-top-tier-peer-2026-10-19.md`.
 
-**Ordinary raids involving tier 1–3 commanders have a twelve-hour battle-time cooldown**
-(owner, 2026-10-12). If either commander is tier 1–3, each direction is independent:
-one ordinary raid may be sent, and the next may be sent twelve hours after the battle
-resolves. All worlds of that commander share the allowance. An unresolved outbound
-raid reserves it; recall or destruction before battle creates no cooldown. Both tiers
-are read at each new launch. When both commanders are tier 4+, the existing three
-attacks per twelve hours remains. Death Stars and joint clan operations do not use
-this new allowance. Existing clan quotas and joint-operation personal quota accounting
-are unchanged.
+**Ordinary raids involving tier 1–4 commanders have a twelve-hour battle-time cooldown**
+(owner, 2026-10-12; expanded to tier 1–4 and tightened bash/clan limits 2026-11-24). If either commander is
+tier 1–4, each direction is independent: one ordinary raid may be sent, and the next may be sent twelve hours
+after the battle resolves. All worlds of that commander share the allowance. An unresolved outbound raid
+reserves it; recall or destruction before battle creates no cooldown. Both tiers are read at each new launch.
+When both commanders are tier 5+, the personal bash limit is **two attacks per twelve hours** (`ABUSE.bashLimit = 2`),
+and a clan's combined ceiling against one target commander is **three attacks per twelve hours** (`CLAN.attackLimit = 3`).
+Death Stars and joint clan operations do not use the tier 1–4 allowance. Existing joint-operation personal quota
+accounting is unchanged.
 
 The player sees the band's inputs where they choose a target: the dossier header sets their own tier (their most
 developed world, never fogged) beside the world's, and one tap opens the rule and the range it reaches. It never states a
@@ -1278,17 +1288,18 @@ flies as it always did, because a newcomer nobody can read is a newcomer nobody 
 The protected commander's permanent HUD also names their own raid immunity and counts down the
 time left; the launch confirmation explains that choosing to attack spends it.
 
-### The recovery shield — commander tiers (updated 2026-10-16)
+### The recovery shield — commander tiers (updated 2026-11-24)
 
-Owner, 2026-10-16: a defending commander whose highest currently controlled Core
+Owner, 2026-10-16 / 2026-11-24: a defending commander whose highest currently controlled Core
 is 1–9 (tier 1–3) receives 12 hours of recovery protection at 2 average net
-production hours lost within the last 8 hours. Tier 4+ retains the 4-hour threshold,
-6-hour history; its shield is also 12 hours as of 2026-10-21. All worlds count toward commander
-tier; a small colony cannot lower it. The struck world's existing +50% output boost
-lasts with its granted window. Colony battle faults retain the standard
-4-hour loss / 6-hour history condition. New battle reports freeze the applied profile;
-legacy reports retain standard explanations. The following original rationale applies
-to the tier 4+ profile.
+production hours lost within the last 8 hours. Tier 4–5 and Tier 6+ trigger the 12-hour
+recovery shield at **3 average net production hours** lost within the last 6 hours (lowered
+from 4 hours on 2026-11-24). All worlds count toward commander tier; a small colony cannot
+lower it, and the production denominator stays nominal even under Tier `-4` Honor production
+penalties. The struck world's existing +50% output boost lasts with its granted window. Colony
+battle faults retain the **4-hour loss / 6-hour history** condition (`FAULT.heavyDefeatLossHours = 4`).
+New battle reports freeze the applied profile; legacy reports retain standard explanations.
+The following original rationale applies to the tier 4+ profile.
 
 The first day answers "what protects somebody who has not started yet". This answers the question
 it cannot: **what happens to a commander who has already committed to the war and just lost

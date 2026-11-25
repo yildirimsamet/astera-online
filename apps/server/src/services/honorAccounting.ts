@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { HONOR_ATTACK_NAVY_BAND, HONOR_HISTORY_HOURS, HONOR_VERSION, HONOR_LAUNCH_VERSION, HONOR_CANDIDATE_VERSION, isSupportedHonorVersion, honorAdvancedPolicy, honorSoloCredit,
-  honorNumber, honorPairKey, honorPairCredit, honorSplit, honorTeam, honorTeamCredit,
+import { HONOR_ATTACK_NAVY_BAND, HONOR_HISTORY_HOURS, HONOR_VERSION, HONOR_LAUNCH_VERSION, HONOR_CANDIDATE_VERSION, HONOR_WEAK_REPEAT_SCALE, isSupportedHonorVersion, honorAdvancedPolicy, honorSoloCredit,
+  honorNumber, honorPairKey, honorPairCredit, honorSplit, honorTeam, honorTeamCredit, honorWeakRepeatHalfUnits,
   type HonorVersion, type HonorTeamPool, type HonorTeamSettlement } from '@astera/rules';
 
 const amount = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
@@ -13,6 +13,7 @@ export const honorEvidenceSchema = z.object({
   /** The attack table frozen at dispatch (see `honorChallenge`). Absent on older contracts. */
   weakNavyBand: z.union([z.literal(75), z.literal(50), z.literal(HONOR_ATTACK_NAVY_BAND)]).optional(),
   retaliationLootPercent: z.union([z.literal(20), z.literal(40)]).optional(),
+  weakRepeatScale: z.union([z.literal(50), z.literal(HONOR_WEAK_REPEAT_SCALE)]).optional(),
   source: z.enum(['WORLD', 'CLAN_WAR', 'MONUMENT', 'STRATEGIC_IMPACT', 'STRATEGIC_INTERCEPTION']),
   id: identity, at: amount, eligible: z.boolean(), attack: z.array(member).min(1), defence: z.array(member),
   exclusion: z.enum(['TARGET_CHANGED', 'PARTICIPANT_JOINED_LATE']).optional(),
@@ -136,7 +137,7 @@ function continuationPenalty(pool: HonorTeamPool, evidence: HonorEvidence, repea
     const prior = repeats.find(row => row.a === exposure.actor && row.b === exposure.enemy && row.sourceKey === evidence.attackKey);
     if (!prior?.factor) continue;
     const harm = BigInt(exposure.harmFifths - exposure.retaliationSpentFifths);
-    const original = 50n * harm * BigInt(2 + Math.min(prior.step ?? 0, 2)) / 2n;
+    const original = 50n * harm * honorWeakRepeatHalfUnits(prior.step ?? 0, evidence.weakRepeatScale) / 2n;
     const actual = 50n * harm * BigInt(prior.factor.numerator) / (2n * BigInt(prior.factor.denominator));
     pool.attack.raw = add(pool.attack.raw, honorNumber(original - actual));
   }
@@ -188,7 +189,7 @@ export function advanceHonor(state: HonorAccountingState, value: unknown, versio
     if (exposure.bullying && exposure.harmFifths > 0 && (!e.attackKey || !repeats.some(r => r.a === exposure.actor && r.b === exposure.enemy && r.sourceKey === e.attackKey))) {
       repeats.push({ a: exposure.actor, b: exposure.enemy, at: e.at, ...(e.attackKey ? {
         sourceKey: e.attackKey, step: relations.find(r => r.a === exposure.actor && r.b === exposure.enemy)?.weakRepeat ?? 0,
-        ...(version === HONOR_LAUNCH_VERSION ? { factor: { numerator: 2 + Math.min(relations.find(r => r.a === exposure.actor && r.b === exposure.enemy)?.weakRepeat ?? 0, 2), denominator: 1 } } : {}),
+        ...(version === HONOR_LAUNCH_VERSION ? { factor: { numerator: Number(honorWeakRepeatHalfUnits(relations.find(r => r.a === exposure.actor && r.b === exposure.enemy)?.weakRepeat ?? 0, e.weakRepeatScale)), denominator: 1 } } : {}),
       } : {}) });
     }
     const newHarm = exposure.harmFifths - exposure.retaliationSpentFifths;
@@ -251,7 +252,6 @@ function advanceSimultaneousHonor(state: HonorAccountingState, inputGroup: reado
     const oldSources = new Set(repeats.filter(r => r.a === a && r.b === b).map(r => r.sourceKey));
     const newCount = sources.filter(id => !oldSources.has(id)).length;
     const before = priorRepeats(a, b), count = Math.max(1, newCount);
-    const factors = Array.from({ length: count }, (_, n) => 2 + Math.min(before + n, 2)).reduce((sum, n) => sum + n, 0);
     const remaining = pools.flatMap((pool, index) => pool.attack.exposures
       .filter(e => e.actor === a && e.enemy === b && e.bullying && e.harmFifths > 0)
       .map(e => ({ actor: exposureKey(group[index]!, a, b), weight: e.harmFifths - e.retaliationSpentFifths })));
@@ -260,11 +260,14 @@ function advanceSimultaneousHonor(state: HonorAccountingState, inputGroup: reado
         const row = group.find(e => exposureKey(e, a, b) === slot.actor)!;
         return (row.attackKey ?? slot.actor) === source;
       });
+      const sourceRow = group.find(e => exposureKey(e, a, b) === sourceSlots[0]?.actor);
+      const scale = sourceRow?.weakRepeatScale;
+      const factors = Array.from({ length: count }, (_, n) => Number(honorWeakRepeatHalfUnits(before + n, scale))).reduce((sum, n) => sum + n, 0);
       const total = sourceSlots.reduce((sum, row) => add(sum, row.weight), 0);
       const known = oldSources.has(source);
       const saved = version === HONOR_LAUNCH_VERSION
         ? repeats.find(row => row.a === a && row.b === b && row.sourceKey === source)?.factor : undefined;
-      const factor = saved?.numerator ?? (known ? 2 + Math.min(priorRepeats(a, b, source), 2) : factors);
+      const factor = saved?.numerator ?? (known ? Number(honorWeakRepeatHalfUnits(priorRepeats(a, b, source), scale)) : factors);
       const divisor = saved?.denominator ?? (known ? 1 : count);
       sourceFactors.set(factorKey(a, b, source), { numerator: factor, denominator: divisor });
       const debit = honorNumber(50n * BigInt(total) * BigInt(factor) / (2n * BigInt(divisor)));
@@ -273,7 +276,7 @@ function advanceSimultaneousHonor(state: HonorAccountingState, inputGroup: reado
   }
   for (const [index, pool] of pools.entries()) {
     for (const e of pool.attack.exposures.filter(e => e.bullying && e.harmFifths > 0)) {
-      const old = 50n * BigInt(e.harmFifths - e.retaliationSpentFifths) * BigInt(2 + Math.min(priorRepeats(e.actor, e.enemy, group[index]!.attackKey), 2)) / 2n;
+      const old = 50n * BigInt(e.harmFifths - e.retaliationSpentFifths) * honorWeakRepeatHalfUnits(priorRepeats(e.actor, e.enemy, group[index]!.attackKey), group[index]!.weakRepeatScale) / 2n;
       const next = BigInt(penalties.get(exposureKey(group[index]!, e.actor, e.enemy)) ?? 0);
       pool.attack.raw = add(pool.attack.raw, honorNumber(old - next));
     }

@@ -1,4 +1,4 @@
-import { HULLS, UNKNOWN_SIGNAL, distance, missionFuel, resourceValue, signalTravelExact, type UnknownSignalWarshipHull } from '@astera/rules';
+import { HULLS, UNKNOWN_SIGNAL, distance, honorFuelCost, missionFuel, resourceValue, signalTravelExact, type UnknownSignalWarshipHull } from '@astera/rules';
 import type { PlanetView, UnknownSignalView } from '../api/schemas.js';
 import { flightModifiers } from './navigation.js';
 import { launchFault } from './faults.js';
@@ -42,7 +42,7 @@ export function unknownSignalQuote(planet: PlanetView, signal: UnknownSignalView
   const reach = distance(planet.planet.position, signal.at);
   // Four times the pace, as the server flies it (owner, 2026-11-20).
   const minutes = signalTravelExact(reach, fleet, flightModifiers(planet));
-  const fuel = missionFuel(fleet, reach, 2);
+  const fuel = honorFuelCost(missionFuel(fleet, reach, 2), planet.honorBenefits);
   const warship = HULLS[hull];
   const courier = HULLS.COURIER;
   const blocked: SignalBlocker | null = signal.status !== 'open' || signal.expiresAt.getTime() <= now ? 'expired'

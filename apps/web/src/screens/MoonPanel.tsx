@@ -10,6 +10,7 @@ import {
   gateChargeMs,
   hullBulk,
   jumpCapacity,
+  honorFuelCost,
   jumpFuel,
   scanPierces,
   scanRange,
@@ -439,7 +440,7 @@ function NoMoonCard({
             )}
             {err && <Banner tone="hostile" role="alert" title={err} />}
             {lockedOnResearch ? (
-              <GameButton wide glyph="star" onPress={() => onOpenResearch?.()}>{mt('guide.openResearch')}</GameButton>
+              <GameButton wide glyph="star" onPress={() => { onOpenResearch(); }}>{mt('guide.openResearch')}</GameButton>
             ) : (
               /* U3: pulling a rock into orbit is a commitment that spends — the kit's 1 s hold, like the Gate. */
               <GameHold
@@ -500,6 +501,7 @@ function ActiveMoonCard({
   readonly now: number;
 }) {
   const mt = useMoonT();
+  const { t } = useTranslation();
   const [subTab, setSubTab] = useState<'dock' | 'gate' | 'scan'>('dock');
   const [hopDir, setHopDir] = useState<'UP' | 'DOWN'>('UP');
   const [hopPick, setHopPick] = useState<Fleet>({});
@@ -598,7 +600,7 @@ function ActiveMoonCard({
   const gateBulk = fleetBulk(gateFleet);
   const gateOverCap = gateCap > 0 ? gateBulk > gateCap : gateBulk > 0;
   const destDist = destMoon ? distance(planet.planet.position, destMoon.position) : 0;
-  const fuelNeeded = gateCount > 0 && destMoon ? jumpFuel(gateFleet, destDist) : 0;
+  const fuelNeeded = gateCount > 0 && destMoon ? honorFuelCost(jumpFuel(gateFleet, destDist), planet.honorBenefits) : 0;
   const hasFuel = planet.planet.deuterium >= fuelNeeded;
   const canJump =
     gateReady &&
@@ -1109,6 +1111,11 @@ function ActiveMoonCard({
                     {gateCount > 0 && (
                       <div className={`text-caption gk-num ${hasFuel ? 'text-crystal' : 'text-threat-ink font-medium'}`}>
                         {mt('gate.fuel', { fuel: full(Math.ceil(fuelNeeded)) })}
+                        {(planet.honorBenefits?.fuelPct ?? 0) > 0 && (
+                          <span className="text-threat-ink" data-honor-fuel-penalty>
+                            {` · ${t('honorBenefits.fuel')} +${String(planet.honorBenefits!.fuelPct)}%`}
+                          </span>
+                        )}
                         {' · '}
                         <span className="text-faint">
                           ({full(Math.floor(planet.planet.deuterium))} D)

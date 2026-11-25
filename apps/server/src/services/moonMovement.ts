@@ -8,6 +8,7 @@ import {
   fleetEntries,
   gateChargeMs,
   hangarLoad,
+  honorFuelCost,
   jumpCapacity,
   jumpFuel,
   type Fleet,
@@ -24,6 +25,7 @@ import { arrivalPending, assertNoArrivalPending, readHomeHealth, selectHomeDispa
 import { assertMoonTarget, seasonHasMoons } from './moon.js';
 import { lockWorlds, safeHomePlanet } from './ownership.js';
 import { assertFuel } from './fuel.js';
+import { readHonorBenefits } from './honorBenefits.js';
 import { landingBlock } from './movement.js';
 import { notify } from './notifications.js';
 import { GameError, assertWorldOperational, loadLocked, lockSeason, saveResources, setUnits } from './planet.js';
@@ -321,7 +323,8 @@ export async function jumpFleetTx(
   }
   const blocked = await landingBlock(tx, toPlanetId, fleet);
   if (blocked) throw new GameError(blocked.code, blocked.message, 409, blocked.params);
-  const fuel = jumpFuel(fleet, distance(origin, target));
+  const benefits = await readHonorBenefits(tx, origin.seasonId, playerId);
+  const fuel = honorFuelCost(jumpFuel(fleet, distance(origin, target)), benefits);
   assertFuel(fuel, origin.deuterium, 0);
   await saveResources(tx, fromPlanetId, { alloy: origin.alloy, crystal: origin.crystal, deuterium: origin.deuterium - fuel });
 

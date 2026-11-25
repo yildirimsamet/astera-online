@@ -153,7 +153,7 @@ describe('Wiki values a new player can interpret', () => {
     const table = conceptReference('combat.model', 'tr')?.blocks.find(block =>
       block.kind === 'table' && block.columns.includes('Depo koruması üzerindeki stok'));
     if (table?.kind !== 'table') throw new Error('Missing combat percentages');
-    expect(table.rows).toHaveLength(4);
+    expect(table.rows).toHaveLength(6);
     for (const row of table.rows) for (const value of row.slice(2)) expect(value).toMatch(/^%\d+(?:,\d+)?$/);
   });
   it('names the three independent Core capacities in separate columns', () => {

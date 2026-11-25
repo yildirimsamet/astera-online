@@ -166,7 +166,7 @@ export const errors = {
   MAINTENANCE_LANDING: "Diese Flotte würde während der Wartung landen, {{from}}–{{to}} (deine Ortszeit). Schick sie nach der Wartung.",
   MAINTENANCE_IN_FLIGHT: "Diese Waffe wäre während der Wartung noch unterwegs, {{from}}–{{to}} (deine Ortszeit). Starte sie nach der Wartung.",
   PERSONAL_RAID_PENDING: "Ein Überfall auf diesen Kommandanten ist bereits unterwegs. Warte oder rufe ihn zurück.",
-  BASH_LIMIT: 'Du bist in letzter Zeit zu oft auf diesem Planeten gelandet',
+  BASH_LIMIT: 'Du kannst einen Kommandanten höchstens {{limit}} Mal alle {{hours}} Stunden angreifen',
   TIER_BAND: "Dieser Kommandant liegt mehr als eine Stufe über dir – verglichen wird die am weitesten entwickelte Welt beider Seiten",
   TIER_BAND_WEAK: "Dieser Kommandant liegt mehr als eine Stufe unter dir – verglichen wird die am weitesten entwickelte Welt beider Seiten",
   CANNOT_INTERCEPT: 'Es verlässt die Scheibe, bevor dein Fahrzeug es erreichen kann',

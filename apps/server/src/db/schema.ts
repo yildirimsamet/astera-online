@@ -193,6 +193,8 @@ export const eventKind = pgEnum('event_kind', [
   'newcomer_hour',
   /** A probe battery opening fire on a probe coming in (2026-11-24/25). */
   'probe_defence',
+  /** Honor Tier -4 (-25% production) boundary sync for a commander's controlled worlds. Append-only. */
+  'honor_penalty_sync',
 ]);
 /**
  * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
@@ -1519,6 +1521,8 @@ export const planets = pgTable('planets', {
    * already shown: what the player saw accrue is what they keep.
    */
   clanBonus: doublePrecision('clan_bonus').notNull().default(0),
+  /** Honor Tier -4 (-0.25) production penalty frozen at lastTickAt; never alters caps. */
+  honorProductionShare: doublePrecision('honor_production_share').notNull().default(0),
   /** No new colony faults until this instant; renewed on accepted building orders. */
   faultProtectedUntil: timestamp('fault_protected_until', { withTimezone: true }),
   /** Legacy raid downtime; new battles never write it. Kept until old rows and clients age out. */
@@ -2571,6 +2575,8 @@ export const monumentWaves = pgTable('monument_waves', {
   route: jsonb('route').$type<Segment[]>().notNull(),
   reservedBulk: integer('reserved_bulk').notNull().default(0),
   fuelPaid: doublePrecision('fuel_paid').notNull(),
+  /** Honor fuel surcharge percentage frozen at launch (0 or 25) so return pricing matches escrow. */
+  fuelPct: integer('fuel_pct').notNull().default(0),
   status: text('status').$type<MonumentWaveStatus>().notNull().default('OUTBOUND'),
   returnReason: text('return_reason').$type<MonumentReturnReason>(),
   sentAt: timestamp('sent_at', { withTimezone: true }).notNull(),
@@ -3487,7 +3493,7 @@ export const clanWarContributions = pgTable('clan_war_contributions', {
   /** Deuterium taken once, up front, for every leg this wave will ever fly. */
   fuelPaid: real('fuel_paid').notNull(),
   fuelLegs: jsonb('fuel_legs').$type<ClanWarFuelLeg[]>().notNull(),
-  monumentFuelBudget: jsonb('monument_fuel_budget').$type<{ outbound: MonumentFuelReserves; homeward: MonumentFuelReserves }>(),
+  monumentFuelBudget: jsonb('monument_fuel_budget').$type<{ outbound: MonumentFuelReserves; homeward: MonumentFuelReserves; fuelPct?: number }>(),
   status: text('status').$type<ClanWarContributionStatus>().notNull().default('OUTBOUND'),
   /** Consent for the actual PvP monument dispatch; staging itself spends no shield. */
   shieldLossAcknowledged: boolean('shield_loss_acknowledged').notNull().default(false),

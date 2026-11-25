@@ -20,6 +20,7 @@ import { releaseSupportForWorldChange } from './clanSupport.js';
 import { armFaults } from './faults.js';
 import { prepareMonumentOriginChange, reanchorMonumentOrigin } from './monumentOwnership.js';
 import { observeHonorOwner } from './honorReference.js';
+import { honorProductionShareFrom, readHonorBenefits } from './honorBenefits.js';
 import { stopUnknownSignalSchedule } from './unknownSignalSchedule.js';
 
 export interface CommanderWorld {
@@ -341,6 +342,7 @@ export async function transferPlanetControl(
     });
   }
 
+  const nextHonorShare = honorProductionShareFrom(await readHonorBenefits(tx, pair.planetSeason, input.newPlayerId));
   const expected = input.expectedControllerPlayerId === null
     ? isNull(planets.controllerPlayerId)
     : eq(planets.controllerPlayerId, input.expectedControllerPlayerId);
@@ -357,8 +359,9 @@ export async function transferPlanetControl(
       disruptedUntil: null,
       lastTickAt: input.now,
       statsOwnerPlayerId: input.newPlayerId,
-      // F2 Ortak Ocak: the old clan's share stays with the old clan; the new owner's next write sets theirs.
+      // F2 Ortak Ocak: reset to 0 on transfer; Honor Tier -4: immediately apply the new owner's share.
       clanBonus: 0,
+      honorProductionShare: nextHonorShare,
       /*
         A WORLD THAT CHANGES HANDS STARTS ITS LOYALTY AGAIN. Koloni arızaları.
 

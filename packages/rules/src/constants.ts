@@ -2282,10 +2282,10 @@ export const DISRUPTION = {
  * was removed by owner decision (D14). Nothing is protected for merely being new.
  */
 export const ABUSE = {
-  bashLimit: 3,
+  bashLimit: 2,
   bashWindowMinutes: 720,
   /** Ordinary raids only; the clock starts when combat resolves, not at launch. */
-  personalRaidProtectedTier: 3,
+  personalRaidProtectedTier: 4,
   personalRaidCooldownMinutes: 720,
 
   /**
@@ -2407,7 +2407,7 @@ export const ABUSE = {
    *
    * NET, OVER `recoveryLookbackHours`. The loss is no longer one battle's: see there.
    */
-  recoveryLossHours: 4,
+  recoveryLossHours: 3,
 
   /**
    * HOW FAR BACK A DEFEAT KEEPS COUNTING TOWARD THE NEXT SHIELD. Owner instruction,
@@ -4042,6 +4042,8 @@ export const FAULT = {
    * colony running — or break a colony over a raid the shield called a scratch.
    */
   attackFaults: 2,
+  /** Owner 2026-11-24 (K4): colony fault threshold stays at 4 hours even as Tier 4+ recovery shield drops to 3. */
+  heavyDefeatLossHours: 4,
   /**
    * WHAT A HEAVY DEFEAT MAY NOT BREAK, AND THE REASON IS ANOTHER RULE'S PROMISE.
    *

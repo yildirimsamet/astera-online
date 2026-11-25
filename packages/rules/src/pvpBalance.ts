@@ -30,8 +30,21 @@ export const LOW_TIER_PVP_BALANCE: PvpBalance = {
   recoveryShieldHours: 12,
 };
 
+/** Owner, 2026-11-24 (K8): mid-tier loot protection for tier 4–5 commanders. */
+export const MID_TIER_PVP_BALANCE: PvpBalance = {
+  lootDecisive: 0.45,
+  lootPartial: 0.225,
+  lootBufferShare: 0.5,
+  recoveryLossHours: ABUSE.recoveryLossHours,
+  recoveryLookbackHours: ABUSE.recoveryLookbackHours,
+  recoveryShieldHours: ABUSE.recoveryShieldHours,
+};
+
 /** Absent context means an NPC or legacy rule, never an assumed beginner. */
-export const pvpBalanceForTier = (tier?: number | null): PvpBalance =>
-  typeof tier === 'number' && Number.isInteger(tier) && tier >= 1 && tier <= 3
-    ? LOW_TIER_PVP_BALANCE
-    : STANDARD_PVP_BALANCE;
+export const pvpBalanceForTier = (tier?: number | null): PvpBalance => {
+  if (typeof tier === 'number' && Number.isInteger(tier)) {
+    if (tier >= 1 && tier <= 3) return LOW_TIER_PVP_BALANCE;
+    if (tier >= 4 && tier <= 5) return MID_TIER_PVP_BALANCE;
+  }
+  return STANDARD_PVP_BALANCE;
+};

@@ -5,7 +5,7 @@ import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { honorTargetSchema } from '../../web/src/api/schemas.js';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { accounts, clanMemberships, clans, honorObservations, honorSeasons, strategicAssets } from '../src/db/schema.js';
+import { accounts, clanMemberships, clans, honorObservations, honorSeasons, missions, strategicAssets } from '../src/db/schema.js';
 import { prepareHonorSeason, settleHonor } from '../src/services/honorLedger.js';
 import { observeHonorOwner } from '../src/services/honorReference.js';
 import { honorTargetPreview } from '../src/services/honorTarget.js';
@@ -99,5 +99,59 @@ describe('read-only Honor target guidance', () => {
     const [admin] = await f.db.select({ username: accounts.username }).from(accounts).where(eq(accounts.id, f.accountIds[1]!));
     expect(await honorTargetPreview(f.db, f.playerIds[0]!, f.planetIds[1]!, f.clock, new Set([admin!.username])))
       .toEqual({ enabled: true, eligible: false });
+  });
+  it('reports priorWeakCount and 1x/2x/3x weakMultiplier for WEAK targets, ignoring recalled attacks', async () => {
+    await setup('ACTIVE', 100, 20, 9, 3);
+    expect(await preview()).toMatchObject({ kind: 'WEAK', priorWeakCount: 0, weakMultiplier: 1 });
+    // Record one weak bullying hit in the last 24h
+    const member = (id: string, tier: number, navy: number, loss = 0) => ({ id, tier, navy, weight: 10_000,
+      civilianWeight: 0, loss, combatLoss: loss, lootLost: 0 });
+    await f.db.transaction(tx => settleHonor(tx, f.seasonId, { source: 'WORLD', id: randomUUID(), at: f.clock.now().getTime(),
+      eligible: true, weakRepeatScale: 100,
+      attack: [member(f.playerIds[0]!, 3, 100_000)], defence: [member(f.playerIds[1]!, 1, 20_000, 1000)],
+      relations: [{ a: f.playerIds[0]!, b: f.playerIds[1]!, related: false }] }));
+    expect(await preview()).toMatchObject({ kind: 'WEAK', priorWeakCount: 1, weakMultiplier: 2 });
+    // Recalled in-flight attack must NOT bump weakMultiplier
+    const now = f.clock.now();
+    await f.db.insert(missions).values({
+      seasonId: f.seasonId, ownerPlayerId: f.playerIds[0]!, kind: 'attack',
+      originPlanetId: f.planetIds[0]!, targetPlanetId: f.planetIds[1]!,
+      fleet: { DART: 1 }, status: 'in_flight', fuelPaid: 10, distance: 100, departAt: now,
+      arriveAt: new Date(now.getTime() + 60_000), recalledAt: now,
+    });
+    expect(await preview()).toMatchObject({ kind: 'WEAK', priorWeakCount: 1, weakMultiplier: 2 });
+    // Active (non-recalled) in-flight attack bumps weakMultiplier to 3
+    await f.db.insert(missions).values({
+      seasonId: f.seasonId, ownerPlayerId: f.playerIds[0]!, kind: 'attack',
+      originPlanetId: f.planetIds[0]!, targetPlanetId: f.planetIds[1]!,
+      fleet: { DART: 1 }, status: 'in_flight', fuelPaid: 10, distance: 100, departAt: now,
+      arriveAt: new Date(now.getTime() + 60_000),
+    });
+    expect(await preview()).toMatchObject({ kind: 'WEAK', priorWeakCount: 1, weakMultiplier: 3 });
+  });
+
+  it('keeps weakMultiplier at 1 when equal-tier target only has one neutral in-flight raid', async () => {
+    await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'ACTIVE', f.clock));
+    await setLevel(f.db, f.planetIds[0]!, 'CORE', 13);
+    await setLevel(f.db, f.planetIds[1]!, 'CORE', 13);
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 100 });
+    await giveUnits(f.db, f.planetIds[1]!, { DART: 10 });
+    const now = f.clock.now();
+    // First in-flight raid against equal tier (>3x navy) is neutral (NO_GAIN), so a 2nd launch is the 1st bullying strike (1x).
+    await f.db.insert(missions).values({
+      seasonId: f.seasonId, ownerPlayerId: f.playerIds[0]!, kind: 'attack',
+      originPlanetId: f.planetIds[0]!, targetPlanetId: f.planetIds[1]!,
+      fleet: { DART: 1 }, status: 'in_flight', fuelPaid: 10, distance: 100, departAt: now,
+      arriveAt: new Date(now.getTime() + 60_000),
+    });
+    expect(await preview()).toMatchObject({ kind: 'WEAK', repeatRaid: true, priorWeakCount: 0, weakMultiplier: 1 });
+    // A second in-flight raid means the 2nd flight is already bullying (1x), so a 3rd launch escalates to 2x.
+    await f.db.insert(missions).values({
+      seasonId: f.seasonId, ownerPlayerId: f.playerIds[0]!, kind: 'attack',
+      originPlanetId: f.planetIds[0]!, targetPlanetId: f.planetIds[1]!,
+      fleet: { DART: 1 }, status: 'in_flight', fuelPaid: 10, distance: 100, departAt: now,
+      arriveAt: new Date(now.getTime() + 120_000),
+    });
+    expect(await preview()).toMatchObject({ kind: 'WEAK', repeatRaid: true, priorWeakCount: 0, weakMultiplier: 2 });
   });
 });

@@ -168,7 +168,7 @@ export function useLaunchPlan({
     : planRoute(
         planet.planet.position, target.world.position, sending, available, planet.ground, mods,
       );
-  const unpaced = rawUnpaced && escortRoute(rawUnpaced, escortBonus, target.kind === 'pirate');
+  const unpaced = rawUnpaced && escortRoute(rawUnpaced, escortBonus, target.kind === 'pirate', planet.honorBenefits);
   /**
    * WORLD TARGETS ONLY, FOR NOW — and the reason is that a quote must not lie.
    *
@@ -192,7 +192,7 @@ export function useLaunchPlan({
     : planRoute(
         planet.planet.position, target.world.position, sending, available, planet.ground, paced,
       );
-  const planned = rawPlanned && escortRoute(rawPlanned, escortBonus, target.kind === 'pirate');
+  const planned = rawPlanned && escortRoute(rawPlanned, escortBonus, target.kind === 'pirate', planet.honorBenefits);
   const flown = school && planned ? { ...planned, oneWayMinutes: school.legSeconds / 60, exposureMinutes: (school.legSeconds * 2 + 10) / 60 } : lesson && planned ? { ...planned,
     oneWayMinutes: ACADEMY_LEG_SECONDS / 60, exposureMinutes: (ACADEMY_LEG_SECONDS * 2 + 10) / 60 } : planned;
   // A ship flies free until its fuel plant works: nothing can be asked of a resource it cannot make yet.
@@ -510,6 +510,7 @@ export function useLaunchPlan({
         ...(targetBody === 'MOON' ? { targetBody } : {}),
         // The hold on a lethal route is the answer the server asks for (D10).
         ...(radiation !== null && radiation.destroyed > 0 ? { acknowledgeRadiation: true } : {}),
+        ...(planet.honorBenefits && !aboard ? { expectedHonorTier: planet.honorBenefits.tier } : {}),
       },
       {
         onSuccess: (result) => {

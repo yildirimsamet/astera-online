@@ -221,7 +221,8 @@ it('publishes tier-specific storage, Works and recovery values in both languages
       if (!page) throw new Error(`Missing ${id}`);
       const text = documentFor(renderWikiPage(page)).querySelector('article')?.textContent ?? '';
       expect(text).toMatch(/1[–-]3/);
-      expect(text).toMatch(/4\+/);
+      expect(text).toMatch(/4[–-]5/);
+      expect(text).toMatch(/6\+/);
       if (id === 'combat.loot') {
         expect(text).toContain(language === 'en' ? '25%' : '%25');
         expect(text).toContain(language === 'en' ? '12.5%' : '%12,5');
@@ -229,7 +230,9 @@ it('publishes tier-specific storage, Works and recovery values in both languages
         expect(text).toContain(language === 'en' ? '12 h' : '12 sa');
         expect(text).toContain(language === 'en' ? '2 h' : '2 sa');
         const rows = [...documentFor(renderWikiPage(page)).querySelectorAll('article tr')];
-        const standard = rows.find(row => row.textContent.includes(language === 'en' ? 'Tier 4+' : 'Kademe 4+'));
+        const mid = rows.find(row => row.textContent.includes(language === 'en' ? 'Tier 4–5' : 'Kademe 4–5'));
+        expect(mid?.lastElementChild?.textContent).toBe(language === 'en' ? '12 h' : '12 sa');
+        const standard = rows.find(row => row.textContent.includes(language === 'en' ? 'Tier 6+' : 'Kademe 6+'));
         expect(standard?.lastElementChild?.textContent).toBe(language === 'en' ? '12 h' : '12 sa');
       }
     }

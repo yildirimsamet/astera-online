@@ -131,7 +131,10 @@ export const launchVesselFleet = (db: Db, accountId: string, body: LaunchBody, k
       const answer = await attackAnswer(tx, row, ship, vessel.now);
       if (!answer.ok) {
         const [message, status] = ATTACK_MESSAGES[answer.code];
-        throw new GameError(answer.code, message, status);
+        const params = answer.code === 'BASH_LIMIT'
+          ? { limit: STARTER.pvp.bashLimit, hours: STARTER.pvp.bashWindowMinutes / 60 }
+          : undefined;
+        throw new GameError(answer.code, message, status, params);
       }
       if (answer.dropsOwnShield) {
         if (!body.acknowledgeShieldLoss) throw new GameError('ATTACK_DROPS_SHIELD', 'This attack ends your own protection', 409);

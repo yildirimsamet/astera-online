@@ -79,4 +79,15 @@ describe('Honor chronological accounting', () => {
   it('does not accept caller-authored repeat counters or retaliation balances', () => {
     expect(() => replayHonor([{ ...event('1'), relations: [{ a: 'A', b: 'D', related: false, weakRepeat: 0 }] }])).toThrow();
   });
+  it('applies 1x/2x/3x weak repeat scaling when weakRepeatScale is 100 while preserving legacy 1x/1.5x/2x in mixed replay', () => {
+    const legacy = (id: string, at: number) => event(id, at, { attack: [member('A', 4, 200_000)] });
+    const scaled = (id: string, at: number, over: Partial<HonorEvidence> = {}) =>
+      event(id, at, { attack: [member('A', 4, 200_000)], weakRepeatScale: 100, ...over });
+    // Event 1 (legacy, step 0): 1x = -250_000; Event 2 (scaled, step 1): 2x = -500_000; Event 3 (scaled, step 2): 3x = -750_000; Event 4 (scaled, step 3): capped 3x = -750_000
+    const mixed = replayHonor([legacy('1', 1), scaled('2', 2), scaled('3', 3), scaled('4', 4)], 4);
+    expect(mixed.events.map(e => e.attack.total)).toEqual([-250_000, -500_000, -750_000, -750_000]);
+    // Simultaneous scaled events at same timestamp average 1x and 2x -> 1.5x each (-375_000)
+    const sim = replayHonor([scaled('s1', 100, { attackKey: 'k1' }), scaled('s2', 100, { attackKey: 'k2' })], 4);
+    expect(sim.events.map(e => e.attack.total)).toEqual([-375_000, -375_000]);
+  });
 });

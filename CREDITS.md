@@ -45,3 +45,10 @@ was rendered in the game's light as two images, body and lid, cropped alike and 
 |---|---|---|---|---|---|
 | `crate-small-body.webp`, `crate-small-lid.webp` | New Commander 7 Days: boxes 1–6 | `SM_Prop_Crate_01` with texture `PolygonSciFiSpace_Texture_01_B` | POLYGON Sci-Fi Space (v1.13.1) | Synty Studios | Synty Studios (Unity Asset Store) |
 | `crate-big-body.webp`, `crate-big-lid.webp` | New Commander 7 Days: the seventh box | `SM_Prop_Crate_Wide_01` with texture `PolygonSciFiSpace_Texture_01_A` | POLYGON Sci-Fi Space (v1.13.1) | Synty Studios | Synty Studios (Unity Asset Store) |
+
+## Honor badges (`apps/web/public/assets/ui/honor/`)
+
+| Files | Used for | Source | Pack | Author | Licence |
+|---|---|---|---|---|---|
+| `honor-m3.webp` | Honor Tier −3 badge (−150) | `spr-militarycombat-badge-shield-02-background.png`, `spr-militarycombat-badge-shield-02-silver.png`, `spr-militarycombat-badge-wreath-02-silver.png`, `spr-militarycombat-badge-element-skullandcrossbones-01-silver.png` | Interface - Military Combat HUD (v1.0.0) | Synty Studios | Synty (Unity Asset Store) |
+| `honor-m4.webp` | Honor Tier −4 badge (−200) | `spr-militarycombat-badge-shield-02-background.png`, `spr-militarycombat-badge-shield-02-gold.png`, `spr-militarycombat-badge-wings-02-gold.png`, `spr-militarycombat-badge-element-snakeskull-01-silver.png` | Interface - Military Combat HUD (v1.0.0) | Synty Studios | Synty (Unity Asset Store) |

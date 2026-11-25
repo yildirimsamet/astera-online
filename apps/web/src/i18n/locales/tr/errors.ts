@@ -162,7 +162,7 @@ export const errors = {
   MAINTENANCE_LANDING: "Bu filo {{from}}–{{to}} bakımı sırasında inerdi (yerel saatin). Bakım bitince gönder.",
   MAINTENANCE_IN_FLIGHT: "Bu silah {{from}}–{{to}} bakımı sırasında havada olurdu (yerel saatin). Bakım bitince fırlat.",
   PERSONAL_RAID_PENDING: "Bu komutana doğru giden bir akının var. Sonuçlanmasını bekle veya geri çağır.",
-  BASH_LIMIT: 'Bu gezegene son zamanlarda fazla yüklendin',
+  BASH_LIMIT: 'Bir komutana {{hours}} saatte en fazla {{limit}} saldırı gönderebilirsin',
   TIER_BAND: 'Bu komutan senden bir kademeden fazla yukarıda — saldırıda iki tarafın en gelişmiş dünyası karşılaştırılır',
   TIER_BAND_WEAK: 'Bu komutan senden bir kademeden fazla aşağıda — saldırıda iki tarafın en gelişmiş dünyası karşılaştırılır',
   CANNOT_INTERCEPT: 'Araçların yetişemeden diskten çıkacak',

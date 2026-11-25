@@ -303,6 +303,8 @@ export const leaderboard = {
     WEAK: "Daha zayıf hedef",
     topTierPeer: "Bu galaksinin en yüksek kademesindesin. Bir alt kademe, Honor hesabında eşit kademe sayılır. Alt kademeden sana saldıran rakibin üst kademe bonusu, mevcut koşullarıyla devam eder.",
     weakWarning: "Başarılı bir saldırı bile Honor’u azaltabilir. Tekrarlanan zorbalık daha fazla puan kaybettirir.",
+    escalatedWeak: "Son 24 saatte bu komutana karşı negatif Honor aldın. Bu saldırıda Honor kaybı {{multiplier}}× katlanır.",
+    escalatedInFlight: "Bu komutana giden bir saldırın zaten yolda. Bu ek saldırıda Honor kaybı {{multiplier}}× katlanır.",
     eligible: "Kalıcı askerî hasar Honor kazandırabilir. Saldırıda kendi kayıpların puanı azaltabilir.",
     FULL: "Tam askerî karşılık: uygun hasar verimliliğe göre değerlendirilir.",
     HALF: "Azaltılmış askerî karşılık: rakibin askerî gücü seninkinin epey altında. Kazanç da kayıplarından kesilen Honor da yarıya iner.",

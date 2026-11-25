@@ -269,7 +269,7 @@ async function returnForecast(tx: Tx, target: LockedMonument, wave: typeof monum
   const sources = (await hpSourcesForSeason(tx, target.season.id, { targets: [], from: at, until: target.season.endsAt })).map((source) => ({ ...source, activeFromMs: Math.max(at.getTime(), source.activeFromMs),
     activeUntilMs: Math.min(source.activeUntilMs ?? target.season.endsAt.getTime(), target.season.endsAt.getTime()) }));
   const doseHp = segmentsExposureHp(route, sources);
-  const priced = wave.status === 'RETURNING' ? { lots, fuel: 0 } : priceMonumentReturn(lots, distance(position, home));
+  const priced = wave.status === 'RETURNING' ? { lots, fuel: 0 } : priceMonumentReturn(lots, distance(position, home), wave.fuelPct);
   const forecast = applyMonumentHpDose(priced.lots, doseHp);
   return { homePlanetId: homeId, homePosition, speed: fleetPace(fleet, modifiers), arriveAt: arriveAt.toISOString(), minutes: Math.max(0, (arriveAt.getTime() - at.getTime()) / 60_000),
     doseHp: protectedRadiationHp(doseHp, wave.tech), destroyed: forecast.destroyed.reduce((sum, lot) => sum + lot.count, 0),

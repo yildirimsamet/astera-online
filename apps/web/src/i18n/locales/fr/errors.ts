@@ -162,7 +162,7 @@
   MAINTENANCE_LANDING: "Cette flotte arriverait pendant la maintenance, {{from}}–{{to}} (ton heure locale). Envoie-la après la maintenance.",
   MAINTENANCE_IN_FLIGHT: "Cette arme serait encore en vol pendant la maintenance, {{from}}–{{to}} (ton heure locale). Lance-la après la maintenance.",
   PERSONAL_RAID_PENDING: "Un de tes raids se dirige déjà vers ce commandant. Attends ou rappelle-le.",
-  BASH_LIMIT: 'Tu as attaqué cette planète trop souvent récemment',
+  BASH_LIMIT: 'Vous pouvez envoyer au maximum {{limit}} attaques contre un commandant toutes les {{hours}} heures',
   TIER_BAND: 'Ce commandant a plus d’un palier d’avance sur toi : on compare le monde le plus développé de chaque camp',
   TIER_BAND_WEAK: 'Ce commandant a plus d’un palier de retard sur toi : on compare le monde le plus développé de chaque camp',
   CANNOT_INTERCEPT: 'La cible quittera le disque avant que tes appareils puissent l’atteindre',

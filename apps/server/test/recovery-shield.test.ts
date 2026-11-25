@@ -60,7 +60,8 @@ describe('the recovery shield', () => {
 
   // Multiple pre-shield raids are legal only when both commanders are tier 4+.
   const tierFourCommanders = async () => {
-    for (const world of [mine, theirs]) await setLevel(f.db, world, 'CORE', 10);
+    // Tier 5 (Core 13) so both concurrent raids bypass the tier 1–4 personal raid cooldown.
+    for (const world of [mine, theirs]) await setLevel(f.db, world, 'CORE', 13);
   };
 
   const recoveryOf = async (playerId: string): Promise<Date | null> => {

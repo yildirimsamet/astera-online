@@ -43,7 +43,7 @@ describe('D114 clan identity and fixed rules', () => {
       resources(2000, 1000, 0),
     );
     expect(CLAN.adaptationMinutes).toBe(720);
-    expect(CLAN.attackLimit).toBe(5);
+    expect(CLAN.attackLimit).toBe(3);
     expect(CLAN.raidLootShare).toBe(0.10);
     expect(CLAN.aidSpeedMultiplier).toBe(1.10);
     expect(MULTI_WORLD.neutralWorldRulesetVersion).toBe(2);

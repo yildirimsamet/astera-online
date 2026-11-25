@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { HONOR_BENEFIT_THRESHOLDS_V1, honorBenefits } from '@astera/rules';
+import { HONOR_BENEFIT_THRESHOLDS_V1, HONOR_BENEFIT_THRESHOLDS_V2, honorBenefits } from '@astera/rules';
 import { honorBenefitsSchema } from '../src/api/schemas.js';
 
 describe('private Honor economics at the client boundary', () => {
-  const value = { version: 1, score: -100_000_000, thresholds: HONOR_BENEFIT_THRESHOLDS_V1,
+  const value = { version: 1 as const, score: -100_000_000, thresholds: HONOR_BENEFIT_THRESHOLDS_V1,
     ...honorBenefits(-100_000_000, HONOR_BENEFIT_THRESHOLDS_V1) };
-  it('keeps the frozen policy, exact score and matching personal effects', () => {
+  const v2Value = { version: 2 as const, score: -200_000_000, thresholds: HONOR_BENEFIT_THRESHOLDS_V2,
+    ...honorBenefits(-200_000_000, HONOR_BENEFIT_THRESHOLDS_V2) };
+  it('keeps the frozen policy, exact score and matching personal effects for both V1 and V2', () => {
     expect(honorBenefitsSchema.parse(value)).toEqual(value);
+    expect(honorBenefitsSchema.parse(v2Value)).toEqual(v2Value);
+    expect(honorBenefitsSchema.safeParse({ ...v2Value, fuelPct: 0 }).success).toBe(false);
+    expect(honorBenefitsSchema.safeParse({ ...v2Value, productionPct: 0 }).success).toBe(false);
   });
   it('rejects a mismatched tier/rate rather than quoting a false price', () => {
     expect(honorBenefitsSchema.safeParse({ ...value, tradePct: 0 }).success).toBe(false);

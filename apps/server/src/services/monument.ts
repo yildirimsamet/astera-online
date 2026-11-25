@@ -18,6 +18,8 @@ import {
   fleetEntries,
   fleetSpeedMult,
   hangarLoad,
+  honorFuelCost,
+  honorLaunchFuel,
   missionFuel,
   hpLethalAtMs,
   hpWingLethalAtMs,
@@ -51,6 +53,7 @@ import { capitalPlanet, lockWorlds } from './ownership.js';
 import { assertClanHostilityAllowed, lockClanPlayers } from './clanCombat.js';
 import { assertFreeBay, baysOf } from './flight.js';
 import { assertFuel } from './fuel.js';
+import { readHonorBenefits } from './honorBenefits.js';
 import { techOf } from './researchState.js';
 import { assertOwnShieldLoss, protectionsOf } from './attackProtection.js';
 import { notify } from './notifications.js';
@@ -581,10 +584,12 @@ async function gatherMonumentSend(tx: Tx, input: MonumentSendInput, preview = fa
   const meeting = monumentFlight(origin,locked.monument,locked.season,speed,origin.now);
   const {arriveAt} = meeting;
   const travelMinutes = meeting.minutes;
-  const reserve = monumentMotionStart(locked.season) ? await reserveMonumentHome(tx, input.senderPlayerId, locked.monument, fleet) : null;
+  const benefits = await readHonorBenefits(tx, origin.seasonId, input.senderPlayerId);
+  const fuelPct = benefits?.fuelPct ?? 0;
+  const reserve = monumentMotionStart(locked.season) ? await reserveMonumentHome(tx, input.senderPlayerId, locked.monument, fleet, fuelPct) : null;
   const plainOutbound = missionFuel(fleet, distance(origin, meeting.at), 1);
-  const outboundFuel = escort.bonuses ? Math.ceil(plainOutbound * escort.bonuses.fuel) : plainOutbound;
-  const fuel = reserve ? outboundFuel + reserve.total : outboundFuel + plainOutbound;
+  const outboundFuel = honorLaunchFuel(plainOutbound, benefits, escort.bonuses?.fuel ?? 1);
+  const fuel = reserve ? outboundFuel + reserve.total : outboundFuel + honorFuelCost(plainOutbound, benefits);
   assertFuel(fuel, origin.deuterium);
   // A native monument wave must reach the target while the season is still
   // open. Once it has arrived, the season-close adapter can transfer it home
@@ -636,7 +641,7 @@ async function gatherMonumentSend(tx: Tx, input: MonumentSendInput, preview = fa
     targetPosition: meeting.at,
     outboundForecast: { doseHp: protectedRadiationHp(doseHp, tech), destroyed: fleetCount(arrival.destroyed), fleet: arrival.fleet, health },
   };
-  return { locked, origin, fleet, tech, bulk, fuel, arriveAt, pvp, quote, targetAt: meeting.at, reserve, admiralId: escort.id };
+  return { locked, origin, fleet, tech, bulk, fuel, fuelPct, arriveAt, pvp, quote, targetAt: meeting.at, reserve, admiralId: escort.id };
 }
 
 export async function quoteMonument(tx: Tx, input: MonumentSendInput): Promise<MonumentQuote> {
@@ -658,7 +663,7 @@ export async function sendMonument(tx: Tx, input: MonumentSendInput): Promise<{ 
     // The UUID is allocated before the insert so the physical location is explicit.
     ...newWaveIdentity(), purpose: input.purpose, sentFleet: fleet, tech: context.tech,
     route: [{ from: { x: origin.x, y: origin.y, z: origin.z }, to: context.targetAt, startMs: origin.now.getTime(), endMs: context.arriveAt.getTime() }],
-    reservedBulk: input.purpose === 'REINFORCE' ? context.bulk : 0, fuelPaid: context.fuel,
+    reservedBulk: input.purpose === 'REINFORCE' ? context.bulk : 0, fuelPaid: context.fuel, fuelPct: context.fuelPct,
     sentAt: origin.now, arriveAt: context.arriveAt, radiationSettledAt: origin.now,
   }).returning();
   if (!wave) throw new Error('monument dispatch insert returned no row');

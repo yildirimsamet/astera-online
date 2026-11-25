@@ -37,22 +37,39 @@ const publicClanIdentity = z.object({
   id: z.string(), name: z.string(), tag: z.string(), tier: clanTagTierSchema.nullable().optional(),
 });
 
-export const honorBenefitsSchema = z.object({ version: z.literal(1), score: dominionInteger,
-  thresholds: z.object({ positive: z.tuple([dominionInteger.positive(), dominionInteger.positive()]).readonly(),
-    negative: z.tuple([dominionInteger.positive(), dominionInteger.positive()]).readonly() }),
-  tier: z.union([z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]),
+const honorBenefitsPositiveTuple = z.tuple([dominionInteger.positive(), dominionInteger.positive()]).readonly();
+const honorBenefitsNegativeV1 = z.tuple([dominionInteger.positive(), dominionInteger.positive()]).readonly();
+const honorBenefitsNegativeV2 = z.tuple([
+  dominionInteger.positive(), dominionInteger.positive(),
+  dominionInteger.positive(), dominionInteger.positive(),
+]).readonly();
+export const honorBenefitsSchema = z.object({
+  version: z.union([z.literal(1), z.literal(2)]),
+  score: dominionInteger,
+  thresholds: z.object({
+    positive: honorBenefitsPositiveTuple,
+    negative: z.union([honorBenefitsNegativeV1, honorBenefitsNegativeV2]),
+  }),
+  tier: z.union([z.literal(-4), z.literal(-3), z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]),
   repairPct: z.union([z.literal(-10), z.literal(-5), z.literal(0), z.literal(5), z.literal(10)]),
   convoyPct: z.union([z.literal(-30), z.literal(-15), z.literal(0), z.literal(15), z.literal(30)]),
   tradePct: z.union([z.literal(0), z.literal(7), z.literal(14)]),
+  fuelPct: z.union([z.literal(0), z.literal(25)]).optional().default(0),
+  productionPct: z.union([z.literal(0), z.literal(-25)]).optional().default(0),
 }).refine(value => {
+  if (value.version === 1 && value.thresholds.negative.length !== 2) return false;
+  if (value.version === 2 && value.thresholds.negative.length !== 4) return false;
   // Zod still runs refinements after a numeric check marks an object dirty.
   // Refuse malformed integers here before calling the exact arithmetic rules.
   if (![value.score, ...value.thresholds.positive, ...value.thresholds.negative].every(Number.isSafeInteger)) return false;
-  if (value.thresholds.positive[0] <= 0 || value.thresholds.negative[0] <= 0
-    || value.thresholds.positive[0] >= value.thresholds.positive[1] || value.thresholds.negative[0] >= value.thresholds.negative[1]) return false;
+  for (const list of [value.thresholds.positive, value.thresholds.negative]) {
+    if (list[0] <= 0) return false;
+    for (let i = 1; i < list.length; i++) if (list[i]! <= list[i - 1]!) return false;
+  }
   const expected = honorBenefits(value.score, value.thresholds);
   return expected.tier === value.tier && expected.repairPct === value.repairPct
-    && expected.convoyPct === value.convoyPct && expected.tradePct === value.tradePct;
+    && expected.convoyPct === value.convoyPct && expected.tradePct === value.tradePct
+    && expected.fuelPct === value.fuelPct && expected.productionPct === value.productionPct;
 }, 'Honor economic quote does not match its frozen program');
 export type HonorBenefitsView = z.infer<typeof honorBenefitsSchema>;
 const honorReceipt = z.object({ delta: dominionInteger, reason: z.enum([
@@ -73,6 +90,8 @@ export const honorTargetSchema = z.union([
     militaryReturn: z.enum(['NONE', 'HALF', 'FULL']), related: z.boolean(), repeated: z.boolean(), retaliation: z.boolean(),
     /** A raid on this commander inside the last day, or one on its way: going again is bullying. */
     repeatRaid: z.boolean().optional(),
+    priorWeakCount: z.number().int().nonnegative().optional(),
+    weakMultiplier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
     soloCredit: z.boolean().optional(), retaliationLootPercent: z.union([z.literal(20), z.literal(40)]).optional() }),
 ]);
 export type HonorTarget = z.infer<typeof honorTargetSchema>;

@@ -1,5 +1,6 @@
 import { and, eq, gt, inArray, isNotNull, isNull, lt, lte, ne, or } from 'drizzle-orm';
 import {
+  FAULT,
   STANDARD_PVP_BALANCE,
   type PvpBalance,
   alloyRate,
@@ -482,10 +483,11 @@ export async function grantRecoveryShield(
     production,
   };
   const hours = netRecoveryLossHours(check);
-  // Colony damage retains the existing heavy-defeat rule. A gentler shield must
-  // never turn the same small defeat into a newly broken beginner colony.
+  // Colony damage retains the 4-hour heavy-defeat rule (K4, 2026-11-24). A gentler
+  // Tier 4+ recovery shield (3 hours) must never turn a 3–3.99h defeat into colony faults.
   const faultSince = input.now.getTime() - STANDARD_PVP_BALANCE.recoveryLookbackHours * 3_600_000;
   const earned = earnsRecoveryShield({
+    balance: { ...STANDARD_PVP_BALANCE, recoveryLossHours: FAULT.heavyDefeatLossHours },
     defeats: [...ledger.defeats.filter(entry => entry.at > faultSince), { loot: input.lootLost, fleetLost: input.fleetLost }],
     raids: ledger.raids.filter(entry => entry.at > faultSince),
     production,

@@ -185,6 +185,7 @@ export function TradeSheet({
     planet.fleet,
     planet.ground,
     mods,
+    planet.honorBenefits,
   );
   const fuel = route?.fuel ?? 0;
   const galaxy = useGalaxy();
@@ -609,6 +610,11 @@ export function TradeSheet({
             so offering the last of the tank visibly eats the fuel bar. D136.
           */}
           <SpendBar inline stock={spendableDeuterium} spend={fuel} tone="deuterium" label={t('trade.fuel')} />
+          {(planet.honorBenefits?.fuelPct ?? 0) > 0 && (
+            <p className="gk-sub" data-tone="hostile" data-honor-fuel-penalty>
+              {`${t('honorBenefits.fuel')} +${String(planet.honorBenefits!.fuelPct)}%`}
+            </p>
+          )}
         </div>
       )}
       </div>

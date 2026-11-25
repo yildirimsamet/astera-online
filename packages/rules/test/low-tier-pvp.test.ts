@@ -18,18 +18,28 @@ describe('the defending commander’s tier selects PvP protection', () => {
     });
   });
 
-  it.each([4, 5, 7, undefined, null, 0, -1, 1.5, Number.NaN, Infinity])(
+  it.each([4, 5])('uses mid-tier loot (45%%/22.5%%) and 3-hour recovery at tier %i', tier => {
+    expect(pvpBalanceForTier(tier)).toMatchObject({
+      lootDecisive: 0.45, lootPartial: 0.225, lootBufferShare: 0.5,
+      recoveryLossHours: 3, recoveryLookbackHours: 6, recoveryShieldHours: 12,
+    });
+  });
+
+  it.each([6, 7, undefined, null, 0, -1, 1.5, Number.NaN, Infinity])(
     'keeps standard rules for tier %s or absent/invalid context', tier => {
       expect(pvpBalanceForTier(tier)).toMatchObject({
         lootDecisive: 0.6, lootPartial: 0.3, lootBufferShare: 0.5,
-        recoveryLossHours: 4, recoveryLookbackHours: 6, recoveryShieldHours: 12,
+        recoveryLossHours: 3, recoveryLookbackHours: 6, recoveryShieldHours: 12,
       });
     },
   );
 
-  it('changes at Core 9 → 10', () => {
+  it('changes at Core 9 → 10 and Core 15 → 16', () => {
     expect(pvpBalanceForTier(coreTier(9)).recoveryLossHours).toBe(2);
-    expect(pvpBalanceForTier(coreTier(10)).recoveryLossHours).toBe(4);
+    expect(pvpBalanceForTier(coreTier(10)).recoveryLossHours).toBe(3);
+    expect(pvpBalanceForTier(coreTier(10)).lootDecisive).toBe(0.45);
+    expect(pvpBalanceForTier(coreTier(15)).lootDecisive).toBe(0.45);
+    expect(pvpBalanceForTier(coreTier(16)).lootDecisive).toBe(0.6);
   });
 });
 
@@ -69,9 +79,15 @@ describe('low-tier loot', () => {
     expect(computeLoot(stock, buffer, floor, 'REPELLED', 1e9, pvpBalanceForTier(1)).alloy).toBe(0);
   });
 
-  it('leaves NPC and tier-four amounts unchanged', () => {
+  it('takes 45% of exposed storage and 22.5% of Works at tiers 4–5, and 60%/30% at tier 6+ and NPC', () => {
+    const mid = computeLoot(stock, buffer, floor, 'DECISIVE', 1e9, pvpBalanceForTier(4));
+    expect(mid.fromStock).toEqual({ alloy: 4_500, crystal: 2_250, deuterium: 900 });
+    expect(mid.fromBuffer).toEqual({ alloy: 450, crystal: 225, deuterium: 90 });
+    const midPartial = computeLoot(stock, buffer, floor, 'PARTIAL', 1e9, pvpBalanceForTier(5));
+    expect(midPartial.fromStock).toEqual({ alloy: 2_250, crystal: 1_125, deuterium: 450 });
+    expect(midPartial.fromBuffer).toEqual({ alloy: 225, crystal: 112, deuterium: 45 });
     expect(computeLoot(stock, buffer, floor, 'DECISIVE', 1e9)).toEqual(
-      computeLoot(stock, buffer, floor, 'DECISIVE', 1e9, pvpBalanceForTier(4)),
+      computeLoot(stock, buffer, floor, 'DECISIVE', 1e9, pvpBalanceForTier(6)),
     );
     expect(computeLoot(stock, buffer, floor, 'DECISIVE', 1e9).fromStock.alloy).toBe(6_000);
     expect(computeLoot(stock, buffer, floor, 'DECISIVE', 1e9).fromBuffer.alloy).toBe(600);
@@ -86,11 +102,12 @@ describe('low-tier recovery', () => {
     balance: pvpBalanceForTier(tier),
   });
 
-  it('includes the exact two-hour boundary and refuses just below it', () => {
+  it('includes the exact two-hour (tier 1–3) and three-hour (tier 4+) boundaries', () => {
     expect(earnsRecoveryShield(check(2, 3))).toBe(true);
     expect(earnsRecoveryShield(check(1.999, 3))).toBe(false);
-    expect(earnsRecoveryShield(check(2, 4))).toBe(false);
-    expect(earnsRecoveryShield(check(4, 4))).toBe(true);
+    expect(earnsRecoveryShield(check(2.999, 4))).toBe(false);
+    expect(earnsRecoveryShield(check(3, 4))).toBe(true);
+    expect(earnsRecoveryShield(check(3, 6))).toBe(true);
   });
 
   it('keeps permanent fleet loss and positive own-raid profit in the calculation', () => {

@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { honorBenefits, honorRepairResources, repairPct, shipHpRepairCost, shipHpRepairMinutes } from '@astera/rules';
+import { HONOR_BENEFIT_THRESHOLDS_V1, HONOR_BENEFIT_THRESHOLDS_V2, honorBenefits, honorRepairResources, repairPct, shipHpRepairCost, shipHpRepairMinutes } from '@astera/rules';
 import { buildOrders, honorSeasons, honorTotals, planets, seasons } from '../src/db/schema.js';
 import { enableHonorBenefits, readHonorBenefits } from '../src/services/honorBenefits.js';
 import { prepareHonorSeason } from '../src/services/honorLedger.js';
@@ -14,7 +14,7 @@ import { TokenService } from '../src/auth/tokens.js';
 import { pino } from 'pino';
 import { leaderboardSchema, planetSchema } from '../../web/src/api/schemas.js';
 
-const thresholds = { positive: [25_000_000, 75_000_000], negative: [25_000_000, 100_000_000] } as const;
+const thresholds = HONOR_BENEFIT_THRESHOLDS_V2;
 describe('explicit season Honor benefits and authoritative repairs', () => {
   let f: Fixture;
   beforeEach(async () => { f = await seedWorld(2); });
@@ -28,20 +28,27 @@ describe('explicit season Honor benefits and authoritative repairs', () => {
     await prepare();
     await score(75_000_000);
     expect(await readHonorBenefits(f.db, f.seasonId, f.playerIds[0]!)).toBeNull();
-    expect(await enableHonorBenefits(f.db, f.seasonId, f.clock, false)).toMatchObject({ applied: false, version: 1, thresholds });
+    expect(await enableHonorBenefits(f.db, f.seasonId, f.clock, false)).toMatchObject({ applied: false, version: 2, thresholds });
     expect(await readHonorBenefits(f.db, f.seasonId, f.playerIds[0]!)).toBeNull();
     await f.db.update(honorSeasons).set({ mode: 'SHADOW' });
     await expect(enableHonorBenefits(f.db, f.seasonId, f.clock, true)).rejects.toThrow('active Honor');
   });
 
-  it('publishes the enabled current policy only for this season’s commander', async () => {
+  it('publishes the enabled current policy only for this season’s commander and keeps V1 readable', async () => {
     await prepare(); await score(75_000_000);
     await enableHonorBenefits(f.db, f.seasonId, f.clock, true);
     const result = await readHonorBenefits(f.db, f.seasonId, f.playerIds[0]!);
-    expect(result).toEqual({ version: 1, thresholds, score: 75_000_000,
+    expect(result).toEqual({ version: 2, thresholds, score: 75_000_000,
       ...honorBenefits(75_000_000, thresholds) });
     const view = await f.db.transaction(tx => planetView(tx, f.planetIds[0]!, f.clock));
     expect(view.honorBenefits).toEqual(result);
+    // Historical V1 season remains readable with V1 thresholds
+    await f.db.update(honorSeasons).set({ benefitsVersion: 1 }).where(eq(honorSeasons.seasonId, f.seasonId));
+    await score(-100_000_000);
+    expect(await readHonorBenefits(f.db, f.seasonId, f.playerIds[0]!)).toEqual({
+      version: 1, thresholds: HONOR_BENEFIT_THRESHOLDS_V1, score: -100_000_000,
+      ...honorBenefits(-100_000_000, HONOR_BENEFIT_THRESHOLDS_V1),
+    });
     expect(await readHonorBenefits(f.db, f.seasonId, '00000000-0000-4000-8000-000000000000')).toBeNull();
     await f.db.update(seasons).set({ status: 'frozen' }).where(eq(seasons.id, f.seasonId));
     await expect(enableHonorBenefits(f.db, f.seasonId, f.clock, true)).rejects.toThrow('live season');
@@ -80,19 +87,19 @@ describe('explicit season Honor benefits and authoritative repairs', () => {
     expect(await readHonorBenefits(f.db, f.seasonId, me)).toMatchObject({ score: -100_000_000, tier: -2, tradePct: 14 });
   });
 
-  it('carries all five enabled tiers through the real planet and leaderboard client contracts', async () => {
+  it('carries all seven enabled V2 tiers through the real planet and leaderboard client contracts', async () => {
     await prepare(); await enableHonorBenefits(f.db, f.seasonId, f.clock, true);
     const built = buildApp({ env: testEnv(), logger: pino({ level: 'silent' }), db: f.db, clock: f.clock });
     await built.app.ready();
     try {
       const authorization = `Bearer ${await new TokenService('test-secret-that-is-long-enough', 15, 30).issueAccess(f.accountIds[0]!)}`;
-      for (const points of [-100_000_000, -25_000_000, 0, 25_000_000, 75_000_000]) {
+      for (const points of [-200_000_000, -150_000_000, -50_000_000, -25_000_000, 0, 25_000_000, 75_000_000]) {
         await score(points);
         const world = await built.app.inject({ method: 'GET', url: `/api/planets/${f.planetIds[0]!}`, headers: { authorization } });
         expect(world.statusCode, world.body).toBe(200);
         const board = await built.app.inject({ method: 'GET', url: '/api/leaderboard?ranking=HONOR', headers: { authorization } });
         expect(board.statusCode, board.body).toBe(200);
-        const expected = { version: 1, thresholds, score: points, ...honorBenefits(points, thresholds) };
+        const expected = { version: 2, thresholds, score: points, ...honorBenefits(points, thresholds) };
         expect(planetSchema.parse(world.json()).honorBenefits).toEqual(expected);
         expect(leaderboardSchema.parse(board.json()).honorBenefits).toEqual(expected);
       }

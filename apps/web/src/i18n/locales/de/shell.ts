@@ -365,6 +365,8 @@ export const leaderboard = {
     WEAK: "Schwächeres Ziel",
     topTierPeer: "Du bist auf der höchsten Stufe dieser Galaxie. Ein Ziel eine Stufe unter dir zählt für Honor als gleichstufig. Greift dich ein Gegner von einer niedrigeren Stufe aus an, gelten für seinen Bonus weiterhin die bisherigen Bedingungen.",
     weakWarning: "Auch ein erfolgreicher Angriff kann Honor senken. Wiederholtes Schikanieren kostet mehr.",
+    escalatedWeak: "Du hast in den letzten 24 Stunden bereits Honor gegen diesen Kommandanten verloren. Dieser Angriff vervielfacht den Honor-Verlust um {{multiplier}}×.",
+    escalatedInFlight: "Ein Angriff auf diesen Kommandanten ist bereits unterwegs. Dieser weitere Angriff vervielfacht den Honor-Verlust um {{multiplier}}×.",
     eligible: "Dauerhafter militärischer Schaden kann Honor bringen. Eigene Angriffsverluste können Honor senken.",
     FULL: "Volle militärische Wertung: geeigneter Schaden wird nach Effizienz gewichtet.",
     HALF: "Reduzierte militärische Wertung: Die Militärstärke dieses Kommandanten liegt deutlich unter deiner. Gewinn und Abzug für eigene Verluste werden beide halbiert.",

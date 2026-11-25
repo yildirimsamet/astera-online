@@ -306,6 +306,11 @@ export function LaunchSheet({
           {route !== null && (
             <div data-launch-meters>
               <SpendBar inline stock={planet.planet.deuterium} spend={route.fuel} tone="deuterium" label={t('launch.fuel')} />
+              {(planet.honorBenefits?.fuelPct ?? 0) > 0 && (
+                <p className="gk-sub" data-tone="hostile" data-honor-fuel-penalty>
+                  {`${t('honorBenefits.fuel')} +${String(planet.honorBenefits!.fuelPct)}%`}
+                </p>
+              )}
             </div>
           )}
           {/* A launch spends fuel and uncovers the world: the kit's spend weight, one second. */}

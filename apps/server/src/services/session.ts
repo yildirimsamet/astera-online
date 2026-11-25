@@ -530,8 +530,8 @@ export async function buildReturnPayload(
     // D212: Silent Space runs the works at half pace, and the estimate must not promise double.
     const [season] = await db.select({ shardId: seasons.shardId }).from(seasons).where(eq(seasons.id, player.seasonId));
     const pace = season && await isSilentSpaceShard(db, season.shardId) ? SILENT_SPACE.productionPace : 1;
-    // F2 Ortak Ocak: each world's works run at the clan share frozen on it, as the world is paid.
-    const share = new Map(ownedWorlds.map((world) => [world.id, 1 + world.clanBonus]));
+    // F2 Ortak Ocak & Honor Tier -4: each world's works run at the shares frozen on it, as the world is paid.
+    const share = new Map(ownedWorlds.map((world) => [world.id, (1 + world.clanBonus) * (1 + world.honorProductionShare)]));
     const hoursOn = (planetId: string) => (awayMinutes / 60) * pace * (share.get(planetId) ?? 1);
     // An estimate by design: the exact figure is on the planet screen, and this
     // line exists to say "time passed and it mattered", not to be audited.

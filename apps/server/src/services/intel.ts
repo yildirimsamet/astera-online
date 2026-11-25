@@ -986,8 +986,9 @@ export async function standingAt(tx: Tx, target: typeof planets.$inferSelect, no
       : undefined,
     // D212: a Silent Space world's works run at half pace, and the report must say so.
     season.role === 'WAITING' ? SILENT_SPACE.productionPace : 1,
-    // F2 Ortak Ocak: the share frozen on the world at its last write, as the owner's tick applies it.
+    // F2 Ortak Ocak & Honor Tier -4: the shares frozen on the world at its last write, as the owner's tick applies them.
     target.clanBonus,
+    target.honorProductionShare,
   ).state;
 }
 

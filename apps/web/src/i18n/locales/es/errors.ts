@@ -166,7 +166,7 @@ export const errors = {
   MAINTENANCE_LANDING: "Esta flota llegaría durante el mantenimiento, {{from}}–{{to}} (tu hora local). Envíala después del mantenimiento.",
   MAINTENANCE_IN_FLIGHT: "Esta arma seguiría en vuelo durante el mantenimiento, {{from}}–{{to}} (tu hora local). Lánzala después del mantenimiento.",
   PERSONAL_RAID_PENDING: "Ya tienes un ataque en camino hacia este comandante. Espera o retíralo.",
-  BASH_LIMIT: 'Has golpeado este planeta demasiadas veces recientemente.',
+  BASH_LIMIT: 'Puedes enviar como máximo {{limit}} ataques a un comandante cada {{hours}} horas',
   TIER_BAND: "Ese comandante está más de un nivel por encima de ti: se compara el mundo más desarrollado de cada lado.",
   TIER_BAND_WEAK: "Ese comandante está más de un nivel por debajo de ti: se compara el mundo más desarrollado de cada lado.",
   CANNOT_INTERCEPT: 'Saldrá del disco antes de que tu nave pueda alcanzarlo.',

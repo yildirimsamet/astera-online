@@ -21,6 +21,16 @@ export function HonorTargetCard({ value }: { value: HonorTarget }) {
       {...(value.kind === 'WEAK' ? { 'data-tone': 'warn' } : {})}>
       {t(`leaderboard.honorTarget.${value.kind === 'WEAK' ? value.repeatRaid ? 'repeatRaid' : 'weakWarning' : 'eligible'}`)}
     </p>}
+    {value.kind === 'WEAK' && (value.weakMultiplier ?? 1) >= 2 && (
+      <p data-honor-escalated-warning className="gk-honor__line" data-tone="hostile">
+        {t(
+          (value.priorWeakCount ?? 0) >= 1
+            ? 'leaderboard.honorTarget.escalatedWeak'
+            : 'leaderboard.honorTarget.escalatedInFlight',
+          { multiplier: value.weakMultiplier },
+        )}
+      </p>
+    )}
     {value.related ? <p className="gk-honor__line" data-tone="ink">{t('leaderboard.honorReason.RELATED')}</p>
       : value.kind !== 'WEAK' && <p className="gk-honor__line">
         {t(`leaderboard.honorTarget.${value.militaryReturn}`)}

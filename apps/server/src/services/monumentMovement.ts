@@ -197,7 +197,7 @@ export async function beginMonumentReturn(tx: Tx, locked: LockedMonument, wave: 
   const minutes = fleetTravelExact(distance(position, home), fleet, { boost: fleetSpeedMult(orbit), tech: wave.tech });
   if (!Number.isFinite(minutes)) throw new GameError('BAD_MONUMENT_RECALL', 'Those ships cannot return', 400);
   const arriveAt = addMinutes(at, minutes);
-  const pricedReturn = priceMonumentReturn(split.recalled, distance(position, home));
+  const pricedReturn = priceMonumentReturn(split.recalled, distance(position, home), wave.fuelPct);
   split.recalled = pricedReturn.lots;
   const route = [{ from: position, to: { x: home.x, y: home.y, z: home.z }, startMs: at.getTime(), endMs: arriveAt.getTime() }];
   let returning: WaveRow;

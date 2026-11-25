@@ -8,6 +8,7 @@ import {
   transferStayingFleet,
   allowedPaces,
   distance,
+  honorFuelCost,
   missionFuel,
   fleetCount,
   splitHealthFleet,
@@ -270,12 +271,12 @@ export function TransferSheet({
    * the worse half — a screen causing a refusal it cannot explain.
    */
   const fuel = fleetCount(fleet) > 0
-    ? missionFuel(fleet, span, 1, 'HOMEWARD', pace)
-      + (fleetCount(returningFleet) > 0 ? missionFuel(returningFleet, span, 1, 'HOMEWARD', pace) : 0)
+    ? honorFuelCost(missionFuel(fleet, span, 1, 'HOMEWARD', pace), planet.honorBenefits)
+      + (fleetCount(returningFleet) > 0 ? honorFuelCost(missionFuel(returningFleet, span, 1, 'HOMEWARD', pace), planet.honorBenefits) : 0)
     : 0;
   const fullFuel = fleetCount(fleet) > 0
-    ? missionFuel(fleet, span, 1, 'HOMEWARD')
-      + (fleetCount(returningFleet) > 0 ? missionFuel(returningFleet, span, 1, 'HOMEWARD') : 0)
+    ? honorFuelCost(missionFuel(fleet, span, 1, 'HOMEWARD'), planet.honorBenefits)
+      + (fleetCount(returningFleet) > 0 ? honorFuelCost(missionFuel(returningFleet, span, 1, 'HOMEWARD'), planet.honorBenefits) : 0)
     : 0;
   const availableCargoDeuterium = Math.max(0, Math.floor(planet.planet.deuterium - fuel));
   // Settle before commit, including a pace fallback or a live route/stock update.
@@ -376,6 +377,7 @@ export function TransferSheet({
                 ...(activeOriginBody === 'MOON' ? { originBody: 'MOON' as const } : {}),
                 ...(effectiveTargetBody === 'MOON' ? { targetBody: 'MOON' as const } : {}),
                 ...(radiation !== null && radiation.destroyed > 0 ? { acknowledgeRadiation: true } : {}),
+                ...(planet.honorBenefits ? { expectedHonorTier: planet.honorBenefits.tier } : {}),
               }, {
                 onSuccess: () => {
                   say(t('transfer.launched', { duration: duration(eta) }));
@@ -572,6 +574,11 @@ export function TransferSheet({
               its deuterium — the exact sum the server's guard uses.
             */}
             <SpendBar inline stock={Math.max(0, spendableDeuterium)} spend={fuel} tone="deuterium" label={t('transfer.fuel')} />
+            {(planet.honorBenefits?.fuelPct ?? 0) > 0 && (
+              <p className="gk-sub" data-tone="hostile" data-honor-fuel-penalty>
+                {`${t('honorBenefits.fuel')} +${String(planet.honorBenefits!.fuelPct)}%`}
+              </p>
+            )}
             {/* Why this is smaller than the raid sheet's: the rule and its boundary, where the figure is. */}
             <p className="gk-sub">{t('transfer.homewardFuel')}</p>
           </div>

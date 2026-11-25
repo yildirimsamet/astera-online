@@ -1,6 +1,6 @@
 import { and, eq, inArray, asc, desc, gt, gte, lte } from 'drizzle-orm';
 import { z } from 'zod';
-import { HONOR_ATTACK_NAVY_BAND, HONOR_VERSION, HONOR_LEGACY_VERSION, HONOR_CANDIDATE_VERSION, HONOR_LAUNCH_VERSION, isSupportedHonorVersion } from '@astera/rules';
+import { HONOR_ATTACK_NAVY_BAND, HONOR_VERSION, HONOR_LEGACY_VERSION, HONOR_CANDIDATE_VERSION, HONOR_LAUNCH_VERSION, HONOR_WEAK_REPEAT_SCALE, isSupportedHonorVersion } from '@astera/rules';
 import type { Tx } from '../db/client.js';
 import { commanderTransfers, honorCommitments, honorObservations, honorSeasons, players } from '../db/schema.js';
 import { honorEvidenceSchema } from './honorAccounting.js';
@@ -13,6 +13,7 @@ export const honorCommitmentSchema = z.object({
   galaxyTopTier: honorEvidenceSchema.shape.galaxyTopTier,
   weakNavyBand: honorEvidenceSchema.shape.weakNavyBand,
   retaliationLootPercent: honorEvidenceSchema.shape.retaliationLootPercent,
+  weakRepeatScale: honorEvidenceSchema.shape.weakRepeatScale,
   version: z.union([z.literal(HONOR_LEGACY_VERSION), z.literal(HONOR_VERSION), z.literal(HONOR_CANDIDATE_VERSION), z.literal(HONOR_LAUNCH_VERSION)]), at: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   referenceOrder: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   /** An absent commander can genuinely join later, even within the same millisecond. */
@@ -67,6 +68,7 @@ export async function commitHonor(tx: Tx, input: {
     ? await tx.select({ id: players.id }).from(players).where(eq(players.seasonId, input.seasonId)).orderBy(asc(players.id)) : undefined;
   const snapshot = honorCommitmentSchema.parse({ version: config.version, at: input.at.getTime(), referenceOrder,
     galaxyTopTier: await honorGalaxyTopTier(tx, input.seasonId, input.at, input.adminUsernames), weakNavyBand: HONOR_ATTACK_NAVY_BAND,
+    weakRepeatScale: HONOR_WEAK_REPEAT_SCALE,
     // Keep the legacy wire shape until every API/worker understands 40% contracts.
     ...(config.retaliationLootPercent === 40 ? { retaliationLootPercent: 40 } : {}),
     ...(roster ? { presentAtLaunch: roster.map(row => row.id) } : {}),

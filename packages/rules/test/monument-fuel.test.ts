@@ -40,4 +40,22 @@ describe('per-cohort monument fuel escrow', () => {
     expect(() => priceMonumentReturn([{ ...lot, returnFuelReserve: 1 }], 10_500)).toThrow();
     expect(lot.returnFuelReserve).toBe(1000);
   });
+  it('applies +25% Honor fuel surcharge consistently to reserves and returns without refunding the surcharge', () => {
+    const fleet = { COURIER: 10, CITADEL: 2 };
+    const base = monumentFuelReserves(fleet, 10_500);
+    const taxed = monumentFuelReserves(fleet, 10_500, 25);
+    expect(taxed.perShip.COURIER).toBe(Math.ceil(base.perShip.COURIER! * 1.25));
+    expect(taxed.total).toBe(10 * taxed.perShip.COURIER! + 2 * taxed.perShip.CITADEL!);
+    const reserve = 10 * taxed.perShip.COURIER!;
+    const taxedLot: MonumentShipLot = {
+      ...lot,
+      returnFuelReserve: reserve,
+      fuelRefund: 0,
+    };
+    const ret = priceMonumentReturn([taxedLot], 10_500, 25);
+    const expectedFuel = Math.ceil(missionFuel({ COURIER: 10 }, 10_500, 1) * 1.25);
+    expect(ret.fuel).toBe(expectedFuel);
+    expect(ret.fuel).toBeLessThanOrEqual(reserve);
+    expect(ret.refund).toBeCloseTo(reserve - expectedFuel, 10);
+  });
 });

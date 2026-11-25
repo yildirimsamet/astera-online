@@ -166,7 +166,7 @@ export const errors = {
   MAINTENANCE_LANDING: "This fleet would land during maintenance, {{from}}–{{to}} (your local time). Send it after maintenance.",
   MAINTENANCE_IN_FLIGHT: "This weapon would still be flying during maintenance, {{from}}–{{to}} (your local time). Launch it after maintenance.",
   PERSONAL_RAID_PENDING: "You already have a raid on its way to this commander. Wait for it or recall it.",
-  BASH_LIMIT: 'You have hit this planet too many times recently',
+  BASH_LIMIT: 'You can send at most {{limit}} attacks to one commander every {{hours}} hours',
   TIER_BAND: "That commander is more than one tier above you — attacks compare each side's most developed world",
   TIER_BAND_WEAK: "That commander is more than one tier below you — attacks compare each side's most developed world",
   CANNOT_INTERCEPT: 'It will leave the disc before your craft could reach it',

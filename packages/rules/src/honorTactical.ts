@@ -1,9 +1,13 @@
-import { honorChallenge, honorInteger, honorNumber, type HonorComparison, type HonorSideResult } from './honor.js';
+import {
+  honorChallenge, honorInteger, honorNumber, honorWeakRepeatHalfUnits,
+  type HonorComparison, type HonorSideResult, type HonorWeakRepeatScale,
+} from './honor.js';
 
 export interface HonorTacticalInput extends HonorComparison {
   related: boolean;
   eligible: boolean;
   weakRepeat: number;
+  weakRepeatScale?: HonorWeakRepeatScale;
   retaliationFifths: number;
   /** Active, usable shield removed; exclude stored charge behind CORE_OUTAGE. */
   shieldDestroyed: number;
@@ -48,7 +52,7 @@ export function honorTacticalSide(q: HonorTacticalInput): HonorTacticalResult {
   const pressure = (shield + groundPoints + loyalty) / 25n;
   if (comparison.kind === 'WEAK') {
     const used = budget < pressure ? budget : pressure;
-    const debit = 50n * (pressure - used) * BigInt(2 + Math.min(q.weakRepeat, 2)) / 2n;
+    const debit = 50n * (pressure - used) * honorWeakRepeatHalfUnits(q.weakRepeat, q.weakRepeatScale) / 2n;
     return { ...zero, groundBand, pressureFifths: honorNumber(pressure), bullying: true,
       raw: honorNumber(-debit), weakDebit: honorNumber(debit), retaliationSpentFifths: honorNumber(used) };
   }

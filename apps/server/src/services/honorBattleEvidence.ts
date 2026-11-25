@@ -66,6 +66,7 @@ export function honorBattleEvidence(input: {
     ...(frozen.galaxyTopTier === undefined ? {} : { galaxyTopTier: frozen.galaxyTopTier }),
     ...(frozen.weakNavyBand === undefined ? {} : { weakNavyBand: frozen.weakNavyBand }),
     ...(frozen.retaliationLootPercent === undefined ? {} : { retaliationLootPercent: frozen.retaliationLootPercent }),
+    ...(frozen.weakRepeatScale === undefined ? {} : { weakRepeatScale: frozen.weakRepeatScale }),
     ...(frozen.selectedDefenders === undefined ? {} : { selectedDefenders: frozen.selectedDefenders }),
     eligible: frozen.eligible, exclusion: frozen.exclusion, relations: frozen.relations, attack, defence });
 }

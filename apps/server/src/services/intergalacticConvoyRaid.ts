@@ -18,6 +18,7 @@ import {
   fleetTravelExact,
   interceptIntergalacticConvoy,
   intergalacticConvoyQuoteIsFresh,
+  honorFuelCost,
   missionFuelForDistances,
   quoteIntergalacticConvoyReward,
   honorConvoyResources,
@@ -293,10 +294,12 @@ export async function launchIntergalacticConvoy(
     throw error;
   }
 
+  const benefits = await readHonorBenefits(tx, origin.seasonId, origin.playerId);
+  assertHonorBenefitsQuote(benefits, input.order.expectedHonorTier);
   const returnPoint = { x: origin.x, y: origin.y, z: origin.z };
   const outboundDistance = distance(origin, hit.intercept);
   const returnDistance = distance(hit.engagementEnd, returnPoint);
-  const fuel = missionFuelForDistances(requested, [outboundDistance, returnDistance]);
+  const fuel = honorFuelCost(missionFuelForDistances(requested, [outboundDistance, returnDistance]), benefits);
   assertFuel(fuel, origin.deuterium);
   const returnMinutes = fleetTravelExact(returnDistance, requested, { boost, tech });
   const homeAt = addMinutes(engagementEndsAt, returnMinutes);
@@ -319,8 +322,6 @@ export async function launchIntergalacticConvoy(
     prechecks above would have given it, and only for the two indexes that mean it:
     anything else is a real fault and must keep travelling.
   */
-  const benefits = await readHonorBenefits(tx, origin.seasonId, origin.playerId);
-  assertHonorBenefitsQuote(benefits, input.order.expectedHonorTier);
   const adjustedReward = benefits ? honorConvoyResources(quote.resourceReward, quote.cargo, benefits) : quote.resourceReward;
   const damage = await takeHomeHealth(tx, input.planetId, requested, origin.now, true);
   const [run] = await insertRun(tx, {

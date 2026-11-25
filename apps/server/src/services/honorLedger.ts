@@ -1,9 +1,14 @@
 import { createHash } from 'node:crypto';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
-import { createHonorCatalogue, createHonorShieldCatalogue, createHonorStrategicCatalogue, HONOR_VERSION, HONOR_LAUNCH_VERSION, honorAdvancedPolicy, isHonorCandidate, isSupportedHonorVersion, type HonorVersion } from '@astera/rules';
+import {
+  createHonorCatalogue, createHonorShieldCatalogue, createHonorStrategicCatalogue,
+  HONOR_BENEFIT_PROGRAM_VERSION, HONOR_BENEFIT_THRESHOLDS_V2,
+  HONOR_VERSION, HONOR_LAUNCH_VERSION, honorAdvancedPolicy, isHonorCandidate, isSupportedHonorVersion, type HonorVersion,
+} from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Queryable, Tx } from '../db/client.js';
-import { honorCommitments, honorEvents, honorSeasons, honorTotals, players, seasons } from '../db/schema.js';
+import { honorCommitments, honorEvents, honorQuestTotals, honorSeasons, honorTotals, players, seasons } from '../db/schema.js';
+import { scheduleHonorPenaltySync } from './honorBenefits.js';
 import { honorCommitmentSchema } from './honorCommitment.js';
 import { advanceHonor, emptyHonorState, honorEventKey, honorEvidenceSchema, honorStateSchema, replayHonor,
   type HonorAccountedEvent, type HonorAccountingState, type HonorEvidence } from './honorAccounting.js';
@@ -165,6 +170,29 @@ export async function settleHonor(tx: Tx, seasonId: string, value: unknown): Pro
     const previousTotals = new Map(before.totals.map(row => [row.actor, row.score]));
     if (state.totals.some(row => row.score !== (previousTotals.get(row.actor) ?? 0))) {
       await publishShard(tx, seasonId, 'score');
+    }
+    // Schedule an async planet production sync when any commander crosses the V2 Tier -4 (-200) boundary.
+    // Never lock planets inside settleHonor (runs in the accounting finalizer phase).
+    if (config.benefitsVersion === HONOR_BENEFIT_PROGRAM_VERSION) {
+      const nextTotals = new Map(state.totals.map(row => [row.actor, row.score]));
+      const actors = [...new Set([...previousTotals.keys(), ...nextTotals.keys()])];
+      const changed = actors.filter(actor => (nextTotals.get(actor) ?? 0) !== (previousTotals.get(actor) ?? 0));
+      if (changed.length > 0) {
+        const questRows = await tx.select({ playerId: honorQuestTotals.playerId, micros: honorQuestTotals.micros })
+          .from(honorQuestTotals)
+          .where(and(eq(honorQuestTotals.seasonId, seasonId), inArray(honorQuestTotals.playerId, changed)));
+        const questByActor = new Map(questRows.map(r => [r.playerId, r.micros]));
+        const threshold = -HONOR_BENEFIT_THRESHOLDS_V2.negative[3]!;
+        const at = new Date(evidence.at);
+        for (const actor of changed) {
+          const quest = questByActor.get(actor) ?? 0;
+          const wasPenalized = (previousTotals.get(actor) ?? 0) + quest <= threshold;
+          const isPenalized = (nextTotals.get(actor) ?? 0) + quest <= threshold;
+          if (wasPenalized !== isPenalized) {
+            await scheduleHonorPenaltySync(tx, seasonId, actor, at);
+          }
+        }
+      }
     }
     // Rebuild can change an older receipt even when its owner's total stays equal.
     // Private events refresh authorised reports without exposing participants.

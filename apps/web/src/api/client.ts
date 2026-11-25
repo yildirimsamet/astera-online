@@ -1369,6 +1369,8 @@ export class Api {
     admiral?: boolean,
     /** Ay F3b/F3c: departure and target body (PLANET | MOON). */
     bodies?: { originBody?: WorldBody; targetBody?: WorldBody },
+    /** Honor V2 fuel surcharge tier quoted to the commander before committing. */
+    expectedHonorTier?: HonorBenefitTier,
   ) =>
     this.send('/api/fleet/launch', launchSchema, {
       method: 'POST',
@@ -1382,6 +1384,7 @@ export class Api {
         ...(admiral ? { admiral: true } : {}),
         ...(bodies?.originBody && bodies.originBody !== 'PLANET' ? { originBody: bodies.originBody } : {}),
         ...(bodies?.targetBody && bodies.targetBody !== 'PLANET' ? { targetBody: bodies.targetBody } : {}),
+        ...(expectedHonorTier !== undefined ? { expectedHonorTier } : {}),
       },
     });
 
@@ -1417,7 +1420,7 @@ export class Api {
     { method: 'POST' },
   );
 
-  transfer = (originPlanetId: string, targetPlanetId: string, fleet: Fleet, cargo: { alloy: number; crystal: number; deuterium: number }, pace?: MissionPace, returnPlan?: TransferReturnPlan, acknowledgeRadiation?: boolean, bodies?: { originBody?: WorldBody; targetBody?: WorldBody }) =>
+  transfer = (originPlanetId: string, targetPlanetId: string, fleet: Fleet, cargo: { alloy: number; crystal: number; deuterium: number }, pace?: MissionPace, returnPlan?: TransferReturnPlan, acknowledgeRadiation?: boolean, bodies?: { originBody?: WorldBody; targetBody?: WorldBody }, expectedHonorTier?: HonorBenefitTier) =>
     this.send('/api/fleet/transfer', movementLaunchSchema, {
       method: 'POST',
       body: {
@@ -1427,6 +1430,7 @@ export class Api {
         ...(acknowledgeRadiation ? { acknowledgeRadiation: true } : {}),
         ...(bodies?.originBody && bodies.originBody !== 'PLANET' ? { originBody: bodies.originBody } : {}),
         ...(bodies?.targetBody && bodies.targetBody !== 'PLANET' ? { targetBody: bodies.targetBody } : {}),
+        ...(expectedHonorTier !== undefined ? { expectedHonorTier } : {}),
       },
     });
 

@@ -2650,18 +2650,19 @@ export function useLaunch() {
   return useMutation({
     meta: lane.meta,
     mutationFn: (
-      { targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, originBody, targetBody }:
+      { targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, originBody, targetBody, expectedHonorTier }:
       {
         targetPlanetId: string; fleet: Fleet; acknowledgeShieldLoss?: boolean; pace?: MissionPace;
         acknowledgeRadiation?: boolean; admiral?: boolean; originBody?: WorldBody; targetBody?: WorldBody;
+        expectedHonorTier?: HonorBenefitTier;
       },
       context,
     ) => {
       const planetId = planetMutationOrigin(context);
       const bodies = originBody || targetBody ? { originBody, targetBody } : undefined;
       return planetId
-        ? api.launch(planetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies)
-        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies);
+        ? api.launch(planetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies, expectedHonorTier)
+        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies, expectedHonorTier);
     },
     onMutate: lane.enter,
     onSuccess: async (result, { targetPlanetId }) => {
@@ -2705,7 +2706,7 @@ export function useTransfer(originPlanetId: string) {
   const lane = usePlanetMutationLane(originPlanetId);
   return useMutation({
     meta: lane.meta,
-    mutationFn: ({ targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation, originBody, targetBody }: {
+    mutationFn: ({ targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation, originBody, targetBody, expectedHonorTier }: {
       targetPlanetId: string;
       fleet: Fleet;
       cargo: { alloy: number; crystal: number; deuterium: number };
@@ -2715,9 +2716,11 @@ export function useTransfer(originPlanetId: string) {
       acknowledgeRadiation?: boolean;
       originBody?: WorldBody;
       targetBody?: WorldBody;
+      expectedHonorTier?: HonorBenefitTier;
     }, context) => api.transfer(
       requiredPlanetMutationOrigin(context), targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation,
       originBody || targetBody ? { originBody, targetBody } : undefined,
+      expectedHonorTier,
     ),
     onMutate: lane.enter,
     onSuccess: async (result) => {

@@ -119,6 +119,7 @@ const launchBody = z.object({
    * for this distance".
    */
   pace: z.number().positive().max(1).optional(),
+  expectedHonorTier: z.union([z.literal(-4), z.literal(-3), z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional(),
 }).strict();
 
 export function registerPlanetRoutes(app: FastifyInstance): void {
@@ -427,12 +428,12 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
     const { planetId } = z.object({ planetId: z.string().uuid() }).strict().parse(req.params);
     const request = z.union([
       z.object({ lotIds: z.array(z.string().uuid()).min(1).max(SHIP_DAMAGE.repairLotsPerOrder),
-        expectedHonorTier: z.union([z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional() }).strict(),
-      z.object({ all: z.literal(true), expectedHonorTier: z.union([z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional() }).strict(),
+        expectedHonorTier: z.union([z.literal(-4), z.literal(-3), z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional() }).strict(),
+      z.object({ all: z.literal(true), expectedHonorTier: z.union([z.literal(-4), z.literal(-3), z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional() }).strict(),
       z.object({ lots: z.array(z.object({ id: z.string().uuid(), count: z.number().int().positive().max(2_147_483_647),
         damageBp: z.number().int().min(0).max(9999), remainderBp: z.number().min(0).lt(1),
       }).strict()).min(1).max(SHIP_DAMAGE.repairLotsPerOrder),
-        expectedHonorTier: z.union([z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional() }).strict(),
+        expectedHonorTier: z.union([z.literal(-4), z.literal(-3), z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional() }).strict(),
     ]).parse(req.body ?? {});
     const owner = await ownedPlanet(app.db, req.accountId!, planetId);
     const key = req.headers['idempotency-key'] === undefined ? undefined : z.string().min(8).max(128).parse(req.headers['idempotency-key']);
@@ -490,6 +491,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       body.admiral ?? false,
       body.targetBody ?? 'PLANET',
       body.originBody ?? 'PLANET',
+      body.expectedHonorTier,
     );
   });
 
@@ -541,6 +543,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       }).strict(),
       /** How fast to fly it. Validated by `allowedPaces`, which knows about THIS flight. */
       pace: z.number().positive().max(1).optional(),
+  expectedHonorTier: z.union([z.literal(-4), z.literal(-3), z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional(),
       returnPlan: z.object({
         cargoShips: z.enum(['STAY', 'RETURN']),
         otherShips: z.enum(['STAY', 'RETURN']),
@@ -565,6 +568,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       body.acknowledgeRadiation ?? false,
       body.targetBody ?? 'PLANET',
       body.originBody ?? 'PLANET',
+      body.expectedHonorTier,
     );
   });
 

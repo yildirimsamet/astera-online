@@ -90,6 +90,8 @@ export const TRANSFER_EVENT_POLICIES = {
   moon_move_land: 'BLOCKER',
   // Bolted to the moon: whoever holds it when the gate has charged is told (§6.11).
   moon_gate_ready: 'WORLD',
+  // Pending Honor Tier -4 production boundary sync blocks transfer until applied.
+  honor_penalty_sync: 'BLOCKER',
 } as const satisfies Record<EventKind, Policy>;
 
 /**
