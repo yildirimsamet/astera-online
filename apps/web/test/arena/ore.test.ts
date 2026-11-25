@@ -25,7 +25,8 @@ const scaleOf = (mesh: THREE.InstancedMesh, i: number) => {
 describe('arena ore', () => {
   it('draws one instanced crystal batch per kind and six veins on every veined rock', () => {
     const { world, ore, meshes, veined } = setup();
-    expect(meshes).toHaveLength(3);
+    // Alloy, crystal, deuterium and the storm's Asteryum (plan 2026-11-24 §3.2).
+    expect(meshes).toHaveLength(4);
     expect(veined.length).toBeGreaterThan(0);
     ore.update(world, 0);
     expect(meshes.reduce((n, m) => n + m.count, 0)).toBe(veined.length * 6);
@@ -80,7 +81,32 @@ describe('arena ore', () => {
     Object.assign(b, { active: true, amount: 0, kind: 1 });
     Object.assign(c, { active: false, amount: 5, kind: 0 });
     ore.update(world, 1);
-    expect(meshes.map(m => m.count)).toEqual([before[0], before[1], (before[2] ?? 0) + 1]);
+    expect(meshes.map(m => m.count)).toEqual([before[0], before[1], (before[2] ?? 0) + 1, before[3]]);
+  });
+
+  /*
+    VFX brief — the storm's Asteryum (owner 2026-11-25: "asset'ini birazcık daha büyüt ve birazcık daha parlak yap,
+    ama ok ile falan işaret etmeyelim"). In the world: a violet gem of one or two units floats free in the zone's
+    middle, turning like every loose piece. Asset: the same ore crystal, Asteryum's lavender; no marker, no halo.
+    Why: the storm says only "the middle"; the stone itself must be big and bright enough to catch the eye there.
+  */
+  it('draws a piece of Asteryum a little larger and brighter than a lone field piece, however few units it holds', () => {
+    const { world, ore, meshes } = setup();
+    const [alloy, asterium] = world.cargoDrops;
+    if (!alloy || !asterium) throw new Error('no drops');
+    Object.assign(alloy, { active: true, amount: 12, kind: 0 });
+    Object.assign(asterium, { active: true, amount: 1, kind: 3 });
+    ore.update(world, 0);
+    const alloyMesh = meshes[0]; const asteriumMesh = meshes[3];
+    if (!alloyMesh || !asteriumMesh) throw new Error('no batches');
+    const veinsOf = (kind: number): number => world.layout.deposits.filter((index, slot) =>
+      world.layout.obstacles[index]?.kind === 'rock' && (world.layout.depositKinds[slot] ?? 0) === kind).length * 6;
+    expect(scaleOf(asteriumMesh, veinsOf(3))).toBeGreaterThan(scaleOf(alloyMesh, veinsOf(0)));
+    const glow = (mesh: THREE.InstancedMesh): number => mesh.material instanceof THREE.MeshStandardMaterial ? mesh.material.emissiveIntensity : 0;
+    for (const time of [0, 0.7, 1.4, 2.1]) {
+      ore.update(world, time);
+      expect(glow(asteriumMesh)).toBeGreaterThan(glow(alloyMesh));
+    }
   });
 
   it('leaves the scene clean on dispose', () => {

@@ -75,6 +75,7 @@ export * from './seasonRankRewards.js';
 export * from './legacy.js';
 export * from './research.js';
 export * from './moon.js';
+export * from './synthesis.js';
 export * from './strategic.js';
 export * from './view.js';
 export * from './clan.js';

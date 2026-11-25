@@ -2,13 +2,18 @@ import i18n from '../i18n/index.js';
 import { Glyph } from '../game-ui/index.js';
 import type { ArenaCopy } from './copy.js';
 import { teamCopy } from './teamCopy.js';
-import { FARM_TONE } from './farmColors.js';
+import { FARM_ART, FARM_TONE } from './farmColors.js';
 import { ARENA_PROGRESSION, type ShipClass } from '@astera/rules/arena';
 import { classStatRows } from './ClassPicker.js';
 import { amount, clockText, launchBlock, type Hangar, type LaunchBlock, type SortieReport } from './hangarDesk.js';
 
 const KINDS = ['alloy', 'crystal', 'deuterium'] as const;
 const tone = (kind: number): React.CSSProperties => ({ '--tone': FARM_TONE[kind] } as React.CSSProperties);
+
+/** One resource of a haul: its picture, then the figure and the words the caller gives it. */
+export function HaulChip({ kind, children }: { kind: number; children: React.ReactNode }) {
+  return <li className="gk-haulchip" style={tone(kind)}><img src={FARM_ART[kind]} alt="" draggable={false} />{children}</li>;
+}
 
 /** What the next level adds to the class, stat by stat (Y6b): only what grows. */
 export function levelGains(ship: ShipClass, level: number, c: ArenaCopy): { key: string; name: string; text: string }[] {
@@ -30,18 +35,21 @@ export function levelGains(ship: ShipClass, level: number, c: ArenaCopy): { key:
  * is what the ship carried when the flight ended; a recalled hold stays in the ship, so it is not lost.
  */
 export function SortieSummary({ c, report, hold, now }: { c: ArenaCopy; report: SortieReport | null; hold: readonly number[]; now: number }) {
-  const landed = report?.outcome === 'extracted' ? KINDS.map(key => report.deposit[key]) : null;
+  // Asteryum (kind 3) is credited to the pilot alone, team or not (plan G3): it lands beside the deposit.
+  const asterium = report?.outcome === 'extracted' ? report.asterium ?? 0 : 0;
+  const landed = report?.outcome === 'extracted' ? [...KINDS.map(key => report.deposit[key]), asterium] : null;
   const over = report ? KINDS.map(key => report.overflow[key]) : [];
   const until = report?.readyAt ? Date.parse(report.readyAt) : 0;
   const carried = hold.map(n => Math.floor(n));
   const dropped = report?.outcome === 'recalled' ? [] : carried;
   const t = teamCopy();
-  const chips = (values: readonly number[], sign: '+' | '−', part: 'pooled' | 'landed' | 'lost') => <ul className="gk-arenahaul" data-haul={part}>{values.map((n, kind) => n > 0 && <li key={kind} className="gk-haulchip" style={tone(kind)}>
-    <i aria-hidden /><b className="gk-num">{sign}{amount(n)}</b> <small>{c.kinds[kind]}</small></li>)}</ul>;
+  const chips = (values: readonly number[], sign: '+' | '−', part: 'pooled' | 'landed' | 'lost') => <ul className="gk-arenahaul" data-haul={part}>{values.map((n, kind) => n > 0 && <HaulChip key={kind} kind={kind}>
+    <b className="gk-num">{sign}{amount(n)}</b> <small>{c.kinds[kind]}</small></HaulChip>)}</ul>;
   return <div className="gk-sortie">
     {landed && (report?.teamId ? <>
-      {carried.some(n => n > 0) && <><p className="gk-label">{t.pooled}</p>{chips(carried, '+', 'pooled')}</>}
+      {carried.slice(0, 3).some(n => n > 0) && <><p className="gk-label">{t.pooled}</p>{chips(carried.slice(0, 3), '+', 'pooled')}</>}
       <p className="gk-inote" data-tone="self"><Glyph id="support" /><span>{t.pool}</span></p>
+      {asterium > 0 && <><p className="gk-label">{c.landedTitle}</p>{chips([0, 0, 0, asterium], '+', 'landed')}</>}
     </> : landed.some(n => n > 0) ? <>
       <p className="gk-label">{c.landedTitle}</p>{chips(landed, '+', 'landed')}
     </> : <p className="gk-sub">{c.nothingLanded}</p>)}

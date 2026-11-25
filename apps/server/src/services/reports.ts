@@ -25,6 +25,7 @@ import {
   type Resources,
   type PvpBalance,
   type WorldBody,
+  type AppliedCapsule,
 } from '@astera/rules';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import {
@@ -265,6 +266,8 @@ export interface BattleReportView {
   fleetEscape: EscapeOutcome | { kind: 'ESCAPED' } | null;
   /** Y9: the commander ships that escorted either side. Both sides see them (owner 2026-10-25). */
   admirals: ReportAdmiral[];
+  /** Sentez capsules the raid wore (plan 2026-11-24 §3.5): the battle lifts the veil, so both sides read them. */
+  appliedCapsules: AppliedCapsule[];
   /**
    * WHERE THIS DEFEAT LEFT THE READER AGAINST THE RECOVERY SHIELD. DEFENDER ONLY.
    * Owner instruction, 2026-09-18.
@@ -969,6 +972,7 @@ async function readBattleReportsIn(
         ? row.fleetEscape?.kind === 'ESCAPED' ? { kind: 'ESCAPED' } : null
         : supporting ? null : row.fleetEscape,
       admirals: row.admirals,
+      appliedCapsules: row.appliedCapsules,
       pvpBalance: row.pvpBalance,
       recovery: attacking || supporting || row.targetKind !== 'PLAYER' || row.recoveryLossHours === null
         ? null

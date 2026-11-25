@@ -55,6 +55,8 @@ export const TRANSFER_EVENT_POLICIES = {
   radiation_bomb_intercept_impact: 'BLOCKER',
   planet_radiation_boundary: 'WORLD',
   research_complete: 'PERSONAL',
+  /** A laboratory batch is the commander's own work, like research (plan 2026-11-24). */
+  synthesis_complete: 'PERSONAL',
   galaxy_event_start: 'GLOBAL',
   galaxy_event_end: 'GLOBAL',
   pirate_arrival: 'BLOCKER',

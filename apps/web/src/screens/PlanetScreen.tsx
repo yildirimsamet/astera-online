@@ -2,6 +2,7 @@ import { GameActions } from '../session/seasonLock.js';
 import { sumFleets } from '../lib/fleetPage.js';
 import { createPortal } from 'react-dom';
 import { RadiationBombForgeHost } from './RadiationBombControls.js';
+import { SynthesisLab } from './SynthesisLab.js';
 import { ShipRadiationProtection } from '../ui/ShipRadiationProtection.js';
 import { PlanetRadiationProtection } from '../ui/PlanetRadiationProtection.js';
 import { TargetRadiationInstrument } from '../ui/TargetRadiationInstrument.js';
@@ -69,6 +70,7 @@ import {
   useRaiseInstrument,
   useUpgrade,
   useBuildDeathStar,
+  useSynthesis,
 } from '../api/queries.js';
 import type { FaultView, PlanetView } from '../api/schemas.js';
 import { haptic } from '../lib/haptics.js';
@@ -558,11 +560,8 @@ export function PlanetScreen({
               {active === 'reach' && <Reach {...shared} onBuild={openBuild} onStation={() => { setStation(true); }} />}
               {active === 'grow' && <Grow {...shared} />}
               {!lesson && active === 'tactical' && (
-                <div className="flex flex-col gap-3">
-                  <DeathStarForge planet={data} held={held} recovering={recovering} onNeed={goToNeed} />
-                  {data.radiationBombsAvailable && <RadiationBombForgeHost planet={data} held={held}
-                    disabledReason={recovering ? t('planet.deathStar.needOperational') : null} />}
-                </div>
+                <Tactical planet={data} held={held} recovering={recovering} onNeed={goToNeed}
+                  {...(focusItem ? { focusItem } : {})} />
               )}
             </DecisionGroup>
           </div>
@@ -787,6 +786,47 @@ function FaultLine({ fault, held, onOpen }: { fault: FaultView; held: Projected;
   );
 }
 
+
+/** The laboratory's row, as a finished batch's notification names it (the server's `SYNTHESIS_LAB_ITEM`). */
+const SYNTHESIS_LAB_ITEM = 'synthesis-lab';
+type Bay = 'weapons' | 'lab';
+
+/**
+ * THE TACTICAL TAB, IN TWO BAYS (owner 2026-11-25: "Taktik menüsünü iki tab'a ayıralım… ileride bu
+ * laboratuvar daha gelişecek"). The weapons bay opens first, as the tab always did; the laboratory has a
+ * bay of its own to grow into. It stands only where there is one: the commander's capital, in a galaxy
+ * with Asteryum. A finished batch's notification opens it directly.
+ */
+function Tactical({ planet, held, recovering, focusItem, onNeed }: {
+  planet: PlanetView;
+  held: Projected;
+  recovering: boolean;
+  focusItem?: string;
+  onNeed: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  const synthesis = useSynthesis();
+  const [bay, setBay] = useState<Bay>(focusItem === SYNTHESIS_LAB_ITEM ? 'lab' : 'weapons');
+  useEffect(() => { if (focusItem === SYNTHESIS_LAB_ITEM) setBay('lab'); }, [focusItem]);
+  const weapons = <div className="flex flex-col gap-3">
+    <DeathStarForge planet={planet} held={held} recovering={recovering} onNeed={onNeed} />
+    {planet.radiationBombsAvailable && <RadiationBombForgeHost planet={planet} held={held}
+      disabledReason={recovering ? t('planet.deathStar.needOperational') : null} />}
+  </div>;
+  // The laboratory is the commander's, paid from the capital: it lives on the capital alone.
+  if (synthesis.data?.enabled !== true || planet.planet.kind === 'COLONY') return weapons;
+  return <div className="gk-bays flex flex-col gap-3">
+    <GameTabs<Bay> label={t('planet.tabs.bays')} value={bay} onChange={setBay}
+      ids={{ tab: (id) => `tactical-bay-${id}`, panel: (id) => `tactical-panel-${id}` }}
+      tabs={[
+        { id: 'weapons', label: t('planet.tabs.weaponsBay'), glyph: { id: 'target' } },
+        { id: 'lab', label: t('planet.tabs.labBay'), glyph: { id: 'flask' } },
+      ]} />
+    <div id={`tactical-panel-${bay}`} role="tabpanel" aria-labelledby={`tactical-bay-${bay}`}>
+      {bay === 'weapons' ? weapons : <SynthesisLab held={held} />}
+    </div>
+  </div>;
+}
 
 /**
  * THE DEATH STAR FORGE, ON THE TACTICAL TAB (09c0bb5). D3.

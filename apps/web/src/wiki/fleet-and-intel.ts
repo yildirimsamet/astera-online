@@ -172,13 +172,13 @@ export const fleetAndIntelArticles: readonly WikiArticle[] = [
       "Atıştan sonra yeni şarj üret ve gereken sensörleri çalışır tut. Önleyiciler stratejik silahı durdurur. Aegis ve yer savunmaları normal akınlara karşıdır; onları yükseltmek önleyici şarj eklemez.",
     ]), ['instrument.RADAR', 'instrument.TELESCOPE', 'research.INTERCEPTION_GRID']),
   topic('intel', 'overview', l("Visible information & private intelligence", "Görünen bilgi ve özel istihbarat"),
-    l("Separate visible map objects, identified planets and private reports. Learn what sensors reveal and why missing data does not mean an empty target.", "Haritadaki izleri, tanımlanan gezegenleri ve özel raporları ayır. Sensörlerin gösterdiğini öğren; bilinmeyen hedefi boş sayma."),
+    l("Separate visible map objects, identified planets and private reports. Learn what sensors reveal and why missing data does not mean an empty target.", "Galaksideki izleri, tanımlanan gezegenleri ve özel raporları ayır. Sensörlerin gösterdiğini öğren; bilinmeyen hedefi boş sayma."),
     l([
       "Seeing a point on the map does not identify its planet or owner. Your sensors and previous observations determine which planet details you know. Commander names and standings do not automatically reveal all their planets.",
       "An identified planet can still have unknown ships, resources and research. These require intelligence. Base sight, Radar detection and Telescope identification provide different information. A moving contact is not necessarily an exact ship list.",
       "Radar warns about threats aimed at its own planet. Telescope identifies contacts and enables silent fleet watches. Veil can reduce what a Telescope reads. Clan membership does not give you shared access to every member’s sensors.",
     ], [
-      "Haritada bir nokta görmek, gezegeni veya sahibini tanımlamak değildir. Sensörlerin ve önceki gözlemlerin hangi gezegen ayrıntılarını bildiğini belirler. Komutan adları ve sıralama, oyuncunun bütün gezegenlerini otomatik açıklamaz.",
+      "Galakside bir nokta görmek, gezegeni veya sahibini tanımlamak değildir. Sensörlerin ve önceki gözlemlerin hangi gezegen ayrıntılarını bildiğini belirler. Komutan adları ve sıralama, oyuncunun bütün gezegenlerini otomatik açıklamaz.",
       "Tanımlanmış gezegenin gemileri, kaynakları ve araştırmaları yine bilinmeyebilir. Bunlar için istihbarat toplamalısın. Temel görüş, Radar algılaması ve Teleskop tanımlaması farklı bilgi verir. Hareketli iz, kesin gemi listesi değildir.",
       "Radar, kendi gezegenine yönelen tehditleri bildirir. Teleskop, hareketleri tanımlar ve sessiz filo gözlemi sağlar. Perde, Teleskobun elde ettiği bilgiyi azaltabilir. Klan üyeliği, bütün üyelerin sensörlerini ortak kullanmanı sağlamaz.",
     ]),
@@ -187,7 +187,7 @@ export const fleetAndIntelArticles: readonly WikiArticle[] = [
       "Public news and personal reports reveal different details. Seeing a battle on the map does not give you both participants’ private reports. Share your findings deliberately when coordinating with clanmates.",
     ], [
       "Ayrılışları fark etmek için gözlemi, savunmayı ve olası ganimeti öğrenmek için sondayı kullan. Gözlem zamanını kontrol et; şimdi gelen rapor daha eski durumu anlatabilir. Bilinmeyen bilgi, ölçülmüş sıfır değildir.",
-      "Herkese açık haberlerle kişisel raporların ayrıntıları farklıdır. Haritada savaş görmek, iki tarafın özel raporlarını sana vermez. Klanla plan yaparken paylaşacağın bilgiyi bilinçli seç.",
+      "Herkese açık haberlerle kişisel raporların ayrıntıları farklıdır. Galakside savaş görmek, iki tarafın özel raporlarını sana vermez. Klanla plan yaparken paylaşacağın bilgiyi bilinçli seç.",
     ]), ['intel.probes', 'intel.watches', 'instrument.VEIL']),
   topic('intel', 'probes', l('Probes & dated reports', 'Sondalar ve tarihli raporlar'),
     l("Send a paid probe to learn defence and potential loot. Understand accuracy, detection risk and the observation time recorded in reports.", "Savunmayı ve olası ganimeti öğrenmek için ücretli sonda gönder. Doğruluğu, fark edilme riskini ve rapordaki gözlem zamanını değerlendir."),

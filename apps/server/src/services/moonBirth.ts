@@ -6,6 +6,7 @@ import { publishShard } from '../stream/bus.js';
 import { abandonMoonOrders } from './buildQueue.js';
 import { recordGalaxyEvent } from './chronicle.js';
 import { holdsLunarCapture, seasonHasMoons } from './moon.js';
+import { settleWorldMoonAsterium } from './synthesis.js';
 
 /**
  * A MOON BORN IN BATTLE (S9, S11, S44, V16; plan §6.13). Rolled once per PvP battle over a held world, from
@@ -29,8 +30,11 @@ export async function settleMoonBirth(tx: Tx, input: {
     rarity: born, origin: 'BATTLE' as const, cracks: 0, lastHitAt: null, closedUntil: null, gateReadyAt: null,
     visualSeed: hashSeed('moon-visual', input.missionId) % 2_147_483_647, bornAt: input.now, bornMissionId: input.missionId,
   };
-  if (current) await tx.update(moons).set(moon).where(eq(moons.planetId, world.id));
-  else await tx.insert(moons).values({ planetId: world.id, ...moon });
+  // A rarer moon makes Asteryum faster: the old one is paid up to its last instant first (plan §3.3).
+  if (current) {
+    await settleWorldMoonAsterium(tx, world.id, input.now);
+    await tx.update(moons).set(moon).where(eq(moons.planetId, world.id));
+  } else await tx.insert(moons).values({ planetId: world.id, ...moon, asteriumSyncedAt: input.now });
   // V1: the world has its moon now; a Common one still being built is dropped and paid back in full.
   await abandonMoonOrders(tx, world.id, input.now);
   await recordGalaxyEvent(tx, { seasonId: world.seasonId, kind: 'moon_born', refId: input.missionId,

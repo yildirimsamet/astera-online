@@ -26,6 +26,7 @@ import { IntergalacticConvoySheet } from '../../screens/IntergalacticConvoySheet
 import type { IntergalacticConvoyEvent } from '../../lib/intergalacticConvoy.js';
 import type { TradeShipEvent } from '../../lib/trade.js';
 import { TransferSheet } from '../../screens/TransferSheet.js';
+import { GALLERY_CAPSULES, GallerySynthesis, SynthesisSeed } from './GallerySynthesis.js';
 import { IntelScreen } from '../../screens/IntelScreen.js';
 import { BuildSheet, PlanetScreen } from '../../screens/PlanetScreen.js';
 import { ClanScreen } from '../../screens/ClanScreen.js';
@@ -235,6 +236,17 @@ const rival: GalaxyPlanet = {
   id: 'p2', name: 'Tharsis', owner: 'Sable', position: { x: 120, y: 0, z: 80 }, coreTier: 2, coreLevel: 6,
   intel: 'RESOLVED', state: { kind: 'NORMAL' }, satellites: [], shielded: false, isSelf: false,
 };
+/** The raid's Honor reading, seeded (owner 2026-11-25: folded under the Power ruler). */
+function HonorSeed({ weak, children }: { weak: boolean; children: ReactNode }) {
+  const client = useQueryClient();
+  useState(() => {
+    client.setQueryData(keys.honorTarget(rival.id), weak
+      ? { enabled: true, eligible: true, kind: 'WEAK', militaryReturn: 'NONE', related: false, repeated: false, retaliation: false }
+      : { enabled: true, eligible: true, kind: 'PEER', militaryReturn: 'HALF', related: false, repeated: false, retaliation: false, topTierPeer: true });
+    return null;
+  });
+  return <>{children}</>;
+}
 const launchWorld = planetView(
   { fleet: { DART: 40, TALON: 12, RAMPART: 4, COURIER: 6 }, fleetAway: { DART: 8 } },
   { alloy: 40_000, crystal: 20_000, deuterium: 12_000 },
@@ -1751,6 +1763,11 @@ function Views({ view }: { view: string }) {
       />
     );
   }
+  if (view === 'launch-honor' || view === 'launch-honor-weak') {
+    return <HonorSeed weak={view === 'launch-honor-weak'}>
+      <LaunchSheet planet={launchWorld} intel={launchIntel} target={{ kind: 'world', world: rival }} onClose={noop} onLaunched={noop} />
+    </HonorSeed>;
+  }
   if (view === 'launch' || view === 'launch-pirate') {
     const pirateTech = { SHIP_POWER: 2, SHIP_ARMOR: 2, CARGO_HOLDS: 2, STARSHIP_ENGINEERING: 2 };
     const pirateWorld = planetView({ rulesetVersion: 16,
@@ -1777,6 +1794,35 @@ function Views({ view }: { view: string }) {
         onLaunched={noop}
       />
       </>
+    );
+  }
+  if (view === 'synthesis' || view === 'synthesis-running') {
+    return <GallerySynthesis state={view === 'synthesis' ? 'idle' : 'running'} />;
+  }
+  if (view === 'transfer-veil') {
+    return (
+      <SynthesisSeed>
+        <TransferSheet
+          target={{ id: 'p-9', name: 'Hollow', position: { x: 600, y: 0, z: 200 } }}
+          planet={launchWorld}
+          onClose={noop}
+          onLaunched={noop}
+        />
+      </SynthesisSeed>
+    );
+  }
+  if (view === 'settlement-veil') {
+    return (
+      <SettlementSheet
+        target={{ ...rival, kind: 'NEUTRAL', owner: '', name: 'Neutral T1-50',
+          neutral: { tier: 1, claimUntil: new Date(NOW + 42 * MIN) } } satisfies GalaxyPlanet}
+        planet={launchWorld}
+        now={NOW}
+        pending={false}
+        capsuleStock={GALLERY_CAPSULES}
+        onClose={noop}
+        onConfirm={noop}
+      />
     );
   }
   if (view === 'transfer') {

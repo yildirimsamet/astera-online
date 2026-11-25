@@ -2,7 +2,7 @@ import { queueShipReady } from './arenaReady.js';
 import { notify } from './notifications.js';
 import { randomUUID } from 'node:crypto';
 import { and, desc, eq, gt, isNotNull, isNull } from 'drizzle-orm';
-import { ARENA_ECONOMY as E, TEAM_CONNECT_SECONDS, classChangeOpen, dailyCap, entryOpen, gainXp, launchLoad, levelCap, levelCost, loadoutPlan, refillCost, repairQuote, settleHold, shipStats,
+import { ARENA_ECONOMY as E, TEAM_CONNECT_SECONDS, classChangeOpen, dailyCap, entryOpen, extractAsterium, gainXp, launchLoad, levelCap, levelCost, loadoutPlan, refillCost, repairQuote, settleHold, shipStats,
   MAX_POINT_RANK, abilityRank, pointsLeft, sortieXp, xpToNext, type Ability, type AbilityPoints, type ArenaResources, type LoadoutPlan, type ShipClass, type SortieOutcome, type SortieLoadout } from '@astera/rules/arena';
 import { systemClock, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
@@ -11,6 +11,7 @@ import { ZERO, commander, holdOf, nextMidnight, perHour, sentToday, shipFor, lan
 import { activeTeamFor, recallLateMember, recordTeamEnd, recallTeamFlights, releaseStaleLobby } from './arenaTeamLedger.js';
 import { assertWorldOperational, GameError, loadLocked, lockSeason, readPlanetSnapshot, recomputePlayerWealth, saveResources,
   type LockedPlanet } from './planet.js';
+import { creditAsterium, seasonHasSynthesis } from './synthesis.js';
 
 /**
  * THE YARIK SHIP ON THE GALAXY'S BOOKS (Y6a, plan 14 §7). The arena room calls `launchSortie` before a
@@ -26,6 +27,8 @@ export interface SortieResult {
   outcome: SortieOutcome; deposit: ArenaResources; overflow: ArenaResources; readyAt: string | null; readyReason: 'repair' | 'service' | null;
   /** What the flight made, what the ship kept of it, and what its bar took. */
   xp: { earned: number; kept: number; banked: number };
+  /** Asteryum this exit put into the commander's own stock (plan 2026-11-24 §3.2): never capped, never pooled. */
+  asterium: number;
   teamId?: string;
 }
 export type Launch = SortieLoadout;
@@ -212,7 +215,11 @@ export async function endSortie(db: Db, clock: Clock, accountId: string, sortieI
     const planet = live ? await loadLocked(tx, who.capitalId, clock) : await readPlanetSnapshot(tx, who.capitalId, clock);
     if (live) ({ deposit, overflow } = await landArenaCargo(tx, row, planet, end.hold, now));
     else if (!pooled && end.outcome === 'extracted') ({ deposit, overflow } = settleHold(end.hold, ZERO));
-    const kept = end.outcome === 'recalled' ? [0, 1, 2].map(i => Math.max(0, end.hold[i] ?? 0)) : [0, 0, 0];
+    const kept = end.outcome === 'recalled' ? [0, 1, 2, 3].map(i => Math.max(0, end.hold[i] ?? 0)) : [0, 0, 0, 0];
+    // Asteryum is the pilot's own, team or not, and outside the day's cap; only a live season's exit pays it.
+    const asterium = season.status === 'live' && end.outcome === 'extracted' && await seasonHasSynthesis(tx, who.seasonId)
+      ? extractAsterium(end.hold) : 0;
+    await creditAsterium(tx, who.playerId, asterium, now);
     const readyReason = end.outcome === 'recalled' ? null : end.outcome === 'dead' ? 'repair' : 'service';
     const readyAt = readyReason === null ? null : new Date(now.getTime() + (readyReason === 'repair' ? E.repairMinutes : E.serviceMinutes) * 60_000);
     const made = sortieXp(end);
@@ -220,7 +227,7 @@ export async function endSortie(db: Db, clock: Clock, accountId: string, sortieI
     await tx.update(arenaShips).set({
       sortieId: null, readyAt, readyReason, readyNoticeId: readyAt ? sortieId : null, xp: bar.xp,
       fuel: Math.min(stats.fuelTank, Math.max(0, end.fuel)), ammo: Math.min(stats.ammoCapacity, Math.max(0, end.ammo)),
-      holdAlloy: kept[0], holdCrystal: kept[1], holdDeuterium: kept[2],
+      holdAlloy: kept[0], holdCrystal: kept[1], holdDeuterium: kept[2], holdAsterium: kept[3],
     }).where(eq(arenaShips.playerId, who.playerId));
     if (readyAt) await queueShipReady(tx, who.seasonId, who.playerId, sortieId, readyAt);
     // The result the room could not show: a lost ship and hold become news (F22).
@@ -234,7 +241,7 @@ export async function endSortie(db: Db, clock: Clock, accountId: string, sortieI
       if (!pooled) await tx.update(arenaTeamMembers).set({ claimedAt: now, receipt: { deposit, overflow } }).where(eq(arenaTeamMembers.id, member.id));
     }
     return { ...(pooled ? { teamId: member.teamId } : {}), outcome: end.outcome, deposit, overflow, readyAt: readyAt?.toISOString() ?? null, readyReason,
-      xp: { earned: made.earned, kept: made.kept, banked: bar.banked } };
+      xp: { earned: made.earned, kept: made.kept, banked: bar.banked }, asterium };
   });
 }
 

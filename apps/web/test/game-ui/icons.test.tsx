@@ -91,7 +91,7 @@ describe('the kit glyphs', () => {
     ['critical', 'critical hit'], ['fuel', 'fuel'], ['hull', 'hull strength'], ['target', 'range, target'],
     ['ranking', 'ranking'], ['history', 'history'], ['share', 'share'], ['siren', 'alarm'],
     ['settings', 'settings'], ['mail', 'mail'], ['chat', 'chat'], ['mute', 'mute a player (C2)'], ['block', 'block a player (C2)'], ['react', 'react to a message (C3)'], ['reply', 'reply to a message (C3)'], ['flag', 'report a message (C3)'], ['unlock', 'unlocked'],
-    ['refresh', 'refresh'], ['zoom', 'zoom in'], ['banner', 'a clan with no flag yet'],
+    ['refresh', 'refresh'], ['zoom', 'zoom in'], ['banner', 'a clan with no flag yet'], ['flask', 'Sentez Laboratuvarı: a flask'], ['storm', 'Asteryum Fırtınası: a whirling storm (owner 2026-11-25: never the pickaxe)'],
     ['class_skirmisher', 'Akıncı: an arrowhead'], ['class_lance', 'Mızrak: a spear'],
     ['class_bulwark', 'Sur: a walled shield'], ['class_support', 'Destek: a cross in a ring'],
   ])('has a %s glyph (%s)', (id) => {

@@ -53,6 +53,7 @@ import {
   units,
 } from '../db/schema.js';
 import { isHostileMission, legBelongsTo } from './flight.js';
+import { hiddenByVeil, veiledViewers, type VeiledViewers } from './capsuleSight.js';
 import { instrumentLevels, levelOf } from './intel.js';
 import { loadMiningSnapshot } from './mining.js';
 import { discoveredAsteroidIndexes } from './asteroidField.js';
@@ -68,7 +69,7 @@ import { dockEndsAt, tradeReturnPoint, tradeReturnDepartAt, tradeReturnHome } fr
 import { minutesSince } from '../clock.js';
 import { sensorHistoryForPlayer } from './sensorHistory.js';
 import { loadMonumentTraffic, monumentTrafficFleet, type NativeMonumentTraffic } from './monumentTraffic.js';
-import { fleetCount } from '@astera/rules';
+import { fleetCount, missionSuppressesRadarWarning } from '@astera/rules';
 import { liveRadiationFor, type FlightRadiation } from './radiation.js';
 import { missionCohorts, missionFlightPath, physicalFleets, projectHpFlight, survivingFleet, type FlightCohort } from './flightProjection.js';
 import { flightSegment } from './specialFlightRadiation.js';
@@ -375,6 +376,11 @@ export interface Contact {
    * you cannot identify, bearing down on a world you own.
    */
   inbound?: true;
+  /**
+   * Optik Örtü rides on this leg (G17). Only those still allowed to see it get the contact at all (the
+   * owner's clan), so this only tells them to draw it cloaked.
+   */
+  veiled?: true;
   /** How many craft are on a mining run. Public in full, like the rest of the run. */
   craft?: number;
   /**
@@ -529,6 +535,8 @@ export interface TrafficSnapshot {
   physicalFleets?: ReadonlyMap<string, Fleet>;
   monumentTraffic?: NativeMonumentTraffic;
   missionRows: { mission: typeof missions.$inferSelect }[];
+  /** Optik Örtü legs and the commanders allowed to see them (owner + clan). Absent means none. */
+  veiled?: VeiledViewers;
   clanFleetByMission: ReadonlyMap<string, { clanId: string; tag: string; label: string }>;
   miningRows: { run: typeof miningRuns.$inferSelect }[];
   /** Raids in the air at a pirate. Somebody else's is a craft like any other. D150. */
@@ -766,6 +774,7 @@ export async function loadTrafficSnapshot(
     radiation, missionCohorts: cohorts, physicalFleets: physical,
     monumentTraffic, bombRows, signalRows,
     missionRows,
+    veiled: await veiledViewers(db, missionRows.map(({ mission }) => mission)),
     clanFleetByMission,
     miningRows,
     pirateRaidRows,
@@ -1162,6 +1171,8 @@ export function projectGalaxyTraffic(
     /** Where the craft is RIGHT NOW, which is the only distance a radius means. */
     craft: Vec3,
   ): SensorPost | null => {
+    // Sessiz İtki: the craft is on the map, but no instrument reads it as coming here.
+    if (missionSuppressesRadarWarning(mission.appliedCapsules)) return null;
     if (!isHostileMission(
       mission,
       clanFleetByMission.has(mission.id) ? 'COMBINED_ATTACK' : null,
@@ -1255,6 +1266,8 @@ export function projectGalaxyTraffic(
   }
 
   for (const { mission: sourceMission } of missionRows) {
+    // Optik Örtü: off this map unless the caller flies it or shares its clan (K11).
+    if (hiddenByVeil(snapshot.veiled, sourceMission.id, ownPlayerId)) continue;
     let mission = sourceMission;
     const centres = {
       origin: positions.get(mission.originPlanetId),
@@ -2343,5 +2356,7 @@ export function projectGalaxyTraffic(
         ? {[signal.outcome.hull]: 1} : undefined, true)});
   }
 
-  return decorateTrafficEscorts(decorateCosmeticContacts(out, snapshot.cosmeticAppearances), snapshot.escorts);
+  const veiled = snapshot.veiled;
+  const marked = veiled && veiled.size > 0 ? out.map((contact) => veiled.has(contact.id) ? { ...contact, veiled: true as const } : contact) : out;
+  return decorateTrafficEscorts(decorateCosmeticContacts(marked, snapshot.cosmeticAppearances), snapshot.escorts);
 }

@@ -386,7 +386,7 @@ describe('signatures in the room (Y4c)', () => {
     const guest = await connect(url, 'sig-guest-cloak', 'muhafiz', 'cloak');
     const welcome = await guest.next(kind('welcome')) as { pilotId: number };
     const snap = await guest.next(isSnap) as ArenaSnapshot;
-    expect(TACTICS[snap.self[PILOT_WIDTH - 24] ?? -1]).toBe('cloak');
+    expect(TACTICS[snap.self[PILOT_WIDTH - 25] ?? -1]).toBe('cloak');
     expect(world.drones.find(p => p.id === welcome.pilotId)?.tactic).toBe('cloak');
   });
 
@@ -401,7 +401,7 @@ describe('signatures in the room (Y4c)', () => {
     guest.socket.send(JSON.stringify({ kind: 'in', values: [1, 0, 0, 0, 64, 0, 0, other.id] }));
     guest.socket.send(JSON.stringify({ kind: 'in', values: [2, 0, 0, 0, 0, 0, 0, -1] }));
     guest.socket.send(JSON.stringify({ kind: 'in', values: [3, 0, 0, 0, 64, 0, 0, self.id] }));
-    await guest.next(m => isSnap(m) && (decodeArenaSnapshot(m)?.self[PILOT_WIDTH - 13] ?? 0) > 0);
+    await guest.next(m => isSnap(m) && (decodeArenaSnapshot(m)?.self[PILOT_WIDTH - 14] ?? 0) > 0);
     expect([self.shieldHp, self.shieldMax, other.shieldHp]).toEqual([T.wardHp, T.wardHp, 0]);
   });
 
@@ -440,8 +440,8 @@ describe('tactics in the room (Y4d)', () => {
     const name = pilots(welcome).find(row => row.id === self.id)?.name;
     // Inside the half-second fold the join just used: the copy's roster cannot wait for it.
     guest.socket.send(JSON.stringify({ kind: 'in', values: [1, 0, 0, 0, 128, 0, 0, -1] }));
-    const drawn = await guest.next(m => isSnap(m) && (m.self[PILOT_WIDTH - 26] ?? -1) >= 0) as ArenaSnapshot;
-    const copyId = drawn.self[PILOT_WIDTH - 26] ?? -1;
+    const drawn = await guest.next(m => isSnap(m) && (m.self[PILOT_WIDTH - 27] ?? -1) >= 0) as ArenaSnapshot;
+    const copyId = drawn.self[PILOT_WIDTH - 27] ?? -1;
     const copy = world.drones.find(p => p.id === copyId);
     expect(copy?.decoyOf).toBe(self.id);
     const named = guest.messages.findIndex(m => kind('roster')(m) && pilots(m).some(row => row.id === copyId));
@@ -457,7 +457,7 @@ describe('tactics in the room (Y4d)', () => {
   it('gives the next pilot an id no copy holds', async () => {
     const { world, guest, url } = await seated('tactic-guest-ids', 'illusion');
     guest.socket.send(JSON.stringify({ kind: 'in', values: [1, 0, 0, 0, 128, 0, 0, -1] }));
-    await guest.next(m => isSnap(m) && (m.self[PILOT_WIDTH - 26] ?? -1) >= 0);
+    await guest.next(m => isSnap(m) && (m.self[PILOT_WIDTH - 27] ?? -1) >= 0);
     const late = await connect(url, 'tactic-guest-late');
     const welcome = await late.next(kind('welcome')) as { pilotId: number };
     expect(world.drones.filter(p => p.id === welcome.pilotId)).toHaveLength(1);
@@ -466,7 +466,7 @@ describe('tactics in the room (Y4d)', () => {
   it('breaks the copy when its pilot flies again', async () => {
     const { world, guest, self } = await seated('tactic-guest-restart', 'illusion');
     guest.socket.send(JSON.stringify({ kind: 'in', values: [1, 0, 0, 0, 128, 0, 0, -1] }));
-    await guest.next(m => isSnap(m) && (m.self[PILOT_WIDTH - 26] ?? -1) >= 0);
+    await guest.next(m => isSnap(m) && (m.self[PILOT_WIDTH - 27] ?? -1) >= 0);
     guest.socket.send(JSON.stringify({ kind: 'dev', action: 'restart' }));
     await guest.next(m => isSnap(m) && m.impacts.some(row => row[5] === 4));
     expect(world.drones.some(p => p.decoyOf === self.id)).toBe(false);

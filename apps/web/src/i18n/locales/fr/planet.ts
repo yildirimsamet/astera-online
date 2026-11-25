@@ -176,6 +176,9 @@ export const planet = {
       "Augmente ici tes ressources et la limite de niveau de tes bâtiments.",
     tacticalProblem: "Tactique",
     tacticalQuestion: "Construis et gère ici les outils tactiques.",
+    bays: "Sections tactiques",
+    weaponsBay: "Armes",
+    labBay: "Laboratoire",
   },
   queue: {
     waiting: "En file",

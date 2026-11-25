@@ -187,7 +187,7 @@ describe('choosing a ship', () => {
   it('gives a full ship and one free change for 24 hours', async () => {
     const view = await chooseShip(f.db, f.clock, account, 'kilavuz');
     expect(view.ship).toMatchObject({ class: 'kilavuz', fuel: CLASS_STATS.kilavuz.fuelTank, ammo: CLASS_STATS.kilavuz.ammoCapacity,
-      hold: [0, 0, 0], readyAt: null, flying: false, changeUntil: new Date(f.clock.now().getTime() + 24 * 3_600_000).toISOString() });
+      hold: [0, 0, 0, 0], readyAt: null, flying: false, changeUntil: new Date(f.clock.now().getTime() + 24 * 3_600_000).toISOString() });
     expect(view.refill).toEqual({ fuel: 0, ammo: 0, total: 0 });
     // The same class again changes nothing and spends nothing.
     expect((await chooseShip(f.db, f.clock, account, 'kilavuz')).ship?.changeUntil).not.toBeNull();
@@ -219,7 +219,7 @@ describe('launch', () => {
     await f.db.update(arenaShips).set({ fuel: CLASS_STATS.kilavuz.fuelTank / 2, ammo: 0 });
     const before = await stock();
     const flight = await launchSortie(f.db, f.clock, account);
-    expect(flight).toMatchObject({ ship: 'kilavuz', fuel: CLASS_STATS.kilavuz.fuelTank, ammo: CLASS_STATS.kilavuz.ammoCapacity, hold: [0, 0, 0], refilled: 42 });
+    expect(flight).toMatchObject({ ship: 'kilavuz', fuel: CLASS_STATS.kilavuz.fuelTank, ammo: CLASS_STATS.kilavuz.ammoCapacity, hold: [0, 0, 0, 0], refilled: 42 });
     expect((await stock()).deuterium).toBeCloseTo(before.deuterium - 42, 6);
     expect((await shipRow())?.sortieId).toBe(flight.sortieId);
     expect(await code(launchSortie(f.db, f.clock, account))).toBe('SHIP_FLYING');
@@ -396,7 +396,7 @@ describe('a flight ends', () => {
       .toMatchObject({ deposit: { alloy: 0, crystal: 0, deuterium: 0 }, readyAt: null, readyReason: null });
     expect(await stock()).toEqual(before);
     const flight = await launchSortie(f.db, f.clock, account);
-    expect(flight.hold).toEqual([60, 20, 5]);
+    expect(flight.hold).toEqual([60, 20, 5, 0]);
     expect(flight.refilled).toBeGreaterThan(0);
   });
 

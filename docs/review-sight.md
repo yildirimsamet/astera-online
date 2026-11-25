@@ -374,6 +374,15 @@ oturumun işi değil; ortaya çıkması bu oturumun işi.
 
 ---
 
+## 5.5 Asteryum kapsülleri görüşü değiştirir (2026-11-25, worktree)
+
+- **Optik Örtü** taşıyan bir uçuş (`missions.applied_capsules`), `traffic.ts` projeksiyonunda yalnız sahibine ve
+  sahibinin aktif klanına görünür (`capsuleSight.ts`, snapshot'ta `veiled`). Gözcü (`moonScan.ts`) hiç görmez,
+  Efsanevi dahil; rota dünyaları da öğretilmez.
+- **Sessiz İtki** taşıyan uçuş haritada kalır ama `aimedAtMe` onu hedefe yönelmiş saymaz, `pendingThreads`
+  satır yazmaz, `radar_warning` hiç planlanmaz, `wakeInboundRadarWarnings` uyandırmaz, `onRadarWarning` susar.
+- Testler: `apps/server/test/capsule-sight.test.ts`, `moon-scan.test.ts` (S9).
+
 ## 6 · Nereye code review yapılmalı
 
 Öncelik sırasıyla. Her satırda **ne aranacağı** yazıyor — "genel bak" demiyor.

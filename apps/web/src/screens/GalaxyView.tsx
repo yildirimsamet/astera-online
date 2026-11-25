@@ -101,6 +101,7 @@ import {
   useContactWindows,
   useLaunchDeathStar,
   useSettlement,
+  useCapsuleStock,
   useMonuments,
   useUnknownSignals,
   useUnknownSignalActions,
@@ -553,6 +554,7 @@ export function GalaxyView({
   const recallMining = useRecallMining();
   const recallFlight = useRecallFlight();
   const settlement = useSettlement();
+  const capsuleStock = useCapsuleStock();
   const deathStar = useLaunchDeathStar();
   const { activePlanetId, capitalPlanetId, worlds, selectPlanet } = useWorld();
   // Own worlds' Core levels and queued upgrades: a finished one steps its world up on the map.
@@ -2330,6 +2332,7 @@ export function GalaxyView({
             key={planet.data.planet.id}
             planet={planet.data}
             moonsEnabled={moonsAvailable}
+            synthesisEnabled={season.data?.features?.synthesis === true}
             otherMoons={(() => {
               const p = planet.data;
               const fromWorlds = worlds
@@ -2859,8 +2862,9 @@ export function GalaxyView({
           now={now}
           pending={settlement.isPending}
           onClose={() => { setSettlingTargetId(null); }}
-          onConfirm={() => {
-            settlement.mutate(selected.id, {
+          capsuleStock={capsuleStock}
+          onConfirm={(capsules) => {
+            settlement.mutate({ targetPlanetId: selected.id, capsules }, {
               onSuccess: () => {
                 say(t('galaxy.settlementAway', {
                   world: selected.intel === 'UNKNOWN'

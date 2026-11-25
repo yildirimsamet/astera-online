@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
   BUILDING_IDS,
+  CAPSULE_IDS,
   HULLS,
   INSTRUMENT_IDS,
   RESEARCH_PROJECT_IDS,
@@ -85,7 +86,11 @@ const HULL = zodEnum(ALL_HULL_IDS);
 const BOMB_LEVEL = z.union([z.literal(1), z.literal(2), z.literal(3)]);
 const RESEARCH = zodEnum(RESEARCH_PROJECT_IDS);
 
+/** Sentez capsules pressed onto a launch (plan 2026-11-24 §3.5); the service checks which may ride. */
+const CAPSULES = z.array(z.enum(CAPSULE_IDS)).max(CAPSULE_IDS.length);
+
 const launchBody = z.object({
+  capsules: CAPSULES.optional(),
   originPlanetId: z.string().uuid().optional(),
   targetPlanetId: z.string().uuid(),
   /** Ay S2/S6: the planet or its moon. Omitted is the planet, as every launch before moons. */
@@ -482,6 +487,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       body.admiral ?? false,
       body.targetBody ?? 'PLANET',
       body.originBody ?? 'PLANET',
+      body.capsules ?? [],
     );
   });
 
@@ -542,6 +548,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       /** Ay S34/S50: leave from or land on a moon. Omitted is the planet. */
       originBody: z.enum(['PLANET', 'MOON']).optional(),
       targetBody: z.enum(['PLANET', 'MOON']).optional(),
+      capsules: CAPSULES.optional(),
     }).strict().parse(req.body);
     const origin = await ownedPlanet(app.db, req.accountId!, body.originPlanetId);
     return launchTransfer(
@@ -557,6 +564,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       body.acknowledgeRadiation ?? false,
       body.targetBody ?? 'PLANET',
       body.originBody ?? 'PLANET',
+      body.capsules ?? [],
     );
   });
 
@@ -580,6 +588,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
     const body = z.object({
       originPlanetId: z.string().uuid(),
       targetPlanetId: z.string().uuid(),
+      capsules: CAPSULES.optional(),
     }).strict().parse(req.body);
     const origin = await ownedPlanet(app.db, req.accountId!, body.originPlanetId);
     return launchSettlement(
@@ -588,6 +597,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       body.originPlanetId,
       body.targetPlanetId,
       app.clock,
+      body.capsules ?? [],
     );
   });
 }

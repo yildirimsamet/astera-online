@@ -62,6 +62,7 @@ export const galaxy = {
       ASTEROID_SHOWER: "Asteroid Yağmuru",
       TRADE_SHIP: "Ticaret Gemisi",
       INTERGALACTIC_CONVOY: "Galaksilerarası Konvoy",
+      ASTERIUM_STORM: "Asteryum Fırtınası",
     },
     dailyNote: "Hafta içi Pazartesi–Cuma, hafta sonu Cumartesi–Pazar. Saatler Türkiye saatidir.",
     days: {
@@ -83,6 +84,11 @@ export const galaxy = {
       title: "Galaksilerarası Konvoy",
       summary: "Geçiş sırasında konvoya filo gönder; ateş gücüne göre dünyanın 4 saatlik üretimine kadar kaynak ve gemi kazanma şansı elde et.",
       note: "Konvoy karşılık vermez; filon kayıp vermez. Her dünya aynı geçişe bir kez akın edebilir.",
+    },
+    storm: {
+      title: "Asteryum Fırtınası",
+      summary: "Fırtına boyunca Yarık'ta Asteryum taşları belirir. Bir çıkış kapısından getirdiğin her taş Asteryum stokuna yazılır; günlük sınır onu durdurmaz.",
+      note: "Ölürsen ambarındaki Asteryum da saçılır. Asteryum Sentez Laboratuvarı'nda kapsüle dönüşür.",
     },
   },
   openResearch: "Araştırma",
@@ -597,7 +603,7 @@ export const focus = {
     boundaryUnknown:
       "Yalnızca hareketi görüyorsun. Araç türü, büyüklüğü, sahibi, çıkış ve varış yeri bu okumada yok.",
     telescopeHint:
-      "Bir dünyayı izlemek, filosunun evde olup olmadığını söyler. Haritadaki hareketi olası bir saldırı fırsatına bağlayan bilgi budur.",
+      "Bir dünyayı izlemek, filosunun evde olup olmadığını söyler. Galaksideki hareketi olası bir saldırı fırsatına bağlayan bilgi budur.",
     wreckHint:
       "Enkaz herkese açıktır. İki filodan geriye ne kalırsa birazdan orada olacak; isteyen gidip alır.",
   },

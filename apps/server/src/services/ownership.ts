@@ -21,6 +21,7 @@ import { armFaults } from './faults.js';
 import { prepareMonumentOriginChange, reanchorMonumentOrigin } from './monumentOwnership.js';
 import { observeHonorOwner } from './honorReference.js';
 import { stopUnknownSignalSchedule } from './unknownSignalSchedule.js';
+import { settleWorldMoonAsterium } from './synthesis.js';
 
 export interface CommanderWorld {
   playerId: string;
@@ -311,6 +312,8 @@ export async function transferPlanetControl(
   input: TransferControlInput,
 ): Promise<{ previousPlayerId: string | null; planetId: string }> {
   await prepareMonumentOriginChange(tx, input.targetPlanetId);
+  // The moon's Asteryum up to now is the old holder's; the captor's starts here (plan §3.3).
+  await settleWorldMoonAsterium(tx, input.targetPlanetId, input.now, { newHolder: true });
   const [pair] = await tx
     .select({
       planetSeason: planets.seasonId,

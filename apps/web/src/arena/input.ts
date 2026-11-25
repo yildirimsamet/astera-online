@@ -2,9 +2,14 @@ import { ARENA_TUNING, createInput, sampleInput, steeringGain, type ArenaIntent,
 
 /** Thumb travel to full deflection: longer travel means finer aim for the same turn. */
 export const STICK_RADIUS = 72;
-/** The drawn base ring's radius, and how far the knob moves inside it (knob radius 23). */
+/** The room the base ring keeps clear round itself (stickHome). */
 export const STICK_RING = 76;
-export const KNOB_TRAVEL = 52;
+/**
+ * How far the knob slides from the centre at full deflection: its whole disc stays inside the ring arena.css
+ * draws (owner 2026-11-25: "gereğinden fazla kayıyor"; 52 put its edge past the rim). The thumb's own reach
+ * (STICK_RADIUS) is untouched, so the steering feels the same.
+ */
+export const KNOB_TRAVEL = 40;
 
 export interface Rect { left: number; top: number; right: number; bottom: number }
 

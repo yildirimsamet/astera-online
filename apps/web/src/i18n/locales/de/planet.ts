@@ -172,6 +172,9 @@ export const planet = {
     growQuestion: "Baue hier deine Ressourcen und dein Gebäudelevel-Limit aus.",
     tacticalProblem: "Taktisch",
     tacticalQuestion: "Taktische Werkzeuge hier bauen und verwalten.",
+    bays: "Taktische Bereiche",
+    weaponsBay: "Waffen",
+    labBay: "Labor",
   },
 
 

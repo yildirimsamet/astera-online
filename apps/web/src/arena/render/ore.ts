@@ -12,6 +12,14 @@ import { FARM_HEX } from '../farmColors.js';
  * gone while it rests dry. One instanced draw per kind.
  */
 const VEINS_PER_ROCK = 6;
+/**
+ * VFX brief — the storm's Asteryum (owner 2026-11-25: "birazcık daha büyüt ve birazcık daha parlak yap, ama ok ile
+ * işaret etmeyelim"). In the world: a violet gem of one or two units floats free in the zone's middle, turning like
+ * every loose piece. Asset: this same crystal in Asteryum's lavender (FARM_HEX[3]); no marker, no halo. Why: the storm
+ * says only "the middle", so the stone must catch the eye there: drawn a little over a lone 12-unit field piece
+ * (8.4 m) whatever it holds (by its units it would be a 3 m speck), and its core a little brighter.
+ */
+const ASTERIUM = 3; const ASTERIUM_SIZE = 9.5; const ASTERIUM_GLOW = 1.35;
 const up = new THREE.Vector3(0, 1, 0);
 
 interface Vein { slot: number; position: THREE.Vector3; quaternion: THREE.Quaternion; scale: number }
@@ -94,7 +102,7 @@ export function createOre(scene: THREE.Scene, layout: ArenaLayout, drops: number
 
   const pose = new THREE.Object3D();
   const spin = new THREE.Quaternion(); const tilt = new THREE.Quaternion(); const axis = new THREE.Vector3();
-  const counts = [0, 0, 0];
+  const counts = FARM_HEX.map(() => 0);
 
   return {
     update(world: ArenaWorld, time: number): void {
@@ -114,7 +122,7 @@ export function createOre(scene: THREE.Scene, layout: ArenaLayout, drops: number
         if (!drop.active || drop.amount <= 0) return;
         const mesh = meshes[drop.kind]; if (!mesh) return;
         // A bigger piece is a bigger crystal; each turns slowly and bobs on its own phase.
-        const size = 2.4 + Math.min(drop.amount, T.dropChunk) * 0.5;
+        const size = drop.kind === ASTERIUM ? ASTERIUM_SIZE : 2.4 + Math.min(drop.amount, T.dropChunk) * 0.5;
         axis.set(Math.sin(i * 2.1), 1.6, Math.cos(i * 1.3)).normalize();
         tilt.setFromAxisAngle(axis.set(Math.cos(i), 0, Math.sin(i)), 0.5 + (i % 5) * 0.12);
         spin.setFromAxisAngle(up, time * 0.7 + i * 1.7);
@@ -127,7 +135,7 @@ export function createOre(scene: THREE.Scene, layout: ArenaLayout, drops: number
         mesh.count = counts[kind] ?? 0;
         mesh.instanceMatrix.needsUpdate = true;
         const material = mesh.material;
-        if (material instanceof THREE.MeshStandardMaterial) material.emissiveIntensity = 0.9 + 0.2 * Math.sin(time * 2.2 + kind * 2);
+        if (material instanceof THREE.MeshStandardMaterial) material.emissiveIntensity = (kind === ASTERIUM ? ASTERIUM_GLOW : 0.9) + 0.2 * Math.sin(time * 2.2 + kind * 2);
       });
     },
     dispose(): void {

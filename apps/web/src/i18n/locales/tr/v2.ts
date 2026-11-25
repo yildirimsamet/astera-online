@@ -212,7 +212,7 @@ export const baseSwitch = {
 
 /** E8 · K9: the research constellation. */
 export const researchMap = {
-  label: 'Araştırma haritası',
+  label: 'Araştırma takımyıldızı',
   /** The strategic three while their release switch is off: the server refuses them. */
   /** A prerequisite already held, said on the card. */
   needs: 'Önkoşul: {{name}}',

@@ -172,6 +172,9 @@ export const planet = {
     growQuestion: "資源生産と建物のレベル上限を伸ばします。",
     tacticalProblem: "戦術",
     tacticalQuestion: "ここで戦術ツールを構築および管理します。",
+    bays: "戦術ベイ",
+    weaponsBay: "兵器",
+    labBay: "研究所",
   },
 
 

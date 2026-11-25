@@ -67,6 +67,7 @@ export const galaxy = {
       ASTEROID_SHOWER: "Pluie d’Astéroïdes",
       TRADE_SHIP: "Vaisseau marchand",
       INTERGALACTIC_CONVOY: "Convoi Intergalactique",
+      ASTERIUM_STORM: "Tempête d’Asteryum",
     },
     dailyNote:
       "Semaine : lundi à vendredi. Week-end : samedi et dimanche. Les horaires sont indiqués à l’heure de Turquie.",
@@ -92,6 +93,11 @@ export const galaxy = {
       summary:
         "Envoie une flotte contre le convoi pendant son passage ; selon ta puissance de feu, tu peux gagner jusqu’à l’équivalent de 4 heures de production de ton monde ainsi qu’une chance d’obtenir des vaisseaux.",
       note: "Le convoi ne riposte pas ; ta flotte ne subit aucune perte. Chaque monde ne peut attaquer qu’une seule fois pendant le même passage.",
+    },
+    storm: {
+      title: "Tempête d’Asteryum",
+      summary: "Pendant la tempête, des pierres d’Asteryum apparaissent dans le Yarık. Chaque pierre sortie par une sortie rejoint ton stock d’Asteryum ; la limite quotidienne ne l’arrête pas.",
+      note: "Si tu meurs, l’Asteryum de ta soute se disperse aussi. Le laboratoire de synthèse transforme l’Asteryum en capsules.",
     },
   },
   openResearch: "Recherche",

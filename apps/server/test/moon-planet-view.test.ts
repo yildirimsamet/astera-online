@@ -79,6 +79,10 @@ describe('moon planetView & probe intel API (F9a)', () => {
     expect(view.moon!.dockFree).toBe(gateCapacity('RARE') - 9 * hullBulk('DART'));
     expect(view.moon!.scanRange).toBe(scanRange('RARE'));
     expect(view.moon!.scanPierces).toBe(false);
+    // Owner 2026-11-25: the moon's Asteryum is read on the moon: what it has paid, and where its next unit stands.
+    const { syncedAt, ...asterium } = view.moon!.asterium;
+    expect(typeof syncedAt).toBe('string');
+    expect(asterium).toEqual({ fraction: 0, produced: 0 });
     expect(view.moon!.moves).toHaveLength(1);
     expect(view.moon!.moves[0]!.kind).toBe('HOP_UP');
 

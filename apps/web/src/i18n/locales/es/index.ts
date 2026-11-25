@@ -30,6 +30,7 @@ import { clanWar } from './clanWar.js';
 import { clanSupport } from './clanSupport.js';
 import { community } from './community.js';
 import { trade } from './trade.js';
+import { synthesis } from './synthesis.js';
 import { academy } from './academy.js';
 import { convoy } from './convoy.js';
 import { starter } from './starter.js';
@@ -53,5 +54,5 @@ export const es: Resources = {
   focus, pirate, worlds, planet, faults, capacity, spend, rangeBand, flightBar, counter,
   itemSheet, upgradeRow, action, planetHero, launch, transfer, intel, reports, clarity, dossier,
   vocabulary, gains, directives, notifications, units, errors, onboarding, country, research, rewards,
-  skins, seasonRecap, chronicle, clan, clanWar, clanSupport, community, trade, convoy, starter, universe: {"open": "Ver el universo", "back": "Volver", "main": "Galaxia principal", "you": "Tú", "starter": "Inicio {{number}}", "ships_one": "{{count}} nave", "ships_other": "{{count}} naves"}, hold, lane, meter, roomBar, away, outline, ruler, handle, dock, now, bell, topBar, view, slot, fleetPage, reportScene, repairStation, baseSwitch, researchMap,
+  skins, seasonRecap, chronicle, clan, clanWar, clanSupport, community, trade, synthesis, convoy, starter, universe: {"open": "Ver el universo", "back": "Volver", "main": "Galaxia principal", "you": "Tú", "starter": "Inicio {{number}}", "ships_one": "{{count}} nave", "ships_other": "{{count}} naves"}, hold, lane, meter, roomBar, away, outline, ruler, handle, dock, now, bell, topBar, view, slot, fleetPage, reportScene, repairStation, baseSwitch, researchMap,
 };

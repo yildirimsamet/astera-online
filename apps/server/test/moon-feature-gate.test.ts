@@ -40,17 +40,17 @@ describe('the moon feature gate', () => {
 
   it('stays closed in a season dealt an older ruleset', async () => {
     await f.db.update(seasons).set({ rulesetVersion: MOON.rulesetVersion - 1 }).where(eq(seasons.id, f.seasonId));
-    expect(await featuresOf()).toEqual({ moons: false });
+    expect(await featuresOf()).toEqual({ moons: false, synthesis: false });
   });
 
   it('opens in a MAIN galaxy dealt the moon ruleset', async () => {
     await f.db.update(seasons).set({ rulesetVersion: MOON.rulesetVersion }).where(eq(seasons.id, f.seasonId));
-    expect(await featuresOf()).toEqual({ moons: true });
+    expect(await featuresOf()).toEqual({ moons: true, synthesis: false });
   });
 
   it('stays closed in Silent Space even on the moon ruleset', async () => {
     await f.db.update(seasons).set({ rulesetVersion: MOON.rulesetVersion }).where(eq(seasons.id, f.seasonId));
     await f.db.update(shards).set({ role: 'WAITING' });
-    expect(await featuresOf()).toEqual({ moons: false });
+    expect(await featuresOf()).toEqual({ moons: false, synthesis: false });
   });
 });

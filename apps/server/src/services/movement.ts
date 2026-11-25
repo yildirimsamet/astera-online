@@ -31,6 +31,7 @@ import {
   type NeutralTier,
   type Resources,
   type TransferReturnPlan,
+  type CapsuleId,
   type WorldBody,
   normalizeHpDamage,
 } from '@astera/rules';
@@ -78,6 +79,7 @@ import { assertNoArrivalPending, readHomeHealth, selectHomeDispatch, takeHomeHea
 import { assertMoonTarget } from './moon.js';
 import { assertMoonShipsFree, landOnMoon, landingBodyOf, moonDockRoom } from './moonMovement.js';
 import { withdrawRaidWarning } from './notifications.js';
+import { assertMissionCapsules, consumeCapsulesForMission } from './synthesis.js';
 
 const EMPTY: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
 
@@ -243,8 +245,11 @@ export async function launchTransfer(
   /** Ay S50: a transfer may land on the target world's moon; S34: it may leave from the origin's. */
   targetBody: WorldBody = 'PLANET',
   originBody: WorldBody = 'PLANET',
+  /** Sentez capsules: Optik Örtü may hide a transfer; Sessiz İtki has nothing to silence (plan §3.5). */
+  capsules: readonly CapsuleId[] = [],
 ) {
   validateTransferFleet(fleet);
+  assertMissionCapsules('transfer', capsules);
   if ((fleet.PROSPECTOR ?? 0) > 0) {
     throw new GameError(
       'PROSPECTOR_TRANSFER_FORBIDDEN',
@@ -402,11 +407,15 @@ export async function launchTransfer(
       ],
     });
     assertSeasonOpenThrough(origin, homeAt);
+    const applied = await consumeCapsulesForMission(tx, {
+      playerId: origin.playerId, seasonId: origin.seasonId, kind: 'transfer', fleet, capsules, now: origin.now,
+    });
     const [mission] = await tx.insert(missions).values({
       ...dispatchProvenance(origin.now, origin.playerId, origin.seasonId),
       fuelPaid: fuel,
       seasonId: origin.seasonId,
       kind: 'transfer',
+      appliedCapsules: applied,
       ownerPlayerId,
       originPlanetId,
       targetPlanetId,
@@ -469,7 +478,10 @@ export async function launchSettlement(
   originPlanetId: string,
   targetPlanetId: string,
   clock: Clock,
+  /** Optik Örtü may hide the settlers; Sessiz İtki has nothing to silence (plan §3.5). */
+  capsules: readonly CapsuleId[] = [],
 ) {
+  assertMissionCapsules('settlement', capsules);
   return db.transaction(async (tx) => {
     const capital = await capitalPlanet(tx, ownerPlayerId);
     await lockWorlds(tx, [capital.id, originPlanetId, targetPlanetId]);
@@ -538,7 +550,11 @@ export async function launchSettlement(
       });
     }
     assertSeasonOpenThrough(origin, arriveAt);
+    const applied = await consumeCapsulesForMission(tx, {
+      playerId: ownerPlayerId, seasonId: origin.seasonId, kind: 'settlement', fleet, capsules, now: origin.now,
+    });
     const [mission] = await tx.insert(missions).values({
+      appliedCapsules: applied,
       ...dispatchProvenance(origin.now, origin.playerId, origin.seasonId),
       fuelPaid: fuel,
       seasonId: origin.seasonId,

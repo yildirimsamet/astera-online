@@ -357,6 +357,9 @@ export const leaderboard = {
     value: "損害と損失は固定の建造費の重みで評価します：合金1＋クリスタル2＋重水素32。再建された地上防衛は損害に含みません。",
   },
   honorTarget: {
+    more: "Honorのルール",
+    fold: "{{kind}}・{{value}}",
+    short: { FULL: "満額評価", HALF: "半分の評価", NONE: "評価なし", RELATED: "Honorは得られない" },
     loading: "Honorの比較を読み込み中…",
     unavailable: "Honorの比較を取得できません。",
     retry: "Honorの比較を再試行",

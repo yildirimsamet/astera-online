@@ -24,13 +24,15 @@ import {
   type Vec3,
   type TransferReturnPlan,
 } from '@astera/rules';
-import { useGalaxy, useTransfer } from '../api/queries.js';
+import { useCapsuleStock, useGalaxy, useTransfer } from '../api/queries.js';
 import { useMoonT } from '../i18n/moon.js';
 import { OriginBodyPicker, TargetBodyPicker } from './MoonControls.js';
 import {
   lethalAfterRefusal, radiationRefusalCount, routeRadiation, transferHpRadiation, toHpRadiationSources, toRadiationSources, type RadiationRefusal,
 } from '../lib/radiation.js';
-import type { PlanetView } from '../api/schemas.js';
+import type { CapsuleIdView, PlanetView } from '../api/schemas.js';
+import { CapsuleRow } from '../ui/CapsuleRow.js';
+import { capsuleChoices } from '../lib/synthesis.js';
 import { hullName } from '../i18n/names.js';
 import { compact, full } from '../lib/format.js';
 import { clockTime, duration, useNow } from '../lib/time.js';
@@ -180,6 +182,11 @@ export function TransferSheet({
   const now = useNow(cooldownUntil === null ? 60_000 : 1_000);
   const cooling = cooldownUntil !== null && cooldownUntil.getTime() > now;
   const [fleet, setFleet] = useState<Fleet>({});
+  // Sentez capsules (plan 2026-11-24 §3.5): a transfer may wear Optik Örtü alone.
+  const capsuleStock = useCapsuleStock();
+  const [capsules, setCapsules] = useState<CapsuleIdView[]>([]);
+  const wearing = capsuleStock ? capsuleChoices('transfer', fleet, capsuleStock)
+    .filter((one) => one.enough && capsules.includes(one.id)).map((one) => one.id) : [];
   const [cargo, setCargo] = useState({ alloy: 0, crystal: 0, deuterium: 0 });
   const [cargoAdjustment, setCargoAdjustment] = useState<{ before: number; after: number } | null>(null);
   const [returnPlan, setReturnPlan] = useState<TransferReturnPlan>(readTransferReturnPlan);
@@ -376,6 +383,7 @@ export function TransferSheet({
                 ...(activeOriginBody === 'MOON' ? { originBody: 'MOON' as const } : {}),
                 ...(effectiveTargetBody === 'MOON' ? { targetBody: 'MOON' as const } : {}),
                 ...(radiation !== null && radiation.destroyed > 0 ? { acknowledgeRadiation: true } : {}),
+                ...(wearing.length > 0 ? { capsules: wearing } : {}),
               }, {
                 onSuccess: () => {
                   say(t('transfer.launched', { duration: duration(eta) }));
@@ -473,6 +481,8 @@ export function TransferSheet({
             })}
           </div>
         </section>
+
+        {capsuleStock && <CapsuleRow kind="transfer" fleet={fleet} held={capsuleStock} chosen={capsules} onChange={setCapsules} />}
 
         <section className="gk-launch__fleet" data-transfer-return-plan>
           <SectionTag as="h3">{t('transfer.afterDelivery')}</SectionTag>

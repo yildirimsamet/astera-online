@@ -19,7 +19,7 @@ export async function placeStageMoon(db: Db, planetId: string, rarity: MoonRarit
     const [world] = await tx.select({ seasonId: planets.seasonId }).from(planets).where(eq(planets.id, planetId));
     if (!world) throw new GameError('PLANET_NOT_FOUND', 'No such world', 404);
     const written = await tx.insert(moons).values({
-      planetId, rarity, origin: 'BATTLE', visualSeed: hashSeed('moon-visual', planetId) % 2_147_483_647, bornAt: clock.now(),
+      planetId, rarity, origin: 'BATTLE', visualSeed: hashSeed('moon-visual', planetId) % 2_147_483_647, bornAt: clock.now(), asteriumSyncedAt: clock.now(),
     }).onConflictDoNothing({ target: moons.planetId }).returning({ planetId: moons.planetId });
     if (written.length === 0) throw new GameError('MOON_EXISTS', 'This world already has a moon', 409);
     await publishShard(tx, world.seasonId, 'moons');

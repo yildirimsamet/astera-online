@@ -52,6 +52,7 @@ import {
   vaultProtects,
   type Fleet,
   type Resources,
+  missionSuppressesRadarWarning,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import { attributeLegacyColonyLoss, recordPlayerLegacyFact, settleLegacyAttack } from '../services/legacyEvents.js';
@@ -102,6 +103,7 @@ import {
   strategicAssets,
   strategicImpacts,
   strategicInterceptions,
+  synthesisJobs,
   type SeasonStatsSnapshot,
 } from '../db/schema.js';
 import {
@@ -245,6 +247,7 @@ import { moonsOf } from '../services/moon.js';
 import { readHomeHealth, writeHomeHealth } from '../services/homeHealth.js';
 import { settleEmptyMoon } from '../services/moonBattle.js';
 import { settleMoonBirth } from '../services/moonBirth.js';
+import { settleSynthesisJob } from '../services/synthesis.js';
 
 export interface HandlerContext {
   db: Db;
@@ -1348,6 +1351,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     const [reportRow] = await tx.insert(battleReports).values({
       seasonId: mission.seasonId,
       missionId,
+      appliedCapsules: mission.appliedCapsules,
       attackerPlayerId: mission.ownerPlayerId,
       defenderPlayerId: defender.playerId,
       targetPlanetId: defender.planetId,
@@ -1956,6 +1960,19 @@ async function settleReturn(
  * warning instant uses the exact visual leg, including surface departure and
  * orbital arrival, because that is the only way the drawn shell and alert agree.
  */
+/**
+ * A SENTEZ BATCH'S LAST CAPSULE IS DUE (plan 2026-11-24 §3.4). The event names the batch, not the
+ * commander, so a cancelled batch's event finds nothing and a later batch is left alone.
+ */
+export const onSynthesisComplete: Handler = async ({ db, clock }, event) => {
+  const jobId = event.refId;
+  if (!jobId) throw new Error('synthesis_complete without refId');
+  await db.transaction(async (tx) => {
+    const [job] = await tx.select({ playerId: synthesisJobs.playerId }).from(synthesisJobs).where(eq(synthesisJobs.id, jobId));
+    if (job) await settleSynthesisJob(tx, job.playerId, clock.now(), jobId);
+  });
+};
+
 export const onRadarWarning: Handler = async ({ db, clock }, event) => {
   const missionId = event.refId;
   if (!missionId) throw new Error('radar_warning without refId');
@@ -1965,6 +1982,8 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
     if (!mission) { await warnRadiationBombById(tx, missionId, clock.now()); return; }
     // Nothing to warn about if it already landed or was somehow cancelled.
     if (mission.status !== 'in_flight') return;
+    // Sessiz İtki: no warning, clan alarm or paid alert, even from a stray event (plan 2026-11-24 §3.5).
+    if (missionSuppressesRadarWarning(mission.appliedCapsules)) return;
     const [joint] = mission.kind === 'clan_war'
       ? await tx
           .select({ leg: clanWarMissions.leg, clanTag: clanWarOperations.clanTag })
@@ -3319,6 +3338,7 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   mission_arrival: onMissionArrival,
   radar_warning: onRadarWarning,
   newcomer_hour: ({ db, clock }, event) => resolveNewcomerHour(db, clock, event),
+  synthesis_complete: onSynthesisComplete,
   paid_alert: async ({ db, clock }, event) => {
     if (!event.refId) throw new Error('paid_alert without refId');
     await settlePaidAlert(db, clock, event.refId);

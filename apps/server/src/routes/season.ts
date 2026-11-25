@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, exists, gte, inArray, isNotNull, lt, ne, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { honorSoloCredit, isSupportedHonorVersion, moonsEnabled, RIVAL, SERVERS, seasonRankRewardProgram } from '@astera/rules';
+import { honorSoloCredit, isSupportedHonorVersion, moonsEnabled, synthesisEnabled, RIVAL, SERVERS, seasonRankRewardProgram } from '@astera/rules';
 import {
   accounts,
   botProfiles,
@@ -493,7 +493,7 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
       playerCap: row.shard.playerCap,
       rulesetVersion: row.season.rulesetVersion,
       /** What this galaxy's season opens; every moon surface on the client hangs off `moons` (ay planı §6.2). */
-      features: { moons: moonsEnabled(row.season, row.shard) },
+      features: { moons: moonsEnabled(row.season, row.shard), synthesis: synthesisEnabled(row.season, row.shard) },
       players: count?.n ?? 0,
       online: active?.n ?? 0,
       onlineToday: seenToday?.n ?? 0,

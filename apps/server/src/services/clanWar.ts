@@ -58,6 +58,8 @@ import {
   type HpRadiationSource,
   type Segment,
   type Vec3,
+  missionSuppressesRadarWarning,
+  type CapsuleId,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import { commitGameError } from './idempotency.js';
@@ -155,6 +157,7 @@ import { resolveMonumentReturn, settleMonumentFlight } from './monumentMovement.
 import { lockWorlds } from './ownership.js';
 import { scheduleFlightBoundary } from './monumentBoundaries.js';
 import { assertSeasonOutsideSilentSpace, markProgress } from './waitingRoom.js';
+import { assertMissionCapsules, consumeCapsulesForMission } from './synthesis.js';
 
 /**
  * KLAN ORTAK SAVAŞI — the operation. Owner design, 2026-09-20.
@@ -2527,11 +2530,14 @@ export async function startClanWar(
     adminUsernames?: readonly string[];
     /** The combined leg's pace, one of `MISSION_PACES`. Full speed when absent. */
     pace?: number;
+    /** Sentez capsules for the whole combined fleet, paid by the leader alone (owner, 2026-11-25). */
+    capsules?: readonly CapsuleId[];
     clock: Clock;
   },
 ): Promise<ClanWarStartResult> {
   const now = input.clock.now();
   const chosenPace = input.pace ?? 1;
+  assertMissionCapsules('clan_war', input.capsules ?? []);
   if (!isMissionPace(chosenPace)) {
     throw new GameError('BAD_PACE', 'that is not a flight speed this fleet can be set to', 400);
   }
@@ -2769,11 +2775,15 @@ export async function startClanWar(
       flightSegment(target, destination, resolveAt, addMinutes(resolveAt, back))], hpSources);
   }
 
+  const applied = await consumeCapsulesForMission(tx, {
+    playerId: input.actor.playerId, seasonId: operation.seasonId, kind: 'clan_war', fleet: combined, capsules: input.capsules ?? [], now,
+  });
   const [mission] = await tx.insert(missions).values({
     // Each contributor paid on their own row; see `clan_war_contributions.fuelPaid`.
     fuelPaid: 0,
     seasonId: operation.seasonId,
     kind: 'clan_war',
+    appliedCapsules: applied,
     /*
       THE COORDINATOR IS THE TECHNICAL OWNER OF THE ROW AND NOTHING MORE.
 
@@ -2836,12 +2846,15 @@ export async function startClanWar(
     targetCoreLevel: await coreLevelOf(tx, target.id),
     oneWayMinutes: oneWay,
   }));
-  await schedule(tx, {
-    seasonId: operation.seasonId,
-    kind: 'radar_warning',
-    refId: mission.id,
-    resolveAt: warnAt > now ? warnAt : now,
-  });
+  // Sessiz İtki: the combined strike books no warning at all (plan §3.5).
+  if (!missionSuppressesRadarWarning(applied)) {
+    await schedule(tx, {
+      seasonId: operation.seasonId,
+      kind: 'radar_warning',
+      refId: mission.id,
+      resolveAt: warnAt > now ? warnAt : now,
+    });
+  }
 
   await publishShard(tx, operation.seasonId, 'launch');
   await publishWar(tx, clan.id);

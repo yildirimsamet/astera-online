@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  ARENA_TUNING as T, RING_DISTANCE, aimCone, alive, sameSide, circleAim, createFlightState, holdPoints, leadPoint, lockShare, MAX_REMOTE_PILOTS, mirrorPose, pilotInSight, pilotVisible, scanTargets, shipTuning, spreadAt, statsOf, stepSandboxWorld,
+  ARENA_TUNING as T, RING_DISTANCE, aimCone, alive, sameSide, circleAim, createFlightState, leadPoint, lockShare, MAX_REMOTE_PILOTS, mirrorPose, pilotInSight, pilotVisible, scanTargets, shipTuning, spreadAt, statsOf, stepSandboxWorld,
   type AimCone, type ArenaWorld, type FlightState, type Pilot, type ShipClass, type SteeringSettings, type Vec3,
 } from '@astera/rules/arena';
 import type { ArenaAssets, PreparedModel } from './assets/load.js';
@@ -411,9 +411,6 @@ export function createArenaClient(options: ClientOptions) {
         hud.exit.style.setProperty('--angle', `${e.angle.toFixed(3)}rad`);
         if (seen.drawn % 6 === 0) {
           const label = hud.exit.querySelector('[data-distance]'); if (label) label.textContent = `${String(Math.round(bestDistance))} m`;
-          // What is riding on reaching it: the hold's score, once there is one.
-          const points = holdPoints(pilot.hold); const stake = hud.exit.querySelector('[data-points]');
-          if (stake) stake.textContent = points > 0 ? ` · ${String(points)} ${arenaCopy().pointsShort}` : '';
         }
       } else hud.exit.style.display = 'none';
     }

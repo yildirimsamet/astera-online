@@ -122,7 +122,7 @@ export const signals = {
   emptyBody:
     "Yaklaşan filo uyarıları, yakalanan sondalar ve dönen gemiler burada görünür.",
   /** The round press at a row's end that flies to whoever the news names (G1-e). */
-  showOnMap: "Haritada göster: {{name}}",
+  showOnMap: "Galakside göster: {{name}}",
   repeat: '×{{count}}',
 
   status: {
@@ -294,6 +294,9 @@ export const leaderboard = {
     value: "Hasar ve kayıp değeri sabit yapım maliyeti ağırlıklarıyla ölçülür: 1 alaşım + 2 kristal + 32 döteryum. Yeniden kurulan yer savunması hasara dahil değildir.",
   },
   honorTarget: {
+    more: "Honor kuralları",
+    fold: "{{kind}} · {{value}}",
+    short: { FULL: "tam karşılık", HALF: "yarım karşılık", NONE: "karşılık yok", RELATED: "Honor kazandırmaz" },
     loading: "Honor karşılaştırması yükleniyor…",
     unavailable: "Honor karşılaştırması şu anda alınamıyor.",
     retry: "Honor karşılaştırmasını tekrar dene",

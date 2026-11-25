@@ -553,9 +553,9 @@ export function TimerRow({ tone, glyph, remaining, total, title, detail, time, a
     : <button type="button" {...OWN_SOUND} className="gk-trow" data-tone={tone} onPointerDown={own.onPointerDown} onClick={own.onClick}>{body}</button>;
 }
 
-interface Cost { alloy: number; crystal: number; deuterium?: number }
+interface Cost { alloy: number; crystal: number; deuterium?: number; asterium?: number }
 
-const COST_PARTS = ['alloy', 'crystal', 'deuterium'] as const;
+const COST_PARTS = ['alloy', 'crystal', 'deuterium', 'asterium'] as const;
 
 /**
  * WHAT A THING COSTS, in one line: each resource as its picture and a short figure. What

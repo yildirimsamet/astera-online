@@ -25,6 +25,7 @@ import { activateMonumentRadiation } from '../services/monumentRadiationAdoption
 import { activateRadiationBombs } from '../services/radiationBombAdoption.js';
 import { activateAdmiral } from '../services/admiralActivation.js';
 import { activateMoons } from '../services/moonActivation.js';
+import { activateSynthesis } from '../services/synthesisActivation.js';
 import { activateTempoSlowdown } from '../services/tempoAdoption.js';
 import { activateHonorShadow, hideHonorRanking, openHonorRanking, refreshHonorEligibility } from '../services/honorActivation.js';
 import { enableHonorBenefits } from '../services/honorBenefits.js';
@@ -126,6 +127,12 @@ season activate-moons --shard CODE [--yes]
                                    from now on: colonies get T1 Common / T2 Rare / T3 Epic,
                                    capitals none, unowned neutrals the seeded plan. The ruleset
                                    stays. Dry run (prints the counts) unless --yes; safe to rerun.
+
+season activate-synthesis --shard CODE [--yes]
+                                   open Asteryum and the Sentez Laboratuvarı in a LIVE MAIN
+                                   season dealt before ruleset 21, from now on: moons make
+                                   Asteryum from this instant and the daily Asteryum Fırtınası
+                                   joins the calendar. Dry run unless --yes; safe to rerun.
 
 season activate-radiation-bombs --shard CODE [--yes]
                                    enable bombs, parked-ship exposure and the 50 HP/min cap
@@ -402,6 +409,16 @@ async function main(): Promise<void> {
         console.log(`colonies: ${counts(result.colonies)}`);
         console.log(`unowned neutrals: ${counts(result.neutrals)}`);
         console.log(result.applied ? 'Opened moons. The season ruleset and everything earned were preserved.'
+          : result.status === 'READY' ? 'Nothing was written; pass --yes to apply.' : 'Nothing was written.');
+        break;
+      }
+      case 'activate-synthesis': {
+        if (!values.shard) throw new Error('activate-synthesis requires an explicit --shard CODE');
+        const live = await liveSeason(db, values.shard);
+        if (!live) throw new Error(`no live season on ${values.shard}`);
+        const result = await activateSynthesis(db, { seasonId: live.season.id, clock: systemClock, apply: values.yes === true });
+        console.log(`${values.shard}: ${result.status}; start=${result.startsAt.toISOString()}; moons=${String(result.moons)}; storms=${String(result.storms)}`);
+        console.log(result.applied ? 'Opened Asteryum and the Sentez Laboratuvarı. Moons make Asteryum from now; nothing was minted for the past.'
           : result.status === 'READY' ? 'Nothing was written; pass --yes to apply.' : 'Nothing was written.');
         break;
       }

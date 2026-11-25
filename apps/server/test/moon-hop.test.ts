@@ -89,6 +89,19 @@ describe('the planet ↔ moon hop', () => {
     expect(await f.db.select().from(moonMoves)).toEqual([]);
   });
 
+  // Owner 2026-11-26: "EMP etkisinde olan ay'ın kapısı kapalı kalmalı … o ay'ın bağlı olduğu gezegenden filo
+  // yollanılamamalı". A struck moon takes no fleet up from its planet; the way down, off it, stays open.
+  it('takes no fleet up to a moon a Death Star has shut, and lets its ships come down', async () => {
+    await hopFleet(f.db, owner, world, 'UP', { DART: 4 }, f.clock);
+    await land();
+    const until = new Date(f.clock.now().getTime() + 3 * 3_600_000);
+    await f.db.update(moons).set({ closedUntil: until }).where(eq(moons.planetId, world));
+    await expect(hopFleet(f.db, owner, world, 'UP', { DART: 1 }, f.clock)).rejects.toMatchObject({ code: 'MOON_CLOSED' });
+    await hopFleet(f.db, owner, world, 'DOWN', { DART: 2 }, f.clock);
+    f.clock.set(until);
+    await hopFleet(f.db, owner, world, 'UP', { DART: 1 }, f.clock);
+  });
+
   it('allows one hop each way at a time (V3)', async () => {
     await hopFleet(f.db, owner, world, 'UP', { DART: 1 }, f.clock);
     await expect(hopFleet(f.db, owner, world, 'UP', { DART: 1 }, f.clock)).rejects.toMatchObject({ code: 'HOP_PENDING' });

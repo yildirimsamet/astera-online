@@ -72,6 +72,8 @@ describe('the additive convoy schema', () => {
   it('appends every enum value without moving existing values', () => {
     expect(galaxyEventOccurrenceKind.enumValues).toEqual([
       'ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY',
+      // Asteryum Fırtınası (plan 2026-11-24 §3.2), appended after the convoy.
+      'ASTERIUM_STORM',
     ]);
     // Later migrations append more kinds; the convoy values must keep their
     // original relative positions inside the PostgreSQL enum.

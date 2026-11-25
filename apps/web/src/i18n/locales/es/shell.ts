@@ -356,6 +356,9 @@ export const leaderboard = {
     value: "Daños y pérdidas usan costes de construcción ponderados fijos: 1 aleación + 2 cristal + 32 deuterio. Las defensas terrestres reconstruidas no cuentan como daño.",
   },
   honorTarget: {
+    more: "Reglas de Honor",
+    fold: "{{kind}} · {{value}}",
+    short: { FULL: "rendimiento completo", HALF: "medio rendimiento", NONE: "sin rendimiento", RELATED: "no da Honor" },
     loading: "Cargando la comparación de Honor…",
     unavailable: "La comparación de Honor no está disponible.",
     retry: "Reintentar comparación de Honor",

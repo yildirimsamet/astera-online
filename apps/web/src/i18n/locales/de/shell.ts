@@ -356,6 +356,9 @@ export const leaderboard = {
     value: "Schaden und Verluste nutzen feste Baukostengewichte: 1 Legierung + 2 Kristall + 32 Deuterium. Wiederaufgebaute Bodenabwehr zählt nicht als Schaden.",
   },
   honorTarget: {
+    more: "Honor-Regeln",
+    fold: "{{kind}} · {{value}}",
+    short: { FULL: "volle Wertung", HALF: "halbe Wertung", NONE: "keine Wertung", RELATED: "bringt kein Honor" },
     loading: "Honor-Vergleich wird geladen…",
     unavailable: "Der Honor-Vergleich ist nicht verfügbar.",
     retry: "Honor-Vergleich erneut laden",

@@ -30,6 +30,7 @@ import { clanWar } from './clanWar.js';
 import { clanSupport } from './clanSupport.js';
 import { community } from './community.js';
 import { trade } from './trade.js';
+import { synthesis } from './synthesis.js';
 import { academy } from './academy.js';
 import { convoy } from './convoy.js';
 import { starter } from './starter.js';
@@ -105,6 +106,7 @@ export const fr: Resources = {
   clanSupport,
   community,
   trade,
+  synthesis,
   convoy,
   starter, universe: {"open": "Voir l'univers", "back": "Retour", "main": "Galaxie principale", "you": "Toi", "starter": "Départ {{number}}", "ships_one": "{{count}} vaisseau", "ships_other": "{{count}} vaisseaux"},
   hold,

@@ -268,7 +268,7 @@ export const errors = {
   PROSPECTOR_CAP: 'En fazla {{max}} Kazıcı tutabilirsin, elinde {{have}} tane var.',
   PVP_LOCKED: 'Bu geminin bu galaksideki savaş süresi doldu; artık gemilere saldıramaz. Savaşa ana galakside devam et.',
   PVP_PROTECTED: 'O gemi şimdilik koruma altında. Başka bir hedef seç ya da sonra yeniden dene.',
-  TARGET_GONE: 'O gemi artık orada değil. Haritadan başka bir hedef seç.',
+  TARGET_GONE: 'O gemi artık orada değil. Galaksiden başka bir hedef seç.',
   RAID_CAP: 'O gemi son 24 saatte yeterince yağmalandı. Başka bir hedef seç ya da sonra yeniden dene.',
   PROSPECTOR_CAP_atLimit: 'Elinde zaten {{max}} Kazıcı var; sınır bu.',
   GROUND_SLOTS_FULL: 'Yer savunması dolu: {{capacity}} yerin {{used}} kadarı kullanımda; bu sipariş {{needed}} yer istiyor.',

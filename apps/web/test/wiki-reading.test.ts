@@ -173,7 +173,7 @@ describe('Wiki values a new player can interpret', () => {
     for (const language of ['en', 'tr'] as const) {
       const table = subjectReference({ kind: 'instrument', id: 'TELESCOPE' }, language).blocks.find(b => b.kind === 'table');
       if (table?.kind !== 'table') throw new Error('Missing Telescope table');
-      const labels = language === 'en' ? ['Contact range (map units)', 'Watch range (map units)'] : ['Tanımlama menzili (harita birimi)', 'Gözlem menzili (harita birimi)'];
+      const labels = language === 'en' ? ['Contact range (map units)', 'Watch range (map units)'] : ['Tanımlama menzili (birim)', 'Gözlem menzili (birim)'];
       for (const [i, rule] of [telescopeRange, telescopeWatchRange].entries()) {
         const column = table.columns.indexOf(labels[i]!);
         expect(column).toBeGreaterThanOrEqual(0);
@@ -199,7 +199,7 @@ describe('Wiki values a new player can interpret', () => {
       const stats = subjectReference({ kind: 'hull', id: 'DART' }, language).blocks.find(b => b.kind === 'stats');
       if (stats?.kind !== 'stats') throw new Error('Missing speed');
       const speed = stats.items.find(s => s.key === 'speed');
-      expect(speed?.label).toBe(language === 'en' ? 'Speed (map units/min)' : 'Hız (harita birimi/dakika)');
+      expect(speed?.label).toBe(language === 'en' ? 'Speed (map units/min)' : 'Hız (birim/dakika)');
       expect(speed?.value).toBe(number(HULLS.DART.speed / TRAVEL.distanceFactor, language));
     }
   });
@@ -261,5 +261,31 @@ describe('Wiki on the colony ship', () => {
   it('quotes Lunar Capture’s set research time', () => {
     const text = JSON.stringify(subjectReference({ kind: 'research', id: 'LUNAR_CAPTURE' }, 'en').blocks);
     expect(text).toContain(`${number(240, 'en')} min`);
+  });
+});
+
+/* G18 (owner 2026-11-25): Asteryum and the Synthesis Lab sit beside the moons in the Wiki, with the rules' own numbers. */
+describe('the Asteryum page', () => {
+  it('states where Asteryum comes from, the lab, the capsule price per bulk and both effects, in both editions', async () => {
+    const { SYNTHESIS, CAPSULE_CATALOG } = await import('@astera/rules');
+    const article = getWikiArticle('galaxy.asterium');
+    expect(article).toBeDefined();
+    for (const language of ['en', 'tr'] as const) {
+      const text = JSON.stringify(article?.sections[language]);
+      expect(text).toContain(String(SYNTHESIS.requiredCore));
+      expect(text).toContain(String(SYNTHESIS.bulkPerCapsule));
+      expect(text).toContain(String(SYNTHESIS.maxBatch));
+      expect(text).toContain(String(CAPSULE_CATALOG.OPTIC_VEIL.craftMinutes));
+      expect(text).toContain(String(CAPSULE_CATALOG.SILENT_THRUST.craftMinutes));
+      expect(text).toContain('21:00');
+      // Owner 2026-11-25 halved the moon rates; a half unit is written each language's way.
+      expect(text).toMatch(language === 'en' ? /Rare 1\.5/u : /Nadir 1,5/u);
+      expect(text).toMatch(language === 'en' ? /Optic Veil/u : /Optik Örtü/u);
+      expect(text).toMatch(language === 'en' ? /Silent Thrust/u : /Sessiz İtki/u);
+      // Owner 2026-11-25: the galaxy is never called a map, and the veil's reader learns the target's Radar still warns.
+      if (language === 'tr') expect(text).not.toMatch(/harita/iu);
+      expect(text).toMatch(language === 'en' ? /target's Radar still raises the attack warning/u : /hedefin Radar'ı saldırı uyarısını yine verir/u);
+      expect(text).not.toMatch(/\bbots?\b/iu);
+    }
   });
 });

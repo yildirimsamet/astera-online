@@ -68,6 +68,7 @@ import {
   isBully, planPirateRaid, planWorldRaid, researchOf, type ForecastBudget, type WallReading,
 } from './judgement.js';
 import { tendBotMoon } from './moon.js';
+import { raidCapsules, tendBotSynthesis } from './synthesis.js';
 
 /**
  * WHAT ONE OF THEM DOES WHEN IT PICKS UP THE PHONE. D159.
@@ -173,6 +174,9 @@ export async function runBotTurn(
   }
   view = await tendNotificationCenter(db, clock, seat, persona, view, did, log);
   view = await tendBotMoon(db, clock, seat, persona, view, did, log, rng);
+  // Its own seeded stream, so the laboratory never shifts the rolls the rest of the turn was tuned on.
+  if (await tendBotSynthesis(db, clock, seat.playerId, persona.synthesis,
+    mulberry32(hashSeed('astera:bots:lab', seat.playerId, clock.now().getTime())))) did.push('synthesis');
   await commitOneFlight(db, clock, seat, persona, view, did, log, rng);
 
   return { did };
@@ -1070,8 +1074,11 @@ async function sendRaid(
     }, budget);
     if (!plan) continue;
       // Never acknowledging a shield drop: a bot waits its first day out (2026-09-19).
+    const capsules = await raidCapsules(db, seat.playerId, plan.wing, persona.synthesis,
+      mulberry32(hashSeed('astera:bots:capsule', seat.playerId, now.getTime())));
     return attempt(did, 'attack', log, () =>
-      launchAttack(db, seat.planetId, pick.planetId, plan.wing, clock, seat.playerId));
+      launchAttack(db, seat.planetId, pick.planetId, plan.wing, clock, seat.playerId,
+        false, undefined, false, undefined, false, 'PLANET', 'PLANET', capsules));
   }
   return false;
 }

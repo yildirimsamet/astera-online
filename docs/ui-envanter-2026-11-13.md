@@ -265,6 +265,8 @@ Kite eklenenler (galeri: `ui-kit` "Üst bar" bölümü): `Medallion`, `RoundButt
 
 Günlük görev tuşu (owner 2026-11-24): `hud-daily`, masa takvimi, 160 px webp. Antigravity (`agy`, `generate_image`) ile, mevcut `hud-*` ve `menu-*` simgeleri referans verilerek üretildi (üç aday: tablet, kadran, takvim; takvim seçildi). Araç şeffaf PNG vermediği için magenta fonda üretilip fon anahtarlanarak temizlendi (kenar sızıntısı giderildi). Tuş, galaksinin sağ üst araç kümesinde hediyenin yanında durur.
 
+Sentez Laboratuvarı (owner 2026-11-25, plan G14): `images/lab/synthesis_lab.webp` (bina, 520 px), `ui/icons/capsule-veil.webp` (Optik Örtü: içinde eriyen hayalet gemi olan iksir balonu), `ui/icons/capsule-silent.webp` (Sessiz İtki: sönük egzozlu kapsül şişesi), `ui/icons/asterium.webp` (ham Asteryum kristali), 160 px webp. Antigravity (`agy`, `generate_image`) ile; referans olarak `hud-*`/`menu-*` simgeleri ve Araştırma Laboratuvarı resmi verildi, iksir fikri için Wenrexa potions (CC0, kütüphane) yalnız biçim örneği. Sekiz aday üretildi (her biri için iki); seçimler silüet farkı ve hikâye anlatımına göre yapıldı. Magenta fon anahtarlandı, sızıntı yalnız kenar şeridinde temizlendi (lavanta renk korunur).
+
 Palet: owner 2026-11-14'te üç temayı karşılaştırdı ve Gözlemevi lacivertini seçti (grafit solgun kalıyordu). Kitin bütün metal, cam ve çelik token'ları `tokens.css`'te bu lacivertle yeniden yazıldı; koruyucu test mavi tonu ve v2 zeminine eşitliği arar.
 
 Yerel oyunda 350 px'te (tr, ja) denendi: madalyon menüyü açıyor; zil "Neler oldu" sheet'ini açıyor; kalkan ve hediye solda, Mağaza sağda; sohbet ve zil bağlam kartının üstünde.

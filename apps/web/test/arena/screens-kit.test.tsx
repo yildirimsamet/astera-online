@@ -69,7 +69,8 @@ describe('the result of a practice flight on the kit', () => {
     const card = view.container.querySelector('.gk-arenacard')!;
     expect(card).toHaveAttribute('data-tone', 'hostile');
     expect(oldPaint(card)).toEqual([]);
-    expect(card.querySelectorAll('dl.gk-figures .gk-figure')).toHaveLength(3);
+    // Hits and kills; the points figure went with the score (owner 2026-11-25).
+    expect(card.querySelectorAll('dl.gk-figures .gk-figure')).toHaveLength(2);
     expect(screen.getByRole('button', { name: /Şimdi uç/ })).toHaveClass('gk-btn--action');
     expect(card).not.toHaveTextContent(arenaCopy().deadHint);
     expect(card).not.toHaveTextContent(arenaCopy().emptyHint);

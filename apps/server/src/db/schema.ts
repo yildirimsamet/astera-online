@@ -23,7 +23,7 @@ import {
   uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import type { AsteroidSpec, FleetSizeClass, HpDamageLots, MigrationCargo, MoonRarity, PirateSpec, StarterBattleRecord, WorldBody } from '@astera/rules';
+import type { AppliedCapsule, AsteroidSpec, CapsuleId, FleetSizeClass, HpDamageLots, MigrationCargo, MoonRarity, PirateSpec, StarterBattleRecord, WorldBody } from '@astera/rules';
 import type {
   BattleReplayData,
   CombatRound,
@@ -47,6 +47,7 @@ import type {
   AsteroidShowerEffect,
   PlannedGalaxyEvent,
   IntergalacticConvoyEffect,
+  AsteriumStormEffect,
   TradeShipEffect,
   TradeRate,
   ResearchProjectId,
@@ -191,6 +192,8 @@ export const eventKind = pgEnum('event_kind', [
   'moon_gate_ready',
   /** Kuruluş Saati's two moments on a first game's capital: ten minutes left, and the end. Plan 2026-11-20 §4. */
   'newcomer_hour',
+  /** The last capsule of a Sentez Laboratuvarı batch is made (plan 2026-11-24 §3.4). */
+  'synthesis_complete',
 ]);
 /**
  * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
@@ -206,6 +209,8 @@ export const galaxyEventOccurrenceKind = pgEnum('galaxy_event_occurrence_kind', 
   'TRADE_SHIP',
   /** Galaksilerarası Konvoy. D201. */
   'INTERGALACTIC_CONVOY',
+  /** Asteryum Fırtınası (plan 2026-11-24 §3.2). */
+  'ASTERIUM_STORM',
 ]);
 /**
  * WHAT THE GAME TELLS YOU, AND NOTHING ELSE. D45.
@@ -312,6 +317,8 @@ export const notificationKind = pgEnum('notification_kind', [
   /** KURULUŞ SAATİ (plan 2026-11-20 §4): ten minutes left of a first game's five-fold hour, and its sum at the end. */
   'newcomer_hour_ending',
   'newcomer_hour_summary',
+  /** A Sentez Laboratuvarı batch is finished: its capsules wait in the inventory. */
+  'synthesis_ready',
 ]);
 export type NotificationKind = (typeof notificationKind.enumValues)[number];
 
@@ -636,6 +643,8 @@ export const seasons = pgTable('seasons', {
   admiralStartsAt: timestamp('admiral_starts_at', { withTimezone: true }),
   /** Moons opened in a live season dealt before ruleset 20 (`season activate-moons`, owner 2026-11-24). */
   moonsStartsAt: timestamp('moons_starts_at', { withTimezone: true }),
+  /** Asteryum and the Sentez Laboratuvarı opened in a live season dealt before ruleset 21 (`season activate-synthesis`). */
+  synthesisStartsAt: timestamp('synthesis_starts_at', { withTimezone: true }),
   /** Immutable: v1 capitals, v2 multi-world, v3 seasonal clans. */
   rulesetVersion: integer('ruleset_version').notNull().default(1),
   /** Zero is a legacy/partial season; newer versions promise the full sealed metric set. */
@@ -1343,6 +1352,12 @@ export type GalaxyEventLifecyclePayload =
       endsAt: string;
       resourceCapHours: number;
       shipDropChanceAtFullQuality: number;
+    }
+  /** The Asteryum Fırtınası carries its window and nothing else: the field is the whole effect. */
+  | {
+      eventKind: 'ASTERIUM_STORM';
+      startsAt: string;
+      endsAt: string;
     };
 
 export type GalaxyEventPayload =
@@ -1409,7 +1424,7 @@ export const galaxyEventOccurrences = pgTable('galaxy_event_occurrences', {
    * rather than each of the four readers guessing at the shape.
    */
   effect: jsonb('effect').$type<
-    AsteroidShowerEffect | TradeShipEffect | IntergalacticConvoyEffect
+    AsteroidShowerEffect | TradeShipEffect | IntergalacticConvoyEffect | AsteriumStormEffect
   >().notNull(),
   startProcessedAt: timestamp('start_processed_at', { withTimezone: true }),
   endProcessedAt: timestamp('end_processed_at', { withTimezone: true }),
@@ -1961,6 +1976,11 @@ export const missions = pgTable('missions', {
    */
   recalledAt: timestamp('recalled_at', { withTimezone: true }),
   recallFrom: jsonb('recall_from').$type<Vec3>(),
+  /**
+   * CAPSULES PRESSED ONTO THIS LEG AT LAUNCH (plan 2026-11-24 §3.5). Outbound legs only; a recall turns
+   * the same row, so a turned flight keeps them home. The return after a fight is a new row with none.
+   */
+  appliedCapsules: jsonb('applied_capsules').$type<AppliedCapsule[]>().notNull().default(sql`'[]'::jsonb`),
   departAt: timestamp('depart_at', { withTimezone: true }).notNull(),
   arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),
   /** Legacy launch flag retained for old mission rows; new EMP launches always write false. */
@@ -2827,6 +2847,8 @@ export const battleReports = pgTable('battle_reports', {
   grade: text('grade').$type<Grade>().notNull(),
   rounds: jsonb('rounds').$type<CombatRound[]>().notNull(),
   loot: jsonb('loot').$type<Resources>().notNull(),
+  /** The attacker's capsules on this strike, told to both sides (DI-02, plan K11). */
+  appliedCapsules: jsonb('applied_capsules').$type<AppliedCapsule[]>().notNull().default(sql`'[]'::jsonb`),
   attackerLosses: jsonb('attacker_losses').$type<Fleet>().notNull(),
   defenderLosses: jsonb('defender_losses').$type<Fleet>().notNull(),
   /**
@@ -5053,6 +5075,7 @@ export const arenaShips = pgTable('arena_ships', {
   holdAlloy: doublePrecision('hold_alloy').notNull().default(0),
   holdCrystal: doublePrecision('hold_crystal').notNull().default(0),
   holdDeuterium: doublePrecision('hold_deuterium').notNull().default(0),
+  holdAsterium: doublePrecision('hold_asterium').notNull().default(0),
   /** Generation of the currently pending completion notice; superseded flights cannot notify it. */
   readyNoticeId: uuid('ready_notice_id'),
   /** One active admiral task; its native legs are in arena_admiral_legs. */
@@ -6136,10 +6159,64 @@ export const moons = pgTable('moons', {
   bornAt: timestamp('born_at', { withTimezone: true }).notNull(),
   /** The battle a moon was born in, for its report and the Chronicle. */
   bornMissionId: uuid('born_mission_id'),
+  /** Asteryum made up to here has been paid to the holder; the fraction below one unit rides on (plan §3.3). */
+  asteriumSyncedAt: timestamp('asterium_synced_at', { withTimezone: true }).notNull().defaultNow(),
+  asteriumFraction: doublePrecision('asterium_fraction').notNull().default(0),
+  /** Whole units this moon has paid its current holder (owner 2026-11-25: the moon says what it made); 0 for a new one. */
+  asteriumProduced: integer('asterium_produced').notNull().default(0),
 }, (t) => [
+  check('moons_asterium_fraction_check', sql`${t.asteriumFraction} >= 0 AND ${t.asteriumFraction} < 1`),
+  check('moons_asterium_produced_check', sql`${t.asteriumProduced} >= 0`),
   check('moons_rarity_check', sql`${t.rarity} in ('COMMON', 'RARE', 'EPIC', 'LEGENDARY')`),
   check('moons_origin_check', sql`${t.origin} in ('SEED', 'BUILT', 'BATTLE')`),
   check('moons_cracks_check', sql`${t.cracks} >= 0`),
+]);
+
+/**
+ * ASTERYUM: A COMMANDER'S OWN STRATEGIC STOCK (plan 2026-11-24 §3.1, K2). Per season (a player is a
+ * season seat), never cargo, loot, salvage, trade or Wealth; nobody can take it.
+ */
+export const playerAsterium = pgTable('player_asterium', {
+  playerId: uuid('player_id').primaryKey().references(() => players.id, { onDelete: 'cascade' }),
+  balance: integer('balance').notNull().default(0),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [check('player_asterium_balance_check', sql`${t.balance} >= 0`)]);
+
+/** Capsules made and not yet pressed onto a launch (plan §3.4, K7: usable from any world). */
+export const playerCapsules = pgTable('player_capsules', {
+  playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  capsuleId: text('capsule_id').$type<CapsuleId>().notNull(),
+  quantity: integer('quantity').notNull().default(0),
+}, (t) => [
+  primaryKey({ columns: [t.playerId, t.capsuleId] }),
+  check('player_capsules_id_check', sql`${t.capsuleId} in ('OPTIC_VEIL', 'SILENT_THRUST')`),
+  check('player_capsules_quantity_check', sql`${t.quantity} >= 0`),
+]);
+
+/**
+ * THE ONE RUNNING SENTEZ (K6): the primary key is the commander. A batch makes `quantity` capsules one
+ * by one; `delivered` of them are already in the inventory. `paid_*` is what was actually paid, so a
+ * cancel refunds from it rather than from today's price (ML-06).
+ */
+export const synthesisJobs = pgTable('synthesis_jobs', {
+  playerId: uuid('player_id').primaryKey().references(() => players.id, { onDelete: 'cascade' }),
+  /** This batch's own id: its completion event and its notice point at it, so a cancelled batch's event never finishes the next. */
+  id: uuid('id').notNull().defaultRandom().unique(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  capsuleId: text('capsule_id').$type<CapsuleId>().notNull(),
+  quantity: integer('quantity').notNull(),
+  delivered: integer('delivered').notNull().default(0),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+  completesAt: timestamp('completes_at', { withTimezone: true }).notNull(),
+  paidAlloy: integer('paid_alloy').notNull(),
+  paidCrystal: integer('paid_crystal').notNull(),
+  paidDeuterium: integer('paid_deuterium').notNull(),
+  paidAsterium: integer('paid_asterium').notNull(),
+}, (t) => [
+  check('synthesis_jobs_capsule_check', sql`${t.capsuleId} in ('OPTIC_VEIL', 'SILENT_THRUST')`),
+  check('synthesis_jobs_quantity_check', sql`${t.quantity} BETWEEN 1 AND 50`),
+  check('synthesis_jobs_delivered_check', sql`${t.delivered} >= 0 AND ${t.delivered} <= ${t.quantity}`),
+  check('synthesis_jobs_paid_check', sql`${t.paidAlloy} >= 0 AND ${t.paidCrystal} >= 0 AND ${t.paidDeuterium} >= 0 AND ${t.paidAsterium} >= 0`),
 ]);
 
 /**

@@ -58,6 +58,7 @@ export const galaxy = {
       ASTEROID_SHOWER: "小惑星シャワー",
       TRADE_SHIP: "貿易船",
       INTERGALACTIC_CONVOY: "銀河間コンボイ",
+      ASTERIUM_STORM: "Asteryumストーム",
     },
     dailyNote: "平日は月曜日から金曜日、週末は土曜日から日曜日です。時間はトゥルキエ時間です。",
     days: {
@@ -79,6 +80,11 @@ export const galaxy = {
       title: "銀河間コンボイ",
       summary: "艦隊を航海中に送り、世界の生産を最大 4 時間行い、火力に応じて船を回収する機会を与えます。",
       note: "輸送船団は反撃しないため、艦隊は損失を被りません。各ワールドは、交差点ごとに 1 回攻撃できます。",
+    },
+    storm: {
+      title: "Asteryumストーム",
+      summary: "ストーム中、YarıkにAsteryum鉱石が現れます。出口から持ち出した鉱石はすべてAsteryum在庫に入り、1日の上限には左右されません。",
+      note: "撃墜されると積んだAsteryumも散らばります。シンセシス・ラボでAsteryumはカプセルになります。",
     },
   },
   /* Screen-reader names for the marks on the disc. Nothing is painted. */

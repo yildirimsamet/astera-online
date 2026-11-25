@@ -287,6 +287,12 @@ export function buildPlanetView(data: PlanetViewData) {
       dockFree: dockFree(moonRow.rarity, dockUsed, inboundBulk),
       scanRange: scanRange(moonRow.rarity),
       scanPierces: scanPierces(moonRow.rarity),
+      // Where the moon's Asteryum stands (owner 2026-11-25); the client counts on from here with the rules.
+      asterium: {
+        syncedAt: moonRow.asteriumSyncedAt.toISOString(),
+        fraction: moonRow.asteriumFraction,
+        produced: moonRow.asteriumProduced,
+      },
       moves: moonMoveRows.map((m) => ({
         id: m.id,
         kind: m.kind,

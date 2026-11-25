@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import { WebSocket, WebSocketServer } from 'ws';
 import { z } from 'zod';
 import { mulberry32 } from '@astera/rules';
-import { ABILITIES, ARENA_LAYOUT, ARENA_PROTOCOL, ARENA_TUNING as T, CLASS_STATS, abilityStats, flightRanks, clampAssist, holdPoints, copyFlight, createFeedState, createFlightState, createInput,
+import { ABILITIES, ARENA_LAYOUT, ARENA_PROTOCOL, ARENA_TUNING as T, CLASS_STATS, abilityStats, flightRanks, clampAssist, copyFlight, createFeedState, createFlightState, createInput,
   createPilot, createSandboxWorld, deltaFeed, FAR_EVERY, keyFeed, MAX_REMOTE_PILOTS, MID_EVERY,  packFar, packPilot, packRemote, recoverPilot,
   REMOTE_BAND, REMOTE_FAR_RANGE, REMOTE_FULL_RANGE, REMOTE_NEAR_RANGE, ROLE_SHIPS, SHIP_CLASSES, TACTICS, alive, sameSide, scanTargets, spawnFlight, stepArenaWorld, pilotVisible,
   type Ability, type ArenaFeed, type ArenaIntent, type ArenaWorld, type LoadoutPlan, type Pilot, type ShipClass, type SteeringSettings, type Tactic } from '@astera/rules/arena';
@@ -20,6 +20,7 @@ import { spectateTeam } from '../services/arenaTeams.js';
 import { registerArenaReferences } from './references.js';
 import { registerArenaTeams } from './teams.js';
 import { createPlayout, playInput, queueInput, resetPlayout, type Playout } from './playout.js';
+import { asteriumStormActive } from '../services/arenaStorm.js';
 
 const inputSchema = z.object({ kind: z.literal('in'), values: z.tuple([
   z.number().int().nonnegative().max(100000000), z.number().int().min(-1000).max(1000),
@@ -44,7 +45,7 @@ const messageSchema = z.discriminatedUnion('kind', [
 interface Participant {
   key: string; pilot: Pilot; socket: WebSocket | null; playout: Playout<ArenaIntent>; input: ArenaIntent;
   settings: SteeringSettings; ack: number; lastSeq: number; lastInput: number; endedAt: number;
-  name: string; seenKills: number; deathCounted: boolean; extractionCounted: boolean;
+  name: string; seenKills: number; deathCounted: boolean;
   /** A commander's account (null for a guest), the sortie in the air, and whether a debug action touched it (Y6a). */
   accountId: string | null; sortie: string | null; test: boolean; launching: boolean;
   teamId: string | null; watchId: number | null;
@@ -64,8 +65,8 @@ function tierAt(distance: number, was: Tier | undefined): Tier | undefined {
 }
 /** A key frame per pilot this often (ticks) even when nothing was dropped: a slip in a delta cannot outlive it. */
 const KEY_EVERY = 10 * T.tickRate;
-/** Points are farm delivered through an exit; kills and deaths are the fight's own record. */
-interface Score { points: number; kills: number; deaths: number }
+/** The fight's own record: who destroyed whom. The Yarık keeps no score (owner 2026-11-25). */
+interface Score { kills: number; deaths: number }
 /**
  * The hangar on the galaxy's books (Y6a, `services/arenaShips.ts`): a commander's flight is launched
  * through it and reported back to it once. A port so the room runs without a database in its tests.
@@ -81,6 +82,8 @@ export interface ArenaShips {
   spectate(accountId: string): Promise<Launch>;
   end(accountId: string, sortieId: string, end: SortieEnd): Promise<SortieResult | null>;
   recallOpen(): Promise<number>;
+  /** The Asteryum Fırtınası is open in the galaxy calendar now (plan 2026-11-24 §3.2). */
+  storm(): Promise<boolean>;
   /** The game tab is closed while the Yarık flies: the room's heartbeat is what keeps a commander online. */
   playing(accountId: string): Promise<unknown>;
 }
@@ -95,8 +98,11 @@ const dbShips = (app: FastifyInstance): ArenaShips => ({
   spectate: accountId => spectateTeam(app.db, app.clock, accountId),
   end: (accountId, sortieId, end) => endSortie(app.db, app.clock, accountId, sortieId, end),
   recallOpen: () => recallOpenSorties(app.db, app.clock),
+  storm: () => asteriumStormActive(app.db, app.clock),
   playing: accountId => app.presence.touch(accountId),
 });
+/** How often the room asks the calendar whether the Asteryum Fırtınası blows: a window is an hour long. */
+const STORM_POLL_MS = 5_000;
 /** A failed report is tried this often, this far apart, before it is left to the next start's recall. */
 const REPORT_TRIES = 3; const REPORT_RETRY_MS = 1000;
 const shipSchema = z.object({ ship: z.enum(SHIP_CLASSES) }).strict();
@@ -154,13 +160,13 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
   const kick = (socket: WebSocket, reason: string): void => { send(socket, { kind: 'kick', reason }); socket.close(1000, reason); };
   /** `level`: every pilot's ship level (Y6b; a guest's is one); bots fly level one and leave it out. */
   /** `mirror`: a copy's line, where it was cast and the heading then; its caster draws it off its own ship with it. */
-  interface RosterRow { id: number; name: string; ship: ShipClass; level?: number; clanId?: string; teamId?: string; role?: 'hunter' | 'miner' | 'patrol'; points?: number; kills?: number; deaths?: number; copyOf?: number; mirror?: number[] }
+  interface RosterRow { id: number; name: string; ship: ShipClass; level?: number; clanId?: string; teamId?: string; role?: 'hunter' | 'miner' | 'patrol'; kills?: number; deaths?: number; copyOf?: number; mirror?: number[] }
   const roster = (): RosterRow[] => {
     const rows: RosterRow[] = [
       ...Array.from(world.brains, ([id, brain]) => ({ id, name: brain.role, ship: ROLE_SHIPS[brain.role], role: brain.role })),
       ...Array.from(participants.values(), entry => ({ id: entry.pilot.id, name: entry.name, ship: entry.pilot.ship, level: entry.pilot.level,
         ...(entry.pilot.clanId ? { clanId: entry.pilot.clanId } : {}), ...(entry.teamId ? { teamId: entry.teamId } : {}),
-        points: scores.get(entry.key)?.points ?? 0, kills: scores.get(entry.key)?.kills ?? 0, deaths: scores.get(entry.key)?.deaths ?? 0 })),
+        kills: scores.get(entry.key)?.kills ?? 0, deaths: scores.get(entry.key)?.deaths ?? 0 })),
     ];
     // An illusion wears its pilot's name and class (Y4d); it never ranks, and the radar shows the truth (plan 14 §4).
     for (const drone of world.drones) {
@@ -196,7 +202,7 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
     fresh.shield = T.spawnShield * T.tickRate;
     if (launch) { fresh.fuel = launch.fuel; fresh.ammo = launch.ammo; fresh.hold = [...launch.hold]; fresh.cargo = launch.hold.reduce((a, b) => a + b, 0); }
     if (launch?.spectating) { fresh.phase = launch.spectating === 'dead' ? 'dead' : launch.spectating === 'extracted' ? 'extracted' : 'towed'; fresh.hull = launch.spectating === 'dead' ? 0 : fresh.hull; }
-    Object.assign(entry.pilot, fresh); resetPlayout(entry.playout); entry.endedAt = 0; entry.seenKills = 0; entry.deathCounted = false; entry.extractionCounted = false;
+    Object.assign(entry.pilot, fresh); resetPlayout(entry.playout); entry.endedAt = 0; entry.seenKills = 0; entry.deathCounted = false;
     Object.assign(entry.input, NEUTRAL); entry.lastInput = world.tick;
     const index = world.drones.indexOf(entry.pilot); const prior = world.dronePrevious[index]; if (prior) copyFlight(prior, entry.pilot);
     broadcastRoster();
@@ -331,9 +337,6 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
       const score = scores.get(entry.key); if (!score) continue;
       if (entry.pilot.kills > entry.seenKills) { score.kills += entry.pilot.kills - entry.seenKills; entry.seenKills = entry.pilot.kills; scored = true; }
       if (entry.pilot.phase === 'dead' && !entry.deathCounted) { score.deaths++; entry.deathCounted = true; scored = true; }
-      if (entry.pilot.phase === 'extracted' && !entry.extractionCounted) {
-        score.points += holdPoints(entry.pilot.hold); entry.extractionCounted = true; scored = true;
-      }
     }
     if (scored) broadcastRoster();
     for (const entry of participants.values()) {
@@ -475,11 +478,11 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
             }
             const pilot = createPilot(world.nextId++, msg.ship, msg.tactic, 1, msg.tactic2);
             entry = { key, pilot, socket: null, playout: createPlayout(), input: createInput(), settings: { sensitivity: 1, invertPitch: false },
-              ack: 0, lastSeq: 0, lastInput: world.tick, endedAt: 0, name, seenKills: 0, deathCounted: false, extractionCounted: false, keyAt: 0, tiers: new Map(),
+              ack: 0, lastSeq: 0, lastInput: world.tick, endedAt: 0, name, seenKills: 0, deathCounted: false, keyAt: 0, tiers: new Map(),
               accountId, sortie: null, test: false, launching: false, ship: msg.ship, tactic: msg.tactic, tactic2: msg.tactic2, level: 1, teamId: null, watchId: null };
             world.drones.push(pilot); const prior = createFlightState(); world.dronePrevious.push(prior);
             participants.set(entry.key, entry); inputs.set(pilot.id, entry.input); settings.set(pilot.id, entry.settings); restart(entry, flight);
-            if (!scores.has(key)) scores.set(key, { points: 0, kills: 0, deaths: 0 });
+            if (!scores.has(key)) scores.set(key, { kills: 0, deaths: 0 });
           } else if (flight) { entry.tactic = msg.tactic; entry.tactic2 = msg.tactic2; restart(entry, flight); }
           // A commander's class is the hangar's; a guest's is the hello's.
           if (entry.accountId === null) entry.ship = msg.ship;
@@ -490,10 +493,13 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
           entry.keyAt = 0;
           send(socket, { kind: 'welcome', v: ARENA_PROTOCOL, pilotId: entry.pilot.id, tick: world.tick, seq: entry.lastSeq,
             ...(entry.teamId ? { teamId: entry.teamId } : {}),
-            tickRate: T.tickRate, snapshotRate: T.snapshotRate, layoutVersion: ARENA_LAYOUT.version, pilots: roster() });
+            tickRate: T.tickRate, snapshotRate: T.snapshotRate, layoutVersion: ARENA_LAYOUT.version, pilots: roster(),
+            storm: world.asteriumStorm });
           broadcastRoster();
         };
-        if (env.ARENA_DEV && msg.guestId) { if (msg.mode === 'spectate') kick(socket, 'auth'); else seat(msg.guestId, `Pilot ${String(world.nextId - 3)}`); return; }
+        // A dev room seats a guest only where no session signs the hello: a signed-in commander flies as themselves.
+        // Guests are numbered from one, past the room's bots (2026-11-25: "Pilot -2").
+        if (env.ARENA_DEV && msg.guestId && !msg.token) { if (msg.mode === 'spectate') kick(socket, 'auth'); else seat(msg.guestId, `Pilot ${String(world.nextId - world.brains.size)}`); return; }
         const token = msg.token;
         if (!token) { kick(socket, 'auth'); return; }
         identify(token).then(account => {
@@ -582,9 +588,28 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
     });
   });
   if (env.ARENA_ENABLED) timer = setTimeout(loop, 1000 / T.tickRate);
+  /*
+    THE STORM FOLLOWS THE CALENDAR, AND FAILS CALM. Only the storm's own growth reads the switch
+    (`stepAsteriumStorm`); pieces already out and holds already full stay when it turns off (plan §3.2).
+  */
+  const setStorm = (on: boolean): void => {
+    if (world.asteriumStorm === on) return;
+    world.asteriumStorm = on;
+    // Sent when it turns, never per snapshot (MP-06): the HUD's storm line follows it (G16).
+    const text = JSON.stringify({ kind: 'storm', active: on });
+    for (const entry of participants.values()) if (entry.socket) sendText(entry.socket, text);
+  };
+  const readStorm = (): void => {
+    ships.storm().then(setStorm, (error: unknown) => {
+      setStorm(false); app.log.error({ err: error }, 'arena storm check failed');
+    });
+  };
+  const stormTimer = env.ARENA_ENABLED ? setInterval(readStorm, STORM_POLL_MS) : null;
+  if (env.ARENA_ENABLED) readStorm();
   // Before the HTTP server closes: it waits on open sockets, and a deploy's stop would kill the process first.
   app.addHook('preClose', async () => {
     if (timer) clearTimeout(timer);
+    if (stormTimer) clearInterval(stormTimer);
     // A deploy recalls every flight in the air, its hold aboard (KG-A15); one that just ended is reported as it ended.
     await Promise.all(Array.from(participants.values(), entry => settle(entry, outcomeOf(entry.pilot))));
     for (const socket of sockets.clients) { send(socket, { kind: 'kick', reason: 'shutdown' }); socket.terminate(); }

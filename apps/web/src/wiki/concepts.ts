@@ -51,7 +51,7 @@ export const conceptArticles: readonly WikiArticle[] = [
       "Select an object on the galaxy map and open its details to act. Base manages the active planet. Fleet lists ships at home and ongoing flights. Intel contains observations and battle reports. Clan contains membership and shared operations.",
       "The resource meters at the top show spendable stock and storage capacity. The timer line highlights an approaching event; open it to see other timers. The bell opens personal notifications, public news and chat.",
     ], [
-      "Galaksi haritasında bir nesneyi seç ve işlem yapmak için detayını aç. Üs, aktif gezegenini yönetir. Filo, gezegendeki gemileri ve uçuşları gösterir. İstihbaratta gözlemler ve savaş raporları bulunur. Klanda üyeliği ve ortak harekâtları yönetirsin.",
+      "Galakside bir nesneyi seç ve işlem yapmak için detayını aç. Üs, aktif gezegenini yönetir. Filo, gezegendeki gemileri ve uçuşları gösterir. İstihbaratta gözlemler ve savaş raporları bulunur. Klanda üyeliği ve ortak harekâtları yönetirsin.",
       "Üstteki kaynak göstergeleri, harcanabilir miktarı ve depo kapasitesini gösterir. Zamanlayıcı satırı yaklaşan bir olayı gösterir; diğer sayaçlar için satırı aç. Zil, kişisel bildirimleri, herkese açık haberleri ve sohbeti açar.",
     ]),
     l([

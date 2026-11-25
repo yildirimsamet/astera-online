@@ -57,9 +57,6 @@ ARG ASTERA_GIT_COMMIT=""
 ENV VITE_ASTERA_PLAYER_ANALYTICS=$VITE_ASTERA_PLAYER_ANALYTICS
 ENV ASTERA_GIT_COMMIT=$ASTERA_GIT_COMMIT
 ENV VITE_GA_ID=$VITE_GA_ID
-# Komutan Gemisi playtest door; the arena process still decides who may enter.
-ARG VITE_ARENA=""
-ENV VITE_ARENA=$VITE_ARENA
 # The Sentry key uploads the source maps and leaves with the step: a secret, never an ARG or a layer (S-3).
 RUN --mount=type=secret,id=sentry_auth,env=SENTRY_AUTH_TOKEN pnpm --filter @astera/web build
 

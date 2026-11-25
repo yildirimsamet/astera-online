@@ -388,3 +388,35 @@ describe('the hangar desk', () => {
     expect(calls.upgrade).toEqual(['acc-alice']);
   });
 });
+
+describe('the Asteryum Fırtınası in the room', () => {
+  it('turns the field on while the calendar says the storm blows, and off again', async () => {
+    let blowing = true;
+    const { ships } = fakeShips({ storm: () => Promise.resolve(blowing) });
+    const { arena } = await room(ships);
+    for (let i = 0; i < 50 && !arena.world.asteriumStorm; i++) await wait(20);
+    expect(arena.world.asteriumStorm).toBe(true);
+    blowing = false;
+    for (let i = 0; i < 400 && arena.world.asteriumStorm; i++) await wait(20);
+    expect(arena.world.asteriumStorm).toBe(false);
+  });
+
+  it('tells a pilot on arrival, and the whole room when it turns (G16)', async () => {
+    let blowing = true;
+    const { ships } = fakeShips({ storm: () => Promise.resolve(blowing) });
+    const r = await room(ships);
+    for (let i = 0; i < 50 && !r.arena.world.asteriumStorm; i++) await wait(20);
+    const alice = await connect(r.url, { token: 'token-alice' });
+    expect(await alice.next(kind('welcome'))).toMatchObject({ storm: true });
+    blowing = false;
+    const calm = (m: unknown): boolean => kind('storm')(m) && typeof m === 'object' && m !== null && 'active' in m && m.active === false;
+    expect(await alice.next(calm)).toMatchObject({ kind: 'storm', active: false });
+  });
+
+  it('keeps the field calm when the calendar cannot be read', async () => {
+    const { ships } = fakeShips({ storm: () => Promise.reject(new Error('db down')) });
+    const { arena } = await room(ships);
+    await wait(100);
+    expect(arena.world.asteriumStorm).toBe(false);
+  });
+});

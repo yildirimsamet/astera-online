@@ -170,7 +170,7 @@ Durum: **final; uygulama sürüyor (§17).**
 | `origin` | text + CHECK (`SEED`, `BUILT`, `BATTLE`) | Yalnız sahibine görünür (§8). |
 | `cracks` | smallint not null default 0, CHECK ≥ 0 | Ham sayaç; okumak için `effectiveCracks()` kullanılır. |
 | `last_hit_at` | timestamptz null | Kamusaldır (S53). İstemci iyileşmeyi kendisi hesaplar. |
-| `closed_until` | timestamptz null | Death Star darbesi kapıyı ve Gözcü'yü 3 saat kapatır. |
+| `closed_until` | timestamptz null | Death Star darbesi kapıyı, Gözcü'yü ve gezegenden aya çıkışı 3 saat kapatır (owner, 2026-11-26). |
 | `gate_ready_at` | timestamptz null | Kapı şarjı, kapı başına (S51). |
 | `visual_seed` | integer not null | Yüzey ve yörünge bundan çıkar; bütün istemcilerde aynıdır. |
 | `born_at` | timestamptz not null | — |
@@ -337,6 +337,7 @@ Bütün fonksiyonlar saftır ve `moon.test.ts` içinde birim testlidir.
   - Yalnız oyuncunun kendi mobil gemileri geçer. Yer birimi ve Prospector geçemez (§3.3 tasarım).
   - Kalkış gövdesinde K12 yok. Öbür gövde serbesttir (S13).
   - HOP_UP'ta rıhtımda yer olmalı.
+  - HOP_UP'ta ay kapalı olmamalı (`closed_until <= now`), değilse `MOON_CLOSED`. HOP_DOWN açık kalır: vurulan aydaki gemiler gezegene inebilir (owner, 2026-11-26: "EMP'li ay'a … o ay'ın bağlı olduğu gezegenden filo yollanılamamalı").
   - Tatildeyse transfer kuralı uygulanır.
   - Her yönde aynı anda en çok bir geçiş olabilir (V3).
 - **Etki:**
@@ -448,6 +449,7 @@ F3'e başlamadan önce `docs/review-sight.md` §6–7 okunur (doküman haritası
 - **API:** `POST /planets/:id/moon/scan {targetPlanetId}` ve `GET /intel/moon-scans`.
 - **Kontroller:**
   - Ay var ve kapalı değil.
+  - Hedef tarayanın kendi dünyası değil, değilse `SCAN_OWN_WORLD` (owner, 2026-11-26).
   - Hedef menzilde: `scanRange(r)`; mesafe kamusal konumlardan hesaplanır.
   - Tarama başına 30 D gezegen deposundan ödenir.
   - Aynı aydan iki tarama arasında en az 3 sn olmalıdır (teknik koruma).
@@ -456,6 +458,7 @@ F3'e başlamadan önce `docs/review-sight.md` §6–7 okunur (doküman haritası
   - Görünen türler (S33): `attack`, `transfer`, `clan_transfer`, `clan_war`, `clan_support`, `settlement`, `return`.
   - Görünmeyenler: probe, madencilik, Death Star ve radyasyon bombası.
   - Gövde süzgeci `gozcuSees` ile uygulanır.
+- **Tarayanın kendi filoları satır olmaz** (owner, 2026-11-26): Gözcü rakiplerin rotalarını gösterir.
 - **Satır içeriği:** yön (gelen / giden), öbür dünyanın id'si, varış saati ve `fleetSizeClass`. **Görev türü yoktur** (S14/S33); niyeti oyuncu tahmin eder.
 - **Keşif:** Rotada görünen ve tarayanın bilmediği her dünya `rememberWorld(source: 'SCAN')` ile keşfedilmiş sayılır. Ayının nadirliği de hafızaya yazılır (§6.10).
 - **Sessizlik:** Hedefe bildirim, radar kaydı ya da hedefin görebileceği bir analitik iz gitmez.
@@ -965,3 +968,4 @@ Kıyas için `profileIncome(9)`: dünya başına saatte ~1.740 alloy, ~870 cryst
 | V60 | **Owner kararı (2026-11-24).** Herkese açık kapı flaşı kesik çizgili büyüyen daire değil, Astral Kapı'nın kendisidir: flaş penceresi (`MOON.flashSeconds`) boyunca ayın dış yanında açık durur, sonunda kapanır. Kendi dünyalarında oyuncu bu flaşı görmez; kendi sıçraması kapıları zaten çizer. Kapı iki yüzünden de aydınlatılır; iç taşlar kapının rengini taşır (gri halka kalmaz). | Owner incelemesi 2026-11-24. |
 | V61 | **Owner kararı (2026-11-24).** Sıçrama kamerası: kalkış ayının biraz arkasında ve üstünde; kalkış ayı alt kadrajda, hedef ay üst kadrajda, sıçrama boyunca ikisi de görünür (ayların sıçramanın ortasındaki konumuna göre kurulur). Kalkış ayının gezegeni görüşü kapatırsa kamera sıçrama ekseni etrafında 15° adımlarla döner. Kamera kilitlenmez. | Owner talimatı 2026-11-24. |
 | V62 | **Owner kararı (2026-11-24).** Ay canlı sezona gelir, sezon sonunu beklemez. Ruleset değişmez (aynı döngüdeki galaksilerin ruleset'i eşit kalmalı: dönüş ve transfer). Sezona `seasons.moons_starts_at` yazılır (`season activate-moons --shard KOD [--yes]`, varsayılan kuru çalıştırma). O anda: oyuncunun her kolonisi yuvasının tier'ına göre ay alır (T1 Common, T2 Rare, T3 Epic; hak geçmesin diye); başkentler ve ele geçirilmiş başkentler almaz (nötr yuva değiller); sahipsiz nötrler sezonun tohum planını (§6.3) alır; zaten ayı olan dünya dokunulmaz; hepsi tohum defterine yazılır. Android uygulaması beklenmez (owner kabul etti: eski uygulamadaki oyuncu ayı göremez). Yeni sezonların varsayılan ruleset'i 2026-11-24'te 19 → 20 çıkarıldı (yeni sezonlar yalnız `wipe`/`bootstrap` ile, bir döngünün bütün galaksileri birlikte açılır; döngü içi eşitlik korunur). | Owner 2026-11-24. |
+| V63 | **Owner kararı (2026-11-25): Ay sekmesi düzeni.** "Her şey bir yerde, alt alta iç içe" geri bildirimiyle sekme yukarıdan aşağı, her parça tek işle: (1) Ayın kendisi: galaksideki yüzeyiyle dönen Ay portresi (Yaygın/Nadir regolit, Destansı/Efsanevi kadim doku, kenarda nadirlik çizgisi, kapalıyken gri), nadirlik + köken, hücreli dayanıklılık (her çatlak bir hücre) ve onarım süresi. (2) Yoldaki hareketler kendi şeridinde. (3) Asteryum kendi kartında. (4) Rıhtım/Kapı/Gözcü sekmeleri. Rıhtım kapasitesi başlıktan **Ay Rıhtımı kutusuna** taşındı, hangar çubuğuyla simetrik; V58'in "rıhtım çubuğu ve hareket listesi başlıkta" maddesinin yerini alır (bilgi hâlâ bir kez). Kapı hedefinde mesafe "900 birim uzakta · 300 boş yer" diye okunur. Kurma kartında kapı resmi yerine Yaygın Ay portresi. | Bir bakışta hangi bilginin neye ait olduğu (UI-12 gruplama, UI-13 hiyerarşi); kapasite, kapasitesi olan kutunun yanında okunur. |

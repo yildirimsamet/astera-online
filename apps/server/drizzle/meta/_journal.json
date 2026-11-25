@@ -1898,6 +1898,20 @@
       "when": 1795547973691,
       "tag": "0270_drop_arena_pilots",
       "breakpoints": true
+    },
+    {
+      "idx": 271,
+      "version": "7",
+      "when": 1795564980233,
+      "tag": "0271_asterium_and_synthesis",
+      "breakpoints": true
+    },
+    {
+      "idx": 272,
+      "version": "7",
+      "when": 1795619688734,
+      "tag": "0272_moon_asterium_produced",
+      "breakpoints": true
     }
   ]
 }

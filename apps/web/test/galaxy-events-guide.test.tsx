@@ -5,13 +5,17 @@ import i18n from '../src/i18n/index.js';
 
 const schedule = vi.hoisted(() => {
   let next: { kind: 'ASTEROID_SHOWER'; startsAt: Date } | null = null;
+  let synthesis = false;
   return {
     getNext: () => next,
     setNext: (value: typeof next) => { next = value; },
+    getSynthesis: () => synthesis,
+    setSynthesis: (value: boolean) => { synthesis = value; },
   };
 });
 vi.mock('../src/api/queries.js', () => ({
   useGalaxyEvents: () => ({ data: { events: [], next: schedule.getNext() } }),
+  useSeason: () => ({ data: { features: { moons: true, synthesis: schedule.getSynthesis() } } }),
 }));
 
 const TURKIYE = 'Europe/Istanbul';
@@ -32,6 +36,7 @@ const rowsIn = (heading: string): [string, string[]][] => {
 beforeEach(async () => {
   await i18n.changeLanguage('tr');
   schedule.setNext(null);
+  schedule.setSynthesis(false);
 });
 
 describe('galaxy events guide', () => {
@@ -230,5 +235,18 @@ describe('galaxy events guide', () => {
     expect(screen.getByText(/katsayısıyla çarpar/i)).toBeInTheDocument();
     expect(screen.getByText(/32 Alaşım = 16 Kristal = 1 Döteryum/i)).toBeInTheDocument();
     expect(screen.getByText(/filon kayıp vermez/i)).toBeInTheDocument();
+  });
+});
+
+describe('the Asteryum Fırtınası on the guide (plan 2026-11-24)', () => {
+  it('shows its daily window where the galaxy has Asteryum', () => {
+    schedule.setSynthesis(true);
+    render(<GalaxyEventsGuide onClose={vi.fn()} timeZone={TURKIYE} />);
+    expect(rowsIn('Asteryum Fırtınası')).toEqual([['Her gün', ['21:00–22:00']]]);
+  });
+
+  it('is not on the calendar of a galaxy without it', () => {
+    render(<GalaxyEventsGuide onClose={vi.fn()} timeZone={TURKIYE} />);
+    expect(screen.queryByRole('heading', { name: 'Asteryum Fırtınası' })).not.toBeInTheDocument();
   });
 });

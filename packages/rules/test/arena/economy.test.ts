@@ -107,8 +107,9 @@ describe('class and entry windows', () => {
     expect(entryOpen(ends, new Date('2026-10-31T23:49:59Z'))).toBe(true);
     expect(entryOpen(ends, new Date('2026-10-31T23:50:00Z'))).toBe(false);
     expect(E.minCore).toBe(9);
-    // Owner 2026-10-28 ("şuanlık 3 dk … biraz oynasınlar alışsınlar"): death and extraction wait alike, for now.
-    expect([E.repairMinutes, E.serviceMinutes]).toEqual([3, 3]);
+    // Owner 2026-10-28 cut both to 3 min ("biraz oynasınlar alışsınlar"); owner 2026-11-25 raised them back
+    // a little: a death costs 15 min, every flight 5 min of maintenance.
+    expect([E.repairMinutes, E.serviceMinutes]).toEqual([15, 5]);
   });
 });
 

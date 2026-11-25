@@ -130,8 +130,9 @@ describe('60-day season transition', () => {
   });
 
   it('preserves the latest Arena and escort cooldowns and paid cooldown shortening', () => {
-    expect(ARENA_ECONOMY.repairMinutes).toBe(3);
-    expect(ARENA_ECONOMY.serviceMinutes).toBe(3);
+    // Owner 2026-11-25: raised back from 3/3 ("geri biraz yükseltmek istiyorum").
+    expect(ARENA_ECONOMY.repairMinutes).toBe(15);
+    expect(ARENA_ECONOMY.serviceMinutes).toBe(5);
     expect(ADMIRAL_WAIT).toEqual({ repairMinutes: 60, serviceMinutes: 10 });
     expect(repairQuote(1)).toEqual({ minutes: 15, cost: { alloy: 175, crystal: 60, deuterium: 0 } });
     expect(repairQuote(20)).toEqual({ minutes: 30, cost: { alloy: 650, crystal: 250, deuterium: 0 } });

@@ -95,3 +95,21 @@ describe('the admiral on the report', () => {
     expect(old.container.querySelector('[data-effect="admiral"]')).toBeNull();
   });
 });
+
+/** Sentez capsules (plan 2026-11-24 §3.5): the battle lifts the veil, so both sides read what the raid wore. */
+describe('the capsules on the report', () => {
+  const worn = [{ id: 'OPTIC_VEIL' as const, count: 2 }, { id: 'SILENT_THRUST' as const, count: 1 }];
+
+  it('names each capsule and its count, to either side', async () => {
+    for (const attacking of [true, false]) {
+      const view = await openSheet(report({ attacking, appliedCapsules: worn }));
+      expect(view.container.querySelector('[data-effect="capsules"]')).toHaveTextContent(/Optic Veil ×2.*Silent Thrust ×1/);
+      view.unmount();
+    }
+  });
+
+  it('says nothing on a plain raid', async () => {
+    const view = await openSheet(report({ appliedCapsules: [] }));
+    expect(view.container.querySelector('[data-effect="capsules"]')).toBeNull();
+  });
+});

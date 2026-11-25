@@ -368,6 +368,8 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   galaxy_event_started: { panel: null },
   galaxy_event_ended: { panel: null },
   moon_gate_ready: { panel: 'moon' },
+  // A finished laboratory batch: the capital's sheet, where the laboratory stands on the Tactical tab.
+  synthesis_ready: { panel: 'planet' },
 };
 
 /**

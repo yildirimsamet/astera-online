@@ -174,6 +174,9 @@ export const planet = {
     growQuestion: "Kaynaklarını ve bina seviye sınırını burada büyütürsün.",
     tacticalProblem: "Taktik",
     tacticalQuestion: "Taktiksel araçlarını burada üretir ve yönetirsin.",
+    bays: "Taktik bölmeleri",
+    weaponsBay: "Silahlar",
+    labBay: "Laboratuvar",
   },
 
 

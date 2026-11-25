@@ -952,6 +952,30 @@ It deepens the information game (where is the fleet? what is coming?) without a 
 
 Every number, rule and decision: `docs/ay-entegrasyon-plani-2026-11-19.md` (V1–V58) and `docs/ay-plani-2026-11-18.md`.
 
+## Asteryum and the Synthesis Lab (ruleset 21 or live activation, owner 2026-11-24/25)
+
+Asteryum is a commander's own strategic stock: it cannot be looted, carried, traded or pooled. It buys
+**capsules** that change what the galaxy learns about one flight. *Status: built in a worktree, not live.*
+
+- **Sources:** every moon held makes it slowly (Common 1, Rare 1.5, Epic 2, Legendary 3 a day, halved by the
+  owner on 2026-11-25; nothing while a Death Star has the moon shut). Colony moons count too. Each unit goes
+  straight into the commander's stock the moment it is made: nothing is shipped to the capital and nothing can
+  be raided on the way. The moon panel shows the rate, what the moon has made and the next unit's countdown. The **Asteryum Fırtınası** (21:00–22:00 TRT, a fixed daily galaxy event)
+  spawns Asteryum stones in the Yarık; an exit credits them past the day's cap, a death spills them, a
+  deploy recall keeps them aboard.
+- **Synthesis Lab:** Command Core 10, the capital's Tactical tab. One batch at a time, 1–20 capsules,
+  made one by one (Optik Örtü 30 min, Sessiz İtki 60 min each). A cancel returns half of the unmade share.
+- **Capsules on a launch:** one per 500 hangar bulk of the fleet that leaves.
+  - **Optik Örtü** (attack, clan war, transfer, settlement): the flight leaves every map except its owner's
+    and the owner's clan's. No Telescope, Radar or Gözcü sees it, a Legendary moon included. No counter yet.
+  - **Sessiz İtki** (attack, clan war): the flight stays on the map, but the target gets no radar warning,
+    clan alarm, paid alert, strip line or inbound mark.
+  - Both may ride one raid. A recall keeps them (same leg); the return after a battle wears none.
+  - The battle lifts the veil: both sides' reports name the capsules.
+- **Clan war:** the leader pays for the whole combined fleet.
+
+Numbers, decisions and open questions: `docs/asteryum-ve-sentez-laboratuvari-plani-2026-11-24.md`.
+
 ## Galaxy, travel and mining
 
 ### Flight speed, recall and the landing pause (Faz 2A, owner decisions 2026-09-21)

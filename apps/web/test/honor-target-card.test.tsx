@@ -1,13 +1,23 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { HonorTargetCard } from '../src/ui/HonorTargetCard.js';
 import { honorTargetSchema } from '../src/api/schemas.js';
 
+/*
+  THE HONOR READING ON A RAID, FOLDED (owner 2026-11-25: "küçültülmeli, accordion veya infobox gibi olmalı").
+  Closed it is one line: what kind of target, what military return. A weaker target's price stays open, because
+  it is the line that changes the decision. Every rule is one press away, never gone.
+*/
+const expand = (): void => { fireEvent.click(screen.getByRole('button', { name: 'Honor rules' })); };
+
 describe('Honor rules before a player commits a raid', () => {
-  it('explains why a galaxy leader treats the adjacent tier as a peer without removing military limits', () => {
+  it('folds the reading into one line, and keeps the rules one press away', () => {
     const value = honorTargetSchema.parse({ enabled: true, eligible: true, kind: 'PEER', militaryReturn: 'HALF',
       related: false, repeated: false, retaliation: false, topTierPeer: true });
     render(<HonorTargetCard value={value} />);
+    expect(screen.getByText('Comparable target · half return')).toBeVisible();
+    expect(screen.queryByText(/highest tier in this galaxy/)).toBeNull();
+    expand();
     expect(screen.getByText(/highest tier in this galaxy/)).toBeVisible();
     expect(screen.getByText(/one tier below.*equal-tier/)).toBeVisible();
     expect(screen.getByText(/attacking upward.*bonus/)).toBeVisible();
@@ -16,17 +26,19 @@ describe('Honor rules before a player commits a raid', () => {
   it.each([20, 40] as const)('explains the 24-hour budget with the season’s %s%% loot weight', retaliationLootPercent => {
     render(<HonorTargetCard value={{ enabled: true, eligible: true, kind: 'WEAK', militaryReturn: 'NONE',
       related: false, repeated: false, retaliation: true, retaliationLootPercent }} />);
+    expand();
     expect(screen.getByText(new RegExp(`24 hours.*${String(retaliationLootPercent)}%`))).toBeVisible();
     expect(screen.getByText(/Own attack losses still reduce Honor/)).toBeVisible();
   });
-  it('warns clearly when a weaker target can cost Honor, even in a victory', () => {
+  it('warns clearly when a weaker target can cost Honor, even in a victory, without opening anything', () => {
     render(<HonorTargetCard value={{ enabled: true, eligible: true, kind: 'WEAK', militaryReturn: 'NONE', related: false, repeated: false, retaliation: false }} />);
     expect(screen.getByText(/Weaker target/)).toBeVisible();
     expect(screen.getByText(/Even a successful attack/)).toBeVisible();
   });
   it('keeps upper-target eligibility separate from the military return and repeated-rival limit', () => {
     render(<HonorTargetCard value={{ enabled: true, eligible: true, kind: 'UPPER', militaryReturn: 'HALF', related: false, repeated: true, retaliation: false }} />);
-    expect(screen.getByText('Stronger target')).toBeVisible();
+    expect(screen.getByText('Stronger target · half return')).toBeVisible();
+    expand();
     expect(screen.getByText(/Reduced military return/)).toBeVisible();
     expect(screen.getByText(/same commander/)).toBeVisible();
     expect(screen.getByText(/No fixed points/)).toBeVisible();
@@ -35,6 +47,8 @@ describe('Honor rules before a player commits a raid', () => {
     const { rerender, container } = render(<HonorTargetCard value={{ enabled: false }} />);
     expect(container).toBeEmptyDOMElement();
     rerender(<HonorTargetCard value={{ enabled: true, eligible: true, kind: 'PEER', militaryReturn: 'FULL', related: true, repeated: false, retaliation: false }} />);
+    expect(screen.getByText('Comparable target · earns no Honor')).toBeVisible();
+    expand();
     expect(screen.getByText(/This relationship cannot/)).toBeVisible();
     expect(screen.queryByText(/Permanent military damage can earn Honor/)).not.toBeInTheDocument();
   });

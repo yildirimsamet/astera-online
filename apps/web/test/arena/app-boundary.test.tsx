@@ -61,7 +61,6 @@ describe('a flight replaces the galaxy canvas while the session stays alive', ()
 
   it('ignores an unauthenticated sandbox URL in the ordinary production build', () => {
     vi.stubEnv('DEV', false);
-    vi.stubEnv('VITE_ARENA', '1');
     history.replaceState(null, '', '/?arena=sandbox');
     render(<App />);
     expect(screen.queryByTestId('arena')).not.toBeInTheDocument();

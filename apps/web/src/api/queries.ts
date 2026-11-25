@@ -33,6 +33,7 @@ import type {
 } from '@astera/rules';
 import type { z } from 'zod';
 import type {
+  CapsuleIdView,
   ClanChatPage,
   ChatPage,
   DmPage,
@@ -661,6 +662,38 @@ export function useDailyQuests() {
   });
 }
 
+/** SENTEZ LABORATUVARI (plan 2026-11-24): the laboratory, its stock and the next storm. */
+export function useSynthesis(enabled = true) {
+  const api = useApi();
+  return useQuery({ queryKey: keys.synthesis, queryFn: api.synthesis, ...READ, retry: false, enabled });
+}
+
+/** The capsules a launch may wear, or null where the galaxy has no laboratory (plan 2026-11-24 §3.5). */
+export function useCapsuleStock() {
+  const season = useSeason();
+  const synthesis = useSynthesis(season.data?.features?.synthesis === true);
+  return synthesis.data?.enabled ? synthesis.data.capsules : null;
+}
+
+/** Start or cancel a batch: the laboratory and the capital that paid, out of one answer. */
+export function useSynthesisOrder() {
+  const api = useApi();
+  const client = useQueryClient();
+  const { capitalPlanetId } = useWorld();
+  const apply = useApplyPlanet();
+  const lane = usePlanetMutationLane(capitalPlanetId);
+  return useMutation({
+    mutationFn: (order: { kind: 'start'; capsuleId: CapsuleIdView; quantity: number } | { kind: 'cancel' }) =>
+      order.kind === 'start' ? api.startSynthesis(order.capsuleId, order.quantity) : api.cancelSynthesis(),
+    onMutate: lane.enter,
+    onSuccess: async (result) => {
+      await Promise.all([apply(result.planet), client.cancelQueries({ queryKey: keys.synthesis })]);
+      client.setQueryData(keys.synthesis, result.synthesis);
+    },
+    onSettled: (_data, _error, _order, turn) => { lane.leave(turn); },
+  });
+}
+
 /** Take one purse: the same two writes as a reward claim — the panel and the capital — out of one answer. */
 export function useClaimDailyQuest() {
   const api = useApi();
@@ -995,10 +1028,14 @@ export function useClanWarActions() {
     monumentTarget: useMutation({ mutationFn: (monumentId: string) => api.markClanWarMonumentTarget(monumentId),
       onSuccess: refresh }),
     cancel: useMutation({ mutationFn: () => api.cancelClanWar(), onSuccess: refresh }),
-    start: useMutation({ mutationFn: ({ acknowledgeShieldLoss, pace, acknowledgeRadiationLoss }: {
+    start: useMutation({ mutationFn: ({ acknowledgeShieldLoss, pace, acknowledgeRadiationLoss, capsules = [] }: {
       acknowledgeShieldLoss: boolean; pace: MissionPace; acknowledgeRadiationLoss?: boolean;
-    }) => acknowledgeRadiationLoss ? api.startClanWar(acknowledgeShieldLoss, pace, true)
-      : api.startClanWar(acknowledgeShieldLoss, pace), onSuccess: refresh }),
+      /** Sentez capsules for the whole combined strike, paid by the leader (owner 2026-11-25). */
+      capsules?: readonly CapsuleIdView[];
+    }) => capsules.length > 0 ? api.startClanWar(acknowledgeShieldLoss, pace, acknowledgeRadiationLoss, capsules)
+      : acknowledgeRadiationLoss ? api.startClanWar(acknowledgeShieldLoss, pace, true)
+        : api.startClanWar(acknowledgeShieldLoss, pace),
+    onSuccess: () => { refresh(); void refreshQueries(client, { queryKey: keys.synthesis }); } }),
     quote: useMutation({ mutationFn: (input: { originPlanetId: string; fleet: Fleet }) =>
       api.quoteClanWar(input) }),
     contribute: useMutation({ mutationFn: (input: { originPlanetId: string; fleet: Fleet;
@@ -2650,18 +2687,20 @@ export function useLaunch() {
   return useMutation({
     meta: lane.meta,
     mutationFn: (
-      { targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, originBody, targetBody }:
+      { targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, originBody, targetBody, capsules = [] }:
       {
         targetPlanetId: string; fleet: Fleet; acknowledgeShieldLoss?: boolean; pace?: MissionPace;
         acknowledgeRadiation?: boolean; admiral?: boolean; originBody?: WorldBody; targetBody?: WorldBody;
+        /** Sentez capsules (plan 2026-11-24 §3.5); the server prices and takes them. */
+        capsules?: readonly CapsuleIdView[];
       },
       context,
     ) => {
       const planetId = planetMutationOrigin(context);
       const bodies = originBody || targetBody ? { originBody, targetBody } : undefined;
       return planetId
-        ? api.launch(planetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies)
-        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies);
+        ? api.launch(planetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies, capsules)
+        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies, capsules);
     },
     onMutate: lane.enter,
     onSuccess: async (result, { targetPlanetId }) => {
@@ -2691,7 +2730,7 @@ export function useLaunch() {
       ]);
       client.setQueryData(keys.pending, { pending: result.pending });
       // The commander ship may have left with it (Y9).
-      invalidate(keys.galaxy, keys.intel, keys.rewards, keys.dailyQuests, keys.commanderShip);
+      invalidate(keys.galaxy, keys.intel, keys.rewards, keys.dailyQuests, keys.commanderShip, keys.synthesis);
     },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
@@ -2705,7 +2744,7 @@ export function useTransfer(originPlanetId: string) {
   const lane = usePlanetMutationLane(originPlanetId);
   return useMutation({
     meta: lane.meta,
-    mutationFn: ({ targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation, originBody, targetBody }: {
+    mutationFn: ({ targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation, originBody, targetBody, capsules }: {
       targetPlanetId: string;
       fleet: Fleet;
       cargo: { alloy: number; crystal: number; deuterium: number };
@@ -2715,9 +2754,11 @@ export function useTransfer(originPlanetId: string) {
       acknowledgeRadiation?: boolean;
       originBody?: WorldBody;
       targetBody?: WorldBody;
+      /** Sentez: Optik Örtü is the only capsule a transfer may wear. */
+      capsules?: readonly CapsuleIdView[];
     }, context) => api.transfer(
       requiredPlanetMutationOrigin(context), targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation,
-      originBody || targetBody ? { originBody, targetBody } : undefined,
+      originBody || targetBody ? { originBody, targetBody } : undefined, capsules,
     ),
     onMutate: lane.enter,
     onSuccess: async (result) => {
@@ -2727,7 +2768,7 @@ export function useTransfer(originPlanetId: string) {
         client.cancelQueries({ queryKey: keys.pending }),
       ]);
       client.setQueryData(keys.pending, { pending: result.pending });
-      invalidate(keys.traffic, keys.galaxy, keys.planets);
+      invalidate(keys.traffic, keys.galaxy, keys.planets, keys.synthesis);
     },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
@@ -2742,7 +2783,8 @@ export function useSettlement() {
   const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
     meta: lane.meta,
-    mutationFn: (targetPlanetId: string, context) => api.settle(requiredPlanetMutationOrigin(context), targetPlanetId),
+    mutationFn: ({ targetPlanetId, capsules = [] }: { targetPlanetId: string; capsules?: readonly CapsuleIdView[] }, context) =>
+      api.settle(requiredPlanetMutationOrigin(context), targetPlanetId, capsules),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       await Promise.all([
@@ -2750,7 +2792,7 @@ export function useSettlement() {
         client.cancelQueries({ queryKey: keys.pending }),
       ]);
       client.setQueryData(keys.pending, { pending: result.pending });
-      invalidate(keys.traffic, keys.galaxy, keys.planets);
+      invalidate(keys.traffic, keys.galaxy, keys.planets, keys.synthesis);
     },
     onSettled: (_data, _error, _targetPlanetId, turn) => { lane.leave(turn); },
   });

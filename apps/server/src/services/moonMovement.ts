@@ -55,6 +55,10 @@ export async function hopFleetTx(
   if (!await seasonHasMoons(tx, world.seasonId)) throw new GameError('MOONS_DISABLED', 'This galaxy has no moons', 409);
   const [moon] = await tx.select().from(moons).where(eq(moons.planetId, planetId));
   if (!moon) throw new GameError('NO_MOON', 'This world has no moon', 409);
+  // A Death Star's EMP shuts the moon (owner 2026-11-26): nothing goes up to it; its ships may still come down.
+  if (direction === 'UP' && moon.closedUntil && moon.closedUntil > world.now) {
+    throw new GameError('MOON_CLOSED', 'A struck moon takes no fleet until it reopens', 409);
+  }
 
   const fleet = mobileFleet(requested);
   const kind = KIND[direction];

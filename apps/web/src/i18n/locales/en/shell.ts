@@ -357,6 +357,9 @@ export const leaderboard = {
     value: "Damage and loss values use fixed build-cost weights: 1 alloy + 2 crystal + 32 deuterium. Damage excludes rebuilt ground defences.",
   },
   honorTarget: {
+    more: "Honor rules",
+    fold: "{{kind}} · {{value}}",
+    short: { FULL: "full return", HALF: "half return", NONE: "no return", RELATED: "earns no Honor" },
     loading: "Loading Honor comparison…",
     unavailable: "Honor comparison is unavailable.",
     retry: "Retry Honor comparison",

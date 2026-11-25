@@ -13,7 +13,7 @@ export const dayOf = (at: Date): string => at.toISOString().slice(0, 10);
 export const nextMidnight = (at: Date): Date => { const next = new Date(at); next.setUTCHours(24, 0, 0, 0); return next; };
 export const sentToday = (row: ShipRow, now: Date): ArenaResources => row.transferDay === dayOf(now)
   ? { alloy: row.sentAlloy, crystal: row.sentCrystal, deuterium: row.sentDeuterium } : { ...ZERO };
-export const holdOf = (row: ShipRow): number[] => [row.holdAlloy, row.holdCrystal, row.holdDeuterium];
+export const holdOf = (row: ShipRow): number[] => [row.holdAlloy, row.holdCrystal, row.holdDeuterium, row.holdAsterium];
 /** The capital's own hourly production: the rate its works and orbit give, as the planet view shows it. */
 export const perHour = (planet: LockedPlanet): ArenaResources => {
   const boost = productionMult(planet.orbit);

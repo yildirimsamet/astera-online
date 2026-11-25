@@ -22,6 +22,8 @@ import {
   HULLS,
   COMBAT_HULLS,
   splitHealthFleet,
+  missionSuppressesRadarWarning,
+  type CapsuleId,
   type WorldBody,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
@@ -70,6 +72,7 @@ import { assertMoonShipsFree } from './moonMovement.js';
 import { commitHonor } from './honorCommitment.js';
 import { commitLegacyAttack } from './legacyEvents.js';
 import { attachAdmiral, prepareAdmiral } from './admiral.js';
+import { assertMissionCapsules, consumeCapsulesForMission } from './synthesis.js';
 
 export interface LaunchResult {
   missionId: string;
@@ -140,10 +143,13 @@ export async function launchAttack(
   targetBody: WorldBody = 'PLANET',
   /** The body the wing leaves from (S34): a moon's ships raid as the planet's do; fuel is the planet's (S49). */
   originBody: WorldBody = 'PLANET',
+  /** Sentez capsules pressed onto this raid (plan 2026-11-24 §3.5); priced from the fleet below. */
+  capsules: readonly CapsuleId[] = [],
 ): Promise<LaunchResult> {
   if (originPlanetId === targetPlanetId) {
     throw new GameError('SELF_ATTACK', 'You cannot attack your own planet');
   }
+  assertMissionCapsules('attack', capsules);
   // Structure first, semantics second: fleetCount() drops non-positive entries,
   // so checking it first would report a malformed request as an empty one.
   for (const [hull, n] of Object.entries(requested) as [HullId, number][]) {
@@ -458,6 +464,9 @@ export async function launchAttack(
     // The survivors fly home at the pace that went out (owner, 2026-10-06), so the season's end
     // is measured on that same slow way back.
     assertSeasonOpenThrough(origin, homeAt);
+    const applied = await consumeCapsulesForMission(tx, {
+      playerId: origin.playerId, seasonId: origin.seasonId, kind: 'attack', fleet: requested, capsules, now: origin.now,
+    });
 
     const [mission] = await tx
       .insert(missions)
@@ -486,6 +495,7 @@ export async function launchAttack(
         pace: chosenPace,
         departAt: origin.now,
         arriveAt,
+        appliedCapsules: applied,
       })
       .returning();
     await attachAdmiral(tx, escort?.id, 'mission', mission!.id);
@@ -566,12 +576,15 @@ export async function launchAttack(
       targetCoreLevel: radarTargetCore?.level ?? 1,
       oneWayMinutes: oneWay,
     }));
-    await schedule(tx, {
-      seasonId: origin.seasonId,
-      kind: 'radar_warning',
-      refId: mission!.id,
-      resolveAt: warnAt > origin.now ? warnAt : origin.now,
-    });
+    // Sessiz İtki: no warning is ever booked, so nothing downstream can ring (plan §3.5, K8).
+    if (!missionSuppressesRadarWarning(applied)) {
+      await schedule(tx, {
+        seasonId: origin.seasonId,
+        kind: 'radar_warning',
+        refId: mission!.id,
+        resolveAt: warnAt > origin.now ? warnAt : origin.now,
+      });
+    }
 
     /**
      * AND THE GALAXY IS TOLD, THE MOMENT IT LEAVES. D53.

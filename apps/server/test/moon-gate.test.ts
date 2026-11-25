@@ -125,6 +125,10 @@ describe('the Moon Gate', () => {
     await expect(jump({ DART: 11 })).rejects.toMatchObject({ code: 'NOT_ENOUGH_SHIPS' });
     await f.db.update(moons).set({ closedUntil: new Date(f.clock.now().getTime() + 60_000) }).where(eq(moons.planetId, colony));
     await expect(jump({ DART: 10 })).rejects.toMatchObject({ code: 'GATE_CLOSED' });
+    // The struck moon itself sends nothing through its gate either (owner 2026-11-26).
+    await f.db.update(moons).set({ closedUntil: null }).where(eq(moons.planetId, colony));
+    await f.db.update(moons).set({ closedUntil: new Date(f.clock.now().getTime() + 60_000) }).where(eq(moons.planetId, home));
+    await expect(jump({ DART: 10 })).rejects.toMatchObject({ code: 'GATE_CLOSED' });
     await f.db.delete(moons).where(eq(moons.planetId, colony));
     await expect(jump({ DART: 10 })).rejects.toMatchObject({ code: 'NO_MOON' });
   });

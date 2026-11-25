@@ -29,3 +29,21 @@ describe('the Yarık\'s own words', () => {
     });
   }
 });
+
+/*
+  NO SCORE (owner 2026-11-25: "Yarık'ta puan diye bir şey yok"). The hold is what the capital gets; the tips,
+  the goals and the result never turn it into points. The storm says only where to look: the middle.
+*/
+describe('the Yarık keeps no score', () => {
+  afterEach(async () => { await i18n.changeLanguage('en'); });
+  for (const [language, middle] of [['tr', /ortalar/i], ['en', /middle/i]] as const) {
+    it(`${language}: no points in what a pilot reads about the hold, and the storm points to the middle`, async () => {
+      await i18n.changeLanguage(language);
+      const c = arenaCopy();
+      for (const key of ['pointsShort', 'lostPoints', 'delivered', 'pointsCol']) expect(c).not.toHaveProperty(key);
+      const read = strings([c.tips, c.goals, c.standingsRule, c.extractedHint, c.emptyHint, c.storm]);
+      expect(read.filter(text => /puan|\bpoints?\b|\bpts\b|score/i.test(text))).toEqual([]);
+      expect(c.storm).toMatch(middle);
+    });
+  }
+});

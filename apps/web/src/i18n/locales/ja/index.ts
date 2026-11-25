@@ -30,6 +30,7 @@ import { clanWar } from './clanWar.js';
 import { clanSupport } from './clanSupport.js';
 import { community } from './community.js';
 import { trade } from './trade.js';
+import { synthesis } from './synthesis.js';
 import { academy } from './academy.js';
 import { convoy } from './convoy.js';
 import { starter } from './starter.js';
@@ -105,6 +106,7 @@ export const ja: Resources = {
   clanSupport,
   community,
   trade,
+  synthesis,
   convoy,
   starter, universe: {"open": "宇宙を見る", "back": "戻る", "main": "メイン銀河", "you": "あなた", "starter": "スタート {{number}}", "ships_one": "{{count}}隻", "ships_other": "{{count}}隻"},
   hold,

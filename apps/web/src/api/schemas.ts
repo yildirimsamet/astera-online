@@ -625,7 +625,8 @@ export const seasonSchema = z.object({
    */
   rulesetVersion: z.number().int().positive().optional(),
   /** Feature flags advertised by the galaxy; optional for rolling deploys. */
-  features: z.object({ moons: z.boolean() }).optional(),
+  /** Ay and Asteryum (plan 2026-11-24): an older server sends no `synthesis`, which is "not here". */
+  features: z.object({ moons: z.boolean(), synthesis: z.boolean().default(false) }).optional(),
   players: z.number(),
   /**
    * Commanders whose last authenticated request was inside the online window.
@@ -785,6 +786,13 @@ const activeGalaxyEventSchema = z.discriminatedUnion('kind', [
       maxAwardedShips: z.number().int().positive(),
     }),
   }),
+  /** Asteryum Fırtınası (plan 2026-11-24 §3.2): a window; the Yarık field is the whole effect. */
+  z.object({
+    id: z.string().uuid(),
+    kind: z.literal('ASTERIUM_STORM'),
+    startsAt: z.coerce.date(),
+    endsAt: z.coerce.date(),
+  }),
 ]);
 
 const knownGalaxyEventKinds: ReadonlySet<string> = new Set(
@@ -804,7 +812,7 @@ const knownGalaxyEventKinds: ReadonlySet<string> = new Set(
  */
 export const activeGalaxyEventsSchema = z.object({
   next: z.object({
-    kind: z.enum(['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY']),
+    kind: z.enum(['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY', 'ASTERIUM_STORM']),
     startsAt: z.coerce.date(),
   }).nullable().default(null),
   events: z.array(z.unknown()).transform((rows, context) => rows.flatMap((row, index) => {
@@ -983,6 +991,12 @@ export const planetMoonSchema = z.object({
   dockFree: z.number().nonnegative(),
   scanRange: z.number().nonnegative(),
   scanPierces: z.boolean(),
+  /** Where the moon's Asteryum stands (owner 2026-11-25): the client counts on from here with the rules. */
+  asterium: z.object({
+    syncedAt: z.coerce.date(),
+    fraction: z.number().min(0).lt(1),
+    produced: z.number().int().nonnegative(),
+  }).optional(),
   moves: z.array(moonMoveSchema),
 });
 
@@ -2587,6 +2601,11 @@ const galaxyLifecyclePayloadSchema = z.discriminatedUnion('eventKind', [
     resourceCapHours: z.number().positive(),
     shipDropChanceAtFullQuality: z.number().min(0).max(1),
   }),
+  z.object({
+    eventKind: z.literal('ASTERIUM_STORM'),
+    startsAt: z.string(),
+    endsAt: z.string(),
+  }),
 ]);
 
 /** Every lifecycle kind this build can render. See the drop rule below. */
@@ -2907,6 +2926,8 @@ const pendingThread = z.object({
   corridor: z.boolean().optional(),
   /** Y9: the commander ship flying at the rear of this craft; your own craft only. */
   admiral: z.object({ ship: z.enum(SHIP_CLASSES), level: z.number().int().min(1) }).optional(),
+  /** G17: Optik Örtü rides on this leg of your own craft; drawn cloaked. */
+  veiled: z.literal(true).optional(),
   /**
    * The mission's own id. YOUR OWN CRAFT ONLY — an inbound thread has none.
    *
@@ -3297,6 +3318,8 @@ const ordinaryBattleReport = z.object({
       fleetEscape: fleetEscapeRecord.nullish(),
       /** Y9: the commander ships that escorted either side. Optional for a rolling deploy. */
       admirals: z.array(z.object({ side: z.enum(['attack', 'defence']), ship: z.enum(SHIP_CLASSES), level: z.number().int().min(1) })).optional(),
+      /** Sentez capsules the raid wore (plan 2026-11-24 §3.5); both sides read them. Optional for a rolling deploy. */
+      appliedCapsules: z.array(z.object({ id: z.enum(['OPTIC_VEIL', 'SILENT_THRUST']), count: z.number().int().positive() })).optional(),
       /**
        * Defender only: the lookback's NET loss in hours of the reader's production at
        * this battle, and whether it bought the recovery shield. Optional for a rolling
@@ -3955,6 +3978,8 @@ export const trafficSchema = z.object({
        * something you cannot identify, bearing down on a world you own.
        */
       inbound: z.literal(true).optional(),
+      /** G17: Optik Örtü rides on this leg; only its owner's clan receives it, and draws it cloaked. */
+      veiled: z.literal(true).optional(),
       /**
        * OUT OF SIGHT, STILL TRACKED. PIRATES ONLY. D160.
        *
@@ -4348,3 +4373,39 @@ export const newcomerScenarioResponseSchema = z.object({
   scenario: newcomerScenarioSchema.nullable(),
 });
 export type NewcomerScenario = z.infer<typeof newcomerScenarioSchema>;
+
+/* ── Asteryum & Sentez Laboratuvarı (plan 2026-11-24 §4.3) ─────────────────── */
+
+export const capsuleIdSchema = z.enum(['OPTIC_VEIL', 'SILENT_THRUST']);
+export type CapsuleIdView = z.infer<typeof capsuleIdSchema>;
+
+export const synthesisViewSchema = z.object({
+  enabled: z.boolean(),
+  requiredCore: z.number().int(),
+  coreLevel: z.number().int(),
+  unlocked: z.boolean(),
+  asterium: z.number().int().min(0),
+  perDay: z.number().min(0),
+  moons: z.array(z.object({
+    planetId: z.string(),
+    planetName: z.string(),
+    rarity: moonRaritySchema,
+    perDay: z.number().min(0),
+    closedUntil: z.coerce.date().nullable().default(null),
+    nextAt: z.coerce.date().nullable().default(null),
+  })),
+  capsules: z.object({ OPTIC_VEIL: z.number().int().min(0), SILENT_THRUST: z.number().int().min(0) }),
+  job: z.object({
+    capsuleId: capsuleIdSchema,
+    quantity: z.number().int().positive(),
+    delivered: z.number().int().min(0),
+    startedAt: z.coerce.date(),
+    nextAt: z.coerce.date(),
+    completesAt: z.coerce.date(),
+  }).nullable(),
+  storm: z.object({ active: z.boolean(), startsAt: z.coerce.date(), endsAt: z.coerce.date() }).nullable(),
+});
+export type SynthesisView = z.infer<typeof synthesisViewSchema>;
+
+/** A laboratory write answers with the laboratory and the capital it paid from. */
+export const synthesisResultSchema = z.object({ synthesis: synthesisViewSchema, ...withPlanet });

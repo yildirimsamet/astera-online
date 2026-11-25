@@ -59,7 +59,7 @@ export function subjectReference(subject: WikiSubject, language: WikiLanguage): 
         { key: 'attack', label: label(language, 'Attack', 'Saldırı'), value: n(h.atk) },
         { key: 'hull', label: label(language, 'Hull strength (HP)', 'Gövde dayanımı (HP)'), value: n(h.hp) },
         ...(!h.ground ? [{ key: 'ship-shield', label: label(language, 'Base ship shield (HP)', 'Temel gemi kalkanı (HP)'), value: n(shipShieldHp({}, h.id)) }] : []),
-        { key: 'speed', label: label(language, 'Speed (map units/min)', 'Hız (harita birimi/dakika)'), value: h.ground ? label(language, 'Cannot fly', 'Uçamaz') : n(h.speed / TRAVEL.distanceFactor) },
+        { key: 'speed', label: label(language, 'Speed (map units/min)', 'Hız (birim/dakika)'), value: h.ground ? label(language, 'Cannot fly', 'Uçamaz') : n(h.speed / TRAVEL.distanceFactor) },
         { key: 'cargo', label: label(language, 'Cargo capacity (resources)', 'Kargo kapasitesi (kaynak)'), value: n(h.cargo) },
         { key: 'bulk', label: h.ground ? label(language, 'Ground capacity used', 'Kullanılan yer kapasitesi') : label(language, 'Hangar room used', 'Kullanılan Hangar alanı'), value: n(hullBulk(h.id)) },
       ] }, table(label(language, 'Cost of one unit', 'Bir birimin bedeli'), resourceColumns(language), [costCells(h, language)])];
@@ -119,8 +119,8 @@ export function subjectReference(subject: WikiSubject, language: WikiLanguage): 
       const id = subject.id;
       const max = INSTRUMENT_MAX_LEVEL[id];
       const columns = [level, ...resourceColumns(language)];
-      if (id === 'TELESCOPE') columns.push(label(language, 'Contact range (map units)', 'Tanımlama menzili (harita birimi)'), label(language, 'Watch range (map units)', 'Gözlem menzili (harita birimi)'), label(language, 'Watch slots', 'Gözlem yuvası'), label(language, 'Cooldown hours', 'Bekleme saati'));
-      if (id === 'RADAR') columns.push(label(language, 'Warning range (map units)', 'Uyarı menzili (harita birimi)'));
+      if (id === 'TELESCOPE') columns.push(label(language, 'Contact range (map units)', 'Tanımlama menzili (birim)'), label(language, 'Watch range (map units)', 'Gözlem menzili (birim)'), label(language, 'Watch slots', 'Gözlem yuvası'), label(language, 'Cooldown hours', 'Bekleme saati'));
+      if (id === 'RADAR') columns.push(label(language, 'Warning range (map units)', 'Uyarı menzili (birim)'));
       if (id === 'AEGIS') columns.push(label(language, 'Maximum shield strength (HP)', 'Azami kalkan dayanımı (HP)'));
       blocks = [table(label(language, 'Instrument levels', 'Gezegen cihazı seviyeleri'), columns,
         Array.from({ length: max ?? 8 }, (_, index) => {
@@ -248,8 +248,8 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
     [t('Base mining hold', 'Temel maden ambarı'), n(PROSPECTOR.hold)],
     [t('Prospectors per world without research', 'Araştırma olmadan gezegen başına Kazıcı'), n(PROSPECTOR.max)],
     [t('Prospector Holds level that opens the third slot', 'Üçüncü yuvayı açan Kazıcı Ambarları seviyesi'), n(PROSPECTOR.thirdCraftRung)],
-    [t('Outbound speed (map units/min)', 'Gidiş hızı (harita birimi/dakika)'), n(PROSPECTOR.speed / TRAVEL.distanceFactor)],
-    [t('Loaded return speed (map units/min)', 'Yüklü dönüş hızı (harita birimi/dakika)'), n(PROSPECTOR.speed * PROSPECTOR.returnSpeedFactor / TRAVEL.distanceFactor)],
+    [t('Outbound speed (map units/min)', 'Gidiş hızı (birim/dakika)'), n(PROSPECTOR.speed / TRAVEL.distanceFactor)],
+    [t('Loaded return speed (map units/min)', 'Yüklü dönüş hızı (birim/dakika)'), n(PROSPECTOR.speed * PROSPECTOR.returnSpeedFactor / TRAVEL.distanceFactor)],
     [t('Trips shorter than this trigger a cooldown', 'Bu süreden kısa seferlerde bekleme uygulanır'), `${n(PROSPECTOR.shortTripMinutes)} min`],
     [t('Cooldown after a short trip', 'Kısa seferden sonra yeniden gönderim beklemesi'), `${n(PROSPECTOR.shortTripCooldownMinutes)} min`],
   ])];

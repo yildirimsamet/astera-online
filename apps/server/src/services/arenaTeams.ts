@@ -14,7 +14,7 @@ const membership = async (q: Queryable, playerId: string) => (await q.select({ c
   .from(clanMemberships).innerJoin(clans, eq(clans.id, clanMemberships.clanId))
   .where(and(eq(clanMemberships.playerId, playerId), isNull(clanMemberships.leftAt), isNull(clans.disbandedAt))))[0];
 const fingerprint = (s: ShipRow | undefined): string => JSON.stringify(s ? [s.ship, s.level, s.abilities, s.fuel, s.ammo,
-  s.holdAlloy, s.holdCrystal, s.holdDeuterium, s.readyAt?.toISOString() ?? null, s.sortieId, s.admiralId] : null);
+  s.holdAlloy, s.holdCrystal, s.holdDeuterium, s.holdAsterium, s.readyAt?.toISOString() ?? null, s.sortieId, s.admiralId] : null);
 
 async function readiness(q: Tx, clock: Clock, accountId: string) {
   const who = await commander(q, accountId); const [ship] = await shipFor(q, who.playerId);

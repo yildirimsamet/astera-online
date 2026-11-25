@@ -301,8 +301,12 @@ describe('deleting an account at the player’s request', () => {
     expect(after.filter((moon) => seeded.some((s) => s.planetId === moon.planetId))).toEqual(seeded);
     const all = after.filter((moon) => !seeded.some((s) => s.planetId === moon.planetId));
     expect(all).toHaveLength(1);
-    expect(all[0]).toEqual({ planetId: restored!.id, rarity: 'EPIC', origin: 'BATTLE', cracks: 2, lastHitAt: hitAt,
-      closedUntil, gateReadyAt: null, visualSeed: 77, bornAt: hitAt, bornMissionId: null });
+    // Asteryum bookkeeping rides with the moon (plan 2026-11-24 §3.1); a caretaker world earns nothing from it.
+    const { asteriumSyncedAt, ...moved } = all[0]!;
+    expect(asteriumSyncedAt).toBeInstanceOf(Date);
+    expect(moved).toEqual({ planetId: restored!.id, rarity: 'EPIC', origin: 'BATTLE', cracks: 2, lastHitAt: hitAt,
+      closedUntil, gateReadyAt: null, visualSeed: 77, bornAt: hitAt, bornMissionId: null, asteriumFraction: 0,
+      asteriumProduced: 0 });
   });
 
   it('re-seeds the returned world from the season’s own generator', async () => {

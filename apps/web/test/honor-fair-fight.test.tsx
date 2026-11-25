@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { honorReceiptSchema, honorTargetSchema } from '../src/api/schemas.js';
 import { leaderboard as en } from '../src/i18n/locales/en/shell.js';
@@ -38,6 +38,8 @@ describe('the 2026-11-12 Honor table on screen', () => {
 
   it('says the half return halves the loss deduction too', () => {
     render(<HonorTargetCard value={{ ...target, kind: 'PEER', militaryReturn: 'HALF' }} />);
+    // Owner 2026-11-25: the card is folded; a half return is a rule, read behind ⓘ (a price stays open).
+    fireEvent.click(screen.getByRole('button', { name: 'Honor rules' }));
     expect(screen.getByText(/Reduced military return.*losses.*halved/)).toBeVisible();
   });
 

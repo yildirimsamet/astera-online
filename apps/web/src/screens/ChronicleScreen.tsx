@@ -6,6 +6,7 @@ import { useMoonT } from '../i18n/moon.js';
 import { EmptyState, GameButton, Glyph, artIconSrc, type GlyphId } from '../game-ui/index.js';
 import { chatRelativeTime } from '../lib/chatTime.js';
 import { full } from '../lib/format.js';
+import { EVENT_GLYPH } from '../lib/nowLine.js';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { useNow } from '../lib/time.js';
@@ -15,8 +16,6 @@ import { useOwnPress } from '../ui/kit/useOwnPress.js';
 /** How a moment reads at a glance (C10): a blow, a rise, an opening, or something that ran out. */
 type Tone = 'hostile' | 'gold' | 'good' | 'quiet';
 
-/** A galaxy event's own mark: the merchant's crate, the convoy, the shower's rock. */
-const EVENT_GLYPH = { TRADE_SHIP: 'crate', INTERGALACTIC_CONVOY: 'rocket', ASTEROID_SHOWER: 'asteroid' } as const satisfies Record<string, GlyphId>;
 
 const GROUP_MS = 8 * 60_000;
 
@@ -166,21 +165,27 @@ export function ChronicleScreen({
                 what replaces it.
               */
               case 'galaxy_event_started':
-                title = event.payload.eventKind === 'TRADE_SHIP'
-                  ? t('chronicle.tradeShipStarted')
-                  : event.payload.eventKind === 'INTERGALACTIC_CONVOY'
-                    ? t('chronicle.intergalacticConvoyStarted')
-                    : t('chronicle.asteroidShowerStarted');
-                detail = event.payload.eventKind === 'TRADE_SHIP'
-                  ? t('chronicle.tradeShipStartedDetail', {
-                    alloy: full(event.payload.rate.deuterium / event.payload.rate.alloy),
-                    crystal: full(event.payload.rate.deuterium / event.payload.rate.crystal),
-                  })
-                  : event.payload.eventKind === 'INTERGALACTIC_CONVOY'
-                    ? t('chronicle.intergalacticConvoyStartedDetail')
-                    : t('chronicle.asteroidShowerStartedDetail', {
-                      multiplier: event.payload.asteroidSpawnMultiplier,
+                switch (event.payload.eventKind) {
+                  case 'TRADE_SHIP':
+                    title = t('chronicle.tradeShipStarted');
+                    detail = t('chronicle.tradeShipStartedDetail', {
+                      alloy: full(event.payload.rate.deuterium / event.payload.rate.alloy),
+                      crystal: full(event.payload.rate.deuterium / event.payload.rate.crystal),
                     });
+                    break;
+                  case 'INTERGALACTIC_CONVOY':
+                    title = t('chronicle.intergalacticConvoyStarted');
+                    detail = t('chronicle.intergalacticConvoyStartedDetail');
+                    break;
+                  case 'ASTERIUM_STORM':
+                    title = t('synthesis.storm.chronicleStarted');
+                    detail = t('synthesis.storm.chronicleStartedDetail');
+                    break;
+                  case 'ASTEROID_SHOWER':
+                    title = t('chronicle.asteroidShowerStarted');
+                    detail = t('chronicle.asteroidShowerStartedDetail', { multiplier: event.payload.asteroidSpawnMultiplier });
+                    break;
+                }
                 glyph = EVENT_GLYPH[event.payload.eventKind];
                 break;
               case 'moon_born':
@@ -202,16 +207,16 @@ export function ChronicleScreen({
                 break;
               }
               case 'galaxy_event_ended':
-                title = event.payload.eventKind === 'TRADE_SHIP'
-                  ? t('chronicle.tradeShipEnded')
-                  : event.payload.eventKind === 'INTERGALACTIC_CONVOY'
-                    ? t('chronicle.intergalacticConvoyEnded')
-                    : t('chronicle.asteroidShowerEnded');
-                detail = event.payload.eventKind === 'TRADE_SHIP'
-                  ? t('chronicle.tradeShipEndedDetail')
-                  : event.payload.eventKind === 'INTERGALACTIC_CONVOY'
-                    ? t('chronicle.intergalacticConvoyEndedDetail')
-                    : t('chronicle.asteroidShowerEndedDetail');
+                switch (event.payload.eventKind) {
+                  case 'TRADE_SHIP':
+                    title = t('chronicle.tradeShipEnded'); detail = t('chronicle.tradeShipEndedDetail'); break;
+                  case 'INTERGALACTIC_CONVOY':
+                    title = t('chronicle.intergalacticConvoyEnded'); detail = t('chronicle.intergalacticConvoyEndedDetail'); break;
+                  case 'ASTERIUM_STORM':
+                    title = t('synthesis.storm.chronicleEnded'); detail = t('synthesis.storm.chronicleEndedDetail'); break;
+                  case 'ASTEROID_SHOWER':
+                    title = t('chronicle.asteroidShowerEnded'); detail = t('chronicle.asteroidShowerEndedDetail'); break;
+                }
                 tone = 'quiet';
                 glyph = EVENT_GLYPH[event.payload.eventKind];
                 break;

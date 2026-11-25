@@ -68,12 +68,27 @@ function HoldGauge({ s, c }: { s: HudSnapshot; c: ArenaCopy }) {
     <strong aria-label={aboard.join(' · ') || undefined}>{Math.floor(s.cargo)}<small>/{hold}</small></strong>
     <i aria-hidden>{s.hold.map((units, kind) => units > 0 && <b key={kind}
       style={{ width: `${String(units / hold * 100)}%`, background: FARM_TONE[kind], boxShadow: `0 0 6px ${FARM_TONE[kind] ?? ''}` }} />)}</i>
-    <span className="ah-hold-kinds">{FARM_TONE.map((tone, kind) => {
-      const units = Math.floor(s.hold[kind] ?? 0);
-      return <b key={kind} className={units < 1 ? 'is-empty' : undefined} style={{ '--tone': tone } as React.CSSProperties}
-        aria-label={`${String(units)} ${c.kinds[kind] ?? ''}`}>{units}</b>;
-    })}</span>
   </div>;
+}
+
+/** Each kind's count in its colour, at the head of the band under the hold (owner 2026-10-27: the colours alone gave no numbers). */
+function HoldKinds({ s, c }: { s: HudSnapshot; c: ArenaCopy }) {
+  return <span className="ah-hold-kinds">{FARM_TONE.map((tone, kind) => {
+    const units = Math.floor(s.hold[kind] ?? 0);
+    // Asteryum (kind 3) takes a place only while some is aboard: most flights never see a storm.
+    if (kind === 3 && units < 1) return null;
+    return <b key={kind} className={units < 1 ? 'is-empty' : undefined} style={{ '--tone': tone } as React.CSSProperties}
+      aria-label={`${String(units)} ${c.kinds[kind] ?? ''}`}>{units}</b>;
+  })}</span>;
+}
+
+/**
+ * THE ASTERYUM FIRTINASI IN THE ROOM (G16): while it blows, one line says so and what to do about it.
+ * The stones themselves are the violet ones in the field (FARM_TONE[3]).
+ */
+export function StormChip({ active, c }: { active: boolean; c: ArenaCopy }) {
+  if (!active) return null;
+  return <span className="ah-storm" role="status"><i aria-hidden />{c.storm}</span>;
 }
 
 const ICON = {
@@ -124,7 +139,11 @@ export function hudContext(s: HudSnapshot, c: ArenaCopy): { title: string; hint?
   return null;
 }
 
-export function ArenaHud({ store, bind, layout, onMenu, connection, map, onMap }: { store: HudStore; bind: HudBind; layout: ArenaLayout; onMenu: () => void; connection: ReactNode;
+export function ArenaHud({ store, bind, layout, onMenu, connection, alert, map, onMap }: { store: HudStore; bind: HudBind; layout: ArenaLayout; onMenu: () => void;
+  /** The room's lines (the link, the storm): the band between the radar and the speed, under the hold's counts. */
+  connection: ReactNode;
+  /** A refused or lost link: a card over the flight, not a line in the band. */
+  alert?: ReactNode;
   /** The map sheet, when the page holds it: M opens it on a desktop as the radar does (owner 2026-10-27). */
   map?: boolean; onMap?: (open: boolean) => void }) {
   const s = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
@@ -150,6 +169,8 @@ export function ArenaHud({ store, bind, layout, onMenu, connection, map, onMap }
         <canvas ref={bind.radar} width={132} height={132} aria-hidden />
         <span className="ah-radar-hint" aria-hidden><svg viewBox="0 0 10 8"><path d="M.5 1.5 3.5.5l3 1 3-1v6l-3 1-3-1-3 1z M3.5.5v6M6.5 1.5v6" fill="none" stroke="currentColor" strokeWidth=".9" /></svg></span>
       </button>
+      {/* One band, one line each, top to bottom (2026-11-25: the counts sat over the link line). */}
+      <div className="ah-band"><HoldKinds s={s} c={c} />{connection}</div>
       <div className="ah-speed">
         <strong>{Math.round(s.speed)}</strong><small>{c.speed}</small>
         <em data-state={s.landed ? 'landed' : s.turboActive ? 'turbo' : s.speed === 0 ? 'stopped' : 'flying'}>
@@ -157,7 +178,7 @@ export function ArenaHud({ store, bind, layout, onMenu, connection, map, onMap }
         </em>
       </div>
     </div>
-    {connection}
+    {alert}
     {mapOpen && <MapSheet layout={layout} c={c} self={bind.mapSelf} altitude={bind.mapAltitude} friends={s.friends} onClose={() => { setMapOpen(false); }} />}
     {note && <div className={`ah-note tone-${note.tone}`} role="status">
       <strong>{note.title}</strong>{note.hint && <span>{note.hint}</span>}
@@ -189,7 +210,7 @@ const HudMarks = memo(function HudMarks({ bind, layout, c }: { bind: HudBind; la
     {placesOf(layout).map((place, i) => <div key={i} ref={bind.places(i)} className="ah-place"><i /><span>{c.landmarks[place.kind]} <b data-distance /></span></div>)}
     {Array.from({ length: 3 }, (_, i) => <div key={i} ref={bind.pings(i)} className="ah-ping"><i>{PING_KINDS.map(kind => <b key={kind} className={`is-${kind}`}>{PING_ICONS[kind]}</b>)}</i>
       <span><em data-kind /> <b data-distance /></span></div>)}
-    <div ref={bind.exit} className="ah-exit"><i /><span>{c.exit} <b data-distance /><em data-points /></span></div>
+    <div ref={bind.exit} className="ah-exit"><i /><span>{c.exit} <b data-distance /></span></div>
     <div ref={bind.landing} className="ah-landing"><i /></div>
     <div ref={bind.crystal} className="ah-crystal"><i /><span><em data-kind>{c.crystal}</em> <b data-distance /></span></div>
     <div ref={bind.incoming} className="ah-incoming"><i /></div>

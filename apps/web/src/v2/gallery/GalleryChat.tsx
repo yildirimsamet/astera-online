@@ -180,7 +180,7 @@ function useArrivalPress(view: string): void {
     if (view === 'chat-roster') return pressWhenThere(() => byLabel(t('chat.reactionCount', { emoji: '😂', count: 3 })), click);
     if (view === 'chat-dm-new') return pressWhenThere(() => byLabel(t('chat.dm.start')), click);
     if (view === 'chat-media') {
-      return pressWhenThere(() => Array.from(document.querySelectorAll('form button[aria-expanded]')).find((button) => button.textContent.includes(t('chat.media.add'))), click);
+      return pressWhenThere(() => byLabel(t('chat.media.add')), click);
     }
     return undefined;
   }, [t, view]);

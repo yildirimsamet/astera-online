@@ -98,7 +98,7 @@ describe('arena live playtest access', () => {
     expect(people(welcome).map(p => p.name).sort()).toEqual(['Alice', 'Bob']);
     expect(pilotsOf(welcome).flatMap(p => p.role ?? []).sort()).toEqual(['hunter', 'miner', 'patrol']);
     const roster = await alice.next(m => kind('roster')(m) && people(m).length === 2);
-    expect(people(roster).every(p => p.points === 0 && p.kills === 0 && p.deaths === 0)).toBe(true);
+    expect(people(roster).every(p => !('points' in p) && p.kills === 0 && p.deaths === 0)).toBe(true);
   });
 
   it('gives the same account one ship: a second socket replaces the first', async () => {
@@ -157,37 +157,48 @@ describe('arena live playtest access', () => {
   });
 });
 
-describe('farm points', () => {
-  it('banks a hold\'s points once per extraction and keeps adding them across flights', async () => {
-    const { url, arena } = await room();
-    const alice = await connect(url, { token: 'token-alice' });
-    const id = (await alice.next(kind('welcome')) as { pilotId: number }).pilotId;
-    const ship = () => {
-      const found = arena.world.drones.find(p => p.id === id);
-      if (!found) throw new Error('no ship');
-      return found;
-    };
-    Object.assign(ship(), { hold: [10, 5, 2], cargo: 17, phase: 'extracted' });
-    await alice.next(m => kind('roster')(m) && pilotsOf(m).some(p => p.id === id && p.points === 26));
-    await new Promise(resolve => setTimeout(resolve, 150));
-    const banked = alice.messages.filter(m => kind('roster')(m) && pilotsOf(m).some(p => p.id === id && (p.points ?? 0) > 26));
-    expect(banked).toEqual([]);
-    alice.socket.send(JSON.stringify({ kind: 'dev', action: 'restart' }));
-    await new Promise(resolve => setTimeout(resolve, 150));
-    expect(ship()).toMatchObject({ phase: 'flying', cargo: 0, hold: [0, 0, 0] });
-    Object.assign(ship(), { hold: [0, 0, 4], cargo: 4, phase: 'extracted' });
-    await alice.next(m => kind('roster')(m) && pilotsOf(m).some(p => p.id === id && p.points === 38));
-  });
-
-  it('banks nothing for a ship that died with a full hold', async () => {
+/*
+  NO SCORE (owner 2026-11-25: "Yarık'ta puan diye bir şey yok … Puan logic'ini kaldır"). A hold is worth what it
+  lands in the capital; the room's own record is who destroyed whom.
+*/
+describe('the room keeps no score', () => {
+  it('banks nothing for an extraction: the rows carry kills and deaths, never points', async () => {
     const { url, arena } = await room();
     const alice = await connect(url, { token: 'token-alice' });
     const id = (await alice.next(kind('welcome')) as { pilotId: number }).pilotId;
     const ship = arena.world.drones.find(p => p.id === id);
     if (!ship) throw new Error('no ship');
-    Object.assign(ship, { hold: [50, 0, 0], cargo: 50, phase: 'dead' });
+    Object.assign(ship, { hold: [10, 5, 2, 1], cargo: 18, phase: 'extracted' });
+    await new Promise(resolve => setTimeout(resolve, 200));
+    Object.assign(ship, { phase: 'dead' });
     const roster = await alice.next(m => kind('roster')(m) && pilotsOf(m).some(p => p.id === id && p.deaths === 1));
-    expect(pilotsOf(roster).find(p => p.id === id)?.points).toBe(0);
+    for (const message of alice.messages.filter(m => kind('roster')(m) || kind('welcome')(m))) {
+      for (const row of pilotsOf(message)) expect(row).not.toHaveProperty('points');
+    }
+    expect(pilotsOf(roster).find(p => p.id === id)).toMatchObject({ kills: 0, deaths: 1 });
+  });
+});
+
+/*
+  THE DEV ROOM FLIES A SIGNED-IN COMMANDER AS THEMSELVES (2026-11-25: the owner's lab flight was a guest,
+  "Pilot -2", so nothing it carried could reach the capital). The page sends a guest id with every hello;
+  a token beside it wins.
+*/
+describe('the dev room', () => {
+  it('seats a signed-in commander under their own name even when the hello carries a guest id', async () => {
+    const { url } = await room({ ARENA_DEV: 'true' });
+    const alice = await connect(url, { token: 'token-alice', guestId: 'guest-dev-signed-in-1' });
+    const welcome = await alice.next(kind('welcome')) as { pilotId: number };
+    expect(pilotsOf(welcome).find(p => p.id === welcome.pilotId)?.name).toBe('Alice');
+  });
+
+  it('numbers its guests from one, with or without bots', async () => {
+    for (const bots of ['0', '3']) {
+      const { url } = await room({ ARENA_DEV: 'true', ARENA_BOTS: bots });
+      const guest = await connect(url, { guestId: `guest-dev-number-${bots}` });
+      const welcome = await guest.next(kind('welcome')) as { pilotId: number };
+      expect(pilotsOf(welcome).find(p => p.id === welcome.pilotId)?.name).toBe('Pilot 1');
+    }
   });
 });
 

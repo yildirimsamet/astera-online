@@ -5,6 +5,7 @@ import {
   surfaceStandoff,
   worldRadius,
   type Vec3,
+  missionSuppressesRadarWarning,
 } from '@astera/rules';
 import { and, eq, gt, inArray, or } from 'drizzle-orm';
 import type { Queryable } from '../db/client.js';
@@ -131,7 +132,7 @@ export async function wakeInboundRadarWarnings(
   now: Date,
 ): Promise<void> {
   const inbound = await db
-    .select({ id: missions.id, seasonId: missions.seasonId })
+    .select({ id: missions.id, seasonId: missions.seasonId, appliedCapsules: missions.appliedCapsules })
     .from(missions)
     .where(and(
       eq(missions.status, 'in_flight'),
@@ -161,7 +162,8 @@ export async function wakeInboundRadarWarnings(
       inArray(scheduledEvents.refId, ids),
     ));
   const liveIds = new Set(live.flatMap((event) => event.refId ? [event.refId] : []));
-  const missing = inbound.filter((mission) => !liveIds.has(mission.id));
+  // Sessiz İtki never had a warning to wake (plan 2026-11-24 §3.5).
+  const missing = inbound.filter((mission) => !liveIds.has(mission.id) && !missionSuppressesRadarWarning(mission.appliedCapsules));
   if (missing.length > 0) {
     await db.insert(scheduledEvents).values(missing.map((mission) => ({
       seasonId: mission.seasonId,

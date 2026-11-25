@@ -38,7 +38,7 @@ export const research = {
   runningFinishes: "{{time}}’de biter",
   idleLabel: "Sürmekte olan araştırma yok",
   idleHint:
-    "Haritadan bir yıldız seç. Burada üç proje sıraya girebilir.",
+    "Takımyıldızdan bir yıldız seç. Burada üç proje sıraya girebilir.",
 
   frontierBand: "Ufuk",
   frontierNote: "İzinler ve radyasyon koruması. Her araştırma kendi keşif koşullarını ve ön koşullarını gösterir.",

@@ -53,6 +53,8 @@ export const RESOURCE_ART = {
   alloy: `${BASE}/resources/alloy.png`,
   crystal: `${BASE}/resources/crystal.png`,
   deuterium: `${BASE}/resources/deuterium.png`,
+  /** Asteryum (owner 2026-11-25): the fourth resource's picture, in the same render language (agy, a lavender geode). */
+  asterium: `${BASE}/resources/asterium.webp`,
 } as const;
 
 /** Owner-supplied renders for the two strategic decisions. */

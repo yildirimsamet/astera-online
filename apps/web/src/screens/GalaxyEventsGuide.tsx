@@ -7,7 +7,7 @@ import {
 } from '@astera/rules';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useGalaxyEvents } from '../api/queries.js';
+import { useGalaxyEvents, useSeason } from '../api/queries.js';
 import { Glyph, InfoPeek, artIconSrc, type GlyphId } from '../game-ui/index.js';
 import { serverNow } from '../lib/clock.js';
 import { decimal } from '../lib/format.js';
@@ -181,7 +181,11 @@ export function GalaxyEventsGuide({ onClose, timeZone = deviceTimeZone() }: { on
   const asteroids = place('ASTEROID_SHOWER', GALAXY_EVENTS.definitions.ASTEROID_SHOWER.windows, now, timeZone);
   const trades = place('TRADE_SHIP', GALAXY_EVENTS.definitions.TRADE_SHIP.windows, now, timeZone);
   const convoys = place('INTERGALACTIC_CONVOY', GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.windows, now, timeZone);
-  const shifted = [...asteroids, ...trades, ...convoys].some((item) => item.shift !== 0);
+  // The Asteryum Fırtınası is on the calendar only where the galaxy has Asteryum (plan 2026-11-24).
+  const season = useSeason();
+  const storms = season.data?.features?.synthesis
+    ? place('ASTERIUM_STORM', GALAXY_EVENTS.definitions.ASTERIUM_STORM.windows, now, timeZone) : [];
+  const shifted = [...asteroids, ...trades, ...convoys, ...storms].some((item) => item.shift !== 0);
   const dayLabel = (days: DayGroup): string => t(`galaxy.eventsGuide.days.${days}`);
 
   return (
@@ -255,6 +259,25 @@ export function GalaxyEventsGuide({ onClose, timeZone = deviceTimeZone() }: { on
             </DayRow>
           ))}
         </EventCard>
+
+        {storms.length > 0 && (
+          /* Tone is provisional: Asteryum has no colour meaning yet (plan G15). */
+          <EventCard
+            tone="crystal"
+            glyph="storm"
+            title={t('galaxy.eventsGuide.storm.title')}
+            summary={t('galaxy.eventsGuide.storm.summary')}
+            note={t('galaxy.eventsGuide.storm.note')}
+          >
+            {byDays(storms).map((group) => (
+              <DayRow key={group.days} label={dayLabel(group.days)}>
+                {group.windows.map((item) => (
+                  <TimePill key={item.window.startsAtLocalMinute} time={item.time} shift={item.shift} />
+                ))}
+              </DayRow>
+            ))}
+          </EventCard>
+        )}
 
         <SignalRules />
 

@@ -95,6 +95,7 @@ export const keys = {
   reports: ['reports'],
   rewards: ['rewards'],
   dailyQuests: ['dailyQuests'],
+  synthesis: ['synthesis'],
   mining: ['mining'],
   /** The pirates this commander can see, from one of their worlds. D150. */
   pirates: ['pirates'],

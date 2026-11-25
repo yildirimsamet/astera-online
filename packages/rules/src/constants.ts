@@ -2932,6 +2932,17 @@ export const GALAXY_EVENTS = {
         },
       })),
     },
+    /**
+     * ASTERYUM FIRTINASI (plan 2026-11-24 §3.2, K3). Every day 21:00–22:00 TRT the Yarık seeds
+     * Asteryum; outside it none spawns. A live season gains it from `season activate-synthesis`.
+     */
+    ASTERIUM_STORM: {
+      schedule: 'FIXED_DAILY',
+      version: 1,
+      windows: [
+        { startsAtLocalMinute: 21 * 60, endsAtLocalMinute: 22 * 60, effect: { fieldVersion: 1 as const } },
+      ],
+    },
   },
   mutuallyExclusive: [] as readonly (readonly [string, string])[],
 } as const;

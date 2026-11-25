@@ -3,6 +3,7 @@ import {
   MOBILE_HULLS,
   MOON,
   MOON_RARITIES,
+  moonAsteriumPerDay,
   crackLimit,
   distance,
   fleetCount,
@@ -20,6 +21,7 @@ import {
 } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import type { PlanetMoon, PlanetView } from '../api/schemas.js';
+import { moonAsteriumReading } from '../lib/synthesis.js';
 import {
   Banner,
   Choices,
@@ -37,11 +39,11 @@ import {
 } from '../game-ui/index.js';
 import { hullName } from '../i18n/names.js';
 import { useMoonT } from '../i18n/moon.js';
-import { compact, full } from '../lib/format.js';
+import { compact, full, upTo } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { countdown, duration, useNow } from '../lib/time.js';
-import { HULL_ART, MOON_ART } from '../ui/assets.js';
+import { HULL_ART, MOON_ART, RESOURCE_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { describe } from '../ui/Toast.js';
@@ -81,6 +83,8 @@ export interface MoonScanResult {
 export interface MoonPanelProps {
   readonly planet: PlanetView;
   readonly moonsEnabled: boolean;
+  /** The galaxy has Asteryum (plan 2026-11-24): the moon names its daily share. */
+  readonly synthesisEnabled?: boolean;
   readonly otherMoons: readonly OtherOwnedMoon[];
   readonly scanTargets: readonly MoonScanTarget[];
   /** Full galaxy world id -> name map so Gözcü routes always resolve to real names. */
@@ -396,11 +400,8 @@ function NoMoonCard({
     <div data-testid="moon-panel-empty" className="gk flex flex-col gap-3 px-3 pb-4">
       <Plate className="flex flex-col gap-3 p-4">
         <div className="flex items-start gap-3">
-          <img
-            src={MOON_ART.gate}
-            alt=""
-            className="size-16 shrink-0 rounded-control border border-white/10 object-cover"
-          />
+          {/* The moon this card builds, as the galaxy will draw it (owner 2026-11-25: not the gate's picture). */}
+          <MoonPortrait rarity="COMMON" closed={false} />
           <div className="min-w-0 flex-1">
             <div className="text-title font-semibold text-white">{mt('build.title')}</div>
             <p className="mt-0.5 text-caption text-dim">{mt('build.subtitle')}</p>
@@ -439,7 +440,7 @@ function NoMoonCard({
             )}
             {err && <Banner tone="hostile" role="alert" title={err} />}
             {lockedOnResearch ? (
-              <GameButton wide glyph="star" onPress={() => onOpenResearch?.()}>{mt('guide.openResearch')}</GameButton>
+              <GameButton wide glyph="star" onPress={onOpenResearch}>{mt('guide.openResearch')}</GameButton>
             ) : (
               /* U3: pulling a rock into orbit is a commitment that spends — the kit's 1 s hold, like the Gate. */
               <GameHold
@@ -470,6 +471,63 @@ function NoMoonCard({
   );
 }
 
+
+/**
+ * A MOON'S ASTERYUM, A SLIM SECTION OF ITS OWN (owner 2026-11-25: "üretildiği belli olsun: ne kadar üretildi, ne kadar
+ * sonra üretilecek, aktarmaya ne kadar kaldı"). The rate and what the moon has made on one line, the next unit as a bar
+ * that fills by the server's own rule, and the answer to "where does it go": nowhere to ship, it is in the lab's stock.
+ */
+function MoonAsterium({ moon, now }: { readonly moon: PlanetMoon; readonly now: number }) {
+  const { t } = useTranslation();
+  const asterium = moon.asterium;
+  const reading = asterium ? moonAsteriumReading({ rarity: moon.rarity, closedUntil: moon.closedUntil, asterium }, now) : null;
+  const perDay = reading?.perDay ?? moonAsteriumPerDay(moon.rarity);
+  return (
+    <section data-testid="moon-asterium" className="gk-moonast" aria-label={t('synthesis.moon.title')}>
+      <p className="gk-moonast__head">
+        <img src={RESOURCE_ART.asterium} alt="" width={18} height={18} draggable={false} />
+        <span className="gk-moonast__name">{t('synthesis.moon.title')}</span>
+        <span className="gk-num">{t('synthesis.moon.perDay', { amount: upTo(perDay, 1) })}</span>
+        {reading && <span className="gk-num gk-moonast__made">{t('synthesis.moon.produced', { count: reading.produced })}</span>}
+      </p>
+      {reading && <>
+        <span className="gk-moonast__track" aria-hidden="true">
+          <span data-moon-asterium-progress="" className="gk-moonast__fill" style={{ width: `${String(reading.progress * 100)}%` }} />
+        </span>
+        <p className="gk-num gk-moonast__next" {...(reading.closedForMs > 0 ? { 'data-closed': '' } : {})}>
+          {reading.closedForMs > 0 ? t('synthesis.moon.closed', { time: countdown(reading.closedForMs) })
+            : t('synthesis.moon.next', { time: countdown(reading.nextInMs) })}
+        </p>
+      </>}
+      <p className="gk-moonast__where">{t('synthesis.moon.where')}</p>
+    </section>
+  );
+}
+
+/* The galaxy's own moon surfaces (Moons.tsx): regolith for Common and Rare, the ancient one for Epic and Legendary. */
+const MOON_SURFACE: Record<MoonRarity, string> = {
+  COMMON: '/assets/textures/moons/moon-regolith-2x1.webp',
+  RARE: '/assets/textures/moons/moon-regolith-2x1.webp',
+  EPIC: '/assets/textures/moons/moon-ancient-2x1.webp',
+  LEGENDARY: '/assets/textures/moons/moon-ancient-2x1.webp',
+};
+
+/*
+  VFX BRIEF — the moon's portrait (owner 2026-11-25: the moon tab opens on the moon).
+  - In the world: your moon turning slowly in the sun, lit from one side, its terminator on the far limb, that limb
+    catching a thin line of its rarity's colour, the same moon the galaxy draws; shut by a Death Star it stands grey.
+  - Asset: the galaxy's own `textures/moons/moon-regolith-2x1.webp` / `moon-ancient-2x1.webp`, slid under a round
+    window by a transform (compositor only), shaded by an inner shadow. No new art, no glow.
+  - Why: the tab's subject is the moon; its rarity reads off its edge as it does in the galaxy (OWNERSHIP).
+*/
+function MoonPortrait({ rarity, closed }: { readonly rarity: MoonRarity; readonly closed: boolean }) {
+  return (
+    <span className="gk-moonportrait" data-moon-portrait="" data-rarity={rarity} {...(closed ? { 'data-closed': '' } : {})} aria-hidden="true">
+      <span className="gk-moonportrait__surface" data-moon-surface="" style={{ backgroundImage: `url(${MOON_SURFACE[rarity]})` }} />
+    </span>
+  );
+}
+
 function ActiveMoonCard({
   planet,
   moon,
@@ -484,9 +542,11 @@ function ActiveMoonCard({
   onScanVisual,
   onWatchTarget,
   now,
+  synthesisEnabled,
 }: {
   readonly planet: PlanetView;
   readonly moon: PlanetMoon;
+  readonly synthesisEnabled: boolean;
   readonly otherMoons: readonly OtherOwnedMoon[];
   readonly scanTargets: readonly MoonScanTarget[];
   readonly worldNames?: ReadonlyMap<string, string>;
@@ -523,6 +583,7 @@ function ActiveMoonCard({
     : durability <= 1
       ? 'text-threat-ink'
       : 'text-alloy';
+  const durabilityLevel = durability >= moon.crackLimit ? 'whole' : durability <= 1 ? 'low' : 'worn';
   const crackHealMs = moon.cracks > 0 && moon.lastHitAt
     ? Math.max(0, moon.lastHitAt.getTime() + CRACK_HEAL_MS - now)
     : 0;
@@ -581,7 +642,9 @@ function ActiveMoonCard({
     !hopOverDock &&
     busy === null &&
     Boolean(onHop) &&
-    !(hopDir === 'UP' && moon.dockFree <= 0);
+    !(hopDir === 'UP' && moon.dockFree <= 0) &&
+    // A Death Star's EMP shuts the moon: nothing goes up to it; its ships may still come down (owner 2026-11-26).
+    !(hopDir === 'UP' && isClosed);
 
   // Gate destination & clamped selection (authoritative dockFree & gate status)
   const effectiveDestId = otherMoons.some((m) => m.planetId === destId)
@@ -712,7 +775,7 @@ function ActiveMoonCard({
     return {
       id: m.planetId,
       label: `${m.name} (${mt(RARITY_KEY[m.rarity])})`,
-      sub: `${full(d)} · ${statusSub}`,
+      sub: `${mt('gate.destDistance', { distance: full(d) })} · ${statusSub}`,
     };
   }), [otherMoons, planet.planet.position, now, mt]);
 
@@ -728,98 +791,96 @@ function ActiveMoonCard({
       data-moon-rarity={moon.rarity}
       className="gk flex flex-col gap-2.5 px-3 pb-6"
     >
-      {/* 1. Sleek Compact Moon Status & Dock Strip */}
-      <Plate className="flex flex-col gap-2 p-2.5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      {/* 1. THE MOON ITSELF (owner 2026-11-25: one part, one job): its picture, rarity, origin and durability. */}
+      <header data-moon-header="" className="gk-plate gk-moonhead">
+        <MoonPortrait rarity={moon.rarity} closed={isClosed} />
+        <div className="gk-moonhead__words">
           <div className="flex flex-wrap items-center gap-1.5">
             <span data-testid="moon-rarity" className={`inline-flex items-center gap-1 rounded-chip border ${style.ring} ${style.bg} ${style.text} px-2 py-0.5 text-caption font-semibold`}>
               <Glyph id="moon" className="size-3.5" />
               {mt(RARITY_KEY[moon.rarity])}
             </span>
-            <span className="text-caption text-faint">{mt(ORIGIN_KEY[moon.origin])}</span>
             {moon.scanPierces && (
               <span data-testid="moon-pierce-badge" className="rounded-chip bg-alloy/15 px-1.5 py-0.5 text-caption font-medium text-alloy">
                 {mt('scan.pierces')}
               </span>
             )}
-          </div>
-          {isClosed && (
-            <span className="rounded-chip bg-threat/20 px-1.5 py-0.5 text-caption font-medium text-threat-ink gk-num">
-              {mt('status.closed')} ({countdown(moon.closedUntil!.getTime() - now)})
-            </span>
-          )}
-        </div>
-
-        {/* U2/U11: durability and its heal timer say what they are; the rule is one tap away, in place. */}
-        <InfoPeek
-          about={mt('guide.howItWorks')}
-          lead={<Glyph id="shield" />}
-          fact={(
-            <span className="text-caption">
-              <span data-testid="moon-cracks" className={`gk-num font-medium ${durabilityTone}`}>
-                {mt('status.cracks')}: {durability}/{moon.crackLimit}
+            {isClosed && (
+              <span className="rounded-chip bg-threat/20 px-1.5 py-0.5 text-caption font-medium text-threat-ink gk-num">
+                {mt('status.closed')} ({countdown(moon.closedUntil!.getTime() - now)})
               </span>
-              {crackHealMs > 0 && (
-                <span data-testid="moon-heal" className="gk-num text-faint">
-                  {' · '}{mt('status.healShort', { time: countdown(crackHealMs) })}
+            )}
+          </div>
+          <p className="text-caption text-faint">{mt(ORIGIN_KEY[moon.origin])}</p>
+          {/* U2/U11: durability and its heal timer say what they are; the rule is one tap away, in place. */}
+          <div data-moon-durability="" className="gk-moonhead__durability">
+            <InfoPeek
+              about={mt('guide.howItWorks')}
+              lead={<Glyph id="shield" />}
+              fact={(
+                <span className="flex flex-col gap-1 text-caption">
+                  <span className="flex flex-wrap items-baseline gap-x-1.5">
+                    <span data-testid="moon-cracks" className={`gk-num font-medium ${durabilityTone}`}>
+                      {mt('status.cracks')}: {durability}/{moon.crackLimit}
+                    </span>
+                    {crackHealMs > 0 && (
+                      <span data-testid="moon-heal" className="gk-num text-faint">
+                        {mt('status.healShort', { time: countdown(crackHealMs) })}
+                      </span>
+                    )}
+                  </span>
+                  <span className="gk-moonhead__cells" data-tone={durabilityLevel} aria-hidden="true">
+                    {Array.from({ length: moon.crackLimit }, (_, index) => (
+                      <i key={index} data-cell={index < durability ? 'whole' : 'cracked'} />
+                    ))}
+                  </span>
                 </span>
               )}
-            </span>
-          )}
-          rule={<p className="gk-sub">{mt('guide.headerRule')}</p>}
-        />
-
-        {/* Slim single-line Moon Dock capacity strip */}
-        <div className="flex items-center gap-2.5">
-          <span className="text-caption uppercase tracking-wide text-faint">{mt('dock.label')}</span>
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
-            <div
-              className="h-full rounded-full bg-crystal transition-all duration-300"
-              style={{ width: `${dockPct}%` }}
+              rule={<p className="gk-sub">{mt('guide.headerRule')}</p>}
             />
           </div>
-          <span className="gk-num text-caption font-semibold text-bone">
-            {compact(moon.dockUsed)} / {compact(moon.dockCapacity)}
-          </span>
         </div>
+      </header>
 
-        {/* Active in-transit hops / jumps with live 1s countdown */}
-        {moon.moves.length > 0 && (
-          <div className="flex flex-col gap-1">
-            {moon.moves.map((mv) => {
-              const totalMs = Math.max(1, mv.arriveAt.getTime() - mv.departAt.getTime());
-              const remMs = Math.max(0, mv.arriveAt.getTime() - now);
-              const pct = Math.max(0, Math.min(100, ((totalMs - remMs) / totalMs) * 100));
-              return (
-                <Well
-                  key={mv.id}
-                  className="flex flex-col gap-1 px-2.5 py-1.5 text-caption text-crystal"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span>
-                      {mv.kind === 'HOP_UP'
-                        ? mt('hop.movingUp')
-                        : mv.kind === 'HOP_DOWN'
-                          ? mt('hop.movingDown')
-                          : mt('gate.jumping')}
-                      {' · '}
-                      <strong className="gk-num">{fleetCount(mv.fleet)}</strong>
-                    </span>
-                    <span className="gk-num font-mono font-semibold text-crystal">
-                      {countdown(remMs)}
-                    </span>
-                  </div>
-                  <div className="h-1 w-full overflow-hidden rounded-full bg-crystal/15">
-                    <div className="h-full rounded-full bg-crystal transition-all duration-300" style={{ width: `${pct}%` }} />
-                  </div>
-                </Well>
-              );
-            })}
-          </div>
-        )}
-      </Plate>
+      {/* 2. What is on its way, with a live countdown: its own part, read from any tab. */}
+      {moon.moves.length > 0 && (
+        <section data-moon-moves="" className="flex flex-col gap-1">
+          {moon.moves.map((mv) => {
+            const totalMs = Math.max(1, mv.arriveAt.getTime() - mv.departAt.getTime());
+            const remMs = Math.max(0, mv.arriveAt.getTime() - now);
+            const pct = Math.max(0, Math.min(100, ((totalMs - remMs) / totalMs) * 100));
+            return (
+              <Well
+                key={mv.id}
+                className="flex flex-col gap-1 px-2.5 py-1.5 text-caption text-crystal"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span>
+                    {mv.kind === 'HOP_UP'
+                      ? mt('hop.movingUp')
+                      : mv.kind === 'HOP_DOWN'
+                        ? mt('hop.movingDown')
+                        : mt('gate.jumping')}
+                    {' · '}
+                    <strong className="gk-num">{fleetCount(mv.fleet)}</strong>
+                  </span>
+                  <span className="gk-num font-mono font-semibold text-crystal">
+                    {countdown(remMs)}
+                  </span>
+                </div>
+                <div className="h-1 w-full overflow-hidden rounded-full bg-crystal/15">
+                  <div className="h-full rounded-full bg-crystal transition-all duration-300" style={{ width: `${pct}%` }} />
+                </div>
+              </Well>
+            );
+          })}
+        </section>
+      )}
 
-      {/* 2. Sub-Tab Navigation (Dock | Moon Gate | Gözcü) — right near the top */}
+      {/* 3. The moon's Asteryum, a slim part of its own (owner 2026-11-25). */}
+      {synthesisEnabled && <MoonAsterium moon={moon} now={now} />}
+
+      {/* 4. Sub-Tab Navigation (Dock | Moon Gate | Gözcü) */}
       <GameTabs
         stacked
         label={mt('tabs.label')}
@@ -874,11 +935,20 @@ function ActiveMoonCard({
                   <div data-testid="moon-split-moon" className="flex flex-col gap-1.5">
                     <div className="flex items-center justify-between gap-2 text-caption">
                       <span className="inline-flex items-center gap-1.5 font-semibold text-bone">
-                        <Glyph id="moon" className="size-3.5 text-alloy" />
+                        <Glyph id="moon" className="size-3.5 text-crystal" />
                         {mt('fleetSplit.moon')}
                       </span>
                       <span className="gk-num text-dim">
                         {mt('fleetSplit.ships', { count: moonShipCount })}
+                      </span>
+                    </div>
+                    {/* The dock's room, read beside the hangar's (owner 2026-11-25: not at the top of the tab). */}
+                    <div data-moon-dock-gauge="" className="flex items-center gap-2">
+                      <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
+                        <div className="h-full rounded-full bg-crystal" style={{ width: `${dockPct}%` }} />
+                      </div>
+                      <span className="gk-num text-micro text-faint">
+                        {compact(moon.dockUsed)} / {compact(moon.dockCapacity)}
                       </span>
                     </div>
                     <FleetChips fleet={moonMobile} emptyLabel={mt('fleetSplit.emptyMoon')} />
@@ -891,28 +961,30 @@ function ActiveMoonCard({
           {/* Planet ↔ Moon Short Hop (90s, free) with Per-Hull Picker */}
           <Plate className="flex flex-col gap-3 p-3.5">
             <div data-testid="moon-hop-card" className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-body font-semibold text-white">{mt('hop.title')}</div>
-                <Choices
-                  label={mt('hop.title')}
-                  value={hopDir}
-                  onChange={(dir) => {
-                    setHopDir(dir);
-                    setHopPick({});
-                  }}
-                  options={[
-                    { id: 'UP', label: mt('hop.toMoon') },
-                    { id: 'DOWN', label: mt('hop.toPlanet') },
-                  ]}
+              <div className="flex flex-col gap-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-body font-semibold text-white">{mt('hop.title')}</div>
+                  <Choices
+                    label={mt('hop.title')}
+                    value={hopDir}
+                    onChange={(dir) => {
+                      setHopDir(dir);
+                      setHopPick({});
+                    }}
+                    options={[
+                      { id: 'UP', label: mt('hop.toMoon') },
+                      { id: 'DOWN', label: mt('hop.toPlanet') },
+                    ]}
+                  />
+                </div>
+
+                <InfoPeek
+                  about={mt('guide.howItWorks')}
+                  lead={<Glyph id="bay" />}
+                  fact={<span className="text-caption text-dim">{mt('hop.subtitle')}</span>}
+                  rule={<p className="gk-sub">{mt('guide.dockRule')}</p>}
                 />
               </div>
-
-              <InfoPeek
-                about={mt('guide.howItWorks')}
-                lead={<Glyph id="bay" />}
-                fact={<span className="text-caption text-dim">{mt('hop.subtitle')}</span>}
-                rule={<p className="gk-sub">{mt('guide.dockRule')}</p>}
-              />
 
               {hopSourceCount > 0 ? (
                 <>
@@ -981,6 +1053,8 @@ function ActiveMoonCard({
                   !canHop
                     ? (hopAlreadyMoving
                       ? `${mt('hop.alreadyMoving')} (${countdown(Math.max(0, activeHopMove.arriveAt.getTime() - now))})`
+                      : hopDir === 'UP' && isClosed
+                        ? mt('hop.closed')
                       : hopSourceCount === 0
                         ? mt('hop.noShips')
                         : hopDir === 'UP' && moon.dockFree <= 0
@@ -1003,14 +1077,14 @@ function ActiveMoonCard({
       {subTab === 'gate' && (
         <Plate className="flex flex-col gap-3 p-3.5">
           <div data-testid="moon-gate-card" className="flex flex-col gap-3">
-            <div className="flex items-start gap-3">
-              <img
-                src={MOON_ART.gate}
-                alt=""
-                className="size-12 shrink-0 rounded-control border border-white/10 object-cover"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2.5">
+                <img
+                  src={MOON_ART.gate}
+                  alt=""
+                  className="size-11 shrink-0 rounded-control border border-white/10 object-cover"
+                />
+                <div className="flex min-w-0 flex-1 flex-col">
                   <span className="text-body font-semibold text-white">{mt('gate.title')}</span>
                   <span className={`gk-num text-caption font-medium ${gateReady ? 'text-opportunity' : 'text-alloy'}`}>
                     {isClosed
@@ -1021,14 +1095,14 @@ function ActiveMoonCard({
                   </span>
                 </div>
               </div>
-            </div>
 
-            <InfoPeek
-              about={mt('guide.howItWorks')}
-              lead={<Glyph id="speed_up" />}
-              fact={<span className="text-caption text-dim">{mt('gate.subtitle')}</span>}
-              rule={<p className="gk-sub">{mt('guide.gateRule')}</p>}
-            />
+              <InfoPeek
+                about={mt('guide.howItWorks')}
+                lead={<Glyph id="speed_up" />}
+                fact={<span className="text-caption text-dim">{mt('gate.subtitle')}</span>}
+                rule={<p className="gk-sub">{mt('guide.gateRule')}</p>}
+              />
+            </div>
 
             {otherMoons.length === 0 ? (
               <Banner tone="info" glyph="moon" title={mt('gate.noOtherMoons')} />
@@ -1160,14 +1234,14 @@ function ActiveMoonCard({
       {subTab === 'scan' && (
         <Plate className="flex flex-col gap-3 p-3.5">
           <div data-testid="moon-scan-card" className="flex flex-col gap-3">
-            <div className="flex items-start gap-3">
-              <img
-                src={MOON_ART.gozcu}
-                alt=""
-                className="size-12 shrink-0 rounded-control border border-white/10 object-cover"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2.5">
+                <img
+                  src={MOON_ART.gozcu}
+                  alt=""
+                  className="size-11 shrink-0 rounded-control border border-white/10 object-cover"
+                />
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
                   <span className="text-body font-semibold text-white">{mt('scan.title')}</span>
                   {moon.scanPierces && (
                     <span className="rounded-chip bg-alloy/20 px-1.5 py-0.5 text-caption font-medium text-alloy">
@@ -1176,14 +1250,14 @@ function ActiveMoonCard({
                   )}
                 </div>
               </div>
-            </div>
 
-            <InfoPeek
-              about={mt('guide.howItWorks')}
-              lead={<Glyph id="eye" />}
-              fact={<span className="text-caption text-dim">{mt('scan.subtitle', { range: full(moon.scanRange) })}</span>}
-              rule={<p className="gk-sub">{mt('guide.scanRule')}</p>}
-            />
+              <InfoPeek
+                about={mt('guide.howItWorks')}
+                lead={<Glyph id="eye" />}
+                fact={<span className="text-caption text-dim">{mt('scan.subtitle', { range: full(moon.scanRange) })}</span>}
+                rule={<p className="gk-sub">{mt('guide.scanRule')}</p>}
+              />
+            </div>
 
             {scanTargets.length === 0 ? (
               <Banner tone="info" title={mt('scan.noTargets')} />
@@ -1303,6 +1377,7 @@ export function MoonPanel(props: MoonPanelProps) {
       moon={props.planet.moon}
       otherMoons={props.otherMoons}
       scanTargets={props.scanTargets}
+      synthesisEnabled={props.synthesisEnabled === true}
       {...(props.worldNames ? { worldNames: props.worldNames } : {})}
       {...(props.onHop ? { onHop: props.onHop } : {})}
       {...(props.onJump ? { onJump: props.onJump } : {})}

@@ -120,3 +120,35 @@ describe('settlement confirmation', () => {
     expect(screen.getByText(/your couriers land after your priority ends/i)).toBeInTheDocument();
   });
 });
+
+/* Sentez (plan 2026-11-24 §3.5): a settlement may wear Optik Örtü, so the race does not see it coming. */
+describe('the veil on a settlement', () => {
+  const draw = (capsuleStock: { OPTIC_VEIL: number; SILENT_THRUST: number } | null, onConfirm = vi.fn()) => {
+    render(
+      <SettlementSheet target={target} capsuleStock={capsuleStock}
+        planet={planetView({ fleet: { COURIER: 2 } }, { alloy: 10_000, crystal: 10_000, deuterium: 10_000 })}
+        now={Date.now()} pending={false} onClose={vi.fn()} onConfirm={onConfirm} />,
+    );
+    return onConfirm;
+  };
+  const hold = () => {
+    const commit = screen.getByRole('button', { name: /dispatch colony ships/i });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+  };
+
+  it('offers the veil alone and hands it to the launch', () => {
+    const onConfirm = draw({ OPTIC_VEIL: 1, SILENT_THRUST: 3 });
+    expect(screen.queryByRole('switch', { name: /Silent Thrust/ })).toBeNull();
+    fireEvent.click(screen.getByRole('switch', { name: /Optic Veil/ }));
+    hold();
+    expect(onConfirm).toHaveBeenCalledWith(['OPTIC_VEIL']);
+  });
+
+  it('launches plain where the galaxy has no laboratory', () => {
+    const onConfirm = draw(null);
+    expect(screen.queryByRole('switch')).toBeNull();
+    hold();
+    expect(onConfirm).toHaveBeenCalledWith([]);
+  });
+});

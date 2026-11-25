@@ -499,7 +499,14 @@ const galaxyLifecycle = z.discriminatedUnion('eventKind', [
     resourceCapHours: z.number().positive(),
     shipDropChanceAtFullQuality: z.number().min(0).max(1),
   }),
+  z.object({
+    eventKind: z.literal('ASTERIUM_STORM'),
+    startsAt: z.coerce.date(),
+    endsAt: z.coerce.date(),
+  }),
 ]);
+
+const synthesisReady = z.object({ capsuleId: z.enum(['OPTIC_VEIL', 'SILENT_THRUST']), quantity: z.number().int().positive() });
 
 /* ── the sentences ──────────────────────────────────────────── */
 
@@ -1503,7 +1510,9 @@ export function describeNotification(notification: NotificationView, now: number
           })
         : parsed.data.eventKind === 'INTERGALACTIC_CONVOY'
           ? i18n.t('notifications.intergalacticConvoyStarted')
-          : i18n.t('notifications.asteroidShowerStarted');
+          : parsed.data.eventKind === 'ASTERIUM_STORM'
+            ? i18n.t('synthesis.storm.started')
+            : i18n.t('notifications.asteroidShowerStarted');
     }
 
     case 'galaxy_event_ended': {
@@ -1513,7 +1522,19 @@ export function describeNotification(notification: NotificationView, now: number
         ? i18n.t('notifications.tradeShipEnded')
         : parsed.data.eventKind === 'INTERGALACTIC_CONVOY'
           ? i18n.t('notifications.intergalacticConvoyEnded')
-          : i18n.t('notifications.asteroidShowerEnded');
+          : parsed.data.eventKind === 'ASTERIUM_STORM'
+            ? i18n.t('synthesis.storm.ended')
+            : i18n.t('notifications.asteroidShowerEnded');
+    }
+
+    /* SENTEZ LABORATUVARI: a batch is finished and its capsules are in stock. */
+    case 'synthesis_ready': {
+      const parsed = synthesisReady.safeParse(notification.payload);
+      if (!parsed.success) return null;
+      return i18n.t('synthesis.ready', {
+        count: parsed.data.quantity,
+        capsule: i18n.t(`synthesis.capsule.${parsed.data.capsuleId}.name`),
+      });
     }
 
     /* KLAN ALARMI (F2): a clanmate's radar heard a raid; the row is the call to answer it. */
@@ -1774,6 +1795,7 @@ export function signalFamily(notification: NotificationView): SignalFamily {
     case 'settlement_success':
     case 'death_star_result':
     case 'moon_gate_ready':
+    case 'synthesis_ready':
       return 'gain';
     default:
       return 'note';

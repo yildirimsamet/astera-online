@@ -299,6 +299,9 @@ export const leaderboard = {
     value: "Les dégâts et pertes utilisent des coûts pondérés fixes : 1 alliage + 2 cristal + 32 deutérium. Les défenses terrestres reconstruites ne comptent pas comme dégâts.",
   },
   honorTarget: {
+    more: "Règles de l’Honor",
+    fold: "{{kind}} · {{value}}",
+    short: { FULL: "rendement complet", HALF: "demi-rendement", NONE: "aucun rendement", RELATED: "ne rapporte pas d’Honor" },
     loading: "Chargement de la comparaison Honor…",
     unavailable: "La comparaison Honor est indisponible.",
     retry: "Réessayer la comparaison Honor",
