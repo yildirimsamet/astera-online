@@ -2827,6 +2827,21 @@ export function useBuildInterceptor() {
   } satisfies UseMutationOptions<Awaited<ReturnType<typeof api.buildInterceptor>>, Error, void, MutationTurn>);
 }
 
+/** Install the active world's probe battery (2026-11-24). */
+export function useInstallProbeBattery() {
+  const api = useApi();
+  const { activePlanetId } = useWorld();
+  const apply = useApplyPlanet();
+  const lane = usePlanetMutationLane(activePlanetId);
+  return useMutation({
+    meta: lane.meta,
+    mutationFn: (_vars, context) => api.installProbeBattery(requiredPlanetMutationOrigin(context)),
+    onMutate: lane.enter,
+    onSuccess: async (result) => { await apply(result.planet); },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+  } satisfies UseMutationOptions<Awaited<ReturnType<typeof api.installProbeBattery>>, Error, void, MutationTurn>);
+}
+
 export function useLaunchDeathStar() {
   const api = useApi();
   const { activePlanetId } = useWorld();

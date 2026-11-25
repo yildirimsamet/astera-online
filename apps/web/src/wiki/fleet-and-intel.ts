@@ -1,4 +1,4 @@
-import { COMBAT, DEATH_STAR } from '@astera/rules';
+import { COMBAT, DEATH_STAR, PROBE_DEFENCE } from '@astera/rules';
 import { hitsToTakeLoyalColony } from '../lib/strategic.js';
 import { localized as l, type WikiArticle } from './model.js';
 import { topic } from './concepts.js';
@@ -193,11 +193,11 @@ export const fleetAndIntelArticles: readonly WikiArticle[] = [
     l("Send a paid probe to learn defence and potential loot. Understand accuracy, detection risk and the observation time recorded in reports.", "Savunmayı ve olası ganimeti öğrenmek için ücretli sonda gönder. Doğruluğu, fark edilme riskini ve rapordaki gözlem zamanını değerlendir."),
     l([
       "A probe is a scouting flight, separate from a combat fleet. You pay its resource cost when sending it. Your origin Shipyard improves accuracy and makes the probe harder to detect. Target Radar improves detection; Veil can reduce accuracy.",
-      "A detected probe can alert the target. Reports may contain estimates or ranges instead of exact counts. They can show defence, ship classes, potential loot, combat research and posture, depending on the reading. An unmeasured feature is not necessarily absent.",
+      "A detected probe can alert the target. A world with a charged [[intel.probe-defence|probe battery]] catches probes more easily and shoots down the ones it catches. Reports may contain estimates or ranges instead of exact counts. They can show defence, ship classes, potential loot, combat research and posture, depending on the reading. An unmeasured feature is not necessarily absent.",
       "Ordinary probes use no flight bay and cannot be recalled. [[galaxy.monuments|Monument probes]] have a separate high loss chance. A surviving monument probe gives an exact snapshot at observation time.",
     ], [
       "Sonda, savaş filosundan ayrı keşif uçuşudur. Kaynak bedeli gönderimde ödenir. Çıkış gezegeninin Tersanesi, doğruluğu artırır ve sondanın fark edilmesini zorlaştırır. Hedefin Radarı algılamayı artırır; Perdesi doğruluğu düşürebilir.",
-      "Fark edilen sonda hedefi uyarabilir. Rapor kesin sayı yerine tahmin veya aralık verebilir. Sonuca göre savunmayı, gemi sınıflarını, olası ganimeti, savaş araştırmalarını ve savunma duruşunu gösterebilir. Ölçülmeyen özellik, hedefte bulunmadığı anlamına gelmez.",
+      "Fark edilen sonda hedefi uyarabilir. Şarjlı [[intel.probe-defence|sonda bataryası]] olan dünya sondaları daha kolay yakalar ve yakaladığını düşürür. Rapor kesin sayı yerine tahmin veya aralık verebilir. Sonuca göre savunmayı, gemi sınıflarını, olası ganimeti, savaş araştırmalarını ve savunma duruşunu gösterebilir. Ölçülmeyen özellik, hedefte bulunmadığı anlamına gelmez.",
       "Normal sondalar uçuş rampası kullanmaz ve geri çağrılamaz. [[galaxy.monuments|Anıt sondalarının]] ayrı, yüksek kayıp ihtimali vardır. Sağ kalan anıt sondası, gözlem anındaki kesin bilgiyi verir.",
     ]),
     l([
@@ -206,7 +206,25 @@ export const fleetAndIntelArticles: readonly WikiArticle[] = [
     ], [
       "Gözlem ve teslim zamanlarını ayrı değerlendir. Hedef, bu iki zaman arasında değişebilir. Kargo kapasiteni ganimet aralığıyla, sınıflarını raporlanan savunmayla karşılaştır. Tahminler, zaferi veya belirli ganimeti garanti etmez.",
       "Bilgiyi paylaşmayı seçmediğin sürece raporların özeldir. Yeni saldırıda hedefin değişmiş olabileceğini değerlendir; gerekirse güncel sonda gönder.",
-    ]), ['building.SHIPYARD', 'instrument.RADAR', 'instrument.VEIL']),
+    ]), ['building.SHIPYARD', 'instrument.RADAR', 'instrument.VEIL', 'intel.probe-defence']),
+  topic('intel', 'probe-defence', l('Probe defence battery', 'Sonda savunma bataryası'),
+    l("Install a battery that shoots down the probes it catches. Learn its charges, its refill and when your world is as if it had none.", "Yakaladığı sondayı düşüren bataryayı kur. Şarjlarını, dolumunu ve dünyanın ne zaman bataryasız sayıldığını öğren."),
+    l([
+      `A probe battery is installed on a world with an active Uplink and effective Radar ${String(PROBE_DEFENCE.requiredRadar)}, outside the build queues, and starts full. It has ${String(PROBE_DEFENCE.levels.length)} levels: each holds more charges, refills a full battery in about thirty minutes, adds ${String(Math.round(PROBE_DEFENCE.catchPerLevel * 100))}% to the catch and asks one Radar level more. A spent charge refills by itself at no cost. While an upgrade runs the battery keeps working at its old level; the new charges stand ready when it lands.`,
+      `While it holds a charge, the battery fires at each probe a few planet widths out on its approach. The catch chance is ${String(Math.round(PROBE_DEFENCE.catchBase * 100))}% at level 1, plus 13% for each level the world's Radar is above the sender's Shipyard, at most ${String(Math.round(PROBE_DEFENCE.catchMax * 100))}%. A caught probe is shot down there: it brings no report and spends one charge. A probe that gets past reads the world as usual, including the battery's ready charges.`,
+      "With no charge left, or under an EMP, while recovering or below the Radar level, your world is as if it had no battery: the ordinary detection rule applies and nothing is shot down. Both commanders learn of each shot; the defender hears one gathered line per world every ten minutes.",
+    ], [
+      `Sonda bataryası, etkin Anteni ve efektif Radar ${String(PROBE_DEFENCE.requiredRadar)} seviyesi olan dünyaya inşaat sıralarının dışında kurulur ve dolu başlar. ${String(PROBE_DEFENCE.levels.length)} seviyesi vardır: her seviye daha çok şarj tutar, boş bataryayı yaklaşık otuz dakikada doldurur, yakalamaya %${String(Math.round(PROBE_DEFENCE.catchPerLevel * 100))} ekler ve bir Radar seviyesi daha ister. Harcanan şarj kendiliğinden ve bedelsiz dolar. Yükseltme sürerken batarya eski seviyesiyle çalışır; bitince yeni şarjlar hazır gelir.`,
+      `Şarjı varken batarya her sondaya, yaklaşırken birkaç gezegen boyu uzakta ateş eder. Yakalama şansı 1. seviyede %${String(Math.round(PROBE_DEFENCE.catchBase * 100))}, artı dünyanın Radarı sondayı atanın Tersanesinden her seviye yüksek olduğunda %13; en çok %${String(Math.round(PROBE_DEFENCE.catchMax * 100))}. Yakalanan sonda orada düşürülür: rapor getiremez ve bir şarj harcanır. Geçen sonda dünyayı her zamanki gibi okur; bataryanın hazır şarjları da rapora girer.`,
+      "Şarj kalmadığında, EMP etkisinde, toparlanırken veya Radar seviyesinin altında dünyan bataryasız gibidir: normal yakalanma kuralı geçerlidir ve hiçbir sonda düşürülmez. Her atışı iki komutan da öğrenir; savunan, dünya başına on dakikada bir toplu bildirim alır.",
+    ]),
+    l([
+      "As the defender, the battery makes looking at you expensive: a rival must spend probes until the charges run out. Check the card for ready charges and the next refill.",
+      "As the sender, read the last report's battery line before you launch. A world showing 2/3 needs at least two probes spent first; waiting lets the charges refill. A higher Shipyard lowers the catch chance.",
+    ], [
+      "Savunan olarak batarya, seni izlemeyi pahalı yapar: rakip, şarjlar bitene kadar sonda harcamak zorundadır. Hazır şarjları ve sonraki dolumu kartta kontrol et.",
+      "Gönderen olarak, atmadan önce son raporun batarya satırını oku. 2/3 gösteren dünya önce en az iki sonda harcatır; beklemek şarjların dolmasını sağlar. Daha yüksek Tersane, yakalanma şansını düşürür.",
+    ]), ['intel.probes', 'instrument.RADAR', 'building.SHIPYARD']),
   topic('intel', 'watches', l('Silent watches & warnings', 'Sessiz gözlemler ve uyarılar'),
     l("Use Telescope watches to track whether a fleet is home. Separate silent observations from Radar warnings about an approaching attack.", "Filonun gezegende olup olmadığını izlemek için Teleskop gözlemi kullan. Sessiz gözlemi, yaklaşan saldırının Radar uyarısından ayır."),
     l([

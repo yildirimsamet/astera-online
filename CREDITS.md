@@ -32,6 +32,7 @@ From the owner's asset library, as recorded there (`packs.json`, licence confirm
 | `synty-fog-cloud.webp` | Galaxy: the two bands of mist over a world outside your live sight | `explosioncloud.png` | POLYGON Sci-Fi Space (v1.13.1) | Synty Studios | Synty Studios (Unity Asset Store) |
 | `flame-3-6x6.webp` | Wrecked colony ship: the flames over its bays | `flame-style-3.png` | Realistic Fire VFX (v3.5) | Luke Peek | Luke Peek (Unity Asset Store) |
 | `circles-outlines-2x2.webp` | Discovery scan: the reticle that locks on a newly known world | `t-circlesoutlines-2x2.png` | Unique Sci-Fi Pack Vol.1 (v1.3) | Gabriel Aguiar Productions | Gabriel Aguiar (Unity Asset Store) |
+| `tracer-laserbeam.webp` | Probe defence battery: the rounds it fires at a probe in orbit (colour dropped, shape kept in alpha) | `laserbeam02.png` | Unique Projectiles Vol.1 (v1.8.1) | Gabriel Aguiar Productions | Gabriel Aguiar (Unity Asset Store) |
 | `scanlines.webp` | Colony ship's new hull: the scan sheet sweeping tail to nose | `spr-fx-militarycombat-comms-scanlines-medium-01.png` | Interface - Military Combat HUD (v1.0.0) | Synty Studios | Synty (Unity Asset Store) |
 | `track-frame.webp` | Another commander's jump far off: the tracking frame locked on it (the bracket mirrored into a pair, the dot as the contact) | `spr-hud-militarycombat-reticle-bracket-medium-01.png`, `spr-hud-militarycombat-reticle-dot-small-01.png` | Interface - Military Combat HUD (v1.0.0) | Synty Studios | Synty (Unity Asset Store) |
 

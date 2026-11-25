@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { MOON_LOCATION, PLANET_LOCATION } from '../services/unitLocation.js';
 import { prepareBattleReplay, persistBattleReplay } from '../services/battleReplay.js';
 import { shipReadyNotice } from '../services/arenaReady.js';
@@ -143,6 +144,7 @@ import {
   levelOf,
   rememberVisitedWorld,
   rememberWorld,
+  interceptProbe,
   resolveProbe,
 } from '../services/intel.js';
 import {
@@ -282,6 +284,58 @@ async function claimMission(tx: Tx, missionId: string, eventResolveAt: Date) {
 }
 
 /** Lock every Dominion ledger in one stable player-id order. */
+/* ── a probe battery's shot ────────────────────────────────── */
+
+/**
+ * A PROBE MEETS A BATTERY OUT ON ITS APPROACH (owner playtest, 2026-11-24).
+ *
+ * The event carries the point on the drawn leg; `interceptProbe` reads the battery at the
+ * event's instant and rolls the probe's one roll. Shot down, the mission ends here and its
+ * arrival event finds nothing to claim. The defender's gathered notice is written with the
+ * shot; the sender hears it under the probe's own kind, because this is the answer that
+ * craft was sent for.
+ */
+export const onProbeDefence: Handler = async ({ db, clock }, event) => {
+  const missionId = event.refId;
+  if (!missionId) throw new Error('probe_defence without refId');
+  const vec = z.object({ x: z.number(), y: z.number(), z: z.number() });
+  const { hitAt, from, ...point } = vec.extend({ hitAt: z.number(), from: vec }).parse(event.payload);
+  await db.transaction(async (tx) => {
+    await lockSeason(tx, event.seasonId);
+    const shot = await interceptProbe(tx, {
+      missionId, firedAt: event.resolveAt, hitAt: new Date(hitAt), point, from, now: clock.now(),
+    });
+    if (!shot) return;
+    const { mission, target } = shot;
+    await publishShard(tx, mission.seasonId, 'arrival');
+    const scouted = await identityOfPlanet(tx, mission.targetPlanetId);
+    await notify(tx, {
+      playerId: mission.ownerPlayerId,
+      kind: 'probe_report',
+      payload: {
+        shotDown: true,
+        targetPlanetId: mission.targetPlanetId,
+        targetUsername: scouted?.username ?? 'someone',
+        targetPlanetName: scouted?.planetName ?? 'an unknown world',
+        ...(scouted?.clanTag ? { targetClanTag: scouted.clanTag } : {}),
+      },
+      at: clock.now(),
+      refId: mission.id,
+    });
+    if (target.controllerPlayerId) {
+      await armPaidAlert(tx, {
+        seasonId: mission.seasonId,
+        playerId: target.controllerPlayerId,
+        kind: 'probe_detected',
+        refId: missionId,
+        now: clock.now(),
+        payload: { targetPlanetId: target.id, targetPlanetName: target.name },
+      });
+      await announceUnlocks(tx, target.controllerPlayerId, clock.now());
+    }
+  });
+};
+
 /* ── mission arrival ────────────────────────────────────────── */
 
 /**
@@ -3317,6 +3371,7 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   clan_war_expiry: onClanWarExpiry,
   clan_support_expiry: onClanSupportExpiry,
   mission_arrival: onMissionArrival,
+  probe_defence: onProbeDefence,
   radar_warning: onRadarWarning,
   newcomer_hour: ({ db, clock }, event) => resolveNewcomerHour(db, clock, event),
   paid_alert: async ({ db, clock }, event) => {

@@ -389,6 +389,8 @@ export const focus = {
     attackProtectedShort: "Protégé · {{duration}}",
     attackShort: "Planifier l’attaque",
     probeShort: "Sonde",
+    probeBatteryHint: "Dernier rapport : batterie anti-sondes {{ready}}/{{capacity}} charges",
+    probeLostHint: "Dernière sonde abattue ici {{age}} · une batterie anti-sondes chargée s’y trouve",
     probeCoolingShort: "dans {{duration}}",
     attack: "Préparer une attaque",
     attackNeutralAgain: "Attaquer à nouveau · revendication inchangée",

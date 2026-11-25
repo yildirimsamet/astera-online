@@ -284,6 +284,7 @@ export function planetOf(w: RehearsalWorld): PlanetView {
   return {
     radiationBombsAvailable: false,
     radiationBombs: [],
+    probeBattery: null,
     planet: {
       id: w.reserved.id,
       name: w.reserved.name,

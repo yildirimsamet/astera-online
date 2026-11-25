@@ -31,6 +31,7 @@ import { completeResearch } from '../services/research.js';
 import { capitalIdForAccount, commanderForAccount, ownedPlanet } from '../services/ownership.js';
 import { GameError } from '../services/planet.js';
 import { buildDeathStar, buildInterceptor, launchDeathStar } from '../services/strategic.js';
+import { installProbeBattery } from '../services/probeDefence.js';
 import { buildRadiationBomb, launchRadiationBomb } from '../services/radiationBomb.js';
 import { setDefencePosture } from '../services/clanSupport.js';
 import { launchSettlement, launchTransfer, recallFlight } from '../services/movement.js';
@@ -366,6 +367,13 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
     z.object({}).strict().parse(req.body ?? {});
     const owner = await explicitPlanet(req.accountId!, req.params);
     return buildInterceptor(app.db, owner.planetId, app.clock, owner.playerId);
+  });
+
+  /** INSTALL THE WORLD'S PROBE BATTERY (owner, 2026-11-24). Once; it refills itself. */
+  app.post('/api/planets/:planetId/probe-battery/build', { preHandler: requireAuth }, async (req) => {
+    z.object({}).strict().parse(req.body ?? {});
+    const owner = await explicitPlanet(req.accountId!, req.params);
+    return installProbeBattery(app.db, owner.planetId, app.clock, owner.playerId);
   });
 
   /**

@@ -9,7 +9,7 @@ const STARTER_ROUTES: Record<string, string> = {
 export function analyticsCommand(path: string): string | null {
   const planet = /^\/api\/(?:planet|planets\/(?:[a-f0-9-]{36}|:planetId))\/(collect|upgrade|build|instrument|satellite|research|launch|settle|transfer|repair)$/.exec(path);
   if (planet?.[1]) return planet[1];
-  if (/^\/api\/planets\/(?:[a-f0-9-]{36}|:planetId)\/(?:death-star|radiation-bombs|interceptor)\/build$/.test(path)) return 'build';
+  if (/^\/api\/planets\/(?:[a-f0-9-]{36}|:planetId)\/(?:death-star|radiation-bombs|interceptor|probe-battery)\/build$/.test(path)) return 'build';
   if (/^\/api\/planets\/(?:[a-f0-9-]{36}|:planetId)\/build-orders\/(?:[a-f0-9-]{36}|:orderId)\/cancel$/.test(path)) return 'cancel_build';
   if (/^\/api\/planets\/(?:[a-f0-9-]{36}|:planetId)\/research-orders\/(?:[a-f0-9-]{36}|:orderId)\/cancel$/.test(path)) return 'cancel_research';
   if (/^\/api\/(?:fleet\/(?:[a-f0-9-]{36}|:missionId)|(?:trade|mining)\/runs\/(?:[a-f0-9-]{36}|:runId)|pirates\/raids\/(?:[a-f0-9-]{36}|:raidId))\/recall$/.test(path)) return 'recall';

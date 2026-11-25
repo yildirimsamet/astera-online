@@ -12263,6 +12263,32 @@ button.gk-rcard__door:active {
   text-align: right;
   overflow-wrap: anywhere;
 }
+/* What the last look found of their probe battery, said in warn beside the launch (2026-11-24). */
+.gk-focus__hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-basis: 100%;
+  font-size: var(--gk-t-small);
+  color: var(--gk-warn);
+}
+.gk-focus__hint .gk-glyph {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+/* A lost probe's mark in the intel ledger: the craft broken, in warn. */
+.gk-probe-loss__mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  color: var(--gk-warn);
+}
+.gk-probe-loss__mark .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
 .gk-focus__note {
   margin-bottom: 11px;
   justify-content: flex-start;

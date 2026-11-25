@@ -89,6 +89,9 @@ export const intel = {
     estimateNote:
       "Les nombres sont des estimations. La valeur des unités armées n’inclut ni le bouclier ni les vaisseaux sans armes.",
     caught: "la sonde a été détectée",
+    lostHeading: "Sondes abattues",
+    lostTitle: "Sonde abattue au-dessus de {{world}}",
+    lostWhy: "{{owner}} · une batterie anti-sondes chargée s’y trouve",
     /* Deux mots à côté des barres de signal ; les barres portent la précision. */
     homeTag: "flotte présente",
     outTag: "flotte absente",
@@ -108,6 +111,7 @@ export const intel = {
     cost: "Sans Radar, la plupart des sondes envoyées vers ce monde passent inaperçues.",
     quiet: "Aucun sondage détecté. Radar de niveau {{level}} à l’écoute.",
     scan: "Sondage détecté",
+    shotDown: "Sonde abattue",
     bearing: "depuis la direction galactique {{bearing}}",
     origin: " · {{planet}}",
     /** Le monde sur lequel le sondage est arrivé. */
@@ -709,6 +713,12 @@ export const dossier = {
   interceptorEmpty: "Aucune charge",
   interceptorEmptyNote:
     "Aucun intercepteur chargé au moment du passage de la sonde. Des munitions ont pu être ajoutées depuis.",
+  probeBatteryLabel: "Batterie anti-sondes",
+  probeBatteryCount: "{{ready}}/{{capacity}} charges prêtes",
+  probeBatteryNone: "Aucune",
+  probeBatteryCountNote: "Tant qu’elle a une charge, elle abat les sondes qu’elle détecte. Il faut d’abord sacrifier {{count}} sondes ; une charge revient toutes les {{minutes}} minutes.",
+  probeBatteryEmptyNote: "Plus de charge : une sonde passe comme s’il n’y avait pas de batterie. Une charge revient toutes les {{minutes}} minutes.",
+  probeBatteryNoneNote: "Aucune batterie anti-sondes ici. Elle a pu être construite depuis.",
   loyaltyLabel: "Loyauté de la colonie",
   loyaltyValue: "{{value}} %",
   loyaltyNote_one: "Une Étoile de la Mort retire {{loss}} de loyauté par frappe. Une frappe ferait tomber cette colonie.",

@@ -680,10 +680,12 @@ export const notifications = {
   haul: '{{what}} geldi · {{landed}}',
 
   scanDetected: 'Tarama yakalandı. Biri kaynaklarını ve savunmanı öğrenmeye çalışıyor.',
+  scanShotDown: "Sonda bataryan {{world}} yörüngesinde sonda düşürdü (toplam {{count}}). Biri seni tartıyor.",
 
   probeFallback: 'Sonda döndü, raporu hazır.',
   probeHome: 'Sonda döndü · {{target}} artık okunabilir{{caught}}',
   probeCaught: ' · sondayı yakaladılar',
+  probeShotDown: "Sonda {{target}} yörüngesinde düşürüldü · orada sonda bataryası var",
 
   unlock: '{{title}} — {{body}}',
   deathStarFallback: 'Ölüm Yıldızı darben sonuçlandı.',

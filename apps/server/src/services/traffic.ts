@@ -5,6 +5,7 @@ import { loadCosmeticTraffic, decorateCosmeticContacts } from './cosmeticTraffic
 import { and, eq, gte, inArray, ne, or, sql } from 'drizzle-orm';
 import {
   DEATH_STAR,
+  PROBE_DEFENCE,
   PIRATE,
   TRAFFIC,
   distance,
@@ -47,6 +48,7 @@ import {
   planetFaults,
   planets,
   strategicImpacts,
+  probeShots,
   strategicInterceptions,
   radiationBombFlights,
   tradeRuns,
@@ -555,6 +557,8 @@ export interface TrafficSnapshot {
    */
   raidFleets: ReadonlyMap<string, Fleet>;
   interceptionRows: { interception: typeof strategicInterceptions.$inferSelect }[];
+  /** Probes shot down inside `PROBE_DEFENCE.witnessMinutes` (2026-11-24). */
+  probeShotRows: { id: string; targetPlanetId: string; shotAt: Date; attackerPlayerId: string; defenderPlayerId: string }[];
   landedDeathStarMissionIds: ReadonlySet<string>;
   positions: ReadonlyMap<string, Vec3>;
   /**
@@ -587,8 +591,9 @@ export async function loadTrafficSnapshot(
   now: Date = new Date(),
 ): Promise<TrafficSnapshot> {
   const impactCutoff = new Date(now.getTime() - DEATH_STAR.impactSeconds * 1000);
-  const [missionRows, miningRows, pirateRaidRows, tradeRunRows, convoyRunRows, interceptionRows, impactRows, monumentTraffic, bombRows, signalRows] =
-    await Promise.all([
+  const shotCutoff = new Date(now.getTime() - PROBE_DEFENCE.witnessMinutes * 60_000);
+  const [missionRows, miningRows, pirateRaidRows, tradeRunRows, convoyRunRows, interceptionRows, impactRows, monumentTraffic, bombRows, signalRows,
+    probeShotRows] = await Promise.all([
     db
       .select({ mission: missions })
       .from(missions)
@@ -647,6 +652,9 @@ export async function loadTrafficSnapshot(
           sql`(${radiationBombFlights.interception}->>'impactAt')::timestamptz >= ${impactCutoff.toISOString()}::timestamptz`)))),
     db.select().from(unknownSignals).where(and(eq(unknownSignals.seasonId, seasonId),
       inArray(unknownSignals.status, ['outbound', 'returning', 'recalled']))),
+    db.select({ id: probeShots.id, targetPlanetId: probeShots.targetPlanetId, shotAt: probeShots.shotAt,
+      attackerPlayerId: probeShots.attackerPlayerId, defenderPlayerId: probeShots.defenderPlayerId })
+      .from(probeShots).where(and(eq(probeShots.seasonId, seasonId), gte(probeShots.shotAt, shotCutoff))),
   ]);
 
   const returningSignalOwners = [...new Set(signalRows.filter(signal => signal.status !== 'outbound').map(signal => signal.playerId))];
@@ -699,6 +707,7 @@ export async function loadTrafficSnapshot(
   for (const { raid } of pirateRaidRows) ids.add(raid.planetId);
   for (const { run } of tradeRunRows) ids.add(run.planetId);
   for (const { run } of convoyRunRows) ids.add(run.planetId);
+  for (const shot of probeShotRows) ids.add(shot.targetPlanetId);
 
   // The live roster of every raid still in the air. See `raidFleets` above for why
   // the row's own `fleet` column is the wrong answer on a return leg.
@@ -730,6 +739,7 @@ export async function loadTrafficSnapshot(
       convoyRunRows,
       raidFleets,
       interceptionRows,
+      probeShotRows,
       landedDeathStarMissionIds,
       positions: new Map(),
       coreLevels: new Map(),
@@ -773,6 +783,7 @@ export async function loadTrafficSnapshot(
     convoyRunRows,
     raidFleets,
     interceptionRows,
+    probeShotRows,
     landedDeathStarMissionIds,
     positions,
     coreLevels,
@@ -869,6 +880,32 @@ export function projectStrategicInterceptions(
       launch: interception.launchPosition, deathStarFrom: interception.weaponPosition, collision: interception.collisionPosition }];
   });
   return [...ordinary, ...bombs];
+}
+
+export interface ProbeShotView {
+  id: string;
+  planetId: string;
+  at: Date;
+  // No point: where on the approach it was hit gives the bearing the probe came from, which a
+  // bystander's probe contact never carries (D53). The witness sees the shot over the world.
+}
+
+/**
+ * A PROBE SHOT DOWN, SEEN FROM AFAR (plan §3.5, 2026-11-24). The same audience as a strategic
+ * interception: a Telescope that identifies the world. It names neither side: a witness learns
+ * that this world's battery fired, not at whom. The two sides read it from their own intel.
+ */
+export function projectProbeShots(
+  snapshot: TrafficSnapshot,
+  ownPlayerId: string | null,
+  sensors: readonly SensorPost[],
+): ProbeShotView[] {
+  return snapshot.probeShotRows.flatMap((shot) => {
+    if (ownPlayerId === shot.attackerPlayerId || ownPlayerId === shot.defenderPlayerId) return [];
+    const at = snapshot.positions.get(shot.targetPlanetId);
+    if (!at || !identifiesStrategicCollision(sensors, at)) return [];
+    return [{ id: shot.id, planetId: shot.targetPlanetId, at: shot.shotAt }];
+  });
 }
 
 /**

@@ -121,6 +121,9 @@ export const errors = {
   DEATH_STAR_LOCKED: 'No se cumplen los requisitos previos de la Estrella de la Muerte',
   INTERCEPTOR_LOADED: "La plataforma de este mundo está llena: {{max}} cargas",
   INTERCEPTOR_LOCKED: "Primero sube el Radar al nivel {{requiredRadar}}, con un enlace ascendente en órbita",
+  PROBE_BATTERY_LOCKED: "Primero sube el Radar al nivel {{requiredRadar}}, con un enlace ascendente en órbita",
+  PROBE_BATTERY_BUSY: "Esta batería ya se está construyendo o mejorando",
+  PROBE_BATTERY_MAX: "Esta batería está en su nivel máximo",
   RECOVERY_WINDOW_TOO_SHORT: 'La ventana de recuperación o reclamación se cierra antes de la llegada.',
   /** What is shown when nothing else is known. */
   unknown: "No pudimos confirmar el resultado. Comprueba el estado actual antes de intentarlo de nuevo.",

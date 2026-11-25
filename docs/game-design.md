@@ -732,7 +732,7 @@ Everything above exists so that this has stakes.
 | **Public** | Nothing | No | That a world is there, and where. Recovery and open claim windows, which are public moments (D127) | Live |
 | **Remembered** | A probe, once | Yes, at the time | Owner, development, satellites, dome — **frozen** at the look, and going stale as its subject grows | One shot, for ever |
 | **Telescope** | An instrument and a watch slot | **No** — you are never told who is watching | Fleet `HOME` / `AWAY` / `UNKNOWN`; return ETA at clarity ≥ +2; **and how much of the galaxy you see moving at all** | Live to 20 min stale |
-| **Explorer** | Probe price, five-second target interval, and flight time | **Yes** — radar can catch the probe | Stock, defence, fleet size, at an accuracy tier | One shot |
+| **Explorer** | Probe price, five-second target interval, and flight time | **Yes** — radar can catch the probe; a charged probe battery shoots the caught probe down | Stock, defence, fleet size, at an accuracy tier | One shot |
 | **Combat** | Ships, permanently | Obviously | Ground truth | Perfect |
 
 The Telescope is cheap, silent, and tells you **when**. The Explorer is costly, loud, and
@@ -794,6 +794,42 @@ what you may know and *who you watch* is a commitment rather than a browse.
 detectChance = clamp(0.15 + 0.13 × (radarL − probeStealthL), 0.05, 0.80)
 accuracy     = clamp(0.55 + 0.12 × (probeL − veilL),         0.30, 1.00)
 ```
+
+**Probe defence battery (owner K1–K8, 2026-11-24; `docs/sonda-bataryasi-plani-2026-11-24.md`).**
+"A battery with a ready charge catches probes more easily and shoots down what it catches; once its
+charges are gone the world is as if it had no battery." One roll per probe, on its own seeded
+stream (`probeCatchRoll`), so report bands are unchanged. The armed roll is made on the probe's
+approach (owner playtests, 2026-11-24/25): the hit lands at `probeShotMoment`, the point on the
+drawn leg `reachRadii` (5) target radii from the world's centre, never earlier than half the
+flight. The `probe_defence` event is the battery opening fire, `fireLeadSeconds` (2.4 s) before
+that hit; the battery and the roll are read then. Both instants and both points (where the craft
+was at the fire, where it was hit) are stored, so every screen plays the rounds climbing to the
+craft as it flies on, and the hit where it was.
+The arrival keeps the unarmed roll.
+
+```
+armed:   catch = clamp(0.50 + 0.03 × (level − 1) + 0.13 × (radarL − senderShipyardL), 0.05, 0.90)
+unarmed: catch = detectChance (above)
+```
+
+Armed means built, online (effective Radar ≥ 3 with an Uplink, no EMP, not recovering) and
+holding a charge at the shot. Four levels (owner, 2026-11-24), each full again in about thirty
+minutes, refilled lazily with no event; built outside every queue, full on completion:
+
+| Level | Charges | One charge every | Radar to build | Cost A / C / D | Time |
+|---|---|---|---|---|---|
+| 1 | 5 | 6 min | 3 | 3,000 / 1,800 / 150 | 20 min |
+| 2 | 10 | 3 min | 4 | 6,000 / 3,600 / 300 | 40 min |
+| 3 | 15 | 2 min | 5 | 10,000 / 6,000 / 500 | 60 min |
+| 4 | 20 | 1.5 min | 6 | 15,000 / 9,000 / 800 | 90 min |
+
+The level's Radar gates only the order; online stays effective Radar 3. During an upgrade the
+battery works at its old level; on landing the new capacity's extra charges stand ready.
+A caught probe on an armed world is shot down: no report, no return leg,
+one charge spent, the mission stays `resolved`. Both sides learn of it; the defender's notice
+is gathered per world in a ten-minute window and replaces the plain `scan_detected`. A report
+that does come home carries the battery's ready charges exactly. This makes scouting a defended
+world expensive, which the five-second interval below no longer does on its own.
 
 Reports are **bands, not numbers**. A cheap scout says "somewhere between 30k and 80k"; an
 expensive one says 61,000. Those are genuinely different decisions. Floors and ceilings

@@ -33,6 +33,8 @@ export type TransferEventDisposition = 'MOVE' | 'KEEP' | 'DEFER' | 'RECONCILE';
 export const TRANSFER_EVENT_POLICIES = {
   mission_arrival: 'BLOCKER',
   radar_warning: 'BLOCKER',
+  // A probe battery's shot belongs to the probe in the air (2026-11-24).
+  probe_defence: 'BLOCKER',
   // A Bildirim Merkezi push about an inbound raid: pending exactly as long as its radar warning would be.
   paid_alert: 'BLOCKER',
   asteroid_impact: 'BLOCKER',

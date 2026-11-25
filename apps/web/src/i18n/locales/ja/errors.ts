@@ -121,6 +121,9 @@ export const errors = {
   DEATH_STAR_LOCKED: "デス・スター の前提条件が満たされていません",
   INTERCEPTOR_LOADED: "この惑星の発射台は満杯です：最大{{max}}発",
   INTERCEPTOR_LOCKED: "先に軌道上にアップリンクを設置し、レーダーをレベル{{requiredRadar}}まで上げてください",
+  PROBE_BATTERY_LOCKED: "先に軌道上にアップリンクを設置し、レーダーをレベル{{requiredRadar}}まで上げてください",
+  PROBE_BATTERY_BUSY: "この砲台はすでに建設中か強化中です",
+  PROBE_BATTERY_MAX: "この砲台は最高レベルです",
   RECOVERY_WINDOW_TOO_SHORT: "到着前に回収または入植の期限が切れます。",
   /** What is shown when nothing else is known. */
   unknown: "操作の結果を確認できませんでした。再試行する前に現在の状況を確認してください。",

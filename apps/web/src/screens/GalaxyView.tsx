@@ -210,6 +210,7 @@ import {
 import { ApiError } from '../api/client.js';
 import { useWorld } from '../api/world.js';
 import { coreClocks } from '../galaxy/coreLevelUp.js';
+import { shotsOf } from '../galaxy/probeShots.js';
 import {
   controlledWorldId,
   runForPlanetTarget,
@@ -557,6 +558,8 @@ export function GalaxyView({
   const { activePlanetId, capitalPlanetId, worlds, selectPlanet } = useWorld();
   // Own worlds' Core levels and queued upgrades: a finished one steps its world up on the map.
   const cores = useMemo(() => coreClocks(worlds), [worlds]);
+  // Not before intel has loaded: an empty first read would mark nothing seen and replay the window.
+  const probeShots = useMemo(() => (intel.data || traffic.data ? shotsOf(intel.data, traffic.data) : undefined), [intel.data, traffic.data]);
   // The clan mark on the disc needs to know whether there is a clan layer at all,
   // and whether anything is waiting inside it. Same read the menu row used.
   const clanBadge = useClanBadge();
@@ -1675,6 +1678,7 @@ export function GalaxyView({
         intergalacticConvoy={intergalacticConvoy}
         sensors={sensors}
         cores={cores}
+        {...(probeShots ? { probeShots } : {})}
         {...(galaxy.data?.radiation ? { radiation: galaxy.data.radiation } : {})}
         {...(galaxy.data?.hpRadiation ? { hpRadiation: galaxy.data.hpRadiation } : {})}
         {...(galaxy.data?.monuments ? { monuments: galaxy.data.monuments } : {})}

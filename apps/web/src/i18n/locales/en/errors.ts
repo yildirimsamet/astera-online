@@ -121,6 +121,9 @@ export const errors = {
   DEATH_STAR_LOCKED: 'Death Star prerequisites are not met',
   INTERCEPTOR_LOADED: "This world's pad is full: {{max}} charges",
   INTERCEPTOR_LOCKED: "Raise the Radar to level {{requiredRadar}} first, with an Uplink in orbit",
+  PROBE_BATTERY_LOCKED: "Raise the Radar to level {{requiredRadar}} first, with an Uplink in orbit",
+  PROBE_BATTERY_BUSY: "This battery is already being built or upgraded",
+  PROBE_BATTERY_MAX: "This battery is at its top level",
   RECOVERY_WINDOW_TOO_SHORT: 'The recovery or claim window closes before arrival',
   /** What is shown when nothing else is known. */
   unknown: "We could not confirm the result. Check the current status before trying again.",

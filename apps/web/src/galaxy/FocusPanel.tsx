@@ -1013,6 +1013,7 @@ export function PlanetFocus({
             <span className="gk-label">{t('dossier.page.value')}</span>
             <span className="gk-num">{peekPower}</span>
           </p>
+          {probeControl && <ProbeBatteryHint targetId={target.id} intel={intel} now={now} />}
           <div className="gk-focus__pair">
             {probeControl}
             {attackControl}
@@ -1107,6 +1108,7 @@ export function PlanetFocus({
             </GameButton>
             {clanTargetRefusal && <p className="gk-sub">{clanTargetRefusal}</p>}
           </div>}
+          {probeControl && <ProbeBatteryHint targetId={target.id} intel={intel} now={now} />}
           {(probeControl || attackControl) && (
             <div className="gk-focus__pair gk-focus__wide">
               {probeControl}
@@ -2424,6 +2426,26 @@ function ProbeControl({
       {t('focus.planet.probeShort')}
     </GameButton>
   );
+}
+
+/**
+ * WHAT THE LAST LOOK SAID ABOUT THEIR PROBE BATTERY, BESIDE THE LAUNCH (2026-11-24, plan §4).
+ * The charges are exact at the look; their Radar is not known, so no chance is printed — the
+ * rule lives on the dossier row. A probe shot down there since the report says so instead.
+ */
+function ProbeBatteryHint({ targetId, intel, now }: { targetId: string; intel: IntelView | undefined; now: number }) {
+  const { t } = useTranslation();
+  const report = intel?.probeReports
+    .filter((row) => row.targetPlanetId === targetId)
+    .reduce<IntelView['probeReports'][number] | null>((best, row) => (best === null || row.at > best.at ? row : best), null) ?? null;
+  const loss = intel?.probeLosses?.find((row) => row.targetPlanetId === targetId) ?? null;
+  const text = loss !== null && (report === null || loss.at > report.at)
+    ? t('focus.planet.probeLostHint', { age: staleness((now - loss.at.getTime()) / 60_000) })
+    : report?.probeBattery
+      ? t('focus.planet.probeBatteryHint', { ready: report.probeBattery.ready, capacity: report.probeBattery.capacity })
+      : null;
+  if (text === null) return null;
+  return <p data-probe-battery-hint="" className="gk-sub gk-focus__hint"><Glyph id="target" />{text}</p>;
 }
 
 /* ── a rock crossing the disc ────────────────────────────────── */

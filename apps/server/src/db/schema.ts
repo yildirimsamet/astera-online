@@ -191,6 +191,8 @@ export const eventKind = pgEnum('event_kind', [
   'moon_gate_ready',
   /** Kuruluş Saati's two moments on a first game's capital: ten minutes left, and the end. Plan 2026-11-20 §4. */
   'newcomer_hour',
+  /** A probe battery opening fire on a probe coming in (2026-11-24/25). */
+  'probe_defence',
 ]);
 /**
  * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
@@ -3811,12 +3813,63 @@ export const scanEvents = pgTable('scan_events', {
   targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
   originPlanetId: uuid('origin_planet_id').notNull().references(() => planets.id),
   detected: boolean('detected').notNull(),
+  /** The target's probe battery caught it and shot it down in orbit (2026-11-24). Always detected. */
+  shotDown: boolean('shot_down').notNull().default(false),
   bearing: text('bearing'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('scans_target_idx').on(t.targetPlanetId, t.createdAt),
   // F1.8 N6: deleting the row this points at (reclaim) checks this key by index, not by a table scan.
   index('scans_origin_idx').on(t.originPlanetId),
+]);
+
+/**
+ * ONE WORLD'S PROBE DEFENCE BATTERY. Owner, 2026-11-24 (`docs/sonda-bataryasi-plani-2026-11-24.md`).
+ *
+ * World hardware: it stays with the world when the world changes hands and goes when the
+ * world row goes, hence the cascade. Nothing here is ticked. The battery is built at
+ * `readyAt`, and `charges` stood at `chargedAt`; `probeBatteryCharges` derives the rest.
+ */
+export const probeBatteries = pgTable('probe_batteries', {
+  planetId: uuid('planet_id').primaryKey().references(() => planets.id, { onDelete: 'cascade' }),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+  readyAt: timestamp('ready_at', { withTimezone: true }).notNull(),
+  charges: integer('charges').notNull(),
+  chargedAt: timestamp('charged_at', { withTimezone: true }).notNull(),
+  /** The working level (owner, 2026-11-24: four levels). */
+  level: integer('level').notNull().default(1),
+  /** An upgrade under way: the level it brings and when it lands. Folded in lazily (`settleProbeBattery`). */
+  upgradeLevel: integer('upgrade_level'),
+  upgradeStartedAt: timestamp('upgrade_started_at', { withTimezone: true }),
+  upgradeReadyAt: timestamp('upgrade_ready_at', { withTimezone: true }),
+});
+
+/** A probe a battery shot down: the attacker's loss line, the galaxy's moment, the measurement (§7.1). */
+export const probeShots = pgTable('probe_shots', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  missionId: uuid('mission_id').notNull().references(() => missions.id, { onDelete: 'cascade' }),
+  attackerPlayerId: uuid('attacker_player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  defenderPlayerId: uuid('defender_player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id, { onDelete: 'cascade' }),
+  /** When the last round hit the craft. */
+  shotAt: timestamp('shot_at', { withTimezone: true }).notNull(),
+  /** Where on the probe's approach it was hit, in game units (`probeShotMoment`). */
+  x: real('x').notNull(),
+  y: real('y').notNull(),
+  z: real('z').notNull(),
+  /** When the battery opened fire, `fireLeadSeconds` before the hit, and where the craft was then. */
+  firedAt: timestamp('fired_at', { withTimezone: true }).notNull(),
+  fromX: real('from_x').notNull(),
+  fromY: real('from_y').notNull(),
+  fromZ: real('from_z').notNull(),
+}, (t) => [
+  uniqueIndex('probe_shots_mission_idx').on(t.missionId),
+  index('probe_shots_attacker_idx').on(t.attackerPlayerId, t.shotAt),
+  index('probe_shots_target_idx').on(t.targetPlanetId, t.shotAt),
+  index('probe_shots_defender_idx').on(t.defenderPlayerId),
+  // The galaxy's traffic read: every shot of a season inside the witness window.
+  index('probe_shots_season_idx').on(t.seasonId, t.shotAt),
 ]);
 
 /**
@@ -3935,6 +3988,11 @@ export const probeReports = pgTable('probe_reports', {
      */
     interceptors?: number;
     /**
+     * THE PROBE BATTERY AT THE LOOK (2026-11-24): ready charges of its capacity, exact like
+     * the interceptor count; null when the world had none built. Absent on older reports.
+     */
+    probeBattery?: { ready: number; capacity: number } | null;
+    /**
      * A COLONY'S LOYALTY AT THE LOOK, rounded up. Owner, 2026-10-01: a Death Star takes
      * twenty and a colony at twenty or less goes NEUTRAL. Absent on capitals and neutrals.
      */
@@ -4023,6 +4081,7 @@ export const probeWorldMemories = pgTable('probe_world_memories', {
     doctrines?: Partial<Record<ResearchProjectId, number>>;
     research?: Partial<Record<ResearchProjectId, { low: number; high: number }>>;
     interceptors?: number;
+    probeBattery?: { ready: number; capacity: number } | null;
     loyalty?: number;
     /** Frozen like the rest (S53, D127): a moon that later changed is read again only by looking again. */
     moonRarity?: MoonRarity;

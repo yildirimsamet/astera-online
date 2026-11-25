@@ -3,6 +3,7 @@ import {
   COMBAT_CLASSES,
   COMBAT_RESEARCH_PROJECTS,
   DEATH_STAR,
+  PROBE_DEFENCE,
   combatValue,
   distance,
   garrisonOf,
@@ -670,6 +671,34 @@ export function dossier({ target, planet, intel, reports, rival, ownPeakCore = n
         note: charges > 0
           ? i18n.t('dossier.interceptorCountNote', { needed: charges + 1 })
           : i18n.t('dossier.interceptorEmptyNote'),
+      });
+    }
+
+    /*
+      THE PROBE BATTERY, EXACT (2026-11-24). While it holds a charge every probe meets its
+      higher catch chance and a caught one is shot down; the note turns the count into the
+      probes the next look must spend before one meets the world as if no battery stood
+      there. Charges refill, which the note says rather than hides.
+    */
+    if (report.probeBattery !== undefined) {
+      const battery = report.probeBattery;
+      // The report says the capacity; the capacity says the level, and the level its refill pace.
+      const pace = new Intl.NumberFormat(i18n.language).format(
+        (PROBE_DEFENCE.levels.find((spec) => spec.capacity === battery?.capacity) ?? PROBE_DEFENCE.levels[0]).refillMinutes);
+      facts.push({
+        key: 'probeBattery',
+        label: i18n.t('dossier.probeBatteryLabel'),
+        value: battery === null
+          ? i18n.t('dossier.probeBatteryNone')
+          : i18n.t('dossier.probeBatteryCount', { ready: battery.ready, capacity: battery.capacity }),
+        source: 'probe',
+        ageMinutes: age,
+        note: battery === null
+          ? i18n.t('dossier.probeBatteryNoneNote')
+          : battery.ready > 0
+            ? i18n.t('dossier.probeBatteryCountNote', { count: battery.ready, minutes: pace })
+            : i18n.t('dossier.probeBatteryEmptyNote', { minutes: pace }),
+        opportunity: battery !== null && battery.ready === 0,
       });
     }
 

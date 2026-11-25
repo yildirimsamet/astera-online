@@ -163,6 +163,7 @@ import {
   radiationBombBuildSchema,
   radiationBombLaunchSchema,
   interceptorBuildSchema,
+  probeBatteryBuildSchema,
   faultRepairSchema,
   deathStarLaunchSchema,
   previewSchema,
@@ -1458,6 +1459,11 @@ export class Api {
     });
   buildInterceptor = (planetId: string) =>
     this.send(`/api/planets/${encodeURIComponent(planetId)}/interceptor/build`, interceptorBuildSchema, {
+      method: 'POST', body: {},
+    });
+  /** Install the world's probe battery (2026-11-24): once, then it refills itself. */
+  installProbeBattery = (planetId: string) =>
+    this.send(`/api/planets/${encodeURIComponent(planetId)}/probe-battery/build`, probeBatteryBuildSchema, {
       method: 'POST', body: {},
     });
 

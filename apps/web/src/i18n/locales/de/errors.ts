@@ -121,6 +121,9 @@ export const errors = {
   DEATH_STAR_LOCKED: 'Todesstern-Voraussetzungen sind nicht erfüllt',
   INTERCEPTOR_LOADED: "Die Rampe dieser Welt ist voll: {{max}} Ladungen",
   INTERCEPTOR_LOCKED: "Zuerst das Radar auf Stufe {{requiredRadar}} bringen, mit einem Uplink im Orbit",
+  PROBE_BATTERY_LOCKED: "Zuerst das Radar auf Stufe {{requiredRadar}} bringen, mit einem Uplink im Orbit",
+  PROBE_BATTERY_BUSY: "Diese Batterie wird bereits gebaut oder ausgebaut",
+  PROBE_BATTERY_MAX: "Diese Batterie ist auf der höchsten Stufe",
   RECOVERY_WINDOW_TOO_SHORT: 'Das Wiederherstellungs- oder Anspruchsfenster wird vor dem Eintreffen geschlossen',
   /** What is shown when nothing else is known. */
   unknown: "Das Ergebnis konnte nicht bestätigt werden. Prüfe den aktuellen Stand, bevor du es erneut versuchst.",

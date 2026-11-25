@@ -4,7 +4,7 @@ import {
   LOW_TIER_PVP_BALANCE, STANDARD_PVP_BALANCE,
   ABUSE, ANTI_STRATEGIC, BUILD, BUILDING_IDS, COMBAT, CORE_TOP_LEVEL, DEATH_STAR, DEUTERIUM, FIRST_SEASON_START,
   ECON, ESCAPE, FAULT, HANGAR, HULLS, INSTRUMENT_MAX_LEVEL, MULTI_WORLD,
-  PROBE, PROSPECTOR, PIRATE, RESEARCH_PROJECTS, SEASON, SALVAGE, CLAN, RADIATION_LEVEL_HP_PER_MINUTE,
+  PROBE, PROBE_DEFENCE, PROSPECTOR, PIRATE, RESEARCH_PROJECTS, SEASON, SALVAGE, CLAN, RADIATION_LEVEL_HP_PER_MINUTE,
   CLAN_SUPPORT, CLAN_LEVEL_MAX, GALAXY_EVENTS, TRADE, MONUMENT_BALANCE, MONUMENT_PROBE_LOSS_CHANCE, MONUMENT_SEASON_DEFAULTS,
   CURRENT_SEASON_RANK_REWARD_PROGRAM_VERSION, INACTIVITY_MS, SILENT_SPACE, SETTLEMENT_CLAIM_MINUTES, SETTLEMENT_PRIORITY_MINUTES, TRAVEL,
   alloyRate, buildingCost, buildingMinutes, crystalRate, deuteriumRate,
@@ -232,6 +232,14 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
     [t('Scrap return × remaining HP share', 'Parçalama dönüşü × kalan can oranı'), `${n(50)}%`],
     [t('Repair orders, including the active order', 'Aktif iş dahil onarım siparişi sınırı'), n(BUILD.queueDepth)],
   ])];
+  if (id === 'intel.probe-defence') blocks = [table(t('Probe battery levels', 'Sonda bataryası seviyeleri'),
+    [t('Level', 'Seviye'), t('Charges', 'Şarj'), t('One charge every', 'Bir şarj'), t('Catch base', 'Yakalama tabanı'), t('Radar', 'Radar'),
+      ...resourceColumns(language), t('Time', 'Süre')],
+    PROBE_DEFENCE.levels.map((spec, index) => [
+      n(index + 1), n(spec.capacity), `${number(spec.refillMinutes, language)} ${t('min', 'dk')}`,
+      `${n(Math.round((PROBE_DEFENCE.catchBase + PROBE_DEFENCE.catchPerLevel * index) * 100))}%`, n(spec.requiredRadar),
+      ...costCells(spec.cost, language), `${n(spec.buildMinutes)} ${t('min', 'dk')}`,
+    ]))];
   if (id === 'intel.probes') blocks = [table(t('Resource cost of one planet probe', 'Bir gezegen sondasının kaynak bedeli'), resourceColumns(language), [costCells({ alloy: PROBE.alloy, crystal: PROBE.crystal, deuterium: 0 }, language)])];
   if (id === 'worlds.colonies') blocks = [pairs(language, t('Colony maintenance', 'Koloni bakımı'), [
     [t('Faults possible from local Core', 'Arıza çıkabilen yerel Çekirdek'), n(FAULT.minCoreLevel)],

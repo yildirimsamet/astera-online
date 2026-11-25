@@ -8,6 +8,8 @@ import {
   PROBE,
   INSTRUMENT_IDS,
   NOTIFICATION_CENTER,
+  PROBE_DEFENCE,
+  probeBatteryLevel,
   SATELLITE_IDS,
   SHIP_DAMAGE,
   shipHpRepairCost,
@@ -42,7 +44,7 @@ import {
 import type { Db } from '../../db/client.js';
 import { type Clock, minutesSince } from '../../clock.js';
 import {
-  battleReports, buildings, missions, notificationCenters, planets, players, probeReports, probeWorldMemories, seasons,
+  battleReports, buildings, missions, notificationCenters, planets, players, probeReports, probeShots, probeWorldMemories, seasons,
 } from '../../db/schema.js';
 import { GameError } from '../planet.js';
 import { buildNotificationCenter, commanderDeuteriumPerHour, fundNotificationCenter } from '../notificationCenter.js';
@@ -52,6 +54,7 @@ import { startRepair } from '../repair.js';
 import { maintenanceAction } from '../maintenance.js';
 import { launchAttack } from '../mission.js';
 import { launchProbe, rememberedWorlds } from '../intel.js';
+import { installProbeBattery } from '../probeDefence.js';
 import { launchHarvest, launchMining, loadMiningSnapshot, projectVisibleDebris } from '../mining.js';
 import { launchPirateRaid } from '../pirateRaid.js';
 import { asteroidId, discoveredAsteroidIndexes } from '../asteroidField.js';
@@ -172,6 +175,7 @@ export async function runBotTurn(
     view = await buyShips(db, clock, seat, persona, view, did, log, rng);
   }
   view = await tendNotificationCenter(db, clock, seat, persona, view, did, log);
+  view = await tendProbeBattery(db, clock, seat, persona, view, did, log);
   view = await tendBotMoon(db, clock, seat, persona, view, did, log, rng);
   await commitOneFlight(db, clock, seat, persona, view, did, log, rng);
 
@@ -736,7 +740,8 @@ async function sendProbe(
   did: string[], log: FastifyBaseLogger, rng: () => number,
 ): Promise<void> {
   if (!canAffordProbe(view)) return;
-  const candidates = await probeCandidates(db, clock.now(), seat, view);
+  const retreat = new Set(await probeRetreatTargets(db, seat.playerId, clock.now()));
+  const candidates = (await probeCandidates(db, clock.now(), seat, view)).filter((world) => !retreat.has(world.planetId));
   const total = candidates.reduce((sum, world) => sum + world.weight, 0);
   if (total <= 0) return;
   let roll = rng() * total;
@@ -995,6 +1000,50 @@ interface Reading extends WallReading {
   readonly fleetHome: boolean;
 }
 
+/** How long a bot leaves a world alone after its battery has shot down a battery's worth of probes. */
+export const BOT_PROBE_RETREAT_MINUTES = 30;
+
+/**
+ * WORLDS A BOT HAS STOPPED FEEDING PROBES TO (2026-11-24). A stale reading sends a probe every
+ * turn; against a probe battery that would be one lost probe a turn for ever — a resource drain
+ * and a pattern no person keeps up. After a level-1 battery's worth of losses at one world inside
+ * the window, the bot leaves it until the losses age out, as a person gives up and comes back.
+ */
+export async function probeRetreatTargets(db: Db, playerId: string, now: Date): Promise<string[]> {
+  const rows = await db
+    .select({ target: probeShots.targetPlanetId, n: sql<number>`count(*)::int` })
+    .from(probeShots)
+    .where(and(
+      eq(probeShots.attackerPlayerId, playerId),
+      gt(probeShots.shotAt, new Date(now.getTime() - BOT_PROBE_RETREAT_MINUTES * 60_000)),
+    ))
+    .groupBy(probeShots.targetPlanetId);
+  return rows.filter((row) => row.n >= PROBE_DEFENCE.levels[0].capacity).map((row) => row.target);
+}
+
+/**
+ * THE PROBE BATTERY, KEPT BY HABIT (owner K5, 2026-11-24). Only habits that keep one build it,
+ * once, on the effective Radar rung, from the same reserve the Bildirim Merkezi respects.
+ */
+export async function tendProbeBattery(
+  db: Db, clock: Clock, seat: BotSeat, persona: BotPersona,
+  view: PlanetView, did: string[], log: FastifyBaseLogger,
+): Promise<PlanetView> {
+  if (!persona.keepsProbeBattery) return view;
+  // One order at a time, then the next level, as a person keeping one would (owner, 2026-11-24).
+  const battery = view.probeBattery;
+  if (battery && (battery.readyAt > clock.now() || battery.upgradeLevel !== null)) return view;
+  const next = battery ? battery.level + 1 : 1;
+  if (next > PROBE_DEFENCE.levels.length) return view;
+  const spec = probeBatteryLevel(next);
+  if ((view.effectiveInstruments.RADAR ?? 0) < spec.requiredRadar) return view;
+  if (!affordable(view, spec.cost, Math.max(view.planet.alloy * persona.militaryShare, storeReserve(view)))) return view;
+  await attempt(did, 'probe-battery:build', log, async () => {
+    view = (await installProbeBattery(db, seat.planetId, clock, seat.playerId)).planet;
+  });
+  return view;
+}
+
 /** Worlds this commander has a probe in the air toward; one look at a time. */
 async function probesInFlight(db: Db, playerId: string): Promise<Set<string>> {
   const rows = await db
@@ -1044,6 +1093,7 @@ async function sendRaid(
   ]);
   const budget: ForecastBudget = { left: BOTS.forecastsPerTurn };
   const now = clock.now();
+  const retreat = new Set(await probeRetreatTargets(db, seat.playerId, now));
   for (const pick of order) {
     const reading = readings.get(pick.planetId);
     if (!reading) continue;
@@ -1054,6 +1104,7 @@ async function sendRaid(
       a probe already in the air is the look, and the next turn waits for it.
     */
     if (now.getTime() - reading.seenAt.getTime() > BOTS.readingFreshMinutes * 60_000) {
+      if (retreat.has(pick.planetId)) continue;
       if (!canAffordProbe(view) || (await probesInFlight(db, seat.playerId)).has(pick.planetId)) continue;
       return attempt(did, 'probe', log, () =>
         launchProbe(db, seat.planetId, pick.planetId, clock, seat.playerId));

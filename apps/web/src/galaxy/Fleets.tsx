@@ -272,6 +272,15 @@ function corridorMaterial(colour: string): THREE.ShaderMaterial {
   });
 }
 
+/** The scout as every flight draws it; the probe battery's moment flies the same craft on. */
+export const PROBE_ROUTE = {
+  url: MODEL.probe,
+  scale: 0.18 * CRAFT_SCALE,
+  flame: '#9dffc4',
+  /** Green: this is the scout. */
+  neon: '#3ff08a',
+} as const;
+
 const ROUTE = {
   fleet: {
     url: HULL_MODEL.DART,
@@ -280,13 +289,7 @@ const ROUTE = {
     /** Blue: this is a warship. */
     neon: '#3fa9ff',
   },
-  probe: {
-    url: MODEL.probe,
-    scale: 0.18 * CRAFT_SCALE,
-    flame: '#9dffc4',
-    /** Green: this is the scout. */
-    neon: '#3ff08a',
-  },
+  probe: PROBE_ROUTE,
 } as const;
 
 /** A normalized hull's longest box dimension is one; cover every corner in any heading. */

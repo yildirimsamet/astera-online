@@ -15,6 +15,7 @@ import {
 import { requireAuth } from './auth.js';
 import { ownedPlanet } from '../services/ownership.js';
 import { probePostureFields } from '../services/defencePosture.js';
+import { readProbeLosses, readProbeShotsFired } from '../services/probeDefence.js';
 
 const watchBody = z.object({
   observerPlanetId: z.string().uuid().optional(),
@@ -55,11 +56,13 @@ export function registerIntelRoutes(app: FastifyInstance): void {
      * commander-wide, so one payload was answering at two different scopes.
      */
     const self = await app.projections.commander(req.accountId!);
-    const [watching, radarLog, reports, cooldowns] = await Promise.all([
+    const [watching, radarLog, reports, cooldowns, losses, fired] = await Promise.all([
       readTelescopes(app.db, self.playerId, app.clock),
       readRadarLog(app.db, self.planetIds),
       readProbeReports(app.db, self.playerId),
       readProbeCooldowns(app.db, self.playerId, app.clock.now()),
+      readProbeLosses(app.db, self.playerId, app.clock.now()),
+      readProbeShotsFired(app.db, self.playerId, app.clock.now()),
     ]);
 
     return {
@@ -121,6 +124,10 @@ export function registerIntelRoutes(app: FastifyInstance): void {
         ...(r.report.silhouette?.loyalty === undefined
           ? {}
           : { loyalty: r.report.silhouette.loyalty }),
+        // The probe battery at the look, exact (2026-11-24); null when none stood there.
+        ...(r.report.silhouette?.probeBattery === undefined
+          ? {}
+          : { probeBattery: r.report.silhouette.probeBattery }),
         // Bildirim Merkezi as read at the look (decision 8); absent on older reports and caretaker worlds.
         ...(r.report.silhouette?.notificationCenter === undefined
           ? {}
@@ -143,6 +150,10 @@ export function registerIntelRoutes(app: FastifyInstance): void {
         ...(r.report.clanLevel === null ? {} : { clanLevel: r.report.clanLevel }),
         detected: r.report.detected,
       })),
+      // Probes a battery shot down in the last day: no report came, so the loss stands in its place.
+      probeLosses: losses,
+      // This commander's own batteries' shots, with the point on the approach, for the galaxy's moment.
+      probeShotsFired: fired,
       probeCost: { alloy: PROBE.alloy, crystal: PROBE.crystal, deuterium: 0 },
     };
   });

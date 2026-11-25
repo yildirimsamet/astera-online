@@ -161,6 +161,8 @@ const fleetEscapeRecord = z.discriminatedUnion('kind', [
 ]);
 const techLevels = z.record(researchProjectId, z.number().int().nonnegative());
 const vec3 = z.object({ x: z.number(), y: z.number(), z: z.number() });
+/** Where a probe battery hit a probe, on its approach, in game units (2026-11-24). */
+const shotPoint = vec3;
 const resources = z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number() });
 export const unknownSignalOutcomeSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('RESOURCES'), loot: resources }),
@@ -1240,6 +1242,24 @@ export const planetSchema = z.object({
   interceptor: strategicAsset.nullable().optional(),
   /** All live anti-battery charges, ready first. */
   interceptors: z.array(strategicAsset).optional(),
+  /**
+   * THE PROBE BATTERY AS STORED (2026-11-24); live charges come from `probeBatteryCharges`.
+   * Null when none is built; absent against an older server.
+   */
+  probeBattery: z.object({
+    startedAt: z.coerce.date(),
+    readyAt: z.coerce.date(),
+    /** The working level; an upgrade that has landed is already folded in (2026-11-24). */
+    level: z.number().int().positive().default(1),
+    charges: z.number().int().nonnegative(),
+    chargedAt: z.coerce.date(),
+    /** Set only while an upgrade is still running. */
+    upgradeLevel: z.number().int().positive().nullable().default(null),
+    upgradeStartedAt: z.coerce.date().nullable().default(null),
+    upgradeReadyAt: z.coerce.date().nullable().default(null),
+    /** Probes it shot down in the notice window (`PROBE_DEFENCE.noticeWindowMinutes`). */
+    recentShots: z.number().int().nonnegative().default(0),
+  }).nullable().default(null),
   radiationBombsAvailable: z.boolean().default(false),
   radiationBombs: z.array(radiationBombAsset).default([]),
   /**
@@ -2771,6 +2791,8 @@ export const intelSchema = z.object({
       bearing: z.string().nullable(),
       originPlanetName: z.string().nullable(),
       originPlanetId: z.string().nullable().optional(),
+      /** The world's probe battery shot this one down (2026-11-24). Absent on older servers. */
+      shotDown: z.boolean().optional(),
     }),
   ),
   probeReports: z.array(
@@ -2815,6 +2837,12 @@ export const intelSchema = z.object({
        * way to hold it is to have flown there. Absent means never measured.
        */
       interceptors: z.number().int().nonnegative().optional(),
+      /**
+       * THE PROBE BATTERY AT THE LOOK (2026-11-24): ready charges of its capacity, exact;
+       * null when that world had none built. Absent means never measured.
+       */
+      probeBattery: z.object({ ready: z.number().int().nonnegative(), capacity: z.number().int().positive() })
+        .nullable().optional(),
       /**
        * A COLONY'S LOYALTY AT THE LOOK, rounded up. A Death Star takes twenty and a
        * colony at twenty or less goes NEUTRAL. Absent on capitals and caretaker worlds.
@@ -2864,6 +2892,28 @@ export const intelSchema = z.object({
   probeCooldowns: z
     .array(z.object({ targetPlanetId: z.string(), readyAt: z.coerce.date() }))
     .default([]),
+  /** Probes a battery shot down in the last day (2026-11-24): no report came, the loss stands in its place. */
+  probeLosses: z
+    .array(z.object({
+      missionId: z.string(),
+      targetPlanetId: z.string(),
+      targetName: z.string(),
+      targetUsername: z.string(),
+      at: z.coerce.date(),
+      /** Where on the approach it was hit, in game units; absent from an older server. */
+      point: shotPoint.optional(),
+      /** When the battery opened fire and where the craft was then (2026-11-25). */
+      firedAt: z.coerce.date().optional(),
+      from: shotPoint.optional(),
+    }))
+    .optional(),
+  /** This commander's own batteries' shots, for the galaxy's moment (2026-11-24). */
+  probeShotsFired: z
+    .array(z.object({
+      id: z.string(), planetId: z.string(), at: z.coerce.date(), point: shotPoint,
+      firedAt: z.coerce.date().optional(), from: shotPoint.optional(),
+    }))
+    .optional(),
   probeCost: resources,
 });
 
@@ -3092,6 +3142,7 @@ export const deathStarBuildSchema = z.object({
  * lifecycle — one row, one completion event, one planet view back (D53).
  */
 export const interceptorBuildSchema = deathStarBuildSchema;
+export const probeBatteryBuildSchema = z.object({ readyAt: z.coerce.date(), ...withPlanet });
 export const radiationBombBuildSchema = deathStarBuildSchema;
 export const radiationBombLaunchSchema = z.object({
   flightId: z.string().uuid(),
@@ -4034,7 +4085,10 @@ export const trafficSchema = z.object({
     effectOnly: z.boolean(),
     focusEligible: z.boolean(),
   })).optional(),
+  /** Probes shot down over a world the caller's Telescope identifies; neither side named (2026-11-24). */
+  probeShots: z.array(z.object({ id: z.string(), planetId: z.string(), at: z.coerce.date() })).optional(),
 });
+export type TrafficView = z.infer<typeof trafficSchema>;
 export type Contact = z.infer<typeof trafficSchema>['contacts'][number];
 export type StrategicInterception = NonNullable<z.infer<typeof trafficSchema>['interceptions']>[number];
 export type StrategicInterceptionImpact = NonNullable<

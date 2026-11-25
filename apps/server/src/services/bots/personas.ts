@@ -99,6 +99,11 @@ export interface BotPersona {
    */
   readonly nerve: Nerve;
   readonly moon: BotMoonHabit;
+  /**
+   * WHETHER THIS HABIT KEEPS A PROBE BATTERY (owner K5, 2026-11-24). By habit, like people:
+   * the careful builders guard their privacy, the raider and the miner spend elsewhere.
+   */
+  readonly keepsProbeBattery: boolean;
 }
 
 export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
@@ -121,6 +126,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
     flight: { probe: 2, mine: 3, harvest: 2, pirate: 1, attack: 1, idle: 5 },
     nerve: { need: 'CLEARS', maxLoss: 0.2, lootOverFuel: 4 },
     moon: { captureChance: 0.3, escapeChance: 0.65, reinforceChance: 0.25, scanChance: 0.15, retargetChance: 0.04, strikeMoonChance: 0 },
+    keepsProbeBattery: true,
   },
   RAIDER: {
     id: 'RAIDER',
@@ -140,6 +146,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
     flight: { probe: 4, mine: 1, harvest: 2, pirate: 3, attack: 6, idle: 3 },
     nerve: { need: 'BREAKS', maxLoss: 0.45, lootOverFuel: 2 },
     moon: { captureChance: 0.45, escapeChance: 0.35, reinforceChance: 0.45, scanChance: 0.45, retargetChance: 0.15, strikeMoonChance: 0.12 },
+    keepsProbeBattery: false,
   },
   PROSPECTOR: {
     id: 'PROSPECTOR',
@@ -157,6 +164,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
     flight: { probe: 2, mine: 8, harvest: 5, pirate: 1, attack: 2, idle: 4 },
     nerve: { need: 'CLEARS', maxLoss: 0.2, lootOverFuel: 4 },
     moon: { captureChance: 0.25, escapeChance: 0.55, reinforceChance: 0.2, scanChance: 0.15, retargetChance: 0.04, strikeMoonChance: 0 },
+    keepsProbeBattery: false,
   },
   BALANCED: {
     id: 'BALANCED',
@@ -174,6 +182,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
     flight: { probe: 3, mine: 4, harvest: 3, pirate: 2, attack: 4, idle: 4 },
     nerve: { need: 'CLEARS', maxLoss: 0.3, lootOverFuel: 3 },
     moon: { captureChance: 0.35, escapeChance: 0.5, reinforceChance: 0.35, scanChance: 0.3, retargetChance: 0.08, strikeMoonChance: 0.04 },
+    keepsProbeBattery: true,
   },
 };
 
