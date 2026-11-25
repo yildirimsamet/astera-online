@@ -383,7 +383,7 @@ function GalleryBuild({ hull, variant = 'ready' }: { hull: HullId; variant?: Bui
  * two charges, each panel naming the research that raises it. `tab` picks the panel.
  */
 /** The strategic bays (G2-g): armed, with the radiation forge open and a weapon building, or locked on a young world. */
-function GalleryStrategic({ tab, variant = 'armed' }: { tab: 'tactical' | 'defend'; variant?: 'armed' | 'radiation' | 'locked' }) {
+function GalleryStrategic({ tab, variant = 'armed' }: { tab: 'tactical' | 'defend'; variant?: 'armed' | 'radiation' | 'locked' | 'probe-new' | 'probe-upgrade' }) {
   const client = useQueryClient();
   useState(() => {
     const ready = (id: string) => ({ id, status: 'READY' as const, readyAt: null, remainingSeconds: 0 });
@@ -415,12 +415,22 @@ function GalleryStrategic({ tab, variant = 'armed' }: { tab: 'tactical' | 'defen
     }
     client.setQueryData(['planet'], planetView({
       buildings: { CORE: 12, REFINERY: 10, EXTRACTOR: 10, VAULT: 6, SHIPYARD: 5, HANGAR: 3 },
-      instruments: { RADAR: 3, TELESCOPE: 2 },
+      instruments: { RADAR: variant === 'probe-upgrade' ? 4 : 3, TELESCOPE: 2 },
       orbit: ['UPLINK'],
       strategic: ready('ds-1'),
       deathStars: [ready('ds-1')],
       interceptor: ready('ic-1'),
       interceptors: [ready('ic-1'), ready('ic-2')],
+      // The probe battery: none; a full level 1 the Radar can raise; or a busy level 2 raising itself to 3 (2026-11-24).
+      probeBattery: variant === 'probe-new' ? null : variant === 'probe-upgrade' ? {
+        startedAt: new Date(Date.now() - 3 * 3_600_000), readyAt: new Date(Date.now() - 2.5 * 3_600_000),
+        level: 1, charges: 5, chargedAt: new Date(Date.now() - 60 * 60_000), recentShots: 0,
+        upgradeLevel: null, upgradeStartedAt: null, upgradeReadyAt: null,
+      } : {
+        startedAt: new Date(Date.now() - 3 * 3_600_000), readyAt: new Date(Date.now() - 2.5 * 3_600_000),
+        level: 2, charges: 3, chargedAt: new Date(Date.now() - 4 * 60_000), recentShots: 2,
+        upgradeLevel: 3, upgradeStartedAt: new Date(Date.now() - 20 * 60_000), upgradeReadyAt: new Date(Date.now() + 40 * 60_000),
+      },
       // A colony, so the battery's loyalty line and the hero's loss line are drawn too.
       loyalty: { value: 64, minutesLeft: null },
     }, { id: 'p-1', kind: 'COLONY', alloy: 120_000, crystal: 60_000, deuterium: 9_000, alloyPerHour: 900, crystalPerHour: 300 }));
@@ -1509,6 +1519,8 @@ function Views({ view }: { view: string }) {
   if (view === 'repair-station-radiation') return <GalleryBase open radiation />;
   if (view === 'strategic-forge') return <GalleryStrategic tab="tactical" />;
   if (view === 'strategic-battery') return <GalleryStrategic tab="defend" />;
+  if (view === 'probe-battery-new') return <GalleryStrategic tab="defend" variant="probe-new" />;
+  if (view === 'probe-battery-upgrade') return <GalleryStrategic tab="defend" variant="probe-upgrade" />;
   if (view === 'strategic-radiation') return <GalleryStrategic tab="tactical" variant="radiation" />;
   if (view === 'strategic-locked') return <GalleryStrategic tab="tactical" variant="locked" />;
   if (view === 'repair-station-empty') return <GalleryBase empty open />;

@@ -368,6 +368,8 @@ export const leaderboard = {
     WEAK: "Objetivo más débil",
     topTierPeer: "Estás en el nivel más alto de esta galaxia. Un objetivo un nivel por debajo se evalúa con las reglas de Honor del mismo nivel. Un rival que te ataque desde un nivel inferior conserva las condiciones actuales de bonificación.",
     weakWarning: "Incluso un ataque exitoso puede reducir Honor. El acoso repetido cuesta más.",
+    escalatedWeak: "Ya perdiste Honor al atacar a este comandante en las últimas 24 horas. Este ataque multiplica la pérdida de Honor por {{multiplier}}×.",
+    escalatedInFlight: "Ya tienes un ataque en camino hacia este comandante. Este ataque adicional multiplica la pérdida de Honor por {{multiplier}}×.",
     eligible: "El daño militar permanente puede otorgar Honor. Tus pérdidas al atacar pueden reducirlo.",
     FULL: "Rendimiento militar completo: el daño válido se ajusta por eficiencia.",
     HALF: "Rendimiento militar reducido: la fuerza militar de este comandante es muy inferior a la tuya. La ganancia y la deducción por tus pérdidas se reducen a la mitad.",

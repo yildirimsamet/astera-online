@@ -608,10 +608,12 @@ export const notifications = {
   haul: '{{what}} Startseite · {{landed}}',
 
   scanDetected: 'Scan erkannt. Jemand sammelt Informationen über deine Welt.',
+  scanShotDown: "Deine Sondenbatterie hat über {{world}} eine Sonde abgeschossen (insgesamt {{count}}). Jemand schätzt dich ab.",
 
   probeFallback: 'Eine Sonde ist zu Hause. Sein Bericht ist lesbar.',
   probeHome: 'Probe-Home · {{target}} ist lesbar{{caught}}',
   probeCaught: '· sie haben es erwischt',
+  probeShotDown: "Sonde über {{target}} abgeschossen · dort steht eine Sondenbatterie",
 
   unlock: '{{title}} – {{body}}',
   deathStarFallback: 'Dein Todessternangriff wurde gelöst.',

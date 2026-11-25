@@ -409,6 +409,8 @@ export const focus = {
     attackProtectedShort: "Protected · {{duration}}",
     attackShort: "Plan attack",
     probeShort: "Probe",
+    probeBatteryHint: "Last report: probe battery {{ready}}/{{capacity}} charges",
+    probeLostHint: "Last probe shot down here {{age}} · a charged probe battery stands there",
     probeCoolingShort: "Probe in {{duration}}",
     attack: "Plan an attack",
     attackNeutralAgain: "Raid again · claim unchanged",

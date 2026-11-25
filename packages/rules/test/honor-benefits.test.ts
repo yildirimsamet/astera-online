@@ -1,23 +1,41 @@
 import { describe, expect, it } from 'vitest';
-import { honorBenefits, honorConvoyResources, honorRepairResources, honorTradeResources,
-  type HonorBenefitThresholds } from '../src/honorBenefits.js';
+import {
+  HONOR_BENEFIT_PROGRAM_V1, HONOR_BENEFIT_PROGRAM_VERSION,
+  HONOR_BENEFIT_THRESHOLDS_V1, HONOR_BENEFIT_THRESHOLDS_V2,
+  honorBenefits, honorConvoyResources, honorFuelCost, honorLaunchFuel, honorRepairResources, honorTradeResources,
+  type HonorBenefitThresholds,
+} from '../src/honorBenefits.js';
 import { repairPct, shipHpRepairCost, shipHpRepairMinutes } from '../src/index.js';
 
-const thresholds: HonorBenefitThresholds = { positive: [25_000_000, 75_000_000], negative: [25_000_000, 100_000_000] };
+const thresholds: HonorBenefitThresholds = HONOR_BENEFIT_THRESHOLDS_V1;
+const v2: HonorBenefitThresholds = HONOR_BENEFIT_THRESHOLDS_V2;
 const pile = { alloy: 1000, crystal: 500, deuterium: 100 };
 
 describe('parameterised Honor economic effects', () => {
   it.each([
-    [-100_000_001, -2, 10, -30, 14], [-100_000_000, -2, 10, -30, 14],
-    [-99_999_999, -1, 5, -15, 7], [-25_000_000, -1, 5, -15, 7],
-    [-24_999_999, 0, 0, 0, 0], [0, 0, 0, 0, 0], [24_999_999, 0, 0, 0, 0],
-    [25_000_000, 1, -5, 15, 0], [74_999_999, 1, -5, 15, 0], [75_000_000, 2, -10, 30, 0],
-  ])('maps micro-Honor %s to inclusive fixed tier %s', (score, tier, repairPct, convoyPct, tradePct) => {
-    expect(honorBenefits(score, thresholds)).toEqual({ tier, repairPct, convoyPct, tradePct });
+    [-100_000_001, -2, 10, -30, 14, 0, 0], [-100_000_000, -2, 10, -30, 14, 0, 0],
+    [-99_999_999, -1, 5, -15, 7, 0, 0], [-25_000_000, -1, 5, -15, 7, 0, 0],
+    [-24_999_999, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0], [24_999_999, 0, 0, 0, 0, 0, 0],
+    [25_000_000, 1, -5, 15, 0, 0, 0], [74_999_999, 1, -5, 15, 0, 0, 0], [75_000_000, 2, -10, 30, 0, 0, 0],
+  ])('maps micro-Honor %s to inclusive fixed V1 tier %s', (score, tier, repairPct, convoyPct, tradePct, fuelPct, productionPct) => {
+    expect(HONOR_BENEFIT_PROGRAM_V1).toBe(1);
+    expect(HONOR_BENEFIT_PROGRAM_VERSION).toBe(2);
+    expect(honorBenefits(score, thresholds)).toEqual({ tier, repairPct, convoyPct, tradePct, fuelPct, productionPct });
+  });
+
+  it.each([
+    [-200_000_001, -4, 10, -30, 14, 25, -25], [-200_000_000, -4, 10, -30, 14, 25, -25],
+    [-199_999_999, -3, 10, -30, 14, 25, 0], [-150_000_000, -3, 10, -30, 14, 25, 0],
+    [-149_999_999, -2, 10, -30, 14, 0, 0], [-50_000_000, -2, 10, -30, 14, 0, 0],
+    [-49_999_999, -1, 5, -15, 7, 0, 0], [-25_000_000, -1, 5, -15, 7, 0, 0],
+    [-24_999_999, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0], [24_999_999, 0, 0, 0, 0, 0, 0],
+    [25_000_000, 1, -5, 15, 0, 0, 0], [74_999_999, 1, -5, 15, 0, 0, 0], [75_000_000, 2, -10, 30, 0, 0, 0],
+  ])('maps micro-Honor %s to inclusive fixed V2 tier %s', (score, tier, repairPct, convoyPct, tradePct, fuelPct, productionPct) => {
+    expect(honorBenefits(score, v2)).toEqual({ tier, repairPct, convoyPct, tradePct, fuelPct, productionPct });
   });
 
   it('has no economic effects without a frozen enabled policy, including negative scores', () => {
-    expect(honorBenefits(-999_000_000, null)).toEqual({ tier: 0, repairPct: 0, convoyPct: 0, tradePct: 0 });
+    expect(honorBenefits(-999_000_000, null)).toEqual({ tier: 0, repairPct: 0, convoyPct: 0, tradePct: 0, fuelPct: 0, productionPct: 0 });
   });
 
   it('rejects invalid scores and nonascending, zero or unsafe thresholds', () => {
@@ -26,6 +44,30 @@ describe('parameterised Honor economic effects', () => {
       expect(() => honorBenefits(0, { ...thresholds, positive })).toThrow();
     }
     expect(() => honorBenefits(0, { ...thresholds, negative: [0, 1] })).toThrow();
+    expect(() => honorBenefits(0, { ...v2, negative: [25_000_000, 50_000_000, 50_000_000, 200_000_000] })).toThrow();
+    expect(() => honorBenefits(0, { ...v2, negative: [25_000_000, 50_000_000, 200_000_000, 150_000_000] })).toThrow();
+  });
+
+  it('prices fleet fuel with +25% Honor surcharge and single Admiral-then-Honor rounding order', () => {
+    const t3 = honorBenefits(-150_000_000, v2);
+    const t2 = honorBenefits(-50_000_000, v2);
+    expect(honorFuelCost(0, t3)).toBe(0);
+    expect(honorFuelCost(100, t2)).toBe(100);
+    expect(honorFuelCost(100, null)).toBe(100);
+    expect(honorFuelCost(100, t3)).toBe(125);
+    expect(honorFuelCost(1, t3)).toBe(2);
+    // 6 fuel with 0.85 admiral mult -> ceil(5.1) = 6 -> ceil(6 * 1.25) = 8
+    expect(honorLaunchFuel(6, t3, 0.85)).toBe(8);
+    expect(honorLaunchFuel(6, t2, 0.85)).toBe(6);
+    expect(honorLaunchFuel(0, t3, 0.85)).toBe(0);
+    // Splitting a departure never lowers total fuel cost
+    for (let n = 2; n <= 50; n++) for (let left = 1; left < n; left++) {
+      expect(honorFuelCost(left, t3) + honorFuelCost(n - left, t3)).toBeGreaterThanOrEqual(honorFuelCost(n, t3));
+    }
+    expect(() => honorFuelCost(-1, t3)).toThrow(RangeError);
+    expect(() => honorFuelCost(Number.MAX_SAFE_INTEGER, t3)).toThrow(RangeError);
+    expect(() => honorLaunchFuel(10, t3, 0)).toThrow(RangeError);
+    expect(() => honorLaunchFuel(10, t3, Number.NaN)).toThrow(RangeError);
   });
 
   it('prices only the repair resources and rounds the actual bill once upward', () => {

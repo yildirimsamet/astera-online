@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MULTI_WORLD, distance, fleetTravelExact, missionFuel } from '@astera/rules';
+import { MULTI_WORLD, distance, fleetTravelExact, honorFuelCost, missionFuel } from '@astera/rules';
 import type { CapsuleIdView, GalaxyPlanet, PlanetView } from '../api/schemas.js';
 import { capsuleChoices } from '../lib/synthesis.js';
 import { CapsuleRow } from '../ui/CapsuleRow.js';
@@ -61,7 +61,7 @@ export function SettlementSheet({
   const travelMinutes = fleetTravelExact(
     span, fleet, { boost: 1, tech: flightModifiers(planet).tech },
   );
-  const fuel = missionFuel(fleet, span, 1);
+  const fuel = honorFuelCost(missionFuel(fleet, span, 1), planet.honorBenefits);
   const closesIn = Math.max(0, (target.neutral?.claimUntil?.getTime() ?? now) - now);
   /*
     THE RAIDER'S OWN HOUR (owner, 2026-10-07). Inside it nobody else may land, so a raider
@@ -157,7 +157,14 @@ export function SettlementSheet({
         </div>
         <div className="gk-figure">
           <dt className="gk-label">{t('focus.planet.settlementConfirm.fuel')}</dt>
-          <dd className="gk-figure__value"><CostLine cost={{ alloy: 0, crystal: 0, deuterium: fuel }} held={planet.planet} /></dd>
+          <dd className="gk-figure__value">
+            <CostLine cost={{ alloy: 0, crystal: 0, deuterium: fuel }} held={planet.planet} />
+            {(planet.honorBenefits?.fuelPct ?? 0) > 0 && (
+              <span className="gk-sub" data-tone="hostile" data-honor-fuel-penalty>
+                {` · ${t('honorBenefits.fuel')} +${String(planet.honorBenefits!.fuelPct)}%`}
+              </span>
+            )}
+          </dd>
         </div>
       </dl>
 

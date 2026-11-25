@@ -680,10 +680,12 @@ export const notifications = {
   haul: '{{what}} accueil · {{landed}}',
 
   scanDetected: 'Analyse détectée. Quelqu\'un recueille des renseignements sur votre monde.',
+  scanShotDown: "Votre batterie anti-sondes a abattu une sonde au-dessus de {{world}} ({{count}} au total). Quelqu'un vous jauge.",
 
   probeFallback: 'Une sonde est à la maison. Son rapport est lisible.',
   probeHome: 'Accueil de la sonde · {{target}} est lisible{{caught}}',
   probeCaught: '· ils l\'ont attrapé',
+  probeShotDown: "Sonde abattue au-dessus de {{target}} · une batterie anti-sondes s'y trouve",
 
   unlock: '{{title}} — {{body}}',
   deathStarFallback: 'Votre frappe de l\'Étoile de la Mort a été résolue.',

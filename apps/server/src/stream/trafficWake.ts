@@ -4,6 +4,7 @@ import { discoveredPirateIndexes } from '../services/pirateField.js';
 import type { Projections } from '../services/projections.js';
 import {
   projectGalaxyTraffic,
+  projectProbeShots,
   projectStrategicInterceptionImpacts,
   projectStrategicInterceptions,
 } from '../services/traffic.js';
@@ -38,6 +39,7 @@ export async function readTrafficView(projections: Projections, self: CommanderT
     ),
     interceptions: projectStrategicInterceptions(snapshot, self.playerId, sensors),
     interceptionImpacts: projectStrategicInterceptionImpacts(snapshot, self.playerId, sensors, now),
+    probeShots: projectProbeShots(snapshot, self.playerId, sensors),
   };
 }
 
@@ -45,6 +47,7 @@ interface TrafficPicture {
   contacts: readonly object[];
   interceptions: readonly object[];
   interceptionImpacts: readonly object[];
+  probeShots: readonly object[];
 }
 
 /**
@@ -54,7 +57,7 @@ interface TrafficPicture {
 export function trafficSignature(view: TrafficPicture): string {
   const contacts = view.contacts.map(contact => JSON.stringify(contact, (key, value: unknown) =>
     key === 'from' || key === 'to' || key === 'startAt' || key === 'endAt' || key === 'minutesRemaining' ? undefined : value));
-  return `${contacts.sort().join('\n')}|${JSON.stringify(view.interceptions)}|${JSON.stringify(view.interceptionImpacts)}`;
+  return `${contacts.sort().join('\n')}|${JSON.stringify(view.interceptions)}|${JSON.stringify(view.interceptionImpacts)}|${JSON.stringify(view.probeShots)}`;
 }
 
 /** A commit is readable once the event arrives; this spreads the readers and lets a burst gather. */

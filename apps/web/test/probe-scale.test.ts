@@ -108,5 +108,6 @@ it('uses the commander profile for the own-world comparison, including a small c
     vaultCapacity: { alloy: 0, crystal: 0, deuterium: 0 },
   });
   expect(yardstickOf(beginner).stock).toBe(2_800);
-  expect(yardstickOf({ ...beginner, pvpBalance: pvpBalanceForTier(4) }).stock).toBe(6_600);
+  expect(yardstickOf({ ...beginner, pvpBalance: pvpBalanceForTier(4) }).stock).toBe(4_950);
+  expect(yardstickOf({ ...beginner, pvpBalance: pvpBalanceForTier(6) }).stock).toBe(6_600);
 });

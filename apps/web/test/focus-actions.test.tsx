@@ -86,6 +86,7 @@ const intel: IntelView = {
   watching: [],
   probeReports: [],
   probeCooldowns: [],
+  probeLosses: [],
   radarLog: [],
   probeCost: { alloy: 25, crystal: 25, deuterium: 0 },
 };
@@ -165,6 +166,38 @@ describe('the closed card', () => {
       }],
     });
     expect(document.querySelector('[data-focus-rail]')).toHaveTextContent(`defence ${compact(27_000)}–${compact(53_000)}`);
+  });
+});
+
+/**
+ * WHAT THE LAST LOOK SAID ABOUT THEIR PROBE BATTERY, BESIDE THE LAUNCH (2026-11-24, plan §4).
+ * The charges are exact at the look; the target's Radar is not known, so no chance is printed.
+ */
+describe('the probe launch, beside a battery', () => {
+  const read = (probeBattery: { ready: number; capacity: number } | null) => ({
+    targetPlanetId: 'p2', targetName: 'Grimhold', targetUsername: 'Sable',
+    at: new Date(NOW - 60 * 60_000), accuracy: 0.8, detected: false,
+    stock: { low: 100, high: 200 }, deuteriumStock: null,
+    defence: { low: 27_000, high: 53_000 }, fleetSize: { low: 2, high: 5 }, fleetHome: true,
+    probeBattery,
+  });
+
+  it('says how many charges the last report found', () => {
+    show({ probeReports: [read({ ready: 2, capacity: 3 })] });
+    expect(document.querySelector('[data-probe-battery-hint]')).toHaveTextContent(/probe battery.*2\/3/i);
+  });
+
+  it('says nothing when the last report found none', () => {
+    show({ probeReports: [read(null)] });
+    expect(document.querySelector('[data-probe-battery-hint]')).toBeNull();
+  });
+
+  it('says a probe was shot down there when that is newer than the report', () => {
+    show({
+      probeReports: [read(null)],
+      probeLosses: [{ missionId: 'm1', targetPlanetId: 'p2', targetName: 'Grimhold', targetUsername: 'Sable', at: new Date(NOW - 10 * 60_000) }],
+    });
+    expect(document.querySelector('[data-probe-battery-hint]')).toHaveTextContent(/shot down/i);
   });
 });
 

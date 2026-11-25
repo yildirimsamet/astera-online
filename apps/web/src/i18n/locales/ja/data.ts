@@ -608,10 +608,12 @@ export const notifications = {
   haul: "{{what}} ホーム · {{landed}}",
 
   scanDetected: "スキャンが検出されました。誰かがあなたの世界に関する情報を収集しています。",
+  scanShotDown: "プローブ防衛砲台が{{world}}の上空でプローブを撃墜しました（計{{count}}機）。誰かがあなたを探っています。",
 
   probeFallback: "プローブがホームにあります。その報告書は読みやすい。",
   probeHome: "プローブホーム・{{target}} が読み取り可能です{{caught}}",
   probeCaught: "· 彼らはそれを捕まえました",
+  probeShotDown: "プローブは{{target}}の上空で撃墜されました · そこにはプローブ防衛砲台があります",
 
   unlock: "{{title}} — {{body}}",
   deathStarFallback: "デス・スター攻撃の結果が確定しました。",

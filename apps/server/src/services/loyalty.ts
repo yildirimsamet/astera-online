@@ -380,6 +380,8 @@ export async function secedeColony(
     pendingLeakCrystal: 0,
     pendingLeakDeuterium: 0,
     lastTickAt: now,
+    clanBonus: 0,
+    honorProductionShare: 0,
     seasonTelemetry: {
       produced: { alloy: 0, crystal: 0, deuterium: 0 },
       productiveSeconds: 0,

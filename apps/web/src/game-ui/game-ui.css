@@ -12263,6 +12263,32 @@ button.gk-rcard__door:active {
   text-align: right;
   overflow-wrap: anywhere;
 }
+/* What the last look found of their probe battery, said in warn beside the launch (2026-11-24). */
+.gk-focus__hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-basis: 100%;
+  font-size: var(--gk-t-small);
+  color: var(--gk-warn);
+}
+.gk-focus__hint .gk-glyph {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+/* A lost probe's mark in the intel ledger: the craft broken, in warn. */
+.gk-probe-loss__mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  color: var(--gk-warn);
+}
+.gk-probe-loss__mark .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
 .gk-focus__note {
   margin-bottom: 11px;
   justify-content: flex-start;
@@ -16182,6 +16208,8 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-honorperk__rungname { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: 7px; min-width: 0; font-size: var(--gk-t-small); line-height: 1.3; }
 .gk-honorperk__rungname strong { font-weight: 700; }
 .gk-honorperk__rungname .gk-num { font-size: var(--gk-t-floor); color: var(--gk-ink-3); }
+.gk-honorperk__extra { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 2px; font-size: var(--gk-t-floor); font-weight: 600; }
+.gk-honorperk__extra [data-tone='hostile'] { color: var(--gk-hostile-hi); }
 .gk-honorperk__rate { font-size: var(--gk-t-body); font-weight: 700; }
 
 /* The quote beside a repair, a trade or a convoy: a receipt with named columns. */

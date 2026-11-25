@@ -46,7 +46,7 @@ describe('owner requests from 2026-09-20', () => {
   it('uses the requested recovery window, boost and loss threshold', () => {
     expect(ABUSE.recoveryShieldHours).toBe(12);
     expect(ABUSE.recoveryProductionMult).toBe(1.5);
-    expect(ABUSE.recoveryLossHours).toBe(4);
+    expect(ABUSE.recoveryLossHours).toBe(3);
   });
 
   it('makes late producer gains accelerate across all three resources', () => {

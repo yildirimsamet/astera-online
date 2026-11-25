@@ -655,3 +655,18 @@ Ayrıntılı sızıntı tablosu: `docs/ay-entegrasyon-plani-2026-11-19.md` §8.
 | Kapı sıçrama ve tarama efektleri | Yalnız eylemi yapan komutanın ekranı |
 
 Botlar aynı yoldan okur: nadirliği yalnız hafızadan bilir (bilgi eşitliği).
+
+## 13 · Sonda savunma bataryası (2026-11-24)
+
+Kurallar: `docs/sonda-bataryasi-plani-2026-11-24.md` §3, `docs/game-design.md` Explorer.
+
+| Bilgi | Kim görür |
+|---|---|
+| Bataryanın varlığı ve hazır şarjı | Yalnız sahibi (kart) ve bataryayı geçip rapor getiren sonda (`probeBattery {ready, capacity}`, tam sayı) |
+| Düşürülen sonda (savunan) | Radar günlüğünde "Sonda düşürüldü" satırı; yön Radar 2, köken Radar 5 kapısıyla (bugünkü kural). Toplu bildirim, dünya başına 10 dk |
+| Düşürülen sonda (gönderen) | `probe_report` bildirimi (`shotDown`) ve istihbarat merkezinde 24 saatlik kayıp satırı (`probeLosses`). Rapor yok |
+| Galaksideki atış efekti | İki taraf kendi istihbaratından: gönderen `probeLosses.point`, savunan `probeShotsFired` (son 30 dk, nokta dahil). Dünyayı tanıyan Teleskop tanıkları `/api/galaxy/traffic` → `probeShots` (10 dk). Tanık tarafları ve atış noktasını görmez: nokta sondanın geldiği yönü verirdi, üçüncü kişinin sonda temasında bu yön yoktur (D53). Tanıkta efekt dünyanın bir yanında, aynı uzaklıkta oynar |
+| Bataryanın seviyesi | Yalnız sahibi (kart). Rapor kapasiteyi söyler; kapasite seviyeyi ele verir (bilinçli) |
+
+Hedefin Radar seviyesi hiçbir yüzeye çıkmaz; gönderme ipucu yalnız son raporun şarj sayısını söyler, şansı söylemez.
+

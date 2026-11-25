@@ -163,6 +163,7 @@ import {
   radiationBombBuildSchema,
   radiationBombLaunchSchema,
   interceptorBuildSchema,
+  probeBatteryBuildSchema,
   faultRepairSchema,
   deathStarLaunchSchema,
   previewSchema,
@@ -1374,6 +1375,8 @@ export class Api {
     bodies?: { originBody?: WorldBody; targetBody?: WorldBody },
     /** Sentez capsules for this raid (plan 2026-11-24 §3.5); the server prices them from the fleet. */
     capsules: readonly CapsuleIdView[] = [],
+    /** Honor V2 fuel surcharge tier quoted to the commander before committing. */
+    expectedHonorTier?: HonorBenefitTier,
   ) =>
     this.send('/api/fleet/launch', launchSchema, {
       method: 'POST',
@@ -1388,6 +1391,7 @@ export class Api {
         ...(bodies?.originBody && bodies.originBody !== 'PLANET' ? { originBody: bodies.originBody } : {}),
         ...(bodies?.targetBody && bodies.targetBody !== 'PLANET' ? { targetBody: bodies.targetBody } : {}),
         ...(capsules.length ? { capsules } : {}),
+        ...(expectedHonorTier !== undefined ? { expectedHonorTier } : {}),
       },
     });
 
@@ -1423,7 +1427,7 @@ export class Api {
     { method: 'POST' },
   );
 
-  transfer = (originPlanetId: string, targetPlanetId: string, fleet: Fleet, cargo: { alloy: number; crystal: number; deuterium: number }, pace?: MissionPace, returnPlan?: TransferReturnPlan, acknowledgeRadiation?: boolean, bodies?: { originBody?: WorldBody; targetBody?: WorldBody }, capsules: readonly CapsuleIdView[] = []) =>
+  transfer = (originPlanetId: string, targetPlanetId: string, fleet: Fleet, cargo: { alloy: number; crystal: number; deuterium: number }, pace?: MissionPace, returnPlan?: TransferReturnPlan, acknowledgeRadiation?: boolean, bodies?: { originBody?: WorldBody; targetBody?: WorldBody }, capsules: readonly CapsuleIdView[] = [], expectedHonorTier?: HonorBenefitTier) =>
     this.send('/api/fleet/transfer', movementLaunchSchema, {
       method: 'POST',
       body: {
@@ -1434,6 +1438,7 @@ export class Api {
         ...(bodies?.originBody && bodies.originBody !== 'PLANET' ? { originBody: bodies.originBody } : {}),
         ...(bodies?.targetBody && bodies.targetBody !== 'PLANET' ? { targetBody: bodies.targetBody } : {}),
         ...(capsules.length ? { capsules } : {}),
+        ...(expectedHonorTier !== undefined ? { expectedHonorTier } : {}),
       },
     });
 
@@ -1466,6 +1471,11 @@ export class Api {
     });
   buildInterceptor = (planetId: string) =>
     this.send(`/api/planets/${encodeURIComponent(planetId)}/interceptor/build`, interceptorBuildSchema, {
+      method: 'POST', body: {},
+    });
+  /** Install the world's probe battery (2026-11-24): once, then it refills itself. */
+  installProbeBattery = (planetId: string) =>
+    this.send(`/api/planets/${encodeURIComponent(planetId)}/probe-battery/build`, probeBatteryBuildSchema, {
       method: 'POST', body: {},
     });
 

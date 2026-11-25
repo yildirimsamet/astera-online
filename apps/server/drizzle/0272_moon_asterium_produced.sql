@@ -1,2 +1,0 @@
-ALTER TABLE "moons" ADD COLUMN "asterium_produced" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
-ALTER TABLE "moons" ADD CONSTRAINT "moons_asterium_produced_check" CHECK ("moons"."asterium_produced" >= 0);

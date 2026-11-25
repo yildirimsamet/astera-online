@@ -86,6 +86,9 @@ export const intel = {
     estimateFact: "Die Zahlen sind geschätzte Spannen.",
     estimateNote: 'Bei diesen Zahlen handelt es sich um geschätzte Bereiche. Der Wert der bewaffneten Einheit schließt den Schild und unbewaffnete Schiffe aus.',
     caught: 'Die Sonde wurde entdeckt',
+    lostHeading: "Abgeschossene Sonden",
+    lostTitle: "Sonde über {{world}} abgeschossen",
+    lostWhy: "{{owner}} · dort steht eine geladene Sondenbatterie",
     /* Two words beside the signal bars, which carry the accuracy themselves. */
     homeTag: '-Flotte war zu Hause',
     outTag: '-Flotte war außer Betrieb',
@@ -106,6 +109,7 @@ export const intel = {
     cost: "Ohne Radar bleiben die meisten Sonden zu dieser Welt unentdeckt.",
     quiet: "Keine Scans erkannt. Radar Stufe {{level}} ist aktiv.",
     scan: 'Scan erkannt',
+    shotDown: "Sonde abgeschossen",
     bearing: 'vom galaktischen {{bearing}}',
     origin: '· {{planet}}',
     /** Which of the caller's own worlds the scan landed on. */
@@ -625,7 +629,7 @@ export const dossier = {
   developmentValue: 'Stufe {{tier}}',
   developmentVersus: 'Stufe {{tier}} · du {{mine}}',
   developmentBandNote:
-    "Überfälle und Todesstern-Angriffe sind nur zwischen Kommandanten erlaubt, die höchstens eine Stufe auseinanderliegen; gezählt wird jeweils die am weitesten entwickelte Welt. Deine ist Stufe {{mine}}, du erreichst also die Stufen {{low}}–{{high}}. Dies ist vielleicht nicht ihre am weitesten entwickelte Welt. Ist einer der Kommandanten auf Stufe 1–3, darf jeder einen einzelnen Überfall auf den anderen senden und muss danach 12 Stunden ab dem Kampf warten. Ein anfliegender Überfall reserviert dieses Recht; ein Rückruf startet keine Wartezeit. Todessterne und gemeinsame Clanoperationen sind ausgenommen.",
+    "Überfälle und Todesstern-Angriffe sind nur zwischen Kommandanten erlaubt, die höchstens eine Stufe auseinanderliegen; gezählt wird jeweils die am weitesten entwickelte Welt. Deine ist Stufe {{mine}}, du erreichst also die Stufen {{low}}–{{high}}. Dies ist vielleicht nicht ihre am weitesten entwickelte Welt. Ist einer der Kommandanten auf Stufe 1–4, darf jeder einen einzelnen Überfall auf den anderen senden und muss danach 12 Stunden ab dem Kampf warten. Ein anfliegender Überfall reserviert dieses Recht; ein Rückruf startet keine Wartezeit. Todessterne und gemeinsame Clanoperationen sind ausgenommen.",
 
   hardwareLabel: 'Satelliten im Orbit',
   hardwareNote: 'Du kannst die Hardware sehen. Was sie kann, kostet eine Sonde.',
@@ -702,6 +706,12 @@ export const dossier = {
   interceptorCountNote: "Eine Ladung zerstört einen Todesstern. Kommen {{needed}} gleichzeitig an, kommt einer durch. Seitdem kann nachgeladen worden sein.",
   interceptorEmpty: "Keine Ladung",
   interceptorEmptyNote: 'Nichts hier hält eine strategische Waffe auf. Möglicherweise haben sie seitdem einen geladen.',
+  probeBatteryLabel: "Sondenbatterie",
+  probeBatteryCount: "{{ready}}/{{capacity}} Ladungen bereit",
+  probeBatteryNone: "Keine",
+  probeBatteryCountNote: "Solange sie eine Ladung hat, schießt sie erfasste Sonden ab. Zuerst müssen {{count}} Sonden geopfert werden; alle {{minutes}} Minuten kommt eine Ladung nach.",
+  probeBatteryEmptyNote: "Keine Ladung übrig: Eine Sonde fliegt hinein wie ohne Batterie. Alle {{minutes}} Minuten kommt eine Ladung nach.",
+  probeBatteryNoneNote: "Hier stand keine Sondenbatterie. Vielleicht wurde inzwischen eine gebaut.",
   loyaltyLabel: "Loyalität der Kolonie",
   loyaltyValue: "{{value}} %",
   loyaltyNote_one: "Ein Todesstern kostet {{loss}} Loyalität pro Treffer. Ein Treffer würde diese Kolonie zu Fall bringen.",

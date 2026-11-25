@@ -52,4 +52,27 @@ describe('Honor rules before a player commits a raid', () => {
     expect(screen.getByText(/This relationship cannot/)).toBeVisible();
     expect(screen.queryByText(/Permanent military damage can earn Honor/)).not.toBeInTheDocument();
   });
+  it('shows an escalated 2x/3x hostile warning before launch when prior weak bullying or an in-flight attack exists', () => {
+    const { container, rerender } = render(<HonorTargetCard value={{
+      enabled: true, eligible: true, kind: 'WEAK', militaryReturn: 'NONE',
+      related: false, repeated: false, retaliation: false, priorWeakCount: 0, weakMultiplier: 1,
+    }} />);
+    expect(container.querySelector('[data-honor-escalated-warning]')).toBeNull();
+
+    rerender(<HonorTargetCard value={{
+      enabled: true, eligible: true, kind: 'WEAK', militaryReturn: 'NONE',
+      related: false, repeated: false, retaliation: false, priorWeakCount: 1, weakMultiplier: 2,
+    }} />);
+    const priorWarn = container.querySelector('[data-honor-escalated-warning]');
+    expect(priorWarn).toHaveAttribute('data-tone', 'hostile');
+    expect(priorWarn?.textContent).toContain('2×');
+
+    rerender(<HonorTargetCard value={{
+      enabled: true, eligible: true, kind: 'WEAK', militaryReturn: 'NONE',
+      related: false, repeated: false, retaliation: false, priorWeakCount: 0, weakMultiplier: 2,
+    }} />);
+    const inFlightWarn = container.querySelector('[data-honor-escalated-warning]');
+    expect(inFlightWarn).toHaveAttribute('data-tone', 'hostile');
+    expect(inFlightWarn?.textContent).toContain('2×');
+  });
 });

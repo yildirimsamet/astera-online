@@ -15,8 +15,10 @@ import {
   fleetTravelExact,
   interceptOrbit,
   interceptIntergalacticConvoy,
+  honorFuelCost,
   missionFuel,
   missionFuelForDistances,
+  type HonorBenefits,
   transferCargoCapacity,
   travelMinutes,
   type Fleet,
@@ -238,6 +240,7 @@ export function planTradeRoute(
   homeFleet: Fleet,
   ground: Fleet,
   mods: FlightModifiers,
+  honorBenefits?: Pick<HonorBenefits, 'fuelPct'> | null,
 ): Route | null {
   const speed = fleetPace(sending, mods);
   if (!(speed > 0)) return null;
@@ -278,7 +281,7 @@ export function planTradeRoute(
      * the hold the server will actually check against.
      */
     cargo: transferCargoCapacity(sending, mods.tech),
-    fuel: missionFuel(sending, reach, 2),
+    fuel: honorFuelCost(missionFuel(sending, reach, 2), honorBenefits),
     homeDefenceAfter: homeDefenceAfter(homeFleet, ground, sending),
     rendezvous: hit.at,
   };
@@ -304,6 +307,7 @@ export function planIntergalacticConvoyRoute(
   homeFleet: Fleet,
   ground: Fleet,
   mods: FlightModifiers,
+  honorBenefits?: Pick<HonorBenefits, 'fuelPct'> | null,
 ): IntergalacticConvoyRoute | null {
   const pace = fleetPace(sending, mods);
   if (!(pace > 0)) return null;
@@ -332,7 +336,7 @@ export function planIntergalacticConvoyRoute(
       + INTERGALACTIC_CONVOY.engagementSeconds / 60
       + returnMinutes,
     cargo: fleetCargo(sending, mods.tech),
-    fuel: missionFuelForDistances(sending, [outboundDistance, returnDistance]),
+    fuel: honorFuelCost(missionFuelForDistances(sending, [outboundDistance, returnDistance]), honorBenefits),
     homeDefenceAfter: homeDefenceAfter(homeFleet, ground, sending),
     rendezvous: hit.intercept,
     engagementEndsAtMinute: hit.engagementEndsAtMinute,

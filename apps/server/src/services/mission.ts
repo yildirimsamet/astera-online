@@ -16,8 +16,10 @@ import {
   fleetSpeedMult,
   fleetTravelExact,
   maxRadarRange,
+  honorLaunchFuel,
   missionFuel,
   type Fleet,
+  type HonorBenefitTier,
   type HullId,
   HULLS,
   COMBAT_HULLS,
@@ -70,6 +72,7 @@ import { readHomeHealth, takeHomeHealth } from './homeHealth.js';
 import { assertMoonTarget } from './moon.js';
 import { assertMoonShipsFree } from './moonMovement.js';
 import { commitHonor } from './honorCommitment.js';
+import { assertHonorBenefitsQuote, readHonorBenefits } from './honorBenefits.js';
 import { commitLegacyAttack } from './legacyEvents.js';
 import { attachAdmiral, prepareAdmiral } from './admiral.js';
 import { assertMissionCapsules, consumeCapsulesForMission } from './synthesis.js';
@@ -145,6 +148,8 @@ export async function launchAttack(
   originBody: WorldBody = 'PLANET',
   /** Sentez capsules pressed onto this raid (plan 2026-11-24 §3.5); priced from the fleet below. */
   capsules: readonly CapsuleId[] = [],
+  /** Optional Honor tier quoted to the client; mismatch rejects with 409 HONOR_QUOTE_CHANGED. */
+  expectedHonorTier?: HonorBenefitTier,
 ): Promise<LaunchResult> {
   if (originPlanetId === targetPlanetId) {
     throw new GameError('SELF_ATTACK', 'You cannot attack your own planet');
@@ -380,7 +385,10 @@ export async function launchAttack(
         personalRecent,
       );
       if (!gate.ok) {
-        throw new GameError(gate.reason ?? 'FORBIDDEN', describeRefusal(gate.reason), 403);
+        const params = gate.reason === 'BASH_LIMIT'
+          ? { limit: ABUSE.bashLimit, hours: ABUSE.bashWindowMinutes / 60 }
+          : undefined;
+        throw new GameError(gate.reason ?? 'FORBIDDEN', describeRefusal(gate.reason), 403, params);
       }
     }
 
@@ -422,8 +430,10 @@ export async function launchAttack(
 
     // Reserved here, after every refusal above and before anything is spent; a refusal below rolls it back.
     const escort = await prepareAdmiral(tx, origin, admiral);
+    const benefits = await readHonorBenefits(tx, origin.seasonId, origin.playerId);
+    if (expectedHonorTier !== undefined) assertHonorBenefitsQuote(benefits, expectedHonorTier);
     const plainFuel = missionFuel(requested, dist, 2, 'HOSTILE', chosenPace);
-    const fuel = escort ? Math.ceil(plainFuel * escort.bonuses.fuel) : plainFuel;
+    const fuel = honorLaunchFuel(plainFuel, benefits, escort?.bonuses.fuel ?? 1);
     // A raid carries no hold on the way out, so the whole store is the tank.
     assertFuel(fuel, origin.deuterium);
     // The Beacon in orbit, if there is one. D25.

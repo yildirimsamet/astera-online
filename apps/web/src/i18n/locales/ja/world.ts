@@ -407,6 +407,8 @@ export const focus = {
     attackProtectedShort: "保護されています · {{duration}}",
     attackShort: "攻撃を計画する",
     probeShort: "プローブ",
+    probeBatteryHint: "前回の報告：プローブ防衛砲台 弾{{ready}}/{{capacity}}",
+    probeLostHint: "前回のプローブはここで撃墜（{{age}}）· 弾のあるプローブ防衛砲台があります",
     probeCoolingShort: "{{duration}} のプローブ",
     attack: "攻撃を計画する",
     attackNeutralAgain: "再びレイド · 主張は変更されていない",

@@ -121,6 +121,9 @@ export const errors = {
   DEATH_STAR_LOCKED: 'No se cumplen los requisitos previos de la Estrella de la Muerte',
   INTERCEPTOR_LOADED: "La plataforma de este mundo está llena: {{max}} cargas",
   INTERCEPTOR_LOCKED: "Primero sube el Radar al nivel {{requiredRadar}}, con un enlace ascendente en órbita",
+  PROBE_BATTERY_LOCKED: "Primero sube el Radar al nivel {{requiredRadar}}, con un enlace ascendente en órbita",
+  PROBE_BATTERY_BUSY: "Esta batería ya se está construyendo o mejorando",
+  PROBE_BATTERY_MAX: "Esta batería está en su nivel máximo",
   RECOVERY_WINDOW_TOO_SHORT: 'La ventana de recuperación o reclamación se cierra antes de la llegada.',
   /** What is shown when nothing else is known. */
   unknown: "No pudimos confirmar el resultado. Comprueba el estado actual antes de intentarlo de nuevo.",
@@ -163,7 +166,7 @@ export const errors = {
   MAINTENANCE_LANDING: "Esta flota llegaría durante el mantenimiento, {{from}}–{{to}} (tu hora local). Envíala después del mantenimiento.",
   MAINTENANCE_IN_FLIGHT: "Esta arma seguiría en vuelo durante el mantenimiento, {{from}}–{{to}} (tu hora local). Lánzala después del mantenimiento.",
   PERSONAL_RAID_PENDING: "Ya tienes un ataque en camino hacia este comandante. Espera o retíralo.",
-  BASH_LIMIT: 'Has golpeado este planeta demasiadas veces recientemente.',
+  BASH_LIMIT: 'Puedes enviar como máximo {{limit}} ataques a un comandante cada {{hours}} horas',
   TIER_BAND: "Ese comandante está más de un nivel por encima de ti: se compara el mundo más desarrollado de cada lado.",
   TIER_BAND_WEAK: "Ese comandante está más de un nivel por debajo de ti: se compara el mundo más desarrollado de cada lado.",
   CANNOT_INTERCEPT: 'Saldrá del disco antes de que tu nave pueda alcanzarlo.',

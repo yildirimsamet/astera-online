@@ -121,6 +121,9 @@ export const errors = {
   DEATH_STAR_LOCKED: "デス・スター の前提条件が満たされていません",
   INTERCEPTOR_LOADED: "この惑星の発射台は満杯です：最大{{max}}発",
   INTERCEPTOR_LOCKED: "先に軌道上にアップリンクを設置し、レーダーをレベル{{requiredRadar}}まで上げてください",
+  PROBE_BATTERY_LOCKED: "先に軌道上にアップリンクを設置し、レーダーをレベル{{requiredRadar}}まで上げてください",
+  PROBE_BATTERY_BUSY: "この砲台はすでに建設中か強化中です",
+  PROBE_BATTERY_MAX: "この砲台は最高レベルです",
   RECOVERY_WINDOW_TOO_SHORT: "到着前に回収または入植の期限が切れます。",
   /** What is shown when nothing else is known. */
   unknown: "操作の結果を確認できませんでした。再試行する前に現在の状況を確認してください。",
@@ -163,7 +166,7 @@ export const errors = {
   MAINTENANCE_LANDING: "この艦隊はメンテナンス中（{{from}}–{{to}}、あなたの現地時間）に到着します。メンテナンス後に送ってください。",
   MAINTENANCE_IN_FLIGHT: "この兵器はメンテナンス中（{{from}}–{{to}}、あなたの現地時間）も飛行中になります。メンテナンス後に発射してください。",
   PERSONAL_RAID_PENDING: "この司令官への襲撃がすでに移動中です。結果を待つか呼び戻してください。",
-  BASH_LIMIT: "最近、この惑星を短時間に何度も襲撃しました。しばらく待ってください。",
+  BASH_LIMIT: '同じ司令官には{{hours}}時間あたり最大{{limit}}回までしか襲撃できません。',
   TIER_BAND: "その司令官はあなたより2ティア以上上です。攻撃の可否は双方が持つ最も発展した惑星で判定します。",
   TIER_BAND_WEAK: "その司令官はあなたより2ティア以上下です。攻撃の可否は双方が持つ最も発展した惑星で判定します。",
   CANNOT_INTERCEPT: "艦隊が到着する前に標的が銀河の外へ出ます。",

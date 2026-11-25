@@ -37,6 +37,15 @@ export function honorNumber(value: bigint): number {
 /** Owner 2026-11-12: what new dispatches freeze. Older contracts keep their own table. */
 export const HONOR_ATTACK_NAVY_BAND = 33;
 export type HonorWeakNavyBand = 75 | 50 | typeof HONOR_ATTACK_NAVY_BAND;
+/** Owner 2026-11-24 (K7): weak-repeat multiplier step in percent (50 = 1/1.5/2×, 100 = 1/2/3×). */
+export const HONOR_WEAK_REPEAT_SCALE = 100;
+export type HonorWeakRepeatScale = 50 | typeof HONOR_WEAK_REPEAT_SCALE;
+
+export function honorWeakRepeatHalfUnits(weakRepeat: number, scale?: HonorWeakRepeatScale): bigint {
+  honorInteger(weakRepeat);
+  const step = BigInt(Math.min(weakRepeat, 2));
+  return scale === HONOR_WEAK_REPEAT_SCALE ? 2n + 2n * step : 2n + step;
+}
 
 export interface HonorComparison {
   /** Frozen galaxy/season maximum at dispatch. Absent on historical contracts. */
@@ -97,6 +106,7 @@ export interface HonorSideInput extends HonorComparison {
   loot: number;
   defending: boolean;
   weakRepeat: number;
+  weakRepeatScale?: HonorWeakRepeatScale;
   related: boolean;
   eligible: boolean;
   /** Five times resource value: preserves 20%/40% loot without fractional accounting. */
@@ -144,7 +154,7 @@ export function honorSide(q: HonorSideInput): HonorSideResult {
   if (bullying) {
     const exposure = honorHarmFifths(q.enemyLoss, q.loot, q.retaliationLootPercent);
     const used = budget < exposure ? budget : exposure;
-    const weakDebit = 50n * (exposure - used) * BigInt(2 + Math.min(q.weakRepeat, 2)) / 2n;
+    const weakDebit = 50n * (exposure - used) * honorWeakRepeatHalfUnits(q.weakRepeat, q.weakRepeatScale) / 2n;
     return { ...zero, raw: honorNumber(-weakDebit - lossDebit), lossDebit: honorNumber(lossDebit),
       weakDebit: honorNumber(weakDebit), retaliationSpentFifths: honorNumber(used), bullying };
   }

@@ -18,7 +18,7 @@ it('one galaxy enabling benefits does not block successors while another has not
     endsAt: current.endsAt, playerCap: 4, honorVersion: 3 });
   await enableHonorBenefits(f.db, f.seasonId, f.clock, true);
   expect((await f.db.select().from(honorSeasons).where(eq(honorSeasons.seasonId, other.season.id)))[0]?.benefitsVersion).toBeNull();
-  expect(await f.db.transaction(tx => inheritedHonorBenefitsProgram(tx, current.endsAt))).toBe(1);
+  expect(await f.db.transaction(tx => inheritedHonorBenefitsProgram(tx, current.endsAt))).toBe(2);
 });
 
 it('the real successor inherits an explicitly enabled economic program without enabling trials or resetting scores', async () => {
@@ -33,7 +33,7 @@ it('the real successor inherits an explicitly enabled economic program without e
   const next = await f.db.select().from(seasons).where(eq(seasons.status, 'live'));
   const configs = await f.db.select().from(honorSeasons);
   expect(next.length).toBeGreaterThan(0);
-  expect(next.every(row => configs.some(config => config.seasonId === row.id && config.mode === 'ACTIVE' && config.benefitsVersion === 1))).toBe(true);
+  expect(next.every(row => configs.some(config => config.seasonId === row.id && config.mode === 'ACTIVE' && config.benefitsVersion === 2))).toBe(true);
 });
 
 it('the real Honor season rollover preserves the primary competition in its successor', async () => {

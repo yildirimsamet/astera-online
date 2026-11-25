@@ -382,6 +382,8 @@ export const focus = {
     attackProtectedShort: "Korumalı · {{duration}}",
     attackShort: "Saldırı planla",
     probeShort: "Sonda",
+    probeBatteryHint: "Son raporda sonda bataryası: {{ready}}/{{capacity}} şarj",
+    probeLostHint: "Son sonda {{age}} burada düşürüldü · şarjlı sonda bataryası var",
     probeCoolingShort: "{{duration}} sonra",
     attack: "Saldırı planla",
     attackNeutralAgain: "Tekrar akın · hak değişmez",

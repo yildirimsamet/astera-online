@@ -74,6 +74,7 @@ export interface RivalRow {
 
 type Watch = IntelView['watching'][number];
 type Probe = IntelView['probeReports'][number];
+type Loss = NonNullable<IntelView['probeLosses']>[number];
 type Scan = IntelView['radarLog'][number];
 
 const HOUR = 60 * 60_000;
@@ -147,7 +148,7 @@ export function IntelScreen({
   const aboard = planet.data?.vessel !== undefined;
   const telescope = planet.data?.instruments.TELESCOPE ?? 0;
   const radar = planet.data?.instruments.RADAR ?? 0;
-  const { watching, probeReports, radarLog } = intel.data;
+  const { watching, probeReports, probeLosses, radarLog } = intel.data;
   const neighbours = (galaxy.data?.planets ?? []).filter((p) => !p.isSelf).length;
 
   /**
@@ -214,6 +215,7 @@ export function IntelScreen({
           <div role="tabpanel" id="intel-panel-probes" aria-labelledby="intel-shelf-probes" className="gk-intel__shelf">
             <ProbeShelf
               probes={probeReports}
+              losses={probeLosses ?? []}
               now={now}
               yours={planet.data ? yardstickOf(planet.data) : null}
               aboard={aboard}
@@ -644,8 +646,9 @@ const fresh = (scan: Scan, now: number): boolean => now - scan.at.getTime() < 6 
  * reading taken with the fleet at home is sharp and wears the full colour; one taken
  * with the fleet out is lighter, because a fleet away is a fleet not counted.
  */
-function ProbeShelf({ probes, now, yours, aboard, hunt, onOpenDossier }: {
+function ProbeShelf({ probes, losses, now, yours, aboard, hunt, onOpenDossier }: {
   probes: readonly Probe[];
+  losses: readonly Loss[];
   now: number;
   /** Your active world, measured as a probe measures; null until it has loaded. */
   yours: Yardstick | null;
@@ -655,7 +658,7 @@ function ProbeShelf({ probes, now, yours, aboard, hunt, onOpenDossier }: {
   onOpenDossier?: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
-  if (probes.length === 0) {
+  if (probes.length === 0 && losses.length === 0) {
     return (
       <Instrument
         kind="probe"
@@ -671,11 +674,20 @@ function ProbeShelf({ probes, now, yours, aboard, hunt, onOpenDossier }: {
     <div className="gk-intel__part">
       {/* The key to every row below: a range is theirs, the teal line is you. */}
       {/* E6 (owner 2026-11-17): the key is one line; how to read a bar is behind its ⓘ. */}
-      <div className="gk-probes__key">
+      {losses.length > 0 && (
+        <ul className="gk-ledger" aria-label={t('intel.probes.lostHeading')}>
+          {losses.map((loss) => (
+            <li key={loss.missionId} data-probe-loss="">
+              <ProbeLoss loss={loss} now={now} {...(onOpenDossier ? { onOpenDossier } : {})} />
+            </li>
+          ))}
+        </ul>
+      )}
+      {probes.length > 0 && <div className="gk-probes__key">
         <InfoPeek lead={yours !== null ? <span aria-hidden="true" className="gk-probes__you" /> : undefined}
           fact={t('intel.probes.estimateFact')}
           rule={<p>{t('intel.probes.estimateNote')} {yours !== null && t(aboard ? 'starter.intel.scaleNote' : 'intel.probes.scaleNote')}</p>} />
-      </div>
+      </div>}
       {hunt?.crate && probes.some(report => report.outpost === true) && <HuntHowTo />}
       {probes.map((report) => (
         <ProbeReport
@@ -689,6 +701,28 @@ function ProbeShelf({ probes, now, yours, aboard, hunt, onOpenDossier }: {
         />
       ))}
     </div>
+  );
+}
+
+/**
+ * A PROBE THAT DID NOT COME BACK (2026-11-24, plan §3.5, DI-02). It stands where its report
+ * would: whose world, how long ago, and the reason in one line — a battery with a charge —
+ * so the second try is a decision and not a repeat. The row opens their dossier.
+ */
+function ProbeLoss({ loss, now, onOpenDossier }: { loss: Loss; now: number; onOpenDossier?: (planetId: string) => void }) {
+  const { t } = useTranslation();
+  return (
+    <KnownRow planetId={loss.targetPlanetId} {...(onOpenDossier ? { onFocusPlanet: onOpenDossier } : {})}>
+      <span aria-hidden="true" className="gk-probe-loss__mark"><Glyph id="damaged" /></span>
+      <span className="gk-ledger__words">
+        <span className="gk-ledger__title">
+          {t('intel.probes.lostTitle', { world: loss.targetName })}
+        </span>
+        <span className="gk-ledger__sub">{t('intel.probes.lostWhy', { owner: loss.targetUsername })}</span>
+      </span>
+      <span className="gk-ledger__side gk-num">{staleness((now - loss.at.getTime()) / 60_000)}</span>
+      {onOpenDossier && <span className="gk-ledger__mark" aria-hidden="true"><Glyph id="next" /></span>}
+    </KnownRow>
   );
 }
 
@@ -931,7 +965,8 @@ function ScanRow({ scan, now, onFocusPlanet }: { scan: Scan; now: number; onFocu
       />
       <span className="gk-ledger__words">
         <span className="gk-ledger__title">
-          {t('intel.radar.scan')}
+          {/* A probe the battery shot down (2026-11-24): the defence working, said as a shot. */}
+          {scan.shotDown === true ? <span data-scan-shot="">{t('intel.radar.shotDown')}</span> : t('intel.radar.scan')}
           {/* WHICH WORLD: the log covers every world a commander holds. */}
           {scan.planetName !== undefined && hit === null && <>{' '}<span className="gk-scan__world">{t('intel.radar.onWorld', { planet: scan.planetName })}</span></>}
         </span>

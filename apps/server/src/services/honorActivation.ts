@@ -11,6 +11,7 @@ import { emptyHonorState, honorStateSchema } from './honorAccounting.js';
 import { honorOwnerReference, observeHonorOwner } from './honorReference.js';
 import { publishShard } from '../stream/bus.js';
 import { isSilentSpaceShard } from './waitingRoom.js';
+import { enableHonorBenefits } from './honorBenefits.js';
 
 /** Explicit operator action, never an automatic deployment or a public route. */
 export async function activateHonorShadow(db: Db, input: { seasonId: string; clock: Clock; apply: boolean }) {
@@ -119,8 +120,15 @@ export async function openHonorRanking(db: Db, input: { seasonId: string; clock:
   }, input.apply ? undefined : { isolationLevel: 'repeatable read', accessMode: 'read only' });
 }
 
-/** Boot repair for every environment. The season lock makes concurrent replicas safe. */
-export async function ensureMainHonorRankings(db: Db, clock: Clock): Promise<number> {
+/** Boot repair for every environment. The season lock makes concurrent replicas safe.
+ * During a rolling deploy, API replicas pass `upgradeBenefits: false` so live V1 seasons
+ * only flip to V2 once the singleton worker rolls last after every API understands V2. */
+export async function ensureMainHonorRankings(
+  db: Db,
+  clock: Clock,
+  options: { upgradeBenefits?: boolean } = {},
+): Promise<number> {
+  const { upgradeBenefits = true } = options;
   const now = clock.now();
   const live = await db.select({ id: seasons.id }).from(seasons)
     .innerJoin(shards, eq(shards.id, seasons.shardId))
@@ -130,6 +138,7 @@ export async function ensureMainHonorRankings(db: Db, clock: Clock): Promise<num
   for (const season of live) {
     const result = await openHonorRanking(db, { seasonId: season.id, clock, apply: true }, true);
     if (result.applied) opened++;
+    if (upgradeBenefits) await enableHonorBenefits(db, season.id, clock, true);
   }
   return opened;
 }

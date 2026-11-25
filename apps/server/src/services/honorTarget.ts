@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { coreTier, HONOR_ATTACK_NAVY_BAND, honorSoloCredit, isSupportedHonorVersion, HONOR_HISTORY_HOURS, honorChallenge, honorPairKey, honorReferenceAt, type HonorComparison } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
@@ -45,14 +45,27 @@ export async function honorTargetPreview(db: Db, playerId: string, targetPlanetI
     if (!relationships.eligible) return { enabled: true as const, eligible: false as const };
     const table: HonorComparison = { ownTier: own.tier, ownNavy: own.navy, enemyTier: enemy.tier, enemyNavy: enemy.navy, galaxyTopTier, weakNavyBand: HONOR_ATTACK_NAVY_BAND };
     // Coming back only matters where the navies pay nothing. A fleet already on its way
-    // counts: whichever of the two lands second is the return visit.
+    // counts: whichever of the two lands second is the return visit. Recalled fleets do not count.
+    const inFlightAttacks = await tx.select({ id: missions.id }).from(missions)
+      .innerJoin(planets, eq(planets.id, missions.targetPlanetId))
+      .where(and(eq(missions.ownerPlayerId, playerId), eq(missions.kind, 'attack'), eq(missions.status, 'in_flight'),
+        isNull(missions.recalledAt), eq(planets.controllerPlayerId, target.owner)));
+    const inFlightCount = inFlightAttacks.length;
+    const inherentlyWeak = honorChallenge(table).kind === 'WEAK';
+    const priorRepeatCount = (await readRepeatRaids(tx, { seasonId: owner.seasonId, attack: [playerId], defence: [target.owner], at: now })).size;
     const repeatRaid = honorChallenge({ ...table, repeatRaid: true }).kind === 'WEAK' && (
-      (await readRepeatRaids(tx, { seasonId: owner.seasonId, attack: [playerId], defence: [target.owner], at: now })).size > 0
-      || (await tx.select({ id: missions.id }).from(missions).innerJoin(planets, eq(planets.id, missions.targetPlanetId))
-        .where(and(eq(missions.ownerPlayerId, playerId), eq(missions.kind, 'attack'), eq(missions.status, 'in_flight'),
-          eq(planets.controllerPlayerId, target.owner))).limit(1)).length > 0);
+      priorRepeatCount > 0 || inFlightCount > 0);
     const comparison = honorChallenge({ ...table, repeatRaid });
     const state = honorStateSchema.parse(config.state), since = now.getTime() - HONOR_HISTORY_HOURS * 3_600_000;
+    const priorWeakCount = comparison.kind === 'WEAK'
+      ? state.repeats.filter(r => r.a === playerId && r.b === target.owner && r.at > since && r.at <= now.getTime()).length
+      : 0;
+    // Against an equal/higher tier with no prior raid in 24h, the first in-flight raid lands as
+    // neutral (NO_GAIN) and does not add a bullying repeat; only subsequent in-flight raids do.
+    const inFlightBullying = inherentlyWeak || priorRepeatCount > 0
+      ? inFlightCount
+      : Math.max(0, inFlightCount - 1);
+    const weakMultiplier = (1 + Math.min(priorWeakCount + inFlightBullying, 2)) as 1 | 2 | 3;
     return { enabled: true as const, eligible: true as const, kind: comparison.kind,
       ...(own.tier === galaxyTopTier && enemy.tier === own.tier - 1 ? { topTierPeer: true as const } : {}),
       retaliationLootPercent: config.retaliationLootPercent,
@@ -60,6 +73,7 @@ export async function honorTargetPreview(db: Db, playerId: string, targetPlanetI
       militaryReturn: comparison.gainFactor === 0 ? 'NONE' as const : comparison.gainFactor === 500_000 ? 'HALF' as const : 'FULL' as const,
       related: relationships.relations.some(row => row.related),
       repeatRaid,
+      ...(comparison.kind === 'WEAK' ? { priorWeakCount, weakMultiplier } : {}),
       repeated: state.pairs.some(pair => honorPairKey(pair.a, pair.b) === honorPairKey(playerId, target.owner!) && pair.raw > 0),
       // A grant only neutralises a weak-target sanction; elsewhere it changes nothing.
       retaliation: comparison.kind === 'WEAK' && state.retaliations.some(grant => grant.holder === playerId && grant.opponent === target.owner

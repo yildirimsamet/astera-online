@@ -30,7 +30,7 @@ export const CLAN = {
   aidSpeedMultiplier: 1.10,
   extraAidBays: 1,
   attackWindowMinutes: 12 * 60,
-  attackLimit: 5,
+  attackLimit: 3,
   /**
    * HOW LONG A MARKED JOINT-WAR TARGET STAYS MARKED. Owner decision, 2026-09-20.
    *

@@ -21,6 +21,8 @@ export const ATMOSPHERE = {
   commanderRoom: { src: `${BASE}/commander-room-v2.webp`, position: '50% 22%' },
   repair: { src: `${BASE}/repair-v2.webp`, position: '50% 72%' },
   interceptor: { src: `${BASE}/interceptor-v4.webp`, position: '50% 32%' },
+  /** Probe defence battery, 2026-11-24. Interim art (a re-lit point-defence mount) until its own scene is drawn. */
+  probeBattery: { src: `${BASE}/probe-battery-v1.webp`, position: '50% 14%' },
   strategic: { src: `${BASE}/strategic-v2.webp`, position: '50% 45%' },
   commander: { src: `${BASE}/commander-v1.webp`, position: '65% 40%' },
   legacy: { src: '/assets/legacy/header-gallery-v1.webp', position: '72% 40%' },

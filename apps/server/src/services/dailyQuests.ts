@@ -1,8 +1,9 @@
 import { and, eq, gte, isNull, lt, sql } from 'drizzle-orm';
-import { DAILY_QUESTS, DAILY_QUEST_HONOR, alloyRate, crystalRate, dailyQuestReward, fleetCount, productionMult, utcDay, type DailyQuestId } from '@astera/rules';
+import { DAILY_QUESTS, DAILY_QUEST_HONOR, HONOR_BENEFIT_PROGRAM_VERSION, HONOR_BENEFIT_THRESHOLDS_V2, alloyRate, crystalRate, dailyQuestReward, fleetCount, productionMult, utcDay, type DailyQuestId } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
-import { arenaShips, battleReports, dailyQuestClaims, honorQuestTotals, honorSeasons, miningRuns, missions, pirateRaids, planets } from '../db/schema.js';
+import { arenaShips, battleReports, dailyQuestClaims, honorQuestTotals, honorSeasons, honorTotals, miningRuns, missions, pirateRaids, planets } from '../db/schema.js';
+import { scheduleHonorPenaltySync } from './honorBenefits.js';
 import { GameError, assertWorldOperational, readPlanetSnapshot, refreshWealth, saveResources, withPlanetLock, type LockedPlanet } from './planet.js';
 import { buildPlanetResult, loadPlanetViewData, type planetView } from './planetView.js';
 
@@ -153,8 +154,26 @@ export async function claimDailyQuest(db: Db, planetId: string, questId: string,
     if (written.length === 0) throw new GameError('DAILY_QUEST_TAKEN', 'You have already taken that purse today');
     // Beside the Honor ledger, never in it: the ledger rewrites its own totals on every settlement.
     if (row.honor > 0) {
-      await tx.insert(honorQuestTotals).values({ seasonId: planet.seasonId, playerId: planet.playerId, micros: row.honor })
-        .onConflictDoUpdate({ target: [honorQuestTotals.seasonId, honorQuestTotals.playerId], set: { micros: sql`${honorQuestTotals.micros} + ${row.honor}` } });
+      const [inserted] = await tx.insert(honorQuestTotals).values({ seasonId: planet.seasonId, playerId: planet.playerId, micros: row.honor })
+        .onConflictDoUpdate({ target: [honorQuestTotals.seasonId, honorQuestTotals.playerId], set: { micros: sql`${honorQuestTotals.micros} + ${row.honor}` } })
+        .returning({ micros: honorQuestTotals.micros });
+      const [[config], [ledger]] = await Promise.all([
+        tx.select({ benefitsVersion: honorSeasons.benefitsVersion }).from(honorSeasons)
+          .where(and(eq(honorSeasons.seasonId, planet.seasonId), eq(honorSeasons.mode, 'ACTIVE'))),
+        tx.select({ score: honorTotals.score }).from(honorTotals)
+          .where(and(eq(honorTotals.seasonId, planet.seasonId), eq(honorTotals.playerId, planet.playerId))),
+      ]);
+      if (config?.benefitsVersion === HONOR_BENEFIT_PROGRAM_VERSION) {
+        const threshold = -HONOR_BENEFIT_THRESHOLDS_V2.negative[3]!;
+        const newTotal = (ledger?.score ?? 0) + (inserted?.micros ?? row.honor);
+        const oldTotal = newTotal - row.honor;
+        if (oldTotal <= threshold && newTotal > threshold) {
+          // Clear the locked world's frozen share immediately so the HTTP response matches the new tier,
+          // and schedule async sync for any other worlds this commander holds.
+          await tx.update(planets).set({ honorProductionShare: 0 }).where(eq(planets.id, planetId));
+          await scheduleHonorPenaltySync(tx, planet.seasonId, planet.playerId, planet.now);
+        }
+      }
     }
     planet.alloy += row.alloy;
     planet.crystal += row.crystal;

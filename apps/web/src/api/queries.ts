@@ -2687,20 +2687,21 @@ export function useLaunch() {
   return useMutation({
     meta: lane.meta,
     mutationFn: (
-      { targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, originBody, targetBody, capsules = [] }:
+      { targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, originBody, targetBody, capsules = [], expectedHonorTier }:
       {
         targetPlanetId: string; fleet: Fleet; acknowledgeShieldLoss?: boolean; pace?: MissionPace;
         acknowledgeRadiation?: boolean; admiral?: boolean; originBody?: WorldBody; targetBody?: WorldBody;
         /** Sentez capsules (plan 2026-11-24 §3.5); the server prices and takes them. */
         capsules?: readonly CapsuleIdView[];
+        expectedHonorTier?: HonorBenefitTier;
       },
       context,
     ) => {
       const planetId = planetMutationOrigin(context);
       const bodies = originBody || targetBody ? { originBody, targetBody } : undefined;
       return planetId
-        ? api.launch(planetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies, capsules)
-        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies, capsules);
+        ? api.launch(planetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies, capsules, expectedHonorTier)
+        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies, capsules, expectedHonorTier);
     },
     onMutate: lane.enter,
     onSuccess: async (result, { targetPlanetId }) => {
@@ -2744,7 +2745,7 @@ export function useTransfer(originPlanetId: string) {
   const lane = usePlanetMutationLane(originPlanetId);
   return useMutation({
     meta: lane.meta,
-    mutationFn: ({ targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation, originBody, targetBody, capsules }: {
+    mutationFn: ({ targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation, originBody, targetBody, capsules, expectedHonorTier }: {
       targetPlanetId: string;
       fleet: Fleet;
       cargo: { alloy: number; crystal: number; deuterium: number };
@@ -2756,9 +2757,11 @@ export function useTransfer(originPlanetId: string) {
       targetBody?: WorldBody;
       /** Sentez: Optik Örtü is the only capsule a transfer may wear. */
       capsules?: readonly CapsuleIdView[];
+      expectedHonorTier?: HonorBenefitTier;
     }, context) => api.transfer(
       requiredPlanetMutationOrigin(context), targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation,
       originBody || targetBody ? { originBody, targetBody } : undefined, capsules,
+      expectedHonorTier,
     ),
     onMutate: lane.enter,
     onSuccess: async (result) => {
@@ -2867,6 +2870,21 @@ export function useBuildInterceptor() {
     onSuccess: async (result) => { await apply(result.planet); },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   } satisfies UseMutationOptions<Awaited<ReturnType<typeof api.buildInterceptor>>, Error, void, MutationTurn>);
+}
+
+/** Install the active world's probe battery (2026-11-24). */
+export function useInstallProbeBattery() {
+  const api = useApi();
+  const { activePlanetId } = useWorld();
+  const apply = useApplyPlanet();
+  const lane = usePlanetMutationLane(activePlanetId);
+  return useMutation({
+    meta: lane.meta,
+    mutationFn: (_vars, context) => api.installProbeBattery(requiredPlanetMutationOrigin(context)),
+    onMutate: lane.enter,
+    onSuccess: async (result) => { await apply(result.planet); },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+  } satisfies UseMutationOptions<Awaited<ReturnType<typeof api.installProbeBattery>>, Error, void, MutationTurn>);
 }
 
 export function useLaunchDeathStar() {

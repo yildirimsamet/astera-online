@@ -15,6 +15,7 @@ import {
   distance,
   fleetSpeedMult,
   fleetTravelExact,
+  honorFuelCost,
   missionFuel,
   resourcesFit,
   resourcesTotal,
@@ -42,6 +43,7 @@ import { schedule } from '../worker/queue.js';
 import { clanEconomyEnvelope } from './clanLoot.js';
 import { activeClanMembership, lockClanPlayers, membershipIsMature } from './clanCombat.js';
 import { assertFuel, fuelAvailable } from './fuel.js';
+import { readHonorBenefits } from './honorBenefits.js';
 import { assertFreeClanAidBay, baysOf } from './flight.js';
 import { landingBlock } from './movement.js';
 import { capitalPlanet, lockWorlds } from './ownership.js';
@@ -405,7 +407,8 @@ export async function quoteClanAid(
     refuses it. T6 added the charge and left this screen answering the question it
     was answering before — which is the one failure mode a quote has.
   */
-  const fuel = missionFuel(input.fleet, distance(origin, target), delivery ? 2 : 1);
+  const benefits = await readHonorBenefits(db, origin.seasonId, input.senderPlayerId);
+  const fuel = honorFuelCost(missionFuel(input.fleet, distance(origin, target), delivery ? 2 : 1), benefits);
   const tank = fuelAvailable(origin.deuterium, input.cargo.deuterium);
   return {
     clanId: relationship.sender.clanId,
@@ -524,7 +527,8 @@ export async function launchClanAid(
   assertAidCapacity(input.fleet, input.cargo, tech);
   const dist = distance(origin, target);
   // A resource delivery always comes home; a ship gift has only its outbound leg.
-  const fuel = missionFuel(input.fleet, dist, delivery ? 2 : 1);
+  const benefits = await readHonorBenefits(tx, origin.seasonId, input.senderPlayerId);
+  const fuel = honorFuelCost(missionFuel(input.fleet, dist, delivery ? 2 : 1), benefits);
   assertFuel(fuel, origin.deuterium, input.cargo.deuterium);
   const oneWay = clanFirstLegMinutes(fleetTravelExact(dist, input.fleet, { boost: boost, tech }),
     await clanLevelOf(tx, relationship.sender.clanId));

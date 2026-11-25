@@ -4,7 +4,7 @@ import { and, desc, eq, gt, inArray, isNotNull, isNull, lte, or, sql } from 'dri
 import {
   ECONOMY_ADJUSTMENT, GALAXY, UNKNOWN_SIGNAL, alloyRate, collectorCap, crystalRate, deuteriumRate,
   productionHours, productionMult, radarContactRange, coreTier, distance, fleetCount, fleetEntries, fleetSpeedMult,
-  hpRadiationApplies, missionFuel, placeUnknownSignal, signalTravelExact,
+  hpRadiationApplies, honorFuelCost, missionFuel, placeUnknownSignal, signalTravelExact,
   rollUnknownSignalOutcome, seededFrom, validateUnknownSignalFleet,
   type Fleet, type Vec3, type UnknownSignalOutcome, type UnknownSignalTier,
 } from '@astera/rules';
@@ -16,6 +16,7 @@ import { publish, publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { assertFreeBay } from './flight.js';
 import { assertFuel } from './fuel.js';
+import { readHonorBenefits } from './honorBenefits.js';
 import { selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
 import { idempotentMutation } from './idempotency.js';
 import { notify } from './notifications.js';
@@ -190,7 +191,8 @@ export async function dispatchUnknownSignal(db: Db, playerId: string, id: string
     assertOutsideSilentSpace(origin);
     await assertFreeBay(tx, originId, origin.buildings.CORE, origin.faults);
     selectHomeDispatch(origin.homeFleet, origin.homeDamage, fleet);
-    const fuel = missionFuel(fleet, distance(origin, signal), 2);
+    const benefits = await readHonorBenefits(tx, origin.seasonId, playerId);
+    const fuel = honorFuelCost(missionFuel(fleet, distance(origin, signal), 2), benefits);
     assertFuel(fuel, origin.deuterium);
     const tech = await techOf(tx, playerId);
     const travelMinutes = signalTravelExact(distance(origin, signal), fleet, { boost: fleetSpeedMult(origin.orbit), tech });

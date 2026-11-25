@@ -318,6 +318,11 @@ function ProductionRow({ planet }: { planet: PlanetView }) {
           label={t(`planetHero.${id}Store`, { held: full(Math.floor(held)), cap: full(cap), safe: full(safe) })}
         />
       ))}
+      {(planet.honorBenefits?.productionPct ?? 0) < 0 && (
+        <p className="gk-sub" data-tone="hostile" data-honor-production-penalty>
+          {`${t('honorBenefits.production')} ${String(planet.honorBenefits!.productionPct)}%`}
+        </p>
+      )}
       <p className="gk-sub gk-stores__rule">{t('planetHero.storeRule')}</p>
     </div>
   );

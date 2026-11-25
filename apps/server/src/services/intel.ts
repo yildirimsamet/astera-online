@@ -17,6 +17,9 @@ import {
   bearingBetween,
   clanDefenseApplies,
   detectChance,
+  probeCatchChance,
+  probeCatchRoll,
+  probeShotMoment,
   fuzzBand,
   computeLoot,
   engagementEndsAt,
@@ -41,6 +44,7 @@ import {
   withinTelescopeRange,
   seededFrom,
   type Bearing,
+  type Vec3,
   type FleetStatus,
   type HullId,
   INSTRUMENT_IDS,
@@ -76,6 +80,7 @@ import {
   units,
   watches,
   type ProbeSupportReading,
+  probeBatteries,
 } from '../db/schema.js';
 import { standingSupportAt } from './clanSupportView.js';
 import { activeClanMembership } from './clanCombat.js';
@@ -103,6 +108,7 @@ import { publicWorlds, silhouetteOf } from './publicGalaxy.js';
 import { lockWorlds } from './ownership.js';
 import { assertClanHostilityAllowed, lockClanPlayers } from './clanCombat.js';
 import { moonRarityOf, moonWatchStatus, probeMoon, seasonHasMoons, type MoonWatchStatus } from './moon.js';
+import { probeBatteryAt, shootDownProbe } from './probeDefence.js';
 
 /* ── satellite levels ───────────────────────────────────────── */
 
@@ -742,6 +748,29 @@ export async function launchProbe(
       resolveAt: arriveAt,
     });
 
+    /*
+      A BATTERY'S SHOT, OUT ON THE APPROACH (owner playtests, 2026-11-24/25). A held world whose
+      battery will stand by then gets one event when it opens fire, `fireLeadSeconds` before its
+      last round reaches the craft `reachRadii` target radii out. Whether it fires is read then
+      (`interceptProbe`); every screen hears of it while the craft still flies.
+    */
+    const [battery] = target.controllerPlayerId
+      ? await tx.select({ readyAt: probeBatteries.readyAt }).from(probeBatteries).where(eq(probeBatteries.planetId, targetPlanetId))
+      : [];
+    if (battery) {
+      const [originCore, targetCore] = await Promise.all([buildingLevelsOf(tx, originPlanetId), buildingLevelsOf(tx, targetPlanetId)]);
+      const shot = probeShotMoment(origin, target, originCore.CORE, targetCore.CORE, origin.now.getTime(), arriveAt.getTime());
+      if (battery.readyAt.getTime() <= shot.fireAt) {
+        await schedule(tx, {
+          seasonId: origin.seasonId,
+          kind: 'probe_defence',
+          refId: mission!.id,
+          resolveAt: new Date(shot.fireAt),
+          payload: { x: shot.point.x, y: shot.point.y, z: shot.point.z, hitAt: shot.at, from: shot.firePoint },
+        });
+      }
+    }
+
     /**
      * A PROBE IS A CRAFT IN THE AIR, AND THE DISC SHOWS IT. D53.
      *
@@ -957,8 +986,9 @@ export async function standingAt(tx: Tx, target: typeof planets.$inferSelect, no
       : undefined,
     // D212: a Silent Space world's works run at half pace, and the report must say so.
     season.role === 'WAITING' ? SILENT_SPACE.productionPace : 1,
-    // F2 Ortak Ocak: the share frozen on the world at its last write, as the owner's tick applies it.
+    // F2 Ortak Ocak & Honor Tier -4: the shares frozen on the world at its last write, as the owner's tick applies them.
     target.clanBonus,
+    target.honorProductionShare,
   ).state;
 }
 
@@ -980,6 +1010,17 @@ export async function resolveProbe(
   // Shipyard level supplies both probe accuracy and probe stealth.
   const originBuildings = await buildingLevelsOf(tx, mission.originPlanetId);
   const shipyard = originBuildings.SHIPYARD;
+
+  /*
+    ONE ROLL PER MISSION (`probeCatchRoll`, a stream of its own). A probe battery has
+    already had its shot out on the approach (`interceptProbe`): a probe that reached the
+    world got past it, and the same roll now meets today's detection. Caught by an armed
+    battery there meant shot down; here it only means seen. The battery is read at the
+    ARRIVAL for the report, so a late worker changes nothing.
+  */
+  const battery = await probeBatteryAt(tx, target, radar, mission.arriveAt);
+  const detected = probeCatchRoll(mission.id) < detectChance(radar, shipyard);
+  const bearing = bearingBetween(target, origin);
 
   const unitRows = await tx.select().from(units).where(eq(units.planetId, target.id));
   const home: Record<string, number> = {};
@@ -1203,9 +1244,6 @@ export async function resolveProbe(
         ? 'BUILDING' as const
         : 'NONE' as const;
 
-  const detected = rng() < detectChance(radar, shipyard);
-  const bearing = bearingBetween(target, origin);
-
   const [outside] = await publicWorlds(tx, target.seasonId, now, [target.id]);
   /*
     THE DOCTRINES RIDE HOME WITH THE SILHOUETTE. T9 · D124.
@@ -1282,6 +1320,9 @@ export async function resolveProbe(
       ...(moon === undefined ? {} : { moon, moonRarity: moon.rarity }),
       ...(research === undefined ? {} : { research }),
       ...(owner === null ? {} : { interceptors: charges.length }),
+      ...(owner === null ? {} : {
+        probeBattery: battery ? { ready: battery.ready, capacity: battery.capacity } : null,
+      }),
       ...(loyalty === undefined ? {} : { loyalty }),
       ...(notificationCenter === undefined ? {} : { notificationCenter }),
     }
@@ -1341,6 +1382,45 @@ export async function resolveProbe(
   return { detected, bearing };
 }
 
+/**
+ * A PROBE MEETS A BATTERY OUT ON ITS APPROACH (owner playtest, 2026-11-24: "biraz geriden").
+ *
+ * Run by the probe's `probe_defence` event, at the point `probeShotMoment` put on the leg
+ * every screen draws. The same single roll the arrival reads: below the armed battery's
+ * chance the probe is shot down there and the mission ends; otherwise it flies on, and
+ * at its arrival that roll is already above today's detection. Null when nothing fired.
+ */
+export async function interceptProbe(tx: Tx, input: {
+  missionId: string;
+  /** When the battery opens fire: the battery and the roll are read then. */
+  firedAt: Date;
+  /** When its last round reaches the craft, at `point`. */
+  hitAt: Date;
+  point: Vec3;
+  /** Where the craft was when the battery opened fire. */
+  from: Vec3;
+  now: Date;
+}) {
+  const [mission] = await tx.select().from(missions)
+    .where(and(eq(missions.id, input.missionId), eq(missions.kind, 'probe'), eq(missions.status, 'in_flight')))
+    .for('update');
+  if (!mission) return null;
+  const [origin] = await tx.select().from(planets).where(eq(planets.id, mission.originPlanetId));
+  const [target] = await tx.select().from(planets).where(eq(planets.id, mission.targetPlanetId));
+  if (!origin || !target) throw new Error('probe references a missing planet');
+  const radar = levelOf(await instrumentLevels(tx, [target.id]), target.id, 'RADAR');
+  const shipyard = (await buildingLevelsOf(tx, origin.id)).SHIPYARD;
+  const battery = await probeBatteryAt(tx, target, radar, input.firedAt);
+  if (!battery || battery.armedLevel === 0) return null;
+  if (probeCatchRoll(mission.id) >= probeCatchChance(radar, shipyard, battery.armedLevel)) return null;
+  await tx.update(missions).set({ status: 'resolved' }).where(eq(missions.id, mission.id));
+  await shootDownProbe(tx, {
+    battery, mission, target, firedAt: input.firedAt, shotAt: input.hitAt, point: input.point, from: input.from,
+    bearing: bearingBetween(target, origin), now: input.now,
+  });
+  return { mission, target };
+}
+
 /* ── radar log ──────────────────────────────────────────────── */
 
 export interface ScanView {
@@ -1354,6 +1434,8 @@ export interface ScanView {
   originPlanetName: string | null;
   /** Only from Radar L5, alongside the disclosed origin name. */
   originPlanetId: string | null;
+  /** The world's probe battery shot this one down (2026-11-24). */
+  shotDown: boolean;
 }
 
 /**
@@ -1411,6 +1493,7 @@ export async function readRadarLog(
       bearing: radarRevealsBearing(radar) ? (r.scan.bearing as Bearing | null) : null,
       originPlanetName: radarRevealsOrigin(radar) ? r.originName : null,
       originPlanetId: radarRevealsOrigin(radar) ? r.scan.originPlanetId : null,
+      shotDown: r.scan.shotDown,
     };
   });
 }

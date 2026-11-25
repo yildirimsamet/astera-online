@@ -1,6 +1,6 @@
 import {
   honorChallenge, honorCombatBase, honorLossDebit, honorHarmFifths, honorInteger, honorNumber, honorPairCredit, honorSplit,
-  type HonorShare, type HonorWeakNavyBand, type HonorWeight,
+  honorWeakRepeatHalfUnits, type HonorShare, type HonorWeakNavyBand, type HonorWeakRepeatScale, type HonorWeight,
 } from './honor.js';
 
 export interface HonorMember {
@@ -38,6 +38,8 @@ export interface HonorTeamInput {
   weakNavyBand?: HonorWeakNavyBand;
   /** Frozen dispatch term; legacy evidence omits it and retains 20%. */
   retaliationLootPercent?: 20 | 40;
+  /** Frozen dispatch term; legacy evidence omits it and retains 50 (1/1.5/2×). */
+  weakRepeatScale?: HonorWeakRepeatScale;
   /** Frozen v3 policy: shared sides retain attacking debits but have no positive gain. */
   soloPositiveOnly?: boolean;
   /** Candidate policy: genuine reactive defence need not have owned a navy at launch. */
@@ -188,7 +190,7 @@ export function honorTeam(input: HonorTeamInput): HonorTeamPool {
         if (bullying) {
           const used = Math.min(harmFifths, relation?.retaliationFifths ?? 0);
           exposure.retaliationSpentFifths = used;
-          const penalty = 50n * BigInt(harmFifths - used) * BigInt(2 + Math.min(relation?.weakRepeat ?? 0, 2)) / 2n;
+          const penalty = 50n * BigInt(harmFifths - used) * honorWeakRepeatHalfUnits(relation?.weakRepeat ?? 0, input.weakRepeatScale) / 2n;
           numerator -= penalty * W;
         } else if (!positiveBlocked && (defending || c.kind !== 'WEAK') && weightField === 'weight' && !relation?.related) {
           const combat = K === 0n ? 0n : base * BigInt(d.combatLoss) / K;
@@ -214,7 +216,7 @@ export function honorTeam(input: HonorTeamInput): HonorTeamPool {
       if (exposure.bullying) {
         const used = Math.min(pressure, Math.max(0, (relation?.retaliationFifths ?? 0) - exposure.retaliationSpentFifths));
         exposure.retaliationSpentFifths += used;
-        numerator -= 50n * BigInt(pressure - used) * BigInt(2 + Math.min(relation?.weakRepeat ?? 0, 2)) / 2n * W;
+        numerator -= 50n * BigInt(pressure - used) * honorWeakRepeatHalfUnits(relation?.weakRepeat ?? 0, input.weakRepeatScale) / 2n * W;
       } else if (!positiveBlocked && c.kind !== 'WEAK' && !relation?.related) {
         const gain = BigInt(effect.base) * BigInt(c.tierNumerator) / 4n * BigInt(c.gainFactor) / 1_000_000n;
         numerator += gain * W;

@@ -1,5 +1,5 @@
 {
-  "id": "fe8a0baa-e166-4dce-839d-c87293bf32c8",
+  "id": "d211a48c-cd97-49a4-ba6d-4515069d1380",
   "prevId": "e72059d9-4eee-46f4-b648-579093274910",
   "version": "7",
   "dialect": "postgresql",
@@ -1438,13 +1438,6 @@
           "notNull": true,
           "default": 0
         },
-        "hold_asterium": {
-          "name": "hold_asterium",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
         "ready_notice_id": {
           "name": "ready_notice_id",
           "type": "uuid",
@@ -2662,13 +2655,6 @@
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true
-        },
-        "applied_capsules": {
-          "name": "applied_capsules",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
         },
         "attacker_losses": {
           "name": "attacker_losses",
@@ -14180,13 +14166,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "applied_capsules": {
-          "name": "applied_capsules",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
         "depart_at": {
           "name": "depart_at",
           "type": "timestamp with time zone",
@@ -16416,20 +16395,6 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
-        },
-        "asterium_synced_at": {
-          "name": "asterium_synced_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "asterium_fraction": {
-          "name": "asterium_fraction",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
         }
       },
       "indexes": {},
@@ -16452,10 +16417,6 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "moons_asterium_fraction_check": {
-          "name": "moons_asterium_fraction_check",
-          "value": "\"moons\".\"asterium_fraction\" >= 0 AND \"moons\".\"asterium_fraction\" < 1"
-        },
         "moons_rarity_check": {
           "name": "moons_rarity_check",
           "value": "\"moons\".\"rarity\" in ('COMMON', 'RARE', 'EPIC', 'LEGENDARY')"
@@ -18874,121 +18835,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.player_asterium": {
-      "name": "player_asterium",
-      "schema": "",
-      "columns": {
-        "player_id": {
-          "name": "player_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "balance": {
-          "name": "balance",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "player_asterium_player_id_players_id_fk": {
-          "name": "player_asterium_player_id_players_id_fk",
-          "tableFrom": "player_asterium",
-          "tableTo": "players",
-          "columnsFrom": [
-            "player_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "player_asterium_balance_check": {
-          "name": "player_asterium_balance_check",
-          "value": "\"player_asterium\".\"balance\" >= 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.player_capsules": {
-      "name": "player_capsules",
-      "schema": "",
-      "columns": {
-        "player_id": {
-          "name": "player_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "capsule_id": {
-          "name": "capsule_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "quantity": {
-          "name": "quantity",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "player_capsules_player_id_players_id_fk": {
-          "name": "player_capsules_player_id_players_id_fk",
-          "tableFrom": "player_capsules",
-          "tableTo": "players",
-          "columnsFrom": [
-            "player_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "player_capsules_player_id_capsule_id_pk": {
-          "name": "player_capsules_player_id_capsule_id_pk",
-          "columns": [
-            "player_id",
-            "capsule_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "player_capsules_id_check": {
-          "name": "player_capsules_id_check",
-          "value": "\"player_capsules\".\"capsule_id\" in ('OPTIC_VEIL', 'SILENT_THRUST')"
-        },
-        "player_capsules_quantity_check": {
-          "name": "player_capsules_quantity_check",
-          "value": "\"player_capsules\".\"quantity\" >= 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.player_research": {
       "name": "player_research",
       "schema": "",
@@ -19621,6 +19467,88 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.probe_batteries": {
+      "name": "probe_batteries",
+      "schema": "",
+      "columns": {
+        "planet_id": {
+          "name": "planet_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ready_at": {
+          "name": "ready_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "charges": {
+          "name": "charges",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "charged_at": {
+          "name": "charged_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level": {
+          "name": "level",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "upgrade_level": {
+          "name": "upgrade_level",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "upgrade_started_at": {
+          "name": "upgrade_started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "upgrade_ready_at": {
+          "name": "upgrade_ready_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "probe_batteries_planet_id_planets_id_fk": {
+          "name": "probe_batteries_planet_id_planets_id_fk",
+          "tableFrom": "probe_batteries",
+          "tableTo": "planets",
+          "columnsFrom": [
+            "planet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.probe_reports": {
       "name": "probe_reports",
       "schema": "",
@@ -19878,6 +19806,264 @@
           "value": "\"probe_reports\".\"posture\" IS NULL OR \"probe_reports\".\"posture\" IN ('ESCAPE', 'SUPPORT', 'HOLD', 'ESCAPE_SUPPORT')"
         }
       },
+      "isRLSEnabled": false
+    },
+    "public.probe_shots": {
+      "name": "probe_shots",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "season_id": {
+          "name": "season_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mission_id": {
+          "name": "mission_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attacker_player_id": {
+          "name": "attacker_player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "defender_player_id": {
+          "name": "defender_player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_planet_id": {
+          "name": "target_planet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shot_at": {
+          "name": "shot_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "x": {
+          "name": "x",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "y": {
+          "name": "y",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "z": {
+          "name": "z",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fired_at": {
+          "name": "fired_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "from_x": {
+          "name": "from_x",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "from_y": {
+          "name": "from_y",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "from_z": {
+          "name": "from_z",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "probe_shots_mission_idx": {
+          "name": "probe_shots_mission_idx",
+          "columns": [
+            {
+              "expression": "mission_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "probe_shots_attacker_idx": {
+          "name": "probe_shots_attacker_idx",
+          "columns": [
+            {
+              "expression": "attacker_player_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "shot_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "probe_shots_target_idx": {
+          "name": "probe_shots_target_idx",
+          "columns": [
+            {
+              "expression": "target_planet_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "shot_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "probe_shots_defender_idx": {
+          "name": "probe_shots_defender_idx",
+          "columns": [
+            {
+              "expression": "defender_player_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "probe_shots_season_idx": {
+          "name": "probe_shots_season_idx",
+          "columns": [
+            {
+              "expression": "season_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "shot_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "probe_shots_season_id_seasons_id_fk": {
+          "name": "probe_shots_season_id_seasons_id_fk",
+          "tableFrom": "probe_shots",
+          "tableTo": "seasons",
+          "columnsFrom": [
+            "season_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "probe_shots_mission_id_missions_id_fk": {
+          "name": "probe_shots_mission_id_missions_id_fk",
+          "tableFrom": "probe_shots",
+          "tableTo": "missions",
+          "columnsFrom": [
+            "mission_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "probe_shots_attacker_player_id_players_id_fk": {
+          "name": "probe_shots_attacker_player_id_players_id_fk",
+          "tableFrom": "probe_shots",
+          "tableTo": "players",
+          "columnsFrom": [
+            "attacker_player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "probe_shots_defender_player_id_players_id_fk": {
+          "name": "probe_shots_defender_player_id_players_id_fk",
+          "tableFrom": "probe_shots",
+          "tableTo": "players",
+          "columnsFrom": [
+            "defender_player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "probe_shots_target_planet_id_planets_id_fk": {
+          "name": "probe_shots_target_planet_id_planets_id_fk",
+          "tableFrom": "probe_shots",
+          "tableTo": "planets",
+          "columnsFrom": [
+            "target_planet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.probe_world_memories": {
@@ -21570,6 +21756,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "shot_down": {
+          "name": "shot_down",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "bearing": {
           "name": "bearing",
           "type": "text",
@@ -22704,12 +22897,6 @@
         },
         "moons_starts_at": {
           "name": "moons_starts_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "synthesis_starts_at": {
-          "name": "synthesis_starts_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
@@ -25307,145 +25494,6 @@
         "strategic_interceptions_window_check": {
           "name": "strategic_interceptions_window_check",
           "value": "\"strategic_interceptions\".\"impact_at\" > \"strategic_interceptions\".\"launch_at\""
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.synthesis_jobs": {
-      "name": "synthesis_jobs",
-      "schema": "",
-      "columns": {
-        "player_id": {
-          "name": "player_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "season_id": {
-          "name": "season_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "capsule_id": {
-          "name": "capsule_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "quantity": {
-          "name": "quantity",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "delivered": {
-          "name": "delivered",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "started_at": {
-          "name": "started_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "completes_at": {
-          "name": "completes_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "paid_alloy": {
-          "name": "paid_alloy",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "paid_crystal": {
-          "name": "paid_crystal",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "paid_deuterium": {
-          "name": "paid_deuterium",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "paid_asterium": {
-          "name": "paid_asterium",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "synthesis_jobs_player_id_players_id_fk": {
-          "name": "synthesis_jobs_player_id_players_id_fk",
-          "tableFrom": "synthesis_jobs",
-          "tableTo": "players",
-          "columnsFrom": [
-            "player_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "synthesis_jobs_season_id_seasons_id_fk": {
-          "name": "synthesis_jobs_season_id_seasons_id_fk",
-          "tableFrom": "synthesis_jobs",
-          "tableTo": "seasons",
-          "columnsFrom": [
-            "season_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "synthesis_jobs_id_unique": {
-          "name": "synthesis_jobs_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "synthesis_jobs_capsule_check": {
-          "name": "synthesis_jobs_capsule_check",
-          "value": "\"synthesis_jobs\".\"capsule_id\" in ('OPTIC_VEIL', 'SILENT_THRUST')"
-        },
-        "synthesis_jobs_quantity_check": {
-          "name": "synthesis_jobs_quantity_check",
-          "value": "\"synthesis_jobs\".\"quantity\" BETWEEN 1 AND 50"
-        },
-        "synthesis_jobs_delivered_check": {
-          "name": "synthesis_jobs_delivered_check",
-          "value": "\"synthesis_jobs\".\"delivered\" >= 0 AND \"synthesis_jobs\".\"delivered\" <= \"synthesis_jobs\".\"quantity\""
-        },
-        "synthesis_jobs_paid_check": {
-          "name": "synthesis_jobs_paid_check",
-          "value": "\"synthesis_jobs\".\"paid_alloy\" >= 0 AND \"synthesis_jobs\".\"paid_crystal\" >= 0 AND \"synthesis_jobs\".\"paid_deuterium\" >= 0 AND \"synthesis_jobs\".\"paid_asterium\" >= 0"
         }
       },
       "isRLSEnabled": false
@@ -28480,7 +28528,7 @@
         "moon_move_land",
         "moon_gate_ready",
         "newcomer_hour",
-        "synthesis_complete"
+        "probe_defence"
       ]
     },
     "public.event_status": {
@@ -28499,8 +28547,7 @@
       "values": [
         "ASTEROID_SHOWER",
         "TRADE_SHIP",
-        "INTERGALACTIC_CONVOY",
-        "ASTERIUM_STORM"
+        "INTERGALACTIC_CONVOY"
       ]
     },
     "public.intergalactic_convoy_run_status": {
@@ -28586,8 +28633,7 @@
         "clan_alarm",
         "moon_gate_ready",
         "newcomer_hour_ending",
-        "newcomer_hour_summary",
-        "synthesis_ready"
+        "newcomer_hour_summary"
       ]
     },
     "public.paid_alert_status": {

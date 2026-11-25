@@ -19,6 +19,7 @@ import {
   hpRadiationApplies,
   postureFromToggles,
   supportAccepted,
+  honorLaunchFuel,
   supportFuel,
   togglesOf,
   supportTravelMinutes,
@@ -65,6 +66,7 @@ import { senderShieldUntil } from './clanAid.js';
 import { activeClanMembership } from './clanCombat.js';
 import { assertDeparturesAllowed, baysOf } from './flight.js';
 import { fuelAvailable } from './fuel.js';
+import { readHonorBenefits } from './honorBenefits.js';
 import { notify } from './notifications.js';
 import { recordShipLoss } from './shipLossStats.js';
 import { capitalPlanet, lockWorlds, safeHomePlanet } from './ownership.js';
@@ -323,7 +325,8 @@ async function gatherSupport(tx: Tx, input: SupportInput, reserve: boolean): Pro
   // A Kılavuz shortens both legs and the round trip paid at dispatch (Y9).
   const escortTime = escort.bonuses?.time ?? 1;
   const dist = distance(origin, host);
-  const fuel = escort.bonuses ? Math.ceil(supportFuel(input.fleet, dist) * escort.bonuses.fuel) : supportFuel(input.fleet, dist);
+  const benefits = await readHonorBenefits(tx, origin.seasonId, input.senderPlayerId);
+  const fuel = honorLaunchFuel(supportFuel(input.fleet, dist), benefits, escort.bonuses?.fuel ?? 1);
   if (fuelAvailable(origin.deuterium) < fuel) {
     refuse('INSUFFICIENT_FUEL', 'Not enough deuterium to fly there and back', {
       needed: fuel,

@@ -1,7 +1,8 @@
-import { ANTI_STRATEGIC, INTEL, SENSOR } from './constants.js';
+import { ANTI_STRATEGIC, INTEL, PROBE_DEFENCE, SENSOR } from './constants.js';
 import { COMBAT_CLASSES, COMBAT_HULLS, HULLS, fleetEntries, fleetValue } from './hulls.js';
 import { RESEARCH_MAX_LEVEL } from './research.js';
 import { clamp, seededFrom } from './rng.js';
+import { orbitStandoff, surfaceStandoff, toGame, toWorld, visualLeg, worldRadius } from './view.js';
 import { COMBAT_RESEARCH_PROJECTS, type TechLevels } from './tech.js';
 import type {
   ClarityState,
@@ -198,6 +199,144 @@ export const detectChance = (radarLevel: number, probeStealthLevel: number): num
     INTEL.detectMin,
     INTEL.detectMax,
   );
+
+/** One level's figures; a level past either end reads as the nearest one. */
+export const probeBatteryLevel = (level: number): (typeof PROBE_DEFENCE.levels)[number] =>
+  PROBE_DEFENCE.levels[Math.min(Math.max(Math.round(level), 1), PROBE_DEFENCE.levels.length) - 1]!;
+
+/**
+ * THE SAME ROLL, WITH A READY PROBE BATTERY BEHIND IT. Owner, 2026-11-24.
+ *
+ * `armedLevel` is the level of an installed, online battery holding a charge at the shot,
+ * or 0. At 0 this is `detectChance` exactly — an empty battery is no battery (K8).
+ */
+export const probeCatchChance = (radarLevel: number, probeStealthLevel: number, armedLevel: number): number =>
+  armedLevel > 0
+    ? clamp(
+      PROBE_DEFENCE.catchBase + PROBE_DEFENCE.catchPerLevel * (Math.min(armedLevel, PROBE_DEFENCE.levels.length) - 1)
+        + INTEL.detectSlope * (radarLevel - probeStealthLevel),
+      INTEL.detectMin,
+      PROBE_DEFENCE.catchMax,
+    )
+    : detectChance(radarLevel, probeStealthLevel);
+
+/**
+ * THE PROBE'S DETECTION ROLL, ON A STREAM OF ITS OWN (2026-11-24).
+ *
+ * It used to be the last draw of the report's stream; every band before it is
+ * unchanged by moving it here, and a fixed roll per mission lets one number decide
+ * both "caught" and "shot down".
+ */
+export const probeCatchRoll = (missionId: string): number => seededFrom(missionId, 0xca7_c4)();
+
+/** A battery's stored charges and the instant its refill clock last started. Times in ms. */
+export interface ProbeBatteryStock {
+  charges: number;
+  chargedAt: number;
+}
+
+/**
+ * HOW MANY CHARGES STAND READY AT `at`, computed rather than ticked.
+ *
+ * Below the level's capacity a charge arrives every `refillMinutes` counted from
+ * `chargedAt`; at capacity the clock does not run. `nextAt` is when the next one lands,
+ * or null when full.
+ */
+export function probeBatteryCharges(stock: ProbeBatteryStock, at: number, level: number): { charges: number; nextAt: number | null } {
+  const { capacity, refillMinutes } = probeBatteryLevel(level);
+  const step = refillMinutes * 60_000;
+  const stored = Math.min(stock.charges, capacity);
+  if (stored >= capacity) return { charges: capacity, nextAt: null };
+  const gained = Math.max(0, Math.floor((at - stock.chargedAt) / step));
+  const charges = Math.min(capacity, stored + gained);
+  return { charges, nextAt: charges >= capacity ? null : stock.chargedAt + (gained + 1) * step };
+}
+
+/**
+ * THE STOCK AFTER ONE SHOT AT `at`, or null when nothing was ready.
+ *
+ * From full the refill clock starts at the shot; while refilling, progress already
+ * made toward the next charge is kept.
+ */
+export function spendProbeCharge(stock: ProbeBatteryStock, at: number, level: number): ProbeBatteryStock | null {
+  const { capacity, refillMinutes } = probeBatteryLevel(level);
+  const step = refillMinutes * 60_000;
+  const { charges } = probeBatteryCharges(stock, at, level);
+  if (charges <= 0) return null;
+  if (charges >= capacity) return { charges: charges - 1, chargedAt: at };
+  const stored = Math.min(stock.charges, capacity);
+  return { charges: charges - 1, chargedAt: stock.chargedAt + (charges - stored) * step };
+}
+
+/** A battery row as stored: its working level, its stock, and an upgrade that may be running. Times in ms. */
+export interface ProbeBatteryState {
+  level: number;
+  charges: number;
+  chargedAt: number;
+  upgradeLevel: number | null;
+  upgradeReadyAt: number | null;
+}
+
+/**
+ * THE BATTERY AT `at`, WITH AN UPGRADE THAT HAS FINISHED FOLDED IN. Computed, not ticked.
+ *
+ * While an upgrade runs the battery works at its old level. At the finish the new level's
+ * extra capacity arrives as ready charges on top of what stood then, and the refill clock
+ * restarts at the new pace from that instant.
+ */
+export function settleProbeBattery(
+  row: ProbeBatteryState,
+  at: number,
+): { level: number; stock: ProbeBatteryStock; upgrading: boolean } {
+  const stock = { charges: row.charges, chargedAt: row.chargedAt };
+  if (row.upgradeLevel === null || row.upgradeReadyAt === null) return { level: row.level, stock, upgrading: false };
+  if (row.upgradeReadyAt > at) return { level: row.level, stock, upgrading: true };
+  const before = probeBatteryCharges(stock, row.upgradeReadyAt, row.level).charges;
+  const added = probeBatteryLevel(row.upgradeLevel).capacity - probeBatteryLevel(row.level).capacity;
+  return {
+    level: row.upgradeLevel,
+    stock: { charges: before + Math.max(0, added), chargedAt: row.upgradeReadyAt },
+    upgrading: false,
+  };
+}
+
+/**
+ * WHERE AND WHEN A BATTERY SHOOTS A PROBE (owner playtest, 2026-11-24: "biraz geriden").
+ *
+ * On the leg every screen draws (surface clearance at home, orbital hold at the target),
+ * `PROBE_DEFENCE.reachRadii` target radii from the target's centre, and the instant the
+ * craft is drawn there. A hop too short for that reach is shot at the middle of its leg.
+ * `fireAt`/`firePoint`: when and where the battery opens fire, `fireLeadSeconds` earlier.
+ * Points in game units, times in ms.
+ */
+export function probeShotMoment(
+  from: Vec3,
+  to: Vec3,
+  originCoreLevel: number,
+  targetCoreLevel: number,
+  departAt: number,
+  arriveAt: number,
+): { at: number; point: Vec3; fireAt: number; firePoint: Vec3 } {
+  const radius = worldRadius(targetCoreLevel);
+  const leg = visualLeg(from, to, surfaceStandoff(worldRadius(originCoreLevel)), orbitStandoff(radius));
+  const a = toWorld(leg.from);
+  const b = toWorld(leg.to);
+  const centre = toWorld(to);
+  const length = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+  const hold = Math.hypot(centre[0] - b[0], centre[1] - b[1], centre[2] - b[2]);
+  const back = Math.max(0, PROBE_DEFENCE.reachRadii * radius - hold);
+  const share = length > 0 ? Math.min(1, Math.max(0.5, (length - back) / length)) : 0.5;
+  const along = (k: number): Vec3 => toGame([a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k]);
+  const at = departAt + share * (arriveAt - departAt);
+  // The battery opens fire a moment earlier, where the craft is drawn then.
+  const fireAt = Math.max(departAt, at - PROBE_DEFENCE.fireLeadSeconds * 1000);
+  const fireShare = arriveAt > departAt ? (fireAt - departAt) / (arriveAt - departAt) : 0;
+  return { at, point: along(share), fireAt, firePoint: along(fireShare) };
+}
+
+/** A built battery works only on its own effective Radar rung, and not under an EMP or in recovery. */
+export const probeBatteryOnline = (world: { radar: number; emp: boolean; recovering: boolean }): boolean =>
+  world.radar >= PROBE_DEFENCE.requiredRadar && !world.emp && !world.recovering;
 
 export const probeAccuracy = (probeLevel: number, veilLevel: number): number =>
   clamp(

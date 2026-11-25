@@ -32,6 +32,7 @@ import { completeResearch } from '../services/research.js';
 import { capitalIdForAccount, commanderForAccount, ownedPlanet } from '../services/ownership.js';
 import { GameError } from '../services/planet.js';
 import { buildDeathStar, buildInterceptor, launchDeathStar } from '../services/strategic.js';
+import { installProbeBattery } from '../services/probeDefence.js';
 import { buildRadiationBomb, launchRadiationBomb } from '../services/radiationBomb.js';
 import { setDefencePosture } from '../services/clanSupport.js';
 import { launchSettlement, launchTransfer, recallFlight } from '../services/movement.js';
@@ -123,6 +124,7 @@ const launchBody = z.object({
    * for this distance".
    */
   pace: z.number().positive().max(1).optional(),
+  expectedHonorTier: z.union([z.literal(-4), z.literal(-3), z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional(),
 }).strict();
 
 export function registerPlanetRoutes(app: FastifyInstance): void {
@@ -373,6 +375,13 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
     return buildInterceptor(app.db, owner.planetId, app.clock, owner.playerId);
   });
 
+  /** INSTALL THE WORLD'S PROBE BATTERY (owner, 2026-11-24). Once; it refills itself. */
+  app.post('/api/planets/:planetId/probe-battery/build', { preHandler: requireAuth }, async (req) => {
+    z.object({}).strict().parse(req.body ?? {});
+    const owner = await explicitPlanet(req.accountId!, req.params);
+    return installProbeBattery(app.db, owner.planetId, app.clock, owner.playerId);
+  });
+
   /**
    * SAVE A WORLD'S TWO DEFENCE TOGGLES. Klan Savunma Desteği, owner K4 · 2026-10-01.
    *
@@ -424,12 +433,12 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
     const { planetId } = z.object({ planetId: z.string().uuid() }).strict().parse(req.params);
     const request = z.union([
       z.object({ lotIds: z.array(z.string().uuid()).min(1).max(SHIP_DAMAGE.repairLotsPerOrder),
-        expectedHonorTier: z.union([z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional() }).strict(),
-      z.object({ all: z.literal(true), expectedHonorTier: z.union([z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional() }).strict(),
+        expectedHonorTier: z.union([z.literal(-4), z.literal(-3), z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional() }).strict(),
+      z.object({ all: z.literal(true), expectedHonorTier: z.union([z.literal(-4), z.literal(-3), z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional() }).strict(),
       z.object({ lots: z.array(z.object({ id: z.string().uuid(), count: z.number().int().positive().max(2_147_483_647),
         damageBp: z.number().int().min(0).max(9999), remainderBp: z.number().min(0).lt(1),
       }).strict()).min(1).max(SHIP_DAMAGE.repairLotsPerOrder),
-        expectedHonorTier: z.union([z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional() }).strict(),
+        expectedHonorTier: z.union([z.literal(-4), z.literal(-3), z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional() }).strict(),
     ]).parse(req.body ?? {});
     const owner = await ownedPlanet(app.db, req.accountId!, planetId);
     const key = req.headers['idempotency-key'] === undefined ? undefined : z.string().min(8).max(128).parse(req.headers['idempotency-key']);
@@ -488,6 +497,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       body.targetBody ?? 'PLANET',
       body.originBody ?? 'PLANET',
       body.capsules ?? [],
+      body.expectedHonorTier,
     );
   });
 
@@ -539,6 +549,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       }).strict(),
       /** How fast to fly it. Validated by `allowedPaces`, which knows about THIS flight. */
       pace: z.number().positive().max(1).optional(),
+  expectedHonorTier: z.union([z.literal(-4), z.literal(-3), z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional(),
       returnPlan: z.object({
         cargoShips: z.enum(['STAY', 'RETURN']),
         otherShips: z.enum(['STAY', 'RETURN']),
@@ -565,6 +576,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       body.targetBody ?? 'PLANET',
       body.originBody ?? 'PLANET',
       body.capsules ?? [],
+      body.expectedHonorTier,
     );
   });
 

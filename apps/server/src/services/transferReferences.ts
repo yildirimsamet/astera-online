@@ -33,6 +33,8 @@ export type TransferEventDisposition = 'MOVE' | 'KEEP' | 'DEFER' | 'RECONCILE';
 export const TRANSFER_EVENT_POLICIES = {
   mission_arrival: 'BLOCKER',
   radar_warning: 'BLOCKER',
+  // A probe battery's shot belongs to the probe in the air (2026-11-24).
+  probe_defence: 'BLOCKER',
   // A Bildirim Merkezi push about an inbound raid: pending exactly as long as its radar warning would be.
   paid_alert: 'BLOCKER',
   asteroid_impact: 'BLOCKER',
@@ -90,6 +92,8 @@ export const TRANSFER_EVENT_POLICIES = {
   moon_move_land: 'BLOCKER',
   // Bolted to the moon: whoever holds it when the gate has charged is told (§6.11).
   moon_gate_ready: 'WORLD',
+  // Pending Honor Tier -4 production boundary sync blocks transfer until applied.
+  honor_penalty_sync: 'BLOCKER',
 } as const satisfies Record<EventKind, Policy>;
 
 /**

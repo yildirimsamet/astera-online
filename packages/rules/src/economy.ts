@@ -918,6 +918,8 @@ export interface PlanetEconomyInput {
    * the rated figure, so the vessel fills sooner and is never made bigger. Absent: none.
    */
   clanBonus?: number;
+  /** Honor Tier -4 production penalty share in (-1, 0] (e.g. -0.25). Like `clanBonus`, never alters ceilings. */
+  honorProductionShare?: number;
   /** Undefined: current tempo. Null: legacy pending adoption. An instant preserves earlier output. */
   productionTempoStartsAtMinutes?: number | null;
   /**
@@ -1025,8 +1027,12 @@ export function advanceEconomy(
   if (!(pace >= 0 && pace <= 1)) throw new RangeError(`production pace must lie in [0, 1], got ${String(pace)}`);
   const clanBonus = input.clanBonus ?? 0;
   if (!(clanBonus >= 0 && clanBonus < 1)) throw new RangeError(`clan production share must lie in [0, 1), got ${String(clanBonus)}`);
+  const honorProductionShare = input.honorProductionShare ?? 0;
+  if (!(honorProductionShare > -1 && honorProductionShare <= 0)) {
+    throw new RangeError(`honor production share must lie in (-1, 0], got ${String(honorProductionShare)}`);
+  }
   // The share multiplies last, so a world with none reads bit for bit the figure it always did.
-  const share = 1 + clanBonus;
+  const share = (1 + clanBonus) * (1 + honorProductionShare);
   const faults = input.faults;
   const ra = hasFault(faults, 'REFINERY_OUTAGE') ? 0 : nominalA * pace * outputFactor * share;
   const rc = hasFault(faults, 'EXTRACTOR_OUTAGE') ? 0 : nominalC * pace * outputFactor * share;

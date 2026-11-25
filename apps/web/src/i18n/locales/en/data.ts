@@ -608,10 +608,12 @@ export const notifications = {
   haul: '{{what}} home · {{landed}}',
 
   scanDetected: 'Scan detected. Someone is gathering intelligence about your world.',
+  scanShotDown: "Your probe battery shot down a probe over {{world}} ({{count}} in all). Someone is sizing you up.",
 
   probeFallback: 'A probe is home. Its report is readable.',
   probeHome: 'Probe home · {{target}} is readable{{caught}}',
   probeCaught: ' · they caught it',
+  probeShotDown: "Probe shot down over {{target}} · they have a probe battery",
 
   unlock: '{{title}} — {{body}}',
   deathStarFallback: 'Your Death Star strike resolved.',

@@ -32,9 +32,11 @@ describe('Honor v1: independent of Dominion and the battle grade', () => {
     expect(honorSide(facts({ k: 10_000, l: 100_000, defending: true })).raw).toBeGreaterThan(0);
   });
 
-  it.each([0, 1, 2, 20])('weak repeats %s saturate at double, and own losses remain separate', weakRepeat => {
+  it.each([0, 1, 2, 20])('weak repeats %s saturate at double by default, and at triple with weakRepeatScale 100', weakRepeat => {
     const raw = honorSide(facts({ enemyTier: 2, enemyNavy: 80_000, weakRepeat })).raw;
     expect(raw).toBe(-12_500_000 * (1 + Math.min(weakRepeat, 2) / 2) - 1_000_000);
+    const scaled = honorSide(facts({ enemyTier: 2, enemyNavy: 80_000, weakRepeat, weakRepeatScale: 100 })).raw;
+    expect(scaled).toBe(-12_500_000 * (1 + Math.min(weakRepeat, 2)) - 1_000_000);
   });
 
   it('weaker-tier civilians and cargo raids still incur sanctions', () => {

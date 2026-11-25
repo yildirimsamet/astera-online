@@ -608,10 +608,12 @@ export const notifications = {
   haul: '{{what}} inicio · {{landed}}',
 
   scanDetected: 'Escaneo detectado. Alguien está recopilando información sobre tu mundo.',
+  scanShotDown: "Tu batería antisondas derribó una sonda sobre {{world}} ({{count}} en total). Alguien te está midiendo.",
 
   probeFallback: 'Hay una sonda en casa. Su informe es legible.',
   probeHome: 'Inicio de la sonda · {{target}} es legible{{caught}}',
   probeCaught: '· lo pillaron',
+  probeShotDown: "Sonda derribada sobre {{target}} · allí hay una batería antisondas",
 
   unlock: '{{title}} — {{body}}',
   deathStarFallback: 'Tu ataque a la Estrella de la Muerte resuelto.',

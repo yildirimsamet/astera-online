@@ -109,6 +109,15 @@ describe('Honor common-side settlement', () => {
       ownNavy: 100_000, enemyNavy: 50_000, defending: false, weakRepeat: 1, retaliationFifths: 5001, related: false, eligible: true });
     expect(r.attack.raw).toBe(scalar.raw);
     expect(r.attack.exposures[0]?.retaliationSpentFifths).toBe(5001);
+
+    const scaled = honorTeam(battle({ attack: [member('A', { tier: 4, loss: 10_000 })],
+      defence: [member('D', { navy: 50_000, loss: 1000, combatLoss: 1000, lootLost: 3 })],
+      weakRepeatScale: 100,
+      relations: [{ a: 'A', b: 'D', related: false, weakRepeat: 2, retaliationFifths: 0 }] }));
+    const scalarScaled = honorSide({ k: 1000, enemyLoss: 1000, l: 10_000, loot: 3, ownTier: 4, enemyTier: 3,
+      ownNavy: 100_000, enemyNavy: 50_000, defending: false, weakRepeat: 2, weakRepeatScale: 100,
+      retaliationFifths: 0, related: false, eligible: true });
+    expect(scaled.attack.raw).toBe(scalarScaled.raw);
   });
 
   it('distributes weak harm before consuming per-pair retaliation, never consumes it twice', () => {

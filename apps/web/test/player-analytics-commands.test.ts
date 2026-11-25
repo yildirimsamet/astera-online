@@ -42,6 +42,7 @@ it('covers deployed strategic production and launch, per-world cancellation and 
   expect(analyticsCommand('/api/planets/:planetId/death-star/build')).toBe('build');
   expect(analyticsCommand('/api/planets/:planetId/radiation-bombs/build')).toBe('build');
   expect(analyticsCommand('/api/planets/:planetId/interceptor/build')).toBe('build');
+  expect(analyticsCommand('/api/planets/:planetId/probe-battery/build')).toBe('build');
   expect(analyticsCommand('/api/planets/:planetId/build-orders/:orderId/cancel')).toBe('cancel_build');
   expect(analyticsCommand('/api/planets/:planetId/research-orders/:orderId/cancel')).toBe('cancel_research');
   expect(analyticsCommand('/api/fleet/:missionId/recall')).toBe('recall');

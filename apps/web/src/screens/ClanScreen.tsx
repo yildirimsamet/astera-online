@@ -10,6 +10,7 @@ import {
   clanTransferCargoCapacity,
   distance,
   fleetCount,
+  honorFuelCost,
   missionFuel,
   type Fleet,
   type HullId,
@@ -1409,10 +1410,13 @@ function ClanAidPanel({
    */
   const resourceDelivery = cargoUsed > 0;
   const fuel = origin && target && fleetCount(fleet) > 0
-    ? missionFuel(
-        fleet,
-        distance(origin.planet.position, target.position),
-        resourceDelivery ? 2 : 1,
+    ? honorFuelCost(
+        missionFuel(
+          fleet,
+          distance(origin.planet.position, target.position),
+          resourceDelivery ? 2 : 1,
+        ),
+        origin.honorBenefits,
       )
     : 0;
   const spendableDeuterium = (origin?.planet.deuterium ?? 0) - cargo.deuterium;
@@ -1561,6 +1565,11 @@ function ClanAidPanel({
               <div data-aid-fuel className="gk-well gk-cargo__fuel">
                 {/* The tank minus what the flight burns, after the hold takes its deuterium: the server's own sum. */}
                 <SpendBar inline stock={Math.max(0, spendableDeuterium)} spend={fuel} tone="deuterium" label={t('clan.aid.fuel')} />
+                {(origin?.honorBenefits?.fuelPct ?? 0) > 0 && (
+                  <p className="gk-sub" data-tone="hostile" data-honor-fuel-penalty>
+                    {`${t('honorBenefits.fuel')} +${String(origin!.honorBenefits!.fuelPct)}%`}
+                  </p>
+                )}
               </div>
             )}
             <GameButton tone="action" wide glyph="eye" disabledReason={validPayload ? null : t('clan.aid.check')}

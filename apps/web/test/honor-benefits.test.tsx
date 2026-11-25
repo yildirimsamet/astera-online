@@ -1,12 +1,14 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { HONOR_BENEFIT_THRESHOLDS_V1, honorBenefits } from '@astera/rules';
+import { HONOR_BENEFIT_THRESHOLDS_V1, HONOR_BENEFIT_THRESHOLDS_V2, honorBenefits } from '@astera/rules';
 import { HonorBenefitsSection, HonorEffectQuote } from '../src/ui/HonorBenefits.js';
 import i18n from '../src/i18n/index.js';
 import { LANGUAGES } from '../src/i18n/languages.js';
 
 const value = (score: number) => ({ version: 1 as const, score, thresholds: HONOR_BENEFIT_THRESHOLDS_V1,
   ...honorBenefits(score, HONOR_BENEFIT_THRESHOLDS_V1) });
+const valueV2 = (score: number) => ({ version: 2 as const, score, thresholds: HONOR_BENEFIT_THRESHOLDS_V2,
+  ...honorBenefits(score, HONOR_BENEFIT_THRESHOLDS_V2) });
 afterEach(async () => { await i18n.changeLanguage('en'); });
 describe('Honor effects explained where a player decides', () => {
   it('does not advertise privileges when the season has no enabled policy', () => {
@@ -123,5 +125,19 @@ describe('Honor’s privileges on the kit', () => {
     expect(screen.queryByRole('table')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'What is this?' }));
     expect(screen.getByText(/Commission is included in the net haul/)).toBeVisible();
+  });
+
+  it('shows all seven V2 tiers including -3 (+25% fuel) and -4 (-25% production) with exact climb thresholds', () => {
+    const { container, rerender } = render(<HonorBenefitsSection value={valueV2(-160_000_000)} />);
+    expect(screen.getByText('Climb above Honor -150 for Penalty tier 2')).toBeVisible();
+    fireEvent.click(screen.getByText('All tiers'));
+    expect(container.querySelectorAll('[data-honor-tier]')).toHaveLength(7);
+    expect(container.querySelector('[data-current-honor-tier]')).toHaveAttribute('data-honor-tier', '-3');
+
+    rerender(<HonorBenefitsSection value={valueV2(-220_000_000)} />);
+    expect(screen.getByText('Climb above Honor -200 for Penalty tier 3')).toBeVisible();
+    const values = [...container.querySelectorAll<HTMLElement>('.gk-honorperk__now .gk-figure__value')].map(el => el.textContent);
+    expect(values).toContain('+25%');
+    expect(values).toContain('−25%');
   });
 });

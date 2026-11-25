@@ -85,6 +85,7 @@ export function planetView(
     fleetAway: {},
     radiationBombsAvailable: false,
     radiationBombs: [],
+    probeBattery: null,
     flight: { used: 0, total: 3 },
     capacity: {
       ground: groundSlots(1),

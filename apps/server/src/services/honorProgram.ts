@@ -29,12 +29,12 @@ export async function inheritedHonorProgram(tx: Tx, startsAt: Date): Promise<Hon
 }
 
 /** Only a program actually announced in the preceding main cycle can carry. */
-export async function inheritedHonorBenefitsProgram(tx: Tx, startsAt: Date): Promise<1 | null> {
+export async function inheritedHonorBenefitsProgram(tx: Tx, startsAt: Date): Promise<1 | 2 | null> {
   const configs = await latestHonorPrograms(tx, startsAt);
   // Null is an unannounced program, not a second incompatible version. Opening
   // galaxies one at a time must not break the next cycle's atomic rollover.
   const versions = [...new Set(configs.flatMap(row => row.benefitsVersion === null ? [] : [row.benefitsVersion]))];
   if (versions.length === 0) return null;
-  if (versions.length !== 1 || versions[0] !== 1) throw new Error('Conflicting announced Honor economic programs');
-  return 1;
+  if (!versions.every(v => v === 1 || v === 2)) throw new Error('Conflicting announced Honor economic programs');
+  return Math.max(...versions) as 1 | 2;
 }

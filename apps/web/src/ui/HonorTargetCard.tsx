@@ -47,6 +47,17 @@ export function HonorTargetCard({ value }: { value: HonorTarget }) {
     {weak && <p className="gk-honor__line" data-tone="warn">
       {t(`leaderboard.honorTarget.${value.repeatRaid ? 'repeatRaid' : 'weakWarning'}`)}
     </p>}
+    {/* Honor V2: a weaker target raided again costs more; that price stays open with the warning above. */}
+    {weak && (value.weakMultiplier ?? 1) >= 2 && (
+      <p data-honor-escalated-warning className="gk-honor__line" data-tone="hostile">
+        {t(
+          (value.priorWeakCount ?? 0) >= 1
+            ? 'leaderboard.honorTarget.escalatedWeak'
+            : 'leaderboard.honorTarget.escalatedInFlight',
+          { multiplier: value.weakMultiplier },
+        )}
+      </p>
+    )}
     {noReturn && <p className="gk-honor__line">{t('leaderboard.honorTarget.NONE')}</p>}
   </section>;
 }
