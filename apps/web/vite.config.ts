@@ -64,7 +64,6 @@ export default defineConfig(({ command, mode }) => {
     'import.meta.env.VITE_ASTERA_RELEASE': JSON.stringify(process.env.ASTERA_GIT_COMMIT ?? ''),
     'import.meta.env.VITE_ASTERA_REFERENCE_ART': JSON.stringify(references ? 'true' : 'false'),
     ...(mobile.target === 'web' ? {} : { 'import.meta.env.VITE_ASTERA_API_URL': JSON.stringify(mobile.apiUrl) }),
-    ...(mobile.target === 'web' ? {} : { 'import.meta.env.VITE_ASTERA_NATIVE_BUILD': JSON.stringify(mobile.nativeBuild) }),
     ...(mobile.target === 'web' ? {} : { 'import.meta.env.VITE_VISUAL_TEST': JSON.stringify('0') }),
   },
   /**

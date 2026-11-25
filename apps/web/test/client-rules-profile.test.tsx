@@ -2,7 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ECONOMY_PROFILE } from '@astera/rules';
-import { buildHeader } from '../src/platform/updateGate.js';
+import { buildHeader, readShellBuild } from '../src/platform/updateGate.js';
 import type * as UpdateGateModule from '../src/platform/updateGate.js';
 import { UpdateRequired } from '../src/shell/UpdateRequired.js';
 
@@ -14,13 +14,40 @@ vi.mock('../src/platform/updateGate.js', async importOriginal => ({
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); reload.mockClear(); });
 
 describe('the season rules update', () => {
-  it('declares the current profile on browser requests', () => {
-    vi.stubEnv('VITE_ASTERA_NATIVE_BUILD', '');
+  it('declares the current profile on browser requests', async () => {
+    vi.stubEnv('VITE_ASTERA_RELEASE', '');
+    await readShellBuild(() => Promise.resolve({ build: '42' }));
     expect(buildHeader()).toEqual({ 'x-astera-rules': ECONOMY_PROFILE.id });
   });
-  it('declares the profile alongside the native build', () => {
-    vi.stubEnv('VITE_ASTERA_NATIVE_BUILD', '42');
+  it('names the web bundle by its commit when the build knows it (OTA F1)', () => {
+    vi.stubEnv('VITE_ASTERA_RELEASE', 'a'.repeat(40));
+    expect(buildHeader()).toEqual({ 'x-astera-rules': ECONOMY_PROFILE.id, 'x-astera-web': 'a'.repeat(40) });
+  });
+  it('names the shell the phone runs, read from native, never a number baked into the web bundle (OTA F1)', async () => {
+    vi.stubEnv('VITE_ASTERA_RELEASE', '');
+    vi.stubEnv('VITE_ASTERA_NATIVE_BUILD', '7');
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    await readShellBuild(() => Promise.resolve({ build: '42' }));
     expect(buildHeader()).toEqual({ 'x-astera-rules': ECONOMY_PROFILE.id, 'x-astera-build': '42' });
+  });
+  it.each([['not a versionCode', () => Promise.resolve({ build: 'abc' })], ['a failed bridge', () => Promise.reject(new Error('no bridge'))]])(
+    'sends no shell build after %s', async (_case, info) => {
+      vi.stubEnv('VITE_ASTERA_RELEASE', '');
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      await readShellBuild(() => Promise.resolve({ build: '42' }));
+      await readShellBuild(info);
+      expect(buildHeader()).toEqual({ 'x-astera-rules': ECONOMY_PROFILE.id });
+    });
+  it('never holds the game start on a bridge that does not answer', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      let done = false;
+      void readShellBuild(() => new Promise(() => undefined)).then(() => { done = true; });
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(done).toBe(true);
+      expect(buildHeader()).not.toHaveProperty('x-astera-build');
+    } finally { vi.useRealTimers(); }
   });
   it('offers a real browser reload instead of a store link on the web', () => {
     vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(false);

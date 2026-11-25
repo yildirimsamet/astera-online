@@ -1,7 +1,9 @@
 package space.asteraonline.app.session;
 
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.util.Base64;
+import androidx.core.content.pm.PackageInfoCompat;
 import androidx.webkit.WebViewFeature;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -84,12 +86,17 @@ public final class AsteraSessionPlugin extends Plugin {
             SessionEngine existing = ENGINES.get(scope);
             if (existing != null) return existing;
             boolean debug = (getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
-            SessionEngine created = new SessionEngine(new SessionVault(getContext(), scope), new SessionHttp(apiUrl, target, debug), () -> {
+            SessionEngine created = new SessionEngine(new SessionVault(getContext(), scope), new SessionHttp(apiUrl, target, debug, shellBuild()), () -> {
                 byte[] secret = new byte[32]; RANDOM.nextBytes(secret);
                 return Base64.encodeToString(secret, Base64.URL_SAFE | Base64.NO_PADDING | Base64.NO_WRAP);
             });
             ENGINES.put(scope, created); return created;
         }
+    }
+    private long shellBuild() throws IOException {
+        try {
+            return PackageInfoCompat.getLongVersionCode(getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), 0));
+        } catch (PackageManager.NameNotFoundException missing) { throw new IOException("Own package not found", missing); }
     }
     private static void retry(SessionEngine engine) {
         NETWORK.execute(() -> { try { engine.retryRevocations(); } catch (IOException failure) { /* Fail closed until a healthy store can be opened. */ } });

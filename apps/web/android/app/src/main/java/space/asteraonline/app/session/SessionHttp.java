@@ -19,11 +19,13 @@ import org.json.JSONObject;
 /** Fixed origin and operations. No general HTTP, raw response headers, cookie jar or redirects. */
 public final class SessionHttp implements SessionEngine.Network {
     private final String origin;
+    /** The shell's versionCode: the update gate sees sign-in too, not only the WebView's requests (OTA F1). */
+    private final String build;
     private final OkHttpClient client = new OkHttpClient.Builder().cookieJar(CookieJar.NO_COOKIES)
         .followRedirects(false).followSslRedirects(false).retryOnConnectionFailure(false)
         .connectTimeout(8, TimeUnit.SECONDS).readTimeout(8, TimeUnit.SECONDS).writeTimeout(8, TimeUnit.SECONDS)
         .callTimeout(20, TimeUnit.SECONDS).build();
-    public SessionHttp(String origin, String target, boolean debug) {
+    public SessionHttp(String origin, String target, boolean debug, long build) {
         URI uri = URI.create(origin);
         boolean local = "native-local".equals(target);
         if ((!local && !"native-staging".equals(target) && !"native-production".equals(target))
@@ -34,6 +36,7 @@ public final class SessionHttp implements SessionEngine.Network {
             throw new IllegalArgumentException("Invalid native API origin");
         }
         this.origin = origin.endsWith("/") ? origin.substring(0, origin.length() - 1) : origin;
+        this.build = Long.toString(build);
     }
 
     @Override public SessionEngine.Reply send(String operation, String input, SessionEngine.Credential credential) throws IOException {
@@ -60,7 +63,7 @@ public final class SessionHttp implements SessionEngine.Network {
             byte[] encoded = body.toString().getBytes(StandardCharsets.UTF_8);
             if (encoded.length > 16_384) throw new IOException("Session request too large");
             Request.Builder builder = new Request.Builder().url(origin + path).header("Accept", "application/json")
-                .header("Cache-Control", "no-store").post(RequestBody.create(encoded, MediaType.get("application/json")));
+                .header("Cache-Control", "no-store").header("x-astera-build", build).post(RequestBody.create(encoded, MediaType.get("application/json")));
             if (analyticsVisitor != null) builder.header("x-analytics-visitor", analyticsVisitor);
             Request request = builder.build();
             try (Response result = client.newCall(request).execute()) {

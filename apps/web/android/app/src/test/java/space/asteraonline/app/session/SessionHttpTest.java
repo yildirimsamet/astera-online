@@ -46,11 +46,38 @@ public class SessionHttpTest {
         });
         handler.setDaemon(true); handler.start();
         try {
-            SessionHttp http = new SessionHttp("http://localhost:" + server.getLocalPort(), "native-local", true);
+            SessionHttp http = new SessionHttp("http://localhost:" + server.getLocalPort(), "native-local", true, 42);
             assertEquals(200, http.send("login", new JSONObject().put("username", "pilot").put("password", "private").put("__analyticsVisitor", SECRET).toString(), null).status());
             handler.join(3000); assertNull(failure.get()); assertEquals(SECRET, visit.get());
             assertFalse(new JSONObject(body.get()).has("__analyticsVisitor"));
             assertEquals("private", new JSONObject(body.get()).getString("password"));
+        } finally { server.close(); }
+    }
+
+    /** OTA F1: sign-in names the shell too, so the update gate sees every native request, not only the WebView's. */
+    @Test public void namesTheShellBuildOnEverySessionRequest() throws Exception {
+        ServerSocket server = new ServerSocket(0);
+        server.setSoTimeout(3000);
+        AtomicReference<String> build = new AtomicReference<>();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread handler = new Thread(() -> {
+            try (Socket socket = server.accept()) {
+                socket.setSoTimeout(3000);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+                reader.readLine(); String line;
+                while ((line = reader.readLine()) != null && !line.isEmpty()) {
+                    if (line.toLowerCase().startsWith("x-astera-build:")) build.set(line.substring(line.indexOf(':') + 1).trim());
+                }
+                byte[] response = session().getBytes(StandardCharsets.UTF_8);
+                socket.getOutputStream().write(("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: " + response.length + "\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write(response);
+            } catch (Throwable error) { failure.set(error); }
+        });
+        handler.setDaemon(true); handler.start();
+        try {
+            SessionHttp http = new SessionHttp("http://localhost:" + server.getLocalPort(), "native-local", true, 17);
+            http.send("login", new JSONObject().put("username", "pilot").put("password", "private").toString(), null);
+            handler.join(3000); assertNull(failure.get()); assertEquals("17", build.get());
         } finally { server.close(); }
     }
 
@@ -93,9 +120,9 @@ public class SessionHttpTest {
 
     @Test public void refusesInsecureRemoteOriginsAndReleaseLocalHttp() {
         for (String value : new String[]{"http://example.test", "https://user:secret@example.test", "https://example.test/api", "https://example.test?x=1", "https://localhost.evil.test/#secret"}) {
-            assertThrows(IllegalArgumentException.class, () -> new SessionHttp(value, "native-production", true));
+            assertThrows(IllegalArgumentException.class, () -> new SessionHttp(value, "native-production", true, 1));
         }
-        assertThrows(IllegalArgumentException.class, () -> new SessionHttp("http://localhost:3100", "native-local", false));
+        assertThrows(IllegalArgumentException.class, () -> new SessionHttp("http://localhost:3100", "native-local", false, 1));
     }
 
     @Test public void sendsOnlyThePinnedOperationWithoutCookiesAndNeverFollowsRedirect() throws Exception {
@@ -140,7 +167,7 @@ public class SessionHttpTest {
         };
         CookieHandler.setDefault(managedCookies);
         try {
-            SessionHttp http = new SessionHttp("http://localhost:" + server.getLocalPort(), "native-local", true);
+            SessionHttp http = new SessionHttp("http://localhost:" + server.getLocalPort(), "native-local", true, 42);
             assertEquals(200, http.send("login", "{\"username\":\"pilot\",\"password\":\"private\"}", null).status());
             assertEquals("private", new JSONObject(seen.get()).getString("password"));
             assertThrows(IOException.class, () -> http.send("register", "{}", null));

@@ -47,22 +47,33 @@ function fingerprint(root: string): string {
   return hash.digest('hex');
 }
 
+/**
+ * The commit an app build names as its Sentry release and `x-astera-web` (OTA F1). A tree with
+ * uncommitted changes is not that commit, so it names none rather than a wrong one.
+ */
+export function nativeReleaseCommit(declared: string | undefined, readHead: () => string, readChanges: () => string): string | undefined {
+  if (declared) return declared;
+  const head = readHead().trim();
+  return /^[a-f0-9]{40}$/.test(head) && readChanges().trim() === '' ? head : undefined;
+}
+
 function main(): void {
   const args = process.argv.slice(2).filter(arg => arg !== '--');
   const release = args[0] === '--release';
   const targetArgs = release ? args.slice(1) : args;
   const target = z.enum(['native-local', 'native-staging', 'native-production']).parse(targetArgs.length === 1 ? targetArgs[0] : undefined);
-  // A debug package is versionCode 1 in Gradle; a release names its own.
-  const nativeBuild = release ? process.env.ASTERA_ANDROID_VERSION_CODE : '1';
-  const mobile = mobileBuild({ VITE_ASTERA_PLATFORM: target, VITE_ASTERA_NATIVE_BUILD: nativeBuild,
+  const mobile = mobileBuild({ VITE_ASTERA_PLATFORM: target,
     VITE_ASTERA_API_URL: process.env.VITE_ASTERA_API_URL ?? (target === 'native-local' ? 'http://localhost:3100' : undefined) });
   if (mobile.target === 'web') throw new Error('A bundled target is required');
   const root = fileURLToPath(new URL('../../', import.meta.url));
   const releaseConfig = release ? androidRelease({ ...process.env, VITE_ASTERA_PLATFORM: target, VITE_ASTERA_API_URL: mobile.apiUrl }, root) : undefined;
   const web = resolve(root, 'apps/web');
   const android = resolve(web, 'android');
+  const git = (args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
+  const commit = nativeReleaseCommit(process.env.ASTERA_GIT_COMMIT, () => git(['rev-parse', 'HEAD']), () => git(['status', '--porcelain', '--untracked-files=no']));
   // Komutan Gemisi ships in every app; the arena's own `/arena/access` still decides who enters.
-  const environment = { ...process.env, VITE_ASTERA_PLATFORM: target, VITE_ASTERA_API_URL: mobile.apiUrl, VITE_ASTERA_NATIVE_BUILD: mobile.nativeBuild, VITE_ARENA: '1',
+  const environment = { ...process.env, VITE_ASTERA_PLATFORM: target, VITE_ASTERA_API_URL: mobile.apiUrl, VITE_ARENA: '1',
+    ...(commit ? { ASTERA_GIT_COMMIT: commit } : {}),
     ASTERA_MOBILE_DEBUG: '', ASTERA_MOBILE_DEV_URL: '', NODE_OPTIONS: '--max-old-space-size=2048',
     JAVA_HOME: process.env.JAVA_HOME ?? resolve(homedir(), '.local/share/astera/jdk-21') };
   function run(command: string, commandArgs: string[], cwd: string) {

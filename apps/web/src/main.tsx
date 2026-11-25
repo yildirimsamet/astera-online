@@ -33,6 +33,7 @@ import { startAndroidBack } from './platform/nativeBack.js';
 import { watchAppHeight } from './lib/appHeight.js';
 import { tolerateForeignDomEdits } from './lib/foreignDomEdits.js';
 import { isAppActive, watchAppActivity } from './platform/activity.js';
+import { readShellBuild } from './platform/updateGate.js';
 import './styles.css';
 
 function start(): void {
@@ -163,4 +164,5 @@ function start(): void {
   );
 }
 
-void i18nReady.then(start);
+// The first request already names the phone's shell build (OTA F1).
+void Promise.all([i18nReady, readShellBuild()]).then(start);

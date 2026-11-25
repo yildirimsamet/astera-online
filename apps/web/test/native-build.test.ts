@@ -29,6 +29,8 @@ describe('the build-time platform boundary', () => {
       expect.objectContaining({ name: 'astera:adsense' }),
     ]));
     expect(result.define?.['import.meta.env.VITE_ASTERA_PLATFORM']).toBe(JSON.stringify(target));
+    // The shell build is read from the phone at start; an OTA bundle runs on every shell (OTA F1).
+    expect(result.define).not.toHaveProperty(['import.meta.env.VITE_ASTERA_NATIVE_BUILD']);
     expect(result.define?.['import.meta.env.VITE_VISUAL_TEST']).toBe(JSON.stringify('0'));
     expect(result.build?.outDir).toBe(`mobile-dist/${target}`);
     expect(result.publicDir).toBe(false);

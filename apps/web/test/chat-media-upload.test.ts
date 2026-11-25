@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Api, ApiError } from '../src/api/client.js';
 import { ECONOMY_PROFILE } from '@astera/rules';
+import { Capacitor } from '@capacitor/core';
+import { readShellBuild } from '../src/platform/updateGate.js';
 
 class UploadRequest {
   static sent: UploadRequest[] = [];
@@ -32,11 +34,12 @@ function setup() {
   const api = new Api();
   return api;
 }
-afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
 describe('authenticated chat uploads', () => {
-  it('declares the compiled native build alongside the rules on binary uploads', async () => {
-    vi.stubEnv('VITE_ASTERA_NATIVE_BUILD', '42');
+  it('declares the shell build alongside the rules on binary uploads', async () => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    await readShellBuild(() => Promise.resolve({ build: '42' }));
     const api = setup();
     const result = api.uploadChatMedia(file(), new AbortController().signal, vi.fn());
     const request = UploadRequest.sent[0]!;

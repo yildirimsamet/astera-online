@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { sentryUpload } from '../sentryBuild.js';
+import { nativeReleaseCommit } from '../mobileBuildCli.js';
 
 const root = resolve(import.meta.dirname, '../../..');
 const commit = 'a'.repeat(40);
@@ -28,6 +29,14 @@ describe('the source map upload', () => {
     });
     expect(sentryUpload({ token: 'key', release: commit, target: 'android', outDir: 'android-web' })?.project).toBe('app');
     expect(sentryUpload({ token: 'key', release: commit, target: 'android', outDir: 'android-web' })?.sourcemaps.filesToDeleteAfterUpload).toEqual(['android-web/**/*.map']);
+  });
+
+  it('names an app build by its commit, and only a clean tree claims one (OTA F1)', () => {
+    const head = () => `${commit}\n`;
+    expect(nativeReleaseCommit(undefined, head, () => '')).toBe(commit);
+    expect(nativeReleaseCommit(undefined, head, () => ' M apps/web/src/main.tsx\n')).toBeUndefined();
+    expect(nativeReleaseCommit(undefined, () => 'not a commit', () => '')).toBeUndefined();
+    expect(nativeReleaseCommit('b'.repeat(40), head, () => ' M apps/web/src/main.tsx\n')).toBe('b'.repeat(40));
   });
 
   it('reaches the image build as a secret, never as a build argument or a layer', () => {

@@ -23,7 +23,7 @@ import Fastify, {
 import { and, eq, not } from 'drizzle-orm';
 import { accountIsBanned } from './services/accountBan.js';
 import { accounts } from './db/schema.js';
-import { ZodError } from 'zod';
+import { z, ZodError } from 'zod';
 import { pino } from 'pino';
 import type { Env } from './env.js';
 import type { Clock } from './clock.js';
@@ -181,6 +181,17 @@ export interface BuiltApp {
   close: () => Promise<void>;
 }
 
+const clientBuildSchema = z.object({
+  'x-astera-build': z.string().regex(/^[1-9]\d{0,9}$/).optional().catch(undefined),
+  'x-astera-web': z.string().regex(/^[a-f0-9]{40}$/).optional().catch(undefined),
+});
+
+/** The client's own words, so only well-formed values reach a log line. */
+function clientBuild(headers: Record<string, unknown>): { shell?: string; web?: string } {
+  const named = clientBuildSchema.parse(headers);
+  return { ...(named['x-astera-build'] ? { shell: named['x-astera-build'] } : {}), ...(named['x-astera-web'] ? { web: named['x-astera-web'] } : {}) };
+}
+
 export function buildApp(opts: BuildAppOptions): BuiltApp {
   const clock = opts.clock ?? systemClock;
   // Annotated, not asserted. Passing a concrete pino Logger would specialise
@@ -205,6 +216,8 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   const app = Fastify({
     loggerInstance: log,
     logController: new LogController({ disableRequestLogging: opts.env.NODE_ENV === 'test' }),
+    // Every request's log names the shell and web bundle it came from: one OTA bundle runs on many shells (OTA F1).
+    childLoggerFactory: (logger, bindings, options, raw) => logger.child({ ...bindings, ...clientBuild(raw.headers) }, options),
     /**
      * Behind the production proxy `req.ip` must be the CALLER, not nginx. See
      * `TRUST_PROXY` in env.ts for why this is off unless a deployment says so.
@@ -340,7 +353,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       origin: opts.env.NATIVE_APP_ORIGINS,
       credentials: false,
       methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Authorization', 'Content-Type', 'x-placement', 'idempotency-key', 'x-astera-cosmetics', 'x-media-type', 'x-astera-build', 'x-astera-rules', 'x-analytics-visitor', 'x-analytics-attempt'],
+      allowedHeaders: ['Authorization', 'Content-Type', 'x-placement', 'idempotency-key', 'x-astera-cosmetics', 'x-media-type', 'x-astera-build', 'x-astera-web', 'x-astera-rules', 'x-analytics-visitor', 'x-analytics-attempt'],
       exposedHeaders: ['x-server-time', 'x-placement', 'Date'],
       maxAge: 600,
     });

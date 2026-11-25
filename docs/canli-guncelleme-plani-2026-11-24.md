@@ -99,4 +99,16 @@ Android uygulaması oyunun web kodunu içine paketliyor (`bundled: true`, `mobil
 | Faz | Durum |
 |---|---|
 | Owner kararları K1–K3 | Verildi (2026-11-24) |
-| F0–F5 | Başlamadı |
+| F0 Spike | Bitti (2026-11-25, S22). Karar: `@capgo/capacitor-updater` 8.54.2 (MPL-2.0), Capacitor 8 ile çalışıyor; kendi eklentimize gerek yok. Bulgular aşağıda. |
+| F1 Kimlikler | Bitti (2026-11-25). `x-astera-build` açılışta `App.getInfo()` ile native'den okunur (2 sn sınır; okunamazsa gönderilmez), gömülü `VITE_ASTERA_NATIVE_BUILD` kaldırıldı. Native giriş/yenileme (`SessionHttp`) de kabuk numarasını gönderir; önceden sürüm kapısını atlıyordu. `x-astera-web` = derlemenin commit'i (`VITE_ASTERA_RELEASE`, Sentry `release` ile aynı); native derleme betiği temiz ağaçta HEAD'i verir, kirli ağaçta hiçbir commit iddia etmez. Sunucu her istek loguna geçerli değerleri `shell` / `web` olarak yazar; CORS `x-astera-web`'e izin verir. |
+| F2–F5 | Başlamadı |
+
+### F0 bulguları (S22, `native-local` debug APK, `localhost:8099` üzerinden)
+
+1. **A → B:** Kendi sunucudan manifest ile indirildi, `set()` ile anında yeniden yüklendi, B `notifyAppReady` çağırdı. İndirme ~2 sn.
+2. **Bozuk C:** "Hazırım" gelmeyince eklenti B'ye kendiliğinden döndü ve C'yi sildi. **Ama** istemci C'yi hatırlamadığı için B açılır açılmaz C'yi yeniden indirip kurdu (30 sn'lik döngü). F3'te başarısız sürüm kalıcı saklanmalı (`updateFailed` olayı) ve aynı sürüm tekrar denenmemeli; düzeltme ancak yeni bir sürümle gelir.
+3. **Delta:** 205 MB'lık paketin (1324 dosya) yalnız değişen 94 dosyası indi: **7,4 MB** (93 JS + `index.html`). Görseller ve sesler hash'leri uygulamadakiyle eşleştiği için inmedi. Yalnız bir ortam değişkeni değişse de Vite JS parça hash'lerini zincirleme değiştiriyor; tipik web deploy'u bu boyda olur.
+4. **Zaman aşımı:** `appReadyTimeout: 10000` verildi ama yeni (pending) paket için eklenti en az **30 sn** bekliyor (`PENDING_BUNDLE_APP_READY_MIN_TIMEOUT_MS`). Bozuk paket en geç ~30 sn'de geri döner; F3 yükleme ekranı bunu hesaba katmalı.
+5. **Gizlilik:** Eklenti varsayılan olarak Capgo bulutuna istatistik gönderiyor (`Stats batch sent successfully`). `statsUrl: ''` ile kapatıldı; üretim yapılandırmasında zorunlu (K1).
+6. **Sunucu şartları:** Native kabuk CSP'si `connect-src`'yi API kökenine kısıtlıyor; `latest.json` API kökeninden (`/ota/`) sunulmalı. Farklı köken kullanılırsa CORS başlığı gerekir. Dosya indirmeleri native tarafta olduğundan CSP'den etkilenmiyor.
+7. Play politika metni F5'ten önce tekrar okunacak (G7; F0'da okunmadı).

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Api, ApiError } from '../src/api/client.js';
 import i18n from '../src/i18n/index.js';
 import { LANGUAGES } from '../src/i18n/languages.js';
-import { useUpdateRequired } from '../src/platform/updateGate.js';
+import { readShellBuild, useUpdateRequired } from '../src/platform/updateGate.js';
 import { UpdateRequired } from '../src/shell/UpdateRequired.js';
 
 const json = (body: unknown, status = 200): Promise<Response> =>
@@ -19,7 +19,8 @@ describe('native update gate', () => {
     const fetcher = vi.fn<typeof fetch>().mockImplementation(() => json({ error: 'BAD_SESSION', message: 'x' }, 401));
     await new Api({ fetch: fetcher, authTransport: null }).me().catch(() => undefined);
     expect(new Headers(fetcher.mock.calls[0]?.[1]?.headers).has('x-astera-build')).toBe(false);
-    vi.stubEnv('VITE_ASTERA_NATIVE_BUILD', '7');
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    await readShellBuild(() => Promise.resolve({ build: '7' }));
     await new Api({ fetch: fetcher, authTransport: null }).me().catch(() => undefined);
     expect(new Headers(fetcher.mock.calls.at(-1)?.[1]?.headers).get('x-astera-build')).toBe('7');
   });

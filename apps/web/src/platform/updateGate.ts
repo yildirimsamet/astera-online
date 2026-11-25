@@ -1,13 +1,33 @@
 import { useSyncExternalStore } from 'react';
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { ECONOMY_PROFILE } from '@astera/rules';
 
 const EVENT = 'astera:update-required';
 let required = false;
+let shell: string | undefined;
 
-/** Every client declares its compiled rules; bundled apps also name their versionCode. */
+/**
+ * The phone's shell build (Android versionCode), read once at start. An OTA web bundle runs on
+ * many shells, so the number cannot be baked into it (OTA F1). A bridge that fails or stalls
+ * leaves the shell unnamed rather than holding the game.
+ */
+export async function readShellBuild(info: () => Promise<{ build: string }> = () => App.getInfo()): Promise<void> {
+  shell = undefined;
+  if (!Capacitor.isNativePlatform()) return;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const { build } = await Promise.race([info(), new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => { reject(new Error('App info timed out')); }, 2000);
+    })]);
+    if (/^[1-9]\d{0,9}$/.test(build)) shell = build;
+  } catch { /* stays unnamed */ } finally { clearTimeout(timer); }
+}
+
+/** Every client declares its compiled rules and web commit; the app also names its shell. */
 export function buildHeader(): Record<string, string> {
-  const build = import.meta.env.VITE_ASTERA_NATIVE_BUILD;
-  return { 'x-astera-rules': ECONOMY_PROFILE.id, ...(build ? { 'x-astera-build': build } : {}) };
+  const web = import.meta.env.VITE_ASTERA_RELEASE;
+  return { 'x-astera-rules': ECONOMY_PROFILE.id, ...(web ? { 'x-astera-web': web } : {}), ...(shell ? { 'x-astera-build': shell } : {}) };
 }
 
 /** Refresh the browser bundle; a query invalidation cannot replace compiled rules. */
