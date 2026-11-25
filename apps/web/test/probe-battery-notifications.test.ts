@@ -49,7 +49,7 @@ it.each(['tr', 'en', 'de', 'fr', 'es', 'ja'])('says all of it in %s', async (lan
   await i18n.changeLanguage(language);
   for (const key of ['notifications.scanShotDown', 'notifications.probeShotDown',
     'planet.probeBattery.eyebrow', 'planet.probeBattery.hint', 'planet.probeBattery.empty', 'planet.probeBattery.offline',
-    'planet.probeBattery.level', 'planet.probeBattery.upgrade', 'planet.probeBattery.upgradeNote', 'planet.probeBattery.upgrading', 'planet.probeBattery.upgradeStarted']) {
+    'planet.probeBattery.level', 'planet.probeBattery.upgrade', 'planet.probeBattery.upgradeNote', 'planet.probeBattery.upgrading', 'planet.probeBattery.upgradeStarted'] as const) {
     expect(i18n.t(key)).not.toBe(key);
   }
   const { ApiError } = await import('../src/api/client.js');
