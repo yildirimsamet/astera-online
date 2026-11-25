@@ -41,14 +41,14 @@ describe('Step 5: +25% Honor fuel surcharge, 3h shield vs 4h fault split, and ba
     await f.db.update(planets).set({ deuterium: taxedFuel + 10 }).where(eq(planets.id, f.planetIds[0]!));
     await expect(launchAttack(
       f.db, f.planetIds[0]!, f.planetIds[1]!, { DART: 20 }, f.clock, f.playerIds[0], true,
-      undefined, false, new Set(), false, 'PLANET', 'PLANET', 0,
+      undefined, false, new Set(), false, 'PLANET', 'PLANET', [], 0,
     )).rejects.toMatchObject({ code: 'HONOR_QUOTE_CHANGED', status: 409 });
 
     // Matching expectedHonorTier: -3 succeeds and charges taxedFuel
     const before = (await f.db.select({ d: planets.deuterium }).from(planets).where(eq(planets.id, f.planetIds[0]!)))[0]!.d;
     const res = await launchAttack(
       f.db, f.planetIds[0]!, f.planetIds[1]!, { DART: 20 }, f.clock, f.playerIds[0], true,
-      undefined, false, new Set(), false, 'PLANET', 'PLANET', -3,
+      undefined, false, new Set(), false, 'PLANET', 'PLANET', [], -3,
     );
     const after = (await f.db.select({ d: planets.deuterium }).from(planets).where(eq(planets.id, f.planetIds[0]!)))[0]!.d;
     expect(res.missionId).toBeTruthy();
