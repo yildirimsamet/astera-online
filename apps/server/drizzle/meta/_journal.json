@@ -1912,6 +1912,13 @@
       "when": 1795624857907,
       "tag": "0272_honor_benefits_v2",
       "breakpoints": true
+    },
+    {
+      "idx": 273,
+      "version": "7",
+      "when": 1795644047163,
+      "tag": "0273_asterium_and_synthesis",
+      "breakpoints": true
     }
   ]
 }

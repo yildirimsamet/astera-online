@@ -459,7 +459,7 @@ Başlangıç sayıları (Ay 1/1,5/2/3 gün — 2026-11-25'te 2/3/4/6'dan yarıya
 |---|---|---|---|
 | 0 | **Ön doğrulama:** İptal kaynağı Başkent'e eklenirken depo tavanı/buffer davranışı; `admiralForFlight` eskortunun `traffic.ts` görünürlüğü; `arenaTeamLedger.ts` (`splitTeamLoot`) 4. kaynak uyumu; `planetView.ts` kaynak/kuyruk yapısı; son migration numarası | Notlar §10.3'e yazılır | ✅ 2026-11-25 |
 | 1 | **Rules (`packages/rules`):** `synthesis.ts` (katalog, bulk hesabı, Ay tembel üretim, etkinlik penceresi, gizlilik yardımcıları) + `arena/farms.ts`, `world.ts`, `economy.ts`, `protocol.ts` (R1–R7) | Rules testleri FAIL → PASS | ✅ `synthesis.test.ts`, `asterium-storm.test.ts`, `arena/asterium-field.test.ts` |
-| 2 | **Şema + Migration:** `player_asterium`, `player_capsules`, `synthesis_jobs`, `moons` 2 sütun, `arena_ships.hold_asterium`, `missions.applied_capsules`, `battle_reports.applied_capsules`, enum'lar | Temiz DB'de migration + canlı uyumluluk | ✅ `0271_asterium_and_synthesis` (merge'de yeniden numaralanabilir), `asterium-schema.test.ts` |
+| 2 | **Şema + Migration:** `player_asterium`, `player_capsules`, `synthesis_jobs`, `moons` 2 sütun, `arena_ships.hold_asterium`, `missions.applied_capsules`, `battle_reports.applied_capsules`, enum'lar | Temiz DB'de migration + canlı uyumluluk | ✅ `0273_asterium_and_synthesis` (canlının 0271 probe / 0272 Onur V2 migration'larından sonra; eski yerel 0271+0272 tek dosyada birleşti), `asterium-schema.test.ts` |
 | 3 | **Sentez servisi & API + Ay pasif üretimi:** `services/synthesis.ts`, `routes/synthesis.ts`, `onSynthesisComplete`, Ay yaşam döngüsü kancaları (`moonBattle`, devir/terk) (S1–S5) | Server testleri FAIL → PASS | ✅ `synthesis.test.ts`, `synthesis-routes.test.ts`, `synthesis-activation.test.ts` (+ `season activate-synthesis`) |
 | 4 | **Yarık etkinliği entegrasyonu:** `arena/server.ts`, `arenaShips.ts`, `arenaTeamLedger.ts`, etkinlik zamanlayıcı & duyuru/bildirim (A1–A5) | Arena & server testleri FAIL → PASS | ✅ `arena-asterium.test.ts`, `arena/sortie.test.ts` fırtına anahtarı; protokol 17 |
 | 5 | **Filo kalkışı & Klan Savaşı kapsül tüketimi:** `mission.ts`, `clanWar.ts`, `routes/planet.ts`, `routes/clan.ts`, recall koruma kuralı (S6–S8, S13) | Server testleri FAIL → PASS || ✅ `capsule-launch.test.ts` (S6, S7, S13, S14), `clan-war-start.test.ts` S8 |
@@ -476,7 +476,7 @@ Başlangıç sayıları (Ay 1/1,5/2/3 gün — 2026-11-25'te 2/3/4/6'dan yarıya
   - Yeni: `packages/rules/src/synthesis.ts`
   - Güncelleme: `packages/rules/src/index.ts`, `packages/rules/src/arena/{farms,world,economy,protocol,bots}.ts`
 - **Server:**
-  - Yeni: `apps/server/src/services/synthesis.ts`, `apps/server/src/routes/synthesis.ts`, `apps/server/drizzle/0272_asterium_and_synthesis.sql` *(merge anında yeniden numaralanabilir)*
+  - Yeni: `apps/server/src/services/synthesis.ts`, `apps/server/src/routes/synthesis.ts`, `apps/server/drizzle/0273_asterium_and_synthesis.sql`
   - Güncelleme: `apps/server/src/db/schema.ts`, `apps/server/src/app.ts`, `apps/server/src/routes/{planet,clan,moon}.ts`, `apps/server/src/services/{mission,clanWar,traffic,radar,planetView,moonBattle,arenaShips,arenaTeamLedger}.ts`, `apps/server/src/worker/handlers.ts`, `apps/server/src/arena/server.ts`, `apps/server/src/services/bots/brain.ts`
 - **Web:**
   - Yeni: `apps/web/src/screens/SynthesisLabScreen.tsx`, `apps/web/src/components/CapsuleSelector.tsx`
