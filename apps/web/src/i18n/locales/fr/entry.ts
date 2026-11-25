@@ -79,6 +79,9 @@ export const app = {
   updateStore: "Mettre à jour sur Google Play",
   updateWebBody: "Les règles du jeu ont changé. Recharge le jeu pour utiliser la version actuelle. Ton compte et ta progression sont conservés sur le serveur.",
   reloadGame: "Recharger le jeu",
+  /** OTA F3: a newer release downloaded while the game is open; the player picks the restart. */
+  updateReady: "Mise à jour prête",
+  updateRestart: "Redémarrer",
   /** F0.9: the screen while nginx holds the maintenance flag. */
   maintenanceTitle: "Maintenance en cours",
   maintenanceBody: "Le serveur est en courte maintenance. Ton compte et ta progression sont conservés sur le serveur.",
@@ -95,6 +98,10 @@ export const loading = {
   sweeping: "Chargement des informations de la galaxie",
   charting: "Chargement des visuels de la galaxie",
   raising: "Préparation de l’affichage du jeu",
+  /** OTA F3: the opening scene downloading a newer release; the size is what this phone still lacks. */
+  update: "Téléchargement de la mise à jour · {{size}}",
+  /** OTA F3: every file of the release is already on the phone. */
+  updateApplying: "Application de la mise à jour",
 } as const;
 
 export const document = {

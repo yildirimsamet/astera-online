@@ -41,7 +41,7 @@ const config: CapacitorConfig = mobile.target === 'web' ? {
   android: { backgroundColor: '#05070D', loggingBehavior: 'none', useLegacyBridge: false },
   plugins: { App: { disableBackButtonHandler: true }, SystemBars: { hidden: true, style: 'DARK', insetsHandling: 'css' },
     CapacitorHttp: { enabled: false }, AsteraSession: { apiUrl: mobile.apiUrl, target: mobile.target },
-    PushNotifications: { presentationOptions: ['sound', 'alert'] }, LocalNotifications: { smallIcon: 'ic_stat_astera', iconColor: '#2EE6C8' } },
+    PushNotifications: { presentationOptions: ['sound', 'alert'] }, CapacitorUpdater: { autoUpdate: false, appReadyTimeout: 10000, httpsOnly: !mobile.cleartext, statsUrl: '' }, LocalNotifications: { smallIcon: 'ic_stat_astera', iconColor: '#2EE6C8' } },
 };
 
 export default config;

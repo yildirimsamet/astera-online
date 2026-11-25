@@ -137,6 +137,9 @@ it('renders an isolated stage nginx vhost while preserving the production browse
   expect(nginx).not.toContain('proxy_pass http://astera_api');
   expect(nginx).not.toMatch(/127\.0\.0\.1:320[012]/);
   expect(nginx).not.toContain('Access-Control-Allow-Origin');
+  // The stage has no app live update of its own and never serves production's (OTA F2).
+  expect(nginx).not.toContain('/var/www/astera-ota');
+  expect(nginx).not.toContain('location = /ota/latest.json');
   expect(nginx).toContain('proxy_buffering off;');
   expect(nginx).toContain("script-src 'nonce-$request_id' 'strict-dynamic'");
   const production = readFileSync(resolve(root, 'deploy/nginx/astera.conf'), 'utf8');

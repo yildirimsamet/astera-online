@@ -97,6 +97,9 @@ export const app = {
   updateStore: "Google Play'de güncelle",
   updateWebBody: "Oyun kuralları güncellendi. Güncel sürümü kullanmak için oyunu yenile. Hesabın ve ilerlemen sunucuda korunur.",
   reloadGame: "Oyunu yenile",
+  /** OTA F3: a newer release downloaded while the game is open; the player picks the restart. */
+  updateReady: "Güncelleme hazır",
+  updateRestart: "Yeniden başlat",
   /** F0.9: the screen while nginx holds the maintenance flag. */
   maintenanceTitle: "Bakım sürüyor",
   maintenanceBody: "Sunucu kısa bir bakımda. Hesabın ve ilerlemen sunucuda korunur.",
@@ -113,6 +116,10 @@ export const loading = {
   sweeping: "Galaksi bilgileri yükleniyor",
   charting: "Galaksi görselleri yükleniyor",
   raising: "Oyun görünümü hazırlanıyor",
+  /** OTA F3: the opening scene downloading a newer release; the size is what this phone still lacks. */
+  update: "Güncelleme indiriliyor · {{size}}",
+  /** OTA F3: every file of the release is already on the phone. */
+  updateApplying: "Güncelleme uygulanıyor",
 } as const;
 
 export const document = {

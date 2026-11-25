@@ -100,6 +100,9 @@ export const app = {
   updateStore: "Google Play でアップデート",
   updateWebBody: "ゲームのルールが更新されました。再読み込みして最新バージョンを使用してください。アカウントと進行状況はサーバーに保存されています。",
   reloadGame: "ゲームを再読み込み",
+  /** OTA F3: a newer release downloaded while the game is open; the player picks the restart. */
+  updateReady: "アップデートの準備完了",
+  updateRestart: "再起動",
   /** F0.9: the screen while nginx holds the maintenance flag. */
   maintenanceTitle: "メンテナンス中",
   maintenanceBody: "サーバーは短いメンテナンス中です。アカウントと進行状況はサーバーに保存されています。",
@@ -119,6 +122,10 @@ export const loading = {
   sweeping: "銀河の情報を読み込み中",
   charting: "銀河の画像を読み込み中",
   raising: "ゲーム画面を準備中",
+  /** OTA F3: the opening scene downloading a newer release; the size is what this phone still lacks. */
+  update: "アップデートをダウンロード中・{{size}}",
+  /** OTA F3: every file of the release is already on the phone. */
+  updateApplying: "アップデートを適用中",
 } as const;
 
 /**

@@ -17,8 +17,9 @@ const COMPRESSIBLE = new Set(['.js', '.css', '.json', '.svg', '.html', '.txt', '
 
 const atSchema = z.object({
   version: z.string().regex(/^[a-f0-9]{40}$/u, 'OTA version must be the full commit'),
-  baseUrl: z.string().url().refine(value => { const url = new URL(value); return url.protocol === 'https:' && url.origin === value; },
-    'OTA base must be an https origin'),
+  // Plain HTTP only for the `native-local` app on USB, as `mobileBuild` allows it.
+  baseUrl: z.string().url().refine(value => { const url = new URL(value); return url.origin === value
+    && (url.protocol === 'https:' || url.protocol === 'http:' && url.hostname === 'localhost'); }, 'OTA base must be an https origin'),
 });
 
 function walk(directory: string): string[] {

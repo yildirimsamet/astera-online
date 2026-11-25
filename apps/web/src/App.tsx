@@ -21,6 +21,7 @@ const ServersScreen = lazy(() => import('./screens/ServersScreen.jsx').then(modu
 import type { Panel, PanelStop } from './screens/GalaxyView.jsx';
 const GalaxyView = lazy(() => import('./screens/GalaxyView.jsx').then(module => ({ default: module.GalaxyView })));
 import { LoadingScreen } from './shell/LoadingScreen.js';
+import { LiveUpdateGate, UpdateReadyCard } from './shell/LiveUpdate.js';
 import { useAmbientMusic } from './lib/music.js';
 import { useSoundEffects } from './lib/sound.js';
 import { WorldProvider } from './api/world.js';
@@ -360,7 +361,12 @@ export function App() {
     history.replaceState(null, '', url);
     setSandbox(false);
   }} />;
-  if (updateRequired) return <UpdateRequired />;
+  // A rules change (426) in the app first looks for the release that brings the new rules (OTA F3).
+  // Its own key: the game's gate has already opened, and React would otherwise keep it, unchecked.
+  if (updateRequired) return <LiveUpdateGate key="update-required" retryMs={30_000}><UpdateRequired /></LiveUpdateGate>;
   if (maintenance) return <MaintenanceScreen endsAt={maintenance.endsAt} />;
-  return <><Suspense fallback={null}><JumpScene /></Suspense><Suspense fallback={<LoadingScreen caption={t('loading.contact')} />}><SessionApp /></Suspense></>;
+  return <LiveUpdateGate key="game">
+    <Suspense fallback={null}><JumpScene /></Suspense><Suspense fallback={<LoadingScreen caption={t('loading.contact')} />}><SessionApp /></Suspense>
+    <UpdateReadyCard />
+  </LiveUpdateGate>;
 }

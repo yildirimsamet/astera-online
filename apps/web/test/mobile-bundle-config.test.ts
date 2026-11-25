@@ -47,5 +47,8 @@ describe('bundled mobile configuration', () => {
     expect(config.plugins?.PushNotifications).toEqual({ presentationOptions: ['sound', 'alert'] });
     // The order reminders wear the same status-bar emblem as the raid alerts.
     expect(config.plugins?.LocalNotifications).toEqual({ smallIcon: 'ic_stat_astera', iconColor: '#2EE6C8' });
+    // OTA F3: the game decides when to update (manual mode), downloads over HTTPS only, and nothing
+    // reaches the updater vendor's cloud: no statistics (K1, own server; F0 showed the default sends them).
+    expect(config.plugins?.CapacitorUpdater).toEqual({ autoUpdate: false, appReadyTimeout: 10000, httpsOnly: true, statsUrl: '' });
   });
 });

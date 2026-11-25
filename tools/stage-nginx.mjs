@@ -6,12 +6,17 @@ import { resolve } from 'node:path';
 const source = readFileSync(resolve(import.meta.dirname, '../deploy/nginx/astera.conf'), 'utf8');
 const upstream = /^upstream astera_api \{[\s\S]*?^\}/m.exec(source)?.[0];
 const gameStart = source.indexOf('# ── the game');
-if (!upstream || gameStart === -1) {
+// The app's live update is production's alone: the stage publishes none and must not serve
+// production's OTA root (its CORS header would also open the gated stage to the app origin).
+const OTA_BLOCK = /\n {4}# ── the app's live update \(OTA[\s\S]*?location \/ota\/ \{ return 404; \}\n/u;
+
+if (!upstream || gameStart === -1 || !OTA_BLOCK.test(source)) {
   throw new Error('Production nginx template no longer has the expected upstream/game blocks');
 }
 
 function stage(text) {
   return text
+    .replace(OTA_BLOCK, '\n')
     .replaceAll('astera_api', 'astera_stage_api')
     .replaceAll('asteraonline.space', 'stage.asteraonline.space')
     .replaceAll('/var/www/astera;', '/var/www/astera-stage;')

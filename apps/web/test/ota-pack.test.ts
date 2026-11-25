@@ -81,6 +81,14 @@ describe('the OTA pack', () => {
     expect(() => { packOta(input, output, at); }).toThrow();
   });
 
+  it('packs for a phone on USB against a local server, and for no other plain-HTTP origin', async () => {
+    const { input, output } = await bundle();
+    packOta(input, output, { version: VERSION, baseUrl: 'http://localhost:8099' });
+    const manifest = JSON.parse(await readFile(join(output, VERSION, 'manifest.json'), 'utf8')) as { files: Entry[] };
+    expect(manifest.files[0]?.download_url.startsWith('http://localhost:8099/ota/files/')).toBe(true);
+    expect(() => { packOta(input, output, { version: VERSION, baseUrl: 'http://localhost.evil.test:8099' }); }).toThrow();
+  });
+
   it('refuses a bundle without its entry document', async () => {
     const { input, output } = await bundle();
     await rm(join(input, 'index.html'));

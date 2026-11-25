@@ -24,6 +24,9 @@ export async function readShellBuild(info: () => Promise<{ build: string }> = ()
   } catch { /* stays unnamed */ } finally { clearTimeout(timer); }
 }
 
+/** The shell build read at start, or undefined on the web and where the bridge did not answer. */
+export const shellBuild = (): string | undefined => shell;
+
 /** Every client declares its compiled rules and web commit; the app also names its shell. */
 export function buildHeader(): Record<string, string> {
   const web = import.meta.env.VITE_ASTERA_RELEASE;
