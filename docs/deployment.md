@@ -587,6 +587,12 @@ If the vhost changes, install and validate it **AFTER the rename**, then reload 
 
 For quiesced in-place publication, keep Nginx stopped, validate/install `deploy/nginx/astera.conf`, run `sudo bash deploy/publish-web.sh "$web_stage" /var/www/astera`, ensure `www-data` access (`D755,F644`), then start Nginx. The helper retains old hashed assets and discards a precompressed index.
 
+### App live update (OTA F2)
+
+`deploy.sh` also builds the same commit as the app bundle (`docker build --target ota-dist --build-context refs=<ARENA_REF_HOST_DIR>`, default `/opt/astera/arena-refs`) and publishes it with `sudo bash deploy/publish-ota.sh "$OTA_STAGE" /var/www/astera-ota` after the web. The OTA root is outside the webroot because the web publish mirrors that with `--delete`. Files go in by content hash and are never deleted; `latest.json` is swapped last and atomically, and the release it replaced stays in `latest.previous.json`.
+
+Rollback in one step: `sudo bash deploy/publish-ota.sh --restore-previous /var/www/astera-ota`. A phone already on the newer bundle sees a different version and downloads the older one. Gate: `curl -fsS https://asteraonline.space/ota/latest.json | jq -r .version` equals the deployed SHA. The OTA root grows by the changed files of each release (~7–10 MB of JS); pruning releases older than a retention window is not automated yet.
+
 External gates:
 
 ```bash

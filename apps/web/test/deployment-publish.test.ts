@@ -277,3 +277,47 @@ it('serves only the public names that resolve, so the certificate can always ren
   expect(vhost).not.toContain('socket.asteraonline.space');
   expect(vhost).toContain('www.asteraonline.space api.asteraonline.space');
 });
+
+/** OTA F2: every web deploy also packs and publishes the app's bundle; phones read `latest.json` first. */
+describe('the OTA release rides every web deploy', () => {
+  const root = resolve(import.meta.dirname, '../../..');
+
+  it('builds the app bundle with the reference pack on the box and packs it by content hash', async () => {
+    const docker = await readFile(resolve(root, 'Dockerfile'), 'utf8');
+    const stage = docker.split(' AS ota-build')[1]?.split('FROM scratch AS ota-dist')[0];
+    expect(stage).toBeDefined();
+    expect(stage).toContain('VITE_ASTERA_PLATFORM=native-production');
+    expect(stage).toContain('--mount=type=bind,from=refs,target=/refs');
+    expect(stage).toContain('--mount=type=secret,id=sentry_auth,env=SENTRY_AUTH_TOKEN');
+    expect(stage).toContain('otaPack.ts');
+    expect(docker).toMatch(/FROM scratch AS ota-dist\nCOPY --from=ota-build \/ota \//u);
+  });
+
+  it('publishes it after the web client, outside the webroot the web publish mirrors', async () => {
+    const deploy = await readFile(resolve(root, 'deploy/deploy.sh'), 'utf8');
+    expect(deploy).toContain('--target ota-dist');
+    expect(deploy).toContain('--build-context "refs=${ARENA_REFS}"');
+    const web = deploy.indexOf('sudo bash deploy/publish-web.sh "$STAGE" "$WEBROOT"');
+    const ota = deploy.indexOf('sudo bash deploy/publish-ota.sh "$OTA_STAGE" "$OTA_ROOT"');
+    expect(web).toBeGreaterThan(0);
+    expect(ota).toBeGreaterThan(web);
+    expect(deploy).toContain('OTA_ROOT=/var/www/astera-ota');
+  });
+
+  it('serves latest uncached and the releases as immutable, each readable from the app', async () => {
+    const nginx = await readFile(resolve(root, 'deploy/nginx/astera.conf'), 'utf8');
+    const block = (start: string) => nginx.split(start)[1]?.split('\n    }')[0] ?? '';
+    const latest = block('location = /ota/latest.json {');
+    expect(latest).toContain('alias /var/www/astera-ota/latest.json;');
+    expect(latest).toContain('add_header Cache-Control "no-store" always;');
+    expect(latest).toContain('add_header Access-Control-Allow-Origin "*" always;');
+    const manifest = block('location ~ "^/ota/(?<ota_release>[a-f0-9]{40})/manifest\\.json$" {');
+    expect(manifest).toContain('alias /var/www/astera-ota/$ota_release/manifest.json;');
+    expect(manifest).toContain('add_header Cache-Control "public, max-age=31536000, immutable";');
+    expect(manifest).toContain('add_header Access-Control-Allow-Origin "*" always;');
+    const files = block('location /ota/files/ {');
+    expect(files).toContain('alias /var/www/astera-ota/files/;');
+    expect(files).toContain('add_header Cache-Control "public, max-age=31536000, immutable";');
+    expect(nginx).toContain('location /ota/ { return 404; }');
+  });
+});

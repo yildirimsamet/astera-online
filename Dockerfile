@@ -69,6 +69,21 @@ RUN --mount=type=secret,id=sentry_auth,env=SENTRY_AUTH_TOKEN pnpm --filter @aste
 FROM scratch AS web-dist
 COPY --from=web-build /app/apps/web/dist /
 
+# THE APP'S LIVE UPDATE (OTA F2). The same commit built as the app bundle, packed by
+# content hash for phones to download (`apps/web/otaPack.ts`). Built on the web stage,
+# so a deploy that already built `web-dist` with the same arguments pays only for
+# this step. The reference pack is never in the build context: the deploy names the
+# box's own copy (`--build-context refs=…`) and it is only bind-mounted here.
+FROM web-build AS ota-build
+ARG OTA_API_URL=https://asteraonline.space
+ENV VITE_ASTERA_PLATFORM=native-production VITE_ASTERA_API_URL=$OTA_API_URL VITE_ARENA=1 VITE_GA_ID="" ASTERA_REF_ASSETS_DIR=/refs
+RUN --mount=type=bind,from=refs,target=/refs --mount=type=secret,id=sentry_auth,env=SENTRY_AUTH_TOKEN \
+    pnpm --filter @astera/web exec vite build --configLoader runner \
+ && pnpm --filter @astera/web exec tsx otaPack.ts mobile-dist/native-production /ota "$ASTERA_GIT_COMMIT" "$OTA_API_URL"
+
+FROM scratch AS ota-dist
+COPY --from=ota-build /ota /
+
 
 # ── the server ───────────────────────────────────────────────────────────────
 # `--prod` drops the dev tree; `--filter @astera/server...` takes the server and

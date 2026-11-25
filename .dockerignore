@@ -15,6 +15,7 @@ dist
 **/mobile-dist
 out
 .deploy-web
+.deploy-ota
 
 # Linux images build server/web only; native projects contain local SDKs and binaries.
 apps/web/android

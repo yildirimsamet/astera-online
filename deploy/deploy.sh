@@ -186,6 +186,21 @@ docker build --target web-dist --build-arg "VITE_GA_ID=${GA_ID}" --build-arg "VI
 [[ -n "$GA_ID" ]] && echo "  analytics: $GA_ID" || echo "  analytics: not configured"
 [[ -f "$STAGE/index.html" ]] || { echo "Client build produced no index.html."; exit 1; }
 
+# THE APP'S LIVE UPDATE (OTA F2): the same commit as the app bundle, packed by content
+# hash. Same build arguments as above, so Docker reuses the web stage and only the app
+# build runs. The reference pack is the arena's copy on this box; without it the app
+# bundle cannot be built and the deploy stops here, before anything is published.
+say "Building the app's live update"
+OTA_STAGE="$ROOT/.deploy-ota"
+OTA_ROOT=/var/www/astera-ota
+rm -rf "$OTA_STAGE"
+ARENA_REFS=$(grep -E '^ARENA_REF_HOST_DIR=' .env | cut -d= -f2- || true)
+ARENA_REFS=${ARENA_REFS:-/opt/astera/arena-refs}
+docker build --target ota-dist --build-context "refs=${ARENA_REFS}" --build-arg "VITE_GA_ID=${GA_ID}" --build-arg "VITE_ARENA=${ARENA}" \
+  --build-arg "VITE_ASTERA_PLAYER_ANALYTICS=${PLAYER_ANALYTICS}" --build-arg "ASTERA_GIT_COMMIT=${PLAYER_ANALYTICS_REVISION}" \
+  --secret id=sentry_auth,env=SENTRY_AUTH_TOKEN --output "type=local,dest=$OTA_STAGE" .
+[[ -f "$OTA_STAGE/latest.json" ]] || { echo "App update build produced no latest.json."; exit 1; }
+
 # PRE-COMPRESS, so nginx never spends a cycle on it. `gzip_static on` serves the
 # `.gz` beside a file when the client accepts it; built here at level 9 rather
 # than per request at nginx's default level 1, which is worth ~100 KB on the one
@@ -212,6 +227,15 @@ sudo mkdir -p "$WEBROOT"
 sudo bash deploy/publish-web.sh "$STAGE" "$WEBROOT"
 sudo chown -R www-data:www-data "$WEBROOT"
 rm -rf "$STAGE"
+
+# After the web, and latest.json last inside the script: a phone that sees the new
+# release finds every file it names. Rollback: `sudo bash deploy/publish-ota.sh
+# --restore-previous /var/www/astera-ota`.
+say "Publishing the app's live update to $OTA_ROOT"
+sudo mkdir -p "$OTA_ROOT"
+sudo bash deploy/publish-ota.sh "$OTA_STAGE" "$OTA_ROOT"
+sudo chown -R www-data:www-data "$OTA_ROOT"
+rm -rf "$OTA_STAGE"
 
 # ── THE VHOST GOES IN AFTER THE CLIENT, AND THE ORDER IS LOAD-BEARING ────────
 #

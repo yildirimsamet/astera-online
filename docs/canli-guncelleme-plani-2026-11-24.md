@@ -101,7 +101,8 @@ Android uygulaması oyunun web kodunu içine paketliyor (`bundled: true`, `mobil
 | Owner kararları K1–K3 | Verildi (2026-11-24) |
 | F0 Spike | Bitti (2026-11-25, S22). Karar: `@capgo/capacitor-updater` 8.54.2 (MPL-2.0), Capacitor 8 ile çalışıyor; kendi eklentimize gerek yok. Bulgular aşağıda. |
 | F1 Kimlikler | Bitti (2026-11-25). `x-astera-build` açılışta `App.getInfo()` ile native'den okunur (2 sn sınır; okunamazsa gönderilmez), gömülü `VITE_ASTERA_NATIVE_BUILD` kaldırıldı. Native giriş/yenileme (`SessionHttp`) de kabuk numarasını gönderir; önceden sürüm kapısını atlıyordu. `x-astera-web` = derlemenin commit'i (`VITE_ASTERA_RELEASE`, Sentry `release` ile aynı); native derleme betiği temiz ağaçta HEAD'i verir, kirli ağaçta hiçbir commit iddia etmez. Sunucu her istek loguna geçerli değerleri `shell` / `web` olarak yazar; CORS `x-astera-web`'e izin verir. |
-| F2–F5 | Başlamadı |
+| F2 Yayın | Bitti (2026-11-26). `deploy.sh` aynı commit'i Docker `ota-dist` hedefiyle native paket olarak derler (VPS'teki ref paketi `--build-context refs=` ile salt-okunur bağlanır) ve `apps/web/otaPack.ts` ile paketler: `files/<sha256><uzantı>` (+`.gz`), `<sha>/manifest.json` (`file_name`, `file_hash`, `download_url`, `size`), `latest.json` (`version`, `minShell`, `manifest`). `deploy/publish-ota.sh` `/var/www/astera-ota`'ya yazar: önce dosyalar, sonra manifest, en son atomik `latest.json`; önceki sürüm `latest.previous.json`'da, `--restore-previous` tek adımda geri alır. nginx: `latest.json` `no-store` + CORS, manifest ve dosyalar 1 yıl immutable. Kök webroot dışında, çünkü web yayını webroot'u `--delete` ile eşitliyor. Plandaki `rules` alanı çıkarıldı: 426'da istemci yine `latest.json`'a bakar, ayrı alana gerek yok. `OTA_MIN_SHELL = 1` (güncelleyicisiz kabuk zaten okumaz). Eski sürümlerin temizliği henüz yok. |
+| F3–F5 | Başlamadı |
 
 ### F0 bulguları (S22, `native-local` debug APK, `localhost:8099` üzerinden)
 
