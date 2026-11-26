@@ -11,7 +11,7 @@ import { GameError } from '../planet.js';
 import { BOTS } from './personas.js';
 import {
   BOT_ACTIVITY_BUCKET_MS, BOT_SEAT_BATCH, BOT_SEAT_INTERVAL_MS, NO_BOT_FLOORS, botAwakeTarget, botQuietAt, botSeatTarget,
-  type BotFloors, type BotSessionCandidate,
+  midSeasonSeatGapMs, type BotFloors, type BotSessionCandidate,
 } from './population.js';
 import { isPerson, peopleIn } from '../people.js';
 import { runBotTurn, type BotSeat } from './brain.js';
@@ -78,7 +78,7 @@ export async function ensureBotSeats(
   minSeats = 0,
 ): Promise<number> {
   const live = await db
-    .select({ id: seasons.id, code: shards.code })
+    .select({ id: seasons.id, code: shards.code, startsAt: seasons.startsAt })
     .from(seasons)
     .innerJoin(shards, eq(shards.id, seasons.shardId))
     .where(and(eq(seasons.status, 'live'), eq(shards.role, 'MAIN')))
@@ -129,10 +129,19 @@ export async function ensureBotSeats(
     const hereRows = placed.filter((row) => row.seasonId === season.id);
     const here = hereRows.filter((row) => row.retiredAt === null).length;
     const target = botSeatTarget(await peopleIn(db, season.id), perGalaxy, minSeats);
-    const recent = hereRows.filter((row) => row.joinedAt > new Date(clock.now().getTime() - BOT_SEAT_INTERVAL_MS)).length;
+    const now = clock.now().getTime();
+    let pace: number;
+    if (now - season.startsAt.getTime() >= BOTS.trickleAfterMinutes * 60_000) {
+      // Past the first day: one arrival, then a seeded four-to-eight-hour wait (F1.2).
+      const latest = Math.max(Number.NEGATIVE_INFINITY, ...hereRows.map((row) => row.joinedAt.getTime()));
+      pace = now - latest >= midSeasonSeatGapMs(season.id, hereRows.length) ? 1 : 0;
+    } else {
+      const recent = hereRows.filter((row) => row.joinedAt.getTime() > now - BOT_SEAT_INTERVAL_MS).length;
+      pace = Math.max(0, BOT_SEAT_BATCH - recent);
+    }
     const need = Math.min(
       Math.max(0, target - here),
-      Math.max(0, BOT_SEAT_BATCH - recent),
+      pace,
       Math.max(0, MULTI_WORLD.botSlots - hereRows.length),
     );
     if (free.length < target - here) reportShortRoster(log, season.id, here + free.length, target);

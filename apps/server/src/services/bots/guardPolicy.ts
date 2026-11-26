@@ -4,15 +4,17 @@ import type { Queryable } from '../../db/client.js';
 import { botProfiles, players } from '../../db/schema.js';
 import { planBotSessions, type BotSessionCandidate, type BotSessionPlan } from './population.js';
 
-/** A role, independent of public identity. Retired identities retain their place in this selection. */
-export const guardIds = (rows: readonly { playerId: string; persona: string; ordinal: number }[]): Set<string> =>
-  new Set(rows.filter(row => row.persona === 'RAIDER').toSorted((a, b) => a.ordinal - b.ordinal)
-    .slice(0, 2).map(row => row.playerId));
+/**
+ * The guards are the ELITE commanders (owner plan 2026-11-26, F2), whatever their habit. A role,
+ * independent of public identity; a retired identity keeps its strength.
+ */
+export const guardIds = (rows: readonly { playerId: string; strength: string }[]): Set<string> =>
+  new Set(rows.filter(row => row.strength === 'ELITE').map(row => row.playerId));
 
 export async function guardPlayerIds(db: Queryable, seasonId: string): Promise<Set<string>> {
-  return guardIds(await db.select({ playerId: players.id, persona: botProfiles.persona, ordinal: botProfiles.ordinal })
+  return guardIds(await db.select({ playerId: players.id, strength: botProfiles.strength })
     .from(players).innerJoin(botProfiles, eq(botProfiles.accountId, players.accountId))
-    .where(and(eq(players.seasonId, seasonId), eq(botProfiles.persona, 'RAIDER'))));
+    .where(and(eq(players.seasonId, seasonId), eq(botProfiles.strength, 'ELITE'))));
 }
 
 /** Three paid development sessions; jitter is stable across restarts, distinct per identity and day. */

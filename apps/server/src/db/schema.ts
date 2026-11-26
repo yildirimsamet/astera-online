@@ -526,6 +526,11 @@ export const botProfiles = pgTable('bot_profiles', {
   accountId: uuid('account_id').primaryKey().references(() => accounts.id),
   ordinal: integer('ordinal').notNull(),
   persona: text('persona').notNull(),
+  /**
+   * HOW FAR THIS COMMANDER MAY GROW: NORMAL, STRONG or ELITE (owner plan 2026-11-26, F2).
+   * Like `persona`, the row is the authority; ELITE commanders are the guards.
+   */
+  strength: text('strength').notNull().default('NORMAL'),
   /** Identity survives retirement; only the worker roster stops using this row. */
   retiredAt: timestamp('retired_at', { withTimezone: true }),
   /** A session is tied to a seasonal player, never carried into the next season. */
@@ -542,6 +547,7 @@ export const botProfiles = pgTable('bot_profiles', {
 }, (t) => [
   uniqueIndex('bot_profiles_ordinal_idx').on(t.ordinal),
   index('bot_profiles_due_idx').on(t.nextActionAt),
+  check('bot_profiles_strength_check', sql`${t.strength} IN ('NORMAL', 'STRONG', 'ELITE')`),
 ]);
 
 /**

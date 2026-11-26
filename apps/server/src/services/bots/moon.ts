@@ -4,11 +4,9 @@ import {
   BUILD,
   MOBILE_HULLS,
   MOON,
-  combatValue,
   distance,
   effectiveCracks,
   fleetCount,
-  fleetValue,
   hullBulk,
   jumpCapacity,
   scanRange,
@@ -18,7 +16,7 @@ import {
 import type { Clock } from '../../clock.js';
 import type { Db } from '../../db/client.js';
 import {
-  missions, moons, notifications, planets, probeWorldMemories, strategicAssets, units,
+  missions, moons, planets, probeWorldMemories, strategicAssets, units,
 } from '../../db/schema.js';
 import { rememberedWorlds } from '../intel.js';
 import { holdsLunarCapture, seasonHasMoons } from '../moon.js';
@@ -31,6 +29,7 @@ import { completeResearch } from '../research.js';
 import { launchDeathStar } from '../strategic.js';
 import { MOON_LOCATION } from '../unitLocation.js';
 import { BOTS, type BotPersona } from './personas.js';
+import { raidWarning } from './defence.js';
 
 /**
  * BOT MOON HABITS (Ay F8, plan §10.1; S53, S54).
@@ -162,37 +161,8 @@ export async function maybeEscapeToMoon(
     .where(eq(moons.planetId, seat.planetId));
   if (!moon) return view;
 
-  const warned = await db.select({ refId: notifications.refId, payload: notifications.payload })
-    .from(notifications)
-    .where(and(eq(notifications.playerId, seat.playerId), eq(notifications.kind, 'incoming_fleet')));
-  const refIds = warned.map((row) => row.refId).filter((id): id is string => id !== null);
-
-  let threatOnPlanet = false;
-  let outmatched = false;
-  if (refIds.length > 0) {
-    const incoming = await db.select({
-      id: missions.id, targetPlanetId: missions.targetPlanetId, targetBody: missions.targetBody,
-    }).from(missions).where(and(
-      inArray(missions.id, refIds),
-      eq(missions.status, 'in_flight'),
-      eq(missions.targetPlanetId, seat.planetId),
-      eq(missions.targetBody, 'PLANET'),
-    ));
-    if (incoming.length > 0) {
-      threatOnPlanet = true;
-      const incomingIds = new Set(incoming.map((m) => m.id));
-      const myDefence = combatValue(view.fleet) + fleetValue(view.ground);
-      for (const row of warned) {
-        if (!row.refId || !incomingIds.has(row.refId)) continue;
-        const payload = row.payload as { fleet?: Fleet; mass?: string } | null;
-        if (payload?.fleet) {
-          if (combatValue(payload.fleet) >= myDefence * 0.85) outmatched = true;
-        } else if (payload?.mass === 'HEAVY' || payload?.mass === 'MEDIUM' || !payload?.mass) {
-          outmatched = true;
-        }
-      }
-    }
-  }
+  // Its own radar warnings only (information parity); the same reading the turn's defence uses.
+  const { warned: threatOnPlanet, outmatched } = await raidWarning(db, seat.playerId, seat.planetId, view);
 
   if (threatOnPlanet) {
     if (!outmatched || rng() >= persona.moon.escapeChance) return view;

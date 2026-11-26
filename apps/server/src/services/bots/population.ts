@@ -1,4 +1,5 @@
-import { GALAXY_EVENTS, MULTI_WORLD } from '@astera/rules';
+import { GALAXY_EVENTS, MULTI_WORLD, hashSeed, mulberry32 } from '@astera/rules';
+import { BOTS } from './personas.js';
 
 /** Initial balance hypothesis. The operator cap and the authored address pool still win. */
 const BOT_SHARE = 0.25;
@@ -27,6 +28,16 @@ export function botSeatTarget(people: number, operatorCap: number, floor = 0): n
   const cap = Math.min(MULTI_WORLD.botSlots, nonNegativeInteger(operatorCap));
   if (n === 0 || cap === 0) return 0;
   return Math.min(cap, Math.max(2, Math.round(n * BOT_SHARE), nonNegativeInteger(floor)));
+}
+
+/**
+ * How long a galaxy past its first day waits after its `seatedHere`-th commander before the
+ * next one (`BOTS.trickleGapHours`). Seeded, so every worker reads the same wait.
+ */
+export function midSeasonSeatGapMs(seasonId: string, seatedHere: number): number {
+  const { min, max } = BOTS.trickleGapHours;
+  const roll = mulberry32(hashSeed('astera:bots:seat-gap', seasonId, seatedHere))();
+  return Math.round((min + roll * (max - min)) * 3_600_000);
 }
 
 /** The floor holds even with nobody online, so the first commander to arrive finds company. */

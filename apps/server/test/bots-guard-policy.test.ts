@@ -7,12 +7,16 @@ const candidate = (n: number): BotSessionCandidate => ({ accountId: `account-${S
   playerId: `player-${String(n)}`, ordinal: n, sessionPlayerId: null, startedAt: null, untilAt: null });
 
 describe('guard identity and activity', () => {
-  it('uses only the first two Raider identities, irrespective of input order or retirement', () => {
-    const rows = [13, 9, 17, 8].map(ordinal => ({ ordinal, playerId: `p${String(ordinal)}`,
-      persona: ordinal === 8 ? 'BUILDER' : 'RAIDER' }));
-    expect([...guardIds(rows)]).toEqual(['p9', 'p13']);
-    expect([...guardIds(rows.toReversed())]).toEqual(['p9', 'p13']);
-    expect(guardIds(rows.filter(r => r.persona !== 'RAIDER')).size).toBe(0);
+  it('is every ELITE commander, whatever its habit, and nobody else (owner plan 2026-11-26, F2)', () => {
+    const rows = [
+      { playerId: 'p8', strength: 'ELITE' },
+      { playerId: 'p9', strength: 'NORMAL' },
+      { playerId: 'p13', strength: 'STRONG' },
+      { playerId: 'p17', strength: 'ELITE' },
+    ];
+    expect([...guardIds(rows)].toSorted()).toEqual(['p17', 'p8']);
+    expect([...guardIds(rows.toReversed())].toSorted()).toEqual(['p17', 'p8']);
+    expect(guardIds(rows.filter(r => r.strength !== 'ELITE')).size).toBe(0);
   });
 
   it('gives each guard three staggered daytime windows and none during quiet hours', () => {

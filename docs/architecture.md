@@ -529,8 +529,9 @@ pnpm season wipe --yes                 # END EVERYTHING and open fresh galaxies
 # The commanders the server plays (D159). Names are typed by hand and never generated;
 # the worker seats them once BOTS_ENABLED=true and the roster has names in it.
 pnpm bots add "Kara Şahin" "Yıldız"    # prints each login once, then never again
-pnpm bots list
+pnpm bots list                         # also prints each one's strength
 pnpm bots retire "Yıldız"              # stops driving it; the world stays and goes quiet
+pnpm bots strength "Yıldız" STRONG     # NORMAL (Core 16) | STRONG (Core 20) | ELITE (no ceiling, the guards)
 ```
 
 

@@ -260,6 +260,15 @@ export const BOTS = {
    */
   ceasefireMinutes: 24 * 60,
 
+  /**
+   * AFTER A GALAXY'S FIRST DAY, NEW COMMANDERS ARRIVE ONE AT A TIME. Owner plan 2026-11-26
+   * (docs/bot-plani-2026-11-26.md F1.2): raising the floor mid-season must not drop a dozen
+   * new worlds onto the disc in one afternoon. Each galaxy seats one, then waits a seeded
+   * four to eight hours before the next (`midSeasonSeatGapMs`), the way people trickle in.
+   */
+  trickleAfterMinutes: 24 * 60,
+  trickleGapHours: { min: 4, max: 8 },
+
   /** How long a commander sits between two things they do. */
   turnGapMinutes: { min: 7, max: 23 },
   /**
@@ -342,6 +351,23 @@ export const BOTS = {
   bullyTargetBias: 8,
 
   /**
+   * A COMMANDER WHO BEATS ONE OF THEM IS ANSWERED. Owner plan 2026-11-26 (F3.3, option B):
+   * a DECISIVE or PARTIAL raid on a bot opens a grudge for a day. The bot looks at that
+   * commander first and answers once, outside `botRaidsPerPersonPerDay`; one person takes at
+   * most `revengePerPersonPerDay` answers from the whole roster. Every shield, the newcomer
+   * grace and the band still bind; only `playerCoreFloorGap` does not, since they chose the fight.
+   */
+  grudgeHours: 24,
+  grudgeTargetBias: 12,
+  revengePerPersonPerDay: 2,
+
+  /**
+   * HOW OFTEN A WARNED, OUTMATCHED COMMANDER REACTS (F3.2): takes the fleet out and spends the
+   * store. A guard nearly always; an ordinary commander now and then, like most people.
+   */
+  reflexChance: { NORMAL: 0.25, STRONG: 0.6, ELITE: 0.9 },
+
+  /**
    * THE WINGS A RAID MAY FLY, SMALLEST FIRST, as shares of the line. The judgement
    * takes the first that wins; the top leaves a garrison, as a person does.
    */
@@ -393,3 +419,32 @@ export const BOTS = {
    */
   sweepEveryMs: 20_000,
 } as const;
+
+/**
+ * HOW FAR ONE OF THEM MAY GROW. Owner plan 2026-11-26 (docs/bot-plani-2026-11-26.md F2).
+ *
+ * NORMAL keeps the middle ceiling above. STRONG climbs to Core 20 with twice the fleet and
+ * flies its habit's lines at the best tier it can build. ELITE has no ceiling at all, takes
+ * the guard route and may reach the top of the ladder and the podium — the owner's choice,
+ * 2026-11-26, replacing "bots stop in the middle" for these two. Not one of them is given a
+ * resource: the strength is only how far the commander is allowed to go on what it earns.
+ */
+export type BotStrength = 'NORMAL' | 'STRONG' | 'ELITE';
+
+export const STRENGTH_CEILINGS: Record<BotStrength, { core: number; fleetValue: number }> = {
+  NORMAL: { core: BOTS.coreCeiling, fleetValue: BOTS.fleetValueCeiling },
+  STRONG: { core: 20, fleetValue: 2 * BOTS.fleetValueCeiling },
+  ELITE: { core: Number.POSITIVE_INFINITY, fleetValue: Number.POSITIVE_INFINITY },
+};
+
+/** The research a STRONG commander adds to its habit's list, so the next tier of hull opens. */
+export const STRONG_RESEARCH: readonly BotResearchWant[] = [
+  { project: 'STARSHIP_ENGINEERING', level: 2 },
+  { project: 'SHIP_POWER', level: 2 },
+  { project: 'SHIP_ARMOR', level: 2 },
+  { project: 'SHIP_SHIELDS', level: 1 },
+];
+
+/** A stored `bot_profiles.strength`; anything unrecognised plays as NORMAL. */
+export const strengthNamed = (value: string): BotStrength =>
+  value === 'STRONG' || value === 'ELITE' ? value : 'NORMAL';

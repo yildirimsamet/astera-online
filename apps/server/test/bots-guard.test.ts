@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { HULLS, MULTI_WORLD, buildingCost, hashSeed, mulberry32, type BuildingId } from '@astera/rules';
 import { botProfiles, buildOrders, playerResearch, players, researchOrders, rewardGrants, seasons, units } from '../src/db/schema.js';
-import { addBot, retireBot } from '../src/services/bots/roster.js';
+import { addBot, retireBot, setBotStrength } from '../src/services/bots/roster.js';
 import { ensureBotSeats, runBotSweep } from '../src/services/bots/sweep.js';
 import { drawLane, openLanes, probeCandidates, runBotTurn, type BotSeat } from '../src/services/bots/brain.js';
 import { personaNamed } from '../src/services/bots/personas.js';
@@ -30,6 +30,7 @@ beforeEach(async () => {
   await f.db.update(seasons).set({ rulesetVersion: MULTI_WORLD.rulesetVersion }).where(eq(seasons.id, f.seasonId));
   await addBot(f.db, 'BuilderFixture', f.clock);
   const bot = await addBot(f.db, 'GuardFixture', f.clock);
+  expect(await setBotStrength(f.db, 'GuardFixture', 'ELITE')).toBe(true);
   await ensureBotSeats(f.db, f.clock, silent);
   const [p] = await f.db.select().from(players).where(eq(players.accountId, bot.accountId));
   const worlds = await f.db.query.planets.findMany();
@@ -40,7 +41,7 @@ beforeEach(async () => {
 afterAll(async () => { await (await testDb()).close(); });
 
 describe('paid guard development in an active season', () => {
-  it('selects the existing Raider account without changing its profile or minting resources', async () => {
+  it('selects the ELITE account without changing its profile or minting resources', async () => {
     const before = await f.db.select().from(botProfiles);
     expect(await guardPlayerIds(f.db, f.seasonId)).toContain(seat.playerId);
     expect(await f.db.select().from(botProfiles)).toEqual(before);

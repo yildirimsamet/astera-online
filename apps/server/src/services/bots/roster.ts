@@ -7,7 +7,7 @@ import { hashPassword } from '../../auth/password.js';
 import { normaliseUsername, USERNAME_PATTERN } from '../../auth/credentials.js';
 import { GameError } from '../planet.js';
 import { refreshLegacyAwards } from '../legacy.js';
-import { personaFor, type BotPersonaId } from './personas.js';
+import { personaFor, strengthNamed, type BotPersonaId, type BotStrength } from './personas.js';
 import type { CountryCode } from '@astera/rules';
 
 /**
@@ -32,6 +32,7 @@ export interface BotRosterEntry {
   country: CountryCode;
   ordinal: number;
   persona: BotPersonaId;
+  strength: BotStrength;
   nextActionAt: Date;
 }
 
@@ -175,6 +176,7 @@ export async function addBot(db: Db, displayName: string, clock: Clock, country:
       country: account.country,
       ordinal: next,
       persona: personaFor(next).id,
+      strength: 'NORMAL',
       nextActionAt: clock.now(),
       password,
     };
@@ -187,6 +189,7 @@ export async function listBots(db: Db): Promise<BotRosterEntry[]> {
       accountId: botProfiles.accountId,
       ordinal: botProfiles.ordinal,
       persona: botProfiles.persona,
+      strength: botProfiles.strength,
       nextActionAt: botProfiles.nextActionAt,
       displayName: accounts.displayName,
       username: accounts.username,
@@ -196,7 +199,17 @@ export async function listBots(db: Db): Promise<BotRosterEntry[]> {
     .innerJoin(accounts, eq(accounts.id, botProfiles.accountId))
     .where(isNull(botProfiles.retiredAt))
     .orderBy(asc(botProfiles.ordinal));
-  return rows.map((row) => ({ ...row, persona: row.persona as BotPersonaId }));
+  return rows.map((row) => ({ ...row, persona: row.persona as BotPersonaId, strength: strengthNamed(row.strength) }));
+}
+
+/** Set how far one commander may grow (owner plan 2026-11-26, F2). False when no such commander. */
+export async function setBotStrength(db: Db, displayName: string, strength: BotStrength): Promise<boolean> {
+  const account = (await listBots(db)).find((row) => sameName(row.displayName, displayName));
+  if (!account) return false;
+  const changed = await db.update(botProfiles).set({ strength })
+    .where(and(eq(botProfiles.accountId, account.accountId), isNull(botProfiles.retiredAt)))
+    .returning({ ordinal: botProfiles.ordinal });
+  return changed.length > 0;
 }
 
 /**

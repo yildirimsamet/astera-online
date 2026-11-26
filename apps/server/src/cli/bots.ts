@@ -16,20 +16,23 @@
  *   pnpm bots add "Kara Şahin" "Yıldız" "Poyraz"
  *   pnpm bots list
  *   pnpm bots retire "Poyraz"
+ *   pnpm bots strength "Poyraz" ELITE      # NORMAL | STRONG | ELITE (owner plan 2026-11-26, F2)
  */
 import { parseArgs } from 'node:util';
 import { createDb } from '../db/client.js';
 import { loadDotEnv, loadEnv } from '../env.js';
 import { systemClock } from '../clock.js';
 import { GameError } from '../services/planet.js';
-import { addBot, listBots, retireBot } from '../services/bots/roster.js';
+import { addBot, listBots, retireBot, setBotStrength } from '../services/bots/roster.js';
+import type { BotStrength } from '../services/bots/personas.js';
 import { syncBotIdentities } from '../services/bots/identities.js';
 
 const { positionals } = parseArgs({ allowPositionals: true, options: {} });
 const [command, ...rest] = positionals;
 
 const usage = (): void => {
-  console.error('usage: bots add "<name>" ["<name>" ...] | bots list | bots retire "<name>" | bots sync');
+  console.error('usage: bots add "<name>" ["<name>" ...] | bots list | bots retire "<name>" | bots sync'
+    + ' | bots strength "<name>" NORMAL|STRONG|ELITE');
   process.exitCode = 1;
 };
 
@@ -77,7 +80,7 @@ if (command === undefined) {
         for (const row of roster) {
           console.log(
             `${String(row.ordinal).padStart(3)}  ${row.displayName.padEnd(20)}  ${row.country}`
-            + `  ${row.persona.padEnd(10)}  next ${row.nextActionAt.toISOString()}`,
+            + `  ${row.persona.padEnd(10)}  ${row.strength.padEnd(6)}  next ${row.nextActionAt.toISOString()}`,
           );
         }
         console.log(`\n${String(roster.length)} available · ${String(env.BOTS_PER_GALAXY)} maximum per live galaxy`);
@@ -103,6 +106,19 @@ if (command === undefined) {
           ? `- ${name} is off the roster. Its world stays exactly where it is and goes quiet.`
           : `! no commander named ${name}`);
         if (!removed) process.exitCode = 1;
+        break;
+      }
+      case 'strength': {
+        const [name, value] = rest;
+        const strength = (['NORMAL', 'STRONG', 'ELITE'] as const satisfies readonly BotStrength[])
+          .find((option) => option === value?.toUpperCase());
+        if (name === undefined || strength === undefined || rest.length !== 2) {
+          usage();
+          break;
+        }
+        const changed = await setBotStrength(db, name, strength);
+        console.log(changed ? `= ${name} is ${strength}` : `! no commander named ${name}`);
+        if (!changed) process.exitCode = 1;
         break;
       }
       default:

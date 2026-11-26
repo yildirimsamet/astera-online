@@ -5,6 +5,7 @@ import {
   BUILD,
   COMBAT_HULLS,
   HULLS,
+  MULTI_WORLD,
   PROBE,
   INSTRUMENT_IDS,
   NOTIFICATION_CENTER,
@@ -22,6 +23,7 @@ import {
   type ResearchProjectId,
   type Resources,
   type SatelliteId,
+  type TechLevels,
   alertPrice,
   buildingCost,
   distance,
@@ -44,7 +46,7 @@ import {
 import type { Db } from '../../db/client.js';
 import { type Clock, minutesSince } from '../../clock.js';
 import {
-  battleReports, buildings, missions, notificationCenters, planets, players, probeReports, probeShots, probeWorldMemories, seasons,
+  battleReports, botProfiles, buildings, missions, notificationCenters, planets, players, probeReports, probeShots, probeWorldMemories, seasons,
 } from '../../db/schema.js';
 import { GameError } from '../planet.js';
 import { buildNotificationCenter, commanderDeuteriumPerHour, fundNotificationCenter } from '../notificationCenter.js';
@@ -63,14 +65,22 @@ import { sensorHistoryForPlayer } from '../sensorHistory.js';
 import { protectionFrom } from '../attackProtection.js';
 import { peakCoreLevels } from '../player.js';
 import { researchLevels, techOf } from '../researchState.js';
-import type { PlanetView } from '../planetView.js';
-import { BOTS, personaNamed, type BotPersona } from './personas.js';
-import { guardPlayerIds } from './guardPolicy.js';
+import { planetView, type PlanetView } from '../planetView.js';
+import { launchSettlement } from '../movement.js';
+import { startFaultRepair } from '../faultRepair.js';
+import {
+  BOTS, STRENGTH_CEILINGS, STRONG_RESEARCH, personaNamed, strengthNamed, type BotPersona, type BotStrength,
+} from './personas.js';
 import { developGuard } from './guard.js';
 import {
   isBully, planPirateRaid, planWorldRaid, researchOf, type ForecastBudget, type WallReading,
 } from './judgement.js';
 import { tendBotMoon } from './moon.js';
+import { fleetSave, raidWarning } from './defence.js';
+import {
+  COLONY_BUILD_ORDER, caretakerRaidInFlight, colonyReach, heldClaim, heldColonies, settlersOwned,
+  nearestCaretaker, wantsColony, withoutSettlers,
+} from './colonies.js';
 import { raidCapsules, tendBotSynthesis } from './synthesis.js';
 
 /**
@@ -136,9 +146,15 @@ export async function runBotTurn(
   seat: BotSeat,
   log: FastifyBaseLogger,
 ): Promise<BotTurnResult> {
-  const guard = seat.persona === 'RAIDER' && (await guardPlayerIds(db, seat.seasonId)).has(seat.playerId);
+  // The profile row is the authority on strength, as it is on habit (F2). ELITE are the guards.
+  const [profile] = await db.select({ strength: botProfiles.strength }).from(botProfiles)
+    .where(eq(botProfiles.accountId, seat.accountId));
+  const strength = strengthNamed(profile?.strength ?? 'NORMAL');
+  const guard = strength === 'ELITE';
   const basePersona = personaNamed(seat.persona);
-  const persona: BotPersona = guard ? { ...basePersona, composition: { CORSAIR: 0.4, CATACLYSM: 0.35, PALADIN: 0.25 } } : basePersona;
+  const persona: BotPersona = strength === 'STRONG'
+    ? { ...basePersona, research: [...basePersona.research, ...STRONG_RESEARCH] }
+    : basePersona;
   const did: string[] = [];
   const rng = mulberry32(hashSeed('astera:bots:turn', seat.playerId, clock.now().getTime()));
 
@@ -156,12 +172,19 @@ export async function runBotTurn(
   }
 
   view = await repairDocked(db, clock, seat, view, did, log);
+  const age = await flightAge(db, seat, clock.now());
+  // Seeded by the raid, not the turn: one decision for each raid, and none of the turn's other rolls shift.
+  const answer = await answerWarnings(db, clock, seat, persona, strength, view, did, log,
+    (raidId) => mulberry32(hashSeed('astera:bots:reflex', seat.playerId, raidId))(),
+    openLanes(view, age).includes('pirate'));
+  view = answer.view;
+  view = await tendColonies(db, clock, seat, persona, strength, view, did, log);
   if (guard) {
     const development = await developGuard(db, clock, seat, view, did, log);
     view = development.view;
     if (development.complete) {
-      view = await raiseOneBuilding(db, clock, seat, persona, view, did, log, true);
-      view = await buyShips(db, clock, seat, persona, view, did, log, rng, true);
+      view = await raiseOneBuilding(db, clock, seat, persona, view, did, log, strength);
+      view = await buyShips(db, clock, seat, persona, view, did, log, rng, strength);
     }
     // Every currency committed to an earlier project is unavailable to optional flights.
     view = { ...view, planet: { ...view.planet,
@@ -170,10 +193,10 @@ export async function runBotTurn(
       deuterium: Math.max(0, view.planet.deuterium - development.reserved.deuterium) } };
   } else {
     view = await buyGroundDefence(db, clock, seat, persona, view, did, log);
-    view = await raiseOneBuilding(db, clock, seat, persona, view, did, log);
+    view = await raiseOneBuilding(db, clock, seat, persona, view, did, log, strength);
     view = await buyOneInstrument(db, clock, seat, persona, view, did, log);
     view = await orderResearch(db, clock, seat, persona, view, did, log);
-    view = await buyShips(db, clock, seat, persona, view, did, log, rng);
+    view = await buyShips(db, clock, seat, persona, view, did, log, rng, strength);
   }
   view = await tendNotificationCenter(db, clock, seat, persona, view, did, log);
   view = await tendProbeBattery(db, clock, seat, persona, view, did, log);
@@ -181,9 +204,127 @@ export async function runBotTurn(
   // Its own seeded stream, so the laboratory never shifts the rolls the rest of the turn was tuned on.
   if (await tendBotSynthesis(db, clock, seat.playerId, persona.synthesis,
     mulberry32(hashSeed('astera:bots:lab', seat.playerId, clock.now().getTime())))) did.push('synthesis');
-  await commitOneFlight(db, clock, seat, persona, view, did, log, rng);
+  // A fleet that already left to dodge a raid was this turn's one flight.
+  if (!answer.flown) await commitOneFlight(db, clock, seat, persona, strength, view, did, log, rng, age, answer.hold);
 
   return { did };
+}
+
+/**
+ * WHAT IT DOES WITH ITS OWN RADAR WARNING (F3.2, owner plan 2026-11-26). A raid it can meet:
+ * the warships stay home. One that outmatches it: by strength (`BOTS.reflexChance`) it takes
+ * the fleet out after a pirate and spends the store it would otherwise keep, so the raider
+ * finds less. Otherwise it plays on, as plenty of people do. A guard's own route buys no guns,
+ * so it fills its ground defence here (owner 2026-11-27); everyone else does on the ordinary turn.
+ */
+export async function answerWarnings(
+  db: Db, clock: Clock, seat: BotSeat, persona: BotPersona, strength: BotStrength,
+  view: PlanetView, did: string[], log: FastifyBaseLogger,
+  /** A number in [0, 1) for this raid, the same on every turn it is read. */
+  roll: (raidId: string) => number,
+  pirateOpen: boolean,
+): Promise<{ view: PlanetView; flown: boolean; hold: boolean }> {
+  const warning = await raidWarning(db, seat.playerId, seat.planetId, view);
+  if (!warning.warned || warning.raidId === null) return { view, flown: false, hold: false };
+  const guard = strength === 'ELITE';
+  if (!warning.outmatched) {
+    if (guard) view = await buyGroundDefence(db, clock, seat, persona, view, did, log);
+    return { view, flown: false, hold: true };
+  }
+  if (roll(warning.raidId) >= BOTS.reflexChance[strength]) return { view, flown: false, hold: false };
+  did.push('reflex');
+  if (guard) view = await buyGroundDefence(db, clock, seat, persona, view, did, log);
+  let flown = false;
+  if (pirateOpen && warning.impactAt) {
+    const after = await fleetSave(db, clock, seat, persona, view, warning.impactAt, did, log);
+    if (after) {
+      view = after;
+      flown = true;
+    }
+  }
+  view = await raiseOneBuilding(db, clock, seat, persona, view, did, log, strength, false);
+  return { view, flown, hold: false };
+}
+
+/**
+ * A COLONY, TAKEN THE WAY A PERSON TAKES ONE (F5, owner add-on 2026-11-26). Settle the claim its
+ * own raid opened; otherwise look at the nearest caretaker world in reach and, on a fresh
+ * reading, raid it with the settlers' two Couriers left home. 'flew' when the turn's one flight
+ * went to it, 'wanting' when it still means to take one, 'content' when it holds what it wants.
+ * Asleep, it takes no turn, so a claim can slip away as a person's does.
+ */
+export async function pursueColony(
+  db: Db, clock: Clock, seat: BotSeat, persona: BotPersona, strength: BotStrength,
+  view: PlanetView, did: string[], log: FastifyBaseLogger, lanes: readonly Lane[],
+): Promise<'flew' | 'wanting' | 'content'> {
+  if (!(await wantsColony(db, seat.playerId, seat.ordinal, strength))) return 'content';
+  const flew = async (label: string, run: () => Promise<unknown>) =>
+    (await attempt(did, label, log, run)) ? 'flew' : 'wanting';
+  const now = clock.now();
+
+  const claim = await heldClaim(db, seat.playerId, now);
+  if (claim) return flew('settle', () => launchSettlement(db, seat.playerId, seat.planetId, claim, clock));
+
+  if (!lanes.includes('attack') || await caretakerRaidInFlight(db, seat.playerId)) return 'wanting';
+  const target = await nearestCaretaker(db, seat.seasonId, view.planet.position, colonyReach(strength), now);
+  if (!target) return 'wanting';
+  const reading = (await readingsOf(db, seat.playerId, [target.planetId])).get(target.planetId);
+  if (!reading || now.getTime() - reading.seenAt.getTime() > BOTS.readingFreshMinutes * 60_000) {
+    if (!canAffordProbe(view) || (await probesInFlight(db, seat.playerId)).has(target.planetId)) return 'wanting';
+    return flew('colony:probe', () => launchProbe(db, seat.planetId, target.planetId, clock, seat.playerId));
+  }
+  // The claim is the prize, not the haul: the wall must fall outright for the window to open.
+  const plan = planWorldRaid({
+    fleet: withoutSettlers(view.fleet),
+    tech: await techOf(db, seat.playerId),
+    nerve: { ...persona.nerve, need: 'CLEARS', lootOverFuel: 0 },
+    distance: target.distance,
+    deuterium: view.planet.deuterium,
+    fuelPct: view.honorBenefits?.fuelPct ?? 0,
+    reading,
+  });
+  if (!plan) return 'wanting';
+  return flew('colony:attack', () => launchAttack(db, seat.planetId, target.planetId, plan.wing, clock, seat.playerId));
+}
+
+/**
+ * THE COLONIES IT HOLDS ARE PLAYED, NOT PARKED (F5). Each turn, each colony: the tap, a crew on
+ * every fault it can pay for, guns against what the store invites, one building. And while it
+ * still means to take one, the settlers' Couriers are kept on hand. Returns the capital's view.
+ */
+export async function tendColonies(
+  db: Db, clock: Clock, seat: BotSeat, persona: BotPersona, strength: BotStrength,
+  view: PlanetView, did: string[], log: FastifyBaseLogger,
+): Promise<PlanetView> {
+  const colonyHabit: BotPersona = { ...persona, buildOrder: [...COLONY_BUILD_ORDER] };
+  for (const planetId of await heldColonies(db, seat.playerId)) {
+    const here: BotSeat = { ...seat, planetId };
+    const steps: string[] = [];
+    let world: PlanetView;
+    try {
+      world = (await collectWorks(db, planetId, clock, seat.playerId)).planet;
+    } catch (err) {
+      if (!(err instanceof GameError)) throw err;
+      continue;
+    }
+    for (const fault of world.faults) {
+      if (fault.repair !== null || !affordable(world, fault.cost)) continue;
+      if (await attempt(steps, 'repair', log, () => startFaultRepair(db, planetId, fault.id, clock, seat.playerId))) {
+        world = await db.transaction((tx) => planetView(tx, planetId, clock));
+      }
+    }
+    world = await buyGroundDefence(db, clock, here, persona, world, steps, log);
+    await raiseOneBuilding(db, clock, here, colonyHabit, world, steps, log, strength);
+    did.push(...steps.map((step) => `colony:${step}`));
+  }
+
+  if (!(await wantsColony(db, seat.playerId, seat.ordinal, strength))) return view;
+  const short = MULTI_WORLD.settlement.transports - await settlersOwned(db, seat.planetId);
+  if (short <= 0) return view;
+  await attempt(did, 'settlers', log, async () => {
+    view = (await buildUnits(db, seat.planetId, MULTI_WORLD.settlement.transportHull, short, clock, seat.playerId)).planet;
+  });
+  return view;
 }
 
 /* ── the surface ────────────────────────────────────────────── */
@@ -318,9 +459,12 @@ async function buyGroundDefence(
  */
 async function raiseOneBuilding(
   db: Db, clock: Clock, seat: BotSeat, persona: BotPersona,
-  view: PlanetView, did: string[], log: FastifyBaseLogger, guard = false,
+  view: PlanetView, did: string[], log: FastifyBaseLogger, strength: BotStrength,
+  /** False when a raid it cannot meet is coming: the store is better spent than taken (F3.2). */
+  keepReserve = true,
 ): Promise<PlanetView> {
   if (view.queues.CONSTRUCTION.length >= BUILD.queueDepth) return view;
+  const guard = strength === 'ELITE';
   const levelOf = (type: BuildingId): number =>
     view.buildings[type] + queuedCount(view, 'CONSTRUCTION', type);
   const core = levelOf('CORE');
@@ -338,7 +482,7 @@ async function raiseOneBuilding(
       Twelve tireless commanders with no ceiling would own the top of a ladder that
       exists for the people playing.
     */
-    if (!guard && type === 'CORE' && level >= BOTS.coreCeiling) continue;
+    if (type === 'CORE' && level >= STRENGTH_CEILINGS[strength].core) continue;
     if (guard) {
       // Continue beyond the measured milestone only while economic investment can repay.
       if (type === 'CORE' && !worthInvesting('REFINERY', core, hours)) continue;
@@ -355,7 +499,7 @@ async function raiseOneBuilding(
     const cost = buildingCost(type, level);
     // Keep a store back, so the world is never scraped to zero the instant before
     // somebody arrives — and is worth somebody arriving at. `BOTS.stockReserveHours`.
-    if (!affordable(view, cost, guard ? 0 : storeReserve(view))) continue;
+    if (!affordable(view, cost, guard || !keepReserve ? 0 : storeReserve(view))) continue;
     if (await attempt(did, `build:${type}`, log, async () => {
       view = (await upgradeBuilding(db, seat.planetId, type, clock, seat.playerId,
         type === 'CORE' && level === 9 ? { confirmedLevel: 10 } : {})).planet;
@@ -479,7 +623,7 @@ async function orderResearch(
  */
 async function buyShips(
   db: Db, clock: Clock, seat: BotSeat, persona: BotPersona,
-  view: PlanetView, did: string[], log: FastifyBaseLogger, rng: () => number, guard = false,
+  view: PlanetView, did: string[], log: FastifyBaseLogger, rng: () => number, strength: BotStrength,
 ): Promise<PlanetView> {
   if (view.queues.YARD.length >= BUILD.queueDepth) return view;
 
@@ -507,10 +651,13 @@ async function buyShips(
     A HOLD FOR THE HAUL. A warship carries thirty to fifty; a raid of ten Darts
     brings home three hundred, which is a flight for nothing. So a bot keeps a
     couple of cargo hulls on the pad, and `raidingWing` takes them along.
+    While it means to take a colony the settlers' pair stays home (F5), so the
+    hold is bought on top of them.
   */
   const couriers = (view.fleet.COURIER ?? 0) + (view.fleetAway.COURIER ?? 0)
     + (view.fleetDocked.COURIER ?? 0) + queuedCount(view, 'YARD', 'COURIER');
-  const courierWant = Math.min(BOTS.courierTarget - couriers, Math.floor(room / hullBulk('COURIER')));
+  const settlers = await wantsColony(db, seat.playerId, seat.ordinal, strength) ? MULTI_WORLD.settlement.transports : 0;
+  const courierWant = Math.min(BOTS.courierTarget + settlers - couriers, Math.floor(room / hullBulk('COURIER')));
   if (courierWant > 0 && view.buildings.SHIPYARD >= HULLS.COURIER.minShipyard) {
     if (await attempt(did, 'ship:COURIER', log, async () => {
       view = (await buildUnits(db, seat.planetId, 'COURIER', courierWant, clock, seat.playerId)).planet;
@@ -518,11 +665,17 @@ async function buyShips(
   }
   room = Math.max(0, room);
 
-  if (!guard && owned >= BOTS.fleetValueCeiling) return view;
+  if (owned >= STRENGTH_CEILINGS[strength].fleetValue) return view;
 
   const budget = view.planet.alloy * persona.militaryShare;
   const tech = await techOf(db, seat.playerId);
-  const open = (Object.entries(persona.composition) as [MobileHullId, number][])
+  // A STRONG or ELITE commander flies its habit's lines at the best tier it can build (F2).
+  const composition: Partial<Record<MobileHullId, number>> = {};
+  for (const [hull, share] of Object.entries(persona.composition) as [MobileHullId, number][]) {
+    const flown = strength === 'NORMAL' ? hull : bestOfLine(hull, view.buildings.SHIPYARD, tech);
+    composition[flown] = (composition[flown] ?? 0) + share;
+  }
+  const open = (Object.entries(composition) as [MobileHullId, number][])
     .filter(([hull, share]) => share > 0 && hullBuildable(hull, view.buildings.SHIPYARD, tech));
   const total = open.reduce((sum, [, share]) => sum + share, 0);
   if (total <= 0) return view;
@@ -550,6 +703,21 @@ async function buyShips(
     })) return view;
   }
   return view;
+}
+
+/**
+ * THE SAME LINE, AS FAR UP AS THIS YARD AND THIS RESEARCH REACH. A Dart habit becomes Vipers,
+ * Tempests and Corsairs as each opens; a hull with nothing buildable above it stays itself.
+ */
+export function bestOfLine(hull: MobileHullId, shipyard: number, tech: TechLevels): MobileHullId {
+  const profile = HULLS[hull].profile;
+  let best = hull;
+  for (const candidate of COMBAT_HULLS) {
+    const spec = HULLS[candidate];
+    if (spec.profile !== profile || !hullBuildable(candidate, shipyard, tech)) continue;
+    if ((spec.tier ?? 0) > (HULLS[best].tier ?? 0)) best = candidate;
+  }
+  return best;
 }
 
 /* ── the one flight ─────────────────────────────────────────── */
@@ -616,13 +784,11 @@ export function drawLane(persona: BotPersona, open: readonly Lane[], rng: () => 
   return null;
 }
 
-async function commitOneFlight(
-  db: Db, clock: Clock, seat: BotSeat, persona: BotPersona,
-  view: PlanetView, did: string[], log: FastifyBaseLogger, rng: () => number,
-): Promise<void> {
-  if (view.flight.used >= view.flight.total) return;
-
-  const now = clock.now();
+/**
+ * How old the galaxy is for this commander's flights, in minutes: zero while its own first-day
+ * shield stands, so the raid lanes stay shut through it.
+ */
+async function flightAge(db: Db, seat: BotSeat, now: Date): Promise<number> {
   /*
     HOW OLD IS THIS GALAXY? D170's ceasefire is measured from the season's own
     start, read here rather than passed down: the turn already holds the seat's
@@ -644,8 +810,30 @@ async function commitOneFlight(
     shut until the day is over, and nothing it does can end it sooner.
   */
   const shielded = self?.shieldUntil != null && self.shieldUntil > now;
+  return shielded ? 0 : ageMinutes;
+}
 
-  const lane = drawLane(persona, openLanes(view, shielded ? 0 : ageMinutes), rng);
+async function commitOneFlight(
+  db: Db, clock: Clock, seat: BotSeat, persona: BotPersona, strength: BotStrength,
+  view: PlanetView, did: string[], log: FastifyBaseLogger, rng: () => number,
+  age: number,
+  /** A raid it can beat is on its way: the warships stay home to meet it (F3.2). */
+  hold: boolean,
+): Promise<void> {
+  if (view.flight.used >= view.flight.total) return;
+  const now = clock.now();
+  const lanes = openLanes(view, age).filter((lane) => !hold || (lane !== 'attack' && lane !== 'pirate'));
+  // A claim it opened closes within the hour: settling it comes before anything else (F5).
+  const colony = await pursueColony(db, clock, seat, persona, strength, view, did, log, lanes);
+  if (colony === 'flew') return;
+  // While a colony is wanted the settlers' Couriers fly nowhere else: a claim waits for no raid.
+  if (colony === 'wanting') view = { ...view, fleet: withoutSettlers(view.fleet) };
+  /*
+    A FRESH, FAVOURABLE READING IS ACTED ON BEFORE ANYTHING IS DRAWN (F3.1). The probe went
+    out for this; a person who reads a good report raids on it rather than going mining.
+  */
+  if (lanes.includes('attack') && await sendRaid(db, clock, seat, persona, view, did, log, rng, true)) return;
+  const lane = drawLane(persona, lanes, rng);
   if (!lane) return;
 
   switch (lane) {
@@ -667,7 +855,11 @@ async function commitOneFlight(
 }
 
 /** Worlds in this galaxy that are not this commander's, nearest first. Position is public. */
-async function neighbourhood(db: Db, seat: BotSeat, view: PlanetView, limit = 24) {
+async function neighbourhood(
+  db: Db, seat: BotSeat, view: PlanetView, limit = 24,
+  /** Commanders kept however far away they are: a grudge is answered across the galaxy (F3.3). */
+  always: ReadonlySet<string> = new Set(),
+) {
   const rows = await db
     .select({
       id: planets.id,
@@ -691,7 +883,43 @@ async function neighbourhood(db: Db, seat: BotSeat, view: PlanetView, limit = 24
   return rows
     .map((row) => ({ ...row, d: distance(view.planet.position, row) }))
     .sort((a, b) => a.d - b.d)
-    .slice(0, limit);
+    .filter((row, rank) => rank < limit || (row.playerId !== null && always.has(row.playerId)));
+}
+
+/**
+ * WHO BEAT THIS COMMANDER AND HAS NOT BEEN ANSWERED. F3.3, owner plan 2026-11-26 (option B).
+ * A DECISIVE or PARTIAL raid on it inside `BOTS.grudgeHours`, with no attack of its own on that
+ * commander launched since. Read from the reports and launches every player can see.
+ */
+async function openGrudges(db: Db, seat: BotSeat, now: Date): Promise<Set<string>> {
+  const since = new Date(now.getTime() - BOTS.grudgeHours * 3_600_000);
+  const struck = await db
+    .select({ attacker: battleReports.attackerPlayerId, at: sql<string>`max(${battleReports.createdAt})` })
+    .from(battleReports)
+    .where(and(
+      eq(battleReports.defenderPlayerId, seat.playerId),
+      eq(battleReports.targetKind, 'PLAYER'),
+      inArray(battleReports.grade, ['DECISIVE', 'PARTIAL']),
+      gt(battleReports.createdAt, since),
+    ))
+    .groupBy(battleReports.attackerPlayerId);
+  if (struck.length === 0) return new Set();
+  const answered = await db
+    .select({ target: planets.controllerPlayerId, at: sql<string>`max(${missions.departAt})` })
+    .from(missions)
+    .innerJoin(planets, eq(planets.id, missions.targetPlanetId))
+    .where(and(
+      eq(missions.ownerPlayerId, seat.playerId),
+      eq(missions.kind, 'attack'),
+      ne(missions.status, 'cancelled'),
+      inArray(planets.controllerPlayerId, struck.map((row) => row.attacker)),
+      gt(missions.departAt, since),
+    ))
+    .groupBy(planets.controllerPlayerId);
+  const lastAnswer = new Map(answered.map((row) => [row.target, new Date(row.at).getTime()]));
+  return new Set(struck
+    .filter((row) => (lastAnswer.get(row.attacker) ?? Number.NEGATIVE_INFINITY) < new Date(row.at).getTime())
+    .map((row) => row.attacker));
 }
 
 export interface ProbeCandidate {
@@ -711,9 +939,22 @@ const PROBE_NEAREST = 8;
 export async function probeCandidates(
   db: Db, now: Date, seat: BotSeat, view: PlanetView,
 ): Promise<ProbeCandidate[]> {
+  const looking = await probesInFlight(db, seat.playerId);
+  /*
+    FIRST, A WORLD IT COULD ACTUALLY HIT (F3.1, owner plan 2026-11-26). Live the roster flew 76
+    probes for every raid: a look at somebody out of band, or struck already today, is a look
+    nothing can follow. Its weights are the raid's own, so a bully still comes first.
+  */
+  const raidable = await raidCandidates(db, now, seat, view, false);
+  const readings = await readingsOf(db, seat.playerId, raidable.map((world) => world.planetId));
+  const freshCut = now.getTime() - BOTS.readingFreshMinutes * 60_000;
+  const worthALook = raidable.filter((world) => !looking.has(world.planetId)
+    && (readings.get(world.planetId)?.seenAt.getTime() ?? 0) < freshCut);
+  if (worthALook.length > 0) return worthALook.map((world) => ({ planetId: world.planetId, weight: world.weight }));
+
+  // Nothing in reach to raid: it still looks around, so the galaxy keeps moving (D159).
   const known = await rememberedWorlds(db, seat.playerId);
   const cutoff = now.getTime() - BOTS.recordFreshMinutes * 60_000;
-  const looking = await probesInFlight(db, seat.playerId);
   const stale = (await neighbourhood(db, seat, view))
     .filter((world) => (known.get(world.id)?.seenAt.getTime() ?? 0) < cutoff)
     .filter((world) => !looking.has(world.id));
@@ -814,13 +1055,16 @@ async function bulliesAmong(
  */
 export async function raidCandidates(
   db: Db, now: Date, seat: BotSeat, view: PlanetView,
+  /** False asks which worlds it MAY raid once it has looked: where its next probe should go (F3.1). */
+  requireRecord = true,
 ): Promise<RaidCandidate[]> {
   const known = await rememberedWorlds(db, seat.playerId);
   const cutoff = now.getTime() - BOTS.recordFreshMinutes * 60_000;
   const botPlayers = await botPlayerIds(db, seat.seasonId);
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60_000);
 
-  const near = await neighbourhood(db, seat, view);
+  const grudges = await openGrudges(db, seat, now);
+  const near = await neighbourhood(db, seat, view, 24, grudges);
   /**
    * A FEW TABLE READS FOR THE WHOLE NEIGHBOURHOOD, NOT A FEW PER WORLD. D166.
    *
@@ -851,6 +1095,8 @@ export async function raidCandidates(
   const myPeak = peaks.get(seat.playerId) ?? 1;
   const coreOf = new Map<string, number>();
   const raidsOn = new Map<string, number>();
+  /** Of `raidsOn`, the answers: launched by a bot this person had beaten within a day (F3.3). */
+  const answersOn = new Map<string, number>();
   const bullies = new Set<string>();
   if (peopleWorlds.length > 0) {
     const people = [...new Set(peopleWorlds.map((world) => world.playerId!))];
@@ -875,6 +1121,24 @@ export async function raidCandidates(
         .select({
           defenderPlayerId: planets.controllerPlayerId,
           n: sql<number>`count(*)::int`,
+          answers: sql<number>`count(*) FILTER (WHERE EXISTS (
+            SELECT 1 FROM battle_reports br
+             WHERE br.attacker_player_id = ${planets.controllerPlayerId}
+               AND br.defender_player_id = ${missions.ownerPlayerId}
+               AND br.target_kind = 'PLAYER'
+               AND br.grade IN ('DECISIVE', 'PARTIAL')
+               AND br.created_at <= ${missions.departAt}
+               AND br.created_at > ${missions.departAt} - make_interval(hours => ${BOTS.grudgeHours})
+               -- Only its first launch at them since the beating answers it; the next is ordinary.
+               AND NOT EXISTS (
+                 SELECT 1 FROM missions earlier
+                   JOIN planets ep ON ep.id = earlier.target_planet_id
+                  WHERE earlier.owner_player_id = ${missions.ownerPlayerId}
+                    AND earlier.kind = 'attack'
+                    AND earlier.status <> 'cancelled'
+                    AND ep.player_id = ${planets.controllerPlayerId}
+                    AND earlier.depart_at > br.created_at
+                    AND earlier.depart_at < ${missions.departAt})))::int`,
         })
         .from(missions)
         .innerJoin(planets, eq(planets.id, missions.targetPlanetId))
@@ -890,7 +1154,9 @@ export async function raidCandidates(
     ]);
     for (const row of cores) coreOf.set(row.planetId, row.level);
     for (const row of hits) {
-      if (row.defenderPlayerId !== null) raidsOn.set(row.defenderPlayerId, row.n);
+      if (row.defenderPlayerId === null) continue;
+      raidsOn.set(row.defenderPlayerId, row.n);
+      answersOn.set(row.defenderPlayerId, row.answers);
     }
     for (const id of struck) bullies.add(id);
   }
@@ -908,7 +1174,7 @@ export async function raidCandidates(
       instead — which is the honest rule and, not by coincidence, exactly the
       traffic an empty-looking disc was missing.
     */
-    if ((known.get(world.id)?.seenAt.getTime() ?? 0) < cutoff) continue;
+    if (requireRecord && (known.get(world.id)?.seenAt.getTime() ?? 0) < cutoff) continue;
     if (world.protectedUntil && world.protectedUntil > now) continue;
     /*
       BOTH ATTACK SHIELDS BIND THE SERVER'S OWN COMMANDERS TOO. D183 · 2026-09-14.
@@ -924,6 +1190,7 @@ export async function raidCandidates(
     if (world.playerId !== null && !withinTierBand(myPeak, peaks.get(world.playerId) ?? 1)) continue;
 
     const isBot = world.playerId !== null && botPlayers.has(world.playerId);
+    const grudge = world.playerId !== null && grudges.has(world.playerId);
     if (!isBot) {
       /*
         MANNERS TOWARDS PEOPLE, HELD HERE RATHER THAN IN THE RULES.
@@ -937,15 +1204,24 @@ export async function raidCandidates(
       if (now.getTime() - world.joinedAt.getTime() < BOTS.newPlayerGraceHours * 60 * 60_000) continue;
       // A world with no CORE row has never been built on: treat it as level 1, the
       // same answer the per-world query gave.
-      if ((coreOf.get(world.id) ?? 1) < view.buildings.CORE - BOTS.playerCoreFloorGap) continue;
-      if ((raidsOn.get(world.playerId!) ?? 0) >= BOTS.botRaidsPerPersonPerDay) continue;
+      // They chose the fight, so the floor does not shield them from its answer (F3.3).
+      if (!grudge && (coreOf.get(world.id) ?? 1) < view.buildings.CORE - BOTS.playerCoreFloorGap) continue;
+      /*
+        TWO BUDGETS, OWNER OPTION B (2026-11-26). Answers sit outside the one-a-day quota, and a
+        person takes at most `revengePerPersonPerDay` of them from the whole roster.
+      */
+      const raids = raidsOn.get(world.playerId!) ?? 0;
+      const answers = answersOn.get(world.playerId!) ?? 0;
+      if (grudge ? answers >= BOTS.revengePerPersonPerDay : raids - answers >= BOTS.botRaidsPerPersonPerDay) continue;
     }
     candidates.push({
       planetId: world.id,
       distance: world.d,
-      weight: isBot
-        ? BOTS.botTargetBias
-        : world.playerId !== null && bullies.has(world.playerId) ? BOTS.bullyTargetBias : 1,
+      weight: grudge
+        ? BOTS.grudgeTargetBias
+        : isBot
+          ? BOTS.botTargetBias
+          : world.playerId !== null && bullies.has(world.playerId) ? BOTS.bullyTargetBias : 1,
     });
   }
   return candidates;
@@ -1072,8 +1348,18 @@ const RAID_LOOKS = 4;
 async function sendRaid(
   db: Db, clock: Clock, seat: BotSeat, persona: BotPersona,
   view: PlanetView, did: string[], log: FastifyBaseLogger, rng: () => number,
+  /** Only worlds whose reading is fresh and saw the fleet home: the strike a probe was for (F3.1). */
+  freshOnly = false,
 ): Promise<boolean> {
-  const candidates = await raidCandidates(db, clock.now(), seat, view);
+  let candidates = await raidCandidates(db, clock.now(), seat, view);
+  if (freshOnly) {
+    const fresh = await readingsOf(db, seat.playerId, candidates.map((world) => world.planetId));
+    const cut = clock.now().getTime() - BOTS.readingFreshMinutes * 60_000;
+    candidates = candidates.filter((world) => {
+      const reading = fresh.get(world.planetId);
+      return reading !== undefined && reading.fleetHome && reading.seenAt.getTime() >= cut;
+    });
+  }
 
   /*
     THE SAME WALK, AND THE SAME ZERO RULE. D166 — see `drawLane`. A candidate worth

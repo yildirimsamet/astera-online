@@ -11,6 +11,7 @@ import {
   BOT_AUTONOMOUS_LANES,
   drawLane, openLanes, probeCandidates, raidCandidates, runBotTurn, type BotSeat,
 } from '../src/services/bots/brain.js';
+import { colonyTarget } from '../src/services/bots/colonies.js';
 import { BOTS, BOT_PERSONAS, type BotPersona } from '../src/services/bots/personas.js';
 import { raidingWing } from '../src/services/bots/judgement.js';
 import { rememberWorld } from '../src/services/intel.js';
@@ -60,6 +61,13 @@ const seatOf = async (): Promise<BotSeat> => {
 };
 
 const viewOf = async () => f.db.transaction((tx) => planetView(tx, seat.planetId, f.clock));
+
+/** An ordinal whose habit holds no colony: a test about something else, at a Core with a slot open. */
+const homebody = (): number => {
+  let ordinal = 0;
+  while (colonyTarget(ordinal, 'NORMAL') !== 0) ordinal += 1;
+  return ordinal;
+};
 
 /**
  * A RECORD IS WHAT A PROBE BROUGHT HOME: the outside of the world and its bands.
@@ -116,7 +124,7 @@ const remember = async (
 
 /** A settled raid, as the report table records it — the only history the manners read. */
 const raided = async (attackerPlayerId: string, defenderPlayerId: string, targetPlanetId: string,
-  minutesAgo = 60): Promise<void> => {
+  minutesAgo = 60, grade: 'DECISIVE' | 'PARTIAL' | 'REPELLED' = 'DECISIVE'): Promise<void> => {
   const at = addMinutes(f.clock.now(), -minutesAgo);
   const [battle] = await f.db.insert(missions).values({
     fuelPaid: 0,
@@ -138,7 +146,7 @@ const raided = async (attackerPlayerId: string, defenderPlayerId: string, target
     defenderPlayerId,
     targetPlanetId,
     targetKind: 'PLAYER',
-    grade: 'DECISIVE',
+    grade,
     rounds: [],
     loot: { alloy: 0, crystal: 0, deuterium: 0 },
     attackerLosses: {},
@@ -213,6 +221,7 @@ describe('a bot turn', () => {
   });
 
   it('buys missing composition before adding more of the already dominant hull', async () => {
+    seat = { ...seat, ordinal: homebody() };
     await setLevel(f.db, seat.planetId, 'CORE', BOTS.coreCeiling);
     await setLevel(f.db, seat.planetId, 'REFINERY', BOTS.coreCeiling);
     await setLevel(f.db, seat.planetId, 'EXTRACTOR', BOTS.coreCeiling);
@@ -328,6 +337,7 @@ describe('a bot turn', () => {
    * had room it did not — the server refused every order that turn.
    */
   it('counts every queued batch of the same hull against its room', async () => {
+    seat = { ...seat, ordinal: homebody() };
     await setLevel(f.db, seat.planetId, 'CORE', 10);
     await setLevel(f.db, seat.planetId, 'SHIPYARD', 4);
     await grant(f.db, seat.planetId, 2_000_000, 600_000);
@@ -583,7 +593,8 @@ describe('what a bot may raid', () => {
 
   it('never counts raids on the server’s own commanders against a person', async () => {
     await remember(f.planetIds[0]!, f.clock.now());
-    for (let i = 0; i < 6; i++) await raided(f.playerIds[0]!, seat.playerId, seat.planetId, 30 + i);
+    // Repelled, so the only question is bullying: a won raid would open a grudge (F3.3).
+    for (let i = 0; i < 6; i++) await raided(f.playerIds[0]!, seat.playerId, seat.planetId, 30 + i, 'REPELLED');
     const [person] = await raidCandidates(f.db, f.clock.now(), seat, await viewOf());
     expect(person?.weight).toBe(1);
   });
@@ -741,5 +752,178 @@ describe('drawing from a weighted table', () => {
     // has to land on a real lane rather than on doing nothing.
     const persona = weighted({ attack: 1, probe: 1, mine: 1, idle: 0 });
     expect(drawLane(persona, ['attack', 'probe'], () => 0.99)).toBe('probe');
+  });
+});
+
+/**
+ * A PROBE IS PART OF A PLAN. Owner plan 2026-11-26 (docs/bot-plani-2026-11-26.md F3.1): live,
+ * the roster flew 76 probes for every raid — a commander who looks and never comes is noise.
+ * A fresh, favourable reading is acted on before the turn rolls for anything else, and a
+ * probe goes first to a world the bot could actually hit.
+ */
+describe('scouting with a purpose', () => {
+  it('strikes on a fresh favourable reading on every turn, whatever its habit would have drawn', async () => {
+    f.clock.advance(BOTS.ceasefireMinutes + 1);
+    await setLevel(f.db, seat.planetId, 'HANGAR', 8);
+    for (let turn = 0; turn < 6; turn++) {
+      // Last turn's raid is forgotten, so this turn starts from the same world.
+      await f.db.delete(missions).where(and(eq(missions.ownerPlayerId, seat.playerId), eq(missions.kind, 'attack')));
+      await f.db.delete(units).where(eq(units.planetId, seat.planetId));
+      await f.db.update(botProfiles).set({ nextActionAt: f.clock.now() });
+      await remember(f.planetIds[0]!, f.clock.now());
+      await giveUnits(f.db, seat.planetId, { DART: 30 });
+      await fuelUp(f.db, seat.planetId);
+      const result = await runBotTurn(f.db, f.clock, seat, silent);
+      expect(result.did).toContain('attack');
+      f.clock.advance(37);
+    }
+  });
+
+  it('keeps the settlers home on a raid while it still means to take a colony (F5)', async () => {
+    f.clock.advance(BOTS.ceasefireMinutes + 1);
+    for (const id of [seat.planetId, f.planetIds[0]!, f.planetIds[1]!]) await setLevel(f.db, id, 'CORE', 9);
+    await setLevel(f.db, seat.planetId, 'HANGAR', 8);
+    let wanting = 0;
+    while (colonyTarget(wanting, 'NORMAL') === 0) wanting += 1;
+    await remember(f.planetIds[0]!, f.clock.now());
+    await giveUnits(f.db, seat.planetId, { DART: 30, COURIER: 4 });
+    await fuelUp(f.db, seat.planetId);
+    const result = await runBotTurn(f.db, f.clock, { ...seat, ordinal: wanting }, silent);
+    expect(result.did).toContain('attack');
+    const [raid] = await f.db.select().from(missions)
+      .where(and(eq(missions.ownerPlayerId, seat.playerId), eq(missions.kind, 'attack')));
+    expect(raid?.fleet.COURIER).toBe(2);
+  });
+
+  it('does not strike on a fresh reading its wing cannot beat', async () => {
+    f.clock.advance(BOTS.ceasefireMinutes + 1);
+    await remember(f.planetIds[0]!, f.clock.now(), { defence: { low: 900_000, high: 900_000 } });
+    await remember(f.planetIds[1]!, f.clock.now(), { defence: { low: 900_000, high: 900_000 } });
+    await giveUnits(f.db, seat.planetId, { DART: 30 });
+    await fuelUp(f.db, seat.planetId);
+    for (let turn = 0; turn < 6; turn++) {
+      expect((await runBotTurn(f.db, f.clock, seat, silent)).did).not.toContain('attack');
+      f.clock.advance(5);
+    }
+  });
+
+  it('sends its probe to a world it could raid rather than one the band puts out of reach', async () => {
+    await setLevel(f.db, seat.planetId, 'CORE', 8); // tier 3
+    await setLevel(f.db, f.planetIds[0]!, 'CORE', 14); // tier 5: out of reach
+    await setLevel(f.db, f.planetIds[1]!, 'CORE', 8);
+    const candidates = await probeCandidates(f.db, f.clock.now(), seat, await viewOf());
+    expect(candidates.map((c) => c.planetId)).toEqual([f.planetIds[1]]);
+  });
+
+  it('does not look at a person the roster has already struck today', async () => {
+    await addBot(f.db, 'Yıldız', f.clock);
+    await ensureBotSeats(f.db, f.clock, silent);
+    const [other] = await f.db.select({ playerId: players.id }).from(players).where(and(
+      sql`${players.accountId} IN (SELECT account_id FROM bot_profiles)`,
+      sql`${players.id} <> ${seat.playerId}`,
+    ));
+    await raided(other!.playerId, f.playerIds[0]!, f.planetIds[0]!, 60);
+    const candidates = await probeCandidates(f.db, f.clock.now(), seat, await viewOf());
+    expect(candidates.map((c) => c.planetId)).not.toContain(f.planetIds[0]);
+  });
+
+  it('still looks around when nothing in reach can be raided, so the galaxy keeps moving', async () => {
+    await setLevel(f.db, seat.planetId, 'CORE', 8);
+    await setLevel(f.db, f.planetIds[0]!, 'CORE', 14);
+    await setLevel(f.db, f.planetIds[1]!, 'CORE', 14);
+    const candidates = await probeCandidates(f.db, f.clock.now(), seat, await viewOf());
+    expect(candidates.map((c) => c.planetId).toSorted()).toEqual([f.planetIds[0], f.planetIds[1]].toSorted());
+  });
+});
+
+/**
+ * A COMMANDER WHO BEATS ONE OF THEM IS REMEMBERED. Owner plan 2026-11-26 (F3.3, option B): the
+ * live roster lost 31 of 33 raids and never answered one. The answer stays inside every
+ * protection and the band; it sits outside the one-a-day quota, once per grudge, and one person
+ * takes at most two answers a day.
+ */
+describe('answering a raid', () => {
+  const otherBot = async (name: string) => {
+    const bot = await addBot(f.db, name, f.clock);
+    await ensureBotSeats(f.db, f.clock, silent, 100, 4);
+    await settleNeighbours();
+    const [row] = await f.db.select({ playerId: players.id, planetId: planets.id }).from(players)
+      .innerJoin(planets, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
+      .where(eq(players.accountId, bot.accountId));
+    return row!;
+  };
+  const weightOf = async (planetId: string) =>
+    (await raidCandidates(f.db, f.clock.now(), seat, await viewOf())).find((c) => c.planetId === planetId)?.weight;
+
+  it('looks first at the commander who beat it', async () => {
+    await raided(f.playerIds[0]!, seat.playerId, seat.planetId, 60);
+    const candidates = await probeCandidates(f.db, f.clock.now(), seat, await viewOf());
+    expect(candidates.find((c) => c.planetId === f.planetIds[0])?.weight).toBe(BOTS.grudgeTargetBias);
+    expect(candidates.find((c) => c.planetId === f.planetIds[1])?.weight).toBe(1);
+  });
+
+  it('answers even when another bot has already struck that person today', async () => {
+    const other = await otherBot('Yıldız');
+    await raided(other.playerId, f.playerIds[0]!, f.planetIds[0]!, 120);
+    await raided(f.playerIds[0]!, seat.playerId, seat.planetId, 60);
+    await remember(f.planetIds[0]!, f.clock.now());
+    expect(await weightOf(f.planetIds[0]!)).toBe(BOTS.grudgeTargetBias);
+  });
+
+  it('takes no third answer on one person in a day', async () => {
+    for (const name of ['Yıldız', 'Poyraz']) {
+      const other = await otherBot(name);
+      await raided(f.playerIds[0]!, other.playerId, other.planetId, 300);
+      await raided(other.playerId, f.playerIds[0]!, f.planetIds[0]!, 120);
+    }
+    await raided(f.playerIds[0]!, seat.playerId, seat.planetId, 60);
+    await remember(f.planetIds[0]!, f.clock.now());
+    expect(BOTS.revengePerPersonPerDay).toBe(2);
+    expect(await weightOf(f.planetIds[0]!)).toBeUndefined();
+  });
+
+  it('closes a grudge once it has answered it', async () => {
+    await raided(f.playerIds[0]!, seat.playerId, seat.planetId, 180);
+    await raided(seat.playerId, f.playerIds[0]!, f.planetIds[0]!, 60);
+    await remember(f.planetIds[0]!, f.clock.now());
+    expect(await weightOf(f.planetIds[0]!)).not.toBe(BOTS.grudgeTargetBias);
+  });
+
+  /** Only the first launch after a beating is its answer; the next is an ordinary raid and uses the quota. */
+  it('counts the raid after its answer against the one-a-day quota', async () => {
+    await raided(f.playerIds[0]!, seat.playerId, seat.planetId, 180);
+    await raided(seat.playerId, f.playerIds[0]!, f.planetIds[0]!, 120, 'REPELLED');
+    await raided(seat.playerId, f.playerIds[0]!, f.planetIds[0]!, 60, 'REPELLED');
+    await remember(f.planetIds[0]!, f.clock.now());
+    expect(BOTS.botRaidsPerPersonPerDay).toBe(1);
+    expect(await weightOf(f.planetIds[0]!)).toBeUndefined();
+  });
+
+  it('forgets a grudge after a day', async () => {
+    await raided(f.playerIds[0]!, seat.playerId, seat.planetId, (BOTS.grudgeHours + 1) * 60);
+    await remember(f.planetIds[0]!, f.clock.now());
+    expect(await weightOf(f.planetIds[0]!)).toBe(1);
+  });
+
+  it('holds no grudge over a raid it repelled', async () => {
+    await raided(f.playerIds[0]!, seat.playerId, seat.planetId, 60, 'REPELLED');
+    await remember(f.planetIds[0]!, f.clock.now());
+    expect(await weightOf(f.planetIds[0]!)).toBe(1);
+  });
+
+  it('still leaves a newcomer alone', async () => {
+    await raided(f.playerIds[0]!, seat.playerId, seat.planetId, 60);
+    await remember(f.planetIds[0]!, f.clock.now());
+    await f.db.update(players).set({ joinedAt: addMinutes(f.clock.now(), -60) }).where(eq(players.id, f.playerIds[0]!));
+    expect(await weightOf(f.planetIds[0]!)).toBeUndefined();
+  });
+
+  it('answers a smaller commander who chose the fight, inside the band', async () => {
+    await setLevel(f.db, seat.planetId, 'CORE', 8);
+    await setLevel(f.db, f.planetIds[0]!, 'CORE', 8 - BOTS.playerCoreFloorGap - 1);
+    await remember(f.planetIds[0]!, f.clock.now());
+    expect(await weightOf(f.planetIds[0]!)).toBeUndefined();
+    await raided(f.playerIds[0]!, seat.playerId, seat.planetId, 60);
+    expect(await weightOf(f.planetIds[0]!)).toBe(BOTS.grudgeTargetBias);
   });
 });
