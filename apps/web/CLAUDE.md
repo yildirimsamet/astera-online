@@ -38,6 +38,7 @@ Scroll, dokunma ve ekran değiştirme maliyettir. Karşılaştırılacak on öğ
 
 - Hedef premium AAA kalitesidir; görsellik ve premium hissiyat oyuncuyu etkileyen başlıca unsurlardandır.
 - Görsel dilin kaynağı `docs/ui-v2/gozlemevi.md` (her ekranın uyduğu altı kural, renklerin anlamları) ve `docs/ui-v2/design-mocks/` mock'larıdır; tasarımı bunlardan türet.
+- **UI kiti zorunludur (owner, 2026-11-26):** Ekranlar `src/game-ui/` parçalarıyla kurulur. Kitte karşılığı olan şey elle çizilmez; karşılığı olmayan önce kite eklenir. Önemli anın kendine özgü sunumu da kitin token'larıyla kurulur. Hangi iş için hangi parça, token'lar ve yerleşim kuralları: `docs/ui-kit.md`.
 - Geliştirdiğin, güncellediğin veya düzelttiğin işin tasarım gereksinimlerini asla atlama.
 - **VFX briefi (owner, 2026-11-18):** Efekt yazmadan önce 3 satırlık VFX briefi yazılır ve teslimde gösterilir: o anda dünyada fiziksel olarak ne oluyor, kütüphaneden hangi asset (yol), neden bu olayı anlatıyor. Yumuşak yuvarlak parlama, büyüyen hale ve "her yere uyan" efekt yasaktır.
 - Oyun hareketleri işletim sisteminin hareket tercihinden bağımsızdır. **Yalnız public landing CSS'i**, owner'ın 2026-10-18 tarihli açık erişilebilirlik talebiyle istisnadır.
