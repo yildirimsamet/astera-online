@@ -175,6 +175,8 @@ docker build --target web-dist --build-arg "VITE_GA_ID=${GA_ID}" \
   --secret id=sentry_auth,env=SENTRY_AUTH_TOKEN --output "type=local,dest=$STAGE" .
 [[ -n "$GA_ID" ]] && echo "  analytics: $GA_ID" || echo "  analytics: not configured"
 [[ -f "$STAGE/index.html" ]] || { echo "Client build produced no index.html."; exit 1; }
+# The release this web is, for the runbook's gates and verify-ota.py (web = OTA).
+git rev-parse HEAD > "$STAGE/release.txt"
 
 # THE APP'S LIVE UPDATE (OTA F2): the same commit as the app bundle, packed by content
 # hash. Same build arguments as above, so Docker reuses the web stage and only the app

@@ -42,7 +42,8 @@ beforeEach(() => {
   stub(bin, 'docker', `if [[ "$1" == inspect ]]; then echo healthy; exit 0; fi
 if [[ "$1 $2" == "image inspect" ]]; then echo "$RUNNING"; exit 0; fi
 for arg in "$@"; do if [[ "$arg" == type=local,dest=* ]]; then dest=\${arg#type=local,dest=}; mkdir -p "$dest"; touch "$dest/index.html" "$dest/latest.json"; fi; done`);
-  stub(bin, 'sudo', '');
+  // The web publish is stubbed; it records which release the staged web names.
+  stub(bin, 'sudo', 'if [[ "$2" == deploy/publish-web.sh ]]; then echo "web names $(cat "$3/release.txt" 2>/dev/null)" >> "$STUB_LOG"; fi');
   stub(bin, 'nginx', 'echo "configure arguments: --with-http_sub_module" >&2');
   stub(bin, 'python3', '');
   stub(bin, 'curl', `prev=""; for arg in "$@"; do if [[ "$prev" == -D ]]; then printf 'content-security-policy: script-src nonce-%s\\n' "$(printf 'a%.0s' {1..32})" > "$arg"; fi; prev=$arg; done
@@ -65,6 +66,8 @@ describe('deploy.sh --client-only', () => {
     const { code, out, calls } = deploy(running, '--client-only');
     expect(code, out).toBe(0);
     expect(calls).toContain('sudo bash deploy/publish-web.sh');
+    // verify-ota.py compares the web's release.txt with latest.json (first live run, 2026-11-26: 404).
+    expect(calls).toContain(`web names ${git('rev-parse', 'HEAD')}`);
     expect(calls).toContain('sudo bash deploy/publish-ota.sh');
     expect(calls).toContain('python3 deploy/verify-ota.py');
     expect(calls).not.toMatch(/docker compose .* (build|stop|run|up) /);
