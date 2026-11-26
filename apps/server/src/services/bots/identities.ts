@@ -19,9 +19,10 @@ const turkish = [
   'Turkuaz', 'Devrim_', 'KanatsizKuş', 'Yildirim88', 'Samanyolu',
   'SiyahBeyaz', 'Kafadar', 'GeceAvcisi', 'SessizSair', 'Kuzey_Ruzgari',
   'Reis_61', 'Atmaca', 'Sarmaşık', 'Dolunay_', 'Gokturk',
-  'BuzAdam', 'Fırtına_10', 'CılgınTurk', 'DerinDeniz', 'YalnizKurt',
-  'KorAtes', 'Anatolia_', 'Izmirli_35', 'Zifiri', 'Alaturka',
-  'CesurYurek', 'Gokyuzu', 'Turkmen', 'Serdengecti', 'Saka_16',
+  // Owner 2026-11-27: the eleven after CılgınTurk, renamed before they were seated.
+  'BuzAdam', 'Fırtına_10', 'CılgınTurk', 'Kiroka22', 'ogamer',
+  'lirika_34', 'aniL', 'Alakürdo', 'Zifir12', 'zephyr0',
+  'VenomiC', 'stormie', 't4r1k', 'pesto_aga', 'Saka_16',
   'YediTepe', 'Pusat_', 'OzgurRuh', 'Son_Barat', 'Sahin_01',
   'Toprak', 'Alev_Alev', 'Gece_Mavisi', 'Son_Umut', 'Tipi_',
   'Vatan_55', 'Kasırga_77', 'DusKapanı', 'Kizil_Gunes', 'SakaKusu',
