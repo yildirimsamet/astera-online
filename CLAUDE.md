@@ -1,6 +1,4 @@
-# CLAUDE.md — Astera Online (ANAYASADIR. UYULMASI ŞART ve ÖNEMLİ)
-
-Her oturumun başında oku. İş uzadığında veya bağlam daraldığında da bu kurallardan sapma. Özellikle geliştirme disiplini, tasarım disiplini, çalışma yaklaşımı ve bağlam okuma stratejisi her görev boyunca geçerlidir.
+# CLAUDE.md — Astera Online
 
 Bu dosyayı küçük tut: yalnızca yanlış uygulamayı önleyen, proje genelinde geçerli kurallar burada yer alır.
 
@@ -27,7 +25,7 @@ DEVELOP → ACCUMULATE → GATHER INTEL → SPOT OPPORTUNITY → CHOOSE TARGET
 
 Savaş raporları yeni istihbarat üretir. Ekonomi ve binalar bu döngüyü destekler; döngünün kendisi değildir.
 
-**Kilitli karar — owner, 2026-10-28:** Oyuncular bir botun bot olduğunu hiçbir zaman anlayamamalıdır. Oyuncuya görünen metinlerde, Wiki'de veya yardım içeriklerinde hiçbir dilde bot ifadesi bulunamaz; client'a bot işareti/flag'i sunulamaz. Gerçek oyuncunun yer aldığı her yerde bot da oyuncu gibi yer alır. Bkz. `docs/decisions.md`, 2026-10-28.
+**Kilitli karar — owner, 2026-10-28:** Oyuncular bir botun bot olduğunu hiçbir zaman anlayamamalıdır. Oyuncuya görünen metinlerde, Wiki'de veya yardım içeriklerinde hiçbir dilde bot ifadesi bulunamaz; client'a bot işareti/flag'i sunulamaz. Gerçek oyuncunun yer aldığı her yerde bot da oyuncu gibi yer alır. Ayrıntı: `docs/ux-writing.md` ("Botlar asla anılmaz").
 
 Yeni bir sistem anlamlı bir karar oluşturmalı; gereksiz mikro yönetim yaratmadan etkileşimi, riski, fırsatı, merakı veya geri dönme nedenini güçlendirmelidir. Emin değilsen: **PROTOTYPE → PLAY → OBSERVE → DECIDE**.
 
@@ -102,103 +100,15 @@ Güçlü başarı ölçütleri bağımsız ilerlemeyi sağlar; “çalışır h�
 
 ## 4. Tasarım disiplini
 
-Frontend görevlerinde ilgili gamedev skill'lerini (Game Development Router) incele ve gerekli olanları kullan. Yeni veya güncellenen her component, sayfa, section, element ve tasarım aşağıdaki **beş ilkeye** uymalıdır. İlk dört kullanılabilirlik ilkesi her ekranda estetik tercihlerden önce gelir; bunlardan birini karşılamayan yüzey, bitmiş görünse de tamamlanmış değildir. Geliştirici sayıların anlamını zaten bildiği için bu eksikleri fark etmeyebilir.
+Oyuncuya dokunan her frontend işinde (UI, 3D, VFX, ses, etkileşim) **`apps/web/CLAUDE.md` zorunludur**: beş ilke (Clarity, Predictability, Decision support, Interaction cost, Premium design) ve Game feel standardı (owner, 2026-11-06) oradadır. `apps/web` altında çalışırken otomatik yüklenir; plan aşamasında web'e dokunacaksan önce onu oku. Her yerde geçerli kurallar:
 
-### 1. Clarity — Oyuncu bunu anlıyor mu?
-
-Bir değeri göstermek, anlaşılır kılmak değildir. Oyuncunun karar verirken kullanacağı her sayının yanında şu soruların yanıtı anlaşılabilmelidir:
-
-- Bu neyi temsil ediyor?
-- Büyük olması iyi mi?
-- Benim karşılık gelen değerimle nasıl kıyaslanıyor?
-- Başka nelerle ilişkili?
-- Bunu hangi karar için kullanacağım?
-
-### 2. Predictability — Oyuncu sonucu tahmin edebiliyor mu?
-
-Kesinlik verme: belirsizlik oyunun temelidir; “kazanacak mıyım?” sorusuna kesin cevap veren ekran, temel döngüdeki riski ortadan kaldırır. Ancak hiç tahmin edilemeyen sonuç rastgele görünür ve istihbaratın değerini yok eder; belirsizliği azaltmayan bilgiye kimse bedel ödemez.
-
-**Oyuncu bir beklenti oluşturabilmeli ve bu beklentisinde yanılabilmelidir. Girdileri ve kuralı ver; cevabı verme.**
-
-### 3. Decision support — Oyuncu karar vermek için gereken bilgiye sahip mi?
-
-- Kurallar kullanıldıkları yerde, o anda gereken miktarda keşfedilebilir olmalıdır.
-- Ne yirmi sayfalık Wiki/her kartta bütün kurallar ne de açıklamasız bir sistem uygundur.
-- Kademeli açıklama kullan: satır olguyu, bir dokunuş ilerideki sheet kuralı anlatır.
-- Kuralları karar verildikten sonra öğretme. Örnek: her savaşı belirleyen counter cycle çarpanlarının yalnızca filo kaybedildikten sonraki savaş raporunda görünmesi karar desteği değildir (D124).
-- Oyuncu özelliğin neden var olduğunu hissedebilmelidir. “Bunu neden yapıyorum?” diyorsa “bana ne kazandırır?” ve “ne zaman kullanmalıyım?” yanıtları yüzeyde eksiktir.
-
-### 4. Interaction cost — Kullanmak ne kadar zahmetli?
-
-Scroll, dokunma ve ekran değiştirme maliyettir. Karşılaştırılacak on öğenin her birinin bir ekran kaplaması ile toplam iki ekrana sığması aynı deneyim değildir.
-
-350 px genişliğindeki telefonda bilgi yoğunluğu ve ekran ekonomisi dekoratif boşluktan önce gelir. **Her boşluğun amacı olmalıdır.** 74 px görsel alanı yüksekliğini hak edebilir; 40 px'e inen render favicon gibi görünür. Kapalı bir bölümün altında duran paragraf ise alanını hak etmez.
-
-### 5. Premium design — Görsel kalite zorunludur
-
-- Baştan savma tasarım yapma. Hedef premium AAA kalitesidir; görsellik ve premium hissiyat oyuncuyu etkileyen başlıca unsurlardandır.
-- Her zaman `ui-v2` ilkeleriyle uyumlu, kaliteli, premium ve hayranlık uyandıran tasarımlar üret.
-- Geliştirdiğin, güncellediğin veya düzelttiğin işin tasarım gereksinimlerini asla atlama.
+- Görsel dilin kaynağı `docs/ui-v2/gozlemevi.md` ve `docs/ui-v2/design-mocks/` mock'larıdır.
 - **VFX briefi (owner, 2026-11-18):** Efekt yazmadan önce 3 satırlık VFX briefi yazılır ve teslimde gösterilir: o anda dünyada fiziksel olarak ne oluyor, kütüphaneden hangi asset (yol), neden bu olayı anlatıyor. Yumuşak yuvarlak parlama, büyüyen hale ve "her yere uyan" efekt yasaktır.
-- Oyun hareketleri işletim sisteminin hareket tercihinden bağımsızdır. **Yalnız public landing CSS'i**, owner'ın 2026-10-18 tarihli açık erişilebilirlik talebiyle istisnadır. Bkz. `docs/landing-premium-redesign-2026-10-18.md`.
+- Oyun hareketleri işletim sisteminin hareket tercihinden bağımsızdır. **Yalnız public landing CSS'i**, owner'ın 2026-10-18 tarihli açık erişilebilirlik talebiyle istisnadır.
+- Hedef 350 px genişliğinde telefondur; his Unity/Godot/Unreal ile yapılmış bir oyundur, web formu değil.
+- Konuya uyan `gamedev:` skill'lerini kullan (tam adlar `gamedev:` önekiyle başlar).
 
-### 6. Game feel — Biz bir OYUNUZ (owner, 2026-11-06) | Oyuncu deneyimi standardı (çok önemli)!
-
-Astera Online, mobil öncelikli, web tabanlı ve android uygulaması olan bir 3D uzay strateji oyunudur. Oyuncuya canlı bir dünyada bir gemiyi, gezegeni veya filoyu yönettiğini hissettir. Oyuncuya dokunan her görevde, sistemin nasıl çalışacağıyla birlikte oyuncunun onu nasıl keşfedeceğini, kullanacağını ve sonucunu nasıl hissedeceğini tasarla. Bu, görevin parçasıdır. Kullanıcının her animasyonu, sesi ve etkileşimi ayrı ayrı tarif etmesini bekleme.
-
-Her geliştirmede uygula:
-- Önce oyuncunun yaşayacağı anı belirle. Mevcut akışı incele. Oyuncu bu ekrana niye geliyor, ilk neyi fark etmeli, hangi eylemi yapmalı ve sonrasında dünyada ne değişmeli? Görseli, kontrolü ve geri bildirimi bu akışa göre seç.
-- Eyleme uygun bir kontrol tasarla. Bir sistemi devreye almak şalteri çevirmek, bir sinyali araştırmak sahnedeki kaynağa dokunmak, kritik bir işlemi başlatmak kısa süre basılı tutmak gibi hissettirebilir. Sık kullanılan işlemleri hızlı ve anlaşılır tut. İlk çalıştırma, keşif, onarım ve sıçrama gibi önemli anlara daha fazla özen göster. Her kontrolün ne yaptığı ve nasıl kullanılacağı anlaşılır olsun.
-- Sonucu oyun dünyasında göster. Oyuncunun eylemine sahne, nesne ve arayüz birlikte karşılık versin. Bir rafineri devreye girdiğinde ocağı tutuşabilir. Bir gemi onarıldıkça arızalı bölümleri sönebilir ve sistemleri yeniden ışık verebilir. Animasyon, ses, kamera ve desteklenen cihazlarda titreşimi eylemin ağırlığına göre kullan. Temel durum ve sonuç, ses kapalıyken de anlaşılabilsin.
-- Oyuncuya bir sonraki hamlesi için neden ver. Özellikle ilk deneyimde oyuncu mevcut durumunu, sıradaki adımı, bu adımın ne işe yaradığını ve uzun vadede nereye varacağını anlayabilsin. Merak veya sahiplenme yaratmak istediğin yerde bunu akışın içine koy. Örneğin oyuncu bir sinyali izleyip gemiyi gerçekten görürse, gemiyi sahiplenme çağrısı anlam kazanır.
-- Görsel kaliteyi sahneye göre değerlendir. Ana nesne ilk bakışta seçilsin. Işık, siluet, renk ve hareket dikkati doğru yere taşısın. Hasar ve ilerleme, mümkün olduğunda modelin ve çevrenin değişiminden okunsun. Oyunun görsel dilini koru ve etkileşimi bağlamına göre şekillendir.
-- Mobil tasarımda baş parmakların ulaşabilecegi alan ve mesafeleri değerlendir. Kullanıcı deneyimini atlama.
-
-İnisiyatif ve teslim:
-- Oyuncu açısından hedefi anlayınca, kapsam içindeki yaratıcı kararları kendin ver ve uygula. Yukarıdaki örnekleri yaklaşımı anlamak için kullan. İlerleme kuralları veya oyun dengesi gibi ürün kararlarını değiştirmek gerekiyorsa netleştir. Rutin görsel ve etkileşim kararları için onay bekleme.
-- Mevcut bileşenleri ve varlıkları uygun yerlerde kullan. Mobilde okunabilirliği, dokunma rahatlığını ve performansı koru. Geri bildirimi gerçek oyun durumuyla eşleştir. Bekleyen işlem, başarı ve hata oyuncu açısından ayırt edilebilsin.
-- Teslimden önce özelliği mümkünse mobil boyutta, oyunun normal akışından bir oyuncu gibi dene. Ne yapacağım belli mi? Yaptığım şeyin karşılığını görüyor muyum? Sonraki adımı anlıyor muyum? Bu an, oyundaki önemine uygun hissettiriyor mu? Kapsam içindeki eksikleri teslimden önce düzelt. Teslimde hangi oyuncu deneyimini tasarladığını ve neyi doğruladığını kısaca belirt.
-
-Oyuncuya dokunan bir işi tamamlandı saymadan önce, değişikliği oyunun normal akışından çalıştır. Ne yaptığını gör incele!
-Oyuncunun eylemi nereden keşfettiğini, eylemden sonra ne gördüğünü ve sıradaki adımı nasıl anladığını kontrol et. Akışta fark ettiğin eksikleri kapsam içinde düzelt. Akışı çalıştıramadıysan, teslimde hangi kısmı doğrulayamadığını açıkça belirt.
-
-Hedef, Unity/Godot/Unreal ile yapılmış bir oyun hissidir; web formu değil. Her yeni veya güncellenen etkileşim için, owner söylemeden:
-
-- **Eylemin fiziği olsun:** önemli an düz bir buton değildir. Şalter, kol, basılı tutma, sürükleme, çekme veya itme kullan; jest, eylemin anlamını taşısın (güç bağla → şalter indir).
-- **Her eylemin cevabı olsun:** ses (`lib/sound`), titreşim (`haptic`) ve görsel tepki birlikte gelsin. Örneğin rafineri başlayınca ocak alevlensin. Sessiz ve hareketsiz bir sonuç, eksik bir sonuçtur.
-- **Sahne canlı olsun:** durağan görsel yoktur. Hafif dönüş, titreşim, parıltı, duman, kıvılcım ve ışık olsun. Hasar ve onarım durumu görselde okunsun.
-- **Tekdüzelik yasaktır:** her yere aynı buton ve kart konmaz. Önemli anın kendine özgü bir sunumu olsun.
-- **Oyuncunun elinden tut ve hikâye anlat:** her ekranda sıradaki adım ve nedeni görünür olsun. Açılan sistem vurgulanarak tanıtılsın; kilit işaretiyle ne açılacağı belli olsun. Açıklama yerine hikâye kullan ("bu gemi senin olabilir"), sezon/teknik dil yerine anlam.
-
-Kendine sor: **"Oyuncu burada büyülenir mi, bir şeye dokunduğunu hisseder mi?"**
-
-Her yüzey için sor: **“Bu arayüz yalnızca GÖSTERİYOR mu, yoksa YARDIM EDİYOR mu?”** Bütün bilgileri sunmak, oyuncunun karar verebildiği anlamına gelmez; daha fazla göstermek her zaman daha fazla yardımcı olmak değildir.
-
-Geliştirme yaparken elindeki konuya göre bu SKILL'lerden gerekli olanları kullanmalısın (Owner talimatı, önemli! Owner çıktılarını inceliyor):
-| Skill adı | İçeriği |
-| --- | --- |
-| `threejs-scene-setup` |	Three.js scene/camera/renderer/animation-loop, resizing, controls |
-| `threejs-gltf-loading` |	Loading glTF/GLB + skinned animation (GLTFLoader/AnimationMixer) |
-| `threejs-materials-lighting` |	Materials (PBR), lights, shadows, environment maps |
-| `create-game-assets` |	Art direction and production pipeline for cohesive sprites, tiles, textures, icons, UI art, and 3D assets |
-| `game-ai` |	NPC decision-making: FSMs, behavior trees, steering, pathfinding |
-| `ai-behavior-trees-utility-ai` |	Production behavior-tree runtime (Blackboard, composites, decorators, leaves) + Utility AI (curves, considerations, evaluator) + hybrid AI |
-| `procedural-gen` |	Noise, RNG, seeds, grid/dungeon/terrain generation |
-| `dialogue-systems` |	Branching dialogue/narrative: nodes, conditions, variables (Yarn/Ink) |
-| `save-systems` |	Serialize/restore game state: formats, slots, versioning, autosave |
-| `audio-design` |	Buses/mixing, adaptive music, SFX, ducking |
-| `shader-programming` |	Cross-engine shader concepts: vertex/fragment, UVs, common effects |
-| `physics-tuning` |	Tuning feel: fixed timestep, mass/drag, CCD, stability, layers |
-| `level-design` |	Whitebox/blockout structure, tile/grid layout, pacing |
-| `input-systems` |	Input architecture: action mapping, rebinding, multi-device, buffering |
-| `game-feel` |	Juice: screen shake, hit-stop, tweening/easing, squash & stretch, feedback tiers |
-| `game-ui-ux` |	Cross-engine HUD/menus: anchors, resolution scaling, safe areas, focus navigation |
-| `camera-systems` |	2D follow/deadzone/look-ahead + bounds, 3D orbit/first-person, screen-shake hook |
-| `performance-optimization` |	Profile-first: frame budget, CPU/GPU triage, draw calls, pooling, GC, asset budgets |
-
-> Oyuncu API'yi anlamaz. Oyuncu gördüğünü anlar, gösterileni bilir!
-
-### 7. Oyun Geliştirme El Kitabı — owner, 2026-11-24
+### 4.7 Oyun Geliştirme El Kitabı — owner, 2026-11-24
 
 `~/Desktop/Coding/MyProjects/game-dev-handbook/` (repo dışı) oyun tasarımı ve oyun mühendisliği ilkelerinin başvuru kaynağıdır. Her ilkenin kalıcı bir ID'si vardır (`GF-03`, `SB-04`, `EN-03`). Kullanılması zorunludur:
 
@@ -206,16 +116,18 @@ Geliştirme yaparken elindeki konuya göre bu SKILL'lerden gerekli olanları kul
 2. Uyan ilkeleri tasarıma ve koda uygula. Teslimden önce `checklists.md` içindeki ilgili bölümü geçir. Plan ve teslim notunda kullandığın ilkeleri ID'siyle yaz.
 3. **Uygunluk filtresi:** İlkeyi yalnız Astera'ya uyuyor ve oyunu iyileştiriyorsa uygula. Astera mobil öncelikli, kalıcı, asenkron (filo gönder, offline bekle) bir istihbarat ve strateji oyunudur. Anlık aksiyon ilkeleri (coyote time, frame data, hit stop, parry) yalnız Komutan Gemisi / Savaş Alanı gibi gerçek zamanlı yüzeylerde anlamlıdır. Uymayan ilkeyi zorla uygulama.
 4. **Öncelik:** Bu dosya, `docs/` ve owner kararları el kitabından üstündür. Mekanik gerçekler için kod ve testler esastır. El kitabı mevcut bir kuralla çatışıyor ama oyunu iyileştirecekse §2'ye göre ödünleşim olarak owner'a sor. Bilinen çatışmalar:
-   - Reduced motion (`UI-10`, `AC-03`): oyun hareketleri işletim sistemi tercihinden bağımsızdır (§4.5).
-   - Parlama, hale, glow (`UI-02`, `UI-07`, `GF-08`): VFX briefi kuralı ve genel parlama yasağı geçerlidir (§4.5).
+   - Reduced motion (`UI-10`, `AC-03`): oyun hareketleri işletim sistemi tercihinden bağımsızdır (§4).
+   - Parlama, hale, glow (`UI-02`, `UI-07`, `GF-08`): VFX briefi kuralı ve genel parlama yasağı geçerlidir (§4).
    - Metin boyutları (`UI-14`, `AC-02`): verilen değerler konsol ve PC içindir. Mobil yazı tabanı owner kararıdır.
    - Botlar (`DI-06` ve benzeri): botlar hiçbir koşulda ayırt edilemez (§1).
 5. Basis etiketi `Elaboration` veya `Claimed, unverified` olan bir ilkeyi kanıt gibi sunma. Astera için işe yaradığını söylemek ölçüm veya playtest gerektirir.
 6. `ML-05` anti-pattern tablosundaki uygulamalar (gelire göre zorluk, kasıtlı kaybettirme, gizli fiyat ayrımı, gizli profilleme) owner'ın yazılı onayı olmadan uygulanmaz. Bir istek bunlara benziyorsa işaretle.
 
+Bir task'a başlarken, nereleri okuduğunu ve neye karar verdiğini owner'a bildirmek zorunlu.
+
 ## 5. Kalite ve doğrulama
 
-**Temiz, sürdürülebilir, performanslı ve kaliteli geliştir. Test gerektiren kod, testleri olmadan tamamlanmış sayılmaz; tasarım istisnası Bölüm 3'te tanımlıdır.**
+**Test gerektiren kod, testleri olmadan tamamlanmış sayılmaz; tasarım istisnası Bölüm 3'te tanımlıdır.**
 
 ```bash
 pnpm verify
@@ -252,13 +164,10 @@ Ekonomi/sezon simülasyonları, snowball audit'leri ve benzeri uzun ekonomi ince
 - Node heap **3 GiB'ı aşamaz**: en fazla `--max-old-space-size=3072`. Bir kontrolü geçirmek için sınırı yükseltme veya 6 GiB kullanma. Test worker'larında yukarıdaki daha düşük sınır geçerlidir.
 - Heap toplam süreç belleği değildir; RSS'i izle ve PC'nin kullanılabilir kalmasını sağla.
 - `pnpm lint` bütün dosyaları 400'lük parçalarla sırayla kontrol eder (tek süreç 3 GiB'a sığmaz). Bkz. `tools/lint.mjs`.
-- Bu kural yerel dokümanlarda kalmış eski 6 GiB yönlendirmelerinden üstündür.
 
 ## 6. Bağlam ve dosya okuma stratejisi
 
-- Gereksiz, tekrarlı ve amaçsız okumadan kaçın. Önce hedefli aramalarla ilgili dosyaları, bağımlılıkları ve çağrı zincirlerini belirle; sonra doğruluk ve mevcut sistemlerle uyumluluk için gereken tüm kodu incele.
 - Token tasarrufu uğruna gerekli inceleme, bağımlılık analizi veya testlerden ödün verme.
-- Büyük dosyalarda önce ilgili bölümleri oku, gerekirse kapsamı genişlet. Okuduğun ve değişmediğini bildiğin içeriği gereksiz yere yeniden okuma.
 - **Dokümanlar eski veya hatalı olabilir. Mevcut davranış ve mekanikler için kesin bilgi kaynağı kod ve testlerdir.**
 
 ### Doküman haritası
@@ -275,11 +184,9 @@ Ekonomi/sezon simülasyonları, snowball audit'leri ve benzeri uzun ekonomi ince
 | `docs/visual-design.md` | Sanat ve 3D çalışmalarında |
 | `docs/playtest-log.md` | Playtest yaparken |
 | `docs/review-sight.md` | Telescope/Radar/probe görüşüne dokunurken |
-| `docs/review-onboarding.md` | Güncel FlightSchool, gerçek başlangıç ve eski Academy ayrımında; onboarding için ilk referans |
 | `docs/glossary.md` | Terimler için |
 | `docs/komutan-gemisi/README.md` | Komutan Gemisi / Savaş Alanı'na (gerçek zamanlı pilot arenası) dokunurken |
-| `docs/baslangic-galaksisi-plani-2026-11-04.md` | Koloni gemisi, başlangıç galaksileri, prolog ve göçe dokunurken || `~/Desktop/Coding/MyProjects/game-assets/AGENTS.md` | Hazır GUI, ikon, VFX, model veya ses ararken (repo dışı ortak kütüphane; çizmeden önce bak) |
-| `docs/yeni-oyuncu-yolculugu-plani-2026-11-13.md` | Yeni oyuncunun ilk oturumu, sıçrama kararı, ilk hafta ve tutunma ölçümüne dokunurken |
+| `~/Desktop/Coding/MyProjects/game-assets/AGENTS.md` | Hazır GUI, ikon, VFX, model veya ses ararken (repo dışı ortak kütüphane; çizmeden önce bak) |
 | `~/Desktop/Coding/MyProjects/game-dev-handbook/README.md` | Oyuncuya dokunan veya oyun sistemine giren her geliştirmede (repo dışı el kitabı; bkz. §4.7) |
 
 Diğer konular için `docs/` klasörüne bak.
@@ -288,7 +195,7 @@ Diğer konular için `docs/` klasörüne bak.
 
 ## 7. Token optimizasyonu
 
-Gerekmiyorsa çıktı verme. Çıktı gerektiğinde kısa, net, basit ve kullanıcının anlayabileceği şekilde yaz; gereksiz uzatma.
+Kullanıcıya yazdıklarını kısa, net ve sade tut: ne yaptığını, neyi doğruladığını ve kullanıcıdan ne beklediğini söyle; araç çıktısını tekrar etme. Uzun bir işte bir aşamayı bitirdiğinde veya bir sonucu beklerken tek cümleyle durumu yaz.
 
 Claude API her istekten sonra 60dk TTL ile caching yapıyor. Bu yüzden dolayı hiç bir işi 55dk'dan fazla bekleme (5dk buffer). Test sonucu, tool call vs. hiç bir şeyi 55dk üzerinde beklemeyeceksin. İşine devam edeceksin. Sonuç gelince bakarsın, boşuna bekleyip cache süresini yakma. Cachelenmiş geçmiş için token ücreti çok daha ucuz.
 
