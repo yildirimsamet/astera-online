@@ -1,6 +1,7 @@
 import { PushNotifications } from '@capacitor/push-notifications';
 import { refreshPhonePermission } from './localNotifications.js';
 import { capabilities } from './runtime.js';
+import { shellBuild } from './updateGate.js';
 import { z } from 'zod';
 import { observe } from '../lib/playerAnalytics/runtime.js';
 
@@ -16,6 +17,11 @@ import { observe } from '../lib/playerAnalytics/runtime.js';
  * token is handed out, or FCM would fall back to its own.
  */
 const CHANNEL = 'alerts';
+/**
+ * Play v16 (2026-11-26) shipped without its Firebase file, and FCM `register()` closes that app.
+ * OTA releases run on it, so they never register there, nor on a shell the bridge did not name.
+ */
+const canRegister = (): boolean => { const build = shellBuild(); return build !== undefined && build !== '16'; };
 /** The last token handed to the server, kept across app starts: a phone whose notifications were
  * switched off in its settings must still be taken off the account, or alerts are paid for unseen. */
 const STORE = 'astera:push-token';
@@ -73,7 +79,7 @@ function post(): void {
 }
 
 export async function connectPush(api: PushApi, options: { locale: string; channelName: string; ask: boolean }): Promise<'on' | 'denied' | 'off'> {
-  if (!capabilities().nativePush) return 'off';
+  if (!capabilities().nativePush || !canRegister()) return 'off';
   target = { api, locale: options.locale };
   try {
     let receive = (await PushNotifications.checkPermissions()).receive;

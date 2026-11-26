@@ -14,6 +14,8 @@ const plugin = vi.hoisted(() => ({
 vi.mock('@capacitor/push-notifications', () => ({ PushNotifications: plugin }));
 const caps = vi.hoisted(() => ({ nativePush: true }));
 vi.mock('../src/platform/runtime.js', () => ({ capabilities: () => caps }));
+const shell = vi.hoisted((): { build: string | undefined } => ({ build: '17' }));
+vi.mock('../src/platform/updateGate.js', () => ({ shellBuild: () => shell.build }));
 const refresh = vi.hoisted(() => vi.fn());
 vi.mock('../src/platform/localNotifications.js', () => ({ refreshPhonePermission: refresh }));
 
@@ -49,10 +51,20 @@ beforeEach(async () => {
 afterEach(() => {
   vi.clearAllMocks();
   caps.nativePush = true;
+  shell.build = '17';
   fcmToken = 'token-1';
 });
 
 describe('connecting the phone', () => {
+  // Play v16 (2026-11-26) shipped without its Firebase file: FCM `register()` closes that app.
+  // OTA releases reach v16, so the web never registers there, nor on a shell it could not name.
+  it.each([['16'], [undefined]])('never registers on shell %s, which would close the app', async build => {
+    shell.build = build;
+    await expect(connect(true)).resolves.toBe('off');
+    expect(plugin.register).not.toHaveBeenCalled();
+    expect(plugin.requestPermissions).not.toHaveBeenCalled();
+  });
+
   it('does nothing where push does not exist', async () => {
     caps.nativePush = false;
     await expect(connect(true)).resolves.toBe('off');

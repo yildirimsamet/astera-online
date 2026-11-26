@@ -5,6 +5,7 @@ const plugin = vi.hoisted(() => ({ addListener: vi.fn(), checkPermissions: vi.fn
 vi.mock('@capacitor/push-notifications', () => ({ PushNotifications: plugin }));
 vi.mock('../src/platform/runtime.js', () => ({ capabilities: () => ({ nativePush: true }) }));
 vi.mock('../src/platform/localNotifications.js', () => ({ refreshPhonePermission: vi.fn() }));
+vi.mock('../src/platform/updateGate.js', () => ({ shellBuild: () => '17' }));
 beforeEach(() => { observe.mockClear(); });
 it('observes a notification open without sending the push token or its contents', async () => {
   const listeners = new Map<string, (event: unknown) => void>();
