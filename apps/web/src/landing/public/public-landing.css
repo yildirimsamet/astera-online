@@ -45,8 +45,9 @@ html[data-public-surface] body { margin: 0; background: #060b12; }
 .landing-connection p { color: var(--color-v2-ink-2, #a4b1cd); font-size: 11px; line-height: 1.5; margin-bottom: .5rem; }
 .landing-consent-host { max-width: 378px; }
 .landing-consent-host:not(:empty) { margin-top: 1rem; }
-.landing-consent-host > div { position: relative; inset: auto; padding: 0; border: 1px solid var(--color-v2-line, #1d2842); border-radius: 4px; background: var(--color-v2-panel, #0d1422); }
-.landing-consent-host > div > div { max-width: none; padding: .75rem; }
+/* In the page's flow, not pinned: the note or the reopened choice brings its own kit frame. */
+.landing-consent-host > div { position: relative; inset: auto; padding: 0; }
+.landing-consent-host > div > div { max-width: none; }
 .public-landing .consent-heading { font-size: 11px; line-height: 1.5; letter-spacing: normal; }
 .public-landing .consent-copy { font-size: 11px; line-height: 1.55; }
 .landing-hero-bottom { display: flex; justify-content: space-between; align-items: center; padding-block: 1.8rem; border-bottom: 1px solid #b9d8e226; font-size: 11px; color: #b0c2cb; }

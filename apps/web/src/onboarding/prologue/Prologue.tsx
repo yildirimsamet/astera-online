@@ -30,6 +30,23 @@ const SIGNAL_AT = { x: '84%', y: '23%' };
 const ROAR_S = BURN_MS / 1000 + 0.3;
 const TORCH_S = PATCH_MS / 1000 + 0.3;
 interface Point { x: string; y: string }
+const HANDLE = '/assets/images/starter/prologue-breaker-handle';
+/**
+ * WHERE THE PAINTED BREAKER IS (owner 2026-11-27: painted into the `-v2` bridge frames), as shares of the
+ * 1024×1536 art: the box at x 780–958, y 1152–1390; its slot centred on x 877 from y 1222 to 1318; the
+ * lamp at (918.5, 1206.5). The lever is 100 art px wide (53 tall) and rides 53 px down the slot.
+ */
+const BREAKER_AT = {
+  handle: { left: '80.76%', top: '78.78%', width: '9.77%' },
+  lamp: { left: '89.7%', top: '78.55%' },
+  hit: { left: '75%', top: '74.2%', width: '19.5%', height: '13.7%' },
+  sparks: { left: '85.64%', top: '84.64%' },
+  // Owner 2026-11-27, marked on a 375 px phone shot: the arrows run on the slot's line (x 877) from just under
+  // the lever down the box's lower face (y 1309–1390). The plate over the box is placed in prologue.css.
+  pull: { left: '85.64%', top: '85.2%' },
+} as const;
+/** The lever's travel down the slot, as a share of its own drawn height (53 of 53 art px). */
+const HANDLE_TRAVEL = 1;
 
 interface Props {
   onClaim: (username: string, password: string, progress: readonly [], country?: CountryCode, policy?: CommunityPolicyConsent, hull?: VesselHull) => Promise<void>;
@@ -150,13 +167,20 @@ function Torch({ at }: { at: { left: string; top: string } }) {
 /**
  * THE BREAKER (owner 2026-11-06: "en alttaki buton yerine bir şalter"). Pulled down, it lands with a
  * knock, the contact sparks, and only then do the lights try. A tap throws it too.
+ *
+ * ON THE CONSOLE (owner phone playtest 2026-11-27): at the foot of the screen the cookie note covered
+ * it. Its box is painted into the bridge on the right-hand console, and only the lever is drawn here,
+ * riding its slot. Its name stands beside it on a plate and the arrows run down beside the lever. Once
+ * thrown (`settled`) it stays down in the slot, and its lit face comes on with the bridge's lights.
  */
-function Breaker({ label, onThrow }: { label: string; onThrow: () => void }) {
-  const [pull, setPull] = useState(0);
-  const [thrown, setThrown] = useState(false);
+function Breaker({ label, onThrow, settled, lit }: { label: string; onThrow: () => void; settled: boolean; lit: boolean }) {
+  const [pull, setPull] = useState(settled ? 1 : 0);
+  const [thrown, setThrown] = useState(settled);
   const [dragging, setDragging] = useState(false);
-  const drag = useRef<{ from: number; moved: boolean } | null>(null);
-  const TRAVEL = 44;
+  // Once a finger has been on the breaker, the arrows saying "pull" have done their work (owner 2026-11-27).
+  const [touched, setTouched] = useState(false);
+  const drag = useRef<{ from: number; travel: number; moved: boolean } | null>(null);
+  const handle = useRef<HTMLSpanElement>(null);
   const fire = () => {
     if (thrown) return;
     setThrown(true);
@@ -168,12 +192,15 @@ function Breaker({ label, onThrow }: { label: string; onThrow: () => void }) {
   const down = (event: PointerEvent<HTMLButtonElement>) => {
     if (thrown) return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    drag.current = { from: event.clientY, moved: false };
+    // The finger travels as far as the lever is drawn to, and never less than a deliberate 24 px.
+    const drawn = (handle.current?.getBoundingClientRect().height ?? 0) * HANDLE_TRAVEL;
+    drag.current = { from: event.clientY, travel: Math.max(24, drawn), moved: false };
     setDragging(true);
+    setTouched(true);
   };
   const move = (event: PointerEvent<HTMLButtonElement>) => {
     if (!drag.current || thrown) return;
-    const share = Math.min(1, Math.max(0, (event.clientY - drag.current.from) / TRAVEL));
+    const share = Math.min(1, Math.max(0, (event.clientY - drag.current.from) / drag.current.travel));
     if (share > 0.08) drag.current.moved = true;
     setPull(share);
     if (share >= 0.85) { drag.current = null; setDragging(false); fire(); }
@@ -186,14 +213,16 @@ function Breaker({ label, onThrow }: { label: string; onThrow: () => void }) {
     if (tapped) fire(); else setPull(0);
   };
   return (
-    <div className={`prologue-breaker prologue-rise relative flex items-center gap-3 rounded-plate border border-v2-line-hi bg-gradient-to-b from-[#0c131c] to-[#05080d] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_10px_30px_-10px_#000] ${thrown ? 'is-thrown' : ''}`}>
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="font-v2-mono text-micro uppercase tracking-label text-v2-ink-3">AUX · 01</span>
-        <span className="text-body font-semibold text-v2-ink">{label}</span>
-      </div>
-      {/* Owner 2026-11-06: no words, three arrows running down beside the lever say "pull". */}
-      {!thrown && (
-        <span aria-hidden="true" data-testid="prologue-pull" className="flex shrink-0 flex-col items-center text-v2-self">
+    <div data-testid="prologue-console" data-breaker={thrown ? 'down' : 'up'} className={`prologue-breaker absolute inset-0 ${thrown ? 'is-thrown' : ''}`}>
+      {!settled && (
+        // The plate says it once; the switch carries the same words for a reader.
+        <span aria-hidden="true" data-testid="prologue-breaker-label"
+          className="prologue-breaker-tag prologue-rise absolute max-w-[9.5rem] text-right text-micro font-semibold leading-tight">{label}</span>
+      )}
+      {/* Owner 2026-11-06: no words, three arrows running down under the lever say "pull". Gone at the first touch. */}
+      {!thrown && !touched && (
+        <span aria-hidden="true" data-testid="prologue-pull" style={BREAKER_AT.pull}
+          className="absolute flex -translate-x-1/2 flex-col items-center text-v2-self">
           {[0, 1, 2].map(index => (
             <svg key={index} viewBox="0 0 16 10" className="prologue-chevron -my-0.5 h-2.5 w-4" style={{ animationDelay: `${String(index * 0.18)}s` }}>
               <path d="M2 2l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -201,26 +230,29 @@ function Breaker({ label, onThrow }: { label: string; onThrow: () => void }) {
           ))}
         </span>
       )}
-      <button
-        type="button"
-        role="switch"
-        aria-checked={thrown}
-        aria-label={label}
-        data-testid="prologue-switch"
-        onPointerDown={down}
-        onPointerMove={move}
-        onPointerUp={up}
-        onPointerCancel={() => { drag.current = null; setDragging(false); if (!thrown) setPull(0); }}
-        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); fire(); } }}
-        className="prologue-breaker-track prologue-hold relative h-[76px] w-14 shrink-0 rounded-control border border-black/80"
-      >
-        <span aria-hidden="true" className="absolute inset-x-[20px] inset-y-2 rounded-full bg-black/80 shadow-[inset_0_0_4px_#000]" />
-        <span aria-hidden="true" className={`prologue-breaker-handle absolute left-1.5 right-1.5 top-1.5 h-7 rounded-cell ${dragging ? 'is-dragging' : ''}`} style={{ transform: `translateY(${String(pull * TRAVEL)}px)` }}>
-          <span className="prologue-breaker-cap absolute left-1/2 top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full" />
-        </span>
-        <span aria-hidden="true" className={`absolute -right-1 top-2 size-1.5 rounded-full ${thrown ? 'bg-v2-self shadow-[0_0_8px_var(--color-v2-self)]' : 'bg-v2-hostile/60'}`} />
-        {thrown && <Sparks at={{ left: '50%', top: '78%' }} />}
-      </button>
+      <span ref={handle} aria-hidden="true" className={`prologue-breaker-handle absolute ${dragging ? 'is-dragging' : ''}`}
+        style={{ ...BREAKER_AT.handle, transform: `translateY(${String(pull * HANDLE_TRAVEL * 100)}%)` }}>
+        <img src={`${HANDLE}-dark.webp`} alt="" draggable={false} className="block w-full" />
+        <img src={`${HANDLE}-lit.webp`} alt="" draggable={false} className={`absolute inset-0 block w-full ${lit ? 'prologue-lit' : 'opacity-0'}`} />
+      </span>
+      <span aria-hidden="true" className="prologue-breaker-led absolute" style={BREAKER_AT.lamp} />
+      {thrown && !settled && <Sparks at={BREAKER_AT.sparks} />}
+      {!settled && (
+        <button
+          type="button"
+          role="switch"
+          aria-checked={thrown}
+          aria-label={label}
+          data-testid="prologue-switch"
+          onPointerDown={down}
+          onPointerMove={move}
+          onPointerUp={up}
+          onPointerCancel={() => { drag.current = null; setDragging(false); if (!thrown) setPull(0); }}
+          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); fire(); } }}
+          className="prologue-hold pointer-events-auto absolute"
+          style={BREAKER_AT.hit}
+        />
+      )}
     </div>
   );
 }
@@ -403,7 +435,7 @@ function GalaxySky() {
 }
 
 /** The bridge, with the window cut out of it and the sky moving behind. */
-function Bridge({ lit, burning, signal, diving, origin }: { lit: boolean; burning: boolean; signal: ReactNode; diving: boolean; origin: Point }) {
+function Bridge({ lit, burning, signal, breaker, diving, origin }: { lit: boolean; burning: boolean; signal: ReactNode; breaker: ReactNode; diving: boolean; origin: Point }) {
   const glints = [[18, 20], [74, 12], [33, 41], [88, 46], [57, 15], [12, 51], [66, 38]];
   return (
     <div data-testid="prologue-bridge" style={{ '--wx': origin.x, '--wy': origin.y } as CSSProperties}
@@ -416,12 +448,13 @@ function Bridge({ lit, burning, signal, diving, origin }: { lit: boolean; burnin
           {glints.map(([x, y], index) => <span key={index} className="prologue-glint" style={{ left: `${String(x)}%`, top: `${String(y)}%`, animationDelay: `${String(index * 1.37)}s`, animationDuration: `${String(7 + (index % 3) * 2.3)}s` }} />)}
           <span className="prologue-comet" />
         </span>
-        <img src={`${ART}-dark-frame.webp`} alt="" draggable={false} className="object-cover" />
-        <img src={`${ART}-lit-frame.webp`} alt="" draggable={false} className={`object-cover ${lit ? 'prologue-lit' : 'opacity-0'}`} />
+        {/* `-v2`: the breaker box painted on the right-hand console (owner 2026-11-27). */}
+        <img src={`${ART}-dark-frame-v2.webp`} alt="" draggable={false} className="object-cover" />
+        <img src={`${ART}-lit-frame-v2.webp`} alt="" draggable={false} className={`object-cover ${lit ? 'prologue-lit' : 'opacity-0'}`} />
         {burning && <span data-testid="prologue-furnace-light" className="prologue-furnace-light" />}
       </div>
-      {/* The signal sits on the art, so it stays in the window however the art is fitted. */}
-      <div className="prologue-signal-art pointer-events-none"><div>{signal}</div></div>
+      {/* The signal and the breaker's lever sit on the art, so they stay in place however the art is fitted. */}
+      <div className="prologue-on-art pointer-events-none"><div>{signal}{breaker}</div></div>
     </div>
   );
 }
@@ -562,10 +595,15 @@ export function Prologue({ onClaim, onSignIn, onLeave, replay = false }: Props) 
   return (
     <main ref={mainRef} data-testid="prologue" data-stage={stage} className="relative isolate flex h-dvh w-full flex-col overflow-hidden bg-v2-void font-v2-ui">
       {(ship || stage === 'warping') && <Reveal hull={hull} arrived={ship} />}
-      {!ship && <Bridge lit={lit} burning={refineryRunning(world)} signal={signalMark} diving={stage === 'warping'} origin={origin.stage} />}
+      {!ship && <Bridge lit={lit} burning={refineryRunning(world)} signal={signalMark} diving={stage === 'warping'} origin={origin.stage}
+        breaker={<Breaker label={t('starter.prologue.action.power')} onThrow={() => { act('power'); }} settled={stage !== 'dark'} lit={lit} />} />}
       {stage === 'warping' && <Warp origin={origin.main} />}
       {ship && <span aria-hidden="true" data-testid="prologue-whiteout" className="prologue-whiteout pointer-events-none absolute inset-0 z-20" />}
-      <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-[46%] bg-gradient-to-t from-v2-void from-40% via-v2-void/60 via-70% to-transparent" />
+      {/*
+        None in the dark: the art's own foot already fades to black under the words, and this shade would
+        swallow the breaker on the console (on a wide screen the art runs the full height). It rises with the power.
+      */}
+      <span aria-hidden="true" className={`pointer-events-none absolute inset-x-0 bottom-0 -z-10 ${stage === 'dark' ? 'h-0' : 'h-[46%]'} bg-gradient-to-t from-v2-void from-40% via-v2-void/60 via-70% to-transparent transition-[height] duration-700`} />
       <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-20 bg-gradient-to-b from-v2-void/80 to-transparent" />
 
       <header className="flex items-center gap-3 px-3 pt-[max(0.625rem,env(safe-area-inset-top))]">
@@ -585,7 +623,12 @@ export function Prologue({ onClaim, onSignIn, onLeave, replay = false }: Props) 
       </header>
 
       {/* Over the ship, the words let a finger through to turn it; only the controls take a touch. */}
-      <div className={`relative mt-auto flex flex-col gap-2.5 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] v2-split:mx-auto v2-split:w-full v2-split:max-w-md ${ship ? 'pointer-events-none [&_button]:pointer-events-auto' : ''}`}>
+      {/*
+        Over the cookie note while it shows (`--consent-h`), where the screen is tall enough that the
+        words still clear the breaker (a phone taller than 1.7× its width, or a wide screen). On a short
+        phone the note covers the words instead of the words covering the breaker; a touch removes it.
+      */}
+      <div data-testid="prologue-foot" className={`relative mt-auto flex flex-col gap-2.5 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] [@media(max-aspect-ratio:10/17)]:pb-[calc(max(0.75rem,env(safe-area-inset-bottom))+var(--consent-h,0px))] v2-split:pb-[calc(max(0.75rem,env(safe-area-inset-bottom))+var(--consent-h,0px))] v2-split:mx-auto v2-split:w-full v2-split:max-w-md ${ship ? 'pointer-events-none [&_button]:pointer-events-auto' : ''}`}>
         {lit && !ship && (
           <div data-testid="prologue-holds" className="relative flex gap-3 font-v2-mono text-caption [text-shadow:0_1px_3px_#000]">
             <span className="text-v2-alloy">{t('starter.prologue.alloy', { value: full(held.alloy) })}</span>
@@ -620,7 +663,6 @@ export function Prologue({ onClaim, onSignIn, onLeave, replay = false }: Props) 
           {copy.body && <p className="text-caption leading-snug text-v2-ink-2 [text-shadow:0_1px_4px_#000]">{copy.body}</p>}
         </div>
 
-        {stage === 'dark' && <Breaker label={t('starter.prologue.action.power')} onThrow={() => { act('power'); }} />}
         {stage === 'powered' && (
           <HoldControl testId="prologue-ignite" label={t('starter.prologue.action.burn')} hint={t('starter.prologue.hint.hold')} tone="#ff9a3d"
             glyph={<Icon id={SYSTEM_ICON.REFINERY} className="size-6" />} onHeld={() => { playSound('ignite', { seconds: ROAR_S }); haptic('rumble'); act('burn'); }} />

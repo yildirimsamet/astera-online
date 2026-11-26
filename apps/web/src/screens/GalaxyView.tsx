@@ -1749,6 +1749,8 @@ export function GalaxyView({
               events={activeEvents(galaxyEvents.data?.events ?? [], now)}
               now={now}
               onOpen={(event) => {
+                // The storm is flown into from the hangar (owner 2026-11-27): its chip opens the ship tab.
+                if (event.kind === 'ASTERIUM_STORM' && onEnterArena) { onPanel('ship'); return; }
                 if (event.kind === 'TRADE_SHIP') setFocus({ kind: 'tradeShip', id: event.id });
                 else if (event.kind === 'INTERGALACTIC_CONVOY') setFocus({ kind: 'intergalacticConvoy', id: event.id });
                 else { setEventsGuideOpen(true); return; }

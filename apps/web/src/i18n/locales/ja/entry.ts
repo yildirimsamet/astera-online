@@ -161,6 +161,9 @@ export const settings = {
  */
 export const consent = {
   title: "Cookie と広告の選択",
+  /** The first visit's note (owner 2026-11-27): only the essentials are on; closing it keeps it so. */
+  notice: "必要な Cookie のみ",
+  noticeBody: "計測とパーソナライズ広告はオフです。メニュー › プライバシーでオンにできます。",
   essentials: "サインインすると、常に 1 つのセッション Cookie が保存されます。その部分はオプションではありません。",
   optional:
     "測定および広告ストレージは、許可されている場合にのみ使用されます。拒否してもゲームは同じように動作し、パーソナライズなしで広告が表示されます。",

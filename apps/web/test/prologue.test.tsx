@@ -157,6 +157,40 @@ describe('the screen', () => {
     expect(net).not.toHaveBeenCalled();
   });
 
+  /*
+    THE BREAKER ON THE CONSOLE (owner phone playtest 2026-11-27): at the foot of the screen the
+    cookie note covered it. Its box is painted on the bridge's right-hand console now; the lever
+    rides in the picture over it, clear of the words at the foot, and still says what it does.
+    Once thrown it stays down in its slot while the bridge is shown.
+  */
+  it('mounts the breaker on the console in the picture, clear of the words at the foot', () => {
+    render(<Prologue {...END} />);
+    const lever = screen.getByTestId('prologue-switch');
+    const console = screen.getByTestId('prologue-console');
+    expect(screen.getByTestId('prologue-bridge')).toContainElement(console);
+    expect(console).toContainElement(lever);
+    expect(screen.getByTestId('prologue-foot')).not.toContainElement(lever);
+    expect(screen.getByTestId('prologue-breaker-label').textContent).toBe(lever.getAttribute('aria-label'));
+    expect(console.getAttribute('data-breaker')).toBe('up');
+    throwSwitch();
+    expect(stage()).toBe('powered');
+    expect(screen.queryByTestId('prologue-switch')).toBeNull();
+    expect(screen.getByTestId('prologue-console').getAttribute('data-breaker')).toBe('down');
+  });
+
+  // Owner 2026-11-27: the arrows saying "pull" go the moment a finger lands on the breaker; they have done their work.
+  it('drops the pull arrows the moment a finger lands on the breaker, and keeps them gone', () => {
+    render(<Prologue {...END} />);
+    const lever = screen.getByTestId('prologue-switch');
+    expect(screen.getByTestId('prologue-pull')).toBeInTheDocument();
+    fireEvent.pointerDown(lever);
+    expect(screen.queryByTestId('prologue-pull')).toBeNull();
+    // The pull is broken off without throwing it: the lever stays up, and the arrows stay gone.
+    fireEvent.pointerCancel(lever);
+    expect(screen.getByTestId('prologue-console').getAttribute('data-breaker')).toBe('up');
+    expect(screen.queryByTestId('prologue-pull')).toBeNull();
+  });
+
   it('answers every turn with a sound', () => {
     render(<Prologue {...END} />);
     throwSwitch();

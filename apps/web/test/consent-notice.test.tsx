@@ -11,13 +11,15 @@ import { ConsentNotice } from '../src/shell/ConsentNotice.js';
  *
  * Google's certified message covers the EEA, the UK and Switzerland. Everywhere
  * else — and this game's players are largely in Türkiye — KVKK still requires an
- * informed choice before any non-essential storage, with refusing no harder than
- * accepting. These tests hold the four things that makes true:
+ * informed choice before any non-essential storage. Owner 2026-11-27: the first visit
+ * gets a thin note with one close button, and any touch on the game puts it away.
+ * Putting it away keeps only the essentials (the owner chose this over "a touch means
+ * yes", which KVKK does not count as consent). These tests hold what makes that true:
  *
  *   1. It only appears where a Google tag actually exists.
  *   2. It never appears on top of Google's own message.
- *   3. Refusing is one tap, beside accepting, and it is remembered.
- *   4. It can be reopened afterwards, from the menu, forever.
+ *   3. Closing it, or touching anything else, keeps only the essentials and is remembered.
+ *   4. The full choice can be reopened afterwards, from the menu, forever.
  */
 const gtagCalls: unknown[][] = [];
 
@@ -46,7 +48,7 @@ it('keeps the public-page choice inside its normal-flow host without changing re
   document.body.append(host);
   const view = render(<ConsentNotice inlineHost={host} />);
   expect(host).toContainElement(screen.getByRole('dialog'));
-  await userEvent.setup().click(screen.getByRole('button', { name: 'Reddet' }));
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Kapat' }));
   expect(readConsent()?.decision).toBe('denied');
   const scrollIntoView = vi.fn();
   host.scrollIntoView = scrollIntoView;
@@ -75,25 +77,26 @@ describe('when Google owns the question', () => {
 });
 
 describe('a first visit outside the certified regions', () => {
-  it('asks before anything non-essential is stored', () => {
+  it('tells before anything non-essential is stored', () => {
     show();
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    // Asking is not consenting: nothing has moved off the denied defaults.
+    // Telling is not consenting: nothing has moved off the denied defaults.
     expect(gtagCalls).toEqual([]);
     expect(readConsent()).toBeNull();
   });
 
   /**
-   * REFUSING IS AS EASY AS ACCEPTING. Both are buttons, both are one tap, and
-   * neither is hidden behind a second screen — the KVKK cookie guidance names
-   * the opposite arrangement as a defect rather than a design choice.
+   * ONE CLOSE BUTTON (owner 2026-11-27). Nothing non-essential is on while the note
+   * shows, so it asks for no decision: the only control is the one that puts it away,
+   * and the policy is one tap deeper.
    */
-  it('offers refusing beside accepting, and a way to read the detail first', () => {
+  it('offers only a close button, and the policy one tap away', () => {
     show();
 
-    expect(screen.getByRole('button', { name: 'Kabul et' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Reddet' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Kapat' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Kabul et' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Reddet' })).toBeNull();
     expect(screen.getByRole('link', { name: /çerez politikası/i })).toHaveAttribute(
       'href',
       '/cerez-politikasi.html',
@@ -110,36 +113,52 @@ describe('a first visit outside the certified regions', () => {
     );
   });
 
-  it('grants every signal and closes when the visitor accepts', async () => {
+  it('keeps only the essentials when closed, and remembers it', async () => {
     const user = userEvent.setup();
     show();
 
-    await user.click(screen.getByRole('button', { name: 'Kabul et' }));
+    await user.click(screen.getByRole('button', { name: 'Kapat' }));
 
     expect(gtagCalls).toEqual([
       [
         'consent',
         'update',
         {
-          ad_storage: 'granted',
-          ad_user_data: 'granted',
-          ad_personalization: 'granted',
-          analytics_storage: 'granted',
+          ad_storage: 'denied',
+          ad_user_data: 'denied',
+          ad_personalization: 'denied',
+          analytics_storage: 'denied',
         },
       ],
     ]);
-    expect(readConsent()?.decision).toBe('granted');
+    expect(readConsent()?.decision).toBe('denied');
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('records the refusal so it is never asked again unprompted', async () => {
+  /**
+   * ANY TOUCH ON THE GAME PUTS IT AWAY (owner 2026-11-27), and the touch still does
+   * what it was for: the first pull of the breaker is not spent on a cookie note.
+   */
+  it('goes away on a touch anywhere else, and lets that touch through', async () => {
+    const user = userEvent.setup();
+    const pressed = vi.fn();
+    render(<><button type="button" onClick={pressed}>Şalter</button><ConsentNotice /></>);
+
+    await user.click(screen.getByRole('button', { name: 'Şalter' }));
+
+    expect(pressed).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(readConsent()?.decision).toBe('denied');
+  });
+
+  it('stays while the touch is on the note itself', async () => {
     const user = userEvent.setup();
     show();
 
-    await user.click(screen.getByRole('button', { name: 'Reddet' }));
+    await user.pointer({ keys: '[MouseLeft]', target: screen.getByText('Yalnız gerekli çerezler') });
 
-    expect(readConsent()?.decision).toBe('denied');
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(readConsent()).toBeNull();
   });
 });
 
@@ -192,9 +211,52 @@ describe('a visitor who has already answered', () => {
       openConsentNotice();
     });
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+    gtagCalls.length = 0;
 
     await user.click(screen.getByRole('button', { name: 'Kabul et' }));
     expect(readConsent()?.decision).toBe('granted');
+    expect(gtagCalls).toEqual([
+      [
+        'consent',
+        'update',
+        {
+          ad_storage: 'granted',
+          ad_user_data: 'granted',
+          ad_personalization: 'granted',
+          analytics_storage: 'granted',
+        },
+      ],
+    ]);
+  });
+
+  /** The menu is the one place a yes is given, so the reopened choice offers both answers side by side. */
+  it('offers both answers when reopened, even before any answer was stored', () => {
+    show();
+    act(() => {
+      openConsentNotice();
+    });
+
+    expect(screen.getByRole('button', { name: 'Kabul et' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reddet' })).toBeInTheDocument();
+  });
+
+  it('puts a reopened choice away on a touch elsewhere, without changing the answer', async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem(
+      CONSENT_STORAGE_KEY,
+      JSON.stringify({ version: 1, decision: 'granted', at: '2026-09-01T00:00:00.000Z' }),
+    );
+    render(<><button type="button">Galaksi</button><ConsentNotice /></>);
+    act(() => {
+      openConsentNotice();
+    });
+    gtagCalls.length = 0;
+
+    await user.click(screen.getByRole('button', { name: 'Galaksi' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(readConsent()?.decision).toBe('granted');
+    expect(gtagCalls).toEqual([]);
   });
 
   /**
@@ -220,23 +282,27 @@ describe('a visitor who has already answered', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('cannot be dismissed without answering on a first visit', () => {
-    show();
-
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Kapat' })).toBeNull();
-  });
 });
 
 describe('the notice as a surface', () => {
   /**
-   * Design discipline, question 1: a figure or a control the player is meant to
-   * act on has to say what it means. Both buttons name their consequence, and
-   * the body says what stays either way — the session cookie the game cannot
-   * work without is not part of the bargain and must not look like it is.
+   * Design discipline, question 1: the note says what is on (only the essentials),
+   * what is off (measurement and personalised ads) and where that is changed.
    */
-  it('says what is always kept and what the choice actually controls', () => {
+  it('says only the essentials are on, what is off, and where to change it', () => {
     show();
+    const dialog = screen.getByRole('dialog');
+
+    expect(dialog.textContent).toMatch(/gerekli/i);
+    expect(dialog.textContent).toMatch(/ölçüm/i);
+    expect(dialog.textContent).toMatch(/Menü › Gizlilik/);
+  });
+
+  it('says what is always kept and what the choice controls once reopened', () => {
+    show();
+    act(() => {
+      openConsentNotice();
+    });
     const dialog = screen.getByRole('dialog');
 
     expect(dialog.textContent).toMatch(/oturum/i);
@@ -279,7 +345,7 @@ describe('the notice among other bottom surfaces', () => {
   it('publishes its height while open and withdraws it once answered', async () => {
     show();
     expect(document.documentElement.style.getPropertyValue('--consent-h')).toMatch(/^\d+px$/);
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Reddet' }));
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Kapat' }));
     expect(document.documentElement.style.getPropertyValue('--consent-h')).toBe('');
   });
 

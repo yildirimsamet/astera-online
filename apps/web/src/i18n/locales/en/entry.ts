@@ -161,6 +161,9 @@ export const settings = {
  */
 export const consent = {
   title: 'Cookies and ad choices',
+  /** The first visit's note (owner 2026-11-27): only the essentials are on; closing it keeps it so. */
+  notice: 'Only essential cookies',
+  noticeBody: 'Measurement and personalised ads are off. Turn them on in Menu › Privacy.',
   essentials: 'Signing in always stores one session cookie. That part is not optional.',
   optional:
     'Measurement and advertising storage are used only if you allow them. Refuse and the game works the same, with ads shown without personalisation.',

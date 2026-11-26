@@ -136,6 +136,9 @@ export const settings = {
 
 export const consent = {
   title: 'Çerez ve reklam tercihin',
+  /** The first visit's note (owner 2026-11-27): only the essentials are on; closing it keeps it so. */
+  notice: 'Yalnız gerekli çerezler',
+  noticeBody: "Ölçüm ve kişiselleştirilmiş reklam kapalı. Menü › Gizlilik'ten açabilirsin.",
   essentials: 'Giriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil.',
   optional:
     'Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.',

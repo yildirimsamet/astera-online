@@ -118,6 +118,9 @@ export const settings = {
 
 export const consent = {
   title: 'Cookies et choix publicitaires',
+  /** The first visit's note (owner 2026-11-27): only the essentials are on; closing it keeps it so. */
+  notice: 'Cookies essentiels uniquement',
+  noticeBody: 'La mesure et la publicité personnalisée sont désactivées. Active-les dans Menu › Confidentialité.',
   essentials: 'La connexion nécessite toujours un cookie de session. Celui-ci est indispensable.',
   optional:
     'Les données de mesure et de publicité ne sont enregistrées qu’avec ton accord. Si tu refuses, le jeu fonctionne tout aussi bien et les publicités ne sont pas personnalisées.',

@@ -161,6 +161,9 @@ export const settings = {
  */
 export const consent = {
   title: 'Cookies und Anzeigenauswahl',
+  /** The first visit's note (owner 2026-11-27): only the essentials are on; closing it keeps it so. */
+  notice: 'Nur notwendige Cookies',
+  noticeBody: 'Messung und personalisierte Werbung sind aus. Einschalten unter Menü › Datenschutz.',
   essentials: 'Bei der Anmeldung wird immer ein Sitzungscookie gespeichert. Dieser Teil ist nicht optional.',
   optional:
     'Daten für Reichweitenmessung und Werbung speichern wir nur mit deiner Zustimmung. Wenn du ablehnst, kannst du unverändert weiterspielen; die Anzeigen werden dann nicht personalisiert.',
