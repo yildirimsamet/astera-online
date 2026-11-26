@@ -330,15 +330,24 @@ describe('the OTA release rides every web deploy', () => {
     const block = (start: string) => nginx.split(start)[1]?.split('\n    }')[0] ?? '';
     const latest = block('location = /ota/latest.json {');
     expect(latest).toContain('alias /var/www/astera-ota/latest.json;');
-    expect(latest).toContain('add_header Cache-Control "no-store" always;');
+    expect(latest).toContain('add_header Cache-Control "no-store, no-transform" always;');
     expect(latest).toContain('add_header Access-Control-Allow-Origin "*" always;');
     const manifest = block('location ~ "^/ota/(?<ota_release>[a-f0-9]{40})/manifest\\.json$" {');
     expect(manifest).toContain('alias /var/www/astera-ota/$ota_release/manifest.json;');
-    expect(manifest).toContain('add_header Cache-Control "public, max-age=31536000, immutable";');
+    expect(manifest).toContain('add_header Cache-Control "public, max-age=31536000, immutable, no-transform";');
     expect(manifest).toContain('add_header Access-Control-Allow-Origin "*" always;');
     const files = block('location /ota/files/ {');
     expect(files).toContain('alias /var/www/astera-ota/files/;');
-    expect(files).toContain('add_header Cache-Control "public, max-age=31536000, immutable";');
+    expect(files).toContain('add_header Cache-Control "public, max-age=31536000, immutable, no-transform";');
     expect(nginx).toContain('location /ota/ { return 404; }');
+  });
+
+  // Production 2026-11-26: Cloudflare Web Analytics appended its beacon to the release's index.html,
+  // so every phone rejected the download (checksum) and no live update ever arrived.
+  it('serves release files as opaque bytes, so no proxy rewrites an HTML file the phone checks by hash', async () => {
+    const nginx = await readFile(resolve(root, 'deploy/nginx/astera.conf'), 'utf8');
+    const files = nginx.split('location /ota/files/ {')[1]?.split('\n    }')[0] ?? '';
+    expect(files).toContain('types { }');
+    expect(files).toContain('default_type application/octet-stream;');
   });
 });
