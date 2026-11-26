@@ -10,6 +10,7 @@ const files = [{ file_name: 'assets/index-2.js', file_hash: '2'.repeat(64), down
 
 const updater = vi.hoisted(() => ({
   download: vi.fn(), set: vi.fn(), notifyAppReady: vi.fn(), getMissingBundleFiles: vi.fn(), addListener: vi.fn(),
+  list: vi.fn(), delete: vi.fn(),
 }));
 const enabled = vi.hoisted(() => ({ value: true }));
 const activity = vi.hoisted(() => ({ listener: null as (() => void) | null, active: true }));
@@ -48,6 +49,8 @@ beforeEach(() => {
   updater.set.mockResolvedValue(undefined);
   updater.notifyAppReady.mockResolvedValue({});
   updater.getMissingBundleFiles.mockResolvedValue({ missing: files });
+  updater.list.mockResolvedValue({ bundles: [] });
+  updater.delete.mockResolvedValue(undefined);
   updater.addListener.mockImplementation((_event: string, listener: (state: { percent: number }) => void) => {
     listener({ percent: 50 });
     return Promise.resolve({ remove: () => Promise.resolve() });

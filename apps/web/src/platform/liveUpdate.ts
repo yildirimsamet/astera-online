@@ -18,6 +18,8 @@ export interface Updater {
   notifyAppReady: () => Promise<unknown>;
   getMissingBundleFiles: (options: { version: string; manifest: ManifestEntry[] }) => Promise<{ missing: { file_name: string | null }[] }>;
   addListener: (event: 'download', listener: (state: { percent: number }) => void) => Promise<{ remove: () => Promise<void> }>;
+  list: () => Promise<{ bundles: { id: string; version: string; status: string }[] }>;
+  delete: (options: { id: string }) => Promise<void>;
 }
 interface ManifestEntry { file_name: string; file_hash: string; download_url: string }
 
@@ -27,6 +29,8 @@ export const updater: Updater = {
   notifyAppReady: () => CapacitorUpdater.notifyAppReady(),
   getMissingBundleFiles: options => CapacitorUpdater.getMissingBundleFiles(options),
   addListener: (_event, listener) => CapacitorUpdater.addListener('updaterEvent', event => { if (event.type === 'download') listener(event.data); }),
+  list: () => CapacitorUpdater.list(),
+  delete: options => CapacitorUpdater.delete(options),
 };
 
 const PENDING = 'astera.ota.pending';
@@ -106,8 +110,19 @@ export async function findRelease(at: {
   } finally { clearTimeout(timer); }
 }
 
-/** Downloads a release beside the running bundle; nothing changes until `restartInto`. */
+/**
+ * Downloads a release beside the running bundle; nothing changes until `restartInto`. A copy already on the
+ * phone (a download that finished after the game opened, a "restart" card left alone) is used as it is, and
+ * other releases downloaded but never run are removed first, so they cannot pile up release after release.
+ * The updater refuses to remove the running bundle, the builtin one and the one set as next.
+ */
 export async function installRelease(release: Release, at: { updater: Updater; storage: Storage; onProgress?: (fraction: number) => void }): Promise<string> {
+  const bundles = await at.updater.list().then(result => result.bundles, () => []);
+  const copy = bundles.find(bundle => bundle.version === release.version && (bundle.status === 'pending' || bundle.status === 'success'));
+  if (copy) return copy.id;
+  for (const bundle of bundles) {
+    if (bundle.status === 'pending') await at.updater.delete({ id: bundle.id }).catch(() => undefined);
+  }
   const listener = await at.updater.addListener('download', state => { at.onProgress?.(Math.min(1, Math.max(0, state.percent / 100))); });
   try {
     const bundle = await at.updater.download({ version: release.version, url: release.manifestUrl, manifest: release.files.map(entry) });

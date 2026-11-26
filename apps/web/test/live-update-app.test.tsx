@@ -16,6 +16,7 @@ const files = [{ file_name: 'assets/index-2.js', file_hash: '2'.repeat(64), down
 
 const updater = vi.hoisted(() => ({
   download: vi.fn(), set: vi.fn(), notifyAppReady: vi.fn(), getMissingBundleFiles: vi.fn(), addListener: vi.fn(),
+  list: vi.fn(), delete: vi.fn(),
 }));
 vi.mock('../src/platform/liveUpdate.js', async importOriginal => ({
   ...await importOriginal<typeof LiveUpdateModule>(), updater, liveUpdateEnabled: () => true,
@@ -46,6 +47,8 @@ beforeEach(() => {
   updater.notifyAppReady.mockResolvedValue({});
   updater.getMissingBundleFiles.mockResolvedValue({ missing: files });
   updater.addListener.mockResolvedValue({ remove: () => Promise.resolve() });
+  updater.list.mockResolvedValue({ bundles: [] });
+  updater.delete.mockResolvedValue(undefined);
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
 

@@ -35,6 +35,8 @@ function plugin(over: Partial<Updater> = {}): Updater {
     notifyAppReady: vi.fn(() => Promise.resolve({})),
     getMissingBundleFiles: vi.fn(() => Promise.resolve({ missing: files.slice(0, 2) })),
     addListener: vi.fn(() => Promise.resolve({ remove: () => Promise.resolve() })),
+    list: vi.fn(() => Promise.resolve({ bundles: [] })),
+    delete: vi.fn(() => Promise.resolve()),
     ...over,
   };
 }
@@ -118,6 +120,47 @@ describe('installing a release', () => {
     // Downloaded in the background and never switched to: the next start must not call it failed.
     expect(storage.getItem('astera.ota.pending')).toBeNull();
     expect(updater.set).not.toHaveBeenCalled();
+  });
+
+  // Phone test 2026-11-26: a download that finished after the game had opened stayed on the phone, and the
+  // next start downloaded the same release again beside it. Every ignored "restart" card left one more copy.
+  it('switches to the copy of the release already on the phone instead of downloading it again', async () => {
+    const storage = memory();
+    const updater = plugin({ list: vi.fn(() => Promise.resolve({ bundles: [
+      { id: 'builtin', version: 'builtin', status: 'success' }, { id: 'bundle-7', version: NEXT, status: 'pending' },
+    ] })) });
+    const found = await findRelease(base({ storage, updater }));
+    if (!found) throw new Error('expected a release');
+    expect(await installRelease(found, { updater, storage })).toBe('bundle-7');
+    expect(updater.download).not.toHaveBeenCalled();
+    expect(updater.delete).not.toHaveBeenCalled();
+  });
+
+  it('removes releases downloaded and never run before it downloads, and leaves every other bundle', async () => {
+    const storage = memory();
+    const updater = plugin({ list: vi.fn(() => Promise.resolve({ bundles: [
+      { id: 'builtin', version: 'builtin', status: 'success' }, { id: 'running', version: RUNNING, status: 'success' },
+      { id: 'stale', version: 'c'.repeat(40), status: 'pending' }, { id: 'broken', version: 'd'.repeat(40), status: 'error' },
+      { id: 'busy', version: 'e'.repeat(40), status: 'downloading' },
+    ] })) });
+    const found = await findRelease(base({ storage, updater }));
+    if (!found) throw new Error('expected a release');
+    expect(await installRelease(found, { updater, storage })).toBe('bundle-1');
+    expect(updater.delete).toHaveBeenCalledTimes(1);
+    expect(updater.delete).toHaveBeenCalledWith({ id: 'stale' });
+  });
+
+  it('downloads all the same when the updater cannot list or refuses a removal', async () => {
+    const storage = memory();
+    const refusing = plugin({
+      list: vi.fn(() => Promise.resolve({ bundles: [{ id: 'current', version: 'c'.repeat(40), status: 'pending' }] })),
+      delete: vi.fn(() => Promise.reject(new Error('cannot delete the current bundle'))),
+    });
+    const found = await findRelease(base({ storage, updater: refusing }));
+    if (!found) throw new Error('expected a release');
+    expect(await installRelease(found, { updater: refusing, storage })).toBe('bundle-1');
+    const blind = plugin({ list: vi.fn(() => Promise.reject(new Error('old plugin'))) });
+    expect(await installRelease(found, { updater: blind, storage })).toBe('bundle-1');
   });
 
   it('remembers what the next start should run as, then switches to it', async () => {
