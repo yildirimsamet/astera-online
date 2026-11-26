@@ -180,6 +180,7 @@ Ekonomi/sezon simülasyonları, snowball audit'leri ve benzeri uzun ekonomi ince
 | `docs/deployment.md` | Yayınlama ve operasyonlarda |
 | `docs/engineering-standards.md` | Kod yazarken |
 | `docs/interface.md` | Ekran ve etkileşimlerde |
+| `docs/ui-kit.md` | Oyuncuya görünen bir yüzey kurarken veya planlarken: kit zorunlu, hangi iş için hangi parça, token'lar |
 | `docs/ux-writing.md` | UI metni, oynanış açıklaması, onboarding, yardım ve Wiki'de |
 | `docs/visual-design.md` | Sanat ve 3D çalışmalarında |
 | `docs/playtest-log.md` | Playtest yaparken |
