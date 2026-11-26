@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { mobileBuild, NATIVE_STARTUP_PATH } from './mobileBuild.js';
 import { NATIVE_REFERENCE_MANIFEST } from './nativeBundlePlugin.js';
 import { androidRelease } from './androidRelease.js';
+import { readBundleInventory, removedFromBundle } from './aabInventory.js';
 import { CRASH_INGEST } from './src/lib/crashIngest.js';
 
 const metadataSchema = z.object({ target: z.string(), apiUrl: z.string().url(), bundled: z.literal(true), storeReady: z.literal(false) });
@@ -69,6 +70,8 @@ function main(): void {
   const releaseConfig = release ? androidRelease({ ...process.env, VITE_ASTERA_PLATFORM: target, VITE_ASTERA_API_URL: mobile.apiUrl }, root) : undefined;
   const web = resolve(root, 'apps/web');
   const android = resolve(web, 'android');
+  // From its private place on every store build, never whatever copy the checkout happens to hold (Play v16).
+  if (releaseConfig) copyFileSync(releaseConfig.firebaseFile, resolve(android, 'app/google-services.json'));
   const git = (args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
   const commit = nativeReleaseCommit(process.env.ASTERA_GIT_COMMIT, () => git(['rev-parse', 'HEAD']), () => git(['status', '--porcelain', '--untracked-files=no']));
   // Komutan Gemisi ships in every app; the arena's own `/arena/access` decides who enters.
@@ -104,6 +107,16 @@ function main(): void {
     const bundledCertificate = execFileSync(javaTool('keytool'), ['-printcert', '-rfc', '-jarfile', aab], { encoding: 'utf8' });
     const fingerprint = new X509Certificate(certificate).fingerprint256;
     if (new X509Certificate(bundledCertificate).fingerprint256 !== fingerprint) throw new Error('Release AAB upload certificate mismatch');
+    // Nothing the previous Play release held may go missing unnoticed (Play v16 lost its Firebase resources).
+    if (releaseConfig.previousAab) {
+      const removed = removedFromBundle(readBundleInventory(releaseConfig.previousAab), readBundleInventory(aab))
+        .filter(item => !releaseConfig.allowRemoved.includes(item));
+      if (removed.length > 0) {
+        throw new Error(`The new AAB lacks what ${releaseConfig.previousAab} has:\n  ${removed.join('\n  ')}\n`
+          + 'Fix the build, or name each intended removal in ASTERA_ANDROID_ALLOW_REMOVED (comma-separated).');
+      }
+      console.log(`Compared with ${releaseConfig.previousAab}: nothing lost.`);
+    }
     const destination = resolve(root, 'out/mobile-artifacts', `${target}-release`);
     mkdirSync(destination, { recursive: true });
     const name = `astera-${target}-v${releaseConfig.versionCode}.aab`;

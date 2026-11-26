@@ -1,4 +1,5 @@
 import { readFileSync, realpathSync, statSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { isAbsolute, join, relative, sep } from 'node:path';
 import { z } from 'zod';
 import { mobileBuild } from './mobileBuild.js';
@@ -8,11 +9,15 @@ const firebaseSchema = z.object({ client: z.array(z.object({
   client_info: z.object({ android_client_info: z.object({ package_name: z.string() }) }),
 })) });
 
-/** The Firebase file is gitignored; without it the store app closes the moment it asks for push alerts (Play v16). */
-function requireFirebase(repository: string): void {
+/**
+ * Without the Firebase file the store app closes the moment it asks for push alerts (Play v16, built in
+ * a checkout that lacked the gitignored copy). The build takes it from its private place, as it takes
+ * the upload key, and copies it into the Android project itself.
+ */
+function requireFirebase(path: string): void {
   let parsed: unknown;
-  try { parsed = JSON.parse(readFileSync(join(repository, 'apps/web/android/app/google-services.json'), 'utf8')); }
-  catch { throw new Error('Missing or unreadable apps/web/android/app/google-services.json (copy it from ~/.local/share/astera/firebase/)'); }
+  try { parsed = JSON.parse(readFileSync(path, 'utf8')); }
+  catch { throw new Error(`Unreadable google-services.json at ${path}`); }
   const firebase = firebaseSchema.safeParse(parsed);
   if (!firebase.success || !firebase.data.client.some(client => client.client_info.android_client_info.package_name === STORE_APP_ID)) {
     throw new Error(`google-services.json has no Firebase client for ${STORE_APP_ID}`);
@@ -35,9 +40,7 @@ export function androidRelease(env: Record<string, string | undefined>, reposito
   const keyAlias = required('ASTERA_ANDROID_KEY_ALIAS');
   if (!/^[a-zA-Z0-9._-]{1,64}$/.test(keyAlias)) throw new Error('Invalid ASTERA_ANDROID_KEY_ALIAS');
   const repository = realpathSync(repositoryRoot);
-  requireFirebase(repository);
-  const privateFile = (name: string): string => {
-    const input = required(name);
+  const privateFile = (name: string, input = required(name)): string => {
     if (!isAbsolute(input)) throw new Error(`${name} must be an absolute private file path`);
     let path: string;
     try { path = realpathSync(input); } catch { throw new Error(`Missing ${name} file`); }
@@ -53,5 +56,19 @@ export function androidRelease(env: Record<string, string | undefined>, reposito
   const keystorePath = privateFile('ASTERA_ANDROID_KEYSTORE_PATH');
   const passwordFile = privateFile('ASTERA_ANDROID_PASSWORD_FILE');
   if (!readFileSync(passwordFile, 'utf8').split(/\r?\n/, 1)[0]) throw new Error('Empty ASTERA_ANDROID_PASSWORD_FILE');
-  return { versionCode: Number(code), versionName, signing: { keystorePath, passwordFile, keyAlias } };
+  const firebaseFile = privateFile('ASTERA_ANDROID_FIREBASE_FILE',
+    env.ASTERA_ANDROID_FIREBASE_FILE ?? join(env.HOME ?? homedir(), '.local/share/astera/firebase/google-services.json'));
+  requireFirebase(firebaseFile);
+  // The previous Play release the new AAB is compared with (aabInventory.ts); `none` only for a first release.
+  const previous = required('ASTERA_ANDROID_PREVIOUS_AAB');
+  let previousAab: string | null = null;
+  if (previous !== 'none') {
+    if (!isAbsolute(previous)) throw new Error('ASTERA_ANDROID_PREVIOUS_AAB must be an absolute path or none');
+    let stat;
+    try { stat = statSync(previous); } catch { throw new Error('Missing ASTERA_ANDROID_PREVIOUS_AAB file'); }
+    if (!stat.isFile()) throw new Error('ASTERA_ANDROID_PREVIOUS_AAB must be a file');
+    previousAab = previous;
+  }
+  const allowRemoved = (env.ASTERA_ANDROID_ALLOW_REMOVED ?? '').split(',').map(item => item.trim()).filter(Boolean);
+  return { versionCode: Number(code), versionName, signing: { keystorePath, passwordFile, keyAlias }, firebaseFile, previousAab, allowRemoved };
 }

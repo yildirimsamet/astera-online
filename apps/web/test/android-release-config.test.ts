@@ -9,7 +9,7 @@ let project: string;
 let keystore: string;
 let passwordFile: string;
 let env: Record<string, string | undefined>;
-const FIREBASE = 'apps/web/android/app/google-services.json';
+let firebaseFile: string;
 const firebase = (pkg: string) => JSON.stringify({ project_info: { project_id: 'fixture' },
   client: [{ client_info: { mobilesdk_app_id: '1:1:android:1', android_client_info: { package_name: pkg } } }] });
 
@@ -17,20 +17,24 @@ beforeEach(() => {
   directory = mkdtempSync(join(tmpdir(), 'astera-release-config-'));
   project = join(directory, 'project'); mkdirSync(project);
   keystore = join(directory, 'upload.p12'); passwordFile = join(directory, 'password.txt');
-  mkdirSync(join(project, 'apps/web/android/app'), { recursive: true });
-  writeFileSync(join(project, FIREBASE), firebase('space.asteraonline.app'));
+  // The build takes the Firebase file from its private place, as it takes the upload key.
+  firebaseFile = join(directory, 'home/.local/share/astera/firebase/google-services.json');
+  mkdirSync(join(firebaseFile, '..'), { recursive: true });
+  writeFileSync(firebaseFile, firebase('space.asteraonline.app'), { mode: 0o600 });
   // Config tests cover private file boundaries. The actual AAB build must verify the real key.
   writeFileSync(keystore, 'fixture-keystore-not-for-signing', { mode: 0o600 });
   writeFileSync(passwordFile, 'fixture-secret-do-not-export\n', { mode: 0o600 });
   env = { VITE_ASTERA_PLATFORM: 'native-production', VITE_ASTERA_API_URL: 'https://asteraonline.space',
     ASTERA_ANDROID_KEYSTORE_PATH: keystore, ASTERA_ANDROID_PASSWORD_FILE: passwordFile,
-    ASTERA_ANDROID_KEY_ALIAS: 'astera-upload', ASTERA_ANDROID_VERSION_CODE: '1', ASTERA_ANDROID_VERSION_NAME: '1.0.0' };
+    ASTERA_ANDROID_KEY_ALIAS: 'astera-upload', ASTERA_ANDROID_VERSION_CODE: '1', ASTERA_ANDROID_VERSION_NAME: '1.0.0',
+    HOME: join(directory, 'home'), ASTERA_ANDROID_PREVIOUS_AAB: 'none' };
 });
 afterEach(() => { rmSync(directory, { recursive: true, force: true }); });
 
 it('prepares explicit production release inputs without returning the private password', () => {
   const result = androidRelease(env, project);
-  expect(result).toEqual({ versionCode: 1, versionName: '1.0.0', signing: { keystorePath: keystore, passwordFile, keyAlias: 'astera-upload' } });
+  expect(result).toEqual({ versionCode: 1, versionName: '1.0.0', signing: { keystorePath: keystore, passwordFile, keyAlias: 'astera-upload' },
+    firebaseFile, previousAab: null, allowRemoved: [] });
   expect(JSON.stringify(result)).not.toContain('fixture-secret-do-not-export');
 });
 
@@ -97,14 +101,51 @@ it('does not rewrite password whitespace or mutate the caller environment', () =
 });
 
 // Play v16 (2026-11-26) was built in a checkout without the gitignored Firebase file: the build passed,
-// and the app closed on every start the moment it asked for push alerts.
+// and the app closed on every start the moment it asked for push alerts. The build now takes the file
+// itself, from ~/.local/share/astera/firebase or ASTERA_ANDROID_FIREBASE_FILE, and refuses a bad one.
 it.each([
   ['missing', null],
   ['empty', ''],
   ['not JSON', '{'],
   ['for another app', firebase('space.asteraonline.app.local')],
 ])('refuses a store release whose Firebase file is %s', (_case, content) => {
-  if (content === null) rmSync(join(project, FIREBASE));
-  else writeFileSync(join(project, FIREBASE), content);
-  expect(() => androidRelease(env, project)).toThrow(/google-services\.json/);
+  if (content === null) rmSync(firebaseFile);
+  else writeFileSync(firebaseFile, content);
+  expect(() => androidRelease(env, project)).toThrow(/google-services\.json|ASTERA_ANDROID_FIREBASE_FILE/);
+});
+
+it('takes the Firebase file named by ASTERA_ANDROID_FIREBASE_FILE over the default place', () => {
+  const other = join(directory, 'firebase-other.json');
+  writeFileSync(other, firebase('space.asteraonline.app'), { mode: 0o600 });
+  env.ASTERA_ANDROID_FIREBASE_FILE = other; rmSync(firebaseFile);
+  expect(androidRelease(env, project).firebaseFile).toBe(other);
+});
+
+it('keeps the Firebase file private and outside the repository, like the upload key', () => {
+  chmodSync(firebaseFile, 0o644);
+  expect(() => androidRelease(env, project)).toThrow(/private|0600/);
+  const inside = join(project, 'google-services.json');
+  writeFileSync(inside, firebase('space.asteraonline.app'), { mode: 0o600 });
+  env.ASTERA_ANDROID_FIREBASE_FILE = inside;
+  expect(() => androidRelease(env, project)).toThrow(/outside/);
+});
+
+// Every store AAB is compared with the previous Play release (aabInventory.ts); the choice is explicit.
+it('requires the previous Play AAB, or an explicit none for a first release', () => {
+  env.ASTERA_ANDROID_PREVIOUS_AAB = undefined;
+  expect(() => androidRelease(env, project)).toThrow(/ASTERA_ANDROID_PREVIOUS_AAB/);
+  env.ASTERA_ANDROID_PREVIOUS_AAB = 'relative/app.aab';
+  expect(() => androidRelease(env, project)).toThrow(/ASTERA_ANDROID_PREVIOUS_AAB/);
+  env.ASTERA_ANDROID_PREVIOUS_AAB = join(directory, 'missing.aab');
+  expect(() => androidRelease(env, project)).toThrow(/ASTERA_ANDROID_PREVIOUS_AAB/);
+  env.ASTERA_ANDROID_PREVIOUS_AAB = directory;
+  expect(() => androidRelease(env, project)).toThrow(/ASTERA_ANDROID_PREVIOUS_AAB/);
+  const previous = join(directory, 'previous.aab'); writeFileSync(previous, 'aab');
+  env.ASTERA_ANDROID_PREVIOUS_AAB = previous;
+  expect(androidRelease(env, project).previousAab).toBe(previous);
+});
+
+it('reads the removals the release means, one per comma', () => {
+  env.ASTERA_ANDROID_ALLOW_REMOVED = ' plugin old.Plugin , resource string/old_text,';
+  expect(androidRelease(env, project).allowRemoved).toEqual(['plugin old.Plugin', 'resource string/old_text']);
 });
