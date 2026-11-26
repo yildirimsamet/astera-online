@@ -6,6 +6,15 @@ import { nativeCompatibilityScript, nativeStartupHtml } from './nativeStartupPag
 import { NATIVE_STARTUP_PATH } from './mobileBuild.js';
 import { CRASH_INGEST } from './src/lib/crashIngest.js';
 
+/**
+ * Where the app's page may connect: the pinned API, the arena socket beside it, and the crash ingest.
+ * The page is https://localhost, so 'self' covers neither; the socket's ws(s): origin is named
+ * (2026-11-26: Yarık never connected in the app because wss: was missing).
+ */
+export function nativeConnectSources(apiUrl: string): string {
+  return `'self' blob: ${apiUrl} ${apiUrl.replace(/^http/, 'ws')} ${CRASH_INGEST}`;
+}
+
 /** Controlled Vite HTML, not a general-purpose untrusted HTML sanitizer. */
 export function nativeHtml(input: string, apiUrl: string): string {
   const hashes = [`'sha256-${createHash('sha256').update(nativeCompatibilityScript).digest('base64')}'`];
@@ -16,7 +25,7 @@ export function nativeHtml(input: string, apiUrl: string): string {
     } else hashes.push(`'sha256-${createHash('sha256').update(match[2] ?? '').digest('base64')}'`);
   }
   const csp = ["default-src 'none'", `script-src 'self' 'wasm-unsafe-eval' ${hashes.join(' ')}`,
-    "style-src 'self' 'unsafe-inline'", `connect-src 'self' blob: ${apiUrl} ${CRASH_INGEST}`, "img-src 'self' data: blob:",
+    "style-src 'self' 'unsafe-inline'", `connect-src ${nativeConnectSources(apiUrl)}`, "img-src 'self' data: blob:",
     "font-src 'self' data:", "media-src 'self' blob:", "worker-src 'self' blob:",
     "frame-src 'none'", "object-src 'none'", "base-uri 'none'", "form-action 'none'"].join('; ');
   return input.replace(/\snonce=["']__CSP_NONCE__["']/g, '')

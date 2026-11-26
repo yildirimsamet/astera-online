@@ -181,7 +181,13 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
     notify({ phase: welcomed ? 'reconnecting' : 'connecting', reason: '' });
     const connection = new WebSocket(arenaSocketUrl());
     socket = connection;
-    const timeout = setTimeout(() => { if (!connected) connection.close(); }, 5000);
+    // A socket the page's CSP refuses is closed at once and fires no close event; close() then does
+    // nothing, so the timeout runs the close path itself, once (2026-11-26, Yarık in the app).
+    let ended = false;
+    const timeout = setTimeout(() => {
+      if (connected) return;
+      if (connection.readyState === WebSocket.CLOSED) lost(); else connection.close();
+    }, 5000);
     connection.onopen = () => {
       const hello = { kind: 'hello', v: ARENA_PROTOCOL, guestId: guest, mode: welcomed ? 'resume' : spectating ? 'spectate' : 'enter', ship, tactic, tactic2 };
       if (!credential) { send(hello); return; }
@@ -206,13 +212,15 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
         readyReason: msg.readyReason, xp: msg.xp, ...(msg.asterium ? { asterium: msg.asterium } : {}), ...(msg.teamId ? { teamId: msg.teamId } : {}) } });
       else { stopped = true; connected = false; notify({ phase: 'failed', reason: msg.reason }); connection.close(); }
     };
-    connection.onclose = () => {
+    const lost = (): void => {
+      if (ended) return; ended = true;
       clearTimeout(timeout); if (socket !== connection) return;
       connected = false; onLost();
       if (stopped) return;
       if (++attempts > 15) { notify({ phase: 'failed', reason: 'connection' }); return; }
       notify({ phase: 'reconnecting' }); retry = setTimeout(open, 1000);
     };
+    connection.onclose = lost;
     connection.onerror = () => { /* Close owns recovery, avoiding duplicate connections. */ };
   };
   const drawn: Remote[] = [];

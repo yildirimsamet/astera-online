@@ -10,12 +10,17 @@ describe('native CSP without the web server nonce', () => {
     const html = nativeHtml(`<html><head><meta charset="UTF-8"><meta property="csp-nonce" nonce="__CSP_NONCE__"><link rel="manifest" href="/manifest.webmanifest"><style nonce="__CSP_NONCE__">body{color:red}</style><script nonce="__CSP_NONCE__">${script}</script><script type="module" src="/assets/main.js" nonce="__CSP_NONCE__"></script></head><body></body></html>`, 'https://api.example.test');
     expect(html).toContain(`'sha256-${createHash('sha256').update(script).digest('base64')}'`);
     // The pinned API, and the game's own crash-report ingest (plan 2026-11-13 §10.7-1), nothing else.
-    expect(html).toContain(`connect-src 'self' blob: https://api.example.test ${CRASH_INGEST};`);
+    // and the arena's socket beside it: in the app 'self' is https://localhost, so wss: must be named
+    // (2026-11-26: Yarık hung on "connecting" in the app since it opened there).
+    expect(html).toContain(`connect-src 'self' blob: https://api.example.test wss://api.example.test ${CRASH_INGEST};`);
     expect(html).toContain("object-src 'none'");
     expect(html).not.toContain('__CSP_NONCE__');
     expect(html).not.toContain('manifest.webmanifest');
     expect(html).not.toContain("script-src 'unsafe-inline'");
     expect(html.indexOf('Content-Security-Policy')).toBeLessThan(html.indexOf('<script'));
+  });
+  it('names the plain ws: socket for a local http API', () => {
+    expect(nativeHtml('<head><meta charset="UTF-8"></head>', 'http://localhost:3100')).toContain("connect-src 'self' blob: http://localhost:3100 ws://localhost:3100 ");
   });
   it('refuses to package an unexpected remote script', () => {
     expect(() => nativeHtml('<head><script src="https://example.test/tracker.js"></script></head>', 'https://api.example.test')).toThrow(/script/i);

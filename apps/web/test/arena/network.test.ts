@@ -7,13 +7,17 @@ import { createArenaNetwork, rankStandings } from '../../src/arena/network.js';
 
 class FakeSocket {
   static readonly OPEN = 1;
+  static readonly CLOSED = 3;
   static last: FakeSocket | null = null;
   readyState = 0; bufferedAmount = 0; sent: unknown[] = [];
   onopen: (() => void) | null = null; onclose: (() => void) | null = null; onerror: (() => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
   constructor(readonly url: string) { FakeSocket.last = this; }
   send(data: string): void { this.sent.push(JSON.parse(data)); }
-  close(): void { this.readyState = 3; this.onclose?.(); }
+  // A closed socket closes no further, as in the browser.
+  close(): void { if (this.readyState === 3) return; this.readyState = 3; this.onclose?.(); }
+  /** The page's CSP refuses the address: the socket is closed at once and no close event ever comes. */
+  refuse(): void { this.readyState = 3; }
   open(): void { this.readyState = 1; this.onopen?.(); }
   receive(value: unknown): void { this.onmessage?.({ data: JSON.stringify(value) }); }
 }
@@ -448,5 +452,41 @@ describe('tactics on the client (Y4d)', () => {
     socket().receive(welcome([...seats, ...copies]));
     expect(network.getSnapshot()).toMatchObject({ phase: 'online', pilots: ARENA_MAX_SEATS });
     network.dispose();
+  });
+});
+
+// 2026-11-26: the app's CSP refused the arena socket; the browser closed it with no close event, and
+// the 5 s timeout's close() on a closed socket did nothing, so Yarık said "connecting" for ever.
+describe('a socket the page refuses', () => {
+  it('retries and finally says it could not connect, instead of connecting for ever', () => {
+    vi.useFakeTimers();
+    try {
+      const network = createArenaNetwork(createSandboxWorld({ bots: 0 }), { sensitivity: 1, invertPitch: false }, () => undefined);
+      network.connect('kilavuz', 'smoke');
+      const first = socket(); first.refuse();
+      vi.advanceTimersByTime(5000);
+      expect(network.getSnapshot().phase).toBe('reconnecting');
+      vi.advanceTimersByTime(1000);
+      expect(socket()).not.toBe(first);
+      for (let attempt = 0; attempt < 16; attempt += 1) { socket().refuse(); vi.advanceTimersByTime(6000); }
+      expect(network.getSnapshot()).toMatchObject({ phase: 'failed', reason: 'connection' });
+      network.dispose();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('counts a refused socket once when its close event comes late after all', () => {
+    vi.useFakeTimers();
+    try {
+      const network = createArenaNetwork(createSandboxWorld({ bots: 0 }), { sensitivity: 1, invertPitch: false }, () => undefined);
+      network.connect('kilavuz', 'smoke');
+      const first = socket(); first.refuse();
+      vi.advanceTimersByTime(5000);
+      first.onclose?.();
+      vi.advanceTimersByTime(1000);
+      const second = socket();
+      vi.advanceTimersByTime(1000);
+      expect(socket()).toBe(second);
+      network.dispose();
+    } finally { vi.useRealTimers(); }
   });
 });
