@@ -4,6 +4,10 @@
 #
 #   ./deploy/deploy.sh          fetch origin/master, build, migrate, restart
 #   ./deploy/deploy.sh --local  deploy the working tree as it stands
+#   ./deploy/deploy.sh --client-only
+#                               web + the app's live update only; server roles untouched.
+#                               Refused when anything outside apps/web, docs or deploy
+#                               changed since the running image (rules, server, Dockerfile).
 #
 # Idempotent: running it twice in a row is a no-op with a restart in the middle.
 # It never touches another project on this box — every command below is scoped to
@@ -35,7 +39,16 @@ say() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
 #
 # So: fetch, then replace this process with the updated script. The marker stops
 # the new one fetching again.
-if [[ "${1:-}" != "--local" && "${ASTERA_DEPLOY_REEXEC:-}" != "1" ]]; then
+LOCAL=false
+CLIENT_ONLY=false
+for arg in "$@"; do
+  case "$arg" in
+    --local) LOCAL=true ;;
+    --client-only) CLIENT_ONLY=true ;;
+    *) echo "Unknown option: $arg" >&2; exit 1 ;;
+  esac
+done
+if [[ "$LOCAL" != true && "${ASTERA_DEPLOY_REEXEC:-}" != "1" ]]; then
   say "Fetching origin/master"
   # CAPTURED BEFORE THE RESET, because afterwards it is unrecoverable: the reset
   # moves `master` and the old commit is no longer any ref this script can name.
@@ -50,6 +63,27 @@ if [[ "${1:-}" != "--local" && "${ASTERA_DEPLOY_REEXEC:-}" != "1" ]]; then
   exec "$0" "$@"
 fi
 echo "  at $(git rev-parse --short HEAD) — $(git log -1 --format=%s)"
+
+# A WEB-ONLY CHANGE STILL SHIPS THE APP UPDATE (2026-11-26). A hand-written web-only
+# publish once skipped the OTA, and app players ran older code than the browser. This
+# mode is that path, safely: web and OTA from this commit, the running image untouched.
+# The client must still match the server it talks to, so any change outside the client
+# since the running image's commit (rules, server, Dockerfile, compose) refuses it.
+if [[ "$CLIENT_ONLY" == true ]]; then
+  say "Checking this commit changes only the client"
+  running=$(docker image inspect astera-server:latest --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' 2>/dev/null || true)
+  if [[ ! "$running" =~ ^[a-f0-9]{40}$ ]] || ! git cat-file -e "${running}^{commit}" 2>/dev/null; then
+    echo "  ✗ The running image names no commit this checkout knows; run a full deploy." >&2
+    exit 1
+  fi
+  server_side=$(git diff --name-only "$running" HEAD | grep -vE '^(apps/web/|docs/|deploy/)|\.md$' || true)
+  if [[ -n "$server_side" ]]; then
+    echo "  ✗ Changed since the running image ($(git rev-parse --short "$running")) outside the client; run a full deploy:" >&2
+    echo "$server_side" | sed 's/^/      /' >&2
+    exit 1
+  fi
+  echo "  only client files changed since $(git rev-parse --short "$running")"
+fi
 
 say "Checking the D99 host budget"
 ./deploy/host-capacity-preflight.sh
@@ -112,8 +146,10 @@ else
   echo "  webroot none yet (first install)"
 fi
 
-say "Building the server image"
-$COMPOSE build api1
+if [[ "$CLIENT_ONLY" != true ]]; then
+  say "Building the server image"
+  $COMPOSE build api1
+fi
 
 # BOTH CLIENTS ARE BUILT BEFORE ANY ROLE STOPS. A build that fails after the new API
 # is up leaves new rules behind an old client; here it fails with nothing changed.
@@ -155,6 +191,8 @@ docker build --target ota-dist --build-context "refs=${ARENA_REFS}" --build-arg 
   --secret id=sentry_auth,env=SENTRY_AUTH_TOKEN --output "type=local,dest=$OTA_STAGE" .
 [[ -f "$OTA_STAGE/latest.json" ]] || { echo "App update build produced no latest.json."; exit 1; }
 
+# ── THE SERVER ROLES: stop, migrate, start. Skipped as a whole with --client-only. ──
+if [[ "$CLIENT_ONLY" != true ]]; then
 say "Starting PostgreSQL and Valkey"
 $COMPOSE up -d postgres valkey
 # `up -d` returns as soon as the container is created; the healthcheck is what
@@ -201,6 +239,9 @@ $COMPOSE run --rm --no-deps api1 \
 
 say "Starting one worker and three API replicas"
 $COMPOSE up -d --remove-orphans worker api1 api2 api3
+else
+  say "Client only: the server roles keep running $(git rev-parse --short "$running")"
+fi
 
 
 # PRE-COMPRESS, so nginx never spends a cycle on it. `gzip_static on` serves the
@@ -337,5 +378,12 @@ elif [[ -z "$header_nonce" ]] || [[ "$served" != *"nonce=\"$header_nonce\""* ]];
 else
   echo "  nonce stamped and matching"
 fi
+
+# THE APP UPDATE IS CHECKED AS A PHONE DOWNLOADS IT. A phone hashes every file and refuses
+# the whole release when one differs; a proxy once rewrote an HTML file only for clients
+# that send no Accept header, as the updater does (2026-11-26). Also fails when the web
+# and the OTA name different releases. Rollback: deploy/publish-ota.sh --restore-previous.
+say "Checking the app's live update the way a phone downloads it"
+python3 deploy/verify-ota.py
 
 say "Deployed $(git rev-parse --short HEAD)"
