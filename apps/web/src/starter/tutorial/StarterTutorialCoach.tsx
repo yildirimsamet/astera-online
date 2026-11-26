@@ -60,6 +60,8 @@ const WAIT_LATE_MS = 30_000;
 const SPEND = '[data-guide="repair-order"], [data-guide="probe"], [data-guide="mine"], [data-guide="unlock-try"]';
 const ACTIVATIONS = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click'] as const;
 const THUMB = '[data-guide="repair-show"]';
+/** Lines whose lit part is information, not a control: tapping it answers nothing, so Next answers for it. */
+const READ_ONLY: readonly TutorialStepId[] = ['report'];
 /** Never held: the scene, a ready crate, and the way out of what a tap on the scene opened. */
 const ALWAYS_FREE = 'canvas, [data-guide="crate"], [data-focus-close], [data-universe-chip]';
 /** A control the screen hides is not there to press: a focus panel hides the card under it. */
@@ -236,6 +238,24 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
     return () => { document.removeEventListener('click', press, true); };
   }, [pressId, first, ack]);
 
+  // A lit part that is only to be read does nothing when tapped, and every lit thing before it was pressed
+  // (owner phone playtest 2026-11-26): a tap on it lights Next, which is the way on.
+  const readId = live && !step.nav && READ_ONLY.includes(step.id) ? step.id : null;
+  const [litFor, setLitFor] = useState<TutorialStepId | null>(null);
+  useEffect(() => {
+    if (readId === null) return undefined;
+    const tap = (event: MouseEvent): void => {
+      const node = event.target;
+      const element = node instanceof Element ? node : node instanceof Node ? node.parentElement : null;
+      if (!element || !targets().some(target => target.contains(element))) return;
+      playSound('tick');
+      haptic('tap');
+      setLitFor(readId);
+    };
+    document.addEventListener('click', tap, true);
+    return () => { document.removeEventListener('click', tap, true); };
+  }, [readId, targets]);
+
   // THE FIRST LOOK (owner playtest 2026-11-07), now over the power card (N1): the drag shows until the
   // view is turned, and only then does the hand go to the card. The card can be pressed all along.
   // The telescope's field is the same gesture, and turning the view is what passes that step (owner 2026-11-08).
@@ -371,6 +391,7 @@ function LiveCoach({ tutorial, onSkip }: { tutorial: CoachTutorial; onSkip: () =
         dock={dock}
         busy={step.step === 'wait' && !away}
         revealLabel={t('starter.tutorial.reveal')}
+        nextLit={litFor === step.id}
         {...(step.step === 'press' ? { onCardPress: () => { haptic('tap'); nudge('point'); } } : {})}
         onExit={() => { playSound('confirm'); haptic('tap'); setConfirmSkip(true); }}
         exitLabel={t('starter.tutorial.skip.link')}

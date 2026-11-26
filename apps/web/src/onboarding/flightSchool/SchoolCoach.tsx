@@ -16,6 +16,8 @@ interface Props {
   onRevealed?: () => void;
   /** The card itself pressed (not its buttons): a player asking where to go. */
   onCardPress?: () => void;
+  /** Next is the way on and the player has been told so: it is framed like what the guide lights. */
+  nextLit?: boolean;
 }
 
 /** Each message owns its timer. Revealing a line and doing its action are
@@ -25,7 +27,7 @@ export function SchoolCoach(props: Props) {
 }
 
 function Dialogue({ title, text, progress, actionLabel, onAction, altLabel, onAlt, onExit, exitLabel, total = 11,
-  revealLabel = 'Show full message', dock = 'top', busy = false, onRevealed, onCardPress }: Props) {
+  revealLabel = 'Show full message', dock = 'top', busy = false, onRevealed, onCardPress, nextLit = false }: Props) {
   const letters = Array.from(text);
   const [shown, setShown] = useState(0);
   const ref = useRef<HTMLElement>(null);
@@ -61,9 +63,9 @@ function Dialogue({ title, text, progress, actionLabel, onAction, altLabel, onAl
         {complete && actionLabel && onAction && (altLabel && onAlt
           ? <span className="school-choices">
               <button type="button" data-school-alt className="school-alt" onClick={onAlt} disabled={busy}>{altLabel}</button>
-              <button type="button" data-school-next className="school-next" onClick={onAction} disabled={busy}>{actionLabel}<span aria-hidden="true"> →</span></button>
+              <button type="button" data-school-next className="school-next" onClick={onAction} disabled={busy} {...(nextLit ? { 'data-lit': 'true' } : {})}>{actionLabel}<span aria-hidden="true"> →</span></button>
             </span>
-          : <button type="button" data-school-next className="school-next" onClick={onAction} disabled={busy}>{actionLabel}<span aria-hidden="true"> →</span></button>)}
+          : <button type="button" data-school-next className="school-next" onClick={onAction} disabled={busy} {...(nextLit ? { 'data-lit': 'true' } : {})}>{actionLabel}<span aria-hidden="true"> →</span></button>)}
         {busy && <span className="school-working" aria-label={title}><i /><i /><i /></span>}
       </div>
     </div>
