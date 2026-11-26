@@ -130,10 +130,10 @@ describe('the starter tutorial on screen', () => {
     render(<StarterTutorialCoach tutorial={{ answer: { kind: 'step', id: 'farewell', step: 'read', marks: [], chapter: 9, strict: false }, ack: vi.fn(), backIn: 0, repaired: 100, windowOpen: true }} />);
     fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
     const said = document.querySelector('[data-school-line]')?.getAttribute('data-school-line');
-    expect(said).toMatch(/jump is open/i);
-    expect(said).toMatch(/Prepare the jump/);
-    expect(said).toMatch(/no rush/i);
-    expect(said).not.toMatch(/finish/i);
+    expect(said).toMatch(/ready/i);
+    expect(said).toMatch(/main galaxy/i);
+    expect(said).toMatch(/stay/i);
+    expect(said).not.toMatch(/fills|no rush|finish/i);
   });
 
   // Code review 2026-11-19: with the jump held, the handover says why instead of pointing at a control that is not drawn.
@@ -143,7 +143,7 @@ describe('the starter tutorial on screen', () => {
       fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
       const said = document.querySelector('[data-school-line]')?.getAttribute('data-school-line');
       expect(said).toMatch(reason);
-      expect(said).not.toMatch(/jump is open|Prepare the jump/i);
+      expect(said).not.toMatch(/you are ready|stay a while/i);
       view.unmount();
     }
   });
@@ -805,6 +805,54 @@ describe('the probe report\'s line', () => {
     fireEvent.click(screen.getByRole('button', { name: /next/i }));
     expect(close).toHaveBeenCalledOnce();
     lent();
+  });
+
+  /*
+    Owner phone playtest 2026-11-26: the lit loot looks like something to press, since every lit thing before
+    it was, and nothing happens. The way on is Next: a tap on the lit loot lights Next.
+  */
+  describe('the lit loot', () => {
+    const lootStep: TutorialAnswer = { kind: 'step', id: 'report', step: 'read', marks: ['[data-dossier-loot]'], chapter: 4, strict: false };
+    const mount = (answer: TutorialAnswer = lootStep) => {
+      const view = render(<>
+        <div data-dossier-loot=""><span>the loot</span></div>
+        <button type="button" data-guide="jump-go">jump</button>
+        <p>elsewhere on the sheet</p>
+        <StarterTutorialCoach tutorial={{ answer, ack: vi.fn(), backIn: 0 }} />
+      </>);
+      fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
+      return { view, next: screen.getByRole('button', { name: /next/i }) };
+    };
+
+    it('lights Next when it is tapped, and not before', () => {
+      const { next } = mount();
+      expect(next.hasAttribute('data-lit')).toBe(false);
+      fireEvent.click(screen.getByText('elsewhere on the sheet'));
+      expect(next.hasAttribute('data-lit')).toBe(false);
+      fireEvent.click(screen.getByText('the loot'));
+      expect(next.getAttribute('data-lit')).toBe('true');
+    });
+
+    it('lights Next if it is tapped while the line is still being typed', () => {
+      render(<><div data-dossier-loot=""><span>the loot</span></div><StarterTutorialCoach tutorial={{ answer: lootStep, ack: vi.fn(), backIn: 0 }} /></>);
+      fireEvent.click(screen.getByText('the loot'));
+      fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
+      expect(screen.getByRole('button', { name: /next/i }).getAttribute('data-lit')).toBe('true');
+    });
+
+    it('leaves a lit control that does something alone: the jump answers its own press', () => {
+      const { next } = mount({ kind: 'step', id: 'farewell', step: 'read', marks: ['[data-guide="jump-go"]'], chapter: 9, strict: false });
+      fireEvent.click(screen.getByText('jump'));
+      expect(next.hasAttribute('data-lit')).toBe(false);
+    });
+  });
+
+  it('says what to do with the report: read the rival before attacking', () => {
+    coach({ kind: 'step', id: 'report', step: 'read', marks: [], chapter: 4, strict: false });
+    fireEvent.click(screen.getByRole('button', { name: /show full message/i }));
+    const said = document.querySelector('[data-school-line]')?.getAttribute('data-school-line') ?? '';
+    expect(said).toMatch(/before attacking/i);
+    expect(said).not.toMatch(/we do not send|don't send|never send/i);
   });
 
   it('leaves every other line alone while a launch is open', () => {

@@ -23,6 +23,9 @@
 .school-actions { display:flex; gap:7px; align-items:center; justify-content:space-between; min-height:44px; }
 .school-exit { font:inherit; font-size:11px; color:#a0b0bc; min-height:44px; padding-inline:0 7px; text-align:left; }
 .school-next { font:inherit; font-size:12px; font-weight:650; color:#f3dfb0; min-height:44px; padding:4px 0 4px 7px; text-align:right; }
+/* Next, once the player tapped a lit part that only reads (owner phone playtest 2026-11-26): framed as the guide frames what it points at. */
+.school-next[data-lit] { padding:4px 9px; border:2px solid #f2d28a; border-radius:12px; animation:school-next-lit .9s ease-in-out infinite; }
+@keyframes school-next-lit { 0%,100% { border-color:#f2d28a; } 50% { border-color:#f2d28a40; } }
 .school-choices { display:flex; gap:13px; align-items:center; margin-left:auto; white-space:nowrap; }
 .school-alt { font:inherit; font-size:12px; font-weight:600; color:#a0b0bc; min-height:44px; padding:4px 0; text-align:right; }
 .school-next:focus-visible,.school-exit:focus-visible,.school-alt:focus-visible { outline:2px solid #87deef; outline-offset:2px; border-radius:4px; }

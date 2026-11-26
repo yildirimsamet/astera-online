@@ -17,6 +17,7 @@ const order = (subject: string, stage: number) => ({
   startedAt: '2026-11-18T10:00:00.000Z', readyAt: '2026-11-18T10:00:05.000Z', cost: { alloy: 1, crystal: 1, deuterium: 0 },
 });
 const ship = (progress: VesselProgress, queue: unknown[] = []) => vesselSchema.parse(wireVessel({ progress, queue }));
+const skipAll = (): void => { for (let i = 0; i < 8 && directorNow(); i++) act(() => { skipBeat(); }); };
 const playing = (): string => { const now = directorNow(); return now ? `${now.scene.id}/${now.beat.id}` : 'none'; };
 type Props = Parameters<typeof useStarterScenes>[0];
 const props = (over: Partial<Props>): Props => ({
@@ -76,6 +77,7 @@ describe('the first session, directed', () => {
     const first = props({ ship: ship(progress), probing: true });
     const view = renderHook(useStarterScenes, { initialProps: first });
     act(() => { vi.advanceTimersByTime(FIRST_LOOK_MS); });
+    view.rerender({ ...first, probing: false });
     const yard = directorNow();
     expect(yard?.scene.id).toBe('yardNeed');
     view.rerender({ ...first, ship: ship(progress, [order('SHIPYARD', 1)]) });
@@ -202,16 +204,27 @@ describe('the first session, directed', () => {
     });
   });
 
-  // Plan §5 A10: the yard is needed before it is asked for, while the probe is out.
-  it('shows the empty yard while the probe is out and the yard is not ordered', () => {
+  // Plan §5 A10: the yard is needed before it is asked for. Owner phone playtest 2026-11-26: while the probe
+  // flies the camera is the probe's (it is followed out and home); the empty yard is shown once it is back.
+  it('leaves the camera on the probe while it flies, and shows the empty yard once it is home', () => {
     const surveyed = { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 };
-    renderHook(useStarterScenes, { initialProps: props({ ship: ship({ modules: surveyed, facts: ['FIRST_MINING_SENT'] }), probing: true }) });
+    const view = renderHook(useStarterScenes, { initialProps: props({ ship: ship({ modules: surveyed, facts: ['FIRST_MINING_SENT'] }), probing: true }) });
+    expect(playing()).toBe('none');
+    act(() => { vi.advanceTimersByTime(FIRST_LOOK_MS); });
+    skipAll();
+    expect(playing()).toBe('none');
+    view.rerender(props({ ship: ship({ modules: surveyed, facts: ['FIRST_MINING_SENT'] }), probing: false }));
     expect(playing()).toBe('yardNeed/yard');
-    cleanup();
-    resetDirector();
-    renderHook(useStarterScenes, { initialProps: props({ ship: ship({ modules: surveyed, facts: ['FIRST_MINING_SENT'] }, [order('SHIPYARD', 1)]), probing: true }) });
+  });
+
+  it('shows no empty yard when the yard is already ordered, or when no probe flew', () => {
+    const surveyed = { REFINERY: 2, EXTRACTOR: 1, TELESCOPE: 1, RADAR: 1, SURVEY: 1 };
+    const ordered = ship({ modules: surveyed, facts: ['FIRST_MINING_SENT'] }, [order('SHIPYARD', 1)]);
+    const view = renderHook(useStarterScenes, { initialProps: props({ ship: ordered, probing: true }) });
+    view.rerender(props({ ship: ordered, probing: false }));
     expect(playing()).toBe('none');
     cleanup();
+    resetDirector();
     renderHook(useStarterScenes, { initialProps: props({ ship: ship({ modules: surveyed, facts: ['FIRST_MINING_SENT'] }), probing: false }) });
     expect(playing()).toBe('none');
   });

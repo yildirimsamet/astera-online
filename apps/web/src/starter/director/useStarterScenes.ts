@@ -44,7 +44,7 @@ const nameOf = (module: string): string => (isModule(module) ? moduleName(module
  * WHERE THE SHIP'S CHANGES BECOME SCENES (plan 2026-11-18 §5). The ship is read as it changes; a repair
  * of the road ordered from the ship's page closes the page, so it is seen being done on the hull; the
  * first rock is come close to once the telescope's sky has landed; the radar is shown on its staged
- * contact as it comes back (item 28); the yard is shown empty while the probe is out, and the probe's
+ * contact as it comes back (item 28); the yard is shown empty once the probe is home, and the probe's
  * report turned to as it comes home.
  */
 export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, probing, probeTarget, onAwaken }: {
@@ -54,7 +54,7 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, p
   onCloseShip: () => void;
   /** The rock a Prospector would go to first, once the telescope has shown the field. */
   nearestRockId: string | null;
-  /** A probe of this ship's is out. */
+  /** A probe of this ship's is out: its flight is left to the camera that follows it. */
   probing: boolean;
   /** The ship the latest probe report read, once it is home. */
   probeTarget: { id: string; name: string } | null;
@@ -125,8 +125,15 @@ export function useStarterScenes({ ship, shipOpen, onCloseShip, nearestRockId, p
     setReportHome(false);
   }, [id, reportHome, target, targetName]);
 
-  // The yard is shown empty while the probe it would follow is out, and only before it is asked for.
-  const yardDue = ship !== undefined && probing && (ship.modules.SURVEY ?? 0) >= 1 && (ship.modules.SHIPYARD ?? 0) < 1
+  // The probe's flight is the player's to watch (the galaxy follows it out and home, owner phone playtest
+  // 2026-11-26): the empty yard is shown once it is back, and only before the yard is asked for.
+  const [probeLanded, setProbeLanded] = useState(false);
+  const wasProbing = useRef(probing);
+  useEffect(() => {
+    if (wasProbing.current && !probing) setProbeLanded(true);
+    wasProbing.current = probing;
+  }, [probing]);
+  const yardDue = ship !== undefined && probeLanded && (ship.modules.SURVEY ?? 0) >= 1 && (ship.modules.SHIPYARD ?? 0) < 1
     && !ship.queue.some(order => order.subject === 'SHIPYARD');
   useEffect(() => {
     if (!id || !yardDue) return;

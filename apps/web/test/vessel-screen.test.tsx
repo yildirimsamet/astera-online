@@ -129,7 +129,7 @@ describe('an opening worth announcing', () => {
   it('says where the jump is and that it can wait, and shows it there', () => {
     show(vessel({ progress: LOOP, unlockToAnnounce: 'migration' }));
     const moment = screen.getByTestId('unlock-moment');
-    expect(moment.textContent).toMatch(/no rush/i);
+    expect(moment.textContent).toMatch(/stay and play/i);
     expect(screen.queryByTestId('migration-panel')).toBeNull();
     fireEvent.click(within(moment).getByRole('button', { name: 'Show the jump' }));
     expect(screen.getByTestId('migration-panel')).toBeInTheDocument();
