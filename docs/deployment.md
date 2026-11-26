@@ -593,6 +593,32 @@ For quiesced in-place publication, keep Nginx stopped, validate/install `deploy/
 
 Rollback in one step: `sudo bash deploy/publish-ota.sh --restore-previous /var/www/astera-ota`. A phone already on the newer bundle sees a different version and downloads the older one. Gate: `curl -fsS https://asteraonline.space/ota/latest.json | jq -r .version` equals the deployed SHA. The OTA root holds at most about five releases' worth of changed files.
 
+**A web change is an app change.** Every web publish also publishes the OTA of the same commit, or app players run older code than the browser (2026-11-26: a hand-written web-only publish skipped it). For a change that touches only `apps/web`, `docs` or `deploy`, use `./deploy/deploy.sh --client-only`: web + OTA, server roles untouched. It refuses when anything else changed since the commit of the running image (rules, server, Dockerfile, compose); that needs the full deploy. Never publish the web by hand.
+
+**Checked the way a phone downloads it.** `deploy.sh` ends with `python3 deploy/verify-ota.py`. It downloads every HTML file of the live release with no `Accept` header, gzip accepted, like the updater's OkHttp, compares each with its manifest hash, and fails when the web's `release.txt` and `latest.json` name different releases. The phone hashes every file and refuses the whole release when one differs. On 2026-11-26 Cloudflare Web Analytics appended its beacon to the release's `index.html`, but only for clients without `Accept: */*`, so curl saw the file intact and every phone refused the release. The vhost therefore serves `/ota/` with `Cache-Control: … no-transform` and `/ota/files/` as `application/octet-stream`; keep both.
+
+**Then on the phone.** A game screen proves nothing: when a download fails, the app opens on its built-in bundle. With the S22 on USB, open the app and require `adb logcat | grep CapgoUpdater` to show `Bundle successfully set to` with the new release, and `adb logcat -b crash` to stay empty.
+
+### Store AAB (Play)
+
+Build with `pnpm run android:release`. It needs these inputs:
+
+- **Signing:** `ASTERA_ANDROID_KEYSTORE_PATH`, `ASTERA_ANDROID_PASSWORD_FILE` and `ASTERA_ANDROID_KEY_ALIAS`.
+- **Version:** `ASTERA_ANDROID_VERSION_CODE` and `ASTERA_ANDROID_VERSION_NAME`.
+- **Content:** `VITE_ASTERA_API_URL=https://asteraonline.space` and `ASTERA_REF_ASSETS_DIR`.
+
+The build adds two safety rules of its own:
+
+- **Firebase:** It copies `google-services.json` from `~/.local/share/astera/firebase/`, or from `ASTERA_ANDROID_FIREBASE_FILE`. The file must be private (0600), outside the repo, and contain a client for `space.asteraonline.app`. Without it the app closes on start the first time it registers for push alerts (Play v16).
+- **Comparison with the previous release:** `ASTERA_ANDROID_PREVIOUS_AAB` must name the last `.aab` uploaded to Play; use `none` only for the very first release. The build lists what the old bundle held: resource names, manifest components and permissions, native libraries, root files and Capacitor plugins. If anything is missing from the new bundle, the build stops. A removal you intend goes in `ASTERA_ANDROID_ALLOW_REMOVED`, comma-separated, exactly as the error names it.
+
+To release:
+
+1. Upload to **internal testing** first.
+2. Install from Play on the S22.
+3. Sign in with notifications allowed and play for about two minutes while watching `adb logcat -b crash`.
+4. Only then promote to production, as a **staged rollout** (10–20 %).
+
 **An API rollback never goes behind the OTA F1 server** once an app shell with the live update is on Play. Those phones run a web bundle that sends `x-astera-web` from `https://localhost`; a server image without that header in its CORS list fails every preflight, and every API call in the app with it. The same holds for any header the client starts sending: the server that allows it must be live, and stay the rollback floor, before a client that sends it reaches phones.
 
 External gates:
