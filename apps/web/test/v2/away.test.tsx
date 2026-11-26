@@ -187,7 +187,12 @@ describe('the away host', () => {
     const onAll = vi.fn();
     const view = render(<Wrapper><AwayHost delayMs={0} keepAliveMs={40} onDoor={onDoor} onAll={onAll} held={held} /></Wrapper>);
     const release = () => { view.rerender(<Wrapper><AwayHost delayMs={0} keepAliveMs={40} onDoor={onDoor} onAll={onAll} /></Wrapper>); };
-    return { read, acknowledge, onDoor, onAll, release };
+    /** Yarık takes the whole screen: the game shell, and this host with it, goes and comes back. */
+    const yarik = () => {
+      view.rerender(<Wrapper>{null}</Wrapper>);
+      view.rerender(<Wrapper><AwayHost delayMs={0} keepAliveMs={40} onDoor={onDoor} onAll={onAll} /></Wrapper>);
+    };
+    return { read, acknowledge, onDoor, onAll, release, yarik };
   };
 
   /** The starter tutorial speaks first; a sheet over it could not be closed through its gate. */
@@ -208,6 +213,18 @@ describe('the away host', () => {
     await userEvent.click(within(sheet).getByRole('button', { name: 'Back to the galaxy' }));
     expect(acknowledge).toHaveBeenCalledWith(new Date('2026-09-24T12:00:00Z'));
     expect(screen.queryByRole('dialog', { name: 'While you were away' })).toBeNull();
+  });
+
+  // Owner 2026-11-26: leaving Yarık opened "While you were away" again. The story was read and closed
+  // before; the shell came back with the story still cached and forgot it had been read.
+  it('does not tell a story already read again when the game comes back from Yarık', async () => {
+    const { read, yarik } = host(story());
+    const sheet = await screen.findByRole('dialog', { name: 'While you were away' });
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Back to the galaxy' }));
+    yarik();
+    await new Promise((resolve) => { setTimeout(resolve, 120); });
+    expect(screen.queryByRole('dialog', { name: 'While you were away' })).toBeNull();
+    expect(read).toHaveBeenCalledOnce();
   });
 
   it('says nothing after a short absence, and closes the window at once', async () => {

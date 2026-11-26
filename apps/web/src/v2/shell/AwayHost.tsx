@@ -31,6 +31,10 @@ import { AwaySheet } from '../hud/AwaySheet.js';
  *
  * Reading changes nothing on the server; the dismissal closes the window up to the
  * instant the story was read.
+ *
+ * And a read story stays read (owner, 2026-11-26): Yarık takes the whole screen, so the
+ * shell and this host unmount and come back, with the story still cached. The dismissal
+ * therefore empties the cached story itself, not a flag this host would forget.
  */
 export function AwayHost({
   onDoor,
@@ -56,7 +60,6 @@ export function AwayHost({
   const watching = useIntel().data?.watching;
   const { worlds } = useWorld();
   const [armed, setArmed] = useState(delayMs <= 0);
-  const [closed, setClosed] = useState(false);
 
   useEffect(() => {
     if (armed) return undefined;
@@ -79,9 +82,9 @@ export function AwayHost({
   close.current = acknowledge.mutate;
 
   const data = story.data;
-  const telling = data !== undefined && !closed && shouldShowAway(data);
+  const telling = data !== undefined && shouldShowAway(data);
 
-  // Nothing worth telling: close the window at once, so the next absence is measured from here.
+  // Nothing (left) worth telling: close the window at once, so the next absence is measured from here.
   useEffect(() => {
     if (data && !shouldShowAway(data)) close.current(data.asOf);
   }, [data]);
@@ -106,7 +109,6 @@ export function AwayHost({
       const away = hiddenAt === null ? 0 : serverNow() - hiddenAt;
       hiddenAt = null;
       if (away < AWAY_THRESHOLD_MINUTES * 60_000) return;
-      setClosed(false);
       // Emptied first, so neither the old story nor its keep-alive runs while the new one loads.
       void client.resetQueries({ queryKey: keys.returnStory });
     };
@@ -115,10 +117,8 @@ export function AwayHost({
 
   if (!telling || held) return null;
 
-  const dismiss = (): void => {
-    setClosed(true);
-    acknowledge.mutate(data.asOf);
-  };
+  // Read: the cached story has nothing left to tell, and the effect above closes the window at its instant.
+  const dismiss = (): void => { client.setQueryData(keys.returnStory, { ...data, entries: [] }); };
 
   return (
     <AwaySheet
