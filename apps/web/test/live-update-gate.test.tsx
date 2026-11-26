@@ -91,6 +91,20 @@ describe('the opening update check', () => {
     expect(screen.queryByText(/MB/u)).toBeNull();
   });
 
+  it('opens the game when the download stops moving, and does not restart it when the download lands later', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+    serve(newer);
+    let land: (value: { id: string }) => void = () => undefined;
+    updater.download.mockReturnValue(new Promise(resolve => { land = resolve; }));
+    render(<LiveUpdateGate><p>game</p></LiveUpdateGate>);
+    expect(await screen.findByText('Downloading update · 2.4 MB')).toBeTruthy();
+    await act(async () => { vi.advanceTimersByTime(21_000); await Promise.resolve(); });
+    expect(await screen.findByText('game')).toBeTruthy();
+    await act(async () => { land({ id: 'bundle-9' }); await new Promise(resolve => { setTimeout(resolve, 0); }); });
+    expect(updater.set).not.toHaveBeenCalled();
+    expect(screen.getByText('game')).toBeTruthy();
+  });
+
   it('opens the game with the bundle it has when the download fails', async () => {
     serve(newer);
     updater.download.mockRejectedValue(new Error('offline'));
@@ -121,6 +135,21 @@ describe('a rules change before its release is published', () => {
     const asked = vi.mocked(fetch).mock.calls.length;
     await act(async () => { vi.advanceTimersByTime(120_000); await Promise.resolve(); });
     expect(vi.mocked(fetch).mock.calls.length).toBe(asked);
+  });
+});
+
+describe('a release published while the game is open, when the switch is refused', () => {
+  it('takes the card away instead of failing unseen', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    serve(newer);
+    updater.set.mockRejectedValue(new Error('id does not exist'));
+    render(<UpdateReadyCard />);
+    vi.setSystemTime(Date.now() + 31 * 60_000);
+    await act(async () => { activity.listener?.(); await new Promise(resolve => { setTimeout(resolve, 0); }); });
+    fireEvent.click(await screen.findByRole('button', { name: 'Restart' }));
+    await act(async () => { await new Promise(resolve => { setTimeout(resolve, 0); }); });
+    expect(screen.queryByRole('button', { name: 'Restart' })).toBeNull();
+    expect(localStorage.getItem('astera.ota.pending')).toBeNull();
   });
 });
 

@@ -127,6 +127,15 @@ describe('installing a release', () => {
     expect(updater.set).toHaveBeenCalledWith({ id: 'bundle-1' });
   });
 
+  it('forgets the switch when the updater refuses it, so a release that never ran is not blamed', async () => {
+    const storage = memory();
+    const updater = plugin({ set: vi.fn(() => Promise.reject(new Error('id does not exist'))) });
+    await expect(restartInto(NEXT, 'bundle-1', { updater, storage })).rejects.toThrow('id does not exist');
+    expect(storage.getItem('astera.ota.pending')).toBeNull();
+    expect(settleLastUpdate(storage, RUNNING)).toBeNull();
+    expect(failedReleases(storage)).toEqual([]);
+  });
+
   it('confirms a release that started as expected, once', () => {
     const storage = memory();
     storage.setItem('astera.ota.pending', NEXT);

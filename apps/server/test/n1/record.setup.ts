@@ -19,3 +19,5 @@ vi.mock('../../../web/src/api/adminSchemas.js', async (load: () => Promise<Recor
 vi.mock('../../../web/src/api/battleReplaySchemas.js', async (load: () => Promise<Record<string, unknown>>) => wrap('battleReplaySchemas', load));
 vi.mock('../../../web/src/api/starterSchemas.js', async (load: () => Promise<Record<string, unknown>>) => wrap('starterSchemas', load));
 vi.mock('../../../web/src/api/journeySchemas.js', async (load: () => Promise<Record<string, unknown>>) => wrap('journeySchemas', load));
+vi.mock('../../../web/src/api/analyticsSchemas.js', async (load: () => Promise<Record<string, unknown>>) => wrap('analyticsSchemas', load));
+vi.mock('../../../web/src/api/analyticsAdminSchemas.js', async (load: () => Promise<Record<string, unknown>>) => wrap('analyticsAdminSchemas', load));

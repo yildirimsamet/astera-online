@@ -81,7 +81,10 @@ async function readJson(fetcher: typeof fetch, url: string, signal: AbortSignal)
 
 const entry = ({ file_name, file_hash, download_url }: ManifestEntry): ManifestEntry => ({ file_name, file_hash, download_url });
 
-/** The newer release this phone can run, or null; never longer than the opening allows. */
+/**
+ * The published release when this phone runs another one, or null; never longer than the opening allows.
+ * Any other release, older too: the one-step rollback (`publish-ota.sh --restore-previous`) works by it.
+ */
 export async function findRelease(at: {
   fetch: typeof fetch; apiUrl: string; release: string; shell: string | undefined; storage: Storage; updater: Updater;
 }): Promise<Release | null> {
@@ -115,7 +118,13 @@ export async function installRelease(release: Release, at: { updater: Updater; s
 /** Restarts the app into a downloaded release, noting first what the next start should run as. */
 export async function restartInto(version: string, id: string, at: { updater: Updater; storage: Storage }): Promise<void> {
   at.storage.setItem(PENDING, version);
-  await at.updater.set({ id });
+  try {
+    await at.updater.set({ id });
+  } catch (error) {
+    // Not switched: a release that never ran must not be remembered as one that failed.
+    at.storage.removeItem(PENDING);
+    throw error;
+  }
 }
 
 export function formatMegabytes(bytes: number, language: string): string {

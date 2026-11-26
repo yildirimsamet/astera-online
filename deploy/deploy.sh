@@ -115,6 +115,47 @@ fi
 say "Building the server image"
 $COMPOSE build api1
 
+# BOTH CLIENTS ARE BUILT BEFORE ANY ROLE STOPS. A build that fails after the new API
+# is up leaves new rules behind an old client; here it fails with nothing changed.
+say "Building the client"
+# Exported to a directory rather than an image: nginx serves these files
+# directly, so there is no container in the path of a static asset.
+STAGE="$ROOT/.deploy-web"
+rm -rf "$STAGE"
+# The analytics id, if this deployment has one. Read from the same `.env` the API
+# uses, and passed as a BUILD argument because Vite inlines it into the bundle —
+# there is no runtime environment on a directory of static files. Unset means the
+# client ships with no tag at all, which is the correct behaviour and not a
+# degraded one.
+GA_ID=$(grep -E '^VITE_GA_ID=' .env | cut -d= -f2- || true)
+ARENA=$(grep -E '^VITE_ARENA=' .env | cut -d= -f2- || true)
+PLAYER_ANALYTICS=$(grep -E '^VITE_ASTERA_PLAYER_ANALYTICS=' .env | cut -d= -f2- || true)
+PLAYER_ANALYTICS_REVISION=$(git rev-parse HEAD)
+# The Sentry key uploads the client's source maps under this commit; it reaches the build as a BuildKit
+# secret and is never printed or baked into a layer. Unset, the build uploads nothing.
+SENTRY_AUTH_TOKEN=$(grep -E '^SENTRY_AUTH_TOKEN=' .env | cut -d= -f2- || true)
+export SENTRY_AUTH_TOKEN
+docker build --target web-dist --build-arg "VITE_GA_ID=${GA_ID}" --build-arg "VITE_ARENA=${ARENA}" \
+  --build-arg "VITE_ASTERA_PLAYER_ANALYTICS=${PLAYER_ANALYTICS}" --build-arg "ASTERA_GIT_COMMIT=${PLAYER_ANALYTICS_REVISION}" \
+  --secret id=sentry_auth,env=SENTRY_AUTH_TOKEN --output "type=local,dest=$STAGE" .
+[[ -n "$GA_ID" ]] && echo "  analytics: $GA_ID" || echo "  analytics: not configured"
+[[ -f "$STAGE/index.html" ]] || { echo "Client build produced no index.html."; exit 1; }
+
+# THE APP'S LIVE UPDATE (OTA F2): the same commit as the app bundle, packed by content
+# hash. Same build arguments as above, so Docker reuses the web stage and only the app
+# build runs. The reference pack is the arena's copy on this box; without it the app
+# bundle cannot be built and the deploy stops here, before anything is published.
+say "Building the app's live update"
+OTA_STAGE="$ROOT/.deploy-ota"
+OTA_ROOT=/var/www/astera-ota
+rm -rf "$OTA_STAGE"
+ARENA_REFS=$(grep -E '^ARENA_REF_HOST_DIR=' .env | cut -d= -f2- || true)
+ARENA_REFS=${ARENA_REFS:-/opt/astera/arena-refs}
+docker build --target ota-dist --build-context "refs=${ARENA_REFS}" --build-arg "VITE_GA_ID=${GA_ID}" --build-arg "VITE_ARENA=${ARENA}" \
+  --build-arg "VITE_ASTERA_PLAYER_ANALYTICS=${PLAYER_ANALYTICS}" --build-arg "ASTERA_GIT_COMMIT=${PLAYER_ANALYTICS_REVISION}" \
+  --secret id=sentry_auth,env=SENTRY_AUTH_TOKEN --output "type=local,dest=$OTA_STAGE" .
+[[ -f "$OTA_STAGE/latest.json" ]] || { echo "App update build produced no latest.json."; exit 1; }
+
 say "Starting PostgreSQL and Valkey"
 $COMPOSE up -d postgres valkey
 # `up -d` returns as soon as the container is created; the healthcheck is what
@@ -162,44 +203,6 @@ $COMPOSE run --rm --no-deps api1 \
 say "Starting one worker and three API replicas"
 $COMPOSE up -d --remove-orphans worker api1 api2 api3
 
-say "Building the client"
-# Exported to a directory rather than an image: nginx serves these files
-# directly, so there is no container in the path of a static asset.
-STAGE="$ROOT/.deploy-web"
-rm -rf "$STAGE"
-# The analytics id, if this deployment has one. Read from the same `.env` the API
-# uses, and passed as a BUILD argument because Vite inlines it into the bundle —
-# there is no runtime environment on a directory of static files. Unset means the
-# client ships with no tag at all, which is the correct behaviour and not a
-# degraded one.
-GA_ID=$(grep -E '^VITE_GA_ID=' .env | cut -d= -f2- || true)
-ARENA=$(grep -E '^VITE_ARENA=' .env | cut -d= -f2- || true)
-PLAYER_ANALYTICS=$(grep -E '^VITE_ASTERA_PLAYER_ANALYTICS=' .env | cut -d= -f2- || true)
-PLAYER_ANALYTICS_REVISION=$(git rev-parse HEAD)
-# The Sentry key uploads the client's source maps under this commit; it reaches the build as a BuildKit
-# secret and is never printed or baked into a layer. Unset, the build uploads nothing.
-SENTRY_AUTH_TOKEN=$(grep -E '^SENTRY_AUTH_TOKEN=' .env | cut -d= -f2- || true)
-export SENTRY_AUTH_TOKEN
-docker build --target web-dist --build-arg "VITE_GA_ID=${GA_ID}" --build-arg "VITE_ARENA=${ARENA}" \
-  --build-arg "VITE_ASTERA_PLAYER_ANALYTICS=${PLAYER_ANALYTICS}" --build-arg "ASTERA_GIT_COMMIT=${PLAYER_ANALYTICS_REVISION}" \
-  --secret id=sentry_auth,env=SENTRY_AUTH_TOKEN --output "type=local,dest=$STAGE" .
-[[ -n "$GA_ID" ]] && echo "  analytics: $GA_ID" || echo "  analytics: not configured"
-[[ -f "$STAGE/index.html" ]] || { echo "Client build produced no index.html."; exit 1; }
-
-# THE APP'S LIVE UPDATE (OTA F2): the same commit as the app bundle, packed by content
-# hash. Same build arguments as above, so Docker reuses the web stage and only the app
-# build runs. The reference pack is the arena's copy on this box; without it the app
-# bundle cannot be built and the deploy stops here, before anything is published.
-say "Building the app's live update"
-OTA_STAGE="$ROOT/.deploy-ota"
-OTA_ROOT=/var/www/astera-ota
-rm -rf "$OTA_STAGE"
-ARENA_REFS=$(grep -E '^ARENA_REF_HOST_DIR=' .env | cut -d= -f2- || true)
-ARENA_REFS=${ARENA_REFS:-/opt/astera/arena-refs}
-docker build --target ota-dist --build-context "refs=${ARENA_REFS}" --build-arg "VITE_GA_ID=${GA_ID}" --build-arg "VITE_ARENA=${ARENA}" \
-  --build-arg "VITE_ASTERA_PLAYER_ANALYTICS=${PLAYER_ANALYTICS}" --build-arg "ASTERA_GIT_COMMIT=${PLAYER_ANALYTICS_REVISION}" \
-  --secret id=sentry_auth,env=SENTRY_AUTH_TOKEN --output "type=local,dest=$OTA_STAGE" .
-[[ -f "$OTA_STAGE/latest.json" ]] || { echo "App update build produced no latest.json."; exit 1; }
 
 # PRE-COMPRESS, so nginx never spends a cycle on it. `gzip_static on` serves the
 # `.gz` beside a file when the client accepts it; built here at level 9 rather

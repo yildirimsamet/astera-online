@@ -49,6 +49,29 @@ describe('the season rules update', () => {
       expect(buildHeader()).not.toHaveProperty('x-astera-build');
     } finally { vi.useRealTimers(); }
   });
+  it('names the shell once a slow bridge answers after the start, so the build gate still applies', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubEnv('VITE_ASTERA_RELEASE', '');
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      void readShellBuild(() => new Promise(resolve => { setTimeout(() => { resolve({ build: '42' }); }, 3000); }));
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(buildHeader()).not.toHaveProperty('x-astera-build');
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(buildHeader()).toHaveProperty('x-astera-build', '42');
+    } finally { vi.useRealTimers(); }
+  });
+  it('a late answer from an earlier read does not overwrite a newer one', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      void readShellBuild(() => new Promise(resolve => { setTimeout(() => { resolve({ build: '7' }); }, 3000); }));
+      await vi.advanceTimersByTimeAsync(2000);
+      await readShellBuild(() => Promise.resolve({ build: '42' }));
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(buildHeader()).toHaveProperty('x-astera-build', '42');
+    } finally { vi.useRealTimers(); }
+  });
   it('offers a real browser reload instead of a store link on the web', () => {
     vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(false);
     render(<UpdateRequired />);

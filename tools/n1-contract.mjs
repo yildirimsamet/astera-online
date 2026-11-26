@@ -21,7 +21,10 @@ const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8'
 async function liveRelease() {
   const response = await fetch('https://asteraonline.space/ota/latest.json', { signal: AbortSignal.timeout(10_000) });
   if (!response.ok) throw new Error(`/ota/latest.json answered ${response.status}; name the live commit: node tools/n1-contract.mjs <sha>`);
-  const { version } = await response.json();
+  const body = await response.text();
+  // From the network: anything but a full commit stops here, before a database or a file is touched.
+  const version = /"version":"([a-f0-9]{40})"/u.exec(body)?.[1];
+  if (!version) throw new Error(`/ota/latest.json names no release; name the live commit: node tools/n1-contract.mjs <sha>`);
   return version;
 }
 

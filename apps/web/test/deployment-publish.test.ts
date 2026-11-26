@@ -304,6 +304,27 @@ describe('the OTA release rides every web deploy', () => {
     expect(deploy).toContain('OTA_ROOT=/var/www/astera-ota');
   });
 
+  it('builds the client and the app bundle before any application role stops, so a failed build changes nothing', async () => {
+    const deploy = await readFile(resolve(root, 'deploy/deploy.sh'), 'utf8');
+    const stop = deploy.indexOf('say "Stopping every application role for migration"');
+    expect(stop).toBeGreaterThan(0);
+    expect(deploy.indexOf('--target web-dist')).toBeGreaterThan(0);
+    expect(deploy.indexOf('--target web-dist')).toBeLessThan(stop);
+    expect(deploy.indexOf('--target ota-dist')).toBeLessThan(stop);
+    expect(deploy.indexOf('App update build produced no latest.json.')).toBeLessThan(stop);
+  });
+
+  it('keeps the origin security headers on every OTA response (add_header does not inherit)', async () => {
+    const nginx = await readFile(resolve(root, 'deploy/nginx/astera.conf'), 'utf8');
+    const block = (start: string) => nginx.split(start)[1]?.split('\n    }')[0] ?? '';
+    for (const start of ['location = /ota/latest.json {', 'location ~ "^/ota/(?<ota_release>[a-f0-9]{40})/manifest\\.json$" {', 'location /ota/files/ {']) {
+      const ota = block(start);
+      expect(ota, start).toContain('add_header Strict-Transport-Security "max-age=15768000" always;');
+      expect(ota, start).toContain('add_header X-Robots-Tag "noindex, nofollow" always;');
+      expect(ota, start).toContain('add_header Referrer-Policy strict-origin-when-cross-origin always;');
+    }
+  });
+
   it('serves latest uncached and the releases as immutable, each readable from the app', async () => {
     const nginx = await readFile(resolve(root, 'deploy/nginx/astera.conf'), 'utf8');
     const block = (start: string) => nginx.split(start)[1]?.split('\n    }')[0] ?? '';

@@ -593,6 +593,8 @@ For quiesced in-place publication, keep Nginx stopped, validate/install `deploy/
 
 Rollback in one step: `sudo bash deploy/publish-ota.sh --restore-previous /var/www/astera-ota`. A phone already on the newer bundle sees a different version and downloads the older one. Gate: `curl -fsS https://asteraonline.space/ota/latest.json | jq -r .version` equals the deployed SHA. The OTA root holds at most about five releases' worth of changed files.
 
+**An API rollback never goes behind the OTA F1 server** once an app shell with the live update is on Play. Those phones run a web bundle that sends `x-astera-web` from `https://localhost`; a server image without that header in its CORS list fails every preflight, and every API call in the app with it. The same holds for any header the client starts sending: the server that allows it must be live, and stay the rollback floor, before a client that sends it reaches phones.
+
 External gates:
 
 ```bash

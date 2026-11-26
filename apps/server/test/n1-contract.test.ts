@@ -1,3 +1,6 @@
+import { spawnSync } from 'node:child_process';
+import { readFileSync, readdirSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { recordSchemas, type Recorded } from './n1/record.js';
@@ -70,4 +73,22 @@ describe('replaying with the live client', () => {
 /** OTA F4 (§5.3): on a phone a list skips a row it cannot read; a contract test must see that row fail. */
 it('server tests read the client lists strictly', () => {
   expect(reportsSchema.safeParse({ reports: [{ kind: 'FROM_A_NEWER_SERVER' }], rivals: [] }).success).toBe(false);
+});
+
+/** The live release comes from the network: anything but a full commit stops the tool before it touches anything. */
+it.each([['{}'], ['{"version":"main"}'], ['<html>502</html>']])('the N-1 tool refuses a latest.json of %s', body => {
+  const stub = `data:text/javascript,globalThis.fetch=async()=>new Response(${JSON.stringify(body)})`;
+  const run = spawnSync(process.execPath, ['--import', stub, resolve(import.meta.dirname, '../../../tools/n1-contract.mjs')], { encoding: 'utf8' });
+  expect(run.status).not.toBe(0);
+  expect(run.stderr).toContain('names no release');
+});
+
+/** A module the recording leaves unwrapped is a client the N-1 check never reads. */
+it('records every client schema module the server tests import', () => {
+  const dir = import.meta.dirname;
+  const imported = new Set(readdirSync(dir).filter(name => name.endsWith('.test.ts'))
+    .flatMap(name => [...readFileSync(resolve(dir, name), 'utf8').matchAll(/from '\.\.\/\.\.\/web\/src\/api\/(\w*Schemas)\.js'/gu)].map(match => match[1])));
+  const setup = readFileSync(resolve(dir, 'n1/record.setup.ts'), 'utf8');
+  expect([...imported].filter(module => !setup.includes(`web/src/api/${module ?? ''}.js`))).toEqual([]);
+  expect(imported.size).toBeGreaterThan(5);
 });

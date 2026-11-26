@@ -9,6 +9,20 @@ import { LoadingScreen } from './LoadingScreen.js';
 
 /** A release published while the game is open is looked for at most this often, on return to the app. */
 const RESUME_CHECK_MS = 30 * 60_000;
+/**
+ * A download that has not moved for this long lets the game open (the plugin's own network timeout).
+ * The plugin retries each file a few times before it gives up, which on a bad line takes minutes.
+ */
+const STALL_MS = 20_000;
+
+/** Rejects once `progressAt()` is older than STALL_MS; `stop` ends the watch. */
+function stallWatch(progressAt: () => number): { stalled: Promise<never>; stop: () => void } {
+  let timer: ReturnType<typeof setInterval> | undefined;
+  const stalled = new Promise<never>((_resolve, reject) => {
+    timer = setInterval(() => { if (Date.now() - progressAt() > STALL_MS) reject(new Error('OTA download stalled')); }, 1_000);
+  });
+  return { stalled, stop: () => { clearInterval(timer); } };
+}
 
 const lookUp = (): Promise<Release | null> => findRelease({
   fetch: (input, init) => fetch(input, init), apiUrl: import.meta.env.VITE_ASTERA_API_URL ?? '',
@@ -42,9 +56,13 @@ export function LiveUpdateGate({ children, retryMs }: { children: ReactNode; ret
       const release = await lookUp();
       if (!release) { if (mounted.current) setPhase(current => current.name === 'open' ? current : { name: 'open' }); return; }
       if (mounted.current) setPhase({ name: 'downloading', size: release.bytes > 0 ? formatMegabytes(release.bytes, language.current) : null, progress: 0 });
-      const id = await installRelease(release, { updater, storage: localStorage, onProgress: progress => {
+      let movedAt = Date.now();
+      const watch = stallWatch(() => movedAt);
+      // A stalled download opens the game and is left to finish: the next start applies it, no restart now.
+      const id = await Promise.race([installRelease(release, { updater, storage: localStorage, onProgress: progress => {
+        movedAt = Date.now();
         if (mounted.current) setPhase(current => current.name === 'downloading' ? { ...current, progress } : current);
-      } });
+      } }), watch.stalled]).finally(watch.stop);
       haptic('commit');
       await restartInto(release.version, id, { updater, storage: localStorage });
     } catch {
@@ -105,7 +123,8 @@ export function UpdateReadyCard() {
         <Banner variant="toast" tone="info" glyph="refresh" title={t('app.updateReady')}
           action={<span className="flex items-center gap-2">
             <GameButton tone="action" size="sm" glyph="refresh" heavy onPress={() => {
-              void restartInto(ready.version, ready.id, { updater, storage: localStorage });
+              // Refused (the bundle is gone): the card goes; the next start looks again.
+              restartInto(ready.version, ready.id, { updater, storage: localStorage }).catch(() => { setReady(null); });
             }}>{t('app.updateRestart')}</GameButton>
             <RoundButton small glyph="close" label={t('toast.dismiss')} onPress={() => { setHidden(true); }} />
           </span>} />
