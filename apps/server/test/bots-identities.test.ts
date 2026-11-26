@@ -24,6 +24,15 @@ describe('owner supplied bot identities', () => {
     for (const { name } of BOT_IDENTITIES) expect(USERNAME_PATTERN.test(handleFor(name))).toBe(true);
   });
 
+  /** Owner 2026-11-27: the next eleven to arrive go by names that read like people's, each one a person could sign up with. */
+  it('seats the next arrivals under the names the owner chose, in their order', () => {
+    const chosen = ['Kiroka22', 'ogamer', 'lirika_34', 'aniL', 'Alakürdo', 'Zifir12', 'zephyr0', 'VenomiC', 'stormie', 't4r1k', 'pesto_aga'];
+    const names = BOT_IDENTITIES.map(({ name }) => name);
+    const first = names.indexOf('CılgınTurk') + 1;
+    expect(names.slice(first, first + chosen.length)).toEqual(chosen);
+    for (const name of chosen) expect(USERNAME_PATTERN.test(name)).toBe(true);
+  });
+
   it('updates old commanders in place, creates missing ones, and is safe to rerun', async () => {
     const old = await addBot(f.db, 'OldCommander', f.clock);
     await f.db.insert(players).values({
