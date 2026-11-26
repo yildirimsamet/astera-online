@@ -1,7 +1,7 @@
 import type { Breadcrumb, ErrorEvent } from '@sentry/react';
 import { describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
-import { crashReportOptions, crashRootHooks, scrubBreadcrumb, scrubEvent, startCrashReports } from '../src/lib/crashReports.js';
+import { crashReportOptions, crashRootHooks, droppedRowWarning, scrubBreadcrumb, scrubEvent, startCrashReports } from '../src/lib/crashReports.js';
 
 /**
  * CRASH REPORTS (plan 2026-11-13, owner §10.7-1). A crash on a player's device reaches the team with its
@@ -101,5 +101,14 @@ describe('starting crash reports', () => {
     expect(typeof hooks.onUncaughtError).toBe('function');
     expect(typeof hooks.onCaughtError).toBe('function');
     expect(typeof hooks.onRecoverableError).toBe('function');
+  });
+});
+
+/** OTA F4 (§5.3): a list row the client left out is a warning, with the list and the field only. */
+describe('a dropped list row', () => {
+  it('is sent as one warning naming the list and the field', () => {
+    const capture = vi.fn();
+    droppedRowWarning(capture)('intel.probeReports', 'moon.fleetSize');
+    expect(capture).toHaveBeenCalledWith('List row dropped: intel.probeReports · moon.fleetSize', 'warning');
   });
 });

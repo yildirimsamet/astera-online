@@ -70,9 +70,10 @@ describe('battle reports with fractional HP damage', () => {
     { remainderBp: null }, { remainderBp: '0.5' },
     { count: 0 }, { count: -1 }, { count: 1.5 }, { hull: 'UNKNOWN' },
   ])('rejects invalid damage without weakening the report boundary: %j', over => {
-    expect(reportsSchema.safeParse({
-      rivals: [], reports: [report({ yourDamage: [{ ...fractional, damageBp: 2000, ...over }] })],
-    }).success).toBe(false);
+    const bad = report({ yourDamage: [{ ...fractional, damageBp: 2000, ...over }] });
+    expect(reportsSchema.shape.reports.element.safeParse(bad).success).toBe(false);
+    // OTA F4: the list leaves that report out instead of blanking every other one; it is never shown.
+    expect(reportsSchema.parse({ rivals: [], reports: [bad] }).reports).toEqual([]);
   });
 
   it.each([0.8857506709106965, Number.MIN_VALUE])('shows positive damage below one basis point: %s', remainderBp => {

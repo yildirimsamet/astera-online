@@ -207,6 +207,14 @@ nothing said so.
 **A new contract test is only finished when you have watched it fail.** Revert the fix, confirm
 it goes red, put the fix back.
 
+**A new field on an existing route counts as a new contract.** The test must build the state in
+which the server actually sends that field and parse that answer: an optional field that is absent
+parses on any shape. The moons went through this hole: every moon test read its answer with a
+hand-written shape, so the probe's moon band went out as `fleet` while the client asked for
+`fleetSize`, and Intel stopped parsing for anyone who probed a moon (2026-11-24).
+`apps/server/test/moon-contract.test.ts` now covers the moon payloads; a feature with its own
+payloads gets a file like it.
+
 ### Two languages are checked by machine, not by promise
 
 `t()` is typed against the English resource tree, so a key that does not exist is a compile error

@@ -1,6 +1,7 @@
 import { COSMETIC_IDS, COSMETIC_CATEGORIES, SHIP_SKIN_IDS, STARTER_FEATURES, isMissionPace, honorBenefits, VACATION_BLOCK_REASONS } from '@astera/rules';
 import { z } from 'zod';
 import { vesselSchema, vesselStandingSchema } from './starterSchemas.js';
+import { tolerantList } from './tolerantList.js';
 import { SHIP_CLASSES } from '@astera/rules/arena/ui';
 import { CHAT_LANGUAGES, COUNTRY_CODES, FAULT_KINDS, PLANET_SKIN_IDS, REACTION_EMOJIS, VESSEL_LOOKS } from '@astera/rules';
 import type {
@@ -1213,10 +1214,10 @@ export const planetSchema = z.object({
    * server clock rather than accepting a second, inevitably stale duration.
    */
   queues: z.object({
-    CONSTRUCTION: z.array(z.union([timedConstructionOrder, stagedConstructionOrder])),
-    YARD: z.array(z.union([timedYardOrder, stagedYardOrder])),
+    CONSTRUCTION: tolerantList(z.union([timedConstructionOrder, stagedConstructionOrder]), 'queues.CONSTRUCTION'),
+    YARD: tolerantList(z.union([timedYardOrder, stagedYardOrder]), 'queues.YARD'),
     /** Optional only for a rolling deploy against an older server. */
-    REPAIR: z.array(timedRepairOrder).optional(),
+    REPAIR: tolerantList(timedRepairOrder, 'queues.REPAIR').optional(),
   }).optional(),
   /** The head of `deathStars`: the weapon that can fly soonest. */
   strategic: strategicAsset.nullable().optional(),
@@ -2726,7 +2727,7 @@ export const intelSchema = z.object({
       cooldownUntil: z.coerce.date().nullable(),
     }),
   ),
-  radarLog: z.array(
+  radarLog: tolerantList(
     z.object({
       at: z.coerce.date(),
       /**
@@ -2744,8 +2745,9 @@ export const intelSchema = z.object({
       originPlanetName: z.string().nullable(),
       originPlanetId: z.string().nullable().optional(),
     }),
+    'intel.radarLog',
   ),
-  probeReports: z.array(
+  probeReports: tolerantList(
     z.object({
       /** Own dispatch reference; absent on older servers. */
       missionId: z.string().optional(),
@@ -2825,6 +2827,7 @@ export const intelSchema = z.object({
       }).nullable().optional(),
       detected: z.boolean(),
     }),
+    'intel.probeReports',
   ),
   /**
    * Worlds this commander may not probe again yet, with the instant each reopens.
@@ -3404,7 +3407,7 @@ const monumentBattleReport = z.object({
 export type MonumentBattleReport = z.infer<typeof monumentBattleReport>;
 
 export const reportsSchema = z.object({
-  reports: z.array(z.union([ordinaryBattleReport, strategicBattleReport, monumentBattleReport])),
+  reports: tolerantList(z.union([ordinaryBattleReport, strategicBattleReport, monumentBattleReport]), 'reports'),
   rivals: z.array(z.object({
     planetId: z.string(),
     playerId: z.string(),
@@ -3440,7 +3443,7 @@ export type RivalSummary = z.infer<typeof reportsSchema>['rivals'][number];
  * of them. The payload was already `unknown` for the same reason.
  */
 export const notificationsSchema = z.object({
-  notifications: z.array(
+  notifications: tolerantList(
     z.object({
       id: z.string(),
       kind: z.string(),
@@ -3450,6 +3453,7 @@ export const notificationsSchema = z.object({
       seen: z.boolean(),
       at: z.coerce.date(),
     }),
+    'notifications',
   ),
 });
 

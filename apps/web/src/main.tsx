@@ -13,9 +13,10 @@ import { I18nextProvider } from 'react-i18next';
  */
 import i18n, { i18nReady } from './i18n/index.js';
 import { syncDocumentLanguage } from './i18n/document.js';
-import { init as startSentry } from '@sentry/react';
+import { captureMessage, init as startSentry } from '@sentry/react';
 import { startAnalytics } from './lib/analytics.js';
-import { crashRootHooks, startCrashReports } from './lib/crashReports.js';
+import { crashRootHooks, droppedRowWarning, startCrashReports } from './lib/crashReports.js';
+import { onDroppedListItem } from './api/tolerantList.js';
 import { startPlayerAnalytics } from './lib/playerAnalytics/runtime.js';
 import { configureH5Ads } from './lib/h5.js';
 import { starterFetch } from './starter/transport.js';
@@ -47,6 +48,7 @@ function start(): void {
     production: import.meta.env.PROD,
     release: import.meta.env.VITE_ASTERA_RELEASE ?? '',
   }, startSentry);
+  if (crashes) onDroppedListItem(droppedRowWarning(captureMessage));
   syncDocumentLanguage();
   // A page translator rewrites React's text nodes; an update must not crash on them (Sentry WEB-4).
   tolerateForeignDomEdits();

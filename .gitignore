@@ -34,3 +34,4 @@ astera-ref-assets/
 
 # X DM announcements (tools/x-dm.mjs): API key, X session cookie, recipient list and send log.
 .x-dm/
+apps/server/.n1/

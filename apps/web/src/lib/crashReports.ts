@@ -89,3 +89,11 @@ export function scrubBreadcrumb(crumb: Breadcrumb): Breadcrumb | null {
   }
   return { ...crumb, data };
 }
+
+/**
+ * A list row this build could not read and left out (api/tolerantList.ts, OTA F4): one warning per
+ * list and field, naming only those, so a server that reshaped a row shows up before players say so.
+ */
+export function droppedRowWarning(capture: (message: string, level: 'warning') => unknown) {
+  return (list: string, path: string): void => { capture(`List row dropped: ${list} · ${path}`, 'warning'); };
+}

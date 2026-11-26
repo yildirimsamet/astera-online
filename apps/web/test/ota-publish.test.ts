@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -83,5 +83,58 @@ describe('publishing an OTA release', () => {
     const { live } = await fixture();
     expect(run('--restore-previous', live).status).not.toBe(0);
     expect(await readFile(join(live, 'latest.json'), 'utf8')).toBe(latest(OLD));
+  });
+});
+
+/** OTA F4: old releases leave the VPS; the last five, the live one and the one a rollback needs stay whole. */
+describe('pruning old OTA releases', () => {
+  const exists = (path: string) => access(path).then(() => true, () => false);
+  async function stageRelease(root: string, version: string, hashes: string[]): Promise<string> {
+    const stage = join(root, `stage-${version.slice(0, 1)}`);
+    await mkdir(join(stage, 'files'), { recursive: true });
+    await mkdir(join(stage, version), { recursive: true });
+    for (const hash of hashes) await writeFile(join(stage, 'files', `${hash}.js`), version);
+    await writeFile(join(stage, version, 'manifest.json'), JSON.stringify({ version, files: hashes.map(hash => (
+      { file_name: `${hash}.js`, file_hash: hash, download_url: `https://asteraonline.space/ota/files/${hash}.js`, size: 3 })) }));
+    await writeFile(join(stage, 'latest.json'), latest(version));
+    return stage;
+  }
+
+  it('keeps the last five releases and every file they name, and removes the rest with their compressed copies', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'astera-ota-prune-'));
+    roots.push(root);
+    const live = join(root, 'live');
+    const shared = 'f'.repeat(64);
+    const versions = ['1', '2', '3', '4', '5', '6', '7'].map(digit => digit.repeat(40));
+    for (const version of versions) {
+      const own = version.slice(0, 1).repeat(64);
+      const stage = await stageRelease(root, version, [own, shared]);
+      await writeFile(join(stage, 'files', `${own}.js.gz`), 'gz');
+      const result = run(stage, live);
+      expect(result.status, result.stderr).toBe(0);
+    }
+    const releases = (await readdir(live)).filter(name => /^[a-f0-9]{40}$/u.test(name)).sort();
+    expect(releases).toEqual(versions.slice(2));
+    expect(await exists(join(live, 'files', `${'1'.repeat(64)}.js`))).toBe(false);
+    expect(await exists(join(live, 'files', `${'2'.repeat(64)}.js.gz`))).toBe(false);
+    expect(await exists(join(live, 'files', `${'3'.repeat(64)}.js`))).toBe(true);
+    expect(await exists(join(live, 'files', `${'3'.repeat(64)}.js.gz`))).toBe(true);
+    expect(await exists(join(live, 'files', `${shared}.js`))).toBe(true);
+    expect(await readFile(join(live, 'latest.json'), 'utf8')).toBe(latest(versions[6]!));
+  });
+
+  it('brings an old release back whole when an old commit is deployed again, and keeps it as the newest', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'astera-ota-prune-'));
+    roots.push(root);
+    const live = join(root, 'live');
+    const versions = ['1', '2', '3', '4', '5', '6', '7'].map(digit => digit.repeat(40));
+    const files = (version: string) => [version.slice(0, 1).repeat(64)];
+    for (const version of versions) expect(run(await stageRelease(root, version, files(version)), live).status).toBe(0);
+    expect(await exists(join(live, versions[0]!))).toBe(false);
+    expect(run(await stageRelease(root, versions[0]!, files(versions[0]!)), live).status).toBe(0);
+    const releases = (await readdir(live)).filter(name => /^[a-f0-9]{40}$/u.test(name)).sort();
+    expect(releases).toEqual([versions[0], ...versions.slice(3)]);
+    expect(await exists(join(live, 'files', `${'1'.repeat(64)}.js`))).toBe(true);
+    expect(await readFile(join(live, 'latest.previous.json'), 'utf8')).toBe(latest(versions[6]!));
   });
 });

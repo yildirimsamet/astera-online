@@ -8,6 +8,8 @@ export default defineConfig({
     // Persistence tests share one database; running files in parallel would have
     // them truncating each other's rows mid-assertion.
     fileParallelism: false,
+    // Client lists read strictly: a row the client would skip fails the contract test instead.
+    setupFiles: ['test/strictLists.setup.ts'],
     testTimeout: 30_000,
     hookTimeout: 60_000,
   },

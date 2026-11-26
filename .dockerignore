@@ -43,3 +43,4 @@ coverage
 # Harnesses that drive a real browser. Nothing in the image runs them.
 tools
 docs
+apps/server/.n1
