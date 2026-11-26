@@ -50,6 +50,9 @@ export interface NetworkStatus {
 }
 interface Pending { seq: number; input: ArenaIntent }
 const AIM_HORIZON_MAX = 0.6;
+/** A spare socket is replaced before the room's 5 s wait for a hello runs out; the launch screen keeps one this long. */
+const WARM_RENEW_MS = 3_500;
+const WARM_FOR_MS = 2 * 60_000;
 /** One received pose of another ship: both row kinds start id, x, y, z, qx, qy, qz, qw, speed. */
 interface Sample { tick: number; row: readonly number[] }
 interface Remote {
@@ -176,10 +179,35 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
     world.scans = snap.scan.length > 0 ? [{ owner: world.pilot.id, ticks: 1, targets: snap.scan }] : [];
     track(snap); lastSnapshotAt = performance.now();
   };
+  /**
+   * A SOCKET OPENED AHEAD (owner 2026-11-26: entering Yarık waited a moment on "Connecting…").
+   * Opening one costs 200–300 ms through Cloudflare (TCP, TLS, upgrade) and began with the launch
+   * press; on the launch screen one is kept open, so the press only sends the hello. The room
+   * closes a socket that names nobody after 5 s: the spare is replaced every WARM_RENEW_MS, and
+   * the launch screen keeps one for WARM_FOR_MS at most.
+   */
+  let spare: WebSocket | null = null; let warming: ReturnType<typeof setTimeout> | null = null; let warmUntil = 0;
+  const dropSpare = (): void => { const idle = spare; spare = null; if (idle) { idle.onclose = null; idle.close(); } };
+  const renewSpare = (): void => {
+    dropSpare(); warming = null;
+    if (socket || Date.now() >= warmUntil) return;
+    const next = new WebSocket(arenaSocketUrl());
+    next.onclose = () => { if (spare === next) spare = null; };
+    spare = next; warming = setTimeout(renewSpare, WARM_RENEW_MS);
+  };
+  const cool = (): void => { if (warming) clearTimeout(warming); warming = null; dropSpare(); };
+  /** The spare if it is opening or open; it becomes the flight's socket. */
+  const takeSpare = (): WebSocket | null => {
+    const ready = spare && spare.readyState <= WebSocket.OPEN ? spare : null;
+    if (warming) clearTimeout(warming);
+    warming = null; spare = null;
+    return ready;
+  };
   const open = (): void => {
     if (stopped) return;
     notify({ phase: welcomed ? 'reconnecting' : 'connecting', reason: '' });
-    const connection = new WebSocket(arenaSocketUrl());
+    const ahead = takeSpare(); if (!ahead) dropSpare();
+    const connection = ahead ?? new WebSocket(arenaSocketUrl());
     socket = connection;
     // A socket the page's CSP refuses is closed at once and fires no close event; close() then does
     // nothing, so the timeout runs the close path itself, once (2026-11-26, Yarık in the app).
@@ -188,7 +216,7 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
       if (connected) return;
       if (connection.readyState === WebSocket.CLOSED) lost(); else connection.close();
     }, 5000);
-    connection.onopen = () => {
+    const greet = (): void => {
       const hello = { kind: 'hello', v: ARENA_PROTOCOL, guestId: guest, mode: welcomed ? 'resume' : spectating ? 'spectate' : 'enter', ship, tactic, tactic2 };
       if (!credential) { send(hello); return; }
       void credential().then(token => { if (socket === connection) send({ ...hello, ...(token ? { token } : {}) }); });
@@ -222,6 +250,7 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
     };
     connection.onclose = lost;
     connection.onerror = () => { /* Close owns recovery, avoiding duplicate connections. */ };
+    if (connection.readyState === WebSocket.OPEN) greet(); else connection.onopen = greet;
   };
   const drawn: Remote[] = [];
   const interpolate = (at: number): void => {
@@ -265,6 +294,10 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
       ship = next; tactic = nextTactic; tactic2 = second; spectating = observer; stopped = false; attempts = 0; welcomed = false; notify({ sortie: null, teamId: null, watching: null, received: false });
       if (retry) clearTimeout(retry); if (socket) socket.close(); connected = false; open();
     },
+    /** On the launch screen: keep a socket open ahead, so the launch only sends the hello. Not while a flight is up. */
+    warm(): void { if (warming || socket) return; warmUntil = Date.now() + WARM_FOR_MS; renewSpare(); },
+    /** Off the launch screen: the spare closes. */
+    cool,
     /** Back to the hangar after a flight: the link closes without asking the room for anything. */
     stop(): void { stopped = true; connected = false; if (retry) clearTimeout(retry); const closing = socket; socket = null; closing?.close(); notify({ phase: 'idle', reason: '', teamId: null, watching: null }); },
     get connected(): boolean { return connected; },
@@ -300,7 +333,7 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
     dev(action: 'restart' | 'exit' | 'fuel' | 'cargo' | 'position', value?: number, p?: { x: number; y: number; z: number }): void { send({ kind: 'dev', action, value, p }); },
     leave(): void { send({ kind: 'leave' }); },
     watch(pilotId: number): void { send({ kind: 'watch', pilotId }); },
-    dispose(): void { stopped = true; connected = false; if (retry) clearTimeout(retry); socket?.close(); socket = null; },
+    dispose(): void { cool(); stopped = true; connected = false; if (retry) clearTimeout(retry); socket?.close(); socket = null; },
   };
 }
 export type ArenaNetwork = ReturnType<typeof createArenaNetwork>;

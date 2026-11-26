@@ -14,15 +14,16 @@ const { default: Sandbox } = await import('../../src/arena/Sandbox.js');
 
 const zero = { alloy: 0, crystal: 0, deuterium: 0 };
 let language: string;
-beforeEach(async () => {
-  language = i18n.language; await i18n.changeLanguage('tr'); flight.world = null;
-  vi.stubGlobal('screen', { orientation: {} });
-  vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(url === '/arena/hangar' ? {
+const answer = (entryClosesAt: string) => vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(url === '/arena/hangar' ? {
     core: 9, minCore: 9, ship: { class: 'akinci', level: 2, fuel: 223, ammo: 100, hold: [0, 0, 0], readyAt: null,
       readyReason: null, flying: false, changeUntil: null, xp: 0, xpNext: 150, levelCap: 9, abilities: {}, upgrade: zero },
     refill: { fuel: 0, ammo: 0, total: 0 }, deuterium: 500, alloy: 500, crystal: 500, cap: zero, sent: zero,
-    resetsAt: '2026-10-25T00:00:00Z', entryClosesAt: '2026-11-25T00:00:00Z',
-  } : { playerId: '00000000-0000-4000-8000-000000000001', clanId: null, canCreate: false, capacity: 5, claims: [], team: null }), { status: 200 }))));
+    resetsAt: '2026-10-25T00:00:00Z', entryClosesAt,
+  } : { playerId: '00000000-0000-4000-8000-000000000001', clanId: null, canCreate: false, capacity: 5, claims: [], team: null }), { status: 200 })));
+beforeEach(async () => {
+  language = i18n.language; await i18n.changeLanguage('tr'); flight.world = null;
+  vi.stubGlobal('screen', { orientation: {} });
+  vi.stubGlobal('fetch', answer('2026-11-25T00:00:00Z'));
 });
 afterEach(async () => { vi.unstubAllGlobals(); await i18n.changeLanguage(language); });
 
@@ -45,5 +46,39 @@ describe('the preflight', () => {
     fireEvent.click(view.container.querySelector('.ap-launch')!);
     await waitFor(() => { expect(view.container.querySelector('main')?.dataset.screen).toBe('flight'); });
     expect(flight.world?.pilot.ship).toBe('akinci');
+  });
+});
+
+/**
+ * Owner 2026-11-26: entering Yarık waited a moment on "Connecting…": the room's socket was only
+ * opened by the launch press. The launch screen opens it ahead; the launch then only says hello.
+ */
+describe('the room socket on the launch screen', () => {
+  class FakeSocket {
+    static readonly CONNECTING = 0; static readonly OPEN = 1; static readonly CLOSED = 3;
+    static made: FakeSocket[] = [];
+    readyState = 0; bufferedAmount = 0; sent: string[] = [];
+    onopen: (() => void) | null = null; onclose: (() => void) | null = null; onerror: (() => void) | null = null; onmessage: (() => void) | null = null;
+    constructor(readonly url: string) { FakeSocket.made.push(this); }
+    send(data: string): void { this.sent.push(data); }
+    close(): void { if (this.readyState === 3) return; this.readyState = 3; this.onclose?.(); }
+  }
+  // A season still open for entry: a grounded ship keeps no socket.
+  beforeEach(() => { FakeSocket.made = []; vi.stubGlobal('WebSocket', FakeSocket); vi.stubGlobal('fetch', answer('2099-01-01T00:00:00Z')); });
+
+  it('opens the socket ahead, closes it for practice, and launches the real flight on it', async () => {
+    const view = render(<Sandbox credential={() => Promise.resolve('tok')} onLeave={vi.fn()} />);
+    await screen.findByText('Akıncı');
+    await waitFor(() => { expect(FakeSocket.made).toHaveLength(1); });
+    expect(FakeSocket.made[0]?.url).toMatch(/\/arena\/ws$/);
+    fireEvent.click(screen.getByRole('radio', { name: /Antrenman/ }));
+    await waitFor(() => { expect(FakeSocket.made[0]?.readyState).toBe(3); });
+    fireEvent.click(screen.getByRole('radio', { name: /Gerçek uçuş/ }));
+    await waitFor(() => { expect(FakeSocket.made).toHaveLength(2); });
+    const spare = FakeSocket.made[1]!;
+    spare.readyState = 1;
+    fireEvent.click(view.container.querySelector('.ap-launch')!);
+    await waitFor(() => { expect(spare.sent.some(data => data.includes('"kind":"hello"'))).toBe(true); });
+    expect(FakeSocket.made).toHaveLength(2);
   });
 });

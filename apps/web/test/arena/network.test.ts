@@ -6,13 +6,15 @@ import { arenaCopy } from '../../src/arena/copy.js';
 import { createArenaNetwork, rankStandings } from '../../src/arena/network.js';
 
 class FakeSocket {
+  static readonly CONNECTING = 0;
   static readonly OPEN = 1;
   static readonly CLOSED = 3;
   static last: FakeSocket | null = null;
+  static made = 0;
   readyState = 0; bufferedAmount = 0; sent: unknown[] = [];
   onopen: (() => void) | null = null; onclose: (() => void) | null = null; onerror: (() => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
-  constructor(readonly url: string) { FakeSocket.last = this; }
+  constructor(readonly url: string) { FakeSocket.last = this; FakeSocket.made += 1; }
   send(data: string): void { this.sent.push(JSON.parse(data)); }
   // A closed socket closes no further, as in the browser.
   close(): void { if (this.readyState === 3) return; this.readyState = 3; this.onclose?.(); }
@@ -26,7 +28,7 @@ const socket = (): FakeSocket => { if (!FakeSocket.last) throw new Error('no soc
 const welcome = (pilots: unknown[]) => ({ kind: 'welcome', v: ARENA_PROTOCOL, storm: false, pilotId: 4, tick: 0, seq: 0, tickRate: 30,
   snapshotRate: 15, layoutVersion: ARENA_LAYOUT.version, pilots });
 
-beforeEach(() => { FakeSocket.last = null; vi.stubGlobal('WebSocket', FakeSocket); });
+beforeEach(() => { FakeSocket.last = null; FakeSocket.made = 0; vi.stubGlobal('WebSocket', FakeSocket); });
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe('arena network', () => {
@@ -487,6 +489,72 @@ describe('a socket the page refuses', () => {
       vi.advanceTimersByTime(1000);
       expect(socket()).toBe(second);
       network.dispose();
+    } finally { vi.useRealTimers(); }
+  });
+});
+
+// Owner 2026-11-26: entering Yarık waited a moment on "Connecting…". Opening a socket costs 200–300 ms
+// through Cloudflare, and it began with the launch press; on the launch screen one is now kept open.
+describe('a socket opened ahead on the launch screen', () => {
+  const network = () => createArenaNetwork(createSandboxWorld({ bots: 0 }), { sensitivity: 1, invertPitch: false }, () => undefined);
+
+  it('sends the hello at once on the open spare instead of opening another socket', () => {
+    const arena = network();
+    arena.warm();
+    const spare = socket(); spare.open();
+    arena.connect('kilavuz', 'smoke');
+    expect(FakeSocket.made).toBe(1);
+    expect(spare.sent[0]).toMatchObject({ kind: 'hello', mode: 'enter' });
+    spare.receive(welcome([{ id: 4, name: 'Ada', ship: 'kilavuz' }]));
+    expect(arena.getSnapshot().phase).toBe('online');
+    arena.dispose();
+  });
+
+  it('greets on a spare still opening as soon as it opens', () => {
+    const arena = network();
+    arena.warm();
+    const spare = socket();
+    arena.connect('kilavuz', 'smoke');
+    expect(FakeSocket.made).toBe(1);
+    spare.open();
+    expect(spare.sent[0]).toMatchObject({ kind: 'hello' });
+    arena.dispose();
+  });
+
+  it('renews the spare before the room would close it, and stops warming after two minutes', () => {
+    vi.useFakeTimers();
+    try {
+      const arena = network();
+      arena.warm();
+      const first = socket(); first.open();
+      vi.advanceTimersByTime(3500);
+      expect(first.readyState).toBe(3);
+      expect(socket()).not.toBe(first);
+      vi.advanceTimersByTime(2 * 60_000);
+      const made = FakeSocket.made;
+      vi.advanceTimersByTime(60_000);
+      expect(FakeSocket.made).toBe(made);
+      expect(socket().readyState).toBe(3);
+      arena.dispose();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('closes the spare when the launch screen goes, and opens none while a flight is up', () => {
+    vi.useFakeTimers();
+    try {
+      const arena = network();
+      arena.warm();
+      const spare = socket();
+      arena.cool();
+      expect(spare.readyState).toBe(3);
+      vi.advanceTimersByTime(10_000);
+      expect(FakeSocket.made).toBe(1);
+      arena.connect('kilavuz', 'smoke');
+      const flight = socket(); flight.open(); flight.receive(welcome([{ id: 4, name: 'Ada', ship: 'kilavuz' }]));
+      arena.warm();
+      vi.advanceTimersByTime(10_000);
+      expect(socket()).toBe(flight);
+      arena.dispose();
     } finally { vi.useRealTimers(); }
   });
 });

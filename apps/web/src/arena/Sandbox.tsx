@@ -372,6 +372,16 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   };
 
   /**
+   * The room's socket opens ahead on the launch screen (owner 2026-11-26: entering waited a moment on
+   * "Connecting…"), so the launch only says hello. Practice, a grounded ship and every other screen keep none.
+   */
+  useEffect(() => {
+    if (!real || screen !== 'preflight' || grounded) { network.cool(); return undefined; }
+    network.warm();
+    return () => { network.cool(); };
+  }, [real, screen, grounded, network]);
+
+  /**
    * F22: the page closed mid-flight and the room still holds the ship. It is rejoined at once (the
    * room gives a reattached ship a fresh link grace) and a neutral input holds the link while the
    * Yarık still loads; the flight screen follows the load, the ship where it was.
