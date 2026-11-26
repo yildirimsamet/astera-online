@@ -1,9 +1,12 @@
 import { CLAN, MOBILE_HULLS, fleetCount, pacesForMinutes, shipCanFight, shipHealthGroups, healthGroupKey, type MissionPace } from '@astera/rules';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useClanWarActions } from '../api/queries.js';
+import { useCapsuleStock, useClanWarActions } from '../api/queries.js';
 import { HonorSoloNotice } from '../ui/HonorSoloNotice.js';
-import type { ClanWar, PlanetView } from '../api/schemas.js';
+import type { CapsuleIdView, ClanWar, PlanetView } from '../api/schemas.js';
+import { sumFleets } from '../lib/fleetPage.js';
+import { capsuleChoices } from '../lib/synthesis.js';
+import { CapsuleRow } from '../ui/CapsuleRow.js';
 import { describeError } from '../i18n/errors.js';
 import { hullName, monumentName } from '../i18n/names.js';
 import { healthDisplay } from '../lib/maintenanceInventory.js';
@@ -64,6 +67,8 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
   const [acknowledgeStartShield, setAcknowledgeStartShield] = useState(false);
   const [wantedPace, setWantedPace] = useState<MissionPace>(1);
   const [acknowledgeRadiation, setAcknowledgeRadiation] = useState(false);
+  const capsuleStock = useCapsuleStock();
+  const [capsules, setCapsules] = useState<CapsuleIdView[]>([]);
   const operation = war.operation;
 
   if (!war.available) return <p className="gk-inote">{t('clanWar.unavailable')}</p>;
@@ -120,6 +125,10 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
       : ownRadiationLoss && !acknowledgeRadiation ? t('monument.consent')
       : actions.start.isPending ? t('clanWar.starting') : null);
   const sendRefusal = !mature ? t('clanWar.immature') : worlds.length === 0 ? t('clanWar.noOrigin') : null;
+  // What the strike leaves with is the staged pool, exactly as the server prices the capsules.
+  const pooled = sumFleets(...operation.contributions.filter((wave) => wave.status === 'STAGED').map((wave) => wave.fleet));
+  const wearing = capsuleStock ? capsuleChoices('clan_war', pooled, capsuleStock)
+    .filter((one) => one.enough && capsules.includes(one.id)).map((one) => one.id) : [];
 
   return (
     <div className="gk-war">
@@ -169,6 +178,8 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
               <Toggle checked={acknowledgeStartShield} onChange={setAcknowledgeStartShield} label={t('clanWar.acknowledgeShield')} />
             </div>
           )}
+          {/* The leader pays for the whole strike (owner 2026-11-25). */}
+          {capsuleStock && <CapsuleRow kind="clan_war" fleet={pooled} held={capsuleStock} chosen={capsules} onChange={setCapsules} />}
           {/* Every wave flies into battle and none comes back on a press: the kit's final hold, its reason on its face. */}
           <div data-strike-commit="">
             <GameHold
@@ -179,7 +190,8 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
               disabledReason={strikeRefusal}
               onCommit={() => {
                 actions.start.mutate({ acknowledgeShieldLoss: acknowledgeStartShield, pace: strikePace,
-                  ...(acknowledgeRadiation ? { acknowledgeRadiationLoss: true } : {}) });
+                  ...(acknowledgeRadiation ? { acknowledgeRadiationLoss: true } : {}),
+                  ...(wearing.length > 0 ? { capsules: wearing } : {}) });
               }}
             />
           </div>

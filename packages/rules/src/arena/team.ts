@@ -1,4 +1,3 @@
-import { holdPoints } from './farms.js';
 import type { Resources } from './economy.js';
 import type { ShipClass } from './classes.js';
 import type { AbilityPoints } from './ranks.js';
@@ -23,7 +22,11 @@ export interface TeamView {
   receipt?: { deposit: Resources; overflow: Resources };
 }
 
-/** Owner 2026-10-24: equal whole shares; all remainders go to the highest extracted value. */
+/**
+ * Owner 2026-10-24: equal whole shares; all remainders go to the highest extracted value, the rarer kinds
+ * weighing more (alloy 1, crystal 2, deuterium 3). A tie-break only: the Yarık keeps no score (owner 2026-11-25).
+ */
+const RARITY = { alloy: 1, crystal: 2, deuterium: 3 } as const;
 export function splitTeamLoot(members: readonly { playerId: string; extracted: Resources }[]): { playerId: string; share: Resources }[] {
   if (members.length === 0 || new Set(members.map(m => m.playerId)).size !== members.length) throw new Error('Invalid team roster');
   const kinds = ['alloy', 'crystal', 'deuterium'] as const;
@@ -33,7 +36,7 @@ export function splitTeamLoot(members: readonly { playerId: string; extracted: R
     if (!Number.isSafeInteger(n) || n < 0 || !Number.isSafeInteger(pool[kind] + n)) throw new Error('Invalid team cargo');
     pool[kind] += n;
   }
-  const value = (m: typeof members[number]): number => holdPoints([m.extracted.alloy, m.extracted.crystal, m.extracted.deuterium]);
+  const value = (m: typeof members[number]): number => kinds.reduce((sum, kind) => sum + m.extracted[kind] * RARITY[kind], 0);
   if (members.some(m => !Number.isSafeInteger(value(m)))) throw new Error('Unsafe team value');
   const winner = [...members].sort((a, b) => value(b) - value(a) || (a.playerId < b.playerId ? -1 : a.playerId > b.playerId ? 1 : 0))[0];
   return members.map(m => {

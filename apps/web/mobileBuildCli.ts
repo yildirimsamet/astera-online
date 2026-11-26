@@ -71,8 +71,8 @@ function main(): void {
   const android = resolve(web, 'android');
   const git = (args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
   const commit = nativeReleaseCommit(process.env.ASTERA_GIT_COMMIT, () => git(['rev-parse', 'HEAD']), () => git(['status', '--porcelain', '--untracked-files=no']));
-  // Komutan Gemisi ships in every app; the arena's own `/arena/access` still decides who enters.
-  const environment = { ...process.env, VITE_ASTERA_PLATFORM: target, VITE_ASTERA_API_URL: mobile.apiUrl, VITE_ARENA: '1',
+  // Komutan Gemisi ships in every app; the arena's own `/arena/access` decides who enters.
+  const environment = { ...process.env, VITE_ASTERA_PLATFORM: target, VITE_ASTERA_API_URL: mobile.apiUrl,
     ...(commit ? { ASTERA_GIT_COMMIT: commit } : {}),
     ASTERA_MOBILE_DEBUG: '', ASTERA_MOBILE_DEV_URL: '', NODE_OPTIONS: '--max-old-space-size=2048',
     JAVA_HOME: process.env.JAVA_HOME ?? resolve(homedir(), '.local/share/astera/jdk-21') };

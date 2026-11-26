@@ -41,7 +41,7 @@ export const colonyShipArticles: readonly WikiArticle[] = [
       `Bir başlangıç galaksisi ${String(STARTER.capacity)} gemi alır. İçindeki herkes rakibindir: akın eder, akın yer, gider. Galaksi dolunca yenisi açılır. Yeri boşalan galaksi yeniden gemi alır.`,
       `Savaşlar ana oyunun yarı temposunda geçer, gemi yine de yok olabilir. Karakollar Tersane ile açılır. Gemiye saldırmak kendi Aegis’ini ve arkanda bir savaşı ister; Aegis açıkken senin gemine de saldırılabilir. İlk Aegis onarımı ${String(pvp.shieldHours)} saatlik kalkan verir. Saldırmak kendi kalkanını erken bitirir. Gemide ${String(pvp.lockAfterDays)} gün geçince gemi başka gemilere saldıramaz.`,
       `Bir komutan aynı gemiye ${String(pvp.bashWindowMinutes / 60)} saatte ${String(pvp.bashLimit)} kez saldırabilir. Bir gemi günde ${String(pvp.dailyRaidCap)} kez başarıyla yağmalanabilir.`,
-      `${String(idleHours)} saat ilerleme kaydetmeyen gemi sessize alınır: haritadan çekilir, yerini bırakır, komutanı dönünce geri gelir.`,
+      `${String(idleHours)} saat ilerleme kaydetmeyen gemi sessize alınır: galaksiden çekilir, yerini bırakır, komutanı dönünce geri gelir.`,
     ]),
     l([
       'Keep your fleet flying when you log off: ships in flight cannot be raided, the ones at home can.',

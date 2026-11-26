@@ -37,8 +37,9 @@
   efekt sesi). F8'de tam yönetim sayfası ([07 §8](07-hud-ve-ekranlar.md#yonetim-sayfasi)).
 - F1–F2 dev kısayolu: `?arena=sandbox` (yalnız `DEV` / `VITE_VISUAL_TEST`) oturum açmadan yerel
   sandbox'ı açar — görsel test ve hızlı deneme için.
-- Bayrak: `import.meta.env.DEV || import.meta.env.VITE_ARENA === '1'` (`vite-env.d.ts`'de
-  tiplenir); stage'de ayrıca `session.me.isAdmin`. Sunucu tarafı `ARENA_ENABLED`.
+- Kapı: `DEV || allowed` (`arena/flags.ts`); `allowed` arena sürecinin `/arena/access` cevabıdır
+  (`ARENA_ENABLED` ve oturum açmış hesap). Derleme bayrağı yok: `VITE_ARENA` owner 2026-11-26 kararıyla
+  kaldırıldı; unutulan bayrak canlıda Yarık'ı herkesten gizlemişti (2026-11-25 web derlemesi).
 
 <a id="uygulama-dali"></a>
 ## 3. Uygulama dalı ve geçişler (KG-T23, S8, S52)

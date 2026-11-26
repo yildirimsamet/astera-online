@@ -102,6 +102,8 @@ Aşağıdaki eşleştirmeler mevcut adlandırmadan alınmıştır; yeni bir meka
 | Ham kaynak | Alaşım | Alloy | İlgili kaynak etiketleri |
 | Ham kaynak / yakıtın kaynağı | Döteryum | Deuterium | İlgili kaynak etiketleri |
 
+**Galaksi harita değildir (owner, 2026-11-25).** Oyuncu bir haritaya bakmaz, bir galakside yaşar. "Harita / haritada / harita birimi" (EN *map*, *map units*) yazma: yerine **galaksi** ("Galakside göster", "galakside görünür"), olayı oyuncunun gördüğü şeyle anlatan bir cümle ("Filon yalnız sana ve klanına görünür") veya mesafe için yalnız **birim** kullan. Araştırma ekranı **takımyıldız**dır. Tek istisna, Yarık'ın gerçekten açılıp kapanan mini harita katmanıdır. Kural her dil için geçerlidir; 2026-11-25'te Türkçe metinler düzeltildi, diğer dillerdeki "map" geçişleri sıradaki yazım işidir.
+
 Bir terimi değiştirirken etkilenmiş UI, erişilebilir ad, rapor, yardım, çeviri ve Wiki kullanımlarını birlikte incele. Benzer görünen fakat farklı işlevleri olan kavramları tek kelimede birleştirme: örneğin üretilmiş kaynakların beklediği havuz ile harcanabilir kaynakların bulunduğu depo aynı şey değildir.
 
 Oyun içi ID'ler ve Wiki'nin kalıcı URL'leri oyuncu adından ayrıdır. Yalnız görünen adı değiştirmek için ID veya URL değiştirme. Bu tabloyu yeni bir paralel içerik kaynağına dönüştürme; isimler locale kaynaklarında kalır.

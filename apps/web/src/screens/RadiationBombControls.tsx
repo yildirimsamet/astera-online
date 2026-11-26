@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { RADIATION_BOMB, RADIATION_LEVEL_HP_PER_MINUTE, radiationBombBuildSeconds,
   distance, interceptMotion, travelExact, type MoonRarity, type RadiationBombLevel, type Vec3, type Resources, type WorldBody } from '@astera/rules';
 import { createIdempotencyKey, ApiError } from '../api/client.js';
-import { useBuildRadiationBomb, useLaunchRadiationBomb } from '../api/queries.js';
-import type { PlanetView, PublicMonument } from '../api/schemas.js';
+import { useBuildRadiationBomb, useHonorTarget, useLaunchRadiationBomb } from '../api/queries.js';
+import type { HonorTarget, PlanetView, PublicMonument } from '../api/schemas.js';
+import { HonorTargetCard } from '../ui/HonorTargetCard.js';
 import { describeError } from '../i18n/errors.js';
 import { useMoonT } from '../i18n/moon.js';
 import { TargetBodyPicker } from './MoonControls.js';
@@ -138,12 +139,13 @@ export function RadiationBombForgeHost({ planet, held, disabledReason }: {
 
 interface Target { kind: 'PLANET' | 'MONUMENT'; id: string; body?: WorldBody }
 export function RadiationBombLaunchPanel({ origin, target, targetName, flightMs, pending, onLaunch,
-  disabledReason = null, error, collapsible = false, hasMoon = false, moonRarity }: {
+  disabledReason = null, error, collapsible = false, hasMoon = false, moonRarity, honorTarget }: {
   origin: PlanetView; target: Target; targetName: string; flightMs: number | null; pending: boolean;
   onLaunch: (level: RadiationBombLevel, key: string, acknowledgeShieldLoss: boolean, targetBody: WorldBody) => void;
   disabledReason?: string | null; error?: Error | null;
   hasMoon?: boolean;
   moonRarity?: MoonRarity | undefined;
+  honorTarget?: HonorTarget | undefined;
   /**
    * An accordion whose header names the strike, its target and the ready bombs. Owner,
    * 2026-10-16: on the focus panel both strike sections fold; a monument's sheet keeps it open.
@@ -193,6 +195,7 @@ export function RadiationBombLaunchPanel({ origin, target, targetName, flightMs,
     {flightMs !== null && <p className="gk-inote" data-tone="self"><Glyph id="clock" />{t('planet.radiationBomb.flight', { time: countdown(flightMs) })}</p>}
     <p className="gk-inote" data-tone="warn">{t('planet.radiationBomb.noRecall')}</p>
     {/* The same Honor box the Death Star's section carries (owner, 2026-10-16), on the season's policy. */}
+    {honorTarget ? <HonorTargetCard value={honorTarget} /> : null}
     <section data-honor-weapon-rule className="gk-well gk-honor" data-kind={origin.honorTacticalCredit ? 'credit' : 'none'}>
       <p className="gk-label gk-honor__title"><Glyph id="ranking" />{t('leaderboard.honorTitle')}</p>
       <p className="gk-sub">{t(origin.honorTacticalCredit ? 'planet.radiationBomb.honor' : 'leaderboard.honorWeaponsInactive')}</p>
@@ -223,6 +226,7 @@ export function RadiationBombControl({ origin, target, targetName, position, mot
   collapsible?: boolean;
 }) {
   const action = useLaunchRadiationBomb(origin.planet.id);
+  const honorTarget = useHonorTarget(target.kind === 'PLANET' ? target.id : null);
   const locked = useSeasonLocked();
   const now = useNow(1000);
   const say = useToast();
@@ -233,6 +237,7 @@ export function RadiationBombControl({ origin, target, targetName, position, mot
     : travelExact(distance(origin.planet.position, position), RADIATION_BOMB.speed) * 60000;
   return <RadiationBombLaunchPanel key={`${origin.planet.id}:${target.kind}:${target.id}`} origin={origin} target={target}
     targetName={targetName} flightMs={flightMs} pending={action.isPending} error={action.error}
+    {...(honorTarget.data ? { honorTarget: honorTarget.data } : {})}
     {...(collapsible === undefined ? {} : { collapsible })}
     {...(hasMoon === undefined ? {} : { hasMoon })}
     {...(moonRarity === undefined ? {} : { moonRarity })}

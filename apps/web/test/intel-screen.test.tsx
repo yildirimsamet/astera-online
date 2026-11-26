@@ -99,6 +99,7 @@ const intel = (
   ],
   probeReports,
   probeCooldowns: [],
+  probeLosses: [] as unknown[],
   radarLog,
   probeCost: { alloy: 50, crystal: 50 },
 });
@@ -134,6 +135,8 @@ const show = (opts: {
   watching: number;
   worlds: number;
   probes?: unknown[];
+  /** Probes a battery shot down (2026-11-24). */
+  losses?: unknown[];
   onOpenOrbit?: () => void;
   open?: { stop: 'probes' | 'battles'; request: number };
   /** Watches belonging to ANOTHER of the commander's worlds. */
@@ -149,7 +152,8 @@ const show = (opts: {
   queries.setQueryData(['galaxy'], galaxy(opts.worlds));
   queries.setQueryData(
     ['intel'],
-    intel(opts.watching, opts.probes ?? [], 'p1', opts.elsewhere ?? [], opts.radarLog ?? [], opts.first ?? {}),
+    { ...intel(opts.watching, opts.probes ?? [], 'p1', opts.elsewhere ?? [], opts.radarLog ?? [], opts.first ?? {}),
+      probeLosses: opts.losses ?? [] },
   );
   queries.setQueryData(['planet'], { ...planet(opts.telescope, opts.radar ?? 0), ...(opts.aboard ? { vessel: vesselSchema.parse(wireVessel()) } : {}) });
   queries.setQueryData(['reports'], { reports: [] });
@@ -483,6 +487,16 @@ describe('the radar, glanced from the watch shelf', () => {
     expect(focus).toHaveBeenLastCalledWith('enemy-world');
   });
 
+  /** A probe the battery shot down reads as a shot, not a scan (2026-11-24, plan §3.6). */
+  it('names a probe the battery shot down', async () => {
+    show({ telescope: 1, watching: 0, worlds: 20, radar: 3, radarLog: [{ ...scans[0]!, shotDown: true }, scans[1]!] });
+    await shelf('Radar');
+    const [shot, plain] = [...document.querySelectorAll<HTMLElement>('[data-scan]')];
+    expect(shot).toHaveTextContent(/shot down/i);
+    expect(shot!.querySelector('[data-scan-shot]')).not.toBeNull();
+    expect(plain).not.toHaveTextContent(/shot down/i);
+  });
+
   it('says what the next Radar level adds, behind a lock', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, radar: 3, radarLog: scans });
     await shelf('Radar');
@@ -677,6 +691,32 @@ describe('landing on the shelf that was asked for', () => {
  * the span it is, so a clean probe of a world with its fleet at home is three narrow
  * blocks and a poor one smears across the card.
  */
+/**
+ * A PROBE THE BATTERY SHOT DOWN (2026-11-24, plan §3.5). No report came, so the loss stands
+ * where one would: whose world, when, and the reason in one line — before the second try.
+ */
+describe('a probe that did not come back', () => {
+  const loss = { missionId: 'm1', targetPlanetId: 'q7', targetName: 'Orrery-8', targetUsername: 'Sable', at: new Date(Date.now() - 20 * 60_000) };
+
+  it('lists the loss with its reason, even with no report at all', async () => {
+    show({ telescope: 1, watching: 0, worlds: 20, losses: [loss] });
+    await shelf('Probe reports');
+    const row = document.querySelector<HTMLElement>('[data-probe-loss]')!;
+    expect(row).not.toBeNull();
+    expect(row).toHaveTextContent(/Orrery-8/);
+    expect(row).toHaveTextContent(/shot down/i);
+    expect(row).toHaveTextContent(/probe battery/i);
+  });
+
+  it('opens the dossier of the world that shot it', async () => {
+    const focus = vi.fn();
+    show({ telescope: 1, watching: 0, worlds: 20, losses: [loss], probes: [report(100, 200)], onOpenDossier: focus });
+    await shelf('Probe reports');
+    await userEvent.click(document.querySelector<HTMLElement>('[data-probe-loss] button')!);
+    expect(focus).toHaveBeenCalledWith('q7');
+  });
+});
+
 describe('what a probe brought back', () => {
   const bandWidth = (index: number): number => Number.parseFloat(
     document.querySelectorAll<HTMLElement>('[data-part="band"]')[index]!.style.width,

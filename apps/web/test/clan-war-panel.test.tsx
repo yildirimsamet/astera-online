@@ -640,3 +640,31 @@ describe('the donation on the kit', () => {
     expect(gift().style.getPropertyValue('--gk-hold-ms')).toBe('1500ms');
   });
 });
+
+/* Sentez (plan 2026-11-24 §3.5; owner 2026-11-25): the leader pays the capsules for the whole combined strike. */
+describe('capsules on the joint strike', () => {
+  const draw = (role: 'LEADER' | 'MEMBER') => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    client.setQueryData(['season'], { honorSoloCredit: false, features: { moons: true, synthesis: true } });
+    client.setQueryData(['synthesis'], { enabled: true, requiredCore: 10, coreLevel: 10, unlocked: true, asterium: 0, perDay: 0,
+      moons: [], capsules: { OPTIC_VEIL: 1, SILENT_THRUST: 1 }, job: null, storm: null });
+    const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
+    render(<QueryClientProvider client={client}><ApiProvider api={api}>
+      <ClanWarPanel war={launchReady} role={role} mature worlds={[]} members={crew} selfPlayerId="leader" />
+    </ApiProvider></QueryClientProvider>);
+    return api;
+  };
+
+  it('prices both from the staged pool and sends the leader’s choice with the launch', async () => {
+    const api = draw('LEADER');
+    const start = vi.spyOn(api, 'startClanWar').mockReturnValue(new Promise<never>(() => undefined));
+    await userEvent.setup().click(screen.getByRole('switch', { name: /Silent Thrust/ }));
+    hold(strike());
+    await waitFor(() => { expect(start).toHaveBeenCalledWith(false, 1, undefined, ['SILENT_THRUST']); });
+  });
+
+  it('is the leader’s alone', () => {
+    draw('MEMBER');
+    expect(screen.queryByRole('switch', { name: /Silent Thrust/ })).toBeNull();
+  });
+});

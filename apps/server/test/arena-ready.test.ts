@@ -29,6 +29,8 @@ describe('the commander ship is ready, told once', () => {
     await f.db.update(arenaShips).set({ readyAt: long });
     await f.db.update(scheduledEvents).set({ resolveAt: long }).where(eq(scheduledEvents.id, yarik.id));
     const event = { ...yarik, resolveAt: long };
+    // Paid a minute later: a quote landing on the Yarık death's own minute would share that event's dedupe key.
+    f.clock.set(new Date(f.clock.now().getTime() + 60_000));
     await repairShip(f.db, f.clock, f.accountIds[0]!);
     const events = await f.db.select().from(scheduledEvents).where(eq(scheduledEvents.kind, 'arena_ship_ready'));
     const early = events.find(e => e.resolveAt < event.resolveAt); if (!early) throw new Error('no shortened event');

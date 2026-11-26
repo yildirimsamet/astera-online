@@ -1,0 +1,94 @@
+/* GÜNLÜK GÖREVLER: the day's four acts, a cut plate of compact rows (350 px first). */
+
+.dq {
+  display: grid;
+  gap: var(--gk-s2);
+  padding: var(--gk-s3);
+}
+.dq__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--gk-s2);
+}
+.dq__title { margin: 0; font-size: var(--gk-t-lead); line-height: 1.15; }
+.dq__reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-2);
+}
+.dq__reset .gk-glyph { width: 13px; height: 13px; }
+.dq__list { display: grid; margin: 0; padding: 0; list-style: none; }
+.dq__row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gk-s2);
+  padding: var(--gk-s2) 0;
+  overflow: hidden;
+}
+.dq__row + .dq__row { border-top: 1px solid color-mix(in srgb, var(--gk-glass-edge) 90%, transparent); }
+.dq__mark {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-void);
+  color: var(--gk-ink-3);
+}
+.dq__mark .gk-glyph { width: 17px; height: 17px; }
+.dq__row[data-state='claimable'] .dq__mark { border-color: var(--gk-self); color: var(--gk-self); }
+.dq__words { display: grid; gap: 5px; min-width: 0; }
+.dq__line { display: flex; align-items: baseline; justify-content: space-between; gap: var(--gk-s2); }
+.dq__name { margin: 0; font-size: var(--gk-t-body); line-height: 1.15; overflow-wrap: anywhere; }
+.dq__count { flex-shrink: 0; font-size: var(--gk-t-small); font-weight: 700; color: var(--gk-ink-2); }
+.dq__row[data-state='claimable'] .dq__count { color: var(--gk-self); }
+/* Capped so a long word (the German key) pushes Honor above the key instead of squeezing the quest's name. */
+.dq__side { display: grid; justify-items: end; gap: 4px; max-width: 140px; }
+.dq__act { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px var(--gk-s2); }
+.dq__taken {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--gk-t-small);
+  color: var(--gk-ink-3);
+}
+.dq__taken .gk-glyph { width: 13px; height: 13px; }
+.dq__row[data-state='claimed'] .dq__name { color: var(--gk-ink-3); }
+.dq__row[data-state='claimed'] .gk-cost { opacity: 0.55; }
+.dq__fact { font-size: var(--gk-t-small); color: var(--gk-ink-2); }
+/* The Honor a quest pays: one steady line under the purse, the same ink as the count. */
+.dq__honor {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--gk-t-small);
+  font-weight: 700;
+  color: var(--gk-ink-2);
+}
+.dq__honor .gk-glyph { width: 12px; height: 12px; }
+.dq__row[data-state='claimable'] .dq__honor { color: var(--gk-self); }
+.dq__row[data-state='claimed'] .dq__honor { opacity: 0.55; }
+
+/* The act that completes a row sends one hard bar across it, once. No halo, no pulse. */
+.dq__row[data-fresh]::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--gk-self);
+  transform: translateX(-12px);
+  animation: dq-cross 0.9s var(--gk-ease) 1 forwards;
+  pointer-events: none;
+}
+@keyframes dq-cross {
+  0% { transform: translateX(-12px); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateX(var(--dq-run, 340px)); opacity: 0; }
+}

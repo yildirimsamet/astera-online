@@ -125,7 +125,7 @@ describe('v4 release rehearsal: real raids across a clean ranked opening', () =>
     const next = await f.db.select().from(seasons).where(eq(seasons.status, 'live'));
     const configs = await f.db.select().from(honorSeasons);
     expect(next.length).toBeGreaterThan(0);
-    expect(next.every(row => configs.some(config => config.seasonId === row.id && config.mode === 'ACTIVE' && config.version === 4 && config.benefitsVersion === 1))).toBe(true);
+    expect(next.every(row => configs.some(config => config.seasonId === row.id && config.mode === 'ACTIVE' && config.version === 4 && config.benefitsVersion === 2))).toBe(true);
     await joinSeason(f.db, f.accountIds[0]!, next[0]!.id, f.clock);
     expect((await f.db.select().from(players))[0]).toMatchObject({ vacationUntil: null });
     expect(await f.db.select().from(honorTotals).where(eq(honorTotals.seasonId, next[0]!.id))).toHaveLength(0);

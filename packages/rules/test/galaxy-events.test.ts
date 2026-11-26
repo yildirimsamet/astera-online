@@ -318,7 +318,7 @@ describe('a multi-kind calendar', () => {
       rngFor: streamsFrom(12),
     });
     expect(new Set(schedule.map((event) => event.kind)))
-      .toEqual(new Set(['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY']));
+      .toEqual(new Set(['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY', 'ASTERIUM_STORM']));
   });
 
   it('seeds a shower-only calendar for a season that predates the trade ship', () => {
@@ -445,13 +445,14 @@ describe('the ruleset-8 fixed public-event calendar', () => {
   const currentDay = () => generateGalaxyEventSchedule({
     seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
     seasonDurationMinutes: DAY_MINUTES,
+    kinds: galaxyEventKindsForRuleset(8),
     rngFor: (kind) => {
       throw new Error(`fixed kind ${kind} must not request an RNG stream`);
     },
   });
 
   it('appends the Intergalactic Convoy kind without moving the existing order', () => {
-    expect(GALAXY_EVENT_KINDS).toEqual([
+    expect(GALAXY_EVENT_KINDS.slice(0, 3)).toEqual([
       'ASTEROID_SHOWER',
       'TRADE_SHIP',
       'INTERGALACTIC_CONVOY',
@@ -521,6 +522,7 @@ describe('the ruleset-8 fixed public-event calendar', () => {
     const saturday = generateGalaxyEventSchedule({
       seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE + 3 * DAY_MINUTES,
       seasonDurationMinutes: DAY_MINUTES,
+      kinds: galaxyEventKindsForRuleset(8),
       rngFor: (kind) => { throw new Error(`fixed kind ${kind} must not request an RNG stream`); },
     }).filter((event) => event.kind !== 'TRADE_SHIP');
 
@@ -713,7 +715,7 @@ describe('the ruleset-8 fixed public-event calendar', () => {
     expect(galaxyEventKindsForRuleset(4)).toEqual(['ASTEROID_SHOWER']);
     expect(galaxyEventKindsForRuleset(5)).toEqual(['ASTEROID_SHOWER', 'TRADE_SHIP']);
     expect(galaxyEventKindsForRuleset(7)).toEqual(['ASTEROID_SHOWER', 'TRADE_SHIP']);
-    expect(galaxyEventKindsForRuleset(8)).toEqual(GALAXY_EVENT_KINDS);
+    expect(galaxyEventKindsForRuleset(8)).toEqual(['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY']);
 
     expect(galaxyEventConfigForRuleset(4).definitions.TRADE_SHIP.schedule).toBe('RANDOM_DAILY');
     expect(galaxyEventConfigForRuleset(5).definitions.TRADE_SHIP).toMatchObject({

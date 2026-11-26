@@ -357,6 +357,9 @@ export const leaderboard = {
     value: "Damage and loss values use fixed build-cost weights: 1 alloy + 2 crystal + 32 deuterium. Damage excludes rebuilt ground defences.",
   },
   honorTarget: {
+    more: "Honor rules",
+    fold: "{{kind}} · {{value}}",
+    short: { FULL: "full return", HALF: "half return", NONE: "no return", RELATED: "earns no Honor" },
     loading: "Loading Honor comparison…",
     unavailable: "Honor comparison is unavailable.",
     retry: "Retry Honor comparison",
@@ -366,6 +369,8 @@ export const leaderboard = {
     WEAK: "Weaker target",
     topTierPeer: "You are at the highest tier in this galaxy. A target one tier below uses equal-tier Honor rules. An opponent attacking upward against you keeps the existing bonus conditions.",
     weakWarning: "Even a successful attack can reduce Honor. Repeated bullying costs more.",
+    escalatedWeak: "You already lost Honor attacking this commander in the last 24 hours. This attack multiplies Honor loss by {{multiplier}}×.",
+    escalatedInFlight: "You already have an attack on its way to this commander. This additional attack multiplies Honor loss by {{multiplier}}×.",
     eligible: "Permanent military damage can earn Honor. Your attacking losses can reduce it.",
     FULL: "Full military return: eligible damage is adjusted for efficiency.",
     HALF: "Reduced military return: this commander’s military strength is well below yours. Gains and the deduction for your losses are both halved.",

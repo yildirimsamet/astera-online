@@ -16,6 +16,7 @@ import { planetView } from './fixtures.js';
 vi.mock('../src/api/queries.js', () => ({
   useTransfer: () => ({ mutate: vi.fn(), isPending: false }),
   useGalaxy: () => ({ data: { radiation: [], hpRadiation: [] } }),
+  useCapsuleStock: () => null,
 }));
 
 const V2_LOOK = /(^|\s)(text|bg|border|font|accent)-v2-|rounded-(control|chip|cell|full)|v2-legend|(^|\s)text-(micro|caption|body)(\s|$)|(^|\s)truncate(\s|$)/;

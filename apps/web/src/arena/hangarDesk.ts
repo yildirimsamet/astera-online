@@ -18,7 +18,9 @@ export const sortieSchema = z.object({ kind: z.literal('sortie'), outcome: z.enu
   teamId: z.string().uuid().optional(),
   deposit: resources, overflow: resources, readyAt: z.string().nullable(), readyReason: z.enum(['repair', 'service']).nullable(),
   /** Y6b: what the flight made, what the ship kept of it, and what its bar took. */
-  xp: z.object({ earned: z.number().int().nonnegative(), kept: z.number().int().nonnegative(), banked: z.number().int().nonnegative() }) });
+  xp: z.object({ earned: z.number().int().nonnegative(), kept: z.number().int().nonnegative(), banked: z.number().int().nonnegative() }),
+  /** Asteryum this exit put into the commander's own stock (plan 2026-11-24); an older room sends none. */
+  asterium: z.number().int().nonnegative().optional() });
 export type SortieReport = Omit<z.infer<typeof sortieSchema>, 'kind'>;
 
 const refusal = z.object({ error: z.string(), params: z.record(z.union([z.string(), z.number()])).optional() });

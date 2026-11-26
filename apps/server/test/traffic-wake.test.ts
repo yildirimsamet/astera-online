@@ -22,7 +22,7 @@ const contact = (over: Record<string, unknown> = {}) => ({
   id: 'craft', kind: 'unknown', from: { x: 0, y: 0, z: 0 }, to: { x: 1, y: 1, z: 1 }, startAt: new Date(0), endAt: new Date(10_000), ...over,
 });
 const view = (contacts: readonly Record<string, unknown>[], rest: Partial<Parameters<typeof trafficSignature>[0]> = {}) => ({
-  contacts, interceptions: [], interceptionImpacts: [], ...rest,
+  contacts, interceptions: [], interceptionImpacts: [], probeShots: [], ...rest,
 });
 
 describe('trafficSignature', () => {
@@ -43,6 +43,7 @@ describe('trafficSignature', () => {
     ['radiation took ships', view([contact({ fleet: { DART: 1 } })])],
     ['a weapon is shot at', view([contact()], { interceptions: [{ id: 'i' }] })],
     ['a shot lands', view([contact()], { interceptionImpacts: [{ id: 'i' }] })],
+    ['a probe is shot down in sight', view([contact()], { probeShots: [{ id: 'p' }] })],
   ])('moves when %s', (_name, changed) => {
     expect(trafficSignature(changed)).not.toBe(trafficSignature(view([contact()])));
   });

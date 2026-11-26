@@ -1,11 +1,12 @@
 /** Read-only, isolated art review using the live game's components. Gallery only. */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MONUMENT_BALANCE, MONUMENT_SEASON_DEFAULTS, monumentDifficulty, cosmeticsInCategory, MOBILE_HULLS, SHIP_SKIN_IDS, DEATH_STAR } from '@astera/rules';
+import { MONUMENT_BALANCE, MONUMENT_SEASON_DEFAULTS, monumentDifficulty, cosmeticsInCategory, MOBILE_HULLS, SHIP_SKIN_IDS, DEATH_STAR, PROBE, probeShotMoment, travelExact } from '@astera/rules';
 import type { GalaxyPlanet, AsteroidView, PendingThread, PublicMonument, MiningRun } from '../../api/schemas.js';
 import { GalaxyCanvas } from '../../galaxy/GalaxyCanvas.js';
 import type { Focus } from '../../galaxy/FocusPanel.js';
 import { serverNow } from '../../lib/clock.js';
+import { rememberShotSeen, type ProbeShot } from '../../galaxy/probeShots.js';
 import { playSound, type SoundCue } from '../../lib/sound.js';
 import { RENDER_QUALITIES, setRenderQuality, useRenderQuality } from '../../lib/quality.js';
 import type { WreckView } from '../../galaxy/Wrecks.js';
@@ -37,6 +38,7 @@ const SCENES = [
   ['ship', 'Gemi inceleme'], ['planet', 'Gezegen'], ['wreck', 'Enkaz'], ['asteroid', 'İzotop asteroidi'],
   ['fleet', 'Filo'], ['monument', 'Anıt'], ['battle', 'Savaş'], ['strategic', 'Stratejik çarpma'],
   ['mining', 'Madencilik'], ['probe-flight', 'Probe uçuşu'], ['strategic-flight', 'Ölüm Yıldızı uçuşu'],
+  ['probe-shot', 'Sonda düşürülmesi'],
 ] as const;
 type Mode = typeof SCENES[number][0];
 const queryValue = (name: string): string | null => new URLSearchParams(window.location.search).get(name);
@@ -52,7 +54,7 @@ function sceneFocus(mode: Mode, serial: number, rockId: string): Focus | null {
     : mode === 'monument' ? { kind: 'monument', id: 'premium-monument' }
     : mode === 'wreck' || mode === 'mining' ? { kind: 'debris', id: 'premium-wreck' }
     : mode === 'asteroid' ? { kind: 'asteroid', id: rockId }
-    : mode === 'battle' || mode === 'strategic' ? { kind: 'planet', id: 'p-2' }
+    : mode === 'battle' || mode === 'strategic' || mode === 'probe-shot' ? { kind: 'planet', id: 'p-2' }
     : mode === 'ship' ? null : { kind: 'thread', key: `premium-${mode}-${String(serial)}` };
 }
 
@@ -111,8 +113,28 @@ export function PremiumSpaceGallery() {
       satellites: [], shielded: sample.mode === 'battle' && aegis, intel: 'RESOLVED',
       state: empAt === null ? { kind: 'NORMAL' } : { kind: 'EMP', until: new Date(empAt + DEATH_STAR.empMinutes * 60_000), hits: 1 },
     }];
+    // A probe battery shooting a probe down over a rival's world, seen by the sender (2026-11-24).
+    if (sample.mode === 'probe-shot') return [
+      { id: 'p-2', name: 'Tharsis', owner: 'Sable', isSelf: false, position: TARGET, coreTier: 2, coreLevel: 6,
+        satellites: [], shielded: false, intel: 'RESOLVED', state: { kind: 'NORMAL' } },
+      { id: 'p-home', name: 'Kestrel', owner: 'Astera', isSelf: true, isOwned: true, position: HOME, coreTier: 2, coreLevel: 6,
+        satellites: [], shielded: false, intel: 'RESOLVED', state: { kind: 'NORMAL' } },
+    ];
     return [];
   }, [cosmetic, coreLevel, sample.mode, empAt, aegis]);
+  const probeShots = useMemo<ProbeShot[]>(() => {
+    if (sample.mode !== 'probe-shot') return [];
+    // Every replay is a shot this device has not shown yet.
+    rememberShotSeen('p-home', []);
+    // The gallery's camera sees Tharsis from beyond it, with Kestrel behind: a probe from Kestrel
+    // would be hit behind the world. This one comes from the camera's side, so the moment is in view.
+    // A real probe's flight from a world beyond Tharsis; the battery opens fire as the replay starts.
+    const origin = { x: 2 * TARGET.x - HOME.x, y: 0, z: 2 * TARGET.z - HOME.z };
+    const flightMs = travelExact(Math.hypot(origin.x - TARGET.x, origin.z - TARGET.z), PROBE.speed) * 60_000;
+    const flight = probeShotMoment(origin, TARGET, 6, 6, 0, flightMs);
+    return [{ id: `lost:premium-${String(sample.serial)}`, planetId: 'p-2', at: sample.at + flight.at - flight.fireAt,
+      point: flight.point, firedAt: sample.at, from: flight.firePoint, own: false, witness: false }];
+  }, [sample]);
   const rocks = useMemo<AsteroidView[]>(() => sample.mode === 'asteroid' ? [{
     id: rockChoice.rockId, level: 5, ore: 2000, oreRemaining: 2000, crystalShare: 0.2, deuteriumShare: rockChoice.isotopeRich ? 0.1 : null,
     radius: 400, period: 240, phase: 0, inclination: 0.07, ascendingNode: 0,
@@ -241,7 +263,8 @@ export function PremiumSpaceGallery() {
             wrecks={sample.mode === 'wreck' || sample.mode === 'mining' ? WRECKS : []}
             monuments={monuments} homePosition={sample.mode === 'mining' ? HOME : TARGET} activePlanetId={sample.mode === 'planet' ? 'p-1' : null}
             aegisLevel={0} seasonStart={seasonStart} focus={focus} onFocus={setFocus} homeSignal={0} centerSignal={centerSignal}
-            inspectionPlanetId={sample.mode === 'planet' ? 'p-1' : sample.mode === 'battle' || sample.mode === 'strategic' ? 'p-2' : undefined}
+            inspectionPlanetId={sample.mode === 'planet' ? 'p-1' : sample.mode === 'battle' || sample.mode === 'strategic' || sample.mode === 'probe-shot' ? 'p-2' : undefined}
+            {...(sample.mode === 'probe-shot' ? { probeShots } : {})}
             reviewFocusDistance={sample.mode === 'wreck' ? 2.1 : sample.mode === 'asteroid' ? 2.4 : undefined} onReady={markReady} />}
         <div className="pointer-events-none absolute bottom-3 left-3 right-3 flex flex-wrap justify-between gap-1 text-caption text-v2-ink-2">
           <span className="bg-v2-void/80 px-2 py-1">{sceneLabel} · tek örnek</span>

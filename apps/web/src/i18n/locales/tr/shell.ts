@@ -122,7 +122,7 @@ export const signals = {
   emptyBody:
     "Yaklaşan filo uyarıları, yakalanan sondalar ve dönen gemiler burada görünür.",
   /** The round press at a row's end that flies to whoever the news names (G1-e). */
-  showOnMap: "Haritada göster: {{name}}",
+  showOnMap: "Galakside göster: {{name}}",
   repeat: '×{{count}}',
 
   status: {
@@ -294,6 +294,9 @@ export const leaderboard = {
     value: "Hasar ve kayıp değeri sabit yapım maliyeti ağırlıklarıyla ölçülür: 1 alaşım + 2 kristal + 32 döteryum. Yeniden kurulan yer savunması hasara dahil değildir.",
   },
   honorTarget: {
+    more: "Honor kuralları",
+    fold: "{{kind}} · {{value}}",
+    short: { FULL: "tam karşılık", HALF: "yarım karşılık", NONE: "karşılık yok", RELATED: "Honor kazandırmaz" },
     loading: "Honor karşılaştırması yükleniyor…",
     unavailable: "Honor karşılaştırması şu anda alınamıyor.",
     retry: "Honor karşılaştırmasını tekrar dene",
@@ -303,6 +306,8 @@ export const leaderboard = {
     WEAK: "Daha zayıf hedef",
     topTierPeer: "Bu galaksinin en yüksek kademesindesin. Bir alt kademe, Honor hesabında eşit kademe sayılır. Alt kademeden sana saldıran rakibin üst kademe bonusu, mevcut koşullarıyla devam eder.",
     weakWarning: "Başarılı bir saldırı bile Honor’u azaltabilir. Tekrarlanan zorbalık daha fazla puan kaybettirir.",
+    escalatedWeak: "Son 24 saatte bu komutana karşı negatif Honor aldın. Bu saldırıda Honor kaybı {{multiplier}}× katlanır.",
+    escalatedInFlight: "Bu komutana giden bir saldırın zaten yolda. Bu ek saldırıda Honor kaybı {{multiplier}}× katlanır.",
     eligible: "Kalıcı askerî hasar Honor kazandırabilir. Saldırıda kendi kayıpların puanı azaltabilir.",
     FULL: "Tam askerî karşılık: uygun hasar verimliliğe göre değerlendirilir.",
     HALF: "Azaltılmış askerî karşılık: rakibin askerî gücü seninkinin epey altında. Kazanç da kayıplarından kesilen Honor da yarıya iner.",

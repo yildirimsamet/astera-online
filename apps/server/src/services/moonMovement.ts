@@ -8,6 +8,7 @@ import {
   fleetEntries,
   gateChargeMs,
   hangarLoad,
+  honorFuelCost,
   jumpCapacity,
   jumpFuel,
   type Fleet,
@@ -24,6 +25,7 @@ import { arrivalPending, assertNoArrivalPending, readHomeHealth, selectHomeDispa
 import { assertMoonTarget, seasonHasMoons } from './moon.js';
 import { lockWorlds, safeHomePlanet } from './ownership.js';
 import { assertFuel } from './fuel.js';
+import { readHonorBenefits } from './honorBenefits.js';
 import { landingBlock } from './movement.js';
 import { notify } from './notifications.js';
 import { GameError, assertWorldOperational, loadLocked, lockSeason, saveResources, setUnits } from './planet.js';
@@ -55,6 +57,10 @@ export async function hopFleetTx(
   if (!await seasonHasMoons(tx, world.seasonId)) throw new GameError('MOONS_DISABLED', 'This galaxy has no moons', 409);
   const [moon] = await tx.select().from(moons).where(eq(moons.planetId, planetId));
   if (!moon) throw new GameError('NO_MOON', 'This world has no moon', 409);
+  // A Death Star's EMP shuts the moon (owner 2026-11-26): nothing goes up to it; its ships may still come down.
+  if (direction === 'UP' && moon.closedUntil && moon.closedUntil > world.now) {
+    throw new GameError('MOON_CLOSED', 'A struck moon takes no fleet until it reopens', 409);
+  }
 
   const fleet = mobileFleet(requested);
   const kind = KIND[direction];
@@ -321,7 +327,8 @@ export async function jumpFleetTx(
   }
   const blocked = await landingBlock(tx, toPlanetId, fleet);
   if (blocked) throw new GameError(blocked.code, blocked.message, 409, blocked.params);
-  const fuel = jumpFuel(fleet, distance(origin, target));
+  const benefits = await readHonorBenefits(tx, origin.seasonId, playerId);
+  const fuel = honorFuelCost(jumpFuel(fleet, distance(origin, target)), benefits);
   assertFuel(fuel, origin.deuterium, 0);
   await saveResources(tx, fromPlanetId, { alloy: origin.alloy, crystal: origin.crystal, deuterium: origin.deuterium - fuel });
 

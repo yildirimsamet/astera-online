@@ -30,6 +30,7 @@ import { clanWar } from './clanWar.js';
 import { clanSupport } from './clanSupport.js';
 import { community } from './community.js';
 import { trade } from './trade.js';
+import { synthesis } from './synthesis.js';
 import { academy } from './academy.js';
 import { convoy } from './convoy.js';
 import { starter } from './starter.js';
@@ -112,6 +113,7 @@ export const tr: Resources = {
   clanSupport,
   community,
   trade,
+  synthesis,
   convoy,
   starter,
   universe: {"open": "Evreni gör", "back": "Geri dön", "main": "Ana galaksi", "you": "Sen", "starter": "Başlangıç {{number}}", "ships_one": "{{count}} gemi", "ships_other": "{{count}} gemi"},

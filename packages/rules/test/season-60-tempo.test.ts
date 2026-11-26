@@ -86,7 +86,7 @@ describe('60-day season transition', () => {
   it('preserves Death Star and every Radiation Bomb while ordinary work slows', () => {
     expect(DEATH_STAR.buildMinutes).toBe(73.125);
     expect(DEATH_STAR.speed).toBe(1500);
-    expect(DEATH_STAR.cost).toEqual({ alloy: 50000, crystal: 35000, deuterium: 3000 });
+    expect(DEATH_STAR.cost).toEqual({ alloy: 37500, crystal: 26250, deuterium: 2250 });
     expect(([1, 2, 3] as const).map(radiationBombBuildSeconds)).toEqual([2194, 3291, 4388]);
     expect(RADIATION_BOMB.speed).toBe(1300);
     expect(RADIATION_BOMB.durationMinutes).toBe(30);
@@ -130,8 +130,9 @@ describe('60-day season transition', () => {
   });
 
   it('preserves the latest Arena and escort cooldowns and paid cooldown shortening', () => {
-    expect(ARENA_ECONOMY.repairMinutes).toBe(3);
-    expect(ARENA_ECONOMY.serviceMinutes).toBe(3);
+    // Owner 2026-11-25: raised back from 3/3 ("geri biraz yükseltmek istiyorum").
+    expect(ARENA_ECONOMY.repairMinutes).toBe(15);
+    expect(ARENA_ECONOMY.serviceMinutes).toBe(5);
     expect(ADMIRAL_WAIT).toEqual({ repairMinutes: 60, serviceMinutes: 10 });
     expect(repairQuote(1)).toEqual({ minutes: 15, cost: { alloy: 175, crystal: 60, deuterium: 0 } });
     expect(repairQuote(20)).toEqual({ minutes: 30, cost: { alloy: 650, crystal: 250, deuterium: 0 } });

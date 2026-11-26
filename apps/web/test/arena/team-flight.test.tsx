@@ -58,7 +58,7 @@ describe('a prepared team flight', () => {
     const socket = Socket.last; if (!socket) throw new Error('No observer');
     act(() => { socket.open(); });
     await waitFor(() => { expect(socket.sent[0]).toMatchObject({ mode: 'spectate' }); });
-    act(() => { socket.receive({ kind: 'welcome', v: ARENA_PROTOCOL, pilotId: 4, teamId: id(20), tick: 0, seq: 0, tickRate: 30,
+    act(() => { socket.receive({ kind: 'welcome', v: ARENA_PROTOCOL, storm: false, pilotId: 4, teamId: id(20), tick: 0, seq: 0, tickRate: 30,
       snapshotRate: 15, layoutVersion: ARENA_LAYOUT.version, pilots: [] }); });
     expect(view.container.querySelector('main')?.dataset.screen).toBe('spectate');
   });
@@ -73,7 +73,7 @@ describe('a prepared team flight', () => {
     await waitFor(() => { expect(socket.sent[0]).toMatchObject({ mode: 'enter' }); });
     const { world, controls, store } = flight.args;
     act(() => {
-      socket.receive({ kind: 'welcome', v: ARENA_PROTOCOL, pilotId: 4, teamId: id(20), tick: 0, seq: 0, tickRate: 30,
+      socket.receive({ kind: 'welcome', v: ARENA_PROTOCOL, storm: false, pilotId: 4, teamId: id(20), tick: 0, seq: 0, tickRate: 30,
         snapshotRate: 15, layoutVersion: ARENA_LAYOUT.version, pilots: [{ id: 4, name: 'Ada', ship: 'kilavuz', clanId: id(10), teamId: id(20) }] });
       world.pilot.tactic = 'radar'; store.publish(world, 'flight', false, false);
     });
@@ -107,7 +107,7 @@ describe('a prepared team flight', () => {
     act(() => { socket.open(); });
     await waitFor(() => { expect(socket.sent.length).toBeGreaterThan(0); });
     act(() => {
-      socket.receive({ kind: 'welcome', v: ARENA_PROTOCOL, pilotId: 4, teamId: id(20), tick: 0, seq: 0, tickRate: 30,
+      socket.receive({ kind: 'welcome', v: ARENA_PROTOCOL, storm: false, pilotId: 4, teamId: id(20), tick: 0, seq: 0, tickRate: 30,
         snapshotRate: 15, layoutVersion: ARENA_LAYOUT.version, pilots: [4, 5].map(n => ({ id: n, name: n === 4 ? 'Ada' : 'Bora', ship: 'kilavuz', clanId: id(10), teamId: id(20) })) });
       store.publish(world, 'flight', false, false);
     });

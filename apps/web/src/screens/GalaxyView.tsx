@@ -27,7 +27,7 @@ import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
 import { bellState } from '../lib/bell.js';
 import { capabilities } from '../platform/runtime.js';
-import { ChatChip, EventChips, GalaxyReadout, GiftChip, HomeChip, HudTools, ShopChip, SignalBell, type GalaxyTarget } from '../v2/hud/GalaxyCorners.js';
+import { ChatChip, DailyChip, EventChips, GalaxyReadout, GiftChip, HomeChip, HudTools, ShopChip, SignalBell, type GalaxyTarget } from '../v2/hud/GalaxyCorners.js';
 import { outpostFinderTargets } from '../starter/outpostTargets.js';
 import type { MainSky } from '../api/starterSchemas.js';
 import { mainSkyPoints } from '../galaxy/mainSky.js';
@@ -44,6 +44,7 @@ import { beamsNow } from '../galaxy/mainSky.js';
 import { rockLine, rockReachMinutes } from '../lib/rockReach.js';
 import { salvageReachMinutes } from '../lib/salvageReach.js';
 import { hasOtherShip, nearestRock, nearestShip } from '../starter/neighbour.js';
+import { dailyQuestsKey } from '../lib/dailyQuests.js';
 import { freshestWreck, nearestPirate, probeTarget, type RewardGate } from '../lib/rewardGates.js';
 import { huntStage } from '../starter/hunt.js';
 import { ObjectiveLine } from '../starter/ObjectiveLine.js';
@@ -100,6 +101,7 @@ import {
   useContactWindows,
   useLaunchDeathStar,
   useSettlement,
+  useCapsuleStock,
   useMonuments,
   useUnknownSignals,
   useUnknownSignalActions,
@@ -107,7 +109,8 @@ import {
   useNewcomerScenario,
   useCollect,
   useNotifications,
-  useRewardsWaiting,
+  useDailyQuests,
+  useGoalRewardsWaiting,
 } from '../api/queries.js';
 import type {
   AsteroidView,
@@ -184,7 +187,7 @@ import { researchNeedWorld } from '../lib/researchNeed.js';
 import { ResearchPanel } from './ResearchPanel.js';
 import { IntelScreen } from './IntelScreen.jsx';
 import { BattleReportDoor, type ReportDoors } from './BattleReports.jsx';
-import { RewardsScreen } from './RewardsScreen.jsx';
+import { RewardsScreen, type RewardsTab } from './RewardsScreen.jsx';
 import { AnnouncementsScreen } from './AnnouncementsScreen.js';
 import { FeedbackScreen } from './FeedbackScreen.js';
 import { DonateScreen } from './DonateScreen.js';
@@ -208,6 +211,7 @@ import {
 import { ApiError } from '../api/client.js';
 import { useWorld } from '../api/world.js';
 import { coreClocks } from '../galaxy/coreLevelUp.js';
+import { shotsOf } from '../galaxy/probeShots.js';
 import {
   controlledWorldId,
   runForPlanetTarget,
@@ -551,10 +555,13 @@ export function GalaxyView({
   const recallMining = useRecallMining();
   const recallFlight = useRecallFlight();
   const settlement = useSettlement();
+  const capsuleStock = useCapsuleStock();
   const deathStar = useLaunchDeathStar();
   const { activePlanetId, capitalPlanetId, worlds, selectPlanet } = useWorld();
   // Own worlds' Core levels and queued upgrades: a finished one steps its world up on the map.
   const cores = useMemo(() => coreClocks(worlds), [worlds]);
+  // Not before intel has loaded: an empty first read would mark nothing seen and replay the window.
+  const probeShots = useMemo(() => (intel.data || traffic.data ? shotsOf(intel.data, traffic.data) : undefined), [intel.data, traffic.data]);
   // The clan mark on the disc needs to know whether there is a clan layer at all,
   // and whether anything is waiting inside it. Same read the menu row used.
   const clanBadge = useClanBadge();
@@ -564,7 +571,12 @@ export function GalaxyView({
   const now = useNow(5_000);
   // F2: clanmate worlds under a raid, ringed on the map from the reader's own bell.
   const bell = useNotifications();
-  const rewardsWaiting = useRewardsWaiting();
+  const rewardsWaiting = useGoalRewardsWaiting();
+  /** The day's quests have a key of their own beside the gift (owner 2026-11-24); it opens the sheet on the Daily tab. */
+  const dailyKey = dailyQuestsKey(useDailyQuests().data);
+  const [rewardsTab, setRewardsTab] = useState<RewardsTab>('goals');
+  // Any other way into the rewards lands on the goals: the daily key sets its tab just before it opens the sheet.
+  useEffect(() => { if (panel !== 'rewards') setRewardsTab('goals'); }, [panel]);
   const clanAlarms = useMemo(() => activeClanAlarms(bell.data?.notifications ?? [], now), [bell.data, now]);
   /**
    * THE SKY ANSWERS THE EVENT. Owner instruction, D149.
@@ -1476,6 +1488,7 @@ export function GalaxyView({
   /** A reward goal's Go (plan 2026-11-06 §7.1 R6): the map for an act, the world's own row for a building. */
   const goToReward = (gate: RewardGate): void => {
     if (gate.kind === 'intel') { onPanel('intel'); return; }
+    if (gate.kind === 'hangar') { onPanel('ship'); return; }
     if (gate.kind === 'build') { setRequestedPlanetGroup(gate.group); setRequestedItem(gate.item); onPanel('planet'); return; }
     onPanel(null);
     if (gate.kind === 'probe') {
@@ -1667,6 +1680,7 @@ export function GalaxyView({
         intergalacticConvoy={intergalacticConvoy}
         sensors={sensors}
         cores={cores}
+        {...(probeShots ? { probeShots } : {})}
         {...(galaxy.data?.radiation ? { radiation: galaxy.data.radiation } : {})}
         {...(galaxy.data?.hpRadiation ? { hpRadiation: galaxy.data.hpRadiation } : {})}
         {...(galaxy.data?.monuments ? { monuments: galaxy.data.monuments } : {})}
@@ -1769,6 +1783,7 @@ export function GalaxyView({
                 {showGuidance && <HomeChip onHome={homeKey} aboard={gate.aboard} />}
                 {!ship && showGuidance && capabilities().webCheckout && <ShopChip onOpen={() => { onPanel('skin-shop'); }} />}
                 {showGuidance && <GiftChip waiting={rewardsWaiting} onOpen={() => { onPanel('rewards'); }} />}
+                {showGuidance && !ship && dailyKey && <DailyChip {...dailyKey} onOpen={() => { setRewardsTab('daily'); onPanel('rewards'); }} />}
                 {!ship && bellButton}
               </HudTools>
               {/* Below the telescope (owner, 2026-11-09): the way out to the universe and back. */}
@@ -2321,6 +2336,7 @@ export function GalaxyView({
             key={planet.data.planet.id}
             planet={planet.data}
             moonsEnabled={moonsAvailable}
+            synthesisEnabled={season.data?.features?.synthesis === true}
             otherMoons={(() => {
               const p = planet.data;
               const fromWorlds = worlds
@@ -2528,7 +2544,7 @@ export function GalaxyView({
             onPanel(null);
           }}
         >
-          <RewardsScreen commander={commander} onGo={goToReward} />
+          <RewardsScreen commander={commander} onGo={goToReward} initialTab={rewardsTab} />
         </V2Sheet>
       )}
 
@@ -2850,8 +2866,9 @@ export function GalaxyView({
           now={now}
           pending={settlement.isPending}
           onClose={() => { setSettlingTargetId(null); }}
-          onConfirm={() => {
-            settlement.mutate(selected.id, {
+          capsuleStock={capsuleStock}
+          onConfirm={(capsules) => {
+            settlement.mutate({ targetPlanetId: selected.id, capsules }, {
               onSuccess: () => {
                 say(t('galaxy.settlementAway', {
                   world: selected.intel === 'UNKNOWN'

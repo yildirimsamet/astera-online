@@ -121,6 +121,8 @@ Harita işaretleri 4. aşamada galaksi katmanına girer. 2026-11-11'de geri geti
 
 **Kite girdi (2026-11-12):** Tablodaki 30 glif `PATHS`'e eklendi; kit 53 glif. 27'si kaynak PNG'nin alfa sınırından alt-piksel izlendi (Inkscape izleyicisi dişlinin deliğini kaybettiği için kullanılmadı), 3'ü (radyasyon, saldırı artışı, sancak) elle çizildi. Her glif onaylanan işlemi alır: koyu kontur + üstü kendi rengi, altı bir ton koyu (`.gk-glyph__hi/__lo`). Görüntü: `out/ui-kit/r5/glifler.png`.
 
+**Fırtına glifi (2026-11-25, owner: "kazma saçma"):** Asteryum Fırtınası artık kazma (`mine`) değil `storm` glifini taşır: Layer Lab GUI Pro Fantasy RPG piktosu `function-icon-cyclone` (512 px), alfa sınırından alt-piksel izlendi (marching squares + Douglas-Peucker, 24'lük ızgara). Galaksi olay çipi, Kronik, olay rehberi ve laboratuvarın Fırtına satırı.
+
 *Not:* Kitin ilk elden çizilen glifleri (kılıç, onay, dönüş oku) izlenen Picto gliflerinden biraz ince. Yan yana durduklarında fark seçiliyor; 4. aşamada Picto karşılıklarıyla değiştirilmesi önerilir.
 
 ### Şeref, rütbe, klan, dil (pano C)

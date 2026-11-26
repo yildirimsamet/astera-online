@@ -1,5 +1,5 @@
 import { and, desc, eq, gt, inArray, isNull, or } from 'drizzle-orm';
-import { MOON, distance, fleetSizeClass, gozcuSees, hangarLoad, scanPierces, scanRange } from '@astera/rules';
+import { MOON, distance, fleetSizeClass, gozcuSees, hangarLoad, missionHidesFromGalaxy, scanPierces, scanRange } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import { missions, moonScans, moons, planets, probeWorldMemories, type MoonScanRow } from '../db/schema.js';
@@ -31,9 +31,12 @@ export async function scanFromMoonTx(
   const [moon] = await tx.select().from(moons).where(eq(moons.planetId, planetId));
   if (!moon) throw new GameError('NO_MOON', 'This world has no moon', 409);
   if (moon.closedUntil && moon.closedUntil > now) throw new GameError('MOON_CLOSED', 'A struck moon’s Gözcü is shut', 409);
-  const [target] = await tx.select({ id: planets.id, seasonId: planets.seasonId, x: planets.x, y: planets.y, z: planets.z })
-    .from(planets).where(eq(planets.id, targetPlanetId));
+  const [target] = await tx.select({
+    id: planets.id, seasonId: planets.seasonId, controller: planets.controllerPlayerId, x: planets.x, y: planets.y, z: planets.z,
+  }).from(planets).where(eq(planets.id, targetPlanetId));
   if (target?.seasonId !== world.seasonId) throw new GameError('PLANET_NOT_FOUND', 'No such world here', 404);
+  // The Gözcü watches rivals (owner 2026-11-26): your own world is never its target.
+  if (target.controller === playerId) throw new GameError('SCAN_OWN_WORLD', 'The Gözcü watches other commanders’ worlds', 409);
   if (distance(world, target) > scanRange(moon.rarity)) throw new GameError('OUT_OF_RANGE', 'That world is beyond this moon’s reach', 409, { context: 'gozcu' });
   const [recent] = await tx.select({ id: moonScans.id }).from(moonScans).where(and(
     eq(moonScans.scannerPlanetId, planetId),
@@ -52,7 +55,11 @@ export async function scanFromMoonTx(
   ));
   const rows: MoonScanRow[] = [];
   for (const flight of flights) {
+    // Your own fleets are known to you already; the photograph shows only the other commanders' (owner 2026-11-26).
+    if (flight.ownerPlayerId === playerId) continue;
     if (!gozcuSees(flight, pierced)) continue;
+    // Optik Örtü: no Gözcü sees it, Legendary included; it has no counter yet (owner, 2026-11-25).
+    if (missionHidesFromGalaxy(flight.appliedCapsules)) continue;
     // A turned flight is heading back to the world it left (K8).
     const turned = flight.recalledAt !== null;
     const to = turned ? flight.originPlanetId : flight.targetPlanetId;

@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ARENA_ECONOMY, ARENA_LAYOUT, ARENA_PROTOCOL, CLASS_STATS, createSandboxWorld, shipStats, type Pilot, type ShipClass } from '@astera/rules/arena';
 import i18n from '../../src/i18n/index.js';
@@ -6,7 +6,7 @@ import { arenaCopy } from '../../src/arena/copy.js';
 import { SortieSummary, launchText, levelGains } from '../../src/arena/Hangar.js';
 import { teamCopy } from '../../src/arena/teamCopy.js';
 import { capLeft, clockText, fetchHangar, hangarSchema, launchBlock, pickShip, refusedAtHangar, repairOffer, repairShip, setLoadout, upgradeShip, type Hangar } from '../../src/arena/hangarDesk.js';
-import { ArenaHud, type HudBind } from '../../src/arena/Hud.js';
+import { ArenaHud, StormChip, type HudBind } from '../../src/arena/Hud.js';
 import { createArenaNetwork } from '../../src/arena/network.js';
 import { createHudStore } from '../../src/arena/store.js';
 
@@ -188,6 +188,22 @@ describe('the sortie summary', () => {
     expect(view.querySelector('[data-ready]')?.textContent).toContain('10:00');
   });
 
+  it('lists the Asteryum an exit credited beside the capital\'s haul, and never puts it in a team pool', () => {
+    const solo = render(<SortieSummary c={arenaCopy()} now={NOW} hold={[0, 0, 0, 4]} report={{ outcome: 'extracted',
+      deposit: { alloy: 20, crystal: 0, deuterium: 0 }, overflow: zero, readyAt: null, readyReason: null, asterium: 4,
+      xp: { earned: 10, kept: 10, banked: 10 } }} />).container;
+    expect([...solo.querySelectorAll('[data-haul="landed"] li')].map(li => li.textContent)).toEqual(['+20 Alaşım', '+4 Asteryum']);
+    // Each resource by its picture, never by its colour alone (gozlemevi.md; owner 2026-11-25: Asteryum's icon).
+    expect([...solo.querySelectorAll('[data-haul="landed"] li img')].map(img => img.getAttribute('src')))
+      .toEqual(['/assets/images/resources/alloy.png', '/assets/images/resources/asterium.webp']);
+    cleanup();
+    const team = render(<SortieSummary c={arenaCopy()} now={NOW} hold={[10, 0, 0, 3]} report={{ outcome: 'extracted',
+      teamId: '00000000-0000-4000-8000-000000000001', deposit: zero, overflow: zero, readyAt: null, readyReason: null, asterium: 3,
+      xp: { earned: 10, kept: 10, banked: 10 } }} />).container;
+    expect([...team.querySelectorAll('[data-haul="pooled"] li')].map(li => li.textContent)).toEqual(['+10 Alaşım']);
+    expect([...team.querySelectorAll('[data-haul="landed"] li')].map(li => li.textContent)).toEqual(['+3 Asteryum']);
+  });
+
   it('lists a lost hold, and an hour of repair', () => {
     const view = render(<SortieSummary c={arenaCopy()} now={NOW} hold={[80.6, 0, 4]} report={{ outcome: 'dead', deposit: zero, overflow: zero,
       readyAt: '2026-10-23T13:00:00.000Z', readyReason: 'repair', xp: { earned: 60, kept: 24, banked: 24 } }} />).container;
@@ -216,7 +232,7 @@ describe('the room\'s sortie report', () => {
     const network = createArenaNetwork(createSandboxWorld({ bots: 0 }), { sensitivity: 1, invertPitch: false }, () => undefined, () => Promise.resolve('tok'));
     network.connect('kilavuz', 'smoke'); last().open();
     await vi.waitFor(() => { expect(last().sent).toHaveLength(1); });
-    last().receive({ kind: 'welcome', v: ARENA_PROTOCOL, pilotId: 4, tick: 0, seq: 0, tickRate: 30, snapshotRate: 15, layoutVersion: ARENA_LAYOUT.version, pilots: [] });
+    last().receive({ kind: 'welcome', v: ARENA_PROTOCOL, storm: false, pilotId: 4, tick: 0, seq: 0, tickRate: 30, snapshotRate: 15, layoutVersion: ARENA_LAYOUT.version, pilots: [] });
     const report = { kind: 'sortie', outcome: 'extracted', deposit: { alloy: 5, crystal: 0, deuterium: 0 }, overflow: { alloy: 0, crystal: 0, deuterium: 0 },
       readyAt: '2026-10-23T12:10:00.000Z', readyReason: 'service', xp: { earned: 10, kept: 10, banked: 10 } };
     last().receive(report);
@@ -227,6 +243,18 @@ describe('the room\'s sortie report', () => {
     await vi.waitFor(() => { expect(last().sent).toHaveLength(1); });
     expect(last().sent[0]).toMatchObject({ kind: 'hello', mode: 'enter' });
     expect(network.getSnapshot().sortie).toBeNull();
+    network.dispose();
+  });
+
+  it('follows the storm from the welcome and from each turn (G16)', async () => {
+    vi.stubGlobal('WebSocket', FakeSocket);
+    const network = createArenaNetwork(createSandboxWorld({ bots: 0 }), { sensitivity: 1, invertPitch: false }, () => undefined, () => Promise.resolve('tok'));
+    network.connect('kilavuz', 'smoke'); last().open();
+    await vi.waitFor(() => { expect(last().sent).toHaveLength(1); });
+    last().receive({ kind: 'welcome', v: ARENA_PROTOCOL, pilotId: 4, tick: 0, seq: 0, tickRate: 30, snapshotRate: 15, layoutVersion: ARENA_LAYOUT.version, pilots: [], storm: true });
+    expect(network.getSnapshot()).toMatchObject({ phase: 'online', storm: true });
+    last().receive({ kind: 'storm', active: false });
+    expect(network.getSnapshot()).toMatchObject({ phase: 'online', storm: false });
     network.dispose();
   });
 });
@@ -243,7 +271,7 @@ describe('the hold in flight', () => {
     expect(view.querySelector('.ah-hold strong')?.textContent).toBe(`123/${String(CLASS_STATS.muhafiz.cargoCapacity)}`);
     expect(view.querySelectorAll('.ah-hold i b')).toHaveLength(3);
     expect(view.querySelector('.ah-hold strong')?.getAttribute('aria-label')).toBe('100 Alaşım · 20 Kristal · 3 Döteryum');
-    expect(view.querySelector('.ah-hold')?.textContent).not.toContain(arenaCopy().pointsShort);
+    expect(view.querySelector('.ah-hold')?.textContent).not.toMatch(/puan/i); // the Yarık keeps no score (KG-K34)
   });
 });
 
@@ -285,5 +313,16 @@ describe('the ship\'s level (Y6b)', () => {
     const store = createHudStore(); store.publish(world, 'flight', false, false);
     const view = render(<ArenaHud store={store} bind={bind} layout={ARENA_LAYOUT} onMenu={() => undefined} connection={null} />).container;
     expect(view.querySelector('.ah-hold strong')?.textContent).toBe(`10/${String(shipStats('muhafiz', 12).cargoCapacity)}`);
+  });
+});
+
+describe('the storm in the Yarık (G16)', () => {
+  // Owner 2026-11-25: say it is in the middle, never point at a stone; short enough for two lines of the HUD band.
+  it('names the storm and where to look while it blows, and nothing otherwise', async () => {
+    await i18n.changeLanguage('tr');
+    const on = render(<StormChip active c={arenaCopy()} />).container;
+    expect(on.textContent).toBe('Asteryum Fırtınası · mor taşlar ortalarda');
+    cleanup();
+    expect(render(<StormChip active={false} c={arenaCopy()} />).container.textContent).toBe('');
   });
 });

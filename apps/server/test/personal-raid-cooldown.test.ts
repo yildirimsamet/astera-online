@@ -190,9 +190,11 @@ describe('personal raids involving tier 1–3 commanders', () => {
     await expect(raid(colony)).resolves.toHaveProperty('missionId');
   });
 
-  it('does not impose the new limit when both current tiers are four or higher', async () => {
+  it('keeps the cooldown at tier 4 and lifts it when both current tiers are five or higher', async () => {
     await history(f.clock.now());
-    for (const id of [mine, theirs, colony]) await setLevel(f.db, id, 'CORE', 10);
+    for (const id of [mine, theirs, colony]) await setLevel(f.db, id, 'CORE', 12);
+    await expect(raid()).rejects.toMatchObject({ code: 'PERSONAL_RAID_COOLDOWN' });
+    for (const id of [mine, theirs, colony]) await setLevel(f.db, id, 'CORE', 13);
     await expect(raid()).resolves.toHaveProperty('missionId');
     await expect(raid(colony)).resolves.toHaveProperty('missionId');
   });

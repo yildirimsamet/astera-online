@@ -155,7 +155,7 @@ function AwardReveal({ queue, live, onSeen, onDone }: {
         }
       }}
       className="legacy-reveal fixed inset-0 z-[70] flex select-none flex-col items-center overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-3 gk gk-reveal outline-none">
-      <div key={`fx-${String(step)}`} aria-hidden="true" className="pointer-events-none absolute inset-0">
+      <div key={`fx-${String(step)}`} aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="legacy-reveal-rays" />
         <div className="legacy-reveal-core" />
         <div className="legacy-reveal-flash" />

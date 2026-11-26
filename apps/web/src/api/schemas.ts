@@ -38,22 +38,39 @@ const publicClanIdentity = z.object({
   id: z.string(), name: z.string(), tag: z.string(), tier: clanTagTierSchema.nullable().optional(),
 });
 
-export const honorBenefitsSchema = z.object({ version: z.literal(1), score: dominionInteger,
-  thresholds: z.object({ positive: z.tuple([dominionInteger.positive(), dominionInteger.positive()]).readonly(),
-    negative: z.tuple([dominionInteger.positive(), dominionInteger.positive()]).readonly() }),
-  tier: z.union([z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]),
+const honorBenefitsPositiveTuple = z.tuple([dominionInteger.positive(), dominionInteger.positive()]).readonly();
+const honorBenefitsNegativeV1 = z.tuple([dominionInteger.positive(), dominionInteger.positive()]).readonly();
+const honorBenefitsNegativeV2 = z.tuple([
+  dominionInteger.positive(), dominionInteger.positive(),
+  dominionInteger.positive(), dominionInteger.positive(),
+]).readonly();
+export const honorBenefitsSchema = z.object({
+  version: z.union([z.literal(1), z.literal(2)]),
+  score: dominionInteger,
+  thresholds: z.object({
+    positive: honorBenefitsPositiveTuple,
+    negative: z.union([honorBenefitsNegativeV1, honorBenefitsNegativeV2]),
+  }),
+  tier: z.union([z.literal(-4), z.literal(-3), z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]),
   repairPct: z.union([z.literal(-10), z.literal(-5), z.literal(0), z.literal(5), z.literal(10)]),
   convoyPct: z.union([z.literal(-30), z.literal(-15), z.literal(0), z.literal(15), z.literal(30)]),
   tradePct: z.union([z.literal(0), z.literal(7), z.literal(14)]),
+  fuelPct: z.union([z.literal(0), z.literal(25)]).optional().default(0),
+  productionPct: z.union([z.literal(0), z.literal(-25)]).optional().default(0),
 }).refine(value => {
+  if (value.version === 1 && value.thresholds.negative.length !== 2) return false;
+  if (value.version === 2 && value.thresholds.negative.length !== 4) return false;
   // Zod still runs refinements after a numeric check marks an object dirty.
   // Refuse malformed integers here before calling the exact arithmetic rules.
   if (![value.score, ...value.thresholds.positive, ...value.thresholds.negative].every(Number.isSafeInteger)) return false;
-  if (value.thresholds.positive[0] <= 0 || value.thresholds.negative[0] <= 0
-    || value.thresholds.positive[0] >= value.thresholds.positive[1] || value.thresholds.negative[0] >= value.thresholds.negative[1]) return false;
+  for (const list of [value.thresholds.positive, value.thresholds.negative]) {
+    if (list[0] <= 0) return false;
+    for (let i = 1; i < list.length; i++) if (list[i]! <= list[i - 1]!) return false;
+  }
   const expected = honorBenefits(value.score, value.thresholds);
   return expected.tier === value.tier && expected.repairPct === value.repairPct
-    && expected.convoyPct === value.convoyPct && expected.tradePct === value.tradePct;
+    && expected.convoyPct === value.convoyPct && expected.tradePct === value.tradePct
+    && expected.fuelPct === value.fuelPct && expected.productionPct === value.productionPct;
 }, 'Honor economic quote does not match its frozen program');
 export type HonorBenefitsView = z.infer<typeof honorBenefitsSchema>;
 const honorReceipt = z.object({ delta: dominionInteger, reason: z.enum([
@@ -74,6 +91,8 @@ export const honorTargetSchema = z.union([
     militaryReturn: z.enum(['NONE', 'HALF', 'FULL']), related: z.boolean(), repeated: z.boolean(), retaliation: z.boolean(),
     /** A raid on this commander inside the last day, or one on its way: going again is bullying. */
     repeatRaid: z.boolean().optional(),
+    priorWeakCount: z.number().int().nonnegative().optional(),
+    weakMultiplier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
     soloCredit: z.boolean().optional(), retaliationLootPercent: z.union([z.literal(20), z.literal(40)]).optional() }),
 ]);
 export type HonorTarget = z.infer<typeof honorTargetSchema>;
@@ -162,6 +181,8 @@ const fleetEscapeRecord = z.discriminatedUnion('kind', [
 ]);
 const techLevels = z.record(researchProjectId, z.number().int().nonnegative());
 const vec3 = z.object({ x: z.number(), y: z.number(), z: z.number() });
+/** Where a probe battery hit a probe, on its approach, in game units (2026-11-24). */
+const shotPoint = vec3;
 const resources = z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number() });
 export const unknownSignalOutcomeSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('RESOURCES'), loot: resources }),
@@ -626,7 +647,8 @@ export const seasonSchema = z.object({
    */
   rulesetVersion: z.number().int().positive().optional(),
   /** Feature flags advertised by the galaxy; optional for rolling deploys. */
-  features: z.object({ moons: z.boolean() }).optional(),
+  /** Ay and Asteryum (plan 2026-11-24): an older server sends no `synthesis`, which is "not here". */
+  features: z.object({ moons: z.boolean(), synthesis: z.boolean().default(false) }).optional(),
   players: z.number(),
   /**
    * Commanders whose last authenticated request was inside the online window.
@@ -786,6 +808,13 @@ const activeGalaxyEventSchema = z.discriminatedUnion('kind', [
       maxAwardedShips: z.number().int().positive(),
     }),
   }),
+  /** Asteryum Fırtınası (plan 2026-11-24 §3.2): a window; the Yarık field is the whole effect. */
+  z.object({
+    id: z.string().uuid(),
+    kind: z.literal('ASTERIUM_STORM'),
+    startsAt: z.coerce.date(),
+    endsAt: z.coerce.date(),
+  }),
 ]);
 
 const knownGalaxyEventKinds: ReadonlySet<string> = new Set(
@@ -805,7 +834,7 @@ const knownGalaxyEventKinds: ReadonlySet<string> = new Set(
  */
 export const activeGalaxyEventsSchema = z.object({
   next: z.object({
-    kind: z.enum(['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY']),
+    kind: z.enum(['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY', 'ASTERIUM_STORM']),
     startsAt: z.coerce.date(),
   }).nullable().default(null),
   events: z.array(z.unknown()).transform((rows, context) => rows.flatMap((row, index) => {
@@ -984,6 +1013,12 @@ export const planetMoonSchema = z.object({
   dockFree: z.number().nonnegative(),
   scanRange: z.number().nonnegative(),
   scanPierces: z.boolean(),
+  /** Where the moon's Asteryum stands (owner 2026-11-25): the client counts on from here with the rules. */
+  asterium: z.object({
+    syncedAt: z.coerce.date(),
+    fraction: z.number().min(0).lt(1),
+    produced: z.number().int().nonnegative(),
+  }).optional(),
   moves: z.array(moonMoveSchema),
 });
 
@@ -1241,6 +1276,24 @@ export const planetSchema = z.object({
   interceptor: strategicAsset.nullable().optional(),
   /** All live anti-battery charges, ready first. */
   interceptors: z.array(strategicAsset).optional(),
+  /**
+   * THE PROBE BATTERY AS STORED (2026-11-24); live charges come from `probeBatteryCharges`.
+   * Null when none is built; absent against an older server.
+   */
+  probeBattery: z.object({
+    startedAt: z.coerce.date(),
+    readyAt: z.coerce.date(),
+    /** The working level; an upgrade that has landed is already folded in (2026-11-24). */
+    level: z.number().int().positive().default(1),
+    charges: z.number().int().nonnegative(),
+    chargedAt: z.coerce.date(),
+    /** Set only while an upgrade is still running. */
+    upgradeLevel: z.number().int().positive().nullable().default(null),
+    upgradeStartedAt: z.coerce.date().nullable().default(null),
+    upgradeReadyAt: z.coerce.date().nullable().default(null),
+    /** Probes it shot down in the notice window (`PROBE_DEFENCE.noticeWindowMinutes`). */
+    recentShots: z.number().int().nonnegative().default(0),
+  }).nullable().default(null),
   radiationBombsAvailable: z.boolean().default(false),
   radiationBombs: z.array(radiationBombAsset).default([]),
   /**
@@ -1542,6 +1595,34 @@ export const rewardClaimSchema = z.object({
   rewards: rewardsSchema,
   ...withPlanet,
 });
+
+/**
+ * GÜNLÜK GÖREVLER (owner, 2026-11-24). `id` is a plain string for the rewards rule's reason: a quest
+ * added a deploy ahead must cost a phone one unrenderable row, never the whole panel.
+ */
+export const dailyQuestsSchema = z.object({
+  /** `YYYY-MM-DD`, UTC. */
+  day: z.string(),
+  /** The instant every quest starts again. */
+  resetsAt: z.coerce.date(),
+  quests: z.array(z.object({
+    id: z.string(),
+    goal: z.number().int().positive(),
+    progress: z.number().int().nonnegative(),
+    state: z.enum(['locked', 'claimable', 'claimed']),
+    alloy: z.number(),
+    crystal: z.number(),
+    /** Micro-Honor this quest pays with its purse; show it with `honorScore`. */
+    honor: z.number().int().nonnegative(),
+  })),
+  claimable: z.number().int().nonnegative(),
+});
+export const dailyQuestClaimSchema = z.object({
+  granted: z.object({ alloy: z.number(), crystal: z.number(), honor: z.number().int().nonnegative() }),
+  quests: dailyQuestsSchema,
+  ...withPlanet,
+});
+export type DailyQuests = z.infer<typeof dailyQuestsSchema>;
 
 /** New Commander 7 Days (plan 2026-11-06 §7.2): the next box, from when, and what it holds; null when not for this account. */
 const welcomeBoxRewardSchema = z.object({
@@ -2560,6 +2641,11 @@ const galaxyLifecyclePayloadSchema = z.discriminatedUnion('eventKind', [
     resourceCapHours: z.number().positive(),
     shipDropChanceAtFullQuality: z.number().min(0).max(1),
   }),
+  z.object({
+    eventKind: z.literal('ASTERIUM_STORM'),
+    startsAt: z.string(),
+    endsAt: z.string(),
+  }),
 ]);
 
 /** Every lifecycle kind this build can render. See the drop rule below. */
@@ -2744,6 +2830,8 @@ export const intelSchema = z.object({
       bearing: z.string().nullable(),
       originPlanetName: z.string().nullable(),
       originPlanetId: z.string().nullable().optional(),
+      /** The world's probe battery shot this one down (2026-11-24). Absent on older servers. */
+      shotDown: z.boolean().optional(),
     }),
     'intel.radarLog',
   ),
@@ -2789,6 +2877,12 @@ export const intelSchema = z.object({
        * way to hold it is to have flown there. Absent means never measured.
        */
       interceptors: z.number().int().nonnegative().optional(),
+      /**
+       * THE PROBE BATTERY AT THE LOOK (2026-11-24): ready charges of its capacity, exact;
+       * null when that world had none built. Absent means never measured.
+       */
+      probeBattery: z.object({ ready: z.number().int().nonnegative(), capacity: z.number().int().positive() })
+        .nullable().optional(),
       /**
        * A COLONY'S LOYALTY AT THE LOOK, rounded up. A Death Star takes twenty and a
        * colony at twenty or less goes NEUTRAL. Absent on capitals and caretaker worlds.
@@ -2839,6 +2933,28 @@ export const intelSchema = z.object({
   probeCooldowns: z
     .array(z.object({ targetPlanetId: z.string(), readyAt: z.coerce.date() }))
     .default([]),
+  /** Probes a battery shot down in the last day (2026-11-24): no report came, the loss stands in its place. */
+  probeLosses: z
+    .array(z.object({
+      missionId: z.string(),
+      targetPlanetId: z.string(),
+      targetName: z.string(),
+      targetUsername: z.string(),
+      at: z.coerce.date(),
+      /** Where on the approach it was hit, in game units; absent from an older server. */
+      point: shotPoint.optional(),
+      /** When the battery opened fire and where the craft was then (2026-11-25). */
+      firedAt: z.coerce.date().optional(),
+      from: shotPoint.optional(),
+    }))
+    .optional(),
+  /** This commander's own batteries' shots, for the galaxy's moment (2026-11-24). */
+  probeShotsFired: z
+    .array(z.object({
+      id: z.string(), planetId: z.string(), at: z.coerce.date(), point: shotPoint,
+      firedAt: z.coerce.date().optional(), from: shotPoint.optional(),
+    }))
+    .optional(),
   probeCost: resources,
 });
 
@@ -2882,6 +2998,8 @@ const pendingThread = z.object({
   corridor: z.boolean().optional(),
   /** Y9: the commander ship flying at the rear of this craft; your own craft only. */
   admiral: z.object({ ship: z.enum(SHIP_CLASSES), level: z.number().int().min(1) }).optional(),
+  /** G17: Optik Örtü rides on this leg of your own craft; drawn cloaked. */
+  veiled: z.literal(true).optional(),
   /**
    * The mission's own id. YOUR OWN CRAFT ONLY — an inbound thread has none.
    *
@@ -3067,6 +3185,7 @@ export const deathStarBuildSchema = z.object({
  * lifecycle — one row, one completion event, one planet view back (D53).
  */
 export const interceptorBuildSchema = deathStarBuildSchema;
+export const probeBatteryBuildSchema = z.object({ readyAt: z.coerce.date(), ...withPlanet });
 export const radiationBombBuildSchema = deathStarBuildSchema;
 export const radiationBombLaunchSchema = z.object({
   flightId: z.string().uuid(),
@@ -3272,6 +3391,8 @@ const ordinaryBattleReport = z.object({
       fleetEscape: fleetEscapeRecord.nullish(),
       /** Y9: the commander ships that escorted either side. Optional for a rolling deploy. */
       admirals: z.array(z.object({ side: z.enum(['attack', 'defence']), ship: z.enum(SHIP_CLASSES), level: z.number().int().min(1) })).optional(),
+      /** Sentez capsules the raid wore (plan 2026-11-24 §3.5); both sides read them. Optional for a rolling deploy. */
+      appliedCapsules: z.array(z.object({ id: z.enum(['OPTIC_VEIL', 'SILENT_THRUST']), count: z.number().int().positive() })).optional(),
       /**
        * Defender only: the lookback's NET loss in hours of the reader's production at
        * this battle, and whether it bought the recovery shield. Optional for a rolling
@@ -3931,6 +4052,8 @@ export const trafficSchema = z.object({
        * something you cannot identify, bearing down on a world you own.
        */
       inbound: z.literal(true).optional(),
+      /** G17: Optik Örtü rides on this leg; only its owner's clan receives it, and draws it cloaked. */
+      veiled: z.literal(true).optional(),
       /**
        * OUT OF SIGHT, STILL TRACKED. PIRATES ONLY. D160.
        *
@@ -4010,7 +4133,10 @@ export const trafficSchema = z.object({
     effectOnly: z.boolean(),
     focusEligible: z.boolean(),
   })).optional(),
+  /** Probes shot down over a world the caller's Telescope identifies; neither side named (2026-11-24). */
+  probeShots: z.array(z.object({ id: z.string(), planetId: z.string(), at: z.coerce.date() })).optional(),
 });
+export type TrafficView = z.infer<typeof trafficSchema>;
 export type Contact = z.infer<typeof trafficSchema>['contacts'][number];
 export type StrategicInterception = NonNullable<z.infer<typeof trafficSchema>['interceptions']>[number];
 export type StrategicInterceptionImpact = NonNullable<
@@ -4324,3 +4450,39 @@ export const newcomerScenarioResponseSchema = z.object({
   scenario: newcomerScenarioSchema.nullable(),
 });
 export type NewcomerScenario = z.infer<typeof newcomerScenarioSchema>;
+
+/* ── Asteryum & Sentez Laboratuvarı (plan 2026-11-24 §4.3) ─────────────────── */
+
+export const capsuleIdSchema = z.enum(['OPTIC_VEIL', 'SILENT_THRUST']);
+export type CapsuleIdView = z.infer<typeof capsuleIdSchema>;
+
+export const synthesisViewSchema = z.object({
+  enabled: z.boolean(),
+  requiredCore: z.number().int(),
+  coreLevel: z.number().int(),
+  unlocked: z.boolean(),
+  asterium: z.number().int().min(0),
+  perDay: z.number().min(0),
+  moons: z.array(z.object({
+    planetId: z.string(),
+    planetName: z.string(),
+    rarity: moonRaritySchema,
+    perDay: z.number().min(0),
+    closedUntil: z.coerce.date().nullable().default(null),
+    nextAt: z.coerce.date().nullable().default(null),
+  })),
+  capsules: z.object({ OPTIC_VEIL: z.number().int().min(0), SILENT_THRUST: z.number().int().min(0) }),
+  job: z.object({
+    capsuleId: capsuleIdSchema,
+    quantity: z.number().int().positive(),
+    delivered: z.number().int().min(0),
+    startedAt: z.coerce.date(),
+    nextAt: z.coerce.date(),
+    completesAt: z.coerce.date(),
+  }).nullable(),
+  storm: z.object({ active: z.boolean(), startsAt: z.coerce.date(), endsAt: z.coerce.date() }).nullable(),
+});
+export type SynthesisView = z.infer<typeof synthesisViewSchema>;
+
+/** A laboratory write answers with the laboratory and the capital it paid from. */
+export const synthesisResultSchema = z.object({ synthesis: synthesisViewSchema, ...withPlanet });

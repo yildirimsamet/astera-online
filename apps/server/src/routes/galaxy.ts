@@ -11,6 +11,7 @@ import {
   clanMemberships,
   clans,
   honorSeasons,
+  honorQuestTotals,
   honorTotals,
   neutralPlanetState,
   planetFaults,
@@ -407,7 +408,8 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
 
     const honorEnabled = configs[0]?.mode === 'ACTIVE';
     const ranking = honorEnabled ? requested : 'DOMINION';
-    const honor = honorEnabled ? sql<number>`coalesce(${honorTotals.score}, 0)`.mapWith(Number) : sql<number>`0`.mapWith(Number);
+    // The ledger's total plus what the daily quests paid the seat (owner 2026-11-24: ordinary Honor).
+    const honor = honorEnabled ? sql<number>`coalesce(${honorTotals.score}, 0) + coalesce(${honorQuestTotals.micros}, 0)`.mapWith(Number) : sql<number>`0`.mapWith(Number);
     const score = ranking === 'HONOR' ? honor : playerDominionSql;
     const rows = await app.db
       .select({
@@ -431,6 +433,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
       .from(players)
       .innerJoin(accounts, eq(players.accountId, accounts.id))
       .leftJoin(honorTotals, and(eq(honorTotals.seasonId, self.seasonId), eq(honorTotals.playerId, players.id)))
+      .leftJoin(honorQuestTotals, and(eq(honorQuestTotals.seasonId, self.seasonId), eq(honorQuestTotals.playerId, players.id)))
       .innerJoin(
         planets,
         and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')),

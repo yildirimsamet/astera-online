@@ -804,7 +804,7 @@ async function applyOrderEffect(tx: Tx, planet: LockedPlanet, order: BuildOrder)
         in battle, so this is only a guard) is never replaced by a commoner one.
       */
       const written = await tx.insert(moons).values({ planetId: planet.planetId, rarity: 'COMMON', origin: 'BUILT',
-        visualSeed: hashSeed('moon-visual', order.id) % 2_147_483_647, bornAt: order.readyAt })
+        visualSeed: hashSeed('moon-visual', order.id) % 2_147_483_647, bornAt: order.readyAt, asteriumSyncedAt: order.readyAt })
         .onConflictDoNothing({ target: moons.planetId }).returning({ planetId: moons.planetId });
       if (written.length > 0) await publishShard(tx, planet.seasonId, 'moons');
       return;

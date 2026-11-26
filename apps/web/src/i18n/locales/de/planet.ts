@@ -138,6 +138,28 @@ export const planet = {
     needOperational: "Welt betriebsbereit",
     buildSecond: "Weitere Ladung laden",
   },
+  probeBattery: {
+    eyebrow: "Sondenabwehrbatterie",
+    none: "Nicht installiert",
+    building: "Wird installiert · {{duration}}",
+    ready: "Bereit · Sonden werden hier leichter erfasst",
+    next: "Nächste Ladung {{duration}}",
+    recent: "Letzte {{minutes}} Min.: {{count}} abgeschossen",
+    empty: "Keine Ladung · nächste {{duration}}. Ohne Ladung ist deine Welt wie ohne Batterie.",
+    offline: "Außer Betrieb · {{reason}}",
+    offlineEmp: "ein EMP wirkt",
+    offlineRecovery: "die Welt erholt sich",
+    offlineRadar: "braucht effektives Radar {{level}}",
+    short: "Schießt die Sonden ab, die sie erfasst – schon im Anflug.",
+    hint: "Solange sie eine Ladung hat, erfasst diese Welt Sonden leichter: {{base}} % + 13 % × (Radar − Werft des Absenders), höchstens {{max}} %. Eine erfasste Sonde wird im Anflug abgeschossen und bringt keinen Bericht. Eine Sonde von einer Werft wie deiner erfasst sie zu {{example}} %. Stufe {{level}}: {{capacity}} Ladungen, alle {{minutes}} Minuten eine kostenlos nachgeladen; jede Stufe erfasst {{step}} % mehr. Ohne Ladung ist deine Welt wie ohne Batterie.",
+    build: "Batterie installieren",
+    started: "Batterie wird installiert",
+    level: "St. {{level}}",
+    upgrade: "Ausbauen · St. {{level}}",
+    upgradeNote: "St. {{level}}: {{capacity}} Ladungen · Erfassung +{{step}} %",
+    upgrading: "Ausbau auf St. {{level}} · {{duration}}",
+    upgradeStarted: "Batterie wird ausgebaut",
+  },
 
   deathStar: {
     empDuration: "EMP-Dauer",
@@ -172,6 +194,9 @@ export const planet = {
     growQuestion: "Baue hier deine Ressourcen und dein Gebäudelevel-Limit aus.",
     tacticalProblem: "Taktisch",
     tacticalQuestion: "Taktische Werkzeuge hier bauen und verwalten.",
+    bays: "Taktische Bereiche",
+    weaponsBay: "Waffen",
+    labBay: "Labor",
   },
 
 

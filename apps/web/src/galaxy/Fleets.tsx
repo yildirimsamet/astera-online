@@ -1,6 +1,7 @@
 import { useModelScale } from './modelScale.js';
 import { CraftHitTargets, type CraftPicking } from './CraftHitTargets.js';
 import { towingFormation, type TowedHull } from './towing.js';
+import { setVeilTime, veilMaterial, veiledFlight } from './veil.js';
 import { TowedShips } from './TowedShips.js';
 import { isAppActive, watchAppActivity } from '../platform/activity.js';
 import { useGalaxyCulling, useVisualFrame } from './visualFrame.js';
@@ -56,6 +57,8 @@ import { Bombardment, bombardmentIntensity } from './Bombardment.jsx';
 import { returnVolleyFrame } from './volley.js';
 import { TRAIL_MAP } from './vfx.js';
 import { EngineJets, type EngineUnit } from './EngineJets.js';
+import { LaneStreaks } from './LaneStreaks.js';
+import { corridorSpeedLook } from './corridorStreaks.js';
 import { nativeEngineAnchors } from './engineAnchors.js';
 import { formationEngineUnits } from './engineUnits.js';
 import { StrategicExhaust, RadiationBombExhaust } from './StrategicExhaust.jsx';
@@ -270,6 +273,15 @@ function corridorMaterial(colour: string): THREE.ShaderMaterial {
   });
 }
 
+/** The scout as every flight draws it; the probe battery's moment flies the same craft on. */
+export const PROBE_ROUTE = {
+  url: MODEL.probe,
+  scale: 0.18 * CRAFT_SCALE,
+  flame: '#9dffc4',
+  /** Green: this is the scout. */
+  neon: '#3ff08a',
+} as const;
+
 const ROUTE = {
   fleet: {
     url: HULL_MODEL.DART,
@@ -278,13 +290,7 @@ const ROUTE = {
     /** Blue: this is a warship. */
     neon: '#3fa9ff',
   },
-  probe: {
-    url: MODEL.probe,
-    scale: 0.18 * CRAFT_SCALE,
-    flame: '#9dffc4',
-    /** Green: this is the scout. */
-    neon: '#3ff08a',
-  },
+  probe: PROBE_ROUTE,
 } as const;
 
 /** A normalized hull's longest box dimension is one; cover every corner in any heading. */
@@ -509,6 +515,7 @@ export function FormationHulls({
   longitudinalOffsetBound = 0,
   onPointerUp,
   hitboxKind,
+  cloaked = false,
 }: CraftPicking & {
   markers: readonly Marker[];
   slots: readonly Vec3Tuple[];
@@ -520,6 +527,8 @@ export function FormationHulls({
   longitudinalOffset?: (index: number, elapsedSeconds: number) => number;
   /** The most that drift can move a ship, so culling never drops one at the edge. */
   longitudinalOffsetBound?: number;
+  /** G17: Optik Örtü rides on this flight; the hulls are drawn as the veil's rim alone (`veil.ts`). */
+  cloaked?: boolean;
 }) {
   const buckets = useMemo(() => bucketFormationHulls(markers, slots), [markers, slots]);
   return (
@@ -537,6 +546,7 @@ export function FormationHulls({
           longitudinalOffsetBound={longitudinalOffsetBound}
           onPointerUp={onPointerUp}
           hitboxKind={hitboxKind}
+          cloaked={cloaked}
         />
       ))}
     </>
@@ -552,6 +562,7 @@ interface FormationHullBucketProps extends CraftPicking {
   shipSkins?: ShipCosmeticEquipment;
   longitudinalOffset?: (index: number, elapsedSeconds: number) => number;
   longitudinalOffsetBound: number;
+  cloaked: boolean;
 }
 
 function FormationHullBucket(props: FormationHullBucketProps) {
@@ -573,7 +584,7 @@ function FormationHullBucket(props: FormationHullBucketProps) {
   );
 }
 
-function LoadedFormationHullBucket({ hull, members, scale, aimDistance, focused, url, lowUrl, longitudinalOffset, longitudinalOffsetBound, onPointerUp, hitboxKind }:
+function LoadedFormationHullBucket({ hull, members, scale, aimDistance, focused, url, lowUrl, longitudinalOffset, longitudinalOffsetBound, onPointerUp, hitboxKind, cloaked }:
   FormationHullBucketProps & { url: string; lowUrl: string }) {
   const [full, low] = useGltfPair(url, lowUrl);
   const scene = full.scene;
@@ -618,6 +629,7 @@ function LoadedFormationHullBucket({ hull, members, scale, aimDistance, focused,
           focused={focused}
           longitudinalOffset={longitudinalOffset}
           longitudinalOffsetBound={longitudinalOffsetBound}
+          cloaked={cloaked}
         />
       ))}
       {lowParts.map((part, index) => (
@@ -633,6 +645,7 @@ function LoadedFormationHullBucket({ hull, members, scale, aimDistance, focused,
           focused={focused}
           longitudinalOffset={longitudinalOffset}
           longitudinalOffsetBound={longitudinalOffsetBound}
+          cloaked={cloaked}
         />
       ))}
     </group>
@@ -715,6 +728,7 @@ function FormationHullPartMesh({
   focused,
   longitudinalOffset,
   longitudinalOffsetBound,
+  cloaked,
 }: {
   /** The bucket's group: the formation space every member's matrix is written from. */
   anchor: RefObject<THREE.Group | null>;
@@ -727,22 +741,29 @@ function FormationHullPartMesh({
   focused: boolean;
   longitudinalOffset?: (index: number, elapsedSeconds: number) => number;
   longitudinalOffsetBound: number;
+  cloaked: boolean;
 }) {
   const batches = useHullBatches();
   const body = useRef<HullBatch | null>(null);
   const outline = useRef<HullBatch | null>(null);
 
   useEffect(() => {
-    const batch = batches.acquire(`body:${lod}:${part.geometry.uuid}:${materialIds(part.material)}`, () => ({
-      geometry: part.geometry, material: hullBodyMaterial(part.material), renderOrder: SHIP_ORDER, name: `formation-hull-bodies-${lod}`,
-    }));
+    // A veiled hull has no body, only the veil's rim: its own batch, shared by every veiled flight (G17).
+    const batch = cloaked
+      ? batches.acquire(`veil:${lod}:${part.geometry.uuid}`, () => ({
+        geometry: part.geometry, material: veilMaterial(), renderOrder: SHIP_ORDER, name: `formation-hull-veils-${lod}`,
+      }))
+      : batches.acquire(`body:${lod}:${part.geometry.uuid}:${materialIds(part.material)}`, () => ({
+        geometry: part.geometry, material: hullBodyMaterial(part.material), renderOrder: SHIP_ORDER, name: `formation-hull-bodies-${lod}`,
+      }));
     body.current = batch;
     return () => {
       body.current = null;
       batches.release(batch);
     };
-  }, [batches, lod, part.geometry, part.material]);
+  }, [batches, lod, part.geometry, part.material, cloaked]);
   useEffect(() => {
+    if (cloaked) return;
     const batch = batches.acquire(`outline:${lod}:${part.geometry.uuid}:${glow}:${String(focused)}`, () => ({
       geometry: part.geometry, material: hullOutlineMaterial(glow, focused), renderOrder: SHIP_ORDER - 1, name: `formation-hull-outlines-${lod}`,
     }));
@@ -751,7 +772,7 @@ function FormationHullPartMesh({
       outline.current = null;
       batches.release(batch);
     };
-  }, [batches, lod, part.geometry, glow, focused]);
+  }, [batches, lod, part.geometry, glow, focused, cloaked]);
 
   const rootMatrix = useMemo(() => new THREE.Matrix4(), []);
   const instanceMatrix = useMemo(() => new THREE.Matrix4(), []);
@@ -770,7 +791,8 @@ function FormationHullPartMesh({
     const space = anchor.current;
     const bodies = body.current;
     const rims = outline.current;
-    if (!space || !bodies || !rims || !shownInScene(space)) return;
+    if (!space || !bodies || (!rims && !cloaked) || !shownInScene(space)) return;
+    if (cloaked) setVeilTime(bodies.mesh.material, clock.elapsedTime);
     if (!culling) space.updateWorldMatrix(true, false);
     else if (!localSphereVisible(visibility, camera, space, radius)) return;
     const parentScale = space.matrixWorld.getMaxScaleOnAxis();
@@ -791,7 +813,7 @@ function FormationHullPartMesh({
       );
       instanceMatrix.multiplyMatrices(space.matrixWorld, rootMatrix).multiply(part.matrix);
       batches.write(bodies, clock.elapsedTime, instanceMatrix);
-      batches.write(rims, clock.elapsedTime, instanceMatrix);
+      if (rims) batches.write(rims, clock.elapsedTime, instanceMatrix);
     });
   });
 
@@ -925,6 +947,8 @@ function Flight({
     : undefined;
   const isProbe = thread.kind === 'probe';
   const isDeathStar = thread.kind === 'death_star';
+  // G17: Optik Örtü on this leg (your own craft): drawn as the veil, see `veil.ts`.
+  const cloaked = veiledFlight(thread);
   const isBomb = thread.kind === 'radiation_bomb';
   const bombVisual = RADIATION_BOMB_VISUAL[thread.radiationBombLevel ?? 1];
   const modelScale = useModelScale();
@@ -1038,6 +1062,7 @@ function Flight({
    */
   const line = useLine();
   const look = routeLook(thread);
+  const speed = corridorSpeedLook(thread.corridor);
   const corridor = useMemo(() => (look.flow ? corridorMaterial(look.colour) : null), [look.flow, look.colour]);
   useEffect(() => () => { corridor?.dispose(); }, [corridor]);
 
@@ -1147,8 +1172,10 @@ function Flight({
 
       <group ref={group} name="flight" userData={{ craftId: id }}>
         {modelScale < 1 && <mesh onPointerUp={pickFleet}><sphereGeometry args={[0.45, 8, 6]} /><meshBasicMaterial visible={false} /></mesh>}
-        {!isProbe && !isDeathStar && !isBomb && appearance?.flagId &&
+        {!isProbe && !isDeathStar && !isBomb && !cloaked && appearance?.flagId &&
           <Suspense fallback={null}><FleetCosmeticFlag id={appearance.flagId} scale={formationScale} /></Suspense>}
+
+        {speed.streaks && !cloaked && <LaneStreaks unit={Math.max(0.05, formationScale)} colour={look.colour} />}
 
         <TrackingMark
           kind={isBomb ? 'radiation_bomb' : isDeathStar ? 'death_star' : isProbe ? 'probe' : 'fleet'}
@@ -1164,8 +1191,9 @@ function Flight({
         <Suspense fallback={null}>
           {markers ? (
             <>
-              {appearance?.engineId && <FormationCosmeticEngines id={appearance.engineId} markers={markers} slots={slots} scale={style.scale} aimDistance={formationAim} shipSkins={appearance.shipSkins} />}
-              <FormationLightField
+              {/* G17: under Optik Örtü the flame, the lights and the wake are gone; the hulls are the veil's rim. */}
+              {!cloaked && appearance?.engineId && <FormationCosmeticEngines id={appearance.engineId} markers={markers} slots={slots} scale={style.scale} aimDistance={formationAim} shipSkins={appearance.shipSkins} />}
+              {!cloaked && <FormationLightField
                 customEngine={Boolean(appearance?.engineId)}
                 shipSkins={appearance?.shipSkins}
                 markers={markers}
@@ -1173,14 +1201,16 @@ function Flight({
                 scale={style.scale}
                 aimDistance={formationAim}
                 focused={focused}
+                intensity={speed.intensity}
+                plume={speed.plume}
                 showPips
-              />
-              <FormationWakes
+              />}
+              {!cloaked && <FormationWakes
                 markers={markers}
                 slots={slots}
                 scale={style.scale}
                 aimDistance={formationAim}
-              />
+              />}
               <FormationHulls
                 markers={markers}
                 slots={slots}
@@ -1190,6 +1220,7 @@ function Flight({
                 shipSkins={appearance?.shipSkins}
                 onPointerUp={pickFleet}
                 hitboxKind={isDeathStar ? 'deathStar' : isProbe ? 'probe' : 'fleet'}
+                cloaked={cloaked}
               />
               {towing.tugIndex !== null && towing.tows.length > 0 && <TowedShips HullsComponent={FormationHulls} shipSkins={appearance?.shipSkins} onPointerUp={pickFleet}
                 tows={towing.tows} tug={markers[towing.tugIndex]!} tugSlot={slots[towing.tugIndex]!}
@@ -1316,6 +1347,7 @@ export function FormationLightField({
   showPips,
   name = 'formation-lights',
   intensity = 1,
+  plume = 1,
   customEngine = false,
   shipSkins,
   longitudinalOffset,
@@ -1329,14 +1361,16 @@ export function FormationLightField({
   showPips: boolean;
   name?: string;
   intensity?: number;
+  /** How much longer every engine plume reaches: a clan corridor leg burns long. */
+  plume?: number;
   customEngine?: boolean;
   shipSkins?: ShipCosmeticEquipment;
   longitudinalOffset?: (markerIndex: number, elapsedSeconds: number) => number;
   longitudinalOffsetBound?: number;
 }) {
   const failureVersion = useReferenceShipFailures();
-  const units = useMemo(() => formationEngineUnits(markers, slots, scale, shipSkins, intensity),
-    [markers, slots, scale, shipSkins, failureVersion, intensity]);
+  const units = useMemo(() => formationEngineUnits(markers, slots, scale, shipSkins, intensity, plume),
+    [markers, slots, scale, shipSkins, failureVersion, intensity, plume]);
 
   return (
     <>
@@ -2845,6 +2879,8 @@ function Foreign({
   });
 
   if (spent) return null;
+  // G17: a clanmate's Optik Örtü flight (only the clan ever receives it), drawn as the veil.
+  const cloaked = veiledFlight(contact);
 
   const pickContact = (event: ThreeEvent<PointerEvent>): void => {
     if (!wasTap()) return;
@@ -2886,7 +2922,7 @@ function Foreign({
           payload had arrived. Keep the live marker mounted and let only the heavy
           hull geometry wait for its asset.
         */}
-        {contact.kind === 'fleet' && contact.appearance?.flagId &&
+        {contact.kind === 'fleet' && !cloaked && contact.appearance?.flagId &&
           <Suspense fallback={null}><FleetCosmeticFlag id={contact.appearance.flagId} scale={formationScale} /></Suspense>}
         <Suspense fallback={null}>
           {markers ? (
@@ -2903,7 +2939,7 @@ function Foreign({
                 current either way (the rock lane's rule), and a dimmed ship reads as
                 a rendering fault rather than as a sentence about sight.
               */}
-              {contact.kind === 'fleet' && contact.appearance?.engineId && <FormationCosmeticEngines id={contact.appearance.engineId} markers={markers} slots={slots} scale={style.scale} aimDistance={formationAim} shipSkins={contact.appearance.shipSkins} />}
+              {contact.kind === 'fleet' && !cloaked && contact.appearance?.engineId && <FormationCosmeticEngines id={contact.appearance.engineId} markers={markers} slots={slots} scale={style.scale} aimDistance={formationAim} shipSkins={contact.appearance.shipSkins} />}
               {contact.kind === 'pirate' ? (
                 <PirateEngineFlames
                   markers={markers}
@@ -2913,7 +2949,7 @@ function Foreign({
                   focused={focused}
                   showPips={exactFleet}
                 />
-              ) : (
+              ) : cloaked ? null : (
                 <FormationLightField
                   customEngine={Boolean(contact.appearance?.engineId)}
                   shipSkins={contact.kind === 'fleet' ? contact.appearance?.shipSkins : undefined}
@@ -2927,12 +2963,12 @@ function Foreign({
                   showPips={exactFleet}
                 />
               )}
-              <FormationWakes
+              {!cloaked && <FormationWakes
                 markers={markers}
                 slots={slots}
                 scale={style.scale}
                 aimDistance={formationAim}
-              />
+              />}
               <FormationHulls
                 markers={markers}
                 slots={slots}
@@ -2942,6 +2978,7 @@ function Foreign({
                 shipSkins={contact.kind === 'fleet' ? contact.appearance?.shipSkins : undefined}
                 onPointerUp={pickContact}
                 hitboxKind={CONTACT_HITBOX_KIND[contact.kind]}
+                cloaked={cloaked}
               />
               {contact.kind === 'fleet' && towing.tugIndex !== null && towing.tows.length > 0 && <TowedShips HullsComponent={FormationHulls} shipSkins={contact.appearance?.shipSkins} onPointerUp={pickContact}
                 tows={towing.tows} tug={markers[towing.tugIndex]!} tugSlot={slots[towing.tugIndex]!}

@@ -8,25 +8,25 @@ import { loadEnv } from '../../src/env.js';
 import { fakeShips } from './fakeShips.js';
 
 /**
- * The live playtest path: no guests, no debug actions. Pilots are real accounts on the
- * ARENA_PILOTS list, identified by their access token. Owner 2026-10-21: three bots
+ * The live path: no guests, no debug actions. Pilots are real signed-in accounts, identified by
+ * their access token; every account may fly (owner 2026-11-24). Owner 2026-10-21: three bots
  * fly the room beside them; since 2026-10-27 only when the host asks (`ARENA_BOTS`).
  */
 const ORIGIN = 'https://asteraonline.space';
-const ACCOUNTS: Record<string, { accountId: string; username: string; name: string; pilot: boolean }> = {
-  'token-alice': { accountId: '00000000-0000-4000-8000-00000000000a', username: 'alice', name: 'Alice', pilot: false },
-  'token-bob': { accountId: '00000000-0000-4000-8000-00000000000b', username: 'bob', name: 'Bob', pilot: false },
-  'token-carol': { accountId: '00000000-0000-4000-8000-00000000000c', username: 'carol', name: 'Carol', pilot: false },
-  'token-dave': { accountId: '00000000-0000-4000-8000-00000000000d', username: 'dave', name: 'Dave', pilot: true },
+const ACCOUNTS: Record<string, { accountId: string; username: string; name: string }> = {
+  'token-alice': { accountId: '00000000-0000-4000-8000-00000000000a', username: 'alice', name: 'Alice' },
+  'token-bob': { accountId: '00000000-0000-4000-8000-00000000000b', username: 'bob', name: 'Bob' },
+  'token-carol': { accountId: '00000000-0000-4000-8000-00000000000c', username: 'carol', name: 'Carol' },
+  'token-dave': { accountId: '00000000-0000-4000-8000-00000000000d', username: 'dave', name: 'Dave' },
 };
 const identify: ArenaIdentify = token => Promise.resolve(ACCOUNTS[token] ?? null);
 
 const closers: (() => Promise<void>)[] = [];
 afterEach(async () => { while (closers.length) await closers.pop()?.(); });
 
-async function room(pilots = 'alice,bob', extra: Record<string, string> = {}) {
+async function room(extra: Record<string, string> = {}) {
   const env = loadEnv({ DATABASE_URL: 'postgres://test/arena_test', JWT_SECRET: 'test-secret-that-is-long-enough',
-    ROLE: 'arena', ARENA_ENABLED: 'true', ARENA_ALLOWED_ORIGINS: ORIGIN, ARENA_PILOTS: pilots, ARENA_BOTS: '3', ...extra });
+    ROLE: 'arena', ARENA_ENABLED: 'true', ARENA_ALLOWED_ORIGINS: ORIGIN, ARENA_BOTS: '3', ...extra });
   const app = Fastify();
   app.decorate('clock', systemClock);
   // Every launch is granted: the hangar's own rules are `arena-ships.test.ts` and `sortie.test.ts`.
@@ -74,23 +74,21 @@ describe('arena live playtest access', () => {
     expect(await guest.next(kind('kick'))).toEqual({ kind: 'kick', reason: 'auth' });
   });
 
-  it('admits a commander seated from the admin desk with no env list', async () => {
-    const { url } = await room('');
-    const dave = await connect(url, { token: 'token-dave' });
-    expect(await dave.next(kind('welcome'))).toMatchObject({ kind: 'welcome' });
-    const carol = await connect(url, { token: 'token-carol' });
-    expect(await carol.next(kind('kick'))).toEqual({ kind: 'kick', reason: 'denied' });
+  it('admits any signed-in account, whoever they are', async () => {
+    const { url } = await room();
+    for (const token of ['token-alice', 'token-carol', 'token-dave']) {
+      const pilot = await connect(url, { token });
+      expect(await pilot.next(kind('welcome'))).toMatchObject({ kind: 'welcome' });
+    }
   });
 
-  it('refuses an unknown token and an account that is not on the pilot list', async () => {
+  it('refuses an unknown token', async () => {
     const { url } = await room();
     const forged = await connect(url, { token: 'forged' });
     expect(await forged.next(kind('kick'))).toEqual({ kind: 'kick', reason: 'auth' });
-    const carol = await connect(url, { token: 'token-carol' });
-    expect(await carol.next(kind('kick'))).toEqual({ kind: 'kick', reason: 'denied' });
   });
 
-  it('seats listed pilots under their display names, beside the room\'s three bots', async () => {
+  it('seats pilots under their display names, beside the room\'s three bots', async () => {
     const { url } = await room();
     const alice = await connect(url, { token: 'token-alice' });
     await alice.next(kind('welcome'));
@@ -100,13 +98,7 @@ describe('arena live playtest access', () => {
     expect(people(welcome).map(p => p.name).sort()).toEqual(['Alice', 'Bob']);
     expect(pilotsOf(welcome).flatMap(p => p.role ?? []).sort()).toEqual(['hunter', 'miner', 'patrol']);
     const roster = await alice.next(m => kind('roster')(m) && people(m).length === 2);
-    expect(people(roster).every(p => p.points === 0 && p.kills === 0 && p.deaths === 0)).toBe(true);
-  });
-
-  it('opens the room to any signed-in account when the list is a star', async () => {
-    const { url } = await room('*');
-    const carol = await connect(url, { token: 'token-carol' });
-    expect(await carol.next(kind('welcome'))).toMatchObject({ kind: 'welcome' });
+    expect(people(roster).every(p => !('points' in p) && p.kills === 0 && p.deaths === 0)).toBe(true);
   });
 
   it('gives the same account one ship: a second socket replaces the first', async () => {
@@ -165,63 +157,74 @@ describe('arena live playtest access', () => {
   });
 });
 
-describe('farm points', () => {
-  it('banks a hold\'s points once per extraction and keeps adding them across flights', async () => {
-    const { url, arena } = await room();
-    const alice = await connect(url, { token: 'token-alice' });
-    const id = (await alice.next(kind('welcome')) as { pilotId: number }).pilotId;
-    const ship = () => {
-      const found = arena.world.drones.find(p => p.id === id);
-      if (!found) throw new Error('no ship');
-      return found;
-    };
-    Object.assign(ship(), { hold: [10, 5, 2], cargo: 17, phase: 'extracted' });
-    await alice.next(m => kind('roster')(m) && pilotsOf(m).some(p => p.id === id && p.points === 26));
-    await new Promise(resolve => setTimeout(resolve, 150));
-    const banked = alice.messages.filter(m => kind('roster')(m) && pilotsOf(m).some(p => p.id === id && (p.points ?? 0) > 26));
-    expect(banked).toEqual([]);
-    alice.socket.send(JSON.stringify({ kind: 'dev', action: 'restart' }));
-    await new Promise(resolve => setTimeout(resolve, 150));
-    expect(ship()).toMatchObject({ phase: 'flying', cargo: 0, hold: [0, 0, 0] });
-    Object.assign(ship(), { hold: [0, 0, 4], cargo: 4, phase: 'extracted' });
-    await alice.next(m => kind('roster')(m) && pilotsOf(m).some(p => p.id === id && p.points === 38));
-  });
-
-  it('banks nothing for a ship that died with a full hold', async () => {
+/*
+  NO SCORE (owner 2026-11-25: "Yarık'ta puan diye bir şey yok … Puan logic'ini kaldır"). A hold is worth what it
+  lands in the capital; the room's own record is who destroyed whom.
+*/
+describe('the room keeps no score', () => {
+  it('banks nothing for an extraction: the rows carry kills and deaths, never points', async () => {
     const { url, arena } = await room();
     const alice = await connect(url, { token: 'token-alice' });
     const id = (await alice.next(kind('welcome')) as { pilotId: number }).pilotId;
     const ship = arena.world.drones.find(p => p.id === id);
     if (!ship) throw new Error('no ship');
-    Object.assign(ship, { hold: [50, 0, 0], cargo: 50, phase: 'dead' });
+    Object.assign(ship, { hold: [10, 5, 2, 1], cargo: 18, phase: 'extracted' });
+    await new Promise(resolve => setTimeout(resolve, 200));
+    Object.assign(ship, { phase: 'dead' });
     const roster = await alice.next(m => kind('roster')(m) && pilotsOf(m).some(p => p.id === id && p.deaths === 1));
-    expect(pilotsOf(roster).find(p => p.id === id)?.points).toBe(0);
+    for (const message of alice.messages.filter(m => kind('roster')(m) || kind('welcome')(m))) {
+      for (const row of pilotsOf(message)) expect(row).not.toHaveProperty('points');
+    }
+    expect(pilotsOf(roster).find(p => p.id === id)).toMatchObject({ kills: 0, deaths: 1 });
+  });
+});
+
+/*
+  THE DEV ROOM FLIES A SIGNED-IN COMMANDER AS THEMSELVES (2026-11-25: the owner's lab flight was a guest,
+  "Pilot -2", so nothing it carried could reach the capital). The page sends a guest id with every hello;
+  a token beside it wins.
+*/
+describe('the dev room', () => {
+  it('seats a signed-in commander under their own name even when the hello carries a guest id', async () => {
+    const { url } = await room({ ARENA_DEV: 'true' });
+    const alice = await connect(url, { token: 'token-alice', guestId: 'guest-dev-signed-in-1' });
+    const welcome = await alice.next(kind('welcome')) as { pilotId: number };
+    expect(pilotsOf(welcome).find(p => p.id === welcome.pilotId)?.name).toBe('Alice');
+  });
+
+  it('numbers its guests from one, with or without bots', async () => {
+    for (const bots of ['0', '3']) {
+      const { url } = await room({ ARENA_DEV: 'true', ARENA_BOTS: bots });
+      const guest = await connect(url, { guestId: `guest-dev-number-${bots}` });
+      const welcome = await guest.next(kind('welcome')) as { pilotId: number };
+      expect(pilotsOf(welcome).find(p => p.id === welcome.pilotId)?.name).toBe('Pilot 1');
+    }
   });
 });
 
 describe('arena socket origins', () => {
   /** The bundled app's page is https://localhost; the API already trusts it through NATIVE_APP_ORIGINS. */
   it('admits the bundled app\'s origin the API trusts, and nothing else', async () => {
-    const { url } = await room('alice', { NATIVE_APP_ORIGINS: 'https://localhost' });
+    const { url } = await room({ NATIVE_APP_ORIGINS: 'https://localhost' });
     const app = await connect(url, { token: 'token-alice' }, 'https://localhost');
     expect(await app.next(kind('welcome'))).toMatchObject({ kind: 'welcome' });
     await expect(connect(url, { token: 'token-alice' }, 'https://evil.example')).rejects.toThrow(/403/);
   });
 
   it('keeps the app\'s origin out while the API does not trust it', async () => {
-    const { url } = await room('alice');
+    const { url } = await room();
     await expect(connect(url, { token: 'token-alice' }, 'https://localhost')).rejects.toThrow(/403/);
   });
 });
 
 describe('arena access probe', () => {
-  it('answers whether the bearer may enter, without revealing anything else', async () => {
+  it('answers whether the bearer may enter (any signed-in account), without revealing anything else', async () => {
     const { app } = await room();
     const ask = async (authorization?: string) => (await app.inject({ method: 'GET', url: '/arena/access',
       headers: authorization ? { authorization } : {} })).json<unknown>();
     expect(await ask()).toEqual({ allowed: false });
     expect(await ask('Bearer forged')).toEqual({ allowed: false });
-    expect(await ask('Bearer token-carol')).toEqual({ allowed: false });
+    expect(await ask('Bearer token-carol')).toEqual({ allowed: true });
     expect(await ask('Bearer token-alice')).toEqual({ allowed: true });
   });
 });

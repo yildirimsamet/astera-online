@@ -14,6 +14,7 @@ import {
   exactPowerRange,
   fleetCargo,
   fleetCount,
+  honorFuelCost,
   missionFuel,
   readPowerRange,
 } from '@astera/rules';
@@ -120,6 +121,8 @@ interface Common {
   readonly distance: number;
   /** What is in the tank. A flight it cannot fuel is not a plan. */
   readonly deuterium: number;
+  /** Optional Honor fuel surcharge percent (0 or 25). */
+  readonly fuelPct?: number;
 }
 
 /**
@@ -176,7 +179,7 @@ function smallestWing(
     if (fleetCount(wing) === 0 || key === previous) continue;
     previous = key;
 
-    const fuel = missionFuel(wing, common.distance, 2);
+    const fuel = honorFuelCost(missionFuel(wing, common.distance, 2), { fuelPct: common.fuelPct ?? 0 });
     if (fuel > common.deuterium) continue;
 
     if (hopeless(wing, wallHigh)) continue;

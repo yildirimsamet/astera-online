@@ -6,7 +6,8 @@ import { honorSide } from '../src/honor.js';
 describe('frozen Honor military valuation', () => {
   const catalogue = createHonorCatalogue();
   it('freezes strategic prices separately from the ordinary hull catalogue', () => {
-    expect(createHonorStrategicCatalogue()).toEqual({ DEATH_STAR: 216000, INTERCEPTOR: 71710 });
+    // A quarter off both prices (owner 2026-11-24); live seasons keep the catalogue they froze.
+    expect(createHonorStrategicCatalogue()).toEqual({ DEATH_STAR: 162000, INTERCEPTOR: 53760 });
     expect(catalogue.DEATH_STAR).toBeUndefined();
     expect(honorStrategicValue({ DEATH_STAR: 123, INTERCEPTOR: 456 }, 'DEATH_STAR')).toBe(123);
   });

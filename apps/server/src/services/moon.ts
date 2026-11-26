@@ -36,6 +36,7 @@ export async function seedMoonAt(tx: Tx, input: {
     // The column is a signed int; the hash is unsigned.
     visualSeed: hashSeed('moon-visual', input.seasonId, input.slotIndex) % 2_147_483_647,
     bornAt: input.now,
+    asteriumSyncedAt: input.now,
   });
   return true;
 }

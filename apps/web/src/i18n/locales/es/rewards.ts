@@ -17,7 +17,7 @@ export const rewards = {
   summaryReady: "Listas para reclamar",
   summaryClaimed: "Hitos reclamados",
   allMilestones: "Todos los hitos",
-  eyebrow: 'Recompensas permanentes',
+  eyebrow: 'Misiones y metas',
   title: 'Recompensas',
   intro:
     "Sin caducidad ni rachas. Va a tu almacén; lo no protegido puede ser saqueado.",
@@ -40,6 +40,27 @@ export const rewards = {
     poured: 'A tu almacén: {{purse}}',
     skinRingHelios: 'Anillo Helios',
     skinEngineTitan: 'Impulso Titán',
+  },
+  /** GÜNLÜK GÖREVLER (owner, 2026-11-24): four acts, each paying a small purse once a UTC day. */
+  /** Rewards in two tabs (owner 2026-11-24): the day's quests, and the standing goals. */
+  tabs: {
+    label: 'Secciones de recompensas',
+    daily: 'Diarias',
+    goals: 'Metas',
+  },
+  daily: {
+    title: 'Misiones diarias',
+    granted: '+{{alloy}} aleación · +{{crystal}} cristal · +{{honor}} Honor',
+    resets: 'Se renueva en {{time}}',
+    about: 'Cómo funcionan las misiones diarias',
+    fact: 'Cada misión paga una vez al día.',
+    rule: 'Cuenta lo que haces hoy; el día vuelve a empezar a las 00:00 UTC, en el mismo instante para todos. Recoge una misión terminada: la recompensa entra en el almacén de tu capital, donde pueden saquearla. Un día perdido no te cuesta nada.',
+    quests: {
+      PROBES: 'Envía 3 sondas',
+      RIFT: 'Vuela al Yarık',
+      PIRATE: 'Caza a un pirata',
+      ASTEROID: 'Explota un asteroide',
+    },
   },
   takeAll: 'Tomar todo · {{count}}',
   go: 'Ir',

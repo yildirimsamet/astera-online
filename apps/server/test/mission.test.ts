@@ -171,10 +171,10 @@ describe('launching a fleet', () => {
       ).rejects.toMatchObject({ code: 'TIER_BAND_WEAK' });
     });
 
-    it('stops the fourth raid on the same target inside the window', async () => {
-      // Both commanders are tier 4: tier 1–3 now has a separate battle-time cooldown.
-      await setLevel(f.db, attacker, 'CORE', 10);
-      await setLevel(f.db, defender, 'CORE', 10);
+    it('stops the raid beyond the bash limit on the same target inside the window', async () => {
+      // Both commanders are tier 5: tier 1–4 uses the separate 12h battle-time cooldown.
+      await setLevel(f.db, attacker, 'CORE', 13);
+      await setLevel(f.db, defender, 'CORE', 13);
       const worker = new EventWorker(
         f.db,
         f.clock,

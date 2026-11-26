@@ -36,7 +36,7 @@ describe('the real season honor-shadow command', () => {
     expect(await snapshot()).toEqual(before);
     const applied = await command(['--season', f.seasonId, '--yes'], 'honor-benefits');
     expect(applied.ok, applied.stderr).toBe(true);
-    expect((await f.db.select().from(honorSeasons))[0]?.benefitsVersion).toBe(1);
+    expect((await f.db.select().from(honorSeasons))[0]?.benefitsVersion).toBe(2);
     const after = await snapshot();
     expect(after.totals).toEqual(before.totals);
     expect(after.samples).toEqual(before.samples);

@@ -1,6 +1,6 @@
 import { isAway, MOON_LOCATION } from './unitLocation.js';
 import { commanderPvpBalance } from './pvpBalance.js';
-import { and, asc, desc, eq, gt, inArray, isNull, lte, ne, or } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, lte, ne, or, sql } from 'drizzle-orm';
 import {
   faultsPossible,
   hasFault,
@@ -9,6 +9,8 @@ import {
   radiationBombLevel,
   partitionCombatFleet,
   INSTRUMENT_IDS,
+  PROBE_DEFENCE,
+  settleProbeBattery,
   SHIELD,
   SATELLITE_IDS,
   buildingCost,
@@ -48,7 +50,7 @@ import {
 import type { Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
 import { batchReads } from '../db/readBatch.js';
-import { buildOrders, galaxyEventOccurrences, intergalacticConvoyRuns, moonMoves, moons, players, strategicAssets } from '../db/schema.js';
+import { buildOrders, galaxyEventOccurrences, intergalacticConvoyRuns, moonMoves, moons, players, probeBatteries, probeShots, strategicAssets } from '../db/schema.js';
 import { baysFor } from './flight.js';
 import { loadPlanetViewStates, type LockedPlanet } from './planet.js';
 import { asTech, buildResearchView, loadResearchViewData, type ResearchInsight } from './researchState.js';
@@ -179,7 +181,7 @@ export async function loadPlanetViewsData(tx: Tx, planetIds: readonly string[], 
   const head = states[0]!.planet;
   const ids = states.map(state => state.planet.planetId);
   const rows = <T extends { planetId: string }>(all: readonly T[], id: string) => all.filter(row => row.planetId === id);
-  const [commander, assets, queued, active, spent, dockLots, flight, clanSupport, workshop, moonRows, pendingMoonMoves] = await Promise.all([
+  const [commander, assets, queued, active, spent, dockLots, flight, clanSupport, workshop, moonRows, pendingMoonMoves, batteries] = await Promise.all([
     loadCommanderViewData(tx, head, options.insight),
     tx.select().from(strategicAssets).where(and(inArray(strategicAssets.planetId, ids), PAD_HARDWARE))
       .orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id)),
@@ -207,6 +209,12 @@ export async function loadPlanetViewsData(tx: Tx, planetIds: readonly string[], 
       eq(moonMoves.status, 'PENDING'),
       or(inArray(moonMoves.fromPlanetId, ids), inArray(moonMoves.toPlanetId, ids)),
     )).orderBy(asc(moonMoves.arriveAt)),
+    // The battery and the probes it shot down in the notice window, in one read (2026-11-24).
+    tx.select({
+      row: probeBatteries,
+      recentShots: sql<number>`(select count(*)::int from ${probeShots} where ${probeShots.targetPlanetId} = ${probeBatteries.planetId}
+        and ${probeShots.shotAt} > ${new Date(now.getTime() - PROBE_DEFENCE.noticeWindowMinutes * 60_000).toISOString()}::timestamptz)`,
+    }).from(probeBatteries).where(inArray(probeBatteries.planetId, ids)),
   ]);
   const moonByPlanet = new Map(moonRows.map((row) => [row.planetId, row]));
   return states.map(({ planet: p, unitRows, faultRows }) => ({
@@ -221,6 +229,7 @@ export async function loadPlanetViewsData(tx: Tx, planetIds: readonly string[], 
     workshopIrradiated: workshop.get(p.planetId) ?? false,
     moonRow: moonByPlanet.get(p.planetId) ?? null,
     moonMoveRows: pendingMoonMoves.filter((m) => m.fromPlanetId === p.planetId || m.toPlanetId === p.planetId),
+    probeBattery: batteries.find((battery) => battery.row.planetId === p.planetId) ?? null,
   }));
 }
 
@@ -247,7 +256,7 @@ export function buildPlanetResult<T extends { planet: PlanetViewData }>(result: 
 /** No queries or writes: safe to run after the capturing transaction commits. */
 export function buildPlanetView(data: PlanetViewData) {
   const { p, commander, assets, queued, activeConvoy, spentConvoy, unitRows, faultRows,
-    dockLots, flight, clanSupport, workshopIrradiated, moonRow, moonMoveRows } = data;
+    dockLots, flight, clanSupport, workshopIrradiated, moonRow, moonMoveRows, probeBattery } = data;
   const { player, researchData, researchQueue, colonies, hasMembership, queuedResearch, benefits, honorTacticalCredit } = commander;
   const pad = assets.filter(row => row.type === 'DEATH_STAR').toSorted(padOrder);
   const interceptors = assets.filter(row => row.type === 'INTERCEPTOR').toSorted(padOrder);
@@ -287,6 +296,12 @@ export function buildPlanetView(data: PlanetViewData) {
       dockFree: dockFree(moonRow.rarity, dockUsed, inboundBulk),
       scanRange: scanRange(moonRow.rarity),
       scanPierces: scanPierces(moonRow.rarity),
+      // Where the moon's Asteryum stands (owner 2026-11-25); the client counts on from here with the rules.
+      asterium: {
+        syncedAt: moonRow.asteriumSyncedAt.toISOString(),
+        fraction: moonRow.asteriumFraction,
+        produced: moonRow.asteriumProduced,
+      },
       moves: moonMoveRows.map((m) => ({
         id: m.id,
         kind: m.kind,
@@ -337,8 +352,8 @@ export function buildPlanetView(data: PlanetViewData) {
     resumes the same vessels; an outage does not shrink them.
   */
   // D212: Silent Space halves what runs; every ceiling below keeps reading the rated figure.
-  // F2 Ortak Ocak: the clan's share runs on top, exactly as the tick applies it.
-  const pace = (p.vacationUntil ? 0 : p.silentSpace ? SILENT_SPACE.productionPace : 1) * (1 + p.clanBonus);
+  // F2 Ortak Ocak & Honor Tier -4: run on top, exactly as the tick applies them.
+  const pace = (p.vacationUntil ? 0 : p.silentSpace ? SILENT_SPACE.productionPace : 1) * (1 + p.clanBonus) * (1 + p.honorProductionShare);
   const perHourAlloy = hasFault(p.faults, 'REFINERY_OUTAGE') ? 0 : nominalPerHourAlloy * pace;
   const perHourCrystal = hasFault(p.faults, 'EXTRACTOR_OUTAGE') ? 0 : nominalPerHourCrystal * pace;
   const perHourDeuterium = hasFault(p.faults, 'PLANT_OUTAGE') ? 0 : nominalPerHourDeuterium * pace;
@@ -557,6 +572,11 @@ export function buildPlanetView(data: PlanetViewData) {
     /** Compatibility head plus the complete two-charge battery. */
     interceptor: interceptors[0] ? strategicView(interceptors[0]) : null,
     interceptors: interceptors.map(strategicView),
+    /**
+     * THE PROBE BATTERY AS STORED (2026-11-24). The client counts the live charges from it
+     * with `probeBatteryCharges`, so the refill ring moves without a refetch. Null: none built.
+     */
+    probeBattery: probeBattery ? probeBatteryView(probeBattery.row, probeBattery.recentShots, p.now) : null,
     radiationBombsAvailable: !!p.radiationBombStartsAt && p.radiationBombStartsAt <= p.now,
     radiationBombs: assets.flatMap(row => {
       const level = radiationBombLevel(row.type);
@@ -705,3 +725,27 @@ function buildOrderView(order: typeof buildOrders.$inferSelect, pausedAt: Date |
 }
 
 export type PlanetView = Awaited<ReturnType<typeof planetView>>;
+
+/**
+ * THE PROBE BATTERY, WITH AN UPGRADE THAT HAS LANDED FOLDED IN (owner, 2026-11-24: levels).
+ * The client counts live charges from `charges`/`chargedAt` at `level`, so the refill moves
+ * without a refetch; `upgradeLevel` is set only while an upgrade is still running.
+ */
+function probeBatteryView(row: typeof probeBatteries.$inferSelect, recentShots: number, now: Date) {
+  const settled = settleProbeBattery({
+    level: row.level, charges: row.charges, chargedAt: row.chargedAt.getTime(),
+    upgradeLevel: row.upgradeLevel, upgradeReadyAt: row.upgradeReadyAt?.getTime() ?? null,
+  }, now.getTime());
+  return {
+    startedAt: row.startedAt,
+    readyAt: row.readyAt,
+    level: settled.level,
+    charges: settled.stock.charges,
+    chargedAt: new Date(settled.stock.chargedAt),
+    upgradeLevel: settled.upgrading ? row.upgradeLevel : null,
+    upgradeStartedAt: settled.upgrading ? row.upgradeStartedAt : null,
+    upgradeReadyAt: settled.upgrading ? row.upgradeReadyAt : null,
+    /** Probes it shot down in the notice window: the battery seen working. */
+    recentShots,
+  };
+}

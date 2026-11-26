@@ -7,7 +7,7 @@ import {
 
 function snapshot(): ArenaSnapshot {
   const self = createPilot(4);
-  self.landed = 3; self.nx = 0; self.ny = 1; self.nz = 0; self.mining = true; self.cargo = 12.5; self.hold = [2.5, 6, 4];
+  self.landed = 3; self.nx = 0; self.ny = 1; self.nz = 0; self.mining = true; self.cargo = 12.5; self.hold = [2.5, 6, 4, 1];
   return { kind: 'snap', tick: 10, ack: 3, self: packPilot(self), others: [packRemote(createPilot(5))], mid: [packRemote(createPilot(7))], far: [packFar(createPilot(6))],
     ...keyFeed(createSandboxWorld({ bots: 0 })), scan: [6] };
 }
@@ -31,14 +31,14 @@ describe('arena protocol v14', () => {
   });
   it('is a new version: signatures and the B slot travel (Y4c, signatures.test.ts); others travel in three tiers', () => {
     // 15 (owner 2026-10-27): hulls 50 % stronger; the decoder's bounds moved with them, so a page on 14 reloads.
-    expect(ARENA_PROTOCOL).toBe(16);
+    expect(ARENA_PROTOCOL).toBe(19);
     // 800 m / 1.6 km / 2.4 km (owner 2026-10-23): every snapshot, every other one, every third one.
     expect(REMOTE_NEAR_RANGE).toBe(800);
     expect(MID_EVERY).toBe(T.tickRate / T.snapshotRate * 2);
     expect(FAR_EVERY).toBe(T.tickRate / T.snapshotRate * 3);
     // The view runs two snapshots behind (interpDelay): a middle ship is drawn between two of its samples.
     expect(MID_EVERY).toBeLessThanOrEqual(Math.round(T.interpDelay * T.tickRate));
-    expect(PILOT_WIDTH).toBe(75);
+    expect(PILOT_WIDTH).toBe(76);
     expect(MAX_REMOTE_PILOTS).toBe(50);
     expect(REMOTE_WIDTH).toBeLessThan(PILOT_WIDTH / 2);
     expect(FAR_WIDTH).toBeLessThan(REMOTE_WIDTH);
@@ -119,7 +119,7 @@ describe('arena protocol v14', () => {
       pilot.s = Math.abs(v[3] ?? 0); pilot.landed = 5; pilot.nx = 0.6; pilot.ny = 0.8; pilot.nz = 0;
       pilot.landThrottle = 0.2; pilot.liftoff = 4; pilot.bump = 0.5; pilot.kx = 3; pilot.ky = -2; pilot.kz = 0.5; pilot.mining = true; pilot.phase = 'fuelOut';
       pilot.ammo = 123; pilot.shieldMax = 80; pilot.shieldHp = 35;
-      pilot.hold = [Math.abs(v[4] ?? 0) / 10, Math.abs(v[5] ?? 0) / 10, Math.abs(v[6] ?? 0) / 10];
+      pilot.hold = [Math.abs(v[4] ?? 0) / 10, Math.abs(v[5] ?? 0) / 10, Math.abs(v[6] ?? 0) / 10, Math.abs(v[7] ?? 0) / 10];
       pilot.cargo = pilot.hold.reduce((sum, n) => sum + n, 0);
       const packed = packPilot(pilot);
       expect(packed).toHaveLength(PILOT_WIDTH);
@@ -149,7 +149,7 @@ describe('arena protocol v14', () => {
     // A farm piece names its kind; an unknown kind would draw and score as nothing.
     const piece = [0, 1, 2, 3, 5, 2];
     expect(decodeArenaSnapshot(broken({ cargo: [piece] }))?.cargo).toEqual([piece]);
-    expect(decodeArenaSnapshot(broken({ cargo: [[0, 1, 2, 3, 5, 3]] }))).toBeNull();
+    expect(decodeArenaSnapshot(broken({ cargo: [[0, 1, 2, 3, 5, 4]] }))).toBeNull();
     expect(decodeArenaSnapshot(broken({ cargo: [[ARENA_POOLS.cargo, 1, 2, 3, 5, 0]] }))).toBeNull();
     expect(decodeArenaSnapshot(broken({ cargo: [[0, 1, 2, 3, 5]] }))).toBeNull();
     // Every row and every "gone" names a slot inside its pool, and no list outgrows its pool.
@@ -178,7 +178,7 @@ describe('arena protocol v14', () => {
     negativeHold[PILOT_WIDTH - 9] = -1;
     expect(decodeArenaSnapshot(broken({ self: negativeHold }))).toBeNull();
     // Y4c/Y4d: an unknown tactic or warning, a copy that names no ship, or a missile in no slot.
-    for (const [at, value] of [[PILOT_WIDTH - 24, 4], [PILOT_WIDTH - 24, 0.5], [PILOT_WIDTH - 20, 5], [PILOT_WIDTH - 26, -2], [PILOT_WIDTH - 26, 0.5]] as const) {
+    for (const [at, value] of [[PILOT_WIDTH - 25, 4], [PILOT_WIDTH - 25, 0.5], [PILOT_WIDTH - 21, 5], [PILOT_WIDTH - 27, -2], [PILOT_WIDTH - 27, 0.5]] as const) {
       const row = packPilot(createPilot(4)); row[at] = value;
       expect(decodeArenaSnapshot(broken({ self: row }))).toBeNull();
     }

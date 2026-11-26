@@ -33,6 +33,7 @@ import type {
 } from '@astera/rules';
 import type { z } from 'zod';
 import type {
+  CapsuleIdView,
   ClanChatPage,
   ChatPage,
   DmPage,
@@ -61,6 +62,7 @@ import { CONTACT_WINDOW_SETTLE_OFFSETS } from '../session/arrivalTiming.js';
 import { readIntelSnapshot } from './sightCache.js';
 import { CHAT_READ_COALESCE_MS, coalesceLatest } from './coalesceLatest.js';
 import { serverNow } from '../lib/clock.js';
+import { dailyRefetchDelay } from '../lib/dailyQuests.js';
 import { worksAt } from '../lib/projection.js';
 import {
   predictBuild,
@@ -647,6 +649,71 @@ export function useClaimReward() {
   });
 }
 
+/**
+ * GÜNLÜK GÖREVLER (owner, 2026-11-24): today's four quests, counted by the server from what was done today.
+ * A launch, a landing or a private reward event refreshes it; a stale read costs one request when the panel opens.
+ */
+export function useDailyQuests() {
+  const api = useApi();
+  return useQuery({
+    queryKey: keys.dailyQuests, queryFn: api.dailyQuests, ...READ, retry: false,
+    // The galaxy's daily key lives on this read, so the new day arrives by itself, just past the reset.
+    refetchInterval: (query) => dailyRefetchDelay(query.state.data?.resetsAt, Date.now()),
+  });
+}
+
+/** SENTEZ LABORATUVARI (plan 2026-11-24): the laboratory, its stock and the next storm. */
+export function useSynthesis(enabled = true) {
+  const api = useApi();
+  return useQuery({ queryKey: keys.synthesis, queryFn: api.synthesis, ...READ, retry: false, enabled });
+}
+
+/** The capsules a launch may wear, or null where the galaxy has no laboratory (plan 2026-11-24 §3.5). */
+export function useCapsuleStock() {
+  const season = useSeason();
+  const synthesis = useSynthesis(season.data?.features?.synthesis === true);
+  return synthesis.data?.enabled ? synthesis.data.capsules : null;
+}
+
+/** Start or cancel a batch: the laboratory and the capital that paid, out of one answer. */
+export function useSynthesisOrder() {
+  const api = useApi();
+  const client = useQueryClient();
+  const { capitalPlanetId } = useWorld();
+  const apply = useApplyPlanet();
+  const lane = usePlanetMutationLane(capitalPlanetId);
+  return useMutation({
+    mutationFn: (order: { kind: 'start'; capsuleId: CapsuleIdView; quantity: number } | { kind: 'cancel' }) =>
+      order.kind === 'start' ? api.startSynthesis(order.capsuleId, order.quantity) : api.cancelSynthesis(),
+    onMutate: lane.enter,
+    onSuccess: async (result) => {
+      await Promise.all([apply(result.planet), client.cancelQueries({ queryKey: keys.synthesis })]);
+      client.setQueryData(keys.synthesis, result.synthesis);
+    },
+    onSettled: (_data, _error, _order, turn) => { lane.leave(turn); },
+  });
+}
+
+/** Take one purse: the same two writes as a reward claim — the panel and the capital — out of one answer. */
+export function useClaimDailyQuest() {
+  const api = useApi();
+  const client = useQueryClient();
+  const { capitalPlanetId } = useWorld();
+  const invalidate = useInvalidator();
+  const apply = useApplyPlanet();
+  const lane = usePlanetMutationLane(capitalPlanetId);
+  return useMutation({
+    mutationFn: (id: string) => api.claimDailyQuest(id),
+    onMutate: lane.enter,
+    onSuccess: async (result) => {
+      await Promise.all([apply(result.planet), client.cancelQueries({ queryKey: keys.dailyQuests })]);
+      client.setQueryData(keys.dailyQuests, result.quests);
+      invalidate(keys.leaderboard, keys.galaxy);
+    },
+    onSettled: (_data, _error, _id, turn) => { lane.leave(turn); },
+  });
+}
+
 /** Every waiting tier in one move (plan 2026-11-06 §7.1 R4): the same two writes as a single claim. */
 export function useClaimAllRewards() {
   const api = useApi();
@@ -778,12 +845,21 @@ export function useWelcome() {
   return useQuery({ queryKey: keys.welcome, queryFn: api.welcome, staleTime: 60_000 });
 }
 
-/** What the gift icon counts: the reward tiers waiting, and the welcome week's box when it is ready. */
-export function useRewardsWaiting(): number {
+/** What the gift icon counts: the goal tiers waiting, and the welcome week's box when it is ready. */
+export function useGoalRewardsWaiting(): number {
   const tiers = useRewards().data?.claimable ?? 0;
   const welcome = useWelcome().data?.welcome;
   const box = welcome?.box != null && welcome.readyAt !== null && welcome.readyAt.getTime() <= Date.now() ? 1 : 0;
   return tiers + box;
+}
+
+/**
+ * Everything waiting under Rewards, goals and daily purses alike: what the menu and the status bar mark. The
+ * galaxy keeps the two apart (the gift counts goals, the daily key its own purses), so one waiting thing is never
+ * counted by two neighbouring keys.
+ */
+export function useRewardsWaiting(): number {
+  return useGoalRewardsWaiting() + (useDailyQuests().data?.claimable ?? 0);
 }
 
 /** Opens the next box; the store it fell into (the ship's or the capital's) is read again. */
@@ -952,10 +1028,14 @@ export function useClanWarActions() {
     monumentTarget: useMutation({ mutationFn: (monumentId: string) => api.markClanWarMonumentTarget(monumentId),
       onSuccess: refresh }),
     cancel: useMutation({ mutationFn: () => api.cancelClanWar(), onSuccess: refresh }),
-    start: useMutation({ mutationFn: ({ acknowledgeShieldLoss, pace, acknowledgeRadiationLoss }: {
+    start: useMutation({ mutationFn: ({ acknowledgeShieldLoss, pace, acknowledgeRadiationLoss, capsules = [] }: {
       acknowledgeShieldLoss: boolean; pace: MissionPace; acknowledgeRadiationLoss?: boolean;
-    }) => acknowledgeRadiationLoss ? api.startClanWar(acknowledgeShieldLoss, pace, true)
-      : api.startClanWar(acknowledgeShieldLoss, pace), onSuccess: refresh }),
+      /** Sentez capsules for the whole combined strike, paid by the leader (owner 2026-11-25). */
+      capsules?: readonly CapsuleIdView[];
+    }) => capsules.length > 0 ? api.startClanWar(acknowledgeShieldLoss, pace, acknowledgeRadiationLoss, capsules)
+      : acknowledgeRadiationLoss ? api.startClanWar(acknowledgeShieldLoss, pace, true)
+        : api.startClanWar(acknowledgeShieldLoss, pace),
+    onSuccess: () => { refresh(); void refreshQueries(client, { queryKey: keys.synthesis }); } }),
     quote: useMutation({ mutationFn: (input: { originPlanetId: string; fleet: Fleet }) =>
       api.quoteClanWar(input) }),
     contribute: useMutation({ mutationFn: (input: { originPlanetId: string; fleet: Fleet;
@@ -2266,7 +2346,7 @@ export function useProbe() {
       if (isStarterMode()) firstTimeOnly('ship', 'vessel_first_probe_sent');
       await Promise.all([keys.planet, keys.planets]
         .map((queryKey) => refreshQueries(client, { queryKey })));
-      invalidate(keys.intel, keys.pending, keys.rewards);
+      invalidate(keys.intel, keys.pending, keys.rewards, keys.dailyQuests);
     },
     onSettled: (_data, _error, _targetPlanetId, turn) => { lane.leave(turn); },
   });
@@ -2607,18 +2687,21 @@ export function useLaunch() {
   return useMutation({
     meta: lane.meta,
     mutationFn: (
-      { targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, originBody, targetBody }:
+      { targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, originBody, targetBody, capsules = [], expectedHonorTier }:
       {
         targetPlanetId: string; fleet: Fleet; acknowledgeShieldLoss?: boolean; pace?: MissionPace;
         acknowledgeRadiation?: boolean; admiral?: boolean; originBody?: WorldBody; targetBody?: WorldBody;
+        /** Sentez capsules (plan 2026-11-24 §3.5); the server prices and takes them. */
+        capsules?: readonly CapsuleIdView[];
+        expectedHonorTier?: HonorBenefitTier;
       },
       context,
     ) => {
       const planetId = planetMutationOrigin(context);
       const bodies = originBody || targetBody ? { originBody, targetBody } : undefined;
       return planetId
-        ? api.launch(planetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies)
-        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies);
+        ? api.launch(planetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies, capsules, expectedHonorTier)
+        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace, acknowledgeRadiation, admiral, bodies, capsules, expectedHonorTier);
     },
     onMutate: lane.enter,
     onSuccess: async (result, { targetPlanetId }) => {
@@ -2648,7 +2731,7 @@ export function useLaunch() {
       ]);
       client.setQueryData(keys.pending, { pending: result.pending });
       // The commander ship may have left with it (Y9).
-      invalidate(keys.galaxy, keys.intel, keys.rewards, keys.commanderShip);
+      invalidate(keys.galaxy, keys.intel, keys.rewards, keys.dailyQuests, keys.commanderShip, keys.synthesis);
     },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
@@ -2662,7 +2745,7 @@ export function useTransfer(originPlanetId: string) {
   const lane = usePlanetMutationLane(originPlanetId);
   return useMutation({
     meta: lane.meta,
-    mutationFn: ({ targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation, originBody, targetBody }: {
+    mutationFn: ({ targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation, originBody, targetBody, capsules, expectedHonorTier }: {
       targetPlanetId: string;
       fleet: Fleet;
       cargo: { alloy: number; crystal: number; deuterium: number };
@@ -2672,9 +2755,13 @@ export function useTransfer(originPlanetId: string) {
       acknowledgeRadiation?: boolean;
       originBody?: WorldBody;
       targetBody?: WorldBody;
+      /** Sentez: Optik Örtü is the only capsule a transfer may wear. */
+      capsules?: readonly CapsuleIdView[];
+      expectedHonorTier?: HonorBenefitTier;
     }, context) => api.transfer(
       requiredPlanetMutationOrigin(context), targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation,
-      originBody || targetBody ? { originBody, targetBody } : undefined,
+      originBody || targetBody ? { originBody, targetBody } : undefined, capsules,
+      expectedHonorTier,
     ),
     onMutate: lane.enter,
     onSuccess: async (result) => {
@@ -2684,7 +2771,7 @@ export function useTransfer(originPlanetId: string) {
         client.cancelQueries({ queryKey: keys.pending }),
       ]);
       client.setQueryData(keys.pending, { pending: result.pending });
-      invalidate(keys.traffic, keys.galaxy, keys.planets);
+      invalidate(keys.traffic, keys.galaxy, keys.planets, keys.synthesis);
     },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
@@ -2699,7 +2786,8 @@ export function useSettlement() {
   const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
     meta: lane.meta,
-    mutationFn: (targetPlanetId: string, context) => api.settle(requiredPlanetMutationOrigin(context), targetPlanetId),
+    mutationFn: ({ targetPlanetId, capsules = [] }: { targetPlanetId: string; capsules?: readonly CapsuleIdView[] }, context) =>
+      api.settle(requiredPlanetMutationOrigin(context), targetPlanetId, capsules),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       await Promise.all([
@@ -2707,7 +2795,7 @@ export function useSettlement() {
         client.cancelQueries({ queryKey: keys.pending }),
       ]);
       client.setQueryData(keys.pending, { pending: result.pending });
-      invalidate(keys.traffic, keys.galaxy, keys.planets);
+      invalidate(keys.traffic, keys.galaxy, keys.planets, keys.synthesis);
     },
     onSettled: (_data, _error, _targetPlanetId, turn) => { lane.leave(turn); },
   });
@@ -2782,6 +2870,21 @@ export function useBuildInterceptor() {
     onSuccess: async (result) => { await apply(result.planet); },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   } satisfies UseMutationOptions<Awaited<ReturnType<typeof api.buildInterceptor>>, Error, void, MutationTurn>);
+}
+
+/** Install the active world's probe battery (2026-11-24). */
+export function useInstallProbeBattery() {
+  const api = useApi();
+  const { activePlanetId } = useWorld();
+  const apply = useApplyPlanet();
+  const lane = usePlanetMutationLane(activePlanetId);
+  return useMutation({
+    meta: lane.meta,
+    mutationFn: (_vars, context) => api.installProbeBattery(requiredPlanetMutationOrigin(context)),
+    onMutate: lane.enter,
+    onSuccess: async (result) => { await apply(result.planet); },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+  } satisfies UseMutationOptions<Awaited<ReturnType<typeof api.installProbeBattery>>, Error, void, MutationTurn>);
 }
 
 export function useLaunchDeathStar() {

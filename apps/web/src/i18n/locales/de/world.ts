@@ -58,6 +58,7 @@ export const galaxy = {
       ASTEROID_SHOWER: "Asteroidenschauer",
       TRADE_SHIP: "Handelsschiff",
       INTERGALACTIC_CONVOY: "Intergalaktischer Konvoi",
+      ASTERIUM_STORM: "Asteryum-Sturm",
     },
     dailyNote: "Werktage: Montag bis Freitag. Wochenende: Samstag und Sonntag. Alle Zeiten gelten für die Türkei.",
     days: {
@@ -79,6 +80,11 @@ export const galaxy = {
       title: "Intergalaktischer Konvoi",
       summary: "Greif den Konvoi während seiner Durchreise an. Je nach Feuerkraft erhältst du bis zu vier Stunden Weltproduktion und vielleicht geborgene Schiffe.",
       note: "Der Konvoi schießt nicht zurück. Deine Flotte erleidet deshalb keine Verluste. Jede Welt kann ihn pro Durchreise einmal angreifen.",
+    },
+    storm: {
+      title: "Asteryum-Sturm",
+      summary: "Während des Sturms erscheinen im Yarık Asteryum-Steine. Jeder Stein, den du durch einen Ausgang bringst, geht in deinen Asteryum-Vorrat; das Tageslimit hält ihn nicht auf.",
+      note: "Stirbst du, verstreut sich auch das Asteryum in deinem Laderaum. Das Syntheselabor macht aus Asteryum Kapseln.",
     },
   },
   /* Screen-reader names for the marks on the disc. Nothing is painted. */
@@ -400,6 +406,8 @@ export const focus = {
     attackProtectedShort: "Geschützt · {{duration}}",
     attackShort: "Angriff planen",
     probeShort: "-Sonde",
+    probeBatteryHint: "Letzter Bericht: Sondenbatterie {{ready}}/{{capacity}} Ladungen",
+    probeLostHint: "Letzte Sonde hier abgeschossen {{age}} · dort steht eine geladene Sondenbatterie",
     probeCoolingShort: "Sonde in {{duration}}",
     attack: "Angriff planen",
     attackNeutralAgain: "Erneuter Überfall · Anspruch unverändert",

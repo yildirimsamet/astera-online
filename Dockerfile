@@ -57,9 +57,6 @@ ARG ASTERA_GIT_COMMIT=""
 ENV VITE_ASTERA_PLAYER_ANALYTICS=$VITE_ASTERA_PLAYER_ANALYTICS
 ENV ASTERA_GIT_COMMIT=$ASTERA_GIT_COMMIT
 ENV VITE_GA_ID=$VITE_GA_ID
-# Komutan Gemisi playtest door; the arena process still decides who may enter.
-ARG VITE_ARENA=""
-ENV VITE_ARENA=$VITE_ARENA
 # The Sentry key uploads the source maps and leaves with the step: a secret, never an ARG or a layer (S-3).
 RUN --mount=type=secret,id=sentry_auth,env=SENTRY_AUTH_TOKEN pnpm --filter @astera/web build
 
@@ -76,7 +73,7 @@ COPY --from=web-build /app/apps/web/dist /
 # box's own copy (`--build-context refs=…`) and it is only bind-mounted here.
 FROM web-build AS ota-build
 ARG OTA_API_URL=https://asteraonline.space
-ENV VITE_ASTERA_PLATFORM=native-production VITE_ASTERA_API_URL=$OTA_API_URL VITE_ARENA=1 VITE_GA_ID="" ASTERA_REF_ASSETS_DIR=/refs
+ENV VITE_ASTERA_PLATFORM=native-production VITE_ASTERA_API_URL=$OTA_API_URL VITE_GA_ID="" ASTERA_REF_ASSETS_DIR=/refs
 RUN --mount=type=bind,from=refs,target=/refs --mount=type=secret,id=sentry_auth,env=SENTRY_AUTH_TOKEN \
     pnpm --filter @astera/web exec vite build --configLoader runner \
  && pnpm --filter @astera/web exec tsx otaPack.ts mobile-dist/native-production /ota "$ASTERA_GIT_COMMIT" "$OTA_API_URL"

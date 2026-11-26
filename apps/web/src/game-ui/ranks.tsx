@@ -14,6 +14,8 @@ import { Glyph } from './icons.js';
 interface Art { src: string; width: number; height: number }
 
 export const HONOR_ART: Record<HonorBenefitTier, Art> = {
+  [-4]: { src: '/assets/ui/honor/honor-m4.webp', width: 264, height: 128 },
+  [-3]: { src: '/assets/ui/honor/honor-m3.webp', width: 129, height: 128 },
   [-2]: { src: '/assets/ui/honor/honor-m2.webp', width: 119, height: 128 },
   [-1]: { src: '/assets/ui/honor/honor-m1.webp', width: 119, height: 128 },
   0: { src: '/assets/ui/honor/honor-0.webp', width: 119, height: 128 },

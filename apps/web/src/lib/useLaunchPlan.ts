@@ -17,8 +17,9 @@ import {
   type Fleet,
   type MobileHullId,
 } from '@astera/rules';
-import { useGalaxy, useHonorTarget, useLaunch, useRaidPirate, useSeason } from '../api/queries.js';
-import type { IntelView, PlanetView, Report } from '../api/schemas.js';
+import { useGalaxy, useHonorTarget, useLaunch, useRaidPirate, useSeason, useSynthesis } from '../api/queries.js';
+import type { CapsuleIdView, IntelView, PlanetView, Report } from '../api/schemas.js';
+import { capsuleChoices } from './synthesis.js';
 import { serverNow } from '../lib/clock.js';
 import { recordAgeMinutes } from '../lib/dossier.js';
 import { duration } from '../lib/time.js';
@@ -118,6 +119,10 @@ export function useLaunchPlan({
    * reason D168 measures the attack band on the commander.
    */
   const season = useSeason();
+  // Sentez capsules (plan 2026-11-24 §3.5): read only where the galaxy has a laboratory.
+  const synthesis = useSynthesis(season.data?.features?.synthesis === true);
+  const [capsules, setCapsules] = useState<CapsuleIdView[]>([]);
+  const capsuleStock = synthesis.data?.enabled ? synthesis.data.capsules : null;
   const honorTarget = useHonorTarget(!lesson && !school && target.kind === 'world'
     && target.world.kind !== 'NEUTRAL' && !target.world.isSelf ? target.world.id : null);
   const shieldUntil = season.data?.shieldUntil ?? null;
@@ -168,7 +173,7 @@ export function useLaunchPlan({
     : planRoute(
         planet.planet.position, target.world.position, sending, available, planet.ground, mods,
       );
-  const unpaced = rawUnpaced && escortRoute(rawUnpaced, escortBonus, target.kind === 'pirate');
+  const unpaced = rawUnpaced && escortRoute(rawUnpaced, escortBonus, target.kind === 'pirate', planet.honorBenefits);
   /**
    * WORLD TARGETS ONLY, FOR NOW — and the reason is that a quote must not lie.
    *
@@ -192,7 +197,7 @@ export function useLaunchPlan({
     : planRoute(
         planet.planet.position, target.world.position, sending, available, planet.ground, paced,
       );
-  const planned = rawPlanned && escortRoute(rawPlanned, escortBonus, target.kind === 'pirate');
+  const planned = rawPlanned && escortRoute(rawPlanned, escortBonus, target.kind === 'pirate', planet.honorBenefits);
   const flown = school && planned ? { ...planned, oneWayMinutes: school.legSeconds / 60, exposureMinutes: (school.legSeconds * 2 + 10) / 60 } : lesson && planned ? { ...planned,
     oneWayMinutes: ACADEMY_LEG_SECONDS / 60, exposureMinutes: (ACADEMY_LEG_SECONDS * 2 + 10) / 60 } : planned;
   // A ship flies free until its fuel plant works: nothing can be asked of a resource it cannot make yet.
@@ -510,11 +515,16 @@ export function useLaunchPlan({
         ...(targetBody === 'MOON' ? { targetBody } : {}),
         // The hold on a lethal route is the answer the server asks for (D10).
         ...(radiation !== null && radiation.destroyed > 0 ? { acknowledgeRadiation: true } : {}),
+        // Only what the stock still covers for the fleet as it now stands.
+        ...(capsuleStock ? { capsules: capsuleChoices('attack', sending, capsuleStock)
+          .filter((one) => one.enough && capsules.includes(one.id)).map((one) => one.id) } : {}),
+        ...(planet.honorBenefits && !aboard ? { expectedHonorTier: planet.honorBenefits.tier } : {}),
       },
       {
         onSuccess: (result) => {
           say(t('launch.launched', { duration: duration(result.exposureMinutes), count: result.homeDefenceAfter }));
           setEscortWanted(false);
+          setCapsules([]);
           onLaunched();
         },
         onError: (err) => {
@@ -533,7 +543,7 @@ export function useLaunchPlan({
     paceReset: paces.length > 0 && pace !== wantedPace,
     total, salvageRoom, baysFree, tooLate, busy, radiation, pirateProfit, pirateProfitState,
     shipyardRevolt, holding, needsWarship, canSend, away, atHome, recordAge, opposing,
-    power, matchups, hint, escape, notes, refusal, commit,
+    power, matchups, hint, escape, notes, refusal, commit, capsules, setCapsules, capsuleStock,
     /** What the probe read of the wall, for the matchup line (B6); null where nobody looked. */
     classReading: report?.classReading ?? null,
     /** The probe's reading of this world, for the haul the hold is set against (E3's cargo). */

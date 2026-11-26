@@ -42,7 +42,7 @@ describe('coming back to a ship in the air', () => {
     const socket = Socket.last!;
     act(() => { socket.open(); });
     await waitFor(() => { expect(socket.sent[0]).toMatchObject({ kind: 'hello', v: ARENA_PROTOCOL, mode: 'enter', ship: 'kilavuz', token: 'tok' }); });
-    act(() => { socket.receive({ kind: 'welcome', v: ARENA_PROTOCOL, pilotId: 7, tick: 10, seq: 0, tickRate: 30, snapshotRate: 15, layoutVersion: ARENA_LAYOUT.version, pilots: [] }); });
+    act(() => { socket.receive({ kind: 'welcome', v: ARENA_PROTOCOL, storm: false, pilotId: 7, tick: 10, seq: 0, tickRate: 30, snapshotRate: 15, layoutVersion: ARENA_LAYOUT.version, pilots: [] }); });
     await waitFor(() => { expect(socket.sent.filter(m => m.kind === 'in').length).toBeGreaterThan(1); }, { timeout: 2000 });
   });
 

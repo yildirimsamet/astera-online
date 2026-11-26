@@ -8,6 +8,7 @@ import {
   BUILDING_IDS,
   DEBRIS,
   DISRUPTION,
+  FAULT,
   GROUND_HULLS,
   INSTRUMENT_IDS,
   HULLS,
@@ -207,6 +208,9 @@ describe('canAttack', () => {
   });
 
   it('refuses once the bash limit is reached, and allows the hit before it', () => {
+    expect(ABUSE.bashLimit).toBe(2);
+    expect(ABUSE.personalRaidProtectedTier).toBe(4);
+    expect(FAULT.heavyDefeatLossHours).toBe(4);
     const a = party('a', 5);
     const b = party('b', 5);
     expect(canAttack(a, b, ABUSE.bashLimit - 1).ok).toBe(true);

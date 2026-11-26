@@ -26,9 +26,10 @@ export function fakeShips(over: Partial<ArenaShips> = {}) {
     end: (accountId, sortieId, end) => {
       calls.end.push({ accountId, sortieId, end });
       return Promise.resolve({ outcome: end.outcome, deposit: { alloy: Math.floor(end.hold[0] ?? 0), crystal: 0, deuterium: 0 }, overflow: zero,
-        readyAt: null, readyReason: end.outcome === 'dead' ? 'repair' : 'service', xp: { earned: 10, kept: 10, banked: 10 } });
+        readyAt: null, readyReason: end.outcome === 'dead' ? 'repair' : 'service', xp: { earned: 10, kept: 10, banked: 10 }, asterium: 0 });
     },
     recallOpen: () => { calls.recall++; return Promise.resolve(0); },
+    storm: () => Promise.resolve(false),
     playing: accountId => { calls.playing.push(accountId); return Promise.resolve(); },
     ...over,
   };

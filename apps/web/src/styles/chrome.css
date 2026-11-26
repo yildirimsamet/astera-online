@@ -1495,6 +1495,25 @@
   color: inherit;
 }
 
+/*
+  THE ROOMS AND THE LETTERS, LOWER (owner 2026-11-26: "Tabların bulunduğu alandaki elementler ve DM kutuları
+  dikey olarak biraz küçültülmeli … yazıların olduğu alana çok az yer kalıyor"). The room plates, the flag
+  chip and the open letters stand 34/32 px tall instead of 44; the letter row's "+" keeps its 25 px face in a
+  32 px box, so neither row is taller than its plates.
+*/
+.chat-type [data-chat-controls] :is(.gk-tab, .gk-langchip) {
+  min-height: 34px;
+}
+.chat-type [data-chat-dm-tabs] .gk-peer__tab {
+  min-height: 30px;
+}
+.chat-type [data-chat-dm-tabs] .gk-peer__close {
+  width: 32px;
+}
+.chat-type [data-chat-dm-tabs] > .gk-round {
+  height: 32px;
+}
+
 /* Tint the complete chat sheet, including its title, tabs and body insets. */
 [data-sheet-panel]:has(> [data-sheet-body] .chat-type[data-chat-room='clan']),
 .chat-type[data-chat-room='clan'] {

@@ -121,6 +121,9 @@ export const errors = {
   DEATH_STAR_LOCKED: 'Death Star prerequisites are not met',
   INTERCEPTOR_LOADED: "This world's pad is full: {{max}} charges",
   INTERCEPTOR_LOCKED: "Raise the Radar to level {{requiredRadar}} first, with an Uplink in orbit",
+  PROBE_BATTERY_LOCKED: "Raise the Radar to level {{requiredRadar}} first, with an Uplink in orbit",
+  PROBE_BATTERY_BUSY: "This battery is already being built or upgraded",
+  PROBE_BATTERY_MAX: "This battery is at its top level",
   RECOVERY_WINDOW_TOO_SHORT: 'The recovery or claim window closes before arrival',
   /** What is shown when nothing else is known. */
   unknown: "We could not confirm the result. Check the current status before trying again.",
@@ -163,7 +166,7 @@ export const errors = {
   MAINTENANCE_LANDING: "This fleet would land during maintenance, {{from}}–{{to}} (your local time). Send it after maintenance.",
   MAINTENANCE_IN_FLIGHT: "This weapon would still be flying during maintenance, {{from}}–{{to}} (your local time). Launch it after maintenance.",
   PERSONAL_RAID_PENDING: "You already have a raid on its way to this commander. Wait for it or recall it.",
-  BASH_LIMIT: 'You have hit this planet too many times recently',
+  BASH_LIMIT: 'You can send at most {{limit}} attacks to one commander every {{hours}} hours',
   TIER_BAND: "That commander is more than one tier above you — attacks compare each side's most developed world",
   TIER_BAND_WEAK: "That commander is more than one tier below you — attacks compare each side's most developed world",
   CANNOT_INTERCEPT: 'It will leave the disc before your craft could reach it',

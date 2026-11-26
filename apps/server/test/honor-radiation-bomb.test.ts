@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, expect, it } from 'vitest';
+import { RADIATION_BOMB, honorResourceValue } from '@astera/rules';
 import { honorEvents, planets, seasons, strategicAssets, units } from '../src/db/schema.js';
 import { prepareHonorSeason } from '../src/services/honorLedger.js';
 import { launchRadiationBomb, resolveRadiationBomb } from '../src/services/radiationBomb.js';
@@ -79,7 +80,7 @@ it('a real interceptor stops radiation entirely and earns only its actual defens
   const [entry] = await f.db.select().from(honorEvents);
   expect(entry?.source).toBe('STRATEGIC_INTERCEPTION');
   expect(entry?.sourceId).toBe(`bomb:${sent.flightId}`);
-  expect(entry?.outcome.attack.total).toBe(-13_400_000);
+  expect(entry?.outcome.attack.total).toBe(-100 * honorResourceValue(RADIATION_BOMB.levels[1].cost));
   expect(entry?.outcome.defence.total).toBeGreaterThan(0);
   expect(entry?.evidence.defence[0]?.loss).toBe(0);
 });

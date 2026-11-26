@@ -200,9 +200,9 @@ Anlar
 
 Renk
 
-## On anlam, on renk
+## On bir anlam, on bir renk
 
-Zemin ve yazı renkleri anlam taşımaz; geri kalan on rengin her birinin tek bir anlamı var. Oyunun mevcut render'larıyla (bakır alaşım, mavi kristal, yeşil döteryum) uyumlu olacak şekilde seçildi.
+Zemin ve yazı renkleri anlam taşımaz; geri kalan on bir rengin her birinin tek bir anlamı var. (On birincisi Asteryum: owner, 2026-11-25.) Oyunun mevcut render'larıyla (bakır alaşım, mavi kristal, yeşil döteryum) uyumlu olacak şekilde seçildi.
 
 ### Zemin
 
@@ -235,6 +235,10 @@ Zemin ve yazı renkleri anlam taşımaz; geri kalan on rengin her birinin tek bi
 **Kristal `#7FD0FF`** Yalnızca kristal ikonunun yanında
 
 **Döteryum `#A8EA4C`** Kaynak ve yakıt
+
+**Asteryum `#B48CFF`** Kaynak: Ay ve Fırtına'dan gelen, Sentez Laboratuvarı'nda kapsüle dönüşen madde (owner, 2026-11-25). Rakip pembesinden (`#F25CD3`) ve Klan mavisinden (`#5B8CFF`) ayrı bir tondur; diğer kaynak renkleri gibi ikonsuz kullanılmaz.
+
+**Kapsül sıvıları (anlam rengi değil, owner 2026-11-25).** Her kapsülün kendi sıvı rengi vardır: "hepsi mor olursa gözü yorar, hangisinin ne olduğu anlaşılmaz". Optik Örtü inci `#BFE6F7` (Yarık'ın görünmezlik ışığı ailesi, Kristal'den soluk), Sessiz İtki boğuk kor `#D9854A`. Bu tonlar yalnızca o kapsülün kendi resmi, cam rafı, şişeleri ve galaksideki örtü çizgisinde, adı ve resmiyle birlikte görünür; yazıya, sayıya veya başka bir yüzeye anlam rengi olarak taşınmaz. Yeni kapsül, anlam renklerinden ve diğer kapsüllerden ayrılan kendi sıvısını alır (`--color-v2-capsule-*`).
 
 **Eksik `#FFCC4D`** Tamamlayabileceğin bir eksik: kaynak, yuva, araştırma, boşa giden üretim
 

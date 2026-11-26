@@ -12,9 +12,9 @@ import { loadEnv } from '../../src/env.js';
  * Owner 2026-10-20: the private playtest flies the reference pack. Its files reach only
  * a seated pilot's browser, through a short signed cookie, and never a public URL.
  */
-const ACCOUNTS: Record<string, { accountId: string; username: string; name: string; pilot: boolean }> = {
-  'token-pilot': { accountId: '00000000-0000-4000-8000-00000000000a', username: 'alice', name: 'Alice', pilot: true },
-  'token-guest': { accountId: '00000000-0000-4000-8000-00000000000c', username: 'carol', name: 'Carol', pilot: false },
+const ACCOUNTS: Record<string, { accountId: string; username: string; name: string }> = {
+  'token-pilot': { accountId: '00000000-0000-4000-8000-00000000000a', username: 'alice', name: 'Alice' },
+  'token-guest': { accountId: '00000000-0000-4000-8000-00000000000c', username: 'carol', name: 'Carol' },
 };
 const identify: ArenaIdentify = token => Promise.resolve(ACCOUNTS[token] ?? null);
 
@@ -59,11 +59,11 @@ async function arena(refDir: string | null = directory) {
 }
 
 describe('the private reference pack', () => {
-  it('hands a seated pilot a short HttpOnly cookie scoped to the pack', async () => {
+  it('hands any signed-in commander a short HttpOnly cookie scoped to the pack', async () => {
     const { open } = await arena();
     expect((await open()).statusCode).toBe(401);
     expect((await open('forged')).statusCode).toBe(401);
-    expect((await open('token-guest')).statusCode).toBe(403);
+    expect((await open('token-guest')).statusCode).toBe(204);
     const granted = await open('token-pilot');
     expect(granted.statusCode).toBe(204);
     const set = granted.cookies.find(c => c.name === 'astera_arena_ref');

@@ -19,7 +19,7 @@ class FakeSocket {
 }
 
 const socket = (): FakeSocket => { if (!FakeSocket.last) throw new Error('no socket'); return FakeSocket.last; };
-const welcome = (pilots: unknown[]) => ({ kind: 'welcome', v: ARENA_PROTOCOL, pilotId: 4, tick: 0, seq: 0, tickRate: 30,
+const welcome = (pilots: unknown[]) => ({ kind: 'welcome', v: ARENA_PROTOCOL, storm: false, pilotId: 4, tick: 0, seq: 0, tickRate: 30,
   snapshotRate: 15, layoutVersion: ARENA_LAYOUT.version, pilots });
 
 beforeEach(() => { FakeSocket.last = null; vi.stubGlobal('WebSocket', FakeSocket); });
@@ -69,7 +69,7 @@ describe('arena network', () => {
     network.connect('kilavuz', 'smoke');
     socket().open();
     await vi.waitFor(() => { expect(socket().sent).toHaveLength(1); });
-    socket().receive(welcome([{ id: 4, name: 'Alice', ship: 'kilavuz', points: 12, kills: 1, deaths: 2 }, { id: 5, name: 'Bob', ship: 'akinci', points: 30, kills: 0, deaths: 0 }]));
+    socket().receive(welcome([{ id: 4, name: 'Alice', ship: 'kilavuz', kills: 0, deaths: 2 }, { id: 5, name: 'Bob', ship: 'akinci', kills: 1, deaths: 0 }]));
     expect(network.getSnapshot()).toMatchObject({ phase: 'online', pilots: 2 });
     expect(network.getSnapshot().board.map(row => [row.name, row.self])).toEqual([['Bob', false], ['Alice', true]]);
     socket().receive({ kind: 'kick', reason: 'denied' });
@@ -88,7 +88,7 @@ describe('a full room', () => {
     socket().open();
     await vi.waitFor(() => { expect(socket().sent).toHaveLength(1); });
     const bots = (['hunter', 'miner', 'patrol'] as const).map((role, i) => ({ id: i + 1, name: role, role, ship: 'kilavuz' }));
-    const pilots = Array.from({ length: ARENA_MAX_SEATS }, (_, i) => ({ id: i + 4, name: `Pilot ${String(i + 1)}`, ship: 'muhafiz', points: 0, kills: 0, deaths: 0 }));
+    const pilots = Array.from({ length: ARENA_MAX_SEATS }, (_, i) => ({ id: i + 4, name: `Pilot ${String(i + 1)}`, ship: 'muhafiz', kills: 0, deaths: 0 }));
     socket().receive(welcome([...bots, ...pilots]));
     expect(network.getSnapshot()).toMatchObject({ phase: 'online', pilots: ARENA_MAX_SEATS });
     socket().receive({ kind: 'roster', pilots: [...bots, ...pilots] });
@@ -164,18 +164,19 @@ describe('the snapshot feed on the client', () => {
 });
 
 describe('room standings', () => {
-  it('ranks by farm points, then kills, then fewer deaths, then name; bots never rank', () => {
+  // Owner 2026-11-25: no points in the Yarık; the table stays as the fight's own record.
+  it('ranks by kills, then fewer deaths, then name; bots never rank; no row carries points', () => {
     const board = rankStandings([
       { id: 1, name: 'hunter', ship: 'kilavuz', role: 'hunter' },
-      { id: 4, name: 'Cem', ship: 'kilavuz', points: 40, kills: 2, deaths: 1 },
-      { id: 5, name: 'Ada', ship: 'kilavuz', points: 40, kills: 2, deaths: 1 },
-      { id: 6, name: 'Bora', ship: 'kilavuz', points: 40, kills: 2, deaths: 0 },
-      { id: 8, name: 'Deniz', ship: 'kilavuz', points: 40, kills: 3, deaths: 5 },
-      { id: 9, name: 'Ece', ship: 'kilavuz', points: 90, kills: 0, deaths: 4 },
+      { id: 4, name: 'Cem', ship: 'kilavuz', kills: 2, deaths: 1 },
+      { id: 5, name: 'Ada', ship: 'kilavuz', kills: 2, deaths: 1 },
+      { id: 6, name: 'Bora', ship: 'kilavuz', kills: 2, deaths: 0 },
+      { id: 8, name: 'Deniz', ship: 'kilavuz', kills: 3, deaths: 5 },
+      { id: 9, name: 'Ece', ship: 'kilavuz', kills: 0, deaths: 4 },
       { id: 7, name: 'Can', ship: 'kilavuz' },
     ], 7);
-    expect(board.map(row => row.name)).toEqual(['Ece', 'Deniz', 'Bora', 'Ada', 'Cem', 'Can']);
-    expect(board.at(-1)).toEqual({ id: 7, name: 'Can', points: 0, kills: 0, deaths: 0, self: true });
+    expect(board.map(row => row.name)).toEqual(['Deniz', 'Bora', 'Ada', 'Cem', 'Can', 'Ece']);
+    expect(board.find(row => row.self)).toEqual({ id: 7, name: 'Can', kills: 0, deaths: 0, self: true });
   });
 });
 

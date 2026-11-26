@@ -184,6 +184,17 @@ export function GiftChip({ waiting, onOpen }: { waiting: number; onOpen: () => v
   return <RoundButton art={artIconSrc('gift')} label={`${t('rewards.title')} · ${t('rewards.waiting', { count: waiting })}`} count={waiting} onPress={onOpen} />;
 }
 
+/**
+ * TODAY'S QUESTS, A KEY OF THEIR OWN beside the gift (owner 2026-11-24). It stands while any of the day's quests is
+ * not yet taken, lights the red count of the finished ones that wait, and is gone once the last purse is in; the
+ * caller passes nothing when there is nothing to show. A finished quest swings it once, as any rising count does.
+ */
+export function DailyChip({ claimable, taken, total, onOpen }: { claimable: number; taken: number; total: number; onOpen: () => void }) {
+  const { t } = useTranslation();
+  const said = claimable > 0 ? t('rewards.waiting', { count: claimable }) : `${String(taken)}/${String(total)}`;
+  return <RoundButton art={artIconSrc('hud-daily')} label={`${t('rewards.daily.title')} · ${said}`} count={claimable} onPress={onOpen} />;
+}
+
 /** The shop's own painted door, among the galaxy's tools where the web sells (H1). */
 export function ShopChip({ onOpen }: { onOpen: () => void }) {
   const { t } = useTranslation();
@@ -240,6 +251,7 @@ const EVENT_TONE = {
   ASTEROID_SHOWER: 'info',
   TRADE_SHIP: 'warn',
   INTERGALACTIC_CONVOY: 'hostile',
+  ASTERIUM_STORM: 'info',
 } as const satisfies Record<ActiveGalaxyEvent['kind'], StatusTone>;
 
 export function EventChips({

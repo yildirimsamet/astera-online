@@ -659,6 +659,7 @@ export async function resolveClanWarBattle(
   const [report] = await tx.insert(battleReports).values({
     seasonId: mission.seasonId,
     missionId: mission.id,
+    appliedCapsules: mission.appliedCapsules,
     /*
       A TECHNICAL BINDER, NOT A CLAIM ABOUT WHO FOUGHT. `attacker_player_id` is
       NOT NULL and holds one commander; the people who actually flew are in

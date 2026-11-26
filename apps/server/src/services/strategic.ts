@@ -58,6 +58,7 @@ import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
 import { observeHonorOwner } from './honorReference.js';
 import { commitStrategicHonor, settleEmpHonor, settleMoonBreakHonor } from './honorStrategic.js';
 import { breakFaults, defenceOnline } from './faults.js';
+import { settleWorldMoonAsterium } from './synthesis.js';
 
 export async function buildDeathStar(db: Db, planetId: string, clock: Clock, expectedPlayerId?: string) {
   return db.transaction(async (tx) => {
@@ -525,6 +526,8 @@ export async function applyDeathStarStrike(
     }
     await settleEmpHonor(tx, { seasonId: mission.seasonId, id: mission.id, at: now, defender: target.controllerPlayerId,
       ground: {}, coreOnline: false, groundWasOnline: false, shieldDestroyed: 0, addedBlackoutPpm: 0, loyaltyLost: 0, effective: false });
+    // Paid up to the hit, then shut: the closure makes nothing (plan §3.3, K4).
+    await settleWorldMoonAsterium(tx, target.id, now);
     await tx.update(moons).set({ cracks: hit.cracks, lastHitAt: now, closedUntil: new Date(hit.closedUntilMs) })
       .where(eq(moons.planetId, target.id));
     await publishShard(tx, mission.seasonId, 'moons');

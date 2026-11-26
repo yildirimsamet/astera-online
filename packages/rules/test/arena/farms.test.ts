@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import * as arena from '../../src/arena/index.js';
 import {
-  ARENA_CATALOG, ARENA_LAYOUT, ARENA_TUNING as T, FARM_POINTS, FIELD_GROUP_SIZE, FIELD_SPAWNS, buildArenaLayout, createInput,
-  createSandboxWorld, holdPoints, obstacleSize, pickFieldSpawn, scatter, stepSandboxWorld, surfaceGap, type ArenaWorld, type CargoDrop, type Vec3,
+  ARENA_CATALOG, ARENA_LAYOUT, ARENA_TUNING as T, FIELD_GROUP_SIZE, FIELD_SPAWNS, buildArenaLayout, createInput,
+  STORM_SLOTS, createSandboxWorld, obstacleSize, pickFieldSpawn, scatter, stepSandboxWorld, surfaceGap, type ArenaWorld, type CargoDrop, type Vec3,
 } from '../../src/arena/index.js';
 import { layoutWith, sphere } from './helpers.js';
 
@@ -22,17 +23,18 @@ function openWorld(): ArenaWorld {
   return world;
 }
 const group = (world: ArenaWorld, g: number): CargoDrop[] => world.cargoDrops.slice(g * FIELD_GROUP_SIZE, (g + 1) * FIELD_GROUP_SIZE);
-const wreckDrops = (world: ArenaWorld): CargoDrop[] => world.cargoDrops.slice(FIELD_SLOTS);
+// The wrecks' slots: after the field groups', before the storm's own (pools.ts).
+const wreckDrops = (world: ArenaWorld): CargoDrop[] => world.cargoDrops.slice(FIELD_SLOTS, STORM_SLOTS);
 const seconds = (world: ArenaWorld, s: number): void => { for (let i = 0; i < s * T.tickRate; i++) stepSandboxWorld(world, idle); };
 const take = (world: ArenaWorld, drop: CargoDrop): void => { Object.assign(world.pilot.p, drop.p); stepSandboxWorld(world, idle); };
 const away = (world: ArenaWorld): void => { world.pilot.p.x = 0; world.pilot.p.y = 0; world.pilot.p.z = -900; };
 
 describe('farm values', () => {
-  it('scores a hold by kind, rarer worth more, in whole points', () => {
-    expect(FARM_POINTS).toEqual([1, 2, 3]);
-    expect(holdPoints([10, 5, 2])).toBe(10 + 10 + 6);
-    expect(holdPoints([0.6, 0.6, 0])).toBe(1);
-    expect(holdPoints([])).toBe(0);
+  // Owner 2026-11-25: the Yarık is a battlefield of gathering, fighting and running, not a points match; the
+  // score was the first deathmatch prototype's. A hold is worth what it lands in the capital, nothing more.
+  it('keeps no score: a hold is never turned into points', () => {
+    expect('holdPoints' in arena).toBe(false);
+    expect('FARM_POINTS' in arena).toBe(false);
   });
 
   it('draws every field spawn by weight across the whole roll', () => {

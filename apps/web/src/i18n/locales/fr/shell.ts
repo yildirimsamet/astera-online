@@ -299,6 +299,9 @@ export const leaderboard = {
     value: "Les dégâts et pertes utilisent des coûts pondérés fixes : 1 alliage + 2 cristal + 32 deutérium. Les défenses terrestres reconstruites ne comptent pas comme dégâts.",
   },
   honorTarget: {
+    more: "Règles de l’Honor",
+    fold: "{{kind}} · {{value}}",
+    short: { FULL: "rendement complet", HALF: "demi-rendement", NONE: "aucun rendement", RELATED: "ne rapporte pas d’Honor" },
     loading: "Chargement de la comparaison Honor…",
     unavailable: "La comparaison Honor est indisponible.",
     retry: "Réessayer la comparaison Honor",
@@ -308,6 +311,8 @@ export const leaderboard = {
     WEAK: "Cible plus faible",
     topTierPeer: "Tu es au palier le plus élevé de cette galaxie. Une cible située un palier en dessous suit les règles Honor à palier égal. Un adversaire qui t’attaque depuis un palier inférieur conserve les conditions actuelles du bonus.",
     weakWarning: "Même une attaque réussie peut réduire Honor. L’acharnement répété coûte davantage.",
+    escalatedWeak: "Vous avez déjà perdu de l’Honor contre ce commandant au cours des 24 dernières heures. Cette attaque multiplie la perte d’Honor par {{multiplier}}×.",
+    escalatedInFlight: "Une attaque vers ce commandant est déjà en route. Cette attaque supplémentaire multiplie la perte d’Honor par {{multiplier}}×.",
     eligible: "Les dégâts militaires permanents peuvent rapporter Honor. Tes pertes en attaque peuvent le réduire.",
     FULL: "Rendement militaire complet : les dégâts admissibles sont pondérés par l’efficacité.",
     HALF: "Rendement militaire réduit : la force militaire de ce commandant est nettement inférieure à la tienne. Le gain et la déduction pour tes pertes sont tous deux divisés par deux.",

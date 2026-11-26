@@ -37,6 +37,7 @@ import { recordShipLoss } from './shipLossStats.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
 import { notify } from './notifications.js';
 import { prepareMonumentOriginChange, reanchorMonumentOrigin } from './monumentOwnership.js';
+import { settleWorldMoonAsterium } from './synthesis.js';
 
 /**
  * SADAKAT VE KOPUŞ. `docs/colony-faults-plan.md` §4-5.
@@ -226,6 +227,8 @@ export async function secedeColony(
   if (!world?.controllerPlayerId || world.kind !== 'COLONY') return false;
   const owner = world.controllerPlayerId;
   if (cause === 'SECESSION') await recordLegacyColonyLoss(tx, planetId, owner, notificationRefId);
+  // The moon pays its holder up to the last instant the colony was theirs (plan §3.3).
+  await settleWorldMoonAsterium(tx, planetId, now, { newHolder: true });
 
   /*
     WHAT HAPPENS TO THE FLEET DEPENDS ON HOW THE WORLD WAS LOST. Owner 2026-11-18 (S19c):
@@ -377,6 +380,8 @@ export async function secedeColony(
     pendingLeakCrystal: 0,
     pendingLeakDeuterium: 0,
     lastTickAt: now,
+    clanBonus: 0,
+    honorProductionShare: 0,
     seasonTelemetry: {
       produced: { alloy: 0, crystal: 0, deuterium: 0 },
       productiveSeconds: 0,

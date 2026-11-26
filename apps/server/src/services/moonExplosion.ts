@@ -12,6 +12,7 @@ import { recomputePlayerWealth } from './planet.js';
 import { MOON_LOCATION } from './unitLocation.js';
 import { publishWatchChanges } from './watchEvents.js';
 import { publishShard } from '../stream/bus.js';
+import { settleWorldMoonAsterium } from './synthesis.js';
 
 /**
  * THE MOON BREAKS (S35, plan §6.14 steps 1–10), inside the Death Star's transaction.
@@ -67,6 +68,8 @@ export async function explodeMoon(tx: Tx, input: {
     eq(hpRadiationSources.anchorId, world.id),
     eq(hpRadiationSources.body, 'MOON'),
   ));
+  // What the moon made up to now is its holder's; nothing it would have made goes with it (plan §3.3).
+  await settleWorldMoonAsterium(tx, world.id, now);
   await tx.delete(moons).where(eq(moons.planetId, world.id));
   await publishWatchChanges(tx, [world.id]);
   await publishShard(tx, world.seasonId, 'moons');

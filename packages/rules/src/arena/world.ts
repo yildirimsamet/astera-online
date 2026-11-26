@@ -6,12 +6,12 @@ import { shipTuning, statsOf } from './progression.js';
 import { abilityStats } from './ranks.js';
 import { scatter, shoot, stepGhosts, stepProjectiles, impact } from './combat.js';
 import { createInput } from './controls.js';
-import { FIELD_GROUP_SIZE, pickFieldSpawn } from './farms.js';
+import { ASTERIUM_STORM as STORM, FIELD_GROUP_SIZE, pickFieldSpawn } from './farms.js';
 import { createFlightState, stepFlight } from './flight.js';
 import { ARENA_LAYOUT, spawnFlight } from './layout.js';
 import { alive, hasTactic, tacticRank, copyFlight, createPilot, type ArenaIntent, type CargoDrop, type Impact, type Missile, type Pilot,
   type Projectile, type SmokePuff, type Tactic } from './pilot.js';
-import { ageEffects, ARENA_POOLS } from './pools.js';
+import { ageEffects, ARENA_POOLS, STORM_SLOTS } from './pools.js';
 import { castSignature, stepLock, stepMissiles, stepSignatureTimers } from './signatures.js';
 import { castTactic, dissolveDecoys, stepDecoy, stepScans, type Scan } from './tactics.js';
 import { RING12 } from './vec.js';
@@ -41,6 +41,13 @@ export interface ArenaWorld {
   scans: Scan[];
   /** Per field group: the farm spot it grew on (-1 while taken) and seconds since it was emptied. */
   fieldSpots: number[]; fieldTimers: number[];
+  /** The Asteryum Fırtınası is on (`stepAsteriumStorm`). Set by the room from the galaxy calendar. */
+  asteriumStorm: boolean;
+  /**
+   * The storm's books: whether it has opened (its first pieces are out), the units it owes, the size of its
+   * next piece, and the farm spot each of its slots holds (-1 while free).
+   */
+  stormOpen: boolean; stormDebt: number; stormNext: number; stormSpots: number[];
   /**
    * Seconds the other ships stand behind this world's own pilot: 0 on the server and in the
    * sandbox. The client sets its aim horizon here so its predicted tracers aim where the
@@ -87,8 +94,10 @@ export function createSandboxWorld(options: WorldOptions = {}): ArenaWorld {
     impacts: Array.from({ length: ARENA_POOLS.impacts }, () => ({ p: point(), age: 0, kind: 'rock', active: false })),
     missiles: Array.from({ length: ARENA_POOLS.missiles }, () => ({ p: point(), previous: point(), v: point(), life: 0, owner: -1, target: -1, damage: T.missileDamage })),
     cargoDrops: Array.from({ length: ARENA_POOLS.cargo },
-      (_, i) => ({ p: point(), amount: 0, active: false, age: 0, field: i < T.fieldGroups * FIELD_GROUP_SIZE, kind: 0, claim: -1 })),
-    fieldSpots: Array.from({ length: T.fieldGroups }, () => -1), fieldTimers: Array.from({ length: T.fieldGroups }, () => 0),
+      // The storm's own slots are field slots too: they never age out and a wreck never spills into them.
+      (_, i) => ({ p: point(), amount: 0, active: false, age: 0, field: i < T.fieldGroups * FIELD_GROUP_SIZE || i >= STORM_SLOTS, kind: 0, claim: -1 })),
+    fieldSpots: Array.from({ length: T.fieldGroups }, () => -1), fieldTimers: Array.from({ length: T.fieldGroups }, () => 0), asteriumStorm: false,
+    stormOpen: false, stormDebt: 0, stormNext: 2, stormSpots: Array.from({ length: STORM.maxPieces }, () => -1),
     entryCursor: 0, bulletCursor: 0, ghostCursor: 0, smokeCursor: 0, missileCursor: 0, impactCursor: 0, damageSide: 0, shots: 0, aimHorizon: 0,
     nextId: 1, scans: [],
   };
@@ -147,14 +156,15 @@ function mineAndRegrow(world: ArenaWorld): void {
 }
 
 /**
- * Grows field group `g` on a random farm spot no other group holds: a lone piece on
+ * Grows field group `g` on a random farm spot no other group or storm piece holds: a lone piece on
  * the spot itself, or a cluster spread round it at clusterRadius.
  */
 function growField(world: ArenaWorld, g: number): void {
   const spots = world.layout.farmSpots;
   for (let attempt = 0; attempt < spots.length * 2; attempt++) {
     const index = Math.floor(world.random() * spots.length); const spot = spots[index];
-    if (!spot || world.fieldSpots.includes(index)) continue;
+    // A storm piece's spot is held too: a group never regrows over Asteryum still lying there.
+    if (!spot || world.fieldSpots.includes(index) || world.stormSpots.includes(index)) continue;
     const spawn = pickFieldSpawn(world.random());
     for (let k = 0; k < FIELD_GROUP_SIZE; k++) {
       const drop = world.cargoDrops[g * FIELD_GROUP_SIZE + k]; if (!drop) continue;
@@ -176,6 +186,58 @@ function stepField(world: ArenaWorld): void {
     world.fieldSpots[g] = -1;
     world.fieldTimers[g] = (world.fieldTimers[g] ?? 0) + 1 / T.tickRate;
     if ((world.fieldTimers[g] ?? 0) >= T.fieldFarmRespawn - 1e-9) growField(world, g);
+  }
+}
+
+/** The farm spots in the heart of the zone, per layout: where the storm's Asteryum grows. */
+const HEARTS = new WeakMap<ArenaLayout, readonly number[]>();
+function heartSpots(layout: ArenaLayout): readonly number[] {
+  let found = HEARTS.get(layout);
+  if (!found) {
+    // Squares, not Math.hypot: the shared simulation stays bit-exact on every engine (arithmetic.test).
+    found = layout.farmSpots.flatMap((p, i) => p.x * p.x + p.z * p.z <= STORM.heart * STORM.heart ? [i] : []);
+    HEARTS.set(layout, found);
+  }
+  return found;
+}
+
+/** Grows the storm's piece in slot `k` on a free heart spot: one no field group or other piece holds. */
+function growStormPiece(world: ArenaWorld, k: number): boolean {
+  const hearts = heartSpots(world.layout);
+  const free = hearts.filter(index => !world.fieldSpots.includes(index) && !world.stormSpots.includes(index));
+  const index = free[Math.floor(world.random() * free.length)];
+  const spot = index === undefined ? undefined : world.layout.farmSpots[index];
+  const drop = world.cargoDrops[STORM_SLOTS + k];
+  if (index === undefined || !spot || !drop) return false;
+  drop.p.x = spot.x; drop.p.y = spot.y; drop.p.z = spot.z;
+  drop.active = true; drop.kind = 3; drop.amount = world.stormNext; drop.age = 0; drop.claim = -1;
+  world.stormSpots[k] = index;
+  return true;
+}
+
+/**
+ * One tick of the Asteryum Fırtınası (`ASTERIUM_STORM`). Calm: it owes nothing, and what is out stays.
+ * Blowing: every flying ship adds to the debt; a piece grows whenever the debt covers the next one and
+ * fewer than one per pilot wait (at least `minPieces`, at most `maxPieces`).
+ */
+export function stepAsteriumStorm(world: ArenaWorld): void {
+  if (!world.asteriumStorm) { world.stormOpen = false; world.stormDebt = 0; return; }
+  let pilots = 0;
+  if (alive(world.pilot) && world.pilot.decoyOf < 0) pilots++;
+  for (const ship of world.drones) if (alive(ship) && ship.decoyOf < 0) pilots++;
+  if (pilots === 0) return;
+  const most = Math.min(STORM.maxPieces, Math.max(STORM.minPieces, pilots));
+  // It opens with about one piece a pilot already out: nobody flies in to an empty storm.
+  if (!world.stormOpen) { world.stormOpen = true; world.stormDebt = most * 1.5; world.stormNext = 1 + Math.floor(world.random() * 2); }
+  world.stormDebt = Math.min(most * 2, world.stormDebt + pilots * STORM.perPilotHour / 3600 / T.tickRate);
+  let out = 0;
+  for (let k = 0; k < STORM.maxPieces; k++) {
+    if (world.cargoDrops[STORM_SLOTS + k]?.active) out++; else world.stormSpots[k] = -1;
+  }
+  for (let k = 0; k < STORM.maxPieces && out < most && world.stormDebt >= world.stormNext; k++) {
+    if (world.cargoDrops[STORM_SLOTS + k]?.active) continue;
+    if (!growStormPiece(world, k)) break;
+    world.stormDebt -= world.stormNext; world.stormNext = 1 + Math.floor(world.random() * 2); out++;
   }
 }
 
@@ -337,6 +399,7 @@ function stepWorld(world: ArenaWorld, input: ArenaIntent, settings?: SteeringSet
     if (!drop.field && drop.active) { drop.age += 1 / T.tickRate; if (drop.age >= T.dropLife) drop.active = false; }
   }
   stepField(world);
+  stepAsteriumStorm(world);
   mineAndRegrow(world);
   stepMagnet(world);
   for (let j = 0; j <= world.drones.length; j++) {

@@ -46,8 +46,14 @@ export async function verifyHonorBenefits(output) {
         const api = new Api({ fetch: async () => { throw new Error('Unexpected fixture HTTP read'); } });
         client.setQueryData(keys.galaxy, { radiationModel: 'HP', radiation: [], hpRadiation: [] });
         const noop = () => undefined;
-        const thresholds = rules.HONOR_BENEFIT_THRESHOLDS_V1;
-        const benefit = score => ({ version: 1, score, thresholds, ...rules.honorBenefits(score, thresholds) });
+        const thresholds = rules.HONOR_BENEFIT_THRESHOLDS_V2;
+        const benefit = score => ({ version: 2, score, thresholds, ...rules.honorBenefits(score, thresholds) });
+        client.setQueryData(keys.honorTarget('target'), {
+          outcome: 'WEAK', attackerTier: 4, defenderTier: 2, attackerNavy: 10000, defenderNavy: 2000,
+          priorWeakCount: 1, weakMultiplier: 2,
+          repeatRaid: false, inFlightWeak: false, relationship: null, defenderExcluded: false,
+          credits: true, active: true,
+        });
         const crossing = { id: 'convoy', kind: 'INTERGALACTIC_CONVOY', startsAt: start, endsAt: end,
           appearsAtMinute: 0, expiresAtMinute: 180,
           route: { from: { x: -4500, y: 0, z: 0 }, to: { x: 4500, y: 0, z: 0 }, velocity: { x: 50, y: 0, z: 0 }, speed: 50 },
@@ -80,14 +86,14 @@ export async function verifyHonorBenefits(output) {
           root.render(h(QueryClientProvider, { client }, h(ApiProvider, { api }, h(ToastProvider, null, h('div', { key: surface + score }, scene)))));
         };
       }, language);
-      for (const [surface, scores] of [['tiers', [-100000000, -25000000, 0, 25000000, 75000000]],
-        ['repair', [-100000000, 75000000]], ['trade', [-100000000, 75000000]], ['convoy', [-100000000, 75000000]],
+      for (const [surface, scores] of [['tiers', [-200000000, -150000000, -50000000, -25000000, 0, 25000000, 75000000]],
+        ['repair', [-200000000, 75000000]], ['trade', [-200000000, 75000000]], ['convoy', [-200000000, 75000000]],
         ['emp', [0, 1]], ['bomb', [0, 1]], ['forge', [0, 1]]]) {
         for (const score of scores) {
           await page.evaluate(({ surface, score }) => window.__honorBenefitVisual(surface, score), { surface, score });
           const tactical = ['emp', 'bomb', 'forge'].includes(surface);
           if (surface === 'forge') {
-            await page.locator('.radiation-forge details summary').click();
+            await page.locator('.gk-armory .gk-peek__row button[aria-expanded]').click();
           } else if (tactical) {
             await page.locator('[data-honor-weapon-rule]').waitFor();
           } else if (surface === 'tiers') {

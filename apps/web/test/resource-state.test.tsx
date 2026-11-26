@@ -110,7 +110,7 @@ function ResourceActions() {
     <button onClick={() => { pirate.mutate({ pirateId: 'pirate', fleet: { DART: 1 } }); }}>Pirate</button>
     <button onClick={() => { mine.mutate({ asteroidId: 'rock', craft: 1 }); }}>Mine</button>
     <button onClick={() => { harvest.mutate({ fieldId: 'wreck', craft: 1 }); }}>Salvage</button>
-    <button onClick={() => { settlement.mutate('target'); }}>Settle</button>
+    <button onClick={() => { settlement.mutate({ targetPlanetId: 'target' }); }}>Settle</button>
     <button onClick={() => { deathStar.mutate(); }}>Build Death Star</button>
     <button onClick={() => { interceptor.mutate(); }}>Build Interceptor</button>
     <button onClick={() => { strike.mutate('target'); }}>Strike</button>

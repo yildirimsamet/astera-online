@@ -2,7 +2,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { isHonorCandidate, isSupportedHonorVersion, honorRankRewards, type HonorRankReward } from '@astera/rules';
 import type { Tx } from '../db/client.js';
 import { flushBeforeCommit } from '../db/finalizers.js';
-import { honorSeasons, honorTotals, seasons } from '../db/schema.js';
+import { honorQuestTotals, honorSeasons, honorTotals, seasons } from '../db/schema.js';
 
 /** Closing owns the exclusive season lock, so queued battles can flush before rank/rewards freeze.
  * Ranks every listed commander, bots included; the caller decides who may collect. */
@@ -26,6 +26,10 @@ export async function sealHonor(tx: Tx, input: {
   const ids = [...new Set(input.playerIds)];
   const totals = ids.length === 0 ? [] : await tx.select().from(honorTotals)
     .where(and(eq(honorTotals.seasonId, input.seasonId), inArray(honorTotals.playerId, ids)));
+  const quests = ids.length === 0 ? [] : await tx.select({ id: honorQuestTotals.playerId, micros: honorQuestTotals.micros }).from(honorQuestTotals)
+    .where(and(eq(honorQuestTotals.seasonId, input.seasonId), inArray(honorQuestTotals.playerId, ids)));
   const scores = new Map(totals.map(row => [row.playerId, row.score]));
-  return honorRankRewards(ids.map(actor => ({ actor, honor: scores.get(actor) ?? 0 })));
+  const quest = new Map(quests.map(row => [row.id, row.micros]));
+  // The ledger's total plus what the daily quests paid the seat (owner 2026-11-24: ordinary Honor).
+  return honorRankRewards(ids.map(actor => ({ actor, honor: (scores.get(actor) ?? 0) + (quest.get(actor) ?? 0) })));
 }

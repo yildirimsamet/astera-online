@@ -1,9 +1,10 @@
+import { z } from 'zod';
 import { MOON_LOCATION, PLANET_LOCATION } from '../services/unitLocation.js';
 import { prepareBattleReplay, persistBattleReplay } from '../services/battleReplay.js';
 import { shipReadyNotice } from '../services/arenaReady.js';
 import { finishArenaTeamSeason } from '../services/arenaTeams.js';
 import { commanderPvpBalance } from '../services/pvpBalance.js';
-import { and, eq, inArray, isNotNull, isNull, lte, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, lte, ne, sql } from 'drizzle-orm';
 import {
   activeBattleFleet,
   FAULT,
@@ -52,6 +53,7 @@ import {
   vaultProtects,
   type Fleet,
   type Resources,
+  missionSuppressesRadarWarning,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import { attributeLegacyColonyLoss, recordPlayerLegacyFact, settleLegacyAttack } from '../services/legacyEvents.js';
@@ -102,6 +104,7 @@ import {
   strategicAssets,
   strategicImpacts,
   strategicInterceptions,
+  synthesisJobs,
   type SeasonStatsSnapshot,
 } from '../db/schema.js';
 import {
@@ -143,6 +146,7 @@ import {
   levelOf,
   rememberVisitedWorld,
   rememberWorld,
+  interceptProbe,
   resolveProbe,
 } from '../services/intel.js';
 import {
@@ -245,6 +249,7 @@ import { moonsOf } from '../services/moon.js';
 import { readHomeHealth, writeHomeHealth } from '../services/homeHealth.js';
 import { settleEmptyMoon } from '../services/moonBattle.js';
 import { settleMoonBirth } from '../services/moonBirth.js';
+import { settleSynthesisJob } from '../services/synthesis.js';
 
 export interface HandlerContext {
   db: Db;
@@ -282,6 +287,58 @@ async function claimMission(tx: Tx, missionId: string, eventResolveAt: Date) {
 }
 
 /** Lock every Dominion ledger in one stable player-id order. */
+/* ── a probe battery's shot ────────────────────────────────── */
+
+/**
+ * A PROBE MEETS A BATTERY OUT ON ITS APPROACH (owner playtest, 2026-11-24).
+ *
+ * The event carries the point on the drawn leg; `interceptProbe` reads the battery at the
+ * event's instant and rolls the probe's one roll. Shot down, the mission ends here and its
+ * arrival event finds nothing to claim. The defender's gathered notice is written with the
+ * shot; the sender hears it under the probe's own kind, because this is the answer that
+ * craft was sent for.
+ */
+export const onProbeDefence: Handler = async ({ db, clock }, event) => {
+  const missionId = event.refId;
+  if (!missionId) throw new Error('probe_defence without refId');
+  const vec = z.object({ x: z.number(), y: z.number(), z: z.number() });
+  const { hitAt, from, ...point } = vec.extend({ hitAt: z.number(), from: vec }).parse(event.payload);
+  await db.transaction(async (tx) => {
+    await lockSeason(tx, event.seasonId);
+    const shot = await interceptProbe(tx, {
+      missionId, firedAt: event.resolveAt, hitAt: new Date(hitAt), point, from, now: clock.now(),
+    });
+    if (!shot) return;
+    const { mission, target } = shot;
+    await publishShard(tx, mission.seasonId, 'arrival');
+    const scouted = await identityOfPlanet(tx, mission.targetPlanetId);
+    await notify(tx, {
+      playerId: mission.ownerPlayerId,
+      kind: 'probe_report',
+      payload: {
+        shotDown: true,
+        targetPlanetId: mission.targetPlanetId,
+        targetUsername: scouted?.username ?? 'someone',
+        targetPlanetName: scouted?.planetName ?? 'an unknown world',
+        ...(scouted?.clanTag ? { targetClanTag: scouted.clanTag } : {}),
+      },
+      at: clock.now(),
+      refId: mission.id,
+    });
+    if (target.controllerPlayerId) {
+      await armPaidAlert(tx, {
+        seasonId: mission.seasonId,
+        playerId: target.controllerPlayerId,
+        kind: 'probe_detected',
+        refId: missionId,
+        now: clock.now(),
+        payload: { targetPlanetId: target.id, targetPlanetName: target.name },
+      });
+      await announceUnlocks(tx, target.controllerPlayerId, clock.now());
+    }
+  });
+};
+
 /* ── mission arrival ────────────────────────────────────────── */
 
 /**
@@ -1348,6 +1405,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     const [reportRow] = await tx.insert(battleReports).values({
       seasonId: mission.seasonId,
       missionId,
+      appliedCapsules: mission.appliedCapsules,
       attackerPlayerId: mission.ownerPlayerId,
       defenderPlayerId: defender.playerId,
       targetPlanetId: defender.planetId,
@@ -1956,6 +2014,19 @@ async function settleReturn(
  * warning instant uses the exact visual leg, including surface departure and
  * orbital arrival, because that is the only way the drawn shell and alert agree.
  */
+/**
+ * A SENTEZ BATCH'S LAST CAPSULE IS DUE (plan 2026-11-24 §3.4). The event names the batch, not the
+ * commander, so a cancelled batch's event finds nothing and a later batch is left alone.
+ */
+export const onSynthesisComplete: Handler = async ({ db, clock }, event) => {
+  const jobId = event.refId;
+  if (!jobId) throw new Error('synthesis_complete without refId');
+  await db.transaction(async (tx) => {
+    const [job] = await tx.select({ playerId: synthesisJobs.playerId }).from(synthesisJobs).where(eq(synthesisJobs.id, jobId));
+    if (job) await settleSynthesisJob(tx, job.playerId, clock.now(), jobId);
+  });
+};
+
 export const onRadarWarning: Handler = async ({ db, clock }, event) => {
   const missionId = event.refId;
   if (!missionId) throw new Error('radar_warning without refId');
@@ -1965,6 +2036,8 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
     if (!mission) { await warnRadiationBombById(tx, missionId, clock.now()); return; }
     // Nothing to warn about if it already landed or was somehow cancelled.
     if (mission.status !== 'in_flight') return;
+    // Sessiz İtki: no warning, clan alarm or paid alert, even from a stray event (plan 2026-11-24 §3.5).
+    if (missionSuppressesRadarWarning(mission.appliedCapsules)) return;
     const [joint] = mission.kind === 'clan_war'
       ? await tx
           .select({ leg: clanWarMissions.leg, clanTag: clanWarOperations.clanTag })
@@ -3317,8 +3390,30 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   clan_war_expiry: onClanWarExpiry,
   clan_support_expiry: onClanSupportExpiry,
   mission_arrival: onMissionArrival,
+  probe_defence: onProbeDefence,
   radar_warning: onRadarWarning,
   newcomer_hour: ({ db, clock }, event) => resolveNewcomerHour(db, clock, event),
+  synthesis_complete: onSynthesisComplete,
+  honor_penalty_sync: async ({ db, clock }, event) => {
+    const playerId = event.refId;
+    if (!playerId) return;
+    const owned = await db.select({ id: planets.id, lastTickAt: planets.lastTickAt }).from(planets)
+      .where(and(eq(planets.seasonId, event.seasonId), eq(planets.controllerPlayerId, playerId)))
+      .orderBy(asc(planets.id));
+    for (const world of owned) {
+      const syncAt = world.lastTickAt > event.resolveAt ? clock.now() : event.resolveAt;
+      const syncClock: Clock = { now: () => syncAt };
+      try {
+        await db.transaction(async (tx) => {
+          await loadLocked(tx, world.id, syncClock, { expectedPlayerId: playerId, requireLive: false });
+          await publish(tx, playerId, 'planet');
+        });
+      } catch (error) {
+        if (error instanceof Error && error.name === 'GameError') continue;
+        throw error;
+      }
+    }
+  },
   paid_alert: async ({ db, clock }, event) => {
     if (!event.refId) throw new Error('paid_alert without refId');
     await settlePaidAlert(db, clock, event.refId);

@@ -111,7 +111,7 @@ function SessionApp() {
   const [door] = useState(() => takeArenaDoor(pageStorage()));
   const [arenaOpen, setArenaOpen] = useState(door === 'enter');
   const api = useApi();
-  const arenaAllowed = useArenaAccess(api, ready && import.meta.env.VITE_ARENA === '1');
+  const arenaAllowed = useArenaAccess(api, ready);
 
   /**
    * ABOVE EVERY EARLY RETURN IN THIS COMPONENT, and it has to be.

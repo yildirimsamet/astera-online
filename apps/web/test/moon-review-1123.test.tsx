@@ -96,6 +96,20 @@ describe('Moon page — takeover review', () => {
     expect(within(card).getByRole('alert')).toBeDefined();
   });
 
+  // Owner 2026-11-26: an EMP'd moon takes no fleet up from its planet; its own ships may still come down.
+  it('a moon a Death Star has shut takes nothing up, and still lets its ships down', () => {
+    const onHop = vi.fn().mockResolvedValue(undefined);
+    show({ planet: planet({ moon: moon({ closedUntil: new Date(Date.now() + 3 * 3_600_000) }) }), onHop });
+    const card = screen.getByTestId('moon-hop-card');
+    fireEvent.click(within(card).getByTestId('moon-hop-select-all'));
+    const submit = within(card).getByTestId('moon-hop-submit');
+    expect(submit).toBeDisabled();
+    expect(submit.textContent).toBe(moonT('hop.closed'));
+    fireEvent.click(within(card).getByRole('radio', { name: moonT('hop.toPlanet') }));
+    fireEvent.click(within(card).getByTestId('moon-hop-select-all'));
+    expect(within(card).getByTestId('moon-hop-submit')).toBeEnabled();
+  });
+
   it('W2 + W3: an unnamed world reads as unknown, and no route is drawn as cloaked', async () => {
     const onScanVisual = vi.fn();
     const onScan = vi.fn().mockResolvedValue({

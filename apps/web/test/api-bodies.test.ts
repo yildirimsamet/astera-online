@@ -119,6 +119,14 @@ const WITH_BODY: [name: string, call: (api: Api) => Promise<unknown>, expected: 
   ['markClanChatRead', (a) => a.markClanChatRead('message-1'), { messageId: 'message-1' }],
   ['markClanSeen', (a) => a.markClanSeen(), {}],
   ['claimReward', (a) => a.claimReward('first-blood'), { id: 'first-blood' }],
+  // Asteryum (plan 2026-11-24): the laboratory, and capsules riding a launch only when chosen.
+  ['startSynthesis', (a) => a.startSynthesis('OPTIC_VEIL', 3, 'synth-key-1'), { capsuleId: 'OPTIC_VEIL', quantity: 3 }],
+  ['cancelSynthesis', (a) => a.cancelSynthesis(), {}],
+  ['launch with capsules', (a) => a.launch('o-1', 't-1', { DART: 5 }, false, 1, false, false, undefined, ['SILENT_THRUST']), {
+    originPlanetId: 'o-1', targetPlanetId: 't-1', fleet: { DART: 5 }, capsules: ['SILENT_THRUST'],
+  }],
+  ['launch without capsules', (a) => a.launch('o-1', 't-1', { DART: 5 }), { originPlanetId: 'o-1', targetPlanetId: 't-1', fleet: { DART: 5 } }],
+  ['settle with the veil', (a) => a.settle('o-1', 't-1', ['OPTIC_VEIL']), { originPlanetId: 'o-1', targetPlanetId: 't-1', capsules: ['OPTIC_VEIL'] }],
   // The two that were broken.
   ['mine', (a) => a.mine('mJt7YvxMZEC5S7yYQ32SYw', 3), {
     asteroidId: 'mJt7YvxMZEC5S7yYQ32SYw', craft: 3,

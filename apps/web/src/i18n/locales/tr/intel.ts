@@ -81,6 +81,9 @@ export const intel = {
     estimateFact: "Sayılar tahmin aralığıdır.",
     estimateNote: 'Sayılar tahmin aralığıdır. Silahlı birlik değeri, kalkanı ve silahsız gemileri içermez.',
     caught: 'sondayı yakaladılar',
+    lostHeading: "Düşürülen sondalar",
+    lostTitle: "{{world}} üzerinde sonda düşürüldü",
+    lostWhy: "{{owner}} · orada şarjlı bir sonda bataryası var",
     /* Sinyal çubuklarının yanındaki iki kelime; isabeti çubuklar taşıyor. */
     homeTag: 'filo evdeydi',
     outTag: 'filo dışarıdaydı',
@@ -101,6 +104,7 @@ export const intel = {
     cost: "Radar olmadan bu gezegene gönderilen sondaların çoğu fark edilmeden geçer.",
     quiet: "Tespit edilen tarama yok. {{level}}. seviye Radar dinlemede.",
     scan: 'Tarama yakalandı',
+    shotDown: "Sonda düşürüldü",
     bearing: 'galaktik {{bearing}} yönünden',
     origin: ' · {{planet}}',
     /** Taramanın hangi dünyaya geldiği. */
@@ -571,7 +575,7 @@ export const dossier = {
   developmentValue: '{{tier}}. kademe',
   developmentVersus: '{{tier}}. kademe · sen {{mine}}',
   developmentBandNote:
-    "Akın ve Ölüm Yıldızı yalnızca aralarında en fazla 1 kademe fark olan komutanlar arasında mümkün; iki tarafın da en gelişmiş dünyası sayılır. Seninki {{mine}}. kademe, yani {{low}}–{{high}}. kademedeki komutanlara ulaşabilirsin. Bu dünya, sahibinin en gelişmiş dünyası olmayabilir. Taraflardan biri 1–3. kademedeyse her tarafın diğerine bir bireysel akın hakkı vardır. Yeni akın için savaştan sonra 12 saat beklenir. Yoldaki akın hakkı ayırır; geri çağrı bekleme süresi başlatmaz. Ölüm Yıldızı ve ortak klan operasyonları bu sınırın dışındadır.",
+    "Akın ve Ölüm Yıldızı yalnızca aralarında en fazla 1 kademe fark olan komutanlar arasında mümkün; iki tarafın da en gelişmiş dünyası sayılır. Seninki {{mine}}. kademe, yani {{low}}–{{high}}. kademedeki komutanlara ulaşabilirsin. Bu dünya, sahibinin en gelişmiş dünyası olmayabilir. Taraflardan biri 1–4. kademedeyse her tarafın diğerine bir bireysel akın hakkı vardır. Yeni akın için savaştan sonra 12 saat beklenir. Yoldaki akın hakkı ayırır; geri çağrı bekleme süresi başlatmaz. Ölüm Yıldızı ve ortak klan operasyonları bu sınırın dışındadır.",
 
   hardwareLabel: 'Yörüngedeki uydular',
   hardwareNote: 'Donanımı görüyorsun. Ne işe yaradığını öğrenmek bir sondaya bakar.',
@@ -630,6 +634,12 @@ export const dossier = {
   interceptorCountNote: "Her şarj bir Ölüm Yıldızı’nı imha eder; birinin geçmesi için aynı anda {{needed}} silah gerekir. O zamandan beri şarj eklemiş olabilirler.",
   interceptorEmpty: 'Şarj yok',
   interceptorEmptyNote: 'Sonda anında yüklü önleyici yoktu. O zamandan beri mühimmat yüklemiş olabilirler.',
+  probeBatteryLabel: "Sonda bataryası",
+  probeBatteryCount: "{{ready}}/{{capacity}} şarj hazır",
+  probeBatteryNone: "Yok",
+  probeBatteryCountNote: "Şarjı varken yakaladığı sondayı düşürür. Önce {{count}} sonda harcanmalı; şarjlar {{minutes}} dakikada bir dolar.",
+  probeBatteryEmptyNote: "Şarjı yoktu: sonda bataryasız bir dünyaya gider gibi gider. Şarjlar {{minutes}} dakikada bir dolar.",
+  probeBatteryNoneNote: "Sonda bataryası yoktu. Sonradan kurmuş olabilir.",
   loyaltyLabel: "Koloni sadakati",
   loyaltyValue: "%{{value}}",
   loyaltyNote_one: "Ölüm Yıldızı isabet başına {{loss}} sadakat götürür. Tek isabet bu koloniyi düşürür.",

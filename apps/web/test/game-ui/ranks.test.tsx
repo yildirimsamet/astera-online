@@ -25,7 +25,7 @@ const tiers = Object.keys(HONOR_BENEFIT_RATES).map(Number).filter((n): n is Hono
 
 describe('the rank pictures', () => {
   it('has a badge for every Honor tier, all one height so the shield never changes size', () => {
-    expect([...tiers].sort((a, b) => a - b)).toEqual([-2, -1, 0, 1, 2]);
+    expect([...tiers].sort((a, b) => a - b)).toEqual([-4, -3, -2, -1, 0, 1, 2]);
     const heights = new Set<number>();
     for (const tier of tiers) {
       const art = HONOR_ART[tier];

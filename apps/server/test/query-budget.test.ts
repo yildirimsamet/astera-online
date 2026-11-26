@@ -42,6 +42,7 @@ it.each([
   ['GET', '/api/planet', 11],
   ['GET', '/api/session/pending', 4],
   ['GET', '/api/rewards', 10],
+  ['GET', '/api/daily-quests', 14],
   ['GET', '/api/season', 6],
   ['POST', '/api/planet/collect', 30],
 ] as const)('%s %s stays within %i statements', async (method, url, budget) => {

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
@@ -27,6 +27,11 @@ describe('Honor guidance in the actual launch sheet', () => {
       : {}), { status: urlOf(input).includes('/honor/targets/') ? 200 : 500 })));
     open(fetch);
     expect(await screen.findByText(/Even a successful attack/)).toBeVisible();
+    // Owner 2026-11-25: the Honor reading sits under the Power ruler, folded; the rules are one press away.
+    const ruler = document.querySelector('.gk-launch__ruler');
+    const honor = document.querySelector('[data-honor-target]');
+    expect(ruler && honor && (ruler.compareDocumentPosition(honor) & Node.DOCUMENT_POSITION_FOLLOWING)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Honor rules' }));
     expect(screen.getByText(/Shared sides cannot earn positive Honor/)).toBeVisible();
     expect(screen.getByRole('button', { name: /choose a fleet/i })).toBeDisabled();
     expect(fetch.mock.calls.some(([input]) => urlOf(input).endsWith('/api/honor/targets/honor-target'))).toBe(true);

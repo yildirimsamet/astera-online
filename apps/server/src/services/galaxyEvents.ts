@@ -47,6 +47,9 @@ const tradeRateSchema = z.object({
 
 const tradeEffectSchema = z.object({ rate: tradeRateSchema }).strict();
 
+/** Asteryum Fırtınası (plan 2026-11-24 §3.2): the Yarık field is the whole effect. */
+const stormEffectSchema = z.object({ fieldVersion: z.literal(1) }).strict();
+
 const convoyEffectSchema = z.object({
   routeVersion: z.literal(1),
   formationVersion: z.literal(1),
@@ -89,6 +92,7 @@ const effectSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('ASTEROID_SHOWER'), effect: showerEffectSchema }).strict(),
   z.object({ kind: z.literal('TRADE_SHIP'), effect: tradeEffectSchema }).strict(),
   z.object({ kind: z.literal('INTERGALACTIC_CONVOY'), effect: convoyEffectSchema }).strict(),
+  z.object({ kind: z.literal('ASTERIUM_STORM'), effect: stormEffectSchema }).strict(),
 ]);
 
 type OccurrenceEffect = z.infer<typeof effectSchema>;
@@ -111,6 +115,7 @@ const CALENDAR_LABEL: Record<GalaxyEventKind, string> = {
   ASTEROID_SHOWER: 'galaxy-events:v1',
   TRADE_SHIP: 'galaxy-events:trade-ship:v1',
   INTERGALACTIC_CONVOY: 'galaxy-events:intergalactic-convoy:v1',
+  ASTERIUM_STORM: 'galaxy-events:asterium-storm:v1',
 };
 
 function calendarRng(asteroidKey: string, kind: GalaxyEventKind): () => number {
@@ -681,6 +686,8 @@ export async function loadGalaxyEventSchedule(
         return { ...base, kind: parsed.kind, effect: parsed.effect };
       case 'INTERGALACTIC_CONVOY':
         return { ...base, kind: parsed.kind, effect: parsed.effect };
+      case 'ASTERIUM_STORM':
+        return { ...base, kind: parsed.kind, effect: parsed.effect };
     }
   });
 }
@@ -743,7 +750,9 @@ export type ActiveGalaxyEventView =
         shipDropChanceAtFullQuality: number;
         maxAwardedShips: number;
       };
-    });
+    })
+  /** Asteryum Fırtınası: a window, and the Yarık field that blows inside it. */
+  | (ActiveGalaxyEventBase & { kind: 'ASTERIUM_STORM' });
 
 /**
  * Serialize changes to the season's notification audience with lifecycle fanout.
@@ -815,6 +824,7 @@ export async function activeGalaxyEvents(
         asteroidSpawnMultiplier: parsed.effect.asteroidSpawnMultiplier,
       };
     }
+    if (parsed.kind === 'ASTERIUM_STORM') return { ...base, kind: parsed.kind };
     if (parsed.kind === 'INTERGALACTIC_CONVOY') {
       const startsAtMinute = minutesSince(me.seasonStartsAt, row.startsAt);
       const endsAtMinute = minutesSince(me.seasonStartsAt, row.endsAt);
@@ -1025,6 +1035,7 @@ function lifecyclePayload(
   if (parsed.kind === 'TRADE_SHIP') {
     return { eventKind: parsed.kind, ...window, rate: parsed.effect.rate };
   }
+  if (parsed.kind === 'ASTERIUM_STORM') return { eventKind: parsed.kind, ...window };
   return {
     eventKind: parsed.kind,
     ...window,

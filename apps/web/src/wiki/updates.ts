@@ -11,6 +11,45 @@ function post(date: string, slug: string, title: Localized<string>, description:
   return { id: `updates.${date}-${slug}`, category: 'updates', slug: `${date}-${slug}`, title, description, updated: date, sections: l(en, tr), related };
 }
 
+const honorBenefitsV2 = post('2026-11-24', 'honor-penalties-and-pvp-protection',
+  l('Deeper negative Honor tiers and stronger PvP protection', 'Daha derin negatif Honor kademeleri ve daha güçlü PvP koruması'),
+  l('Negative Honor now extends to four penalty tiers (−25 to −200) with fleet fuel and production penalties, repeated bullying scales 1× / 2× / 3×, and mid-tier loot and raid frequency limits are tighter.', 'Negatif Honor artık dört kesinti kademesine (−25’ten −200’e) uzanıyor; tekrarlı zorbalık 1× / 2× / 3× katlanıyor, orta kademe yağma oranları ve saldırı sıklığı sınırları daralıyor.'),
+  [
+    section('change', 'What changed',
+      'To protect growing commanders from one-sided farming without touching combat formulas, five rules change across every live main galaxy:',
+      { kind: 'list', items: [
+        'Negative Honor now has four penalty tiers: −25, −50, −150 and −200. At −150 (Penalty tier 3) every fleet departure costs +25% deuterium fuel (tactical retreat stays exempt). At −200 (Penalty tier 4) hourly Alloy, Crystal and Deuterium production also drops by 25% across all your worlds while storage and Works caps remain unchanged.',
+        'Repeated bullying of the same weaker commander within 24 hours now multiplies negative Honor loss by 1× / 2× / 3× instead of 1× / 1.5× / 2×, and launch panels warn you before you commit.',
+        'PvP loot now splits into three tiers: Tier 1–3 stays 25% / 12.5%, Tier 4–5 is now 45% / 22.5% (Works 22.5% / 11.25%), and Tier 6+ stays 60% / 30%.',
+        'Tier 4+ commanders now earn a 12-hour Recovery Shield after 3 net production hours lost in 6 hours (down from 4). Colony fault triggers remain at 4 hours.',
+        'Raid frequency limits are tighter: Tier 1–4 individual raids wait 12 hours after combat; Tier 5+ personal bash is capped at 2 attacks per 12 hours; clan raids on one commander are capped at 3 per 12 hours.',
+      ] }),
+    section('example', 'A worked example',
+      'Suppose a commander repeatedly raids a smaller neighbour within 24 hours. The first bullying raid takes the base negative Honor penalty. Launching a second raid on the same commander within the day now doubles that penalty to 2×, and a third raises it to 3×; the launch panel warns you before you commit. If your Honor drops to −150 or below (Penalty tier 3), every fleet launch costs 25% more deuterium fuel, except tactical retreat. If it reaches −200 or below (Penalty tier 4), your hourly Alloy, Crystal and Deuterium production also drops by 25% across every world you hold until you climb back above −200 through fair fights or daily quests.'),
+    section('why', 'Why we changed it',
+      'Previously, a strong commander could absorb the old −100 penalty floor and keep farming mid-tier commanders with high loot rates and repeated strikes. Extending negative Honor to −150 and −200 creates a real economic cost for sustained bullying, while splitting mid-tier loot to 45% / 22.5%, lowering the Tier 4+ Recovery Shield bar to 3 production hours, and tightening raid frequency limits gives defenders room to recover without changing a single combat formula.'),
+    section('what-it-means', 'What it means for you',
+      'All live main galaxies switch immediately; past battles and flights already in the air keep their frozen rules. Check [[combat.eligibility|attack eligibility]], [[combat.loot|loot rules]] and [[guides.how-to-play|the how to play guide]] for the full tables.'),
+  ],
+  [
+    section('change', 'Ne değişti?',
+      'Savaş formüllerine dokunmadan gelişmekte olan komutanları tek taraflı ezilmeden korumak için tüm canlı ana galaksilerde beş kural değişiyor:',
+      { kind: 'list', items: [
+        'Negatif Honor artık dört kesinti kademesinden oluşuyor: −25, −50, −150 ve −200. −150’de (Kesinti kademesi 3) tüm filo kalkışları +%25 döteryum yakıt ister (taktik geri çekilme muaftır). −200’de (Kesinti kademesi 4) buna ek olarak tüm gezegenlerde saatlik Alaşım, Kristal ve Döteryum üretimi %25 azalır; depo ve havuz tavanları değişmez.',
+        'Son 24 saatte aynı zayıf komutana tekrarlı zorbalık artık negatif Honor kaybını 1× / 1,5× / 2× yerine 1× / 2× / 3× katlar; kalkış ekranları göndermeden önce uyarır.',
+        'PvP yağma oranları üç kademeye ayrıldı: Kademe 1–3 %25 / %12,5, Kademe 4–5 %45 / %22,5 (Havuz %22,5 / %11,25), Kademe 6+ %60 / %30.',
+        'Kademe 4+ komutanlar artık 6 saatte 3 saatlik net üretim kaybında 12 saatlik Toparlanma Kalkanı kazanır (eskiden 4 saatti). Koloni arızası eşiği 4 saatte sabit kalır.',
+        'Saldırı sıklığı sınırları daraldı: Kademe 1–4 bireysel akınlarda savaştan sonra 12 saat bekleme, Kademe 5+ kişisel akında 12 saatte en fazla 2 saldırı, aynı komutana klan akınında 12 saatte en fazla 3 saldırı.',
+      ] }),
+    section('example', 'Örnekle',
+      'Bir komutanın 24 saat içinde daha zayıf bir komşusuna art arda akın gönderdiğini düşün. İlk zorbalık akını temel negatif Honor cezasını yazar. Aynı gün içinde ikinci kez saldırıldığında ceza 2×, üçüncü kez saldırıldığında 3× katlanır; kalkış ekranı göndermeden önce seni açıkça uyarır. Honor puanın −150 veya altına inerse (Kesinti kademesi 3) taktik geri çekilme dışındaki her filo kalkışı %25 daha fazla döteryum yakar. −200 veya altına inersen (Kesinti kademesi 4) tüm gezegenlerinde saatlik Alaşım, Kristal ve Döteryum üretimi de %25 azalır; dengeli savaşlar veya günlük görevlerle −200 üstüne çıktığında üretim normale döner.'),
+    section('why', 'Neden değiştirdik?',
+      'Eski −100 tabanı sürekli zorbalık yapan güçlü komutanları yeterince frenlemiyordu ve orta kademedeki savunmacılar yüksek yağma oranları altında toparlanmakta zorlanıyordu. Negatif Honor’u −150 ve −200 kademelerine uzatmak, Kademe 4–5 yağmasını %45 / %22,5 düzeyine çekmek, Kademe 4+ Toparlanma Kalkanı eşiğini 3 saate indirmek ve saldırı sıklığını daraltmak, savaş formüllerini hiç bozmadan savunmacılara gerçek nefes alma alanı açıyor.'),
+    section('what-it-means', 'Senin için anlamı',
+      'Tüm canlı ana galaksiler hemen yeni kademelere geçer; geçmiş savaşlar ve yoldaki filolar kendi kurallarını korur. Güncel tablolar için [[combat.eligibility|saldırı uygunluğu]], [[combat.loot|yağma kuralları]] ve [[guides.how-to-play|nasıl oynanır rehberi]] sayfalarına bakabilirsin.'),
+  ],
+  ['combat.eligibility', 'combat.loot', 'guides.how-to-play']);
+
 const honorFairFights = post('2026-11-12', 'honor-fair-fights',
   l('Honor now weighs the fight you actually took on', 'Honor artık gerçekten göze aldığın savaşı tartıyor'),
   l('From 12 November your losses count only as far as the fight can pay, and a second raid on a much smaller commander within a day counts as bullying.', '12 Kasım’dan itibaren kayıpların savaşın getirebileceği kadar sayılır; çok daha küçük bir komutana bir gün içinde ikinci kez saldırmak zorbalıktır.'),
@@ -176,4 +215,4 @@ const combatV3 = post('2026-10-26', 'combat-v3-and-simulator',
   ],
   ['guides.battles-and-reports', 'guides.fleet-building', 'combat.model']);
 
-export const updateArticles: readonly WikiArticle[] = [honorFairFights, honorBands,startingPackage, phoneAlerts, combatV3];
+export const updateArticles: readonly WikiArticle[] = [honorBenefitsV2, honorFairFights, honorBands, startingPackage, phoneAlerts, combatV3];

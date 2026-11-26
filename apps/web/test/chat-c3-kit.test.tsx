@@ -181,10 +181,14 @@ describe('the private room on the kit (C3)', () => {
 });
 
 describe('the operator’s media on the kit (C3)', () => {
-  it('adds media from the kit’s buttons', async () => {
+  // Owner 2026-11-26: "medya ekle butonu da küçülsün, sadece ufak bir + icon'u olsun": a small round key
+  // with no words, in the message row beside the field, so the messages keep that row.
+  it('adds media from a small round + in the message row, and its choices are the kit’s buttons', async () => {
     show({ isAdmin: true });
     const add = screen.getByRole('button', { name: 'Add media' });
-    expect(add).toHaveClass('gk-btn');
+    expect(add).toHaveClass('gk-round', 'gk-round--small');
+    expect(add.textContent).toBe('');
+    expect(add.closest('[data-chat-input-row]')).toContainElement(document.querySelector('textarea'));
     await userEvent.setup().click(add);
     for (const name of ['Photo', 'Video', 'YouTube video']) expect(screen.getByRole('button', { name })).toHaveClass('gk-btn');
   });

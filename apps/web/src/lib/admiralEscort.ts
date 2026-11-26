@@ -1,3 +1,4 @@
+import { honorLaunchFuel, type HonorBenefits } from '@astera/rules';
 import { admiralApplies, admiralBonuses, type AdmiralBonuses, type ShipClass } from '@astera/rules/arena/ui';
 import type { CommanderShipView } from '../api/commanderShipSchemas.js';
 
@@ -27,9 +28,19 @@ export function escortOf(view: CommanderShipView | undefined, now: number): Esco
  * shorter, fuel rounded up. A pirate meeting the server already `solved` at the escorted speed
  * (`escortReach`) keeps its outbound minutes; only the way home shortens.
  */
-export function escortRoute<R extends { oneWayMinutes: number; exposureMinutes: number; fuel: number }>(route: R, bonuses: AdmiralBonuses | null, solved = false): R {
-  if (!bonuses) return route;
+export function escortRoute<R extends { oneWayMinutes: number; exposureMinutes: number; fuel: number }>(
+  route: R,
+  bonuses: AdmiralBonuses | null,
+  solved = false,
+  honorBenefits?: Pick<HonorBenefits, 'fuelPct'> | null,
+): R {
+  const fuel = honorLaunchFuel(route.fuel, honorBenefits, bonuses?.fuel ?? 1);
+  if (!bonuses) return fuel === route.fuel ? route : { ...route, fuel };
   const oneWayMinutes = solved ? route.oneWayMinutes : route.oneWayMinutes * bonuses.time;
-  return { ...route, oneWayMinutes, exposureMinutes: oneWayMinutes + (route.exposureMinutes - route.oneWayMinutes) * bonuses.time,
-    fuel: Math.ceil(route.fuel * bonuses.fuel) };
+  return {
+    ...route,
+    oneWayMinutes,
+    exposureMinutes: oneWayMinutes + (route.exposureMinutes - route.oneWayMinutes) * bonuses.time,
+    fuel,
+  };
 }

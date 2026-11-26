@@ -65,6 +65,20 @@ describe('a Yarık that cannot load', () => {
     expect(release).toHaveBeenCalledOnce();
   });
 
+  /*
+   * 2026-11-25, lab: from the hangar, the Yarık sat at 1% for good in development. React's taken-back
+   * mount (StrictMode) started no load, yet its end let the transcoder go: the hangar's, warm, the very
+   * one the real mount's load had just taken. Its next texture was never answered.
+   */
+  it('lets the transcoder be when a mount React took back never began a load', async () => {
+    release.mockClear();
+    load.mockClear();
+    render(<StrictMode><Sandbox onLeave={() => undefined} /></StrictMode>);
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(release).not.toHaveBeenCalled();
+  });
+
   it('says so, and offers another try and the way home', async () => {
     const { arenaCopy } = await import('../../src/arena/copy.js');
     const c = arenaCopy();

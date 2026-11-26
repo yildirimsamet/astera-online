@@ -248,6 +248,36 @@ describe('what a probe brings home', () => {
   });
 
   /**
+   * THE PROBE BATTERY, EXACT (2026-11-24, plan §3.6, W3). A probe that came home reads the
+   * ready charges of the capacity; the note turns it into the number of probes the next
+   * look needs before one gets through as if no battery stood there.
+   */
+  describe('probe battery', () => {
+    it('reads ready charges of capacity and says how many probes empty it', () => {
+      const found = fact(report({ probeBattery: { ready: 2, capacity: 3 } }), 'probeBattery');
+      expect(found).toBeDefined();
+      expect(found!.value).toContain('2/3');
+      expect(found!.note).toMatch(/\b2\b/);
+    });
+
+    it('reports a battery with no charge as a window', () => {
+      const found = fact(report({ probeBattery: { ready: 0, capacity: 3 } }), 'probeBattery');
+      expect(found!.value).toContain('0/3');
+      expect(found!.opportunity).toBe(true);
+    });
+
+    it('reports a world with none built as its own answer', () => {
+      const found = fact(report({ probeBattery: null }), 'probeBattery');
+      expect(found).toBeDefined();
+      expect(found!.value).toMatch(/none/i);
+    });
+
+    it('says nothing when the reading was never taken', () => {
+      expect(fact(report(), 'probeBattery')).toBeUndefined();
+    });
+  });
+
+  /**
    * A COLONY'S LOYALTY, because a Death Star takes twenty of it and a colony at twenty or
    * less goes NEUTRAL (owner, 2026-10-01). The note turns the figure into hits.
    */

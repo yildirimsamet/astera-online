@@ -26,6 +26,7 @@ import { IntergalacticConvoySheet } from '../../screens/IntergalacticConvoySheet
 import type { IntergalacticConvoyEvent } from '../../lib/intergalacticConvoy.js';
 import type { TradeShipEvent } from '../../lib/trade.js';
 import { TransferSheet } from '../../screens/TransferSheet.js';
+import { GALLERY_CAPSULES, GallerySynthesis, SynthesisSeed } from './GallerySynthesis.js';
 import { IntelScreen } from '../../screens/IntelScreen.js';
 import { BuildSheet, PlanetScreen } from '../../screens/PlanetScreen.js';
 import { ClanScreen } from '../../screens/ClanScreen.js';
@@ -235,6 +236,17 @@ const rival: GalaxyPlanet = {
   id: 'p2', name: 'Tharsis', owner: 'Sable', position: { x: 120, y: 0, z: 80 }, coreTier: 2, coreLevel: 6,
   intel: 'RESOLVED', state: { kind: 'NORMAL' }, satellites: [], shielded: false, isSelf: false,
 };
+/** The raid's Honor reading, seeded (owner 2026-11-25: folded under the Power ruler). */
+function HonorSeed({ weak, children }: { weak: boolean; children: ReactNode }) {
+  const client = useQueryClient();
+  useState(() => {
+    client.setQueryData(keys.honorTarget(rival.id), weak
+      ? { enabled: true, eligible: true, kind: 'WEAK', militaryReturn: 'NONE', related: false, repeated: false, retaliation: false }
+      : { enabled: true, eligible: true, kind: 'PEER', militaryReturn: 'HALF', related: false, repeated: false, retaliation: false, topTierPeer: true });
+    return null;
+  });
+  return <>{children}</>;
+}
 const launchWorld = planetView(
   { fleet: { DART: 40, TALON: 12, RAMPART: 4, COURIER: 6 }, fleetAway: { DART: 8 } },
   { alloy: 40_000, crystal: 20_000, deuterium: 12_000 },
@@ -371,7 +383,7 @@ function GalleryBuild({ hull, variant = 'ready' }: { hull: HullId; variant?: Bui
  * two charges, each panel naming the research that raises it. `tab` picks the panel.
  */
 /** The strategic bays (G2-g): armed, with the radiation forge open and a weapon building, or locked on a young world. */
-function GalleryStrategic({ tab, variant = 'armed' }: { tab: 'tactical' | 'defend'; variant?: 'armed' | 'radiation' | 'locked' }) {
+function GalleryStrategic({ tab, variant = 'armed' }: { tab: 'tactical' | 'defend'; variant?: 'armed' | 'radiation' | 'locked' | 'probe-new' | 'probe-upgrade' }) {
   const client = useQueryClient();
   useState(() => {
     const ready = (id: string) => ({ id, status: 'READY' as const, readyAt: null, remainingSeconds: 0 });
@@ -403,12 +415,22 @@ function GalleryStrategic({ tab, variant = 'armed' }: { tab: 'tactical' | 'defen
     }
     client.setQueryData(['planet'], planetView({
       buildings: { CORE: 12, REFINERY: 10, EXTRACTOR: 10, VAULT: 6, SHIPYARD: 5, HANGAR: 3 },
-      instruments: { RADAR: 3, TELESCOPE: 2 },
+      instruments: { RADAR: variant === 'probe-upgrade' ? 4 : 3, TELESCOPE: 2 },
       orbit: ['UPLINK'],
       strategic: ready('ds-1'),
       deathStars: [ready('ds-1')],
       interceptor: ready('ic-1'),
       interceptors: [ready('ic-1'), ready('ic-2')],
+      // The probe battery: none; a full level 1 the Radar can raise; or a busy level 2 raising itself to 3 (2026-11-24).
+      probeBattery: variant === 'probe-new' ? null : variant === 'probe-upgrade' ? {
+        startedAt: new Date(Date.now() - 3 * 3_600_000), readyAt: new Date(Date.now() - 2.5 * 3_600_000),
+        level: 1, charges: 5, chargedAt: new Date(Date.now() - 60 * 60_000), recentShots: 0,
+        upgradeLevel: null, upgradeStartedAt: null, upgradeReadyAt: null,
+      } : {
+        startedAt: new Date(Date.now() - 3 * 3_600_000), readyAt: new Date(Date.now() - 2.5 * 3_600_000),
+        level: 2, charges: 3, chargedAt: new Date(Date.now() - 4 * 60_000), recentShots: 2,
+        upgradeLevel: 3, upgradeStartedAt: new Date(Date.now() - 20 * 60_000), upgradeReadyAt: new Date(Date.now() + 40 * 60_000),
+      },
       // A colony, so the battery's loyalty line and the hero's loss line are drawn too.
       loyalty: { value: 64, minutesLeft: null },
     }, { id: 'p-1', kind: 'COLONY', alloy: 120_000, crystal: 60_000, deuterium: 9_000, alloyPerHour: 900, crystalPerHour: 300 }));
@@ -1182,11 +1204,24 @@ function GalleryRewards({ state }: { state: string }) {
     next.setQueryData(keys.rewards, { chains: state === 'empty' ? [] : chains, claimable: chains.reduce((sum, chain) => sum + chain.tiers.filter((tier) => tier.state === 'claimable').length, 0) });
     next.setQueryData(keys.planet, planetView({}, { alloy: 5500, crystal: 2500 }));
     next.setQueryData(keys.welcome, galleryWelcome());
+    next.setQueryData(keys.dailyQuests, galleryDailyQuests());
     return next;
   });
   return <QueryClientProvider client={client}><div className="[--v2-top-h:3rem]"><Sheet detents={['full']} kit={{ art: artIconSrc('gift') }} title={t('rewards.title')} eyebrow={t('rewards.eyebrow')} onClose={noop}>
-    <RewardsScreen commander="Samet_The_Long_Commander_Name" />
+    <RewardsScreen commander="Samet_The_Long_Commander_Name" initialTab={new URLSearchParams(window.location.search).get('tab') === 'daily' ? 'daily' : 'goals'} />
   </Sheet></div></QueryClientProvider>;
+}
+
+/** `&daily=mixed|fresh|done`: the day's four quests — one ready, one taken, two to do; none done; all taken. */
+function galleryDailyQuests() {
+  const at = new URLSearchParams(window.location.search).get('daily');
+  const row = (id: string, goal: number, progress: number, state: 'locked' | 'claimable' | 'claimed', alloy: number, crystal: number) => ({ id, goal, progress, state, alloy, crystal, honor: 250_000 });
+  const quests = at === 'fresh'
+    ? [row('PROBES', 3, 0, 'locked', 480, 210), row('RIFT', 1, 0, 'locked', 770, 330), row('PIRATE', 1, 0, 'locked', 960, 410), row('ASTEROID', 1, 0, 'locked', 480, 210)]
+    : at === 'done'
+      ? [row('PROBES', 3, 3, 'claimed', 480, 210), row('RIFT', 1, 1, 'claimed', 770, 330), row('PIRATE', 1, 1, 'claimed', 960, 410), row('ASTEROID', 1, 1, 'claimed', 480, 210)]
+      : [row('PROBES', 3, 2, 'locked', 480, 210), row('RIFT', 1, 1, 'claimable', 770, 330), row('PIRATE', 1, 0, 'locked', 960, 410), row('ASTEROID', 1, 1, 'claimed', 480, 210)];
+  return { day: '2026-11-24', resetsAt: new Date(Date.now() + 5 * 3_600_000), quests, claimable: quests.filter((quest) => quest.state === 'claimable').length };
 }
 
 /**
@@ -1484,6 +1519,8 @@ function Views({ view }: { view: string }) {
   if (view === 'repair-station-radiation') return <GalleryBase open radiation />;
   if (view === 'strategic-forge') return <GalleryStrategic tab="tactical" />;
   if (view === 'strategic-battery') return <GalleryStrategic tab="defend" />;
+  if (view === 'probe-battery-new') return <GalleryStrategic tab="defend" variant="probe-new" />;
+  if (view === 'probe-battery-upgrade') return <GalleryStrategic tab="defend" variant="probe-upgrade" />;
   if (view === 'strategic-radiation') return <GalleryStrategic tab="tactical" variant="radiation" />;
   if (view === 'strategic-locked') return <GalleryStrategic tab="tactical" variant="locked" />;
   if (view === 'repair-station-empty') return <GalleryBase empty open />;
@@ -1738,6 +1775,11 @@ function Views({ view }: { view: string }) {
       />
     );
   }
+  if (view === 'launch-honor' || view === 'launch-honor-weak') {
+    return <HonorSeed weak={view === 'launch-honor-weak'}>
+      <LaunchSheet planet={launchWorld} intel={launchIntel} target={{ kind: 'world', world: rival }} onClose={noop} onLaunched={noop} />
+    </HonorSeed>;
+  }
   if (view === 'launch' || view === 'launch-pirate') {
     const pirateTech = { SHIP_POWER: 2, SHIP_ARMOR: 2, CARGO_HOLDS: 2, STARSHIP_ENGINEERING: 2 };
     const pirateWorld = planetView({ rulesetVersion: 16,
@@ -1764,6 +1806,35 @@ function Views({ view }: { view: string }) {
         onLaunched={noop}
       />
       </>
+    );
+  }
+  if (view === 'synthesis' || view === 'synthesis-running') {
+    return <GallerySynthesis state={view === 'synthesis' ? 'idle' : 'running'} />;
+  }
+  if (view === 'transfer-veil') {
+    return (
+      <SynthesisSeed>
+        <TransferSheet
+          target={{ id: 'p-9', name: 'Hollow', position: { x: 600, y: 0, z: 200 } }}
+          planet={launchWorld}
+          onClose={noop}
+          onLaunched={noop}
+        />
+      </SynthesisSeed>
+    );
+  }
+  if (view === 'settlement-veil') {
+    return (
+      <SettlementSheet
+        target={{ ...rival, kind: 'NEUTRAL', owner: '', name: 'Neutral T1-50',
+          neutral: { tier: 1, claimUntil: new Date(NOW + 42 * MIN) } } satisfies GalaxyPlanet}
+        planet={launchWorld}
+        now={NOW}
+        pending={false}
+        capsuleStock={GALLERY_CAPSULES}
+        onClose={noop}
+        onConfirm={noop}
+      />
     );
   }
   if (view === 'transfer') {

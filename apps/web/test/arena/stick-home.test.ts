@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { KNOB_TRAVEL, STICK_RING, stickHome, type Rect } from '../../src/arena/input.js';
 
@@ -37,7 +38,15 @@ describe('stick home', () => {
     expect(home.y).toBeLessThanOrEqual(pad.bottom);
   });
 
-  it('keeps the knob inside its ring', () => {
-    expect(KNOB_TRAVEL + 23).toBeLessThanOrEqual(STICK_RING);
+  // Owner 2026-11-25: "bir yöne çekince joystick gereğinden fazla kayıyor". Read against the ring as it is
+  // drawn (arena.css), not a remembered radius: the knob's whole disc stays inside, a few pixels short of the rim.
+  it('keeps the whole knob inside the ring it is drawn in', () => {
+    const css = readFileSync('src/arena/arena.css', 'utf8');
+    const width = (rule: RegExp): number => Number(rule.exec(css)?.[1] ?? Number.NaN);
+    const ring = width(/\.ac-stick::before \{[^}]*?width: (\d+)px/) / 2;
+    const knob = width(/\.ac-knob \{[^}]*?width: (\d+)px/) / 2;
+    expect(ring).toBeGreaterThan(knob);
+    expect(KNOB_TRAVEL + knob).toBeLessThanOrEqual(ring - 6);
+    expect(KNOB_TRAVEL).toBeGreaterThanOrEqual(36);
   });
 });

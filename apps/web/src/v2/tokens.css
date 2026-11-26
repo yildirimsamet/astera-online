@@ -49,6 +49,17 @@
   --color-v2-alloy: #f2a14a;
   --color-v2-crystal: #7fd0ff;
   --color-v2-deut: #a8ea4c;
+  /* Asteryum (owner 2026-11-25, gozlemevi.md's eleventh meaning): the resource the Synthesis Lab brews. */
+  --color-v2-asterium: #b48cff;
+  /* A moon's rarity on its limb, the galaxy's own (moonOrbit.ts RARITY_RIM_HEX); the moon tab's portrait wears it too. */
+  --color-v2-rarity-common: #94a3b8;
+  --color-v2-rarity-rare: #38bdf8;
+  --color-v2-rarity-epic: #c084fc;
+  --color-v2-rarity-legendary: #fbbf24;
+  /* Capsule liquids (owner 2026-11-25: "hepsi mor olursa gözü yorar"): each capsule has its own, and it only
+     appears in that capsule's picture, vial and card, beside its name. Never a meaning on text or numbers. */
+  --color-v2-capsule-veil: #bfe6f7;
+  --color-v2-capsule-silent: #d9854a;
   --color-v2-warn: #ffcc4d;
   /* Radyasyon: the haze on the disc and the words about it. Yellower than deuterium's
      green so a cloud is never read as a fuel reading. */

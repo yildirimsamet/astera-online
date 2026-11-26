@@ -20,20 +20,20 @@ export { SCANNED, mirrorPose, scanTargets, type Scan } from './tactics.js';
 export { HIT_REFERENCE, RING_DISTANCE, SPREAD_PATTERN, SPREAD_REACH, hitShare, scatter, spreadAt, strike } from './combat.js';
 export { SIGNATURE_COOLDOWN, lockShare, locked } from './signatures.js';
 export { ABILITIES, AFFINITY, MAX_POINT_RANK, abilityRank, abilityStats, flightRanks, pointsLeft, type Ability, type AbilityPoints, type FlightRanks } from './ranks.js';
-export { FARM_KINDS, FARM_POINTS, FIELD_GROUP_SIZE, FIELD_SPAWNS, emptyHold, holdPoints, pickFieldSpawn, type FarmKind, type FieldSpawn } from './farms.js';
+export { ASTERIUM_STORM, FARM_KINDS, FIELD_GROUP_SIZE, FIELD_SPAWNS, emptyHold, pickFieldSpawn, type FarmKind, type FieldSpawn } from './farms.js';
 export { createBrain, type BotBrain, type BotRole } from './bots.js';
-export { ARENA_ECONOMY, FULL_LOADOUT, LOADOUT, classChangeOpen, dailyCap, entryOpen, launchLoad, loadoutPlan, refillCost, repairQuote, settleHold, type LoadoutPlan, type Resources as ArenaResources } from './economy.js';
+export { ARENA_ECONOMY, FULL_LOADOUT, LOADOUT, classChangeOpen, dailyCap, entryOpen, extractAsterium, launchLoad, loadoutPlan, refillCost, repairQuote, settleHold, type LoadoutPlan, type Resources as ArenaResources } from './economy.js';
 export { ARENA_PROGRESSION, GROWTH, gainXp, levelCap, levelCost, levelOf, shipStats, shipTuning, sortieXp, statsOf, xpToNext, type SortieOutcome } from './progression.js';
 export { TEAM_CLAIM_DAYS, TEAM_CONNECT_SECONDS, splitTeamLoot, type SortieLoadout, type TeamMemberView, type TeamView } from './team.js';
 export { dustAt, hiddenByDust, hiddenBySmoke, pilotInSight } from './visibility.js';
 export {
   createSandboxWorld, stepSandboxWorld, stepArenaWorld, stepPredictedTracers, createPilot, recoverPilot, copyFlight,
-  nextEntry, pilotVisible, predictPilot, ROLE_SHIPS, type WorldOptions,
+  nextEntry, pilotVisible, predictPilot, ROLE_SHIPS, stepAsteriumStorm, type WorldOptions,
 } from './world.js';
 export { ARENA_MAX_SEATS, ARENA_PROTOCOL, ARENA_ROSTER_MAX, FAR_EVERY, FAR_WIDTH, MAX_REMOTE_PILOTS, MID_EVERY, PILOT_WIDTH, REMOTE_BAND, REMOTE_FAR_RANGE,
   REMOTE_FULL_RANGE, REMOTE_NEAR_RANGE, REMOTE_WIDTH, packFar, packPilot, packRemote, unpackFar, unpackPilot, unpackRemote, decodeArenaSnapshot } from './protocol.js';
 export type { ArenaSnapshot } from './protocol.js';
-export { ARENA_POOLS, ageEffects } from './pools.js';
+export { ARENA_POOLS, STORM_SLOTS, ageEffects } from './pools.js';
 export { MINERAL_STEP, applyFeed, createFeedState, deltaFeed, keyFeed, stepFeedEffects, type ArenaFeed, type FeedState } from './feed.js';
 export type { ArenaWorld } from './world.js';
 export type { ArenaIntent, CargoDrop, Impact, Missile, Pilot, PilotPhase, Projectile, SmokePuff, Tactic } from './pilot.js';

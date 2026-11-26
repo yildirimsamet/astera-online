@@ -2,7 +2,8 @@ import { useTranslation } from 'react-i18next';
 import { compact, full } from '../../lib/format.js';
 import { RESOURCE_ART } from '../../ui/assets.js';
 
-type Resource = keyof typeof RESOURCE_ART;
+/** The three a store holds; Asteryum is not stored on a world and has no need bar. */
+type Resource = Exclude<keyof typeof RESOURCE_ART, 'asterium'>;
 
 const LABEL = {
   alloy: 'statusBar.alloyLabel',

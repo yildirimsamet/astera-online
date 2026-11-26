@@ -86,6 +86,9 @@ export const intel = {
     estimateFact: "Las cifras son rangos estimados.",
     estimateNote: 'Estos números son rangos estimados. El valor de la unidad armada excluye el escudo y los naves desarmados.',
     caught: 'lo pillaron\nLa flota',
+    lostHeading: "Sondas derribadas",
+    lostTitle: "Sonda derribada sobre {{world}}",
+    lostWhy: "{{owner}} · allí hay una batería antisondas con carga",
     /* Two words beside the signal bars, which carry the accuracy themselves. */
     homeTag: 'estaba en casa',
     outTag: 'estaba fuera',
@@ -106,6 +109,7 @@ export const intel = {
     cost: "Sin Radar, la mayoría de las sondas enviadas a este mundo pasan sin ser detectadas.",
     quiet: "No se han detectado escaneos. Radar de nivel {{level}} activo.",
     scan: 'Escaneo detectado',
+    shotDown: "Sonda derribada",
     bearing: 'del galáctico {{bearing}}',
     origin: '· {{planet}}',
     /** Which of the caller's own worlds the scan landed on. */
@@ -625,7 +629,7 @@ export const dossier = {
   developmentValue: 'Nivel {{tier}}',
   developmentVersus: 'Nivel {{tier}} · tú {{mine}}',
   developmentBandNote:
-    "Las incursiones y los ataques de la Estrella de la Muerte solo se permiten entre comandantes separados por un nivel como máximo, contando el mundo más desarrollado de cada uno. El tuyo es nivel {{mine}}, así que alcanzas los niveles {{low}}–{{high}}. Puede que este no sea su mundo más desarrollado. Si uno de los comandantes es de nivel 1–3, cada uno puede enviar un ataque individual contra el otro y debe esperar 12 horas desde la batalla para enviar otro. El ataque en camino reserva este derecho; retirarlo no inicia la espera. Las Estrellas de la Muerte y las operaciones conjuntas del clan quedan excluidas.",
+    "Las incursiones y los ataques de la Estrella de la Muerte solo se permiten entre comandantes separados por un nivel como máximo, contando el mundo más desarrollado de cada uno. El tuyo es nivel {{mine}}, así que alcanzas los niveles {{low}}–{{high}}. Puede que este no sea su mundo más desarrollado. Si uno de los comandantes es de nivel 1–4, cada uno puede enviar un ataque individual contra el otro y debe esperar 12 horas desde la batalla para enviar otro. El ataque en camino reserva este derecho; retirarlo no inicia la espera. Las Estrellas de la Muerte y las operaciones conjuntas del clan quedan excluidas.",
 
   hardwareLabel: 'Satélites en órbita',
   hardwareNote: 'Puedes ver el hardware. Lo que puede hacer cuesta una investigación.',
@@ -702,6 +706,12 @@ export const dossier = {
   interceptorCountNote: "Cada carga destruye una Estrella de la Muerte. Si llegan {{needed}} a la vez, una pasa. Puede que hayan cargado más desde entonces.",
   interceptorEmpty: "Sin carga",
   interceptorEmptyNote: 'Nada aquí detiene un arma estratégica. Es posible que hayan cargado uno desde entonces.',
+  probeBatteryLabel: "Batería antisondas",
+  probeBatteryCount: "{{ready}}/{{capacity}} cargas listas",
+  probeBatteryNone: "Ninguna",
+  probeBatteryCountNote: "Mientras tenga carga, derriba las sondas que detecta. Antes hay que gastar {{count}} sondas; las cargas se recargan cada {{minutes}} minutos.",
+  probeBatteryEmptyNote: "Sin carga: una sonda entra como si no hubiera batería. Las cargas se recargan cada {{minutes}} minutos.",
+  probeBatteryNoneNote: "Aquí no había batería antisondas. Puede que hayan construido una desde entonces.",
   loyaltyLabel: "Lealtad de la colonia",
   loyaltyValue: "{{value}} %",
   loyaltyNote_one: "Una Estrella de la Muerte quita {{loss}} de lealtad por impacto. Un impacto haría caer esta colonia.",

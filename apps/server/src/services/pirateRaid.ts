@@ -19,6 +19,7 @@ import {
   fleetTravelExact,
   claimPirateLoot,
   interceptOrbit,
+  honorLaunchFuel,
   missionFuel,
   personalPirateFleetSpeed,
   pirateActive,
@@ -58,6 +59,7 @@ import { battleReports, debrisFields, pirateRaids, pirateState, planets, seasons
 import { publish, publishShard } from '../stream/bus.js';
 import { assertFreeBay } from './flight.js';
 import { assertFuel } from './fuel.js';
+import { readHonorBenefits } from './honorBenefits.js';
 import { assertLandsOutsideMaintenance } from './maintenanceWindow.js';
 import { notify } from './notifications.js';
 import { schedule } from '../worker/queue.js';
@@ -348,8 +350,9 @@ export async function launchPirateRaid(
      * Nothing is refunded if the raid fails or its commander calls it back.
      */
     const reach = distance(origin, hit.at);
+    const benefits = await readHonorBenefits(tx, origin.seasonId, origin.playerId);
     const plainFuel = missionFuel(requested, reach, 2);
-    const fuel = escort ? Math.ceil(plainFuel * escort.bonuses.fuel) : plainFuel;
+    const fuel = honorLaunchFuel(plainFuel, benefits, escort?.bonuses.fuel ?? 1);
     assertFuel(fuel, origin.deuterium);
 
     const arriveAt = atMinute(snapshot.startsAt, hit.meetsAtMinutes);

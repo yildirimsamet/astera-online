@@ -463,8 +463,8 @@ describe('the ship\'s desk', () => {
     fireEvent.click(fold.querySelector('summary')!);
     expect(fold.open).toBe(true);
     const rules = fold.querySelector('ul')?.textContent ?? '';
-    // Owner 2026-10-28: repair and maintenance are 3 min for now.
-    for (const fact of ['Tamir 3 dk', '3 dk bakımda', '4', '24', '500 m']) expect(rules).toContain(fact);
+    // Owner 2026-11-25: a death costs 15 min of repair, every flight 5 min of maintenance (was 3 and 3).
+    for (const fact of ['Tamir 15 dk', '5 dk bakımda', '4', '24', '500 m']) expect(rules).toContain(fact);
   });
 
   it('compares the classes at the ship\'s own level in one table, the best of each row marked', () => {

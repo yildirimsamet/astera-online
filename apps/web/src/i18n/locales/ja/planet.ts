@@ -138,6 +138,28 @@ export const planet = {
     needOperational: "惑星の機能が稼働中",
     buildSecond: "次の迎撃弾を装填",
   },
+  probeBattery: {
+    eyebrow: "プローブ防衛砲台",
+    none: "未設置",
+    building: "設置中 · {{duration}}",
+    ready: "稼働中 · ここではプローブが捕捉されやすい",
+    next: "次の弾 {{duration}}",
+    recent: "直近{{minutes}}分：{{count}}機を撃墜",
+    empty: "弾なし · 次は{{duration}}。弾がない間、この惑星は砲台がないのと同じです。",
+    offline: "停止中 · {{reason}}",
+    offlineEmp: "EMPの影響下",
+    offlineRecovery: "惑星が復旧中",
+    offlineRadar: "有効レーダー{{level}}が必要",
+    short: "捕捉したプローブを接近中に撃墜します。",
+    hint: "弾がある間、この惑星はプローブを捕捉しやすくなります：{{base}}% + 13% ×（レーダー − 送り手の造船所）、最大{{max}}%。捕捉されたプローブは接近中に撃墜され、報告を持ち帰れません。あなたと同じ造船所のプローブを{{example}}%で捕捉します。レベル{{level}}：弾は{{capacity}}発、{{minutes}}分ごとに1発無料で補充されます。レベルごとに捕捉率が+{{step}}%上がります。弾がない間、この惑星は砲台がないのと同じです。",
+    build: "砲台を設置",
+    started: "砲台を設置中",
+    level: "Lv{{level}}",
+    upgrade: "強化 · Lv{{level}}",
+    upgradeNote: "Lv{{level}}：弾{{capacity}}発 · 捕捉 +{{step}}%",
+    upgrading: "Lv{{level}}へ強化中 · {{duration}}",
+    upgradeStarted: "砲台を強化中",
+  },
 
   deathStar: {
     empDuration: "EMP効果時間",
@@ -172,6 +194,9 @@ export const planet = {
     growQuestion: "資源生産と建物のレベル上限を伸ばします。",
     tacticalProblem: "戦術",
     tacticalQuestion: "ここで戦術ツールを構築および管理します。",
+    bays: "戦術ベイ",
+    weaponsBay: "兵器",
+    labBay: "研究所",
   },
 
 

@@ -29,6 +29,7 @@ export async function settleEmptyMoon(
   await tx.insert(battleReports).values({
     seasonId: mission.seasonId,
     missionId: mission.id,
+    appliedCapsules: mission.appliedCapsules,
     attackerPlayerId: mission.ownerPlayerId,
     defenderPlayerId: defender.playerId,
     targetPlanetId: defender.planetId,

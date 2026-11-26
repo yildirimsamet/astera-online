@@ -49,7 +49,7 @@ export const clanWar = {
   treasury: 'Ortak hazine', nextCost: 'Sonraki seviye maliyeti',
   donate: 'Bağışla', selectWorld: 'Bağış yapılacak dünya',
   available: '{{amount}} kullanılabilir',
-  target: 'Hedef', noTarget: "Hedef seçilmedi. Lider, galaksi haritasında bir gezegen seçerek klan hedefi belirleyebilir.",
+  target: 'Hedef', noTarget: "Hedef seçilmedi. Lider, galakside bir gezegen seçerek klan hedefi belirleyebilir.",
   expires: 'Hedefin bitmesine {{time}}', staging: '{{world}} gezegeninde toplanın',
   waves: 'Katkılar', noWaves: 'Bu operasyona henüz gemi katılmadı.',
   wave: '{{name}} · {{world}}', waveMeta: '{{ships}} gemi · {{bulk}} kapasite',

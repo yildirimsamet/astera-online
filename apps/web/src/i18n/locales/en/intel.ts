@@ -86,6 +86,9 @@ export const intel = {
     estimateFact: "These figures are estimated ranges.",
     estimateNote: 'These numbers are estimated ranges. Armed unit value excludes the shield and unarmed ships.',
     caught: 'they caught it',
+    lostHeading: "Probes shot down",
+    lostTitle: "Probe shot down over {{world}}",
+    lostWhy: "{{owner}} · a probe battery with a charge stands there",
     /* Two words beside the signal bars, which carry the accuracy themselves. */
     homeTag: 'fleet was home',
     outTag: 'fleet was out',
@@ -106,6 +109,7 @@ export const intel = {
     cost: "Without Radar, most probes sent to this world pass undetected.",
     quiet: "No scans detected. Radar L{{level}} is active.",
     scan: 'Scan detected',
+    shotDown: "Probe shot down",
     bearing: ' from the galactic {{bearing}}',
     origin: ' · {{planet}}',
     /** Which of the caller's own worlds the scan landed on. */
@@ -626,7 +630,7 @@ export const dossier = {
   developmentValue: 'Tier {{tier}}',
   developmentVersus: 'Tier {{tier}} · you {{mine}}',
   developmentBandNote:
-    "Raids and Death Star strikes are only allowed between commanders at most one tier apart, each measured on their most developed world. Yours is tier {{mine}}, so you can reach tiers {{low}}–{{high}}. This may not be their most developed world. If either commander is tier 1–3, each may send one individual raid against the other, then must wait 12 hours after the battle before sending another. Outbound raids reserve this right; recall does not start the wait. Death Stars and joint clan operations are excluded.",
+    "Raids and Death Star strikes are only allowed between commanders at most one tier apart, each measured on their most developed world. Yours is tier {{mine}}, so you can reach tiers {{low}}–{{high}}. This may not be their most developed world. If either commander is tier 1–4, each may send one individual raid against the other, then must wait 12 hours after the battle before sending another. Outbound raids reserve this right; recall does not start the wait. Death Stars and joint clan operations are excluded.",
 
   hardwareLabel: 'Satellites in orbit',
   hardwareNote: 'You can see the hardware. What it can do costs a probe.',
@@ -703,6 +707,12 @@ export const dossier = {
   interceptorCountNote: "One charge destroys one Death Star. {{needed}} arriving together would get one through. They may have loaded more since.",
   interceptorEmpty: 'No charge',
   interceptorEmptyNote: 'Nothing here stops a strategic weapon. They may have loaded one since.',
+  probeBatteryLabel: "Probe battery",
+  probeBatteryCount: "{{ready}}/{{capacity}} charges ready",
+  probeBatteryNone: "None",
+  probeBatteryCountNote: "While it holds a charge it shoots down the probes it catches. {{count}} probes must be spent first; charges refill every {{minutes}} minutes.",
+  probeBatteryEmptyNote: "No charge left: a probe goes in as if no battery stood there. Charges refill every {{minutes}} minutes.",
+  probeBatteryNoneNote: "No probe battery stood here. They may have built one since.",
   loyaltyLabel: "Colony loyalty",
   loyaltyValue: "{{value}}%",
   loyaltyNote_one: "A Death Star takes {{loss}} loyalty per hit. One hit would take this colony.",

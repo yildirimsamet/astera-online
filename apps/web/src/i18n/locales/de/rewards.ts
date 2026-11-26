@@ -17,7 +17,7 @@ export const rewards = {
   summaryReady: "Bereit zum Abholen",
   summaryClaimed: "Abgeholte Stufen",
   allMilestones: "Alle Stufen",
-  eyebrow: 'Dauerhafte Belohnungen',
+  eyebrow: 'Aufgaben und Ziele',
   title: 'Belohnungen',
   intro:
     "Kein Ablauf, keine Serie. Alles geht ins Lager; Ungeschütztes kann geplündert werden.",
@@ -40,6 +40,27 @@ export const rewards = {
     poured: 'In dein Lager: {{purse}}',
     skinRingHelios: 'Helios-Ring',
     skinEngineTitan: 'Titan-Antrieb',
+  },
+  /** GÜNLÜK GÖREVLER (owner, 2026-11-24): four acts, each paying a small purse once a UTC day. */
+  /** Rewards in two tabs (owner 2026-11-24): the day's quests, and the standing goals. */
+  tabs: {
+    label: 'Belohnungsbereiche',
+    daily: 'Täglich',
+    goals: 'Ziele',
+  },
+  daily: {
+    title: 'Tägliche Aufgaben',
+    granted: '+{{alloy}} Legierung · +{{crystal}} Kristall · +{{honor}} Honor',
+    resets: 'Erneuert sich in {{time}}',
+    about: 'So funktionieren tägliche Aufgaben',
+    fact: 'Jede Aufgabe zahlt einmal pro Tag.',
+    rule: 'Es zählt, was du heute tust; der Tag beginnt um 00:00 UTC neu, für alle im selben Moment. Hol dir eine erledigte Aufgabe ab: Die Belohnung kommt ins Lager deiner Hauptstadt, wo sie geplündert werden kann. Ein verpasster Tag kostet dich nichts.',
+    quests: {
+      PROBES: '3 Sonden senden',
+      RIFT: 'In den Yarık fliegen',
+      PIRATE: 'Einen Piraten jagen',
+      ASTEROID: 'Einen Asteroiden abbauen',
+    },
   },
   takeAll: 'Alle nehmen · {{count}}',
   go: 'Los',

@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { hpRadiationSources, legacyFacts, notifications, planets, players, radiationBombFlights,
   scheduledEvents, seasons, strategicAssets } from '../src/db/schema.js';
 import { pino } from 'pino';
+import { DEATH_STAR, RADIATION_BOMB, resourcesTotal } from '@astera/rules';
 import { EventWorker } from '../src/worker/loop.js';
 import { bombInterceptionLeg } from '../src/services/radiationBombInterception.js';
 import { loadTrafficSnapshot, projectStrategicInterceptions, projectStrategicInterceptionImpacts } from '../src/services/traffic.js';
@@ -77,8 +78,9 @@ it('refreshes both spent weapon and battery inventory values when interception i
   f.clock.set(new Date(sent.arriveAt));
   await resolveRadiationBomb(f.db, sent.flightId, f.clock);
   const owners = await f.db.select().from(players);
-  expect(owners.find(player => player.id === f.playerIds[0])!.wealth).toBe(before.owner - 52000);
-  expect(owners.find(player => player.id === f.playerIds[1])!.wealth).toBe(before.defender - 88000);
+  // The spent bomb is worth its own price; the spent battery is valued at the weapon it stops.
+  expect(owners.find(player => player.id === f.playerIds[0])!.wealth).toBe(before.owner - resourcesTotal(RADIATION_BOMB.levels[1].cost));
+  expect(owners.find(player => player.id === f.playerIds[1])!.wealth).toBe(before.defender - resourcesTotal(DEATH_STAR.cost));
 });
 
 it('spends one ready charge only once for two simultaneous incoming bomb levels', async () => {

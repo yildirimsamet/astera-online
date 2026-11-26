@@ -16,12 +16,16 @@ import {
   fleetSpeedMult,
   fleetTravelExact,
   maxRadarRange,
+  honorLaunchFuel,
   missionFuel,
   type Fleet,
+  type HonorBenefitTier,
   type HullId,
   HULLS,
   COMBAT_HULLS,
   splitHealthFleet,
+  missionSuppressesRadarWarning,
+  type CapsuleId,
   type WorldBody,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
@@ -68,8 +72,10 @@ import { readHomeHealth, takeHomeHealth } from './homeHealth.js';
 import { assertMoonTarget } from './moon.js';
 import { assertMoonShipsFree } from './moonMovement.js';
 import { commitHonor } from './honorCommitment.js';
+import { assertHonorBenefitsQuote, readHonorBenefits } from './honorBenefits.js';
 import { commitLegacyAttack } from './legacyEvents.js';
 import { attachAdmiral, prepareAdmiral } from './admiral.js';
+import { assertMissionCapsules, consumeCapsulesForMission } from './synthesis.js';
 
 export interface LaunchResult {
   missionId: string;
@@ -140,10 +146,15 @@ export async function launchAttack(
   targetBody: WorldBody = 'PLANET',
   /** The body the wing leaves from (S34): a moon's ships raid as the planet's do; fuel is the planet's (S49). */
   originBody: WorldBody = 'PLANET',
+  /** Sentez capsules pressed onto this raid (plan 2026-11-24 §3.5); priced from the fleet below. */
+  capsules: readonly CapsuleId[] = [],
+  /** Optional Honor tier quoted to the client; mismatch rejects with 409 HONOR_QUOTE_CHANGED. */
+  expectedHonorTier?: HonorBenefitTier,
 ): Promise<LaunchResult> {
   if (originPlanetId === targetPlanetId) {
     throw new GameError('SELF_ATTACK', 'You cannot attack your own planet');
   }
+  assertMissionCapsules('attack', capsules);
   // Structure first, semantics second: fleetCount() drops non-positive entries,
   // so checking it first would report a malformed request as an empty one.
   for (const [hull, n] of Object.entries(requested) as [HullId, number][]) {
@@ -374,7 +385,10 @@ export async function launchAttack(
         personalRecent,
       );
       if (!gate.ok) {
-        throw new GameError(gate.reason ?? 'FORBIDDEN', describeRefusal(gate.reason), 403);
+        const params = gate.reason === 'BASH_LIMIT'
+          ? { limit: ABUSE.bashLimit, hours: ABUSE.bashWindowMinutes / 60 }
+          : undefined;
+        throw new GameError(gate.reason ?? 'FORBIDDEN', describeRefusal(gate.reason), 403, params);
       }
     }
 
@@ -416,8 +430,10 @@ export async function launchAttack(
 
     // Reserved here, after every refusal above and before anything is spent; a refusal below rolls it back.
     const escort = await prepareAdmiral(tx, origin, admiral);
+    const benefits = await readHonorBenefits(tx, origin.seasonId, origin.playerId);
+    if (expectedHonorTier !== undefined) assertHonorBenefitsQuote(benefits, expectedHonorTier);
     const plainFuel = missionFuel(requested, dist, 2, 'HOSTILE', chosenPace);
-    const fuel = escort ? Math.ceil(plainFuel * escort.bonuses.fuel) : plainFuel;
+    const fuel = honorLaunchFuel(plainFuel, benefits, escort?.bonuses.fuel ?? 1);
     // A raid carries no hold on the way out, so the whole store is the tank.
     assertFuel(fuel, origin.deuterium);
     // The Beacon in orbit, if there is one. D25.
@@ -458,6 +474,9 @@ export async function launchAttack(
     // The survivors fly home at the pace that went out (owner, 2026-10-06), so the season's end
     // is measured on that same slow way back.
     assertSeasonOpenThrough(origin, homeAt);
+    const applied = await consumeCapsulesForMission(tx, {
+      playerId: origin.playerId, seasonId: origin.seasonId, kind: 'attack', fleet: requested, capsules, now: origin.now,
+    });
 
     const [mission] = await tx
       .insert(missions)
@@ -486,6 +505,7 @@ export async function launchAttack(
         pace: chosenPace,
         departAt: origin.now,
         arriveAt,
+        appliedCapsules: applied,
       })
       .returning();
     await attachAdmiral(tx, escort?.id, 'mission', mission!.id);
@@ -566,12 +586,15 @@ export async function launchAttack(
       targetCoreLevel: radarTargetCore?.level ?? 1,
       oneWayMinutes: oneWay,
     }));
-    await schedule(tx, {
-      seasonId: origin.seasonId,
-      kind: 'radar_warning',
-      refId: mission!.id,
-      resolveAt: warnAt > origin.now ? warnAt : origin.now,
-    });
+    // Sessiz İtki: no warning is ever booked, so nothing downstream can ring (plan §3.5, K8).
+    if (!missionSuppressesRadarWarning(applied)) {
+      await schedule(tx, {
+        seasonId: origin.seasonId,
+        kind: 'radar_warning',
+        refId: mission!.id,
+        resolveAt: warnAt > origin.now ? warnAt : origin.now,
+      });
+    }
 
     /**
      * AND THE GALAXY IS TOLD, THE MOMENT IT LEAVES. D53.

@@ -187,7 +187,7 @@ describe('choosing a ship', () => {
   it('gives a full ship and one free change for 24 hours', async () => {
     const view = await chooseShip(f.db, f.clock, account, 'kilavuz');
     expect(view.ship).toMatchObject({ class: 'kilavuz', fuel: CLASS_STATS.kilavuz.fuelTank, ammo: CLASS_STATS.kilavuz.ammoCapacity,
-      hold: [0, 0, 0], readyAt: null, flying: false, changeUntil: new Date(f.clock.now().getTime() + 24 * 3_600_000).toISOString() });
+      hold: [0, 0, 0, 0], readyAt: null, flying: false, changeUntil: new Date(f.clock.now().getTime() + 24 * 3_600_000).toISOString() });
     expect(view.refill).toEqual({ fuel: 0, ammo: 0, total: 0 });
     // The same class again changes nothing and spends nothing.
     expect((await chooseShip(f.db, f.clock, account, 'kilavuz')).ship?.changeUntil).not.toBeNull();
@@ -219,7 +219,7 @@ describe('launch', () => {
     await f.db.update(arenaShips).set({ fuel: CLASS_STATS.kilavuz.fuelTank / 2, ammo: 0 });
     const before = await stock();
     const flight = await launchSortie(f.db, f.clock, account);
-    expect(flight).toMatchObject({ ship: 'kilavuz', fuel: CLASS_STATS.kilavuz.fuelTank, ammo: CLASS_STATS.kilavuz.ammoCapacity, hold: [0, 0, 0], refilled: 42 });
+    expect(flight).toMatchObject({ ship: 'kilavuz', fuel: CLASS_STATS.kilavuz.fuelTank, ammo: CLASS_STATS.kilavuz.ammoCapacity, hold: [0, 0, 0, 0], refilled: 42 });
     expect((await stock()).deuterium).toBeCloseTo(before.deuterium - 42, 6);
     expect((await shipRow())?.sortieId).toBe(flight.sortieId);
     expect(await code(launchSortie(f.db, f.clock, account))).toBe('SHIP_FLYING');
@@ -396,7 +396,7 @@ describe('a flight ends', () => {
       .toMatchObject({ deposit: { alloy: 0, crystal: 0, deuterium: 0 }, readyAt: null, readyReason: null });
     expect(await stock()).toEqual(before);
     const flight = await launchSortie(f.db, f.clock, account);
-    expect(flight.hold).toEqual([60, 20, 5]);
+    expect(flight.hold).toEqual([60, 20, 5, 0]);
     expect(flight.refilled).toBeGreaterThan(0);
   });
 
@@ -502,5 +502,31 @@ describe('levels (Y6b)', () => {
     await f.db.update(arenaShips).set({ level: 4, xp: 30 });
     expect((await chooseShip(f.db, f.clock, account, 'muhafiz')).ship).toMatchObject({ class: 'muhafiz', level: 4, xp: 30,
       fuel: shipStats('muhafiz', 4).fuelTank });
+  });
+});
+
+/**
+ * GÜNLÜK GÖREVLER (owner, 2026-11-24): "enter the Yarık today" is counted from one stamp, written
+ * when the ship flies in and never cleared, so the quest can ask whether it falls inside a day.
+ */
+describe('the last flight is stamped', () => {
+  it('writes the moment the ship flew into the Yarık, and keeps it when the flight ends', async () => {
+    await chooseShip(f.db, f.clock, account, 'akinci');
+    expect((await shipRow())?.lastSortieAt).toBeNull();
+    const flight = await launchSortie(f.db, f.clock, account);
+    expect((await shipRow())?.lastSortieAt).toEqual(f.clock.now());
+    await endSortie(f.db, f.clock, account, flight.sortieId, { ...empty, outcome: 'recalled' });
+    expect((await shipRow())?.lastSortieAt).toEqual(new Date(f.clock.now().getTime()));
+  });
+
+  it('is renewed by the next flight', async () => {
+    await chooseShip(f.db, f.clock, account, 'akinci');
+    const first = await launchSortie(f.db, f.clock, account);
+    const firstAt = f.clock.now();
+    await endSortie(f.db, f.clock, account, first.sortieId, { ...empty, outcome: 'recalled' });
+    f.clock.advance(E.repairMinutes + 5);
+    await launchSortie(f.db, f.clock, account);
+    expect((await shipRow())?.lastSortieAt).toEqual(f.clock.now());
+    expect((await shipRow())?.lastSortieAt).not.toEqual(firstAt);
   });
 });

@@ -83,6 +83,7 @@ export function IntergalacticConvoySheet({
     combatReady,
     planet.ground,
     mods,
+    planet.honorBenefits,
   );
   const galaxy = useGalaxy();
   const hpViews = galaxy.data?.hpRadiation;
@@ -192,6 +193,7 @@ export function IntergalacticConvoySheet({
       combatReady,
       planet.ground,
       mods,
+      planet.honorBenefits,
     );
     if (!fresh) {
       say(t('convoy.selectedCannotReach'), 'error');
@@ -332,7 +334,12 @@ export function IntergalacticConvoySheet({
         />
         <Reading label={t('convoy.outbound')} value={route ? duration(route.oneWayMinutes) : '—'} />
         <Reading label={t('convoy.home')} value={route ? duration(route.exposureMinutes) : '—'} />
-        <Reading label={t('convoy.fuel')} value={full(fuel)} />
+        <Reading
+          label={t('convoy.fuel')}
+          value={(planet.honorBenefits?.fuelPct ?? 0) > 0
+            ? `${full(fuel)} (${t('honorBenefits.fuel')} +${String(planet.honorBenefits!.fuelPct)}%)`
+            : full(fuel)}
+        />
       </dl>
       </div>
     </Sheet>

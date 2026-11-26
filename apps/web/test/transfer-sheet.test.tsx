@@ -21,9 +21,11 @@ const { mutate, useTransfer, sky } = vi.hoisted(() => {
     sky: { radiation: [] as unknown[], hpRadiation: [] as HpRadiationSourceView[] },
   };
 });
+const { lab } = vi.hoisted(() => ({ lab: { stock: null as { OPTIC_VEIL: number; SILENT_THRUST: number } | null } }));
 vi.mock('../src/api/queries.js', () => ({
   useTransfer,
   useGalaxy: () => ({ data: { radiation: sky.radiation, hpRadiation: sky.hpRadiation } }),
+  useCapsuleStock: () => lab.stock,
 }));
 
 const target = {
@@ -959,5 +961,37 @@ describe('what the sheet promises about the flight', () => {
     expect(screen.queryByText(/Ground defence cannot move/)).toBeNull();
     fireEvent.click(within(document.querySelector<HTMLElement>('[data-transfer-rule]')!).getByRole('button', { name: 'What is this?' }));
     expect(screen.getByText(/recalled once while in flight/i)).toBeInTheDocument();
+  });
+});
+
+/* Sentez capsules (plan 2026-11-24 §3.5): a transfer may wear Optik Örtü, never Sessiz İtki. */
+describe('the veil on a transfer', () => {
+  const open = () => render(<ToastProvider><TransferSheet target={target}
+    planet={planetView({ fleet: { COURIER: 2 } }, { id: 'capital-1', deuterium: 50_000 })}
+    onClose={vi.fn()} onLaunched={vi.fn()} /></ToastProvider>);
+  beforeEach(() => { mutate.mockReset(); lab.stock = null; });
+
+  it('offers the veil alone and sends it with the order', async () => {
+    lab.stock = { OPTIC_VEIL: 2, SILENT_THRUST: 4 };
+    const user = userEvent.setup();
+    open();
+    await user.click(screen.getByRole('button', { name: 'More Courier' }));
+    expect(screen.queryByRole('switch', { name: /Silent Thrust/ })).toBeNull();
+    await user.click(screen.getByRole('switch', { name: /Optic Veil/ }));
+    const commit = screen.getByRole('button', { name: /^transfer\b/i });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    expect(mutate.mock.calls[0]?.[0]).toMatchObject({ capsules: ['OPTIC_VEIL'] });
+  });
+
+  it('shows no switch where the galaxy has no laboratory, and sends none', async () => {
+    const user = userEvent.setup();
+    open();
+    await user.click(screen.getByRole('button', { name: 'More Courier' }));
+    expect(screen.queryByRole('switch', { name: /Optic Veil/ })).toBeNull();
+    const commit = screen.getByRole('button', { name: /^transfer\b/i });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    expect(mutate.mock.calls[0]?.[0]).not.toHaveProperty('capsules');
   });
 });

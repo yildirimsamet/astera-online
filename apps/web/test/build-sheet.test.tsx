@@ -81,6 +81,10 @@ vi.mock('../src/api/queries.js', async () => {
     useCancelBuildOrder: () => ({ mutate: cancelOrder, isPending: false }),
     useBuildDeathStar: () => ({ mutate: buildDeathStar, isPending: false }),
     useBuildInterceptor: () => ({ mutate: vi.fn(), isPending: false }),
+    // The Synthesis Lab on the Tactical tab; a galaxy without one draws nothing.
+    useSynthesis: () => ({ data: undefined }),
+    useSynthesisOrder: () => ({ mutate: vi.fn(), isPending: false }),
+    useInstallProbeBattery: () => ({ mutate: vi.fn(), isPending: false }),
   };
 });
 

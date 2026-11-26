@@ -252,6 +252,33 @@ describe('launching the combined strike', () => {
     expect(events.map((row) => row.kind).sort()).toEqual(['mission_arrival', 'radar_warning']);
   });
 
+  it('S8 the leader pays the capsules for the whole pool, and Sessiz İtki books no warning', async () => {
+    const { playerCapsules } = await import('../src/db/schema.js');
+    const f = await setup();
+    await f.db.update(seasons).set({ synthesisStartsAt: f.clock.now() }).where(eq(seasons.id, f.seasonId));
+    await readyOperation(f);
+    await send(f, 1, f.planetIds[1]!, { DART: 15 });
+    await send(f, 0, f.planetIds[0]!, { DART: 15 }); // 90 bulk in all: one capsule
+    await landStaging(f);
+    f.clock.advance(1);
+    const launch = (capsules: ('OPTIC_VEIL' | 'SILENT_THRUST')[]) => f.db.transaction(async (tx) => startClanWar(tx, {
+      actor: await clanActor(tx, f.accountIds[0]!), acknowledgeShieldLoss: true, clock: f.clock, capsules,
+    }));
+    await f.db.insert(playerCapsules).values({ playerId: f.playerIds[0]!, capsuleId: 'SILENT_THRUST', quantity: 0 });
+    await expect(launch(['SILENT_THRUST'])).rejects.toMatchObject({ code: 'INSUFFICIENT_CAPSULES' });
+    // A member's stock is not the leader's.
+    await f.db.insert(playerCapsules).values({ playerId: f.playerIds[1]!, capsuleId: 'SILENT_THRUST', quantity: 9 });
+    await expect(launch(['SILENT_THRUST'])).rejects.toMatchObject({ code: 'INSUFFICIENT_CAPSULES' });
+    await f.db.update(playerCapsules).set({ quantity: 2 }).where(eq(playerCapsules.playerId, f.playerIds[0]!));
+    const result = await launch(['SILENT_THRUST']);
+    const [mission] = await f.db.select().from(missions).where(eq(missions.id, result.missionId));
+    expect(mission!.appliedCapsules).toEqual([{ id: 'SILENT_THRUST', count: 1 }]);
+    const left = await f.db.select().from(playerCapsules).where(eq(playerCapsules.playerId, f.playerIds[0]!));
+    expect(left[0]!.quantity).toBe(1);
+    const events = await f.db.select().from(scheduledEvents).where(eq(scheduledEvents.refId, mission!.id));
+    expect(events.map((row) => row.kind)).toEqual(['mission_arrival']);
+  });
+
   it('wakes a combined strike when Radar is installed after its warning chain ended', async () => {
     const f = await setup();
     await readyOperation(f);

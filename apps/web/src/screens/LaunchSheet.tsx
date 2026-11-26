@@ -38,6 +38,7 @@ import { PirateProfitCard } from '../ui/PirateProfitCard.js';
 import { HonorTargetCard } from '../ui/HonorTargetCard.js';
 import { useSchoolPresentation } from '../onboarding/flightSchool/presentation.js';
 import { GameButton, GameHold, Glyph, InfoPeek, UnitCard } from '../game-ui/index.js';
+import { CapsuleRow } from '../ui/CapsuleRow.js';
 
 /**
  * WHAT A FLEET CAN BE COMMITTED AT. D150.
@@ -134,7 +135,7 @@ export function LaunchSheet({
   const {
     sending, set, roomFor, allowance, selectionComplete, lesson, season, honorTarget, spendsShield, pirate, mods, radiation,
     paces, pace, setWantedPace, route, fullSpeedRoute, paceReset, total, salvageRoom, baysFree, tooLate, busy,
-    escort, escorted, setEscortWanted,
+    escort, escorted, setEscortWanted, capsules, setCapsules, capsuleStock,
     holding, away, atHome, recordAge, opposing, power, escape, notes, refusal,
     commit, classReading, report, pirateProfit, pirateProfitState,
   } = useLaunchPlan({
@@ -306,6 +307,11 @@ export function LaunchSheet({
           {route !== null && (
             <div data-launch-meters>
               <SpendBar inline stock={planet.planet.deuterium} spend={route.fuel} tone="deuterium" label={t('launch.fuel')} />
+              {(planet.honorBenefits?.fuelPct ?? 0) > 0 && (
+                <p className="gk-sub" data-tone="hostile" data-honor-fuel-penalty>
+                  {`${t('honorBenefits.fuel')} +${String(planet.honorBenefits!.fuelPct)}%`}
+                </p>
+              )}
             </div>
           )}
           {/* A launch spends fuel and uncovers the world: the kit's spend weight, one second. */}
@@ -323,12 +329,6 @@ export function LaunchSheet({
       }
     >
       <div className="gk gk-launch">
-        {honorTarget.data && <HonorTargetCard value={honorTarget.data} />}
-        {honorTarget.isFetching && !honorTarget.data && <p className="gk-sub">{t('leaderboard.honorTarget.loading')}</p>}
-        {honorTarget.isError && <div className="gk-launch__retry">
-          <p className="gk-sub">{t('leaderboard.honorTarget.unavailable')}</p>
-          <GameButton size="sm" glyph="refresh" onPress={() => { void honorTarget.refetch(); }}>{t('leaderboard.honorTarget.retry')}</GameButton>
-        </div>}
         {/*
           WHAT YOU ARE FLYING AT, ON THE SAME AXIS AS WHAT YOU ARE SENDING (B5), with
           the counter cycle against what the probe read (B6). Sticky, so the force a "+" moves
@@ -350,6 +350,17 @@ export function LaunchSheet({
           two strips. The ships scroll under those, not under a paragraph.
         */}
         {!choosing && classReading && <MatchupLine folded wing={sending} reading={classReading} />}
+
+        {/*
+          THE HONOR READING, UNDER THE POWER IT IS ABOUT (owner 2026-11-25): folded to one line, its rules
+          behind ⓘ; the sheet opens on the force, not on a paragraph of scoring.
+        */}
+        {honorTarget.data && <HonorTargetCard value={honorTarget.data} />}
+        {honorTarget.isFetching && !honorTarget.data && <p className="gk-sub">{t('leaderboard.honorTarget.loading')}</p>}
+        {honorTarget.isError && <div className="gk-launch__retry">
+          <p className="gk-sub">{t('leaderboard.honorTarget.unavailable')}</p>
+          <GameButton size="sm" glyph="refresh" onPress={() => { void honorTarget.refetch(); }}>{t('leaderboard.honorTarget.retry')}</GameButton>
+        </div>}
 
         {/*
           ORIGIN & TARGET BODY PICKERS (Planet <-> Moon): placed below the Power ruler right
@@ -446,6 +457,8 @@ export function LaunchSheet({
           Above the pace, because its time bonus is part of what the pace row and the figures quote.
         */}
         <EscortRow escort={escort} on={escorted} onChange={setEscortWanted} />
+        {/* Sentez capsules: what this raid may wear, priced from the wing as chosen (plan 2026-11-24). */}
+        {target.kind === 'world' && <CapsuleRow kind="attack" fleet={sending} held={capsuleStock} chosen={capsules} onChange={setCapsules} />}
         <PaceRow data-launch-pace paces={paces} pace={pace} onChange={setWantedPace}
           brief={t('launch.paceBrief')} reset={paceReset}
           {...(route && fullSpeedRoute && !lesson && target.kind === 'world' ? {

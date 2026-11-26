@@ -4,7 +4,7 @@ import { ADMIRAL_WAIT } from '@astera/rules/arena';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { buildApp, type BuiltApp } from '../../src/app.js';
 import { TokenService } from '../../src/auth/tokens.js';
-import { arenaPilots, arenaShips, arenaTeams, clanMemberships, clans, planets } from '../../src/db/schema.js';
+import { arenaShips, arenaTeams, clanMemberships, clans, planets } from '../../src/db/schema.js';
 import { createTeam, readyTeam, startTeam } from '../../src/services/arenaTeams.js';
 import { chooseShip, endSortie, launchSortie } from '../../src/services/arenaShips.js';
 import { hangarSchema, teamSchema } from '../../../web/src/arena/deskSchemas.js';
@@ -18,7 +18,6 @@ describe('Yarık hangar contract', () => {
   it('uses the application clock for startup recall and leaves no empty solo share to claim', async () => {
     const f = await seedWorld(1, 7624); const account = f.accountIds[0]!;
     await setLevel(f.db, f.planetIds[0]!, 'CORE', 9); await chooseShip(f.db, f.clock, account, 'kilavuz');
-    await f.db.insert(arenaPilots).values({ accountId: account, grantedAt: f.clock.now() });
     const [clan] = await f.db.insert(clans).values({ seasonId: f.seasonId, name: 'Solo Takım', nameKey: 'solo takim', tag: 'SLT', createdAt: f.clock.now() }).returning();
     if (!clan) throw new Error('no clan');
     await f.db.insert(clanMemberships).values({ clanId: clan.id, seasonId: f.seasonId, playerId: f.playerIds[0]!, role: 'LEADER', slot: 0,
@@ -40,7 +39,6 @@ describe('Yarık hangar contract', () => {
       await setLevel(f.db, f.planetIds[i]!, 'CORE', 9);
       await chooseShip(f.db, f.clock, f.accountIds[i]!, 'kilavuz');
     }
-    await f.db.insert(arenaPilots).values(f.accountIds.slice(0, 2).map(accountId => ({ accountId, grantedAt: f.clock.now() })));
     const [clan] = await f.db.insert(clans).values({ seasonId: f.seasonId, name: 'Yarık Takım', nameKey: 'yarik takim', tag: 'YRK', createdAt: f.clock.now() }).returning();
     if (!clan) throw new Error('no clan');
     await f.db.insert(clanMemberships).values([0, 1].map(i => ({ clanId: clan.id, seasonId: f.seasonId, playerId: f.playerIds[i]!, role: i === 0 ? 'LEADER' as const : 'MEMBER' as const,
@@ -50,7 +48,10 @@ describe('Yarık hangar contract', () => {
     const app = built.app; const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
     const headers = await Promise.all(f.accountIds.map(async a => ({ authorization: `Bearer ${await tokens.issueAccess(a)}` })));
     expect((await app.inject({ method: 'GET', url: '/arena/team' })).statusCode).toBe(401);
-    expect((await app.inject({ method: 'GET', url: '/arena/team', headers: headers[2] })).statusCode).toBe(403);
+    // Every signed-in account is admitted (owner 2026-11-24): the third commander reads a team page with no team on it.
+    const outsider = await app.inject({ method: 'GET', url: '/arena/team', headers: headers[2] });
+    expect(outsider.statusCode).toBe(200);
+    expect(teamSchema.parse(outsider.json()).team).toBeFalsy();
     expect((await app.inject({ method: 'POST', url: '/arena/team/create', headers: headers[0], payload: { clanId: clan.id } })).statusCode).toBe(400);
     const created = await app.inject({ method: 'POST', url: '/arena/team/create', headers: headers[0], payload: {} });
     expect(created.statusCode).toBe(200);
@@ -72,7 +73,6 @@ describe('Yarık hangar contract', () => {
     const account = f.accountIds[0]!; const capital = f.planetIds[0]!;
     await setLevel(f.db, capital, 'CORE', 9);
     await f.db.update(planets).set({ alloy: 1000, crystal: 1000, deuterium: 500 }).where(eq(planets.id, capital));
-    await f.db.insert(arenaPilots).values({ accountId: account, grantedAt: f.clock.now() });
     await chooseShip(f.db, f.clock, account, 'kilavuz');
     await f.db.update(arenaShips).set({ level: 3 }).where(eq(arenaShips.playerId, f.playerIds[0]!));
     built = buildApp({ db: f.db, clock: f.clock, logger: pino({ level: 'silent' }), env: testEnv({ ROLE: 'arena', ARENA_ENABLED: 'true' }) });

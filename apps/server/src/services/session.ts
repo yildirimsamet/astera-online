@@ -23,6 +23,8 @@ import {
   type MassClass,
   type PirateLevel,
   SILENT_SPACE,
+  missionSuppressesRadarWarning,
+  missionHidesFromGalaxy,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import { batchReads } from '../db/readBatch.js';
@@ -184,6 +186,8 @@ export interface PendingThread {
   corridor?: true;
   /** Y9: the commander ship flying at the rear of this craft. Your own craft only. */
   admiral?: AdmiralSnapshot;
+  /** Optik Örtü rides on this leg (G17): the owner sees its craft drawn cloaked. Your own craft only. */
+  veiled?: true;
   /**
    * Set only on an outbound transfer or raid that may still be turned around — the same facts
    * `recallFlight` checks. Owner decisions 2026-09-21 (transfers) and 2026-09-23 (raids, K8).
@@ -530,8 +534,8 @@ export async function buildReturnPayload(
     // D212: Silent Space runs the works at half pace, and the estimate must not promise double.
     const [season] = await db.select({ shardId: seasons.shardId }).from(seasons).where(eq(seasons.id, player.seasonId));
     const pace = season && await isSilentSpaceShard(db, season.shardId) ? SILENT_SPACE.productionPace : 1;
-    // F2 Ortak Ocak: each world's works run at the clan share frozen on it, as the world is paid.
-    const share = new Map(ownedWorlds.map((world) => [world.id, 1 + world.clanBonus]));
+    // F2 Ortak Ocak & Honor Tier -4: each world's works run at the shares frozen on it, as the world is paid.
+    const share = new Map(ownedWorlds.map((world) => [world.id, (1 + world.clanBonus) * (1 + world.honorProductionShare)]));
     const hoursOn = (planetId: string) => (awayMinutes / 60) * pace * (share.get(planetId) ?? 1);
     // An estimate by design: the exact figure is on the planet screen, and this
     // line exists to say "time passed and it mattered", not to be audited.
@@ -787,6 +791,8 @@ export async function pendingThreads(
        * where it arrives with no owner, no route and no name.
        */
       if (!isHostileMission(m, row.clanWarLeg) || !ownedIds.includes(m.targetPlanetId)) continue;
+      // Sessiz İtki: nothing on the target's strip, ever (plan 2026-11-24 §3.5).
+      if (missionSuppressesRadarWarning(m.appliedCapsules)) continue;
       const radar = radarByPlanet.get(m.targetPlanetId) ?? 0;
       const reach = radarRange(radar);
       const oneWay = (m.arriveAt.getTime() - m.departAt.getTime()) / 60_000;
@@ -955,6 +961,7 @@ export async function pendingThreads(
             arriveAt: m.arriveAt,
           },
       ...(fadeAt === null ? {} : { fadeAt }),
+      ...(missionHidesFromGalaxy(m.appliedCapsules) ? { veiled: true as const } : {}),
     });
   }
 

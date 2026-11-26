@@ -130,6 +130,8 @@ const TRACK_DRIFT = new THREE.Vector3();
 import { DysonShells } from './DysonShells.jsx';
 import { Satellites, Shields } from './Satellites.jsx';
 import { ScanReveals } from './ScanReveals.jsx';
+import { ProbeShots } from './ProbeShots.jsx';
+import type { ProbeShot } from './probeShots.js';
 import { CoreLevelUps } from './CoreLevelUps.jsx';
 import type { CoreClock } from './coreLevelUp.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
@@ -320,6 +322,8 @@ export interface GalaxyCanvasProps {
    * that levels up plays its step on the map (owner, 2026-11-13). Absent outside the galaxy screen.
    */
   cores?: readonly CoreClock[];
+  /** Probes a battery shot down, for the sender and the holder (2026-11-24); absent outside the galaxy screen. */
+  probeShots?: readonly ProbeShot[];
   /** Radiation clouds (K3, F10). Public, like the worlds; absent draws nothing. */
   radiation?: readonly RadiationSourceView[];
   hpRadiation?: readonly HpRadiationSourceView[];
@@ -470,6 +474,7 @@ export function GalaxyCanvas({
   meteorShower = false,
   sensors,
   cores,
+  probeShots,
   radiation,
   hpRadiation = EMPTY_HP_RADIATION,
   monuments = EMPTY_MONUMENTS,
@@ -1191,6 +1196,10 @@ export function GalaxyCanvas({
         {/* A Core that levels up steps the world up on the map; a tier jump says so (owner, 2026-11-13). */}
         <SkinAssetBoundary fallback={null}><Suspense fallback={null}>
           <CoreLevelUps nodes={nodes} cores={cores} selfId={selfId} />
+        </Suspense></SkinAssetBoundary>
+        {/* A probe the battery shot down comes apart in orbit (2026-11-24). */}
+        <SkinAssetBoundary fallback={null}><Suspense fallback={null}>
+          <ProbeShots nodes={nodes} shots={probeShots} selfId={selfId} />
         </Suspense></SkinAssetBoundary>
         {!starter && <StarterGlow />}
         {starter && mainOffset && <Suspense fallback={null}>

@@ -356,6 +356,9 @@ export const leaderboard = {
     value: "Daños y pérdidas usan costes de construcción ponderados fijos: 1 aleación + 2 cristal + 32 deuterio. Las defensas terrestres reconstruidas no cuentan como daño.",
   },
   honorTarget: {
+    more: "Reglas de Honor",
+    fold: "{{kind}} · {{value}}",
+    short: { FULL: "rendimiento completo", HALF: "medio rendimiento", NONE: "sin rendimiento", RELATED: "no da Honor" },
     loading: "Cargando la comparación de Honor…",
     unavailable: "La comparación de Honor no está disponible.",
     retry: "Reintentar comparación de Honor",
@@ -365,6 +368,8 @@ export const leaderboard = {
     WEAK: "Objetivo más débil",
     topTierPeer: "Estás en el nivel más alto de esta galaxia. Un objetivo un nivel por debajo se evalúa con las reglas de Honor del mismo nivel. Un rival que te ataque desde un nivel inferior conserva las condiciones actuales de bonificación.",
     weakWarning: "Incluso un ataque exitoso puede reducir Honor. El acoso repetido cuesta más.",
+    escalatedWeak: "Ya perdiste Honor al atacar a este comandante en las últimas 24 horas. Este ataque multiplica la pérdida de Honor por {{multiplier}}×.",
+    escalatedInFlight: "Ya tienes un ataque en camino hacia este comandante. Este ataque adicional multiplica la pérdida de Honor por {{multiplier}}×.",
     eligible: "El daño militar permanente puede otorgar Honor. Tus pérdidas al atacar pueden reducirlo.",
     FULL: "Rendimiento militar completo: el daño válido se ajusta por eficiencia.",
     HALF: "Rendimiento militar reducido: la fuerza militar de este comandante es muy inferior a la tuya. La ganancia y la deducción por tus pérdidas se reducen a la mitad.",

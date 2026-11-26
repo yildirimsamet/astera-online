@@ -84,6 +84,7 @@ const LIVE_READS = [
   // The lane moves while a tab is away; it no longer refetches on focus by itself.
   keys.pirates,
   keys.rewards,
+  keys.dailyQuests,
   keys.chatMessages,
   keys.chatUnread,
   keys.dmConversations,

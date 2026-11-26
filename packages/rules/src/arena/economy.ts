@@ -6,8 +6,9 @@ import { levelOf, shipStats } from './progression.js';
  * capital one for one, through an exit only. The tank and magazine are filled from the capital's
  * deuterium before a flight, the missing part only; what is left stays aboard. Each day carries at
  * most capHours of the capital's own production of each resource. A destroyed ship is repaired
- * for free in repairMinutes; every flight ends with serviceMinutes of maintenance. Both are 3 min
- * for now (owner 2026-10-28: "biraz oynasınlar alışsınlar"); an escort keeps its own (ADMIRAL_WAIT).
+ * for free in repairMinutes; every flight ends with serviceMinutes of maintenance. Owner 2026-10-28 cut both
+ * to 3 min ("biraz oynasınlar alışsınlar"); owner 2026-11-25 raised them back a little, to 15 and 5. An escort
+ * keeps its own (ADMIRAL_WAIT).
  */
 export const ARENA_ECONOMY = Object.freeze({
   /** Komuta Merkezi level that gives a commander a ship (plan 14 §3). */
@@ -19,8 +20,8 @@ export const ARENA_ECONOMY = Object.freeze({
     muhafiz: Object.freeze({ fuel: 50, ammo: 30 }),
   }) satisfies Readonly<Record<ShipClass, Readonly<{ fuel: number; ammo: number }>>>,
   capHours: 4,
-  repairMinutes: 3,
-  serviceMinutes: 3,
+  repairMinutes: 15,
+  serviceMinutes: 5,
   freeChangeHours: 24,
   /** Entry closes this long before the season ends (KG-A16). */
   entryClosesMinutes: 10,
@@ -83,6 +84,14 @@ export function settleHold(hold: readonly number[], room: Resources): { deposit:
     overflow[kind] = carried - deposit[kind];
   });
   return { deposit, overflow };
+}
+
+/**
+ * THE ASTERYUM AN EXIT CARRIES HOME (plan §3.2). Whole units from the fourth hold slot, credited to the
+ * commander's own stock; it never counts against the day's `capHours` room.
+ */
+export function extractAsterium(hold: readonly number[]): number {
+  return Math.floor(Math.max(0, hold[3] ?? 0) + 1e-9);
 }
 
 /** The one free class change: not used yet, inside freeChangeHours of the first choice. */

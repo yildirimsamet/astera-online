@@ -11,6 +11,31 @@
 
 ## Sahip kararları (KG-K)
 
+#### KG-K34
+**Yarık'ta puan yok; fırtına pilot başına; kontrol ve HUD düzeltmeleri** (2026-11-25).
+- **Puan kaldırıldı.** "Yarık'ta puan diye bir şey yok": `FARM_POINTS`/`holdPoints`, odanın puan
+  satırı, çıkış işaretindeki "· N puan", antrenman sonucundaki puan ve ipuçları gitti. Ambar yalnız
+  başkente indiği kadar değerlidir. **Oda sıralaması kalır** (sahibin seçimi): yok etme, eşitlikte
+  az ölüm; üst satır "Sıra 2/3 · 1 yok etme". Takım ganimetinde artan birimler yine en değerli
+  yükü getirene gider (alaşım 1, kristal 2, döteryum 3); bu bir eşitlik bozucudur, puan değildir.
+- **Asteryum Fırtınası pilot başına.** Normal saha gruplarına Asteryum karışmaz. Fırtına esince her
+  uçan gemi saatte 10 birimlik borç ekler; borç yetince merkezde (2 km içi) boş bir saha noktasında
+  1 ya da 2 birimlik parça doğar. Açılışta pilot başına yaklaşık bir parça hazırdır; aynı anda en
+  fazla pilot sayısı kadar (en az 2, en çok 8) parça bekler. Hedef pilot başına saatte 6–15
+  (testle 11–13). Oyuncuya yalnız "mor taşlar ortalarda" denir; oran ve parça yeri gösterilmez,
+  ok/işaret yok. Parça 9,5 m çizilir, çekirdeği biraz daha parlak. Protokol 19 (havuzda fırtına slotları).
+  Yeniden doğan saha grubu, üzerinde fırtına taşı duran noktayı seçmez. Merkez ölçüsü kare uzaklıkla
+  yapılır (`Math.hypot` değil): paylaşılan simülasyon her JS motorunda aynı sonucu verir.
+- **Kontroller ve HUD.** İkinci taktik ateşin üstündeki yaya, birinci taktikle sınıf tuşu arasına
+  taşındı. Joystick topuzu çizilen halkanın içinde kalır (hareket 52 → 40 px; parmak yolu aynı).
+  Ambar sayıları, bağlantı satırı ve fırtına satırı radar ile hız arasında tek şeritte alt alta;
+  menü düğmesi hız kutusuna değmez. Uçuş menüsünde "Emeği geçenler" küçük, "Ana gezegene dön"ün üstünde.
+- **Geliştirme odası:** oturum açmış komutan, istemci misafir kimliği de gönderse kendi hesabıyla
+  uçar (lab'da sahip "Pilot -2" olarak misafir uçuyordu); misafirler 1'den numaralanır.
+- **`VITE_ARENA` kaldırıldı** (owner 2026-11-26: "VITE_ARENA değişkenine gerek var mı ki?"). Yarık
+  herkese açık; kapı yalnız arena sürecinin `/arena/access` cevabıdır. 2026-11-25'teki bir web derlemesi
+  bayrağı boş geçince gemi sekmesi, galaksideki komutan gemileri ve Yarık girişi herkesten kaybolmuştu.
+
 #### KG-K33
 **Galakside daha belirgin Komutan Gemisi** (2026-11-09). Sahip iki kat galaksi boyutunu,
 temiz/cilalı metal parlamasını ve daha uzun egzozu onayladı. İlk görselin ardından egzoz
@@ -559,8 +584,9 @@ yumuşar. Test: `smoothing.test.ts`.
 
 #### KG-T45
 **Özel deneme erişimi ve referans paketi.**
-- `arena_pilots` tablosu (migration 0196); admin `GET/POST /api/admin/arena-pilots`. Arena kimliği
-  `pilot` bayrağını döner; `ARENA_PILOTS` (`*` veya ad listesi) geliştirme içindir.
+- **Sahip 2026-11-24: `ARENA_PILOTS` ve oturma kapısı koddan kaldırıldı**; arena kimliği artık `pilot` bayrağı
+  döndürmez, oturum açmış her hesap girer. Aynı gün `arena_pilots` tablosu (migration 0196 kurmuştu, 0267 düşürdü)
+  ve admin `GET/POST /api/admin/arena-pilots` uçları silindi.
 - Paket depoda değil: üretimde `ARENA_REF_DIR` altındaki `dist/` ve `audio/`, yalnız oturmuş pilota
   `POST /arena/ref-session` ile verilen 6 saatlik HMAC çerezle (`/__ref`, HttpOnly, SameSite=Strict)
   servis edilir; her ret 404'tür, yol kaçışı realpath ile engellenir (`references.ts`).
@@ -996,7 +1022,7 @@ Y6a: gerçek gemi ve gerçek kargo (2026-10-23, sahibin kararları). Seviye, XP 
 - **Doldurma:** her kalkışta depo ve şarjör başkentin döteryumuyla tamamlanır; yalnız eksik
   ödenir. Tam depo 30/40/50 D, tam şarjör 15/22/30 D (Akıncı/Kılavuz/Muhafız). Bilerek pahalı:
   "sabahtan akşama yalnız bu mod oynanmasın; ölmenin cezası olsun".
-- **Herkese açılış (sahip 2026-10-27):** Yarık her komutana açık (`ARENA_PILOTS='*'`), amiral eskortu canlı
+- **Herkese açılış (sahip 2026-10-27):** Yarık her komutana açık (2026-11-24'ten beri bunun için bayrak yok), amiral eskortu canlı
   sezonlarda `season activate-admiral` ile açık. Gerçek uçuş odasında ev botu yok ("botları kapat";
   `ARENA_BOTS`, varsayılan 0, en çok 3). Antrenmanda 20 bot uçar, roller sırayla (`ARENA_TUNING.practiceBots`).
 - **Gövde +%50 (sahip 2026-10-27, "gemiler biraz çabuk ölüyor"):** Akıncı 510, Kılavuz 600, Muhafız 900
@@ -1022,8 +1048,10 @@ Y6a: gerçek gemi ve gerçek kargo (2026-10-23, sahibin kararları). Seviye, XP 
 - **Günlük tavan:** her kaynaktan günde en çok başkentin kendi 4 saatlik üretimi (UTC günü).
   Tavanı aşan kısım yatmaz; sonuç ekranı bunu ayrıca söyler.
 - **Ölüm:** ambar enkaza düşer, 60 dk bedava tamir. Her uçuştan sonra 10 dk bakım.
-  **Sahip, 28 Ekim 2026:** şimdilik ikisi de 3 dk ("biraz oynasınlar alışsınlar"). Amiral
-  eskortu kendi sürelerini korur: kayıpta 60 dk tamir, dönüşte 10 dk bakım (`ADMIRAL_WAIT`).
+  **Sahip, 28 Ekim 2026:** şimdilik ikisi de 3 dk ("biraz oynasınlar alışsınlar").
+  **Sahip, 25 Kasım 2026:** biraz geri yükseldi ("geri biraz yükseltmek istiyorum"): ölüm 15 dk
+  tamir, her uçuş 5 dk bakım (`ARENA_ECONOMY`). Amiral eskortu kendi sürelerini korur: kayıpta
+  60 dk tamir, dönüşte 10 dk bakım (`ADMIRAL_WAIT`).
 - **Kapanış/çökme (KG-A15):** kargo ambarda kalır, tamir ya da bakım işlemez.
 - **Sezon sonu (KG-A16):** bitişe 10 dk kala giriş kapanır. Dondurmadan sonra gelen kargo kaybolur.
 - **Saha karışımı:** döteryum daha seyrek ve derinde kalır; mevcut karışım korunur.
@@ -1092,7 +1120,8 @@ Y6c (2026-10-24). Sahip: **"Radar kendi seviyesinde başlasın; her yetenek ayr�
 #### KG-X35
 Y6d (2026-10-24), 14 §7.4'teki ödemeli tamir uygulandı. Bedava 60 dakika korunur.
 - **28 Ekim 2026:** Yarık tamiri 3 dk olduğundan ödeme orada hiç önerilmez (kod yerinde, sahip kararı);
-  yalnız Amiral kaybının 60 dk tamirini kısaltır.
+  yalnız Amiral kaybının 60 dk tamirini kısaltır. **25 Kasım 2026:** Yarık tamiri 15 dk oldu; en kısa
+  teklif de 15 dk (sv 1) olduğundan ödeme Yarık ölümünde yine önerilmez.
 - Bedel: alaşım `150 + 25·sv`, kristal `50 + 10·sv`. Ödemeden sonra bekleme:
   `15 + round(15·(sv−1)/19)` dakika. Tamir anında bitmez; ayrıca bakım eklenmez.
 - Yalnız aktif tamir kısaltılır. Yeni bekleme kalan süreden kısa değilse ücret alınmaz.

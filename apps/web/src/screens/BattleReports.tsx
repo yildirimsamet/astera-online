@@ -1409,6 +1409,16 @@ function Consequences({ report }: { report: OrdinaryReport }) {
     });
   }
 
+  /* SENTEZ CAPSULES (plan 2026-11-24 §3.5): the battle lifts the veil, so either side reads what the raid wore. */
+  if (report.appliedCapsules?.length) {
+    lines.push({
+      key: 'capsules',
+      tone: 'plain',
+      text: `${t('synthesis.report.worn')}: ${report.appliedCapsules
+        .map((capsule) => `${t(`synthesis.capsule.${capsule.id}.name`)} ×${String(capsule.count)}`).join(' · ')}`,
+    });
+  }
+
   // A current report gets the drawn before→after Aegis card above. Keep this
   // sentence only for a legacy report whose old payload knows the absorbed total
   // but cannot honestly reconstruct either endpoint.

@@ -2,6 +2,7 @@ import { GameActions } from '../session/seasonLock.js';
 import { sumFleets } from '../lib/fleetPage.js';
 import { createPortal } from 'react-dom';
 import { RadiationBombForgeHost } from './RadiationBombControls.js';
+import { SynthesisLab } from './SynthesisLab.js';
 import { ShipRadiationProtection } from '../ui/ShipRadiationProtection.js';
 import { PlanetRadiationProtection } from '../ui/PlanetRadiationProtection.js';
 import { TargetRadiationInstrument } from '../ui/TargetRadiationInstrument.js';
@@ -46,6 +47,12 @@ import {
   satelliteSlots,
   satelliteCost,
   interceptorCapacity,
+  PROBE_DEFENCE,
+  probeBatteryCharges,
+  probeBatteryLevel,
+  settleProbeBattery,
+  probeBatteryOnline,
+  probeCatchChance,
   researchMaxed,
   strategicStockpile,
   fleetEscapeApplies,
@@ -65,10 +72,12 @@ import {
   usePlanet,
   useBuild,
   useBuildInterceptor,
+  useInstallProbeBattery,
   useInstallSatellite,
   useRaiseInstrument,
   useUpgrade,
   useBuildDeathStar,
+  useSynthesis,
 } from '../api/queries.js';
 import type { FaultView, PlanetView } from '../api/schemas.js';
 import { haptic } from '../lib/haptics.js';
@@ -145,7 +154,7 @@ import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { Banner, CostLine, Emblem, Fold, GameButton, GameHold, GameTabs, Glyph, InfoPeek, RoomGauge, SectionTag, TimerRow, type GlyphId } from '../game-ui/index.js';
 import { affordWait } from '../lib/afford.js';
 import { roomParts } from '../lib/room.js';
-import { ArmCard, ArmNeeds, ArmNext, ArmSpecs, ArmStatus, ArmStock, type ArmNeed } from '../ui/ArmCard.js';
+import { ArmCard, ArmNeeds, ArmNext, ArmSpecs, ArmStatus, ArmStock, Cells, stockCells, type ArmNeed } from '../ui/ArmCard.js';
 import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
 import { NeedBar } from '../v2/kit/NeedBar.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
@@ -558,11 +567,8 @@ export function PlanetScreen({
               {active === 'reach' && <Reach {...shared} onBuild={openBuild} onStation={() => { setStation(true); }} />}
               {active === 'grow' && <Grow {...shared} />}
               {!lesson && active === 'tactical' && (
-                <div className="flex flex-col gap-3">
-                  <DeathStarForge planet={data} held={held} recovering={recovering} onNeed={goToNeed} />
-                  {data.radiationBombsAvailable && <RadiationBombForgeHost planet={data} held={held}
-                    disabledReason={recovering ? t('planet.deathStar.needOperational') : null} />}
-                </div>
+                <Tactical planet={data} held={held} recovering={recovering} onNeed={goToNeed}
+                  {...(focusItem ? { focusItem } : {})} />
               )}
             </DecisionGroup>
           </div>
@@ -787,6 +793,47 @@ function FaultLine({ fault, held, onOpen }: { fault: FaultView; held: Projected;
   );
 }
 
+
+/** The laboratory's row, as a finished batch's notification names it (the server's `SYNTHESIS_LAB_ITEM`). */
+const SYNTHESIS_LAB_ITEM = 'synthesis-lab';
+type Bay = 'weapons' | 'lab';
+
+/**
+ * THE TACTICAL TAB, IN TWO BAYS (owner 2026-11-25: "Taktik menüsünü iki tab'a ayıralım… ileride bu
+ * laboratuvar daha gelişecek"). The weapons bay opens first, as the tab always did; the laboratory has a
+ * bay of its own to grow into. It stands only where there is one: the commander's capital, in a galaxy
+ * with Asteryum. A finished batch's notification opens it directly.
+ */
+function Tactical({ planet, held, recovering, focusItem, onNeed }: {
+  planet: PlanetView;
+  held: Projected;
+  recovering: boolean;
+  focusItem?: string;
+  onNeed: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  const synthesis = useSynthesis();
+  const [bay, setBay] = useState<Bay>(focusItem === SYNTHESIS_LAB_ITEM ? 'lab' : 'weapons');
+  useEffect(() => { if (focusItem === SYNTHESIS_LAB_ITEM) setBay('lab'); }, [focusItem]);
+  const weapons = <div className="flex flex-col gap-3">
+    <DeathStarForge planet={planet} held={held} recovering={recovering} onNeed={onNeed} />
+    {planet.radiationBombsAvailable && <RadiationBombForgeHost planet={planet} held={held}
+      disabledReason={recovering ? t('planet.deathStar.needOperational') : null} />}
+  </div>;
+  // The laboratory is the commander's, paid from the capital: it lives on the capital alone.
+  if (synthesis.data?.enabled !== true || planet.planet.kind === 'COLONY') return weapons;
+  return <div className="gk-bays flex flex-col gap-3">
+    <GameTabs<Bay> label={t('planet.tabs.bays')} value={bay} onChange={setBay}
+      ids={{ tab: (id) => `tactical-bay-${id}`, panel: (id) => `tactical-panel-${id}` }}
+      tabs={[
+        { id: 'weapons', label: t('planet.tabs.weaponsBay'), glyph: { id: 'target' } },
+        { id: 'lab', label: t('planet.tabs.labBay'), glyph: { id: 'flask' } },
+      ]} />
+    <div id={`tactical-panel-${bay}`} role="tabpanel" aria-labelledby={`tactical-bay-${bay}`}>
+      {bay === 'weapons' ? weapons : <SynthesisLab held={held} />}
+    </div>
+  </div>;
+}
 
 /**
  * THE DEATH STAR FORGE, ON THE TACTICAL TAB (09c0bb5). D3.
@@ -1683,6 +1730,7 @@ function Defend({
         note={t('planet.defend.strategicNote')}
       /> */}
       {!lesson && <InterceptorBattery planet={planet} held={held} onNeed={onNeed} />}
+      {!lesson && <ProbeBattery planet={planet} held={held} onNeed={onNeed} />}
     </>
   );
 }
@@ -1845,6 +1893,174 @@ function InterceptorBattery({
       )}
       {charge !== null && !radarReady && gate}
     </ArmCard>
+  );
+}
+
+/**
+ * THE PROBE DEFENCE BATTERY. Owner, 2026-11-24 (`docs/sonda-bataryasi-plani-2026-11-24.md` §4).
+ *
+ * "A battery with a ready charge catches probes more easily and shoots down what it catches;
+ * once its charges are gone the world is as if it had no battery." Installed once on a hold;
+ * the charges refill by themselves, so the card's job after that is to say how many stand
+ * ready, when the next one lands, and — when it cannot fire — why.
+ *
+ * The rung and the online state read the same effective Radar the arrival reads: an Uplink
+ * gates the Radar, so a Radar 5 with none is no Radar at all.
+ */
+function ProbeBattery({
+  planet,
+  held,
+  onNeed,
+}: {
+  planet: PlanetView;
+  held: { alloy: number; crystal: number; deuterium: number };
+  onNeed: (id: string) => void;
+}) {
+  const { t, i18n: lang } = useTranslation();
+  const install = useInstallProbeBattery();
+  const say = useToast();
+  const now = useNow(1000);
+  const projected = projectedQueueState(planet, 'CONSTRUCTION');
+  const uplink = projected.effectiveOrbit.includes('UPLINK');
+  const radar = uplink ? Math.min(projected.instruments.RADAR ?? 0, projected.buildings.CORE) : 0;
+  const until = (at: Date | null | undefined): boolean => at !== null && at !== undefined && at.getTime() > serverNow();
+  const recovering = until(planet.planet.recoveryUntil);
+  const emp = until(planet.planet.empUntil);
+  const battery = planet.probeBattery;
+  const built = battery !== null && battery.readyAt.getTime() <= now;
+  // An upgrade that landed since the last read is folded in here, as the server folds it.
+  const settled = battery === null ? null : settleProbeBattery({
+    level: battery.level, charges: battery.charges, chargedAt: battery.chargedAt.getTime(),
+    upgradeLevel: battery.upgradeLevel, upgradeReadyAt: battery.upgradeReadyAt?.getTime() ?? null,
+  }, now);
+  const level = settled?.level ?? 0;
+  const spec = probeBatteryLevel(Math.max(level, 1));
+  const stock = settled ? probeBatteryCharges(settled.stock, now, settled.level) : null;
+  const ready = built && stock ? stock.charges : 0;
+  const online = probeBatteryOnline({ radar, emp, recovering });
+  const state = battery === null
+    ? (uplink && radar >= PROBE_DEFENCE.requiredRadar ? 'AVAILABLE' : 'LOCKED')
+    : !built ? 'BUILDING' : !online ? 'OFFLINE' : ready === 0 ? 'EMPTY' : 'READY';
+  // The order this card can place: level 1, or the level after a standing one.
+  const next = battery === null ? 1 : built && settled?.upgrading === false && level < PROBE_DEFENCE.levels.length ? level + 1 : null;
+  const nextSpec = next === null ? null : probeBatteryLevel(next);
+  const offlineReason = emp
+    ? t('planet.probeBattery.offlineEmp')
+    : recovering
+      ? t('planet.probeBattery.offlineRecovery')
+      : t('planet.probeBattery.offlineRadar', { level: PROBE_DEFENCE.requiredRadar });
+  // What a scout as good as this commander's own Shipyard meets here: the rule with a number in it.
+  const example = Math.round(probeCatchChance(Math.max(radar, PROBE_DEFENCE.requiredRadar), projected.buildings.SHIPYARD, Math.max(level, 1)) * 100);
+  const nextIn = built && stock?.nextAt != null ? untilReady((stock.nextAt - now) / 60_000) : null;
+  const short = nextSpec === null ? null : {
+    alloy: Math.max(0, nextSpec.cost.alloy - held.alloy),
+    crystal: Math.max(0, nextSpec.cost.crystal - held.crystal),
+    deuterium: Math.max(0, nextSpec.cost.deuterium - held.deuterium),
+  };
+  const refusal = recovering ? t('planet.deathStar.needs', { need: t('planet.interceptor.needOperational') }) : short && shortfall(short, planet);
+  const missing = nextSpec === null ? [] : [
+    { ok: uplink, text: t('planet.interceptor.needUplink'), onFix: () => { onNeed('UPLINK'); } },
+    { ok: (projected.instruments.RADAR ?? 0) >= nextSpec.requiredRadar,
+      text: t('planet.interceptor.needRadar', { level: nextSpec.requiredRadar }), onFix: () => { onNeed('RADAR'); } },
+    // The Radar works only as high as the Core: the server reads that capped rung.
+    { ok: projected.buildings.CORE >= nextSpec.requiredRadar,
+      text: t('planet.deathStar.needCore', { level: nextSpec.requiredRadar }), onFix: () => { onNeed('CORE'); } },
+  ].filter((need) => !need.ok).map((need) => ({ ...need, text: t('planet.deathStar.needs', { need: need.text }) }));
+  const step = Math.round(PROBE_DEFENCE.catchPerLevel * 100);
+  const order = (done: string) => {
+    install.mutate(undefined, {
+      onSuccess: () => { say(done); },
+      onError: (error) => { say(describe(error), 'error'); },
+    });
+  };
+  const upgradeOpen = battery !== null && next !== null && nextSpec !== null;
+
+  return (
+    <ArmCard
+      art={ATMOSPHERE.probeBattery}
+      locked={state === 'LOCKED'}
+      working={state === 'BUILDING' || settled?.upgrading === true}
+      glyph="target"
+      name={t('planet.probeBattery.eyebrow')}
+      stock={<ProbeBatteryStock level={battery === null ? null : Math.max(level, 1)} ready={ready} capacity={spec.capacity} />}
+      marks={{ 'data-probe-battery-state': state }}
+    >
+      <ArmStatus
+        tone={state === 'READY' ? 'good' : state === 'OFFLINE' || state === 'EMPTY' ? 'warn' : state === 'BUILDING' ? 'self' : 'quiet'}
+        text={state === 'READY'
+          ? t('planet.probeBattery.ready')
+          : state === 'EMPTY'
+            ? t('planet.probeBattery.empty', { duration: nextIn ?? '' })
+            : state === 'OFFLINE'
+              ? t('planet.probeBattery.offline', { reason: offlineReason })
+              : state === 'BUILDING' && battery
+                ? t('planet.probeBattery.building', { duration: untilReady((battery.readyAt.getTime() - now) / 60_000) })
+                : t('planet.probeBattery.none')}
+        {...(state === 'BUILDING' && battery
+          ? { progress: { share: Math.min(100, Math.max(0, 100 * (now - battery.startedAt.getTime()) / (battery.readyAt.getTime() - battery.startedAt.getTime()))), mark: 'data-charge-progress' as const } }
+          : {})}
+      />
+      {state === 'READY' && nextIn !== null && (
+        <p data-probe-refill="" className="gk-sub gk-arm__note"><Glyph id="clock" />{t('planet.probeBattery.next', { duration: nextIn })}</p>
+      )}
+      {/* The battery seen working: what it shot down while the notice window is open. */}
+      {battery !== null && built && battery.recentShots > 0 && (
+        <p data-probe-recent="" className="gk-sub gk-arm__note"><Glyph id="target" />
+          {t('planet.probeBattery.recent', { count: battery.recentShots, minutes: PROBE_DEFENCE.noticeWindowMinutes })}</p>
+      )}
+      {settled?.upgrading === true && battery?.upgradeReadyAt && battery.upgradeLevel !== null && (
+        <p data-probe-upgrading="" className="gk-sub gk-arm__note"><Glyph id="clock" />
+          {t('planet.probeBattery.upgrading', { level: battery.upgradeLevel, duration: untilReady((battery.upgradeReadyAt.getTime() - now) / 60_000) })}</p>
+      )}
+      <div className="gk-arm__rule"><InfoPeek fact={<span className="gk-sub">{t('planet.probeBattery.short')}</span>}
+        rule={<p className="gk-sub">{t('planet.probeBattery.hint', {
+          base: Math.round((PROBE_DEFENCE.catchBase + PROBE_DEFENCE.catchPerLevel * (Math.max(level, 1) - 1)) * 100),
+          max: Math.round(PROBE_DEFENCE.catchMax * 100),
+          level: Math.max(level, 1),
+          capacity: spec.capacity,
+          minutes: new Intl.NumberFormat(lang.language).format(spec.refillMinutes),
+          step,
+          example,
+        })}</p>} /></div>
+      {(state === 'LOCKED' || upgradeOpen) && missing.length > 0 && (
+        <div data-gate="" className="gk-arm__gate"><ArmNeeds needs={missing} /></div>
+      )}
+      {nextSpec !== null && missing.length === 0 && (state === 'AVAILABLE' || upgradeOpen) && (
+        <div {...(upgradeOpen ? { 'data-probe-upgrade': '' } : {})}>
+          {upgradeOpen && (
+            <p className="gk-sub gk-arm__note"><Glyph id="up" />
+              {t('planet.probeBattery.upgradeNote', { level: next, capacity: nextSpec.capacity, step })}</p>
+          )}
+          <CostLine cost={nextSpec.cost} held={held} time={<span className="gk-cost__time"><Glyph id="clock" />
+            {duration(nextSpec.buildMinutes)}</span>} />
+          <div data-act><GameHold
+            label={upgradeOpen ? t('planet.probeBattery.upgrade', { level: next }) : t('planet.probeBattery.build')}
+            weight="spends" glyph="target" commitSound="shield"
+            disabledReason={install.isPending ? t('planet.probeBattery.started') : refusal}
+            onCommit={() => { order(upgradeOpen ? t('planet.probeBattery.upgradeStarted') : t('planet.probeBattery.started')); }} /></div>
+        </div>
+      )}
+    </ArmCard>
+  );
+}
+
+/**
+ * THE BATTERY'S LEVEL AND CHARGES, ON ONE LINE. Twenty cells would push the name onto three
+ * lines at 350 px, so the cells stop at five and fill by share; the count says it exactly.
+ */
+function ProbeBatteryStock({ level, ready, capacity }: { level: number | null; ready: number; capacity: number }) {
+  const { t } = useTranslation();
+  const shown = Math.min(capacity, 5);
+  const lit = ready <= 0 ? 0 : Math.max(1, Math.round((ready * shown) / capacity));
+  const counter = t('planet.tacticalStock.charges', { used: ready, total: capacity });
+  return (
+    <span className="gk-arm__stock" data-stock-kind="charges">
+      <span className="gk-arm__count">
+        {level !== null && <span data-probe-level="" className="gk-arm__level gk-num">{t('planet.probeBattery.level', { level })}</span>}
+        <span data-stock-counter className="gk-num">{counter}</span>
+        <Cells cells={stockCells({ ready: lit, loading: 0, total: shown })} label={counter} />
+      </span>
+    </span>
   );
 }
 

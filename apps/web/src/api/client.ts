@@ -163,6 +163,7 @@ import {
   radiationBombBuildSchema,
   radiationBombLaunchSchema,
   interceptorBuildSchema,
+  probeBatteryBuildSchema,
   faultRepairSchema,
   deathStarLaunchSchema,
   previewSchema,
@@ -171,6 +172,11 @@ import {
   researchCompleteSchema,
   rewardClaimSchema,
   rewardClaimAllSchema,
+  dailyQuestsSchema,
+  synthesisViewSchema,
+  synthesisResultSchema,
+  type CapsuleIdView,
+  dailyQuestClaimSchema,
   clanSuggestionSchema,
   welcomeSchema,
   welcomeOpenSchema,
@@ -1052,9 +1058,10 @@ export class Api {
   markClanWarMonumentTarget = (targetMonumentId: string) =>
     this.clanMutation('/api/clan/war/target', clanWarTargetResultSchema, { targetMonumentId });
   cancelClanWar = () => this.clanMutation('/api/clan/war/cancel', clanWarTargetResultSchema);
-  startClanWar = (acknowledgeShieldLoss: boolean, pace: MissionPace = 1, acknowledgeRadiationLoss?: boolean) =>
+  startClanWar = (acknowledgeShieldLoss: boolean, pace: MissionPace = 1, acknowledgeRadiationLoss?: boolean, capsules: readonly CapsuleIdView[] = []) =>
     this.clanMutation('/api/clan/war/start', clanWarStartResultSchema, { acknowledgeShieldLoss, pace,
-      ...(acknowledgeRadiationLoss ? { acknowledgeRadiationLoss: true } : {}) });
+      ...(acknowledgeRadiationLoss ? { acknowledgeRadiationLoss: true } : {}),
+      ...(capsules.length ? { capsules } : {}) });
   contributeClanWar = (input: { originPlanetId: string; fleet: Fleet; acknowledgeShieldLoss: boolean;
     acknowledgeRadiationLoss?: boolean }) =>
     this.clanMutation('/api/clan/war/contributions', clanWarContributionResultSchema, input);
@@ -1366,6 +1373,10 @@ export class Api {
     admiral?: boolean,
     /** Ay F3b/F3c: departure and target body (PLANET | MOON). */
     bodies?: { originBody?: WorldBody; targetBody?: WorldBody },
+    /** Sentez capsules for this raid (plan 2026-11-24 §3.5); the server prices them from the fleet. */
+    capsules: readonly CapsuleIdView[] = [],
+    /** Honor V2 fuel surcharge tier quoted to the commander before committing. */
+    expectedHonorTier?: HonorBenefitTier,
   ) =>
     this.send('/api/fleet/launch', launchSchema, {
       method: 'POST',
@@ -1379,6 +1390,8 @@ export class Api {
         ...(admiral ? { admiral: true } : {}),
         ...(bodies?.originBody && bodies.originBody !== 'PLANET' ? { originBody: bodies.originBody } : {}),
         ...(bodies?.targetBody && bodies.targetBody !== 'PLANET' ? { targetBody: bodies.targetBody } : {}),
+        ...(capsules.length ? { capsules } : {}),
+        ...(expectedHonorTier !== undefined ? { expectedHonorTier } : {}),
       },
     });
 
@@ -1414,7 +1427,7 @@ export class Api {
     { method: 'POST' },
   );
 
-  transfer = (originPlanetId: string, targetPlanetId: string, fleet: Fleet, cargo: { alloy: number; crystal: number; deuterium: number }, pace?: MissionPace, returnPlan?: TransferReturnPlan, acknowledgeRadiation?: boolean, bodies?: { originBody?: WorldBody; targetBody?: WorldBody }) =>
+  transfer = (originPlanetId: string, targetPlanetId: string, fleet: Fleet, cargo: { alloy: number; crystal: number; deuterium: number }, pace?: MissionPace, returnPlan?: TransferReturnPlan, acknowledgeRadiation?: boolean, bodies?: { originBody?: WorldBody; targetBody?: WorldBody }, capsules: readonly CapsuleIdView[] = [], expectedHonorTier?: HonorBenefitTier) =>
     this.send('/api/fleet/transfer', movementLaunchSchema, {
       method: 'POST',
       body: {
@@ -1424,12 +1437,14 @@ export class Api {
         ...(acknowledgeRadiation ? { acknowledgeRadiation: true } : {}),
         ...(bodies?.originBody && bodies.originBody !== 'PLANET' ? { originBody: bodies.originBody } : {}),
         ...(bodies?.targetBody && bodies.targetBody !== 'PLANET' ? { targetBody: bodies.targetBody } : {}),
+        ...(capsules.length ? { capsules } : {}),
+        ...(expectedHonorTier !== undefined ? { expectedHonorTier } : {}),
       },
     });
 
-  settle = (originPlanetId: string, targetPlanetId: string) =>
+  settle = (originPlanetId: string, targetPlanetId: string, capsules: readonly CapsuleIdView[] = []) =>
     this.send('/api/fleet/settle', movementLaunchSchema, {
-      method: 'POST', body: { originPlanetId, targetPlanetId },
+      method: 'POST', body: { originPlanetId, targetPlanetId, ...(capsules.length ? { capsules } : {}) },
     });
 
   buildDeathStar = (planetId: string) =>
@@ -1456,6 +1471,11 @@ export class Api {
     });
   buildInterceptor = (planetId: string) =>
     this.send(`/api/planets/${encodeURIComponent(planetId)}/interceptor/build`, interceptorBuildSchema, {
+      method: 'POST', body: {},
+    });
+  /** Install the world's probe battery (2026-11-24): once, then it refills itself. */
+  installProbeBattery = (planetId: string) =>
+    this.send(`/api/planets/${encodeURIComponent(planetId)}/probe-battery/build`, probeBatteryBuildSchema, {
       method: 'POST', body: {},
     });
 
@@ -1527,6 +1547,16 @@ export class Api {
     this.send('/api/rewards/claim', rewardClaimSchema, { method: 'POST', body: { id } });
   claimAllRewards = () =>
     this.send('/api/rewards/claim-all', rewardClaimAllSchema, { method: 'POST', body: {} });
+
+  dailyQuests = () => this.send('/api/daily-quests', dailyQuestsSchema);
+
+  /* Sentez Laboratuvarı (plan 2026-11-24 §4.3): one read, two writes; a start is retried safely. */
+  synthesis = () => this.send('/api/synthesis', synthesisViewSchema);
+  startSynthesis = (capsuleId: CapsuleIdView, quantity: number, key = createIdempotencyKey()) =>
+    this.send('/api/synthesis/start', synthesisResultSchema, { method: 'POST', body: { capsuleId, quantity }, idempotencyKey: key });
+  cancelSynthesis = () => this.send('/api/synthesis/cancel', synthesisResultSchema, { method: 'POST', body: {} });
+  claimDailyQuest = (id: string) =>
+    this.send('/api/daily-quests/claim', dailyQuestClaimSchema, { method: 'POST', body: { id } });
 
   mining = (planetId?: string) => this.send(
     `/api/mining${planetId ? `?planetId=${encodeURIComponent(planetId)}` : ''}`,

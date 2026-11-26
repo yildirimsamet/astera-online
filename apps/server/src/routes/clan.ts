@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { CAPSULE_IDS } from '@astera/rules';
 import { readClanLedger } from '../services/clanLedger.js';
 import {
   acceptClanRequest,
@@ -124,6 +125,8 @@ const warStartBody = z.object({
   acknowledgeRadiationLoss: z.boolean().default(false),
   /** The combined leg's pace; the service checks the rung against this flight. Plan §15.5a. */
   pace: z.number().positive().max(1).optional(),
+  /** Sentez capsules for the combined fleet; the leader pays (plan 2026-11-24 §3.5). */
+  capsules: z.array(z.enum(CAPSULE_IDS)).max(CAPSULE_IDS.length).optional(),
 }).strict();
 const warQuoteBody = z.object({
   originPlanetId: z.string().uuid(),
@@ -554,6 +557,7 @@ export function registerClanRoutes(app: FastifyInstance): void {
       acknowledgeShieldLoss: body.acknowledgeShieldLoss,
       acknowledgeRadiationLoss: body.acknowledgeRadiationLoss,
       pace: body.pace,
+      ...(body.capsules ? { capsules: body.capsules } : {}),
       clock: { now: () => now },
     }));
   });

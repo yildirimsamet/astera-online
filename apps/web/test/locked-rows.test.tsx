@@ -42,6 +42,7 @@ vi.mock('../src/api/queries.js', async () => {
     useCancelBuildOrder: () => ({ mutate: vi.fn(), isPending: false }),
     useBuildDeathStar: () => ({ mutate: vi.fn(), isPending: false }),
     useBuildInterceptor: () => ({ mutate: vi.fn(), isPending: false }),
+    useInstallProbeBattery: () => ({ mutate: vi.fn(), isPending: false }),
   };
 });
 

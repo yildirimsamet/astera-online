@@ -396,7 +396,13 @@ const legacyRaidReturn = z.object({
   lootDeuterium: z.number().default(0),
 });
 
-const scanned = z.object({ bearing: z.string().optional() });
+const scanned = z.object({
+  bearing: z.string().optional(),
+  /** The world's probe battery shot it down; `count` gathers one window's shots (2026-11-24). */
+  shotDown: z.boolean().optional(),
+  count: z.number().int().positive().optional(),
+  planetName: z.string().optional(),
+});
 
 const probeHome = z.object({
   targetPlanetId: z.string().optional(),
@@ -406,6 +412,8 @@ const probeHome = z.object({
   /** Historical payload fallback. */
   targetName: z.string().optional(),
   detected: z.boolean().optional(),
+  /** The target's probe battery shot it down in orbit: no report is coming (2026-11-24). */
+  shotDown: z.boolean().optional(),
 });
 
 /**
@@ -499,7 +507,14 @@ const galaxyLifecycle = z.discriminatedUnion('eventKind', [
     resourceCapHours: z.number().positive(),
     shipDropChanceAtFullQuality: z.number().min(0).max(1),
   }),
+  z.object({
+    eventKind: z.literal('ASTERIUM_STORM'),
+    startsAt: z.coerce.date(),
+    endsAt: z.coerce.date(),
+  }),
 ]);
+
+const synthesisReady = z.object({ capsuleId: z.enum(['OPTIC_VEIL', 'SILENT_THRUST']), quantity: z.number().int().positive() });
 
 /* ── the sentences ──────────────────────────────────────────── */
 
@@ -1349,7 +1364,12 @@ export function describeNotification(notification: NotificationView, now: number
       // The bearing is in every payload, but only Radar L2 has earned the right to
       // read it — so the API's own radar-filtered log is the source for that, and
       // this line stays deliberately vague.
-      void parsed;
+      if (parsed.success && parsed.data.shotDown === true) {
+        return i18n.t('notifications.scanShotDown', {
+          world: parsed.data.planetName ?? '',
+          count: parsed.data.count ?? 1,
+        });
+      }
       return i18n.t('notifications.scanDetected');
     }
 
@@ -1381,6 +1401,16 @@ export function describeNotification(notification: NotificationView, now: number
     case 'probe_report': {
       const parsed = probeHome.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('notifications.probeFallback');
+      if (parsed.data.shotDown === true) {
+        return i18n.t('notifications.probeShotDown', {
+          target: identity(
+            parsed.data.targetUsername,
+            parsed.data.targetPlanetName,
+            parsed.data.targetName,
+            parsed.data.targetClanTag,
+          ),
+        });
+      }
       const caught = parsed.data.detected === true ? i18n.t('notifications.probeCaught') : '';
       return i18n.t('notifications.probeHome', {
         target: identity(
@@ -1503,7 +1533,9 @@ export function describeNotification(notification: NotificationView, now: number
           })
         : parsed.data.eventKind === 'INTERGALACTIC_CONVOY'
           ? i18n.t('notifications.intergalacticConvoyStarted')
-          : i18n.t('notifications.asteroidShowerStarted');
+          : parsed.data.eventKind === 'ASTERIUM_STORM'
+            ? i18n.t('synthesis.storm.started')
+            : i18n.t('notifications.asteroidShowerStarted');
     }
 
     case 'galaxy_event_ended': {
@@ -1513,7 +1545,19 @@ export function describeNotification(notification: NotificationView, now: number
         ? i18n.t('notifications.tradeShipEnded')
         : parsed.data.eventKind === 'INTERGALACTIC_CONVOY'
           ? i18n.t('notifications.intergalacticConvoyEnded')
-          : i18n.t('notifications.asteroidShowerEnded');
+          : parsed.data.eventKind === 'ASTERIUM_STORM'
+            ? i18n.t('synthesis.storm.ended')
+            : i18n.t('notifications.asteroidShowerEnded');
+    }
+
+    /* SENTEZ LABORATUVARI: a batch is finished and its capsules are in stock. */
+    case 'synthesis_ready': {
+      const parsed = synthesisReady.safeParse(notification.payload);
+      if (!parsed.success) return null;
+      return i18n.t('synthesis.ready', {
+        count: parsed.data.quantity,
+        capsule: i18n.t(`synthesis.capsule.${parsed.data.capsuleId}.name`),
+      });
     }
 
     /* KLAN ALARMI (F2): a clanmate's radar heard a raid; the row is the call to answer it. */
@@ -1722,8 +1766,9 @@ export function signalFamily(notification: NotificationView): SignalFamily {
     */
     case 'colony_fault':
       return 'watch';
+    // The battery's shot is the defence working; a plain scan is something to watch.
     case 'scan_detected':
-      return 'watch';
+      return scanned.safeParse(notification.payload).data?.shotDown === true ? 'gain' : 'watch';
     /*
       KLAN SAVUNMA DESTEĞİ. Help on its way is good news; a wave leaving and a posture
       reset change the defence without costing anything yet; a fight the supporter's
@@ -1768,12 +1813,15 @@ export function signalFamily(notification: NotificationView): SignalFamily {
     */
     case 'convoy_result':
       return 'gain';
+    // A probe shot down is a loss to the commander who sent it.
     case 'probe_report':
+      return probeHome.safeParse(notification.payload).data?.shotDown === true ? 'threat' : 'gain';
     case 'unlock':
     case 'colony_captured':
     case 'settlement_success':
     case 'death_star_result':
     case 'moon_gate_ready':
+    case 'synthesis_ready':
       return 'gain';
     default:
       return 'note';

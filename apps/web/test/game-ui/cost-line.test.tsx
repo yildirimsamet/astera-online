@@ -35,6 +35,15 @@ describe('the cost line', () => {
     expect(container.querySelector('[data-short]')).toBeNull();
   });
 
+  // Owner 2026-11-25: Asteryum has its own picture, and a price that takes it shows it in the same line.
+  it('prints Asteryum after the three with its own picture, and marks it short like the rest', () => {
+    const { container } = render(<CostLine cost={{ alloy: 2_000, crystal: 3_000, deuterium: 250, asterium: 4 }}
+      held={{ alloy: 9_000, crystal: 9_000, deuterium: 900, asterium: 3 }} />);
+    expect(parts(container).map((part) => part.textContent)).toEqual(['2K', '3K', '250', '4']);
+    expect(container.querySelectorAll('.gk-cost__part img')[3]?.getAttribute('src')).toBe('/assets/images/resources/asterium.webp');
+    expect(parts(container).map((part) => part.hasAttribute('data-short'))).toEqual([false, false, false, true]);
+  });
+
   it('carries the time an order takes at the end of the line', () => {
     const { container } = render(<CostLine cost={{ alloy: 30, crystal: 30 }} time={<span data-time="">3 dk</span>} />);
     expect(container.querySelector('.gk-cost')?.lastElementChild).toHaveAttribute('data-time');

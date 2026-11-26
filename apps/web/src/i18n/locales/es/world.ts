@@ -58,6 +58,7 @@ export const galaxy = {
       ASTEROID_SHOWER: "Lluvia de asteroides",
       TRADE_SHIP: "Buque comercial",
       INTERGALACTIC_CONVOY: "Convoy intergaláctico",
+      ASTERIUM_STORM: "Tormenta de Asteryum",
     },
     dailyNote: "Días laborables: de lunes a viernes. Fin de semana: sábado y domingo. Todas las horas son de Turquía.",
     days: {
@@ -79,6 +80,11 @@ export const galaxy = {
       title: "Convoy intergaláctico",
       summary: "Ataca el convoy mientras atraviesa la galaxia. Según tu potencia de fuego, podrás ganar hasta cuatro horas de producción y quizá recuperar naves.",
       note: "El convoy no devuelve el fuego, así que tu flota no sufre pérdidas. Cada mundo puede atacarlo una vez por travesía.",
+    },
+    storm: {
+      title: "Tormenta de Asteryum",
+      summary: "Durante la tormenta aparecen piedras de Asteryum en el Yarık. Cada piedra que saques por una salida va a tu reserva de Asteryum; el límite diario no la detiene.",
+      note: "Si mueres, el Asteryum de tu bodega también se dispersa. El Laboratorio de síntesis convierte el Asteryum en cápsulas.",
     },
   },
   /* Screen-reader names for the marks on the disc. Nothing is painted. */
@@ -400,6 +406,8 @@ export const focus = {
     attackProtectedShort: "Protegido · {{duration}}",
     attackShort: "Planear ataque",
     probeShort: "Sonda",
+    probeBatteryHint: "Último informe: batería antisondas {{ready}}/{{capacity}} cargas",
+    probeLostHint: "Última sonda derribada aquí {{age}} · hay una batería antisondas con carga",
     probeCoolingShort: "Sonda en {{duration}}",
     attack: "Planificar un ataque",
     attackNeutralAgain: "Incursión nuevamente · reclamación sin cambios",

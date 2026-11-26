@@ -12,7 +12,6 @@ const rosterRow = z.object({ id: z.number().int().nonnegative(), name: z.string(
   level: z.number().int().min(1).max(20).optional(),
   clanId: z.string().uuid().nullable().optional(), teamId: z.string().uuid().optional(),
   role: z.enum(['hunter', 'miner', 'patrol']).optional(),
-  points: z.number().int().nonnegative().optional(),
   kills: z.number().int().nonnegative().optional(), deaths: z.number().int().nonnegative().optional(),
   /** An illusion's pilot (Y4d): it wears that pilot's name and class, never ranks, and the radar leaves it out. */
   copyOf: z.number().int().nonnegative().optional(),
@@ -20,18 +19,21 @@ const rosterRow = z.object({ id: z.number().int().nonnegative(), name: z.string(
   mirror: z.array(z.number().finite()).length(6).optional() });
 const rosterSchema = z.array(rosterRow).max(ARENA_ROSTER_MAX);
 const NO_MIRROR: readonly number[] = [0, 0, 0, 0, 0, 0];
-export interface Standing { id: number; name: string; points: number; kills: number; deaths: number; self: boolean }
+export interface Standing { id: number; name: string; kills: number; deaths: number; self: boolean }
 
-/** Room standings: farm points delivered first, then kills, then fewer deaths, then name. Bots never rank. */
+/** Room standings, the fight's own record (no points, owner 2026-11-25): kills, then fewer deaths, then name. Bots never rank. */
 export function rankStandings(pilots: readonly z.infer<typeof rosterRow>[], selfId: number): Standing[] {
   return pilots.filter(p => !p.role && p.copyOf === undefined)
-    .map(p => ({ id: p.id, name: p.name, points: p.points ?? 0, kills: p.kills ?? 0, deaths: p.deaths ?? 0, self: p.id === selfId }))
-    .sort((a, b) => b.points - a.points || b.kills - a.kills || a.deaths - b.deaths || a.name.localeCompare(b.name));
+    .map(p => ({ id: p.id, name: p.name, kills: p.kills ?? 0, deaths: p.deaths ?? 0, self: p.id === selfId }))
+    .sort((a, b) => b.kills - a.kills || a.deaths - b.deaths || a.name.localeCompare(b.name));
 }
 const lowMessage = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('welcome'), v: z.literal(ARENA_PROTOCOL), pilotId: z.number().int().positive(),
     tick: z.number().int().nonnegative(), seq: z.number().int().nonnegative(), tickRate: z.literal(30),
-    snapshotRate: z.literal(15), layoutVersion: z.literal(ARENA_LAYOUT.version), pilots: rosterSchema, teamId: z.string().uuid().optional() }),
+    snapshotRate: z.literal(15), layoutVersion: z.literal(ARENA_LAYOUT.version), pilots: rosterSchema, teamId: z.string().uuid().optional(),
+    /** Protocol 18 (G16): whether the Asteryum Fırtınası blows in the room. */
+    storm: z.boolean() }),
+  z.object({ kind: z.literal('storm'), active: z.boolean() }),
   z.object({ kind: z.literal('roster'), pilots: rosterSchema }),
   z.object({ kind: z.literal('pong'), t: z.number().finite(), serverTimeMs: z.number().finite() }),
   z.object({ kind: z.literal('kick'), reason: z.string().max(32) }),
@@ -43,6 +45,8 @@ export interface NetworkStatus {
   /** How the last real flight ended (Y6a): what reached the capital and when the ship is ready. */
   sortie: SortieReport | null;
   teamId: string | null; watching: number | null; received: boolean;
+  /** The Asteryum Fırtınası blows in the room (G16): from the welcome, then from each `storm` turn. */
+  storm: boolean;
 }
 interface Pending { seq: number; input: ArenaIntent }
 const AIM_HORIZON_MAX = 0.6;
@@ -92,7 +96,7 @@ function poseAt(samples: readonly Sample[], tick: number, cap: number, out: Pilo
 export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings, onLost: () => void,
   credential?: () => Promise<string | null>) {
   const listeners = new Set<() => void>();
-  let status: Readonly<NetworkStatus> = { phase: 'idle', rtt: 0, pilots: 0, reason: '', board: [], sortie: null, teamId: null, watching: null, received: false };
+  let status: Readonly<NetworkStatus> = { phase: 'idle', rtt: 0, pilots: 0, reason: '', board: [], sortie: null, teamId: null, watching: null, received: false, storm: false };
   let socket: WebSocket | null = null; let retry: ReturnType<typeof setTimeout> | null = null;
   let stopped = true; let welcomed = false; let connected = false; let attempts = 0; let seq = 0; let lastPing = 0;
   let settingSignature = ''; let lastSnapshot = -1; let lastSnapshotAt = 0;
@@ -194,11 +198,12 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
       if (msg.kind === 'welcome') {
         clearTimeout(timeout); welcomed = true; connected = true; attempts = 0; seq = Math.max(seq, msg.seq);
         settingSignature = ''; history.length = 0; remote.clear(); lastSnapshot = -1; viewTick = -1;
-        world.pilot.id = msg.pilotId; notify({ phase: 'online', reason: '', teamId: msg.teamId ?? null }); roster(msg.pilots);
+        world.pilot.id = msg.pilotId; notify({ phase: 'online', reason: '', teamId: msg.teamId ?? null, storm: msg.storm }); roster(msg.pilots);
       } else if (msg.kind === 'roster') roster(msg.pilots);
+      else if (msg.kind === 'storm') notify({ storm: msg.active });
       else if (msg.kind === 'pong') notify({ rtt: Math.round(performance.now() - msg.t) });
       else if (msg.kind === 'sortie') notify({ sortie: { outcome: msg.outcome, deposit: msg.deposit, overflow: msg.overflow, readyAt: msg.readyAt,
-        readyReason: msg.readyReason, xp: msg.xp, ...(msg.teamId ? { teamId: msg.teamId } : {}) } });
+        readyReason: msg.readyReason, xp: msg.xp, ...(msg.asterium ? { asterium: msg.asterium } : {}), ...(msg.teamId ? { teamId: msg.teamId } : {}) } });
       else { stopped = true; connected = false; notify({ phase: 'failed', reason: msg.reason }); connection.close(); }
     };
     connection.onclose = () => {

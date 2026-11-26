@@ -111,6 +111,23 @@ about an hour of the capital's current output (60 % crystal, at least 150 an hou
 three hours; it goes to the capital's store, where it can be raided. The reward panel and the landing's
 reward moment show all seven as one board. Rules: `packages/rules/src/welcomeWeek.ts`.
 
+**Daily quests (owner 2026-11-24).** Four acts the loop already has: three probes sent, a Yarık sortie,
+a pirate beaten with ships left, an asteroid run that reached its rock. Each pays its own small purse
+once a UTC day (00:00 UTC for everyone): hours of the capital's output, 1.4 h in all, into the store
+where it can be raided. It pays for acts, not attendance: progress is counted from the day's own rows
+(never accumulated), a missed day loses nothing, a player who only leaves the tab open completes none
+of it. Each quest also pays a quarter of one Honor with its purse (owner 2026-11-24; one Honor on a day
+all four are taken, at most 60 in a season). **It is ordinary Honor** (owner 2026-11-24, "normal Honor"):
+it counts toward the benefit tiers, the Honor ladder and podium, and the season's Honor rank and prizes, and it can
+lift a commander out of a negative tier. It sits beside the ledger, never in it (the ledger replays battles and
+rewrites its totals), in `honor_quest_totals` per season and commander like the ledger's own totals, and the four
+readers add it; a commander who changes galaxy leaves it with the season that paid it. Where a season has no ranked
+Honor (Silent Space, a closed one) a quest pays none and the panel says nothing of it. Every signed-in account may fly the Yarık, so every
+quest is reachable. On the galaxy the day has a key of its own among the round tools (beside the gift): it
+stands while any quest is not taken, lights a red count for each finished one that waits, and is gone once the last
+purse is in; it opens the Rewards sheet on its **Daily** tab (the sheet's other tab, **Goals**, holds the milestone
+ladders and the seven boxes, and the gift counts those only). Rules: `packages/rules/src/dailyQuests.ts`.
+
 ## The loop
 
 ```
@@ -461,7 +478,7 @@ composition are applied.
 
 | Grade | Condition | Loot |
 |---|---|---|
-| `DECISIVE` | No defending units stand at contact, or none remain fighting after the shield is depleted | Tier 1–3 defender: 25% of unprotected stock + 15% of Works; otherwise 60% + 30% |
+| `DECISIVE` | No defending units stand at contact, or none remain fighting after the shield is depleted | Tier 1–3 defender: 25% of unprotected stock + 15% of Works; Tier 4–5 defender: 45% + 22.5%; Tier 6+ or Neutral: 60% + 30% |
 | `PARTIAL` | ≥42% of defender value destroyed or retreated | Half of the decisive stock and Works shares |
 | `REPELLED` | Below that | Nothing |
 
@@ -715,7 +732,7 @@ Everything above exists so that this has stakes.
 | **Public** | Nothing | No | That a world is there, and where. Recovery and open claim windows, which are public moments (D127) | Live |
 | **Remembered** | A probe, once | Yes, at the time | Owner, development, satellites, dome — **frozen** at the look, and going stale as its subject grows | One shot, for ever |
 | **Telescope** | An instrument and a watch slot | **No** — you are never told who is watching | Fleet `HOME` / `AWAY` / `UNKNOWN`; return ETA at clarity ≥ +2; **and how much of the galaxy you see moving at all** | Live to 20 min stale |
-| **Explorer** | Probe price, five-second target interval, and flight time | **Yes** — radar can catch the probe | Stock, defence, fleet size, at an accuracy tier | One shot |
+| **Explorer** | Probe price, five-second target interval, and flight time | **Yes** — radar can catch the probe; a charged probe battery shoots the caught probe down | Stock, defence, fleet size, at an accuracy tier | One shot |
 | **Combat** | Ships, permanently | Obviously | Ground truth | Perfect |
 
 The Telescope is cheap, silent, and tells you **when**. The Explorer is costly, loud, and
@@ -777,6 +794,42 @@ what you may know and *who you watch* is a commitment rather than a browse.
 detectChance = clamp(0.15 + 0.13 × (radarL − probeStealthL), 0.05, 0.80)
 accuracy     = clamp(0.55 + 0.12 × (probeL − veilL),         0.30, 1.00)
 ```
+
+**Probe defence battery (owner K1–K8, 2026-11-24; `docs/sonda-bataryasi-plani-2026-11-24.md`).**
+"A battery with a ready charge catches probes more easily and shoots down what it catches; once its
+charges are gone the world is as if it had no battery." One roll per probe, on its own seeded
+stream (`probeCatchRoll`), so report bands are unchanged. The armed roll is made on the probe's
+approach (owner playtests, 2026-11-24/25): the hit lands at `probeShotMoment`, the point on the
+drawn leg `reachRadii` (5) target radii from the world's centre, never earlier than half the
+flight. The `probe_defence` event is the battery opening fire, `fireLeadSeconds` (2.4 s) before
+that hit; the battery and the roll are read then. Both instants and both points (where the craft
+was at the fire, where it was hit) are stored, so every screen plays the rounds climbing to the
+craft as it flies on, and the hit where it was.
+The arrival keeps the unarmed roll.
+
+```
+armed:   catch = clamp(0.50 + 0.03 × (level − 1) + 0.13 × (radarL − senderShipyardL), 0.05, 0.90)
+unarmed: catch = detectChance (above)
+```
+
+Armed means built, online (effective Radar ≥ 3 with an Uplink, no EMP, not recovering) and
+holding a charge at the shot. Four levels (owner, 2026-11-24), each full again in about thirty
+minutes, refilled lazily with no event; built outside every queue, full on completion:
+
+| Level | Charges | One charge every | Radar to build | Cost A / C / D | Time |
+|---|---|---|---|---|---|
+| 1 | 5 | 6 min | 3 | 3,000 / 1,800 / 150 | 20 min |
+| 2 | 10 | 3 min | 4 | 6,000 / 3,600 / 300 | 40 min |
+| 3 | 15 | 2 min | 5 | 10,000 / 6,000 / 500 | 60 min |
+| 4 | 20 | 1.5 min | 6 | 15,000 / 9,000 / 800 | 90 min |
+
+The level's Radar gates only the order; online stays effective Radar 3. During an upgrade the
+battery works at its old level; on landing the new capacity's extra charges stand ready.
+A caught probe on an armed world is shot down: no report, no return leg,
+one charge spent, the mission stays `resolved`. Both sides learn of it; the defender's notice
+is gathered per world in a ten-minute window and replaces the plain `scan_detected`. A report
+that does come home carries the battery's ready charges exactly. This makes scouting a defended
+world expensive, which the five-second interval below no longer does on its own.
 
 Reports are **bands, not numbers**. A cheap scout says "somewhere between 30k and 80k"; an
 expensive one says 61,000. Those are genuinely different decisions. Floors and ceilings
@@ -935,6 +988,30 @@ It deepens the information game (where is the fleet? what is coming?) without a 
 
 Every number, rule and decision: `docs/ay-entegrasyon-plani-2026-11-19.md` (V1–V58) and `docs/ay-plani-2026-11-18.md`.
 
+## Asteryum and the Synthesis Lab (ruleset 21 or live activation, owner 2026-11-24/25)
+
+Asteryum is a commander's own strategic stock: it cannot be looted, carried, traded or pooled. It buys
+**capsules** that change what the galaxy learns about one flight. *Status: built in a worktree, not live.*
+
+- **Sources:** every moon held makes it slowly (Common 1, Rare 1.5, Epic 2, Legendary 3 a day, halved by the
+  owner on 2026-11-25; nothing while a Death Star has the moon shut). Colony moons count too. Each unit goes
+  straight into the commander's stock the moment it is made: nothing is shipped to the capital and nothing can
+  be raided on the way. The moon panel shows the rate, what the moon has made and the next unit's countdown. The **Asteryum Fırtınası** (21:00–22:00 TRT, a fixed daily galaxy event)
+  spawns Asteryum stones in the Yarık; an exit credits them past the day's cap, a death spills them, a
+  deploy recall keeps them aboard.
+- **Synthesis Lab:** Command Core 10, the capital's Tactical tab. One batch at a time, 1–20 capsules,
+  made one by one (Optik Örtü 30 min, Sessiz İtki 60 min each). A cancel returns half of the unmade share.
+- **Capsules on a launch:** one per 500 hangar bulk of the fleet that leaves.
+  - **Optik Örtü** (attack, clan war, transfer, settlement): the flight leaves every map except its owner's
+    and the owner's clan's. No Telescope, Radar or Gözcü sees it, a Legendary moon included. No counter yet.
+  - **Sessiz İtki** (attack, clan war): the flight stays on the map, but the target gets no radar warning,
+    clan alarm, paid alert, strip line or inbound mark.
+  - Both may ride one raid. A recall keeps them (same leg); the return after a battle wears none.
+  - The battle lifts the veil: both sides' reports name the capsules.
+- **Clan war:** the leader pays for the whole combined fleet.
+
+Numbers, decisions and open questions: `docs/asteryum-ve-sentez-laboratuvari-plani-2026-11-24.md`.
+
 ## Galaxy, travel and mining
 
 ### Flight speed, recall and the landing pause (Faz 2A, owner decisions 2026-09-21)
@@ -1050,7 +1127,8 @@ commander's tier moves.
 Honor in every environment. Startup initializes missing or still-shadow rankings in ongoing
 main seasons at the actual opening time; existing ranked points and boundaries are preserved.
 The former hide operation is rejected. Silent Space and closed historical seasons are not
-competitive races.
+competitive races. Honor has two sources: battles, which the ledger scores, and the daily quests (see
+*Daily quests*), a quarter Honor each, added on top of the ledger's total.
 
 **Honor attack table (owner, 2026-11-09):** own navy : enemy navy, 24-hour peaks. Full return up to
 1.5:1 against a lower tier, 2:1 at the same tier and 2.5:1 against a higher one; half return up to 3:1; none beyond.
@@ -1070,6 +1148,16 @@ previous season. Same return bands as 2026-11-09, plus four changes for new laun
   is read at landing and frozen into the evidence relation (`repeatRaid: true`). The first such raid against an
   equal or higher tier is neutral. The launch card warns from the same journal plus own attack flights already
   on the way to that commander.
+- **Escalating weak-repeat penalty & Honor Benefits V2 (owner, 2026-11-24):** New launches freeze
+  `weakRepeatScale: 100` so repeated weak-target sanctions against the same defender within 24 hours scale at
+  **1× / 2× / 3×** (historical V1 evidence without `weakRepeatScale` retains 1.0× / 1.5× / 2.0×). Pre-launch
+  Honor cards warn when a prior weak-target sanction or in-flight raid already puts the next launch at 2× or 3×.
+  Honor Benefits V2 (`HONOR_BENEFIT_PROGRAM_VERSION = 2`, auto-enabled on live `MAIN` seasons while historical
+  V1 seasons stay readable) expands negative Honor to four cumulative tiers (`-25 / -50 / -150 / -200`):
+  Tier `-3` (`≤ -150`) adds **+25% Deuterium fuel** on all player fleet launches (tactical retreat `escapeFuel`
+  exempt); Tier `-4` (`≤ -200`) adds **-25% hourly Alloy, Crystal and Deuterium production** across all owned
+  planets (storage/collector caps, Vault protection floor, and the recovery shield's production denominator stay
+  nominal).
 
 **Honor's galaxy leader exception (owner, 2026-10-19):** a commander at the
 galaxy/season's highest Honor tier treats an attack on exactly one tier below as
@@ -1084,15 +1172,15 @@ upgrades or transfers cannot rewrite the flight's conditions. Old commitments
 without this term retain their previous policy. This does not change the ±1
 attack band. See `docs/honor-top-tier-peer-2026-10-19.md`.
 
-**Ordinary raids involving tier 1–3 commanders have a twelve-hour battle-time cooldown**
-(owner, 2026-10-12). If either commander is tier 1–3, each direction is independent:
-one ordinary raid may be sent, and the next may be sent twelve hours after the battle
-resolves. All worlds of that commander share the allowance. An unresolved outbound
-raid reserves it; recall or destruction before battle creates no cooldown. Both tiers
-are read at each new launch. When both commanders are tier 4+, the existing three
-attacks per twelve hours remains. Death Stars and joint clan operations do not use
-this new allowance. Existing clan quotas and joint-operation personal quota accounting
-are unchanged.
+**Ordinary raids involving tier 1–4 commanders have a twelve-hour battle-time cooldown**
+(owner, 2026-10-12; expanded to tier 1–4 and tightened bash/clan limits 2026-11-24). If either commander is
+tier 1–4, each direction is independent: one ordinary raid may be sent, and the next may be sent twelve hours
+after the battle resolves. All worlds of that commander share the allowance. An unresolved outbound raid
+reserves it; recall or destruction before battle creates no cooldown. Both tiers are read at each new launch.
+When both commanders are tier 5+, the personal bash limit is **two attacks per twelve hours** (`ABUSE.bashLimit = 2`),
+and a clan's combined ceiling against one target commander is **three attacks per twelve hours** (`CLAN.attackLimit = 3`).
+Death Stars and joint clan operations do not use the tier 1–4 allowance. Existing joint-operation personal quota
+accounting is unchanged.
 
 The player sees the band's inputs where they choose a target: the dossier header sets their own tier (their most
 developed world, never fogged) beside the world's, and one tap opens the rule and the range it reaches. It never states a
@@ -1224,17 +1312,18 @@ flies as it always did, because a newcomer nobody can read is a newcomer nobody 
 The protected commander's permanent HUD also names their own raid immunity and counts down the
 time left; the launch confirmation explains that choosing to attack spends it.
 
-### The recovery shield — commander tiers (updated 2026-10-16)
+### The recovery shield — commander tiers (updated 2026-11-24)
 
-Owner, 2026-10-16: a defending commander whose highest currently controlled Core
+Owner, 2026-10-16 / 2026-11-24: a defending commander whose highest currently controlled Core
 is 1–9 (tier 1–3) receives 12 hours of recovery protection at 2 average net
-production hours lost within the last 8 hours. Tier 4+ retains the 4-hour threshold,
-6-hour history; its shield is also 12 hours as of 2026-10-21. All worlds count toward commander
-tier; a small colony cannot lower it. The struck world's existing +50% output boost
-lasts with its granted window. Colony battle faults retain the standard
-4-hour loss / 6-hour history condition. New battle reports freeze the applied profile;
-legacy reports retain standard explanations. The following original rationale applies
-to the tier 4+ profile.
+production hours lost within the last 8 hours. Tier 4–5 and Tier 6+ trigger the 12-hour
+recovery shield at **3 average net production hours** lost within the last 6 hours (lowered
+from 4 hours on 2026-11-24). All worlds count toward commander tier; a small colony cannot
+lower it, and the production denominator stays nominal even under Tier `-4` Honor production
+penalties. The struck world's existing +50% output boost lasts with its granted window. Colony
+battle faults retain the **4-hour loss / 6-hour history** condition (`FAULT.heavyDefeatLossHours = 4`).
+New battle reports freeze the applied profile; legacy reports retain standard explanations.
+The following original rationale applies to the tier 4+ profile.
 
 The first day answers "what protects somebody who has not started yet". This answers the question
 it cannot: **what happens to a commander who has already committed to the war and just lost

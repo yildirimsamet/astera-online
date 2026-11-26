@@ -59,10 +59,13 @@ describe('proposed tactical EMP calculation, not yet activated in game settlemen
     expect(honorTacticalSide({ ...fair, shieldDestroyed: 0, groundValue: 0, loyaltyLost: 10 }).raw).toBe(2_000_000);
   });
 
-  it.each([{ weakRepeat: 0, raw: -8_000_000 }, { weakRepeat: 1, raw: -12_000_000 },
-    { weakRepeat: 2, raw: -16_000_000 }, { weakRepeat: 200, raw: -16_000_000 }])('scales actual weak pressure, repeat $weakRepeat', ({ weakRepeat, raw }) => {
-    expect(honorTacticalSide({ ...fair, enemyTier: 3, enemyNavy: 100000, weakRepeat })).toMatchObject({ raw, gain: 0, lossDebit: 0 });
-  });
+  it.each([{ weakRepeat: 0, raw: -8_000_000, scaled: -8_000_000 }, { weakRepeat: 1, raw: -12_000_000, scaled: -16_000_000 },
+    { weakRepeat: 2, raw: -16_000_000, scaled: -24_000_000 }, { weakRepeat: 200, raw: -16_000_000, scaled: -24_000_000 }])(
+    'scales actual weak pressure, repeat $weakRepeat', ({ weakRepeat, raw, scaled }) => {
+      expect(honorTacticalSide({ ...fair, enemyTier: 3, enemyNavy: 100000, weakRepeat })).toMatchObject({ raw, gain: 0, lossDebit: 0 });
+      expect(honorTacticalSide({ ...fair, enemyTier: 3, enemyNavy: 100000, weakRepeat, weakRepeatScale: 100 }))
+        .toMatchObject({ raw: scaled, gain: 0, lossDebit: 0 });
+    });
 
   it('keeps total pressure and consumed retaliation separate, without permitting a positive weak result', () => {
     const weak = { ...fair, enemyTier: 3, enemyNavy: 100000 };

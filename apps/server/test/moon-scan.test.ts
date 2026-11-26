@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { MOON, scanRange } from '@astera/rules';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
-import { moons, notifications, planets, probeWorldMemories, seasons } from '../src/db/schema.js';
+import { missions, moons, notifications, planets, probeWorldMemories, seasons } from '../src/db/schema.js';
 import { launchProbe } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
 import { scanFromMoon } from '../src/services/moonScan.js';
@@ -100,6 +100,17 @@ describe('Gözcü, the moon’s route scan', () => {
     expect(pierced.rows.map((row) => row.otherPlanetId)).toEqual([raider]);
   });
 
+  it('S9 never sees an Optik Örtü flight, not even from a Legendary moon, and learns nothing from it', async () => {
+    const veiled = await raid();
+    await f.db.update(missions).set({ appliedCapsules: [{ id: 'OPTIC_VEIL', count: 1 }] }).where(eq(missions.id, veiled.missionId));
+    await f.db.update(moons).set({ rarity: 'LEGENDARY' }).where(eq(moons.planetId, mine));
+    const report = await scan();
+    expect(report.rows).toEqual([]);
+    const learnt = await f.db.select().from(probeWorldMemories)
+      .where(and(eq(probeWorldMemories.observerPlayerId, f.playerIds[0]!), eq(probeWorldMemories.targetPlanetId, raider)));
+    expect(learnt).toEqual([]);
+  });
+
   it('refuses a world out of range, a shut moon, no moon, and a second scan within three seconds', async () => {
     await expect(scanFromMoon(f.db, f.playerIds[0]!, mine, colony, f.clock)).rejects.toMatchObject({ code: 'OUT_OF_RANGE', params: { context: 'gozcu' } });
     await scan();
@@ -109,6 +120,21 @@ describe('Gözcü, the moon’s route scan', () => {
     await expect(scan()).rejects.toMatchObject({ code: 'MOON_CLOSED' });
     await f.db.delete(moons).where(eq(moons.planetId, mine));
     await expect(scan()).rejects.toMatchObject({ code: 'NO_MOON' });
+  });
+
+  // Owner 2026-11-26: "gözcü ile taramada kendi gezegenlerimi de mi tarıyorum? Bu ne saçmalık." The Gözcü
+  // watches rivals: your own world is no target, and your own fleet is not a row in the photograph.
+  it('photographs only other commanders: never your own world, never your own fleet', async () => {
+    await giveUnits(f.db, mine, { DART: 10 });
+    await launchAttack(f.db, mine, target, { DART: 10 }, f.clock, undefined, false, undefined, false, new Set(), false, 'PLANET');
+    await raid();
+    const { rows } = await scan();
+    expect(rows).toEqual([expect.objectContaining({ direction: 'IN', otherPlanetId: raider })]);
+    f.clock.advance(MOON.scanSpacingSeconds / 60);
+    await f.db.update(planets).set({ controllerPlayerId: f.playerIds[0]!, kind: 'COLONY' }).where(eq(planets.id, target));
+    const paid = await tank();
+    await expect(scan()).rejects.toMatchObject({ code: 'SCAN_OWN_WORLD' });
+    expect(await tank()).toBe(paid);
   });
 
   it('teaches the scanner the worlds on the routes, with their moon’s rarity (S53)', async () => {

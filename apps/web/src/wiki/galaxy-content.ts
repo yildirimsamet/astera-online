@@ -2,10 +2,15 @@ import { INTERGALACTIC_CONVOY } from '@astera/rules';
 import { localized as l, type WikiArticle } from './model.js';
 import { topic } from './concepts.js';
 import { MOON, MOON_RARITIES, crackLimit, gateCapacity, scanRange, type MoonRarity } from '@astera/rules';
+import { CAPSULE_CATALOG, GALAXY_EVENTS, SYNTHESIS } from '@astera/rules';
 import { unknownSignal as signalEn } from '../i18n/locales/en/unknownSignal.js';
 import { unknownSignal as signalTr } from '../i18n/locales/tr/unknownSignal.js';
 const RARITY_EN: Record<MoonRarity, string> = { COMMON: 'Common', RARE: 'Rare', EPIC: 'Epic', LEGENDARY: 'Legendary' };
 const RARITY_TR: Record<MoonRarity, string> = { COMMON: 'Yaygın', RARE: 'Nadir', EPIC: 'Destansı', LEGENDARY: 'Efsanevi' };
+const clock = (minute: number): string => `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+const [STORM_WINDOW] = GALAXY_EVENTS.definitions.ASTERIUM_STORM.windows;
+/** The Asteryum Fırtınası's daily hour, from the calendar itself (Turkish time). */
+const STORM_TIME = `${clock(STORM_WINDOW.startsAtLocalMinute)}–${clock(STORM_WINDOW.endsAtLocalMinute)}`;
 /** The Wiki is written in two languages with their own grouping (1,550 / 1.550). */
 const n = (value: number, language: 'en' | 'tr'): string => value.toLocaleString(language === 'en' ? 'en-US' : 'tr-TR');
 
@@ -185,13 +190,13 @@ export const galaxyArticles: readonly WikiArticle[] = [
       `There are three ways to get a moon: research [[research.LUNAR_CAPTURE|Lunar Capture]] and build a Common moon (${n(MOON.build.cost.alloy, 'en')} Alloy + ${n(MOON.build.cost.crystal, 'en')} Crystal, ${MOON.build.minutes / 60}h); a Rare, Epic or Legendary moon may be born from large battle wreckage once Lunar Capture is done; or conquer a world that already has a moon.`,
       `Planet ↔ Moon transfers take ${MOON.hopSeconds} seconds and cost nothing; ships in transit cannot be hit on either body. Ground defences and Aegis never protect the moon, and a moon battle has no tactical escape and no loot. A single raid on its way out can switch between planet and moon until it arrives.`,
       `The Moon Gate jumps ships between two of your own moons after a ${MOON.gateOpenSeconds}-second opening, whatever the distance (the smaller dock limits the jump; both gates then charge). Gözcü spends ${MOON.scanCost.deuterium} Deuterium to silently photograph the player fleets flying in to or out of any world in range; flights leaving or landing on a moon stay hidden from it except from a Legendary moon.`,
-      `A Death Star aimed at a moon takes 1 durability and shuts its Gate and Gözcü for ${MOON.strikeCloseHours} hours. Durability fully restores ${MOON.crackHealHours} hours after the last hit. At 0 the moon shatters and every ship docked there is lost.`,
+      `A Death Star aimed at a moon takes 1 durability and shuts its Gate and Gözcü for ${MOON.strikeCloseHours} hours; no fleet goes up to it from its planet meanwhile, though its ships may come down. Durability fully restores ${MOON.crackHealHours} hours after the last hit. At 0 the moon shatters and every ship docked there is lost.`,
     ], [
       `Her dünya en fazla bir ay taşıyabilir; aylar dört nadirlik kademesindedir: ${MOON_RARITIES.map((r) => `${RARITY_TR[r]} (${n(gateCapacity(r), 'tr')} rıhtım, ${MOON.gateChargeHours[r]} sa kapı şarjı, ${n(scanRange(r), 'tr')} Gözcü menzili, ${crackLimit(r)} dayanıklılık)`).join(', ')}. Ayla ilgili uçuşları yalnız Efsanevi ayın Gözcü'sü görür.`,
       `Ay edinmenin üç yolu vardır: [[research.LUNAR_CAPTURE|Ay Çekimi]] araştırmasını tamamlayıp ${n(MOON.build.cost.alloy, 'tr')} Alaşım + ${n(MOON.build.cost.crystal, 'tr')} Kristal ile ${MOON.build.minutes / 60} saatte Yaygın Ay kurmak; Ay Çekimi açıkken büyük savaş enkazından Nadir, Destansı veya Efsanevi bir ayın doğması; ya da aylı bir dünyayı fethetmek.`,
       `Gezegen ↔ Ay geçişi ${MOON.hopSeconds} sn sürer ve ücretsizdir; geçişteki gemiler ne gezegende ne ayda vurulabilir. Yer silahları ve Aegis ayı korumaz; ay savaşında taktik kaçış ve ganimet yoktur. Gidiş yolundaki tekli akın, varana kadar gezegen ile ay arasında hedef değiştirebilir.`,
       `Ay Kapısı, mesafe ne olursa olsun ${MOON.gateOpenSeconds} sn açılıştan sonra gemileri kendi iki ayın arasında taşır (küçük rıhtım sıçramayı sınırlar; iki kapı da şarja girer). Gözcü ${MOON.scanCost.deuterium} Döteryum ile menzildeki herhangi bir dünyaya gelen ve oradan giden oyuncu filolarını sessizce fotoğraflar; aydan kalkan veya aya inen uçuşları yalnız Efsanevi ay görür.`,
-      `Aya yöneltilen Ölüm Yıldızı darbesi dayanıklılığı 1 düşürür, Kapı ve Gözcü'yü ${MOON.strikeCloseHours} saat kapatır. Son darbeden ${MOON.crackHealHours} saat sonra dayanıklılık tamamen yenilenir. 0'da ay parçalanır ve üzerindeki tüm gemiler yok olur.`,
+      `Aya yöneltilen Ölüm Yıldızı darbesi dayanıklılığı 1 düşürür, Kapı ve Gözcü'yü ${MOON.strikeCloseHours} saat kapatır; bu sürede gezegenden aya filo çıkamaz, aydaki gemiler gezegene inebilir. Son darbeden ${MOON.crackHealHours} saat sonra dayanıklılık tamamen yenilenir. 0'da ay parçalanır ve üzerindeki tüm gemiler yok olur.`,
     ]),
     l([
       'Stage mobile fleets on a moon to hide their departures from standard Gözcü scans and threaten sudden Moon Gate reinforcements.',
@@ -199,5 +204,34 @@ export const galaxyArticles: readonly WikiArticle[] = [
     ], [
       'Kalkışlarını standart Gözcü taramalarından gizlemek ve ani Ay Kapısı takviyesi kurmak için hareketli filolarını ayda beklet.',
       'Düşman bir aya saldırmadan önce nadirliğini, dayanıklılığını, aydaki filo aralığını ve kapı şarjını öğrenmek için sonda gönder.',
-    ]), ['research.LUNAR_CAPTURE', 'fleet.flights', 'intel.probes']),
+    ]), ['research.LUNAR_CAPTURE', 'fleet.flights', 'intel.probes', 'galaxy.asterium']),
+  /*
+    ASTERYUM AND THE SYNTHESIS LAB (G18, owner 2026-11-25). Every number is the rules' own; the storm's hour is
+    the galaxy calendar's (Turkish time, like the other events).
+  */
+  topic('galaxy', 'asterium', l('Asteryum & the Synthesis Lab', 'Asteryum ve Sentez Laboratuvarı'),
+    l(
+      'A rare lavender matter from your moons and the nightly Asteryum Storm. The Synthesis Lab brews it into capsules that hide a fleet or silence its approach.',
+      'Aylarından ve her akşamki Asteryum Fırtınası\'ndan gelen nadir, lavanta renkli madde. Sentez Laboratuvarı onu bir filoyu gizleyen ya da yaklaşmasını susturan kapsüllere dönüştürür.',
+    ),
+    l([
+      `Every moon you hold makes Asteryum: ${MOON_RARITIES.map((r) => `${RARITY_EN[r]} ${n(SYNTHESIS.moonPerDay[r], 'en')}`).join(', ')} a day. A moon shut by a Death Star makes none. Asteryum is yours alone: it cannot be raided, carried or traded.`,
+      `During the Asteryum Storm (every day ${STORM_TIME}, Turkish time) violet Asteryum stones appear in the Yarık. Each stone you bring out through an exit goes into your stock, past the day's limit. If your ship is destroyed, the Asteryum in its hold spills.`,
+      `The Synthesis Lab opens at Command Core ${String(SYNTHESIS.requiredCore)} on your capital's Tactical tab. One batch at a time, 1 to ${String(SYNTHESIS.maxBatch)} capsules, made one by one: Optic Veil ${String(CAPSULE_CATALOG.OPTIC_VEIL.craftMinutes)} min each, Silent Thrust ${String(CAPSULE_CATALOG.SILENT_THRUST.craftMinutes)} min each. Cancelling returns half the price of the capsules not yet made.`,
+      `A launch wears 1 capsule of each kind per ${String(SYNTHESIS.bulkPerCapsule)} hangar bulk of the fleet that leaves. Optic Veil (raid, clan war, transfer, settlement): only you and your clan see the flight; no other commander's Telescope, Radar or Gözcü does, though the target's Radar still raises the attack warning. Silent Thrust (raid, clan war): the target gets no attack warning and no alarm and learns of the raid from the battle report; the flight itself stays visible to anyone whose Telescope or Radar sees it. Both can ride one raid. In a clan war the leader pays for the whole strike.`,
+      'The battle lifts the veil: both sides\' reports name the capsules. A recalled flight keeps its capsules on the way home; the survivors of a battle fly home without them.',
+    ], [
+      `Elindeki her ay Asteryum üretir: günde ${MOON_RARITIES.map((r) => `${RARITY_TR[r]} ${n(SYNTHESIS.moonPerDay[r], 'tr')}`).join(', ')}. Ölüm Yıldızı'nın kapattığı ay üretmez. Asteryum yalnız senindir: yağmalanamaz, taşınamaz, takas edilemez.`,
+      `Asteryum Fırtınası sırasında (her gün ${STORM_TIME}, Türkiye saati) Yarık'ta mor Asteryum taşları belirir. Bir çıkıştan getirdiğin her taş stoğuna yazılır, günlük sınır onu durdurmaz. Gemin düşerse ambarındaki Asteryum saçılır.`,
+      `Sentez Laboratuvarı, başkentinin Taktik sekmesinde Komuta Çekirdeği ${String(SYNTHESIS.requiredCore)} seviyesinde açılır. Aynı anda tek parti, 1 ile ${String(SYNTHESIS.maxBatch)} arası kapsül, tek tek yapılır: Optik Örtü tanesi ${String(CAPSULE_CATALOG.OPTIC_VEIL.craftMinutes)} dk, Sessiz İtki tanesi ${String(CAPSULE_CATALOG.SILENT_THRUST.craftMinutes)} dk. İptal, yapılmamış kapsüllerin bedelinin yarısını geri verir.`,
+      `Bir kalkış, giden filonun her ${String(SYNTHESIS.bulkPerCapsule)} hangar hacmi için her türden 1 kapsül takar. Optik Örtü (akın, klan savaşı, transfer, yerleşme): uçuşu yalnız sen ve klanın görürsün; başka hiçbir komutanın Teleskop'u, Radar'ı ya da Gözcü'sü onu görmez, ama hedefin Radar'ı saldırı uyarısını yine verir. Sessiz İtki (akın, klan savaşı): hedefe saldırı uyarısı ve alarm gitmez, saldırıyı savaş raporundan öğrenir; uçuşun kendisi görünür kalır, Teleskop ya da Radar'la onu gören herkes izler. İkisi aynı akında birlikte kullanılabilir. Klan savaşında bütün saldırının kapsülünü lider öder.`,
+      'Savaş örtüyü kaldırır: iki tarafın raporu da kapsülleri yazar. Geri çağrılan uçuş eve dönerken kapsüllerini korur; savaştan sağ dönen gemiler kapsülsüz döner.',
+    ]),
+    l([
+      'Veil a settlement to keep rivals from racing you to the world they cannot see you heading for.',
+      'Wear Silent Thrust on a raid against a commander who watches their radar: they learn of it from the report.',
+    ], [
+      'Rakiplerin, gittiğini göremedikleri dünyaya seninle yarışamasın diye yerleşmeye Optik Örtü tak.',
+      'Radarını izleyen bir komutana akında Sessiz İtki kullan: saldırıyı ancak rapordan öğrenir.',
+    ]), ['galaxy.moons', 'galaxy.events', 'fleet.flights']),
 ];

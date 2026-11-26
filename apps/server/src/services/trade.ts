@@ -11,6 +11,7 @@ import {
   fleetSpeedMult,
   fleetTravelExact,
   interceptOrbit,
+  honorFuelCost,
   missionFuel,
   quoteTrade,
   honorTradeResources,
@@ -317,8 +318,10 @@ export async function launchTrade(
       and then flying on the same tank — the bug `launchTransfer` shipped once,
       which wrote a NEGATIVE store that nothing downstream defends against.
     */
+    const benefits = await readHonorBenefits(tx, origin.seasonId, origin.playerId);
+    assertHonorBenefitsQuote(benefits, order.expectedHonorTier);
     const reach = distance(origin, hit.at);
-    const fuel = missionFuel(requested, reach, 2);
+    const fuel = honorFuelCost(missionFuel(requested, reach, 2), benefits);
     assertFuel(fuel, origin.deuterium, order.give.deuterium);
 
     const arriveAt = atMinute(origin.seasonStart, hit.meetsAtMinutes);
@@ -332,8 +335,6 @@ export async function launchTrade(
     });
     assertSeasonOpenThrough(origin, addMinutes(dockEndsAt(arriveAt), homeMinutes));
 
-    const benefits = await readHonorBenefits(tx, origin.seasonId, origin.playerId);
-    assertHonorBenefitsQuote(benefits, order.expectedHonorTier);
     const netWant = benefits ? honorTradeResources(order.want, benefits).net : order.want;
     if (netWant.alloy + netWant.crystal + netWant.deuterium === 0) {
       throw new GameError('HONOR_TRADE_TOO_SMALL', 'This trade leaves no resources after commission; increase the offer', 409);

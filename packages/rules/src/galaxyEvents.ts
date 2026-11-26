@@ -1,10 +1,11 @@
 import { GALAXY_EVENTS, MULTI_WORLD } from './constants.js';
+import { SYNTHESIS } from './synthesis.js';
 import type { TradeRate } from './trade.js';
 import type { Rng } from './types.js';
 
 const DAY_MINUTES = 24 * 60;
 
-export type GalaxyEventKind = 'ASTEROID_SHOWER' | 'TRADE_SHIP' | 'INTERGALACTIC_CONVOY';
+export type GalaxyEventKind = 'ASTEROID_SHOWER' | 'TRADE_SHIP' | 'INTERGALACTIC_CONVOY' | 'ASTERIUM_STORM';
 
 /**
  * THE PLANNING ORDER, AND IT IS A CONTRACT RATHER THAN A LIST. D156.
@@ -27,6 +28,8 @@ export const GALAXY_EVENT_KINDS: readonly GalaxyEventKind[] = [
   'ASTEROID_SHOWER',
   'TRADE_SHIP',
   'INTERGALACTIC_CONVOY',
+  /** Asteryum Fırtınası (plan 2026-11-24 §3.2): the Yarık seeds Asteryum only inside it. */
+  'ASTERIUM_STORM',
 ];
 
 export interface AsteroidShowerEffect {
@@ -49,11 +52,17 @@ export interface IntergalacticConvoyEffect {
   rewardPoolVersion: 1;
 }
 
+/** The storm only says the field is live; what spawns is the arena's own table (`ASTERIUM_FIELD`). */
+export interface AsteriumStormEffect {
+  fieldVersion: 1;
+}
+
 /** What each kind's occurrence carries. One entry per member of the union. */
 export interface GalaxyEventEffects {
   ASTEROID_SHOWER: AsteroidShowerEffect;
   TRADE_SHIP: TradeShipEffect;
   INTERGALACTIC_CONVOY: IntergalacticConvoyEffect;
+  ASTERIUM_STORM: AsteriumStormEffect;
 }
 
 interface PlannedGalaxyEventBase {
@@ -78,7 +87,8 @@ export type PlannedGalaxyEvent =
   | (PlannedGalaxyEventBase & {
       kind: 'INTERGALACTIC_CONVOY';
       effect: IntergalacticConvoyEffect;
-    });
+    })
+  | (PlannedGalaxyEventBase & { kind: 'ASTERIUM_STORM'; effect: AsteriumStormEffect });
 
 export interface RandomDailyDefinition<Effect> {
   readonly schedule: 'RANDOM_DAILY';
@@ -222,6 +232,7 @@ const legacyConfig = (tradeVersion: 1 | 2): GalaxyEventsConfig => ({
         },
     // Not entitled before ruleset 8; present only to keep the config map total.
     INTERGALACTIC_CONVOY: GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY,
+    ASTERIUM_STORM: GALAXY_EVENTS.definitions.ASTERIUM_STORM,
   },
   mutuallyExclusive: [],
 });
@@ -273,6 +284,7 @@ export function galaxyEventKindsForRuleset(rulesetVersion: number): readonly Gal
   if (rulesetVersion >= MULTI_WORLD.intergalacticConvoyRulesetVersion) {
     kinds.push('INTERGALACTIC_CONVOY');
   }
+  if (rulesetVersion >= SYNTHESIS.rulesetVersion) kinds.push('ASTERIUM_STORM');
   return kinds;
 }
 
@@ -356,8 +368,12 @@ function assertPolicyVersion(value: number, kind: string, name: string): void {
 
 function validateEffect(
   kind: string,
-  effect: AsteroidShowerEffect | TradeShipEffect | IntergalacticConvoyEffect,
+  effect: AsteroidShowerEffect | TradeShipEffect | IntergalacticConvoyEffect | AsteriumStormEffect,
 ): void {
+  if ('fieldVersion' in effect) {
+    assertPolicyVersion(effect.fieldVersion, kind, 'fieldVersion');
+    return;
+  }
   if ('asteroidSpawnMultiplier' in effect) {
     if (!Number.isFinite(effect.asteroidSpawnMultiplier) || effect.asteroidSpawnMultiplier <= 1) {
       throw new RangeError(`${kind} multiplier must be greater than one`);
@@ -962,6 +978,19 @@ function occurrencesFor(
         };
       });
     }
+    case 'ASTERIUM_STORM': {
+      const definition = config.definitions.ASTERIUM_STORM;
+      return starts.map((startsAt, sequence) => ({
+        sequence,
+        kind,
+        startsAtMinute: startsAt - seasonStartsAtUnixMinute,
+        endsAtMinute: (definition.schedule === 'RANDOM_DAILY'
+          ? startsAt + definition.durationMinutes
+          : fixedEndAt(startsAt, config, definition)) - seasonStartsAtUnixMinute,
+        definitionVersion: definition.version,
+        effect: { fieldVersion: plannedEffectFor('ASTERIUM_STORM', startsAt, config).fieldVersion },
+      }));
+    }
   }
 }
 
@@ -985,6 +1014,11 @@ function startsForKind(
     }
     case 'INTERGALACTIC_CONVOY': {
       const definition = config.definitions.INTERGALACTIC_CONVOY;
+      return definition.schedule === 'RANDOM_DAILY'
+        ? planKind(input, config, definition, input.rngFor(kind))
+        : planFixedKind(input, config, definition);
+    }    case 'ASTERIUM_STORM': {
+      const definition = config.definitions.ASTERIUM_STORM;
       return definition.schedule === 'RANDOM_DAILY'
         ? planKind(input, config, definition, input.rngFor(kind))
         : planFixedKind(input, config, definition);

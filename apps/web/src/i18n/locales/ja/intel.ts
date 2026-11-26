@@ -86,6 +86,9 @@ export const intel = {
     estimateFact: "数値は推定範囲です。",
     estimateNote: "これらの数値は推定範囲です。武装ユニットの値には、シールドと非武装の船は含まれません。",
     caught: "彼らはそれを捕まえました",
+    lostHeading: "撃墜されたプローブ",
+    lostTitle: "{{world}}の上空でプローブ撃墜",
+    lostWhy: "{{owner}} · 弾のあるプローブ防衛砲台があります",
     /* Two words beside the signal bars, which carry the accuracy themselves. */
     homeTag: "艦隊は帰国しました",
     outTag: "艦隊は終了しました",
@@ -106,6 +109,7 @@ export const intel = {
     cost: "レーダーがなければ、この惑星への探査機の多くは検出されずに通過します。",
     quiet: "検出したスキャンはありません。レーダーL{{level}}は稼働中です。",
     scan: "スキャンが検出されました",
+    shotDown: "プローブを撃墜",
     bearing: "銀河の{{bearing}}から",
     origin: " · {{planet}}",
     /** Which of the caller's own worlds the scan landed on. */
@@ -625,7 +629,7 @@ export const dossier = {
   developmentValue: "ティア{{tier}}",
   developmentVersus: "ティア{{tier}} · あなた{{mine}}",
   developmentBandNote:
-    "襲撃とデス・スター攻撃が可能なのは、ティア差が1以内の司令官だけです。双方が持つ最も発展した惑星で判定します。あなたはティア{{mine}}なので、ティア{{low}}～{{high}}が対象です。この惑星が相手の最高ティアとは限りません。 どちらかの司令官が段階1〜3なら、双方が相手に個人襲撃を1回送れます。次の襲撃は戦闘から12時間待つ必要があります。移動中の襲撃はその権利を確保し、呼び戻しでは待機時間が始まりません。デススターとクラン共同作戦は対象外です。",
+    "襲撃とデス・スター攻撃が可能なのは、ティア差が1以内の司令官だけです。双方が持つ最も発展した惑星で判定します。あなたはティア{{mine}}なので、ティア{{low}}～{{high}}が対象です。この惑星が相手の最高ティアとは限りません。 どちらかの司令官が段階1〜4なら、双方が相手に個人襲撃を1回送れます。次の襲撃は戦闘から12時間待つ必要があります。移動中の襲撃はその権利を確保し、呼び戻しでは待機時間が始まりません。デススターとクラン共同作戦は対象外です。",
 
   hardwareLabel: "軌道上の衛星",
   hardwareNote: "衛星の存在は見えます。性能を知るには探査機が必要です。",
@@ -702,6 +706,12 @@ export const dossier = {
   interceptorCountNote: "迎撃弾1発でデス・スター1基を破壊します。{{needed}}基が同時に到着すれば1基は突破できます。偵察後に迎撃弾が増えた可能性もあります。",
   interceptorEmpty: "迎撃弾なし",
   interceptorEmptyNote: "現時点で戦略兵器を迎撃する弾は確認されていません。偵察後に装填された可能性はあります。",
+  probeBatteryLabel: "プローブ防衛砲台",
+  probeBatteryCount: "弾 {{ready}}/{{capacity}} 準備済み",
+  probeBatteryNone: "なし",
+  probeBatteryCountNote: "弾がある間、捕捉したプローブを撃墜します。先にプローブを{{count}}機失う必要があります。弾は{{minutes}}分ごとに補充されます。",
+  probeBatteryEmptyNote: "弾切れでした：プローブは砲台がないのと同じ条件で進入します。弾は{{minutes}}分ごとに補充されます。",
+  probeBatteryNoneNote: "プローブ防衛砲台はありませんでした。その後設置された可能性があります。",
   loyaltyLabel: "植民地の忠誠度",
   loyaltyValue: "{{value}}%",
   loyaltyNote_one: "デス・スターは命中1回で忠誠度を{{loss}}下げます。この植民地は1回の命中で陥落します。",

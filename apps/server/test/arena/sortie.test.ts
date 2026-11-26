@@ -14,12 +14,11 @@ import { fakeShips } from './fakeShips.js';
  * down. Guests and debug flights never reach the capital.
  */
 const ORIGIN = 'https://asteraonline.space';
-const ACCOUNTS: Record<string, { accountId: string; username: string; name: string; pilot: boolean }> = {
-  'token-alice': { accountId: 'acc-alice', username: 'alice', name: 'Alice', pilot: true },
-  'token-bob': { accountId: 'acc-bob', username: 'bob', name: 'Bob', pilot: true },
-  'token-dave': { accountId: 'acc-dave', username: 'dave', name: 'Dave', pilot: true },
-  'token-eve': { accountId: 'acc-eve', username: 'eve', name: 'Eve', pilot: true },
-  'token-carol': { accountId: 'acc-carol', username: 'carol', name: 'Carol', pilot: false },
+const ACCOUNTS: Record<string, { accountId: string; username: string; name: string }> = {
+  'token-alice': { accountId: 'acc-alice', username: 'alice', name: 'Alice' },
+  'token-bob': { accountId: 'acc-bob', username: 'bob', name: 'Bob' },
+  'token-dave': { accountId: 'acc-dave', username: 'dave', name: 'Dave' },
+  'token-eve': { accountId: 'acc-eve', username: 'eve', name: 'Eve' },
 };
 const identify: ArenaIdentify = token => Promise.resolve(ACCOUNTS[token] ?? null);
 const closers: (() => Promise<void>)[] = [];
@@ -318,7 +317,6 @@ describe('the hangar desk', () => {
     const buy = (payload: Record<string, unknown>, token = 'token-alice') => app.inject({ method: 'POST', url: '/arena/ability',
       headers: { authorization: `Bearer ${token}` }, payload });
     expect((await buy({ ability: 'smoke' }, 'forged')).statusCode).toBe(401);
-    expect((await buy({ ability: 'smoke' }, 'token-carol')).statusCode).toBe(403);
     for (const bad of [{ ability: 'unknown' }, { ability: 'smoke', rank: 5 }, { ability: 'smoke', points: -1 }, {}]) {
       expect((await buy(bad)).statusCode).toBe(400);
     }
@@ -334,7 +332,6 @@ describe('the hangar desk', () => {
       headers: token ? { authorization: `Bearer ${token}` } : {}, payload });
     expect((await repair()).statusCode).toBe(401);
     expect((await repair('forged')).statusCode).toBe(401);
-    expect((await repair('token-carol')).statusCode).toBe(403);
     expect((await repair('token-alice', { minutes: 0, alloy: 0 })).statusCode).toBe(400);
     expect((await repair('token-alice')).statusCode).toBe(200);
     expect(repaired).toEqual(['acc-alice']);
@@ -348,7 +345,6 @@ describe('the hangar desk', () => {
     const set = (payload: Record<string, unknown>, token?: string) => app.inject({ method: 'POST', url: '/arena/loadout',
       headers: token ? { authorization: `Bearer ${token}` } : {}, payload });
     expect((await set({ fuel: 50, ammo: 0 })).statusCode).toBe(401);
-    expect((await set({ fuel: 50, ammo: 0 }, 'token-carol')).statusCode).toBe(403);
     for (const bad of [{ fuel: 50 }, { fuel: '50', ammo: 0 }, { fuel: 50.5, ammo: 0 }, { fuel: 50, ammo: 0, cost: 0 }]) {
       expect((await set(bad, 'token-alice')).statusCode).toBe(400);
     }
@@ -382,14 +378,45 @@ describe('the hangar desk', () => {
     const get = (token?: string) => app.inject({ method: 'GET', url: '/arena/hangar', headers: token ? { authorization: `Bearer ${token}` } : {} });
     expect((await get()).statusCode).toBe(401);
     expect((await get('forged')).statusCode).toBe(401);
-    expect((await get('token-carol')).statusCode).toBe(403);
     expect((await get('token-alice')).json()).toMatchObject({ core: 9, ship: null });
     const pick = (payload: Record<string, unknown>) => app.inject({ method: 'POST', url: '/arena/ship', headers: { authorization: 'Bearer token-alice' }, payload });
     expect((await pick({ ship: 'akinci' })).statusCode).toBe(200);
     for (const bad of [{ ship: 'galleon' }, {}, { ship: 'akinci', extra: 1 }]) expect((await pick(bad)).statusCode).toBe(400);
     expect(calls.choose).toEqual(['acc-alice:akinci']);
     const upgrade = (token?: string) => app.inject({ method: 'POST', url: '/arena/upgrade', headers: token ? { authorization: `Bearer ${token}` } : {} });
-    expect([(await upgrade()).statusCode, (await upgrade('token-carol')).statusCode, (await upgrade('token-alice')).statusCode]).toEqual([401, 403, 200]);
+    expect([(await upgrade()).statusCode, (await upgrade('token-alice')).statusCode]).toEqual([401, 200]);
     expect(calls.upgrade).toEqual(['acc-alice']);
+  });
+});
+
+describe('the Asteryum Fırtınası in the room', () => {
+  it('turns the field on while the calendar says the storm blows, and off again', async () => {
+    let blowing = true;
+    const { ships } = fakeShips({ storm: () => Promise.resolve(blowing) });
+    const { arena } = await room(ships);
+    for (let i = 0; i < 50 && !arena.world.asteriumStorm; i++) await wait(20);
+    expect(arena.world.asteriumStorm).toBe(true);
+    blowing = false;
+    for (let i = 0; i < 400 && arena.world.asteriumStorm; i++) await wait(20);
+    expect(arena.world.asteriumStorm).toBe(false);
+  });
+
+  it('tells a pilot on arrival, and the whole room when it turns (G16)', async () => {
+    let blowing = true;
+    const { ships } = fakeShips({ storm: () => Promise.resolve(blowing) });
+    const r = await room(ships);
+    for (let i = 0; i < 50 && !r.arena.world.asteriumStorm; i++) await wait(20);
+    const alice = await connect(r.url, { token: 'token-alice' });
+    expect(await alice.next(kind('welcome'))).toMatchObject({ storm: true });
+    blowing = false;
+    const calm = (m: unknown): boolean => kind('storm')(m) && typeof m === 'object' && m !== null && 'active' in m && m.active === false;
+    expect(await alice.next(calm)).toMatchObject({ kind: 'storm', active: false });
+  });
+
+  it('keeps the field calm when the calendar cannot be read', async () => {
+    const { ships } = fakeShips({ storm: () => Promise.reject(new Error('db down')) });
+    const { arena } = await room(ships);
+    await wait(100);
+    expect(arena.world.asteriumStorm).toBe(false);
   });
 });

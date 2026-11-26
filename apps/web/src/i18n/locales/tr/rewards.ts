@@ -16,7 +16,7 @@ export const rewards = {
   summaryReady: "Alınabilir ödüller",
   summaryClaimed: "Alınan kademeler",
   allMilestones: "Tüm kademeler",
-  eyebrow: 'Kalıcı hedefler',
+  eyebrow: 'Görevler ve hedefler',
   title: 'Ödüller',
   intro:
     'Süresi dolmaz, seri istemez. Ödül depoya girer; korumasız kısmı yağmalanabilir.',
@@ -39,6 +39,27 @@ export const rewards = {
     poured: 'Depoya: {{purse}}',
     skinRingHelios: 'Helios Halkası',
     skinEngineTitan: 'Titan İtkisi',
+  },
+  /** GÜNLÜK GÖREVLER (owner, 2026-11-24): four acts, each paying a small purse once a UTC day. */
+  /** Rewards in two tabs (owner 2026-11-24): the day's quests, and the standing goals. */
+  tabs: {
+    label: 'Ödül bölümleri',
+    daily: 'Günlük',
+    goals: 'Hedefler',
+  },
+  daily: {
+    title: 'Günlük görevler',
+    granted: '+{{alloy}} alaşım · +{{crystal}} kristal · +{{honor}} Honor',
+    resets: '{{time}} sonra yenilenir',
+    about: 'Günlük görevler nasıl işler',
+    fact: 'Her görev günde bir kez ödeme yapar.',
+    rule: 'Bugün yaptıkların sayılır; gün 00:00 UTC\'de, herkes için aynı anda yenilenir. Hazır olan görevi al: ödül başkentinin deposuna girer, orada çalınabilir. Kaçırdığın gün hiçbir şey kaybettirmez.',
+    quests: {
+      PROBES: '3 sonda gönder',
+      RIFT: 'Yarık\'a gir',
+      PIRATE: 'Bir korsan avla',
+      ASTEROID: 'Bir asteroit kaz',
+    },
   },
   takeAll: "Tümünü al · {{count}}",
   go: 'Git',

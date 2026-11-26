@@ -308,6 +308,8 @@ const RESEARCH_DETAIL_KEYS = {
  * that matches its English counterpart is an untranslated string.
  */
 const IDENTICAL_ON_PURPOSE = new Set([
+  'synthesis.moon.title', // Asteryum is the resource's proper name in every language.
+  'leaderboard.honorTarget.fold', // "{{kind}} · {{value}}": only the joint, every word inside it is translated.
   'starter.jump.scene.fall', // Only the galaxy's name, which is a name in every language.
   'starter.effect.aegis', // Aegis is the wall's proper name, and the rest is a figure.
   'starter.jump.leftJoin', // The list's comma and space: the same punctuation in both languages.

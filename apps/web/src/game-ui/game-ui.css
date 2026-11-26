@@ -375,6 +375,18 @@
   font-size: var(--gk-t-body);
   padding: 0 var(--gk-s3) 2px;
 }
+/* A seldom-used, destructive key in a header strip (the DM's Block): small enough not to compete with the conversation. */
+.gk-btn--compact {
+  --cut: 7px;
+  min-height: 28px;
+  gap: 5px;
+  padding: 0 var(--gk-s2) 2px;
+  font-size: var(--gk-t-small);
+  letter-spacing: 0.06em;
+}
+.gk-btn--compact .gk-btn__glyph {
+  font-size: 13px;
+}
 .gk-btn--wide {
   width: 100%;
 }
@@ -5044,6 +5056,12 @@ html:lang(ja) .gk-tab {
   position: absolute;
   top: -5px;
   right: -4px;
+}
+/* The row scrolls sideways, and a scroller clips: a count standing off the last plate's corner was cut
+   in half. The row takes the dot's overhang as padding and gives it back as margin, so no plate moves. */
+.gk-tabs:has(.gk-dot) {
+  padding: 6px 5px 0 0;
+  margin: -6px -5px 0 0;
 }
 .gk-tabs__status {
   margin-top: 4px;
@@ -12245,6 +12263,32 @@ button.gk-rcard__door:active {
   text-align: right;
   overflow-wrap: anywhere;
 }
+/* What the last look found of their probe battery, said in warn beside the launch (2026-11-24). */
+.gk-focus__hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-basis: 100%;
+  font-size: var(--gk-t-small);
+  color: var(--gk-warn);
+}
+.gk-focus__hint .gk-glyph {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+/* A lost probe's mark in the intel ledger: the craft broken, in warn. */
+.gk-probe-loss__mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  color: var(--gk-warn);
+}
+.gk-probe-loss__mark .gk-glyph {
+  width: 16px;
+  height: 16px;
+}
 .gk-focus__note {
   margin-bottom: 11px;
   justify-content: flex-start;
@@ -13822,8 +13866,11 @@ button.gk-fact__head:active .gk-fact__line {
   font-weight: 700;
 }
 .gk-honor__head .gk-glyph { width: 14px; height: 14px; color: var(--gk-self); }
-.gk-honor__dot { color: var(--gk-ink-3); }
-.gk-honor[data-kind='WEAK'] .gk-honor__kind { color: var(--gk-warn); }
+/* The raid's reading folded to one row (owner 2026-11-25); its rules open inside the same well, no second frame. */
+.gk-honor .gk-peek__row { min-height: 36px; font-size: var(--gk-t-small); font-weight: 600; color: var(--gk-ink); }
+.gk-honor .gk-peek__row > .gk-glyph { width: 14px; height: 14px; flex: none; color: var(--gk-self); }
+.gk-honor[data-kind='WEAK'] .gk-peek__fact { color: var(--gk-warn); }
+.gk-honor .gk-peek__rule { display: grid; gap: 4px; margin: 0 0 var(--gk-s1); padding: 0; background: none; border: 0; box-shadow: none; }
 .gk-honor__line {
   font-size: var(--gk-t-small);
   line-height: 1.4;
@@ -15158,6 +15205,8 @@ button.gk-fact__head:active .gk-fact__line {
   color: var(--gk-ink);
 }
 .gk-rewards--state { padding-top: var(--gk-s3); }
+/* Under the tabs the goals and the daily list stand in one panel: the panel's own padding is not doubled. */
+.gk-rewards--tabs > [role='tabpanel'] > .gk-rewards { padding: 0; }
 .gk-rewards__ghost { height: 83px; opacity: 0.6; }
 .gk-rewards__pod { display: grid; justify-items: center; }
 .gk-rewards__sum { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -16159,6 +16208,8 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-honorperk__rungname { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: 7px; min-width: 0; font-size: var(--gk-t-small); line-height: 1.3; }
 .gk-honorperk__rungname strong { font-weight: 700; }
 .gk-honorperk__rungname .gk-num { font-size: var(--gk-t-floor); color: var(--gk-ink-3); }
+.gk-honorperk__extra { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 2px; font-size: var(--gk-t-floor); font-weight: 600; }
+.gk-honorperk__extra [data-tone='hostile'] { color: var(--gk-hostile-hi); }
 .gk-honorperk__rate { font-size: var(--gk-t-body); font-weight: 700; }
 
 /* The quote beside a repair, a trade or a convoy: a receipt with named columns. */
@@ -16480,11 +16531,12 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 .gk-arenacard > p { margin: 0; }
 .gk-arenacard__title { margin: 0; font-size: var(--gk-t-title); line-height: 1.1; color: var(--tone); }
 .arena-menu .gk-arenacard__title { color: var(--gk-ink); }
+/* The credits: a quiet row between resuming and leaving, smaller than either (owner 2026-11-25: "gereksiz büyük"). */
+.arena-menu .gk-rules { justify-self: center; border-color: transparent; background: none; }
+.arena-menu .gk-rules__head { min-height: 34px; padding: 0 var(--gk-s2); font-size: var(--gk-t-small); font-weight: 600; color: var(--gk-ink-2); }
+.arena-menu .gk-rules__head .gk-glyph { width: 12px; height: 12px; }
 .gk-arenacard__what { display: grid; gap: 2px; padding: 5px 9px; border-left: 2px solid var(--tone); background: color-mix(in srgb, var(--tone) 8%, transparent); font-size: var(--gk-t-small); }
 .gk-arenacard__what .gk-label { color: var(--tone); }
-.gk-arenacard__points { display: flex; align-items: baseline; gap: 5px; font-size: var(--gk-t-small); color: var(--gk-ink-2); }
-.gk-arenacard__points strong { font-size: var(--gk-t-hero); line-height: 1; color: var(--gk-self); }
-.gk-arenacard__points[data-tone='hostile'] strong { color: var(--gk-hostile-hi); }
 .gk-arenacard__stats { padding-top: var(--gk-s2); }
 .gk-arenacard__stats .gk-figure__value { font-size: var(--gk-t-title); }
 
@@ -16494,7 +16546,7 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
   display: inline-flex; align-items: center; gap: 5px; min-height: 25px; padding: 2px 7px; border: 1px solid var(--gk-metal-edge); border-radius: 2px;
   background: color-mix(in srgb, var(--tone, var(--gk-self)) 8%, var(--gk-metal-2)); font-size: var(--gk-t-small); color: var(--gk-ink-2);
 }
-.gk-haulchip i { width: 7px; height: 7px; border-radius: 50%; background: var(--tone, var(--gk-self)); }
+.gk-haulchip img { width: 16px; height: 16px; flex: none; object-fit: contain; }
 .gk-haulchip b { font-weight: 700; color: var(--gk-ink); }
 .gk-haulchip small { font-size: var(--gk-t-floor); color: var(--gk-ink-3); }
 .gk-sortie { display: grid; gap: var(--gk-s2); }
@@ -17932,3 +17984,256 @@ html[data-hud-stage="2"] [data-dock] {
    sit lower under the ship; the price line 8 px slimmer (its ⓘ 36 px tall, still 44 wide) ── */
 .gk-unitgrid .gk-unit__stage { min-height: 81px; }
 .gk-launch__price .gk-peek__row .gk-round { height: 32px; }
+
+/*
+  Sentez capsules on a launch (plan 2026-11-24 §3.5): the rule once, then one switch per capsule. The plate's
+  edge is Asteryum's own lavender (gozlemevi.md's eleventh meaning, owner 2026-11-25).
+*/
+.gk-capsules {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-sm);
+}
+.gk-capsules__rule { padding: 6px 10px 0; }
+.gk-capsules__stock { display: inline-flex; align-items: center; gap: 6px; }
+.gk-capsules__stock[data-tone='warn'] { color: var(--color-v2-warn); }
+.gk-capsules__stock[data-tone='self'] { color: var(--color-v2-ink-2); }
+/* One vial per capsule this fleet needs: lit when held, an empty warning outline when it is not. */
+.gk-capsules__pips { display: inline-flex; gap: 3px; }
+.gk-capsules__pips i {
+  width: 6px; height: 11px;
+  border-radius: 3px 3px 2px 2px;
+  border: 1px solid var(--color-v2-warn);
+  background: transparent;
+}
+.gk-capsules__pips i[data-full] {
+  border-color: color-mix(in srgb, var(--capsule) 70%, white);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--capsule) 40%, transparent) 0 30%, var(--capsule) 30%);
+}
+
+/*
+  SENTEZ LABORATUVARI, A BAY OF ITS OWN (owner 2026-11-25: "daha profesyonelce… ileride daha gelişecek").
+  The lab is a place: its picture with the Asteryum in it on a plate at the foot, then labelled parts read
+  top to bottom (where Asteryum comes from, the recipe shelf, the order or the still). The capsules stand on
+  the shelf as potions; a running batch is a rack of vials. EACH CAPSULE HAS ITS OWN LIQUID (owner: "hepsi mor
+  olursa gözü yorar"): `--capsule` is set per kind and used only on that capsule's glass, shelf line and
+  vials, beside its picture and name. No glow, no halo: the liquid and the shelf light's hard line.
+*/
+[data-capsule='OPTIC_VEIL'], [data-capsule-pips='OPTIC_VEIL'] { --capsule: var(--color-v2-capsule-veil); }
+[data-capsule='SILENT_THRUST'], [data-capsule-pips='SILENT_THRUST'] { --capsule: var(--color-v2-capsule-silent); }
+
+.gk-lab {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--gk-metal-edge) 85%, transparent);
+  border-radius: var(--gk-r-sm);
+  background: var(--gk-metal-2);
+  box-shadow: 0 2px 0 var(--gk-outline);
+}
+/* The stock, on its own at the very top (owner 2026-11-25): the resource's picture and the figure, nothing else. */
+.gk-lab__stock {
+  display: flex;
+  align-items: center;
+  gap: var(--gk-s2);
+  min-height: var(--gk-hit);
+  padding: 4px var(--gk-s3);
+  border-bottom: 1px solid var(--gk-metal-edge);
+  background: var(--color-v2-deep);
+}
+.gk-lab__stock img { width: 30px; height: 30px; flex: none; object-fit: contain; }
+.gk-lab__stocklabel { flex: 1; min-width: 0; font-size: var(--gk-t-small); font-weight: 600; color: var(--gk-ink-2); }
+.gk-lab__stock b { font-size: var(--gk-t-number); font-weight: 700; line-height: 1; color: var(--gk-ink); }
+/* The building, whole: a cut-out standing on a dark deck, never cropped to a strip (owner: "büyük kısmı kesilmiş"). */
+.gk-lab__hero {
+  position: relative;
+  height: 178px;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--gk-void), var(--gk-metal-2));
+}
+.gk-lab__building { display: block; width: 100%; height: 100%; padding: 6px 0 32px; object-fit: contain; }
+.gk-lab[data-state='LOCKED'] .gk-lab__building { filter: grayscale(1) brightness(0.6); }
+.gk-lab__name {
+  position: absolute;
+  inset: auto var(--gk-s3) 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--gk-font-display);
+  font-weight: var(--gk-display-weight);
+  font-stretch: var(--gk-display-stretch);
+  font-size: var(--gk-t-title);
+  line-height: 1.1;
+  color: var(--gk-ink);
+  text-shadow: 0 1px 2px var(--gk-outline);
+}
+.gk-lab__name > .gk-glyph { width: 16px; height: 16px; flex: none; color: var(--color-v2-asterium); }
+.gk-lab__body { display: grid; gap: var(--gk-s2); padding: var(--gk-s2) var(--gk-s3) var(--gk-s3); min-width: 0; }
+.gk-lab__part { display: grid; gap: var(--gk-s2); }
+/* Where Asteryum comes from is a reading, not a shortfall: the figures in ink, never the warning colour. */
+.gk-lab .gk-arm__spec dd { color: var(--gk-ink); }
+.gk-lab__body > .gk-label { margin: 2px 0 -2px; }
+
+.gk-asterium { display: inline-flex; align-items: center; gap: 3px; }
+.gk-asterium img { flex: none; }
+.gk-potions { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; }
+.gk-potion {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 6px 6px 7px;
+  border: 1px solid var(--gk-metal-edge);
+  border-radius: var(--gk-r-md);
+  background: linear-gradient(180deg, var(--color-v2-raise), var(--color-v2-deep));
+  color: var(--color-v2-ink-2);
+  min-height: var(--gk-hit);
+  text-align: center;
+}
+.gk-potion:disabled { cursor: default; }
+.gk-potion[aria-checked='true'] {
+  border-color: color-mix(in srgb, var(--capsule) 70%, var(--gk-metal-edge));
+  color: var(--color-v2-ink);
+}
+/* The shelf the potion stands on: a hard metal line, lit in the capsule's own liquid under the chosen one. */
+.gk-potion__glass {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 56px;
+  border-bottom: 2px solid var(--gk-metal-edge);
+}
+.gk-potion[aria-checked='true'] .gk-potion__glass { border-bottom-color: var(--capsule); }
+.gk-potion__glass img { width: 52px; height: 52px; object-fit: contain; transition: transform 180ms ease-out; }
+.gk-potion[aria-checked='false'] .gk-potion__glass img { filter: saturate(0.55) brightness(0.8); }
+.gk-lab[data-state='LOCKED'] .gk-potion__glass img { filter: grayscale(0.8) brightness(0.65); }
+.gk-potion[aria-checked='true'] .gk-potion__glass img { transform: translateY(-2px); animation: gk-potion-sway 3.2s ease-in-out infinite; }
+.gk-lab[data-state='LOCKED'] .gk-potion__glass img { animation: none; transform: none; }
+.gk-potion__name { font-size: var(--gk-t-small); font-weight: 600; line-height: 1.15; }
+.gk-potion__meta { display: flex; gap: 7px; align-items: center; font-size: var(--gk-t-floor); color: var(--color-v2-ink-2); }
+.gk-potion__meta b { color: var(--color-v2-ink); font-weight: 700; }
+@keyframes gk-potion-sway { 0%, 100% { transform: translateY(-2px) rotate(-1.5deg); } 50% { transform: translateY(-3px) rotate(1.5deg); } }
+
+.gk-still {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--capsule) 30%, var(--gk-metal-edge));
+  border-radius: var(--gk-r-md);
+  background: var(--color-v2-deep);
+}
+.gk-still__flask { flex: none; width: 44px; height: 44px; object-fit: contain; animation: gk-potion-sway 2.4s ease-in-out infinite; }
+.gk-rack {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 4px 5px;
+  padding-bottom: 3px;
+  border-bottom: 2px solid var(--gk-metal-edge);
+}
+.gk-rack i {
+  position: relative;
+  width: 10px;
+  height: 26px;
+  border: 1px solid color-mix(in srgb, var(--color-v2-ink-2) 45%, transparent);
+  border-radius: 5px 5px 3px 3px;
+  overflow: hidden;
+  background: linear-gradient(0deg, var(--capsule) calc(var(--fill, 0) * 100%), transparent calc(var(--fill, 0) * 100%));
+}
+.gk-rack i[data-vial='full'] { border-color: color-mix(in srgb, var(--capsule) 70%, white); }
+.gk-rack i[data-vial='brewing'] { border-color: var(--capsule); transition: background 1s linear; }
+/* Bubbles: two hard dots climbing through the filling vial, a paler drop of its own liquid. */
+.gk-rack i[data-vial='brewing']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  --bubble: color-mix(in srgb, var(--capsule) 40%, white);
+  background:
+    radial-gradient(circle, var(--bubble) 0 1px, transparent 1.5px) 2px 0 / 4px 9px,
+    radial-gradient(circle, var(--bubble) 0 1px, transparent 1.5px) 5px 4px / 5px 11px;
+  animation: gk-bubble 1.1s linear infinite;
+  opacity: 0.85;
+}
+@keyframes gk-bubble { from { background-position: 2px 26px, 5px 30px; } to { background-position: 2px 0, 5px 4px; } }
+
+/* The Tactical tab's two bays (owner 2026-11-25): the same plates as the Base's tabs, one storey, lower. */
+.gk-bays > div > .gk-tabs .gk-tab { min-height: 36px; }
+
+/*
+  A MOON'S ASTERYUM, A SLIM SECTION (owner 2026-11-25). One line (picture, rate, what it made), a thin bar to the next
+  unit in the resource's own colour beside its icon, the time, and where it goes. Under 80 px.
+*/
+.gk-moonast {
+  display: grid;
+  gap: 4px;
+  padding: 6px 8px 7px;
+  border: 1px solid color-mix(in srgb, var(--color-v2-asterium) 28%, var(--gk-metal-edge));
+  border-radius: var(--gk-r-sm);
+  background: var(--color-v2-deep);
+}
+.gk-moonast__head { display: flex; align-items: center; gap: 6px; margin: 0; font-size: var(--gk-t-small); color: var(--gk-ink-2); }
+.gk-moonast__head img { width: 18px; height: 18px; flex: none; object-fit: contain; }
+.gk-moonast__name { font-weight: 700; color: var(--gk-ink); }
+.gk-moonast__made { margin-left: auto; }
+.gk-moonast__track { display: block; height: 5px; overflow: hidden; border-radius: 3px; background: color-mix(in srgb, var(--gk-ink) 10%, transparent); }
+.gk-moonast__fill { display: block; height: 100%; background: var(--color-v2-asterium); transition: width 1s linear; }
+.gk-moonast__next { margin: 0; font-size: var(--gk-t-small); color: var(--gk-ink); }
+.gk-moonast__next[data-closed] { color: var(--gk-ink-2); }
+.gk-moonast__where { margin: 0; font-size: var(--gk-t-floor); line-height: 1.35; color: var(--gk-ink-3); }
+
+/*
+  THE MOON TAB'S HEADER (owner 2026-11-25): the moon itself on the left, its rarity, origin and durability beside it.
+  Nothing else lives here: the Asteryum, the moves and the dock each have their own part.
+*/
+.gk-moonhead { display: flex; align-items: center; gap: var(--gk-s3); padding: var(--gk-s3); }
+.gk-moonhead__words { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; }
+.gk-moonhead__durability { margin-top: 2px; }
+/* Durability as cells, one per crack the moon can take: the whole ones lit in the durability's tone. */
+.gk-moonhead__cells { display: flex; gap: 3px; }
+.gk-moonhead__cells i { flex: 1; max-width: 22px; height: 5px; border-radius: 1px; background: color-mix(in srgb, var(--gk-ink) 12%, transparent); }
+.gk-moonhead__cells[data-tone='whole'] i[data-cell='whole'] { background: var(--color-opportunity); }
+.gk-moonhead__cells[data-tone='worn'] i[data-cell='whole'] { background: var(--color-alloy); }
+.gk-moonhead__cells[data-tone='low'] i[data-cell='whole'] { background: var(--color-threat); }
+
+/* The moon's portrait: its own surface sliding under a round window, lit from the upper left, its rarity a thin line on the limb. */
+.gk-moonportrait {
+  --rarity: var(--color-v2-rarity-common);
+  position: relative;
+  flex: none;
+  width: 68px;
+  height: 68px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--gk-void);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--rarity) 75%, transparent);
+}
+.gk-moonportrait[data-rarity='RARE'] { --rarity: var(--color-v2-rarity-rare); }
+.gk-moonportrait[data-rarity='EPIC'] { --rarity: var(--color-v2-rarity-epic); }
+.gk-moonportrait[data-rarity='LEGENDARY'] { --rarity: var(--color-v2-rarity-legendary); }
+/* Two tiles of the 2:1 map side by side; one tile's width a turn, so the loop has no seam. */
+.gk-moonportrait__surface {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 272px;
+  background-size: 136px 100%;
+  background-repeat: repeat-x;
+  animation: gk-moon-turn 80s linear infinite;
+  will-change: transform;
+}
+/* The terminator and the limb's darkening: a sphere's shading, not a glow. */
+.gk-moonportrait::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, transparent 38%, color-mix(in srgb, var(--gk-void) 55%, transparent) 68%, color-mix(in srgb, var(--gk-void) 92%, transparent) 100%);
+  box-shadow: inset -12px -8px 16px color-mix(in srgb, var(--gk-void) 75%, transparent);
+}
+.gk-moonportrait[data-closed] .gk-moonportrait__surface { filter: grayscale(1) brightness(0.55); animation-play-state: paused; }
+@keyframes gk-moon-turn { to { transform: translateX(-136px); } }

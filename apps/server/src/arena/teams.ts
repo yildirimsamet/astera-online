@@ -14,20 +14,20 @@ const actionSchema = z.discriminatedUnion('kind', [
 ]).refine(action => action.kind !== 'ready' || action.body.tactic !== action.body.tactic2, 'Choose different tactics');
 const params = z.object({ action: z.string().max(16) });
 
-/** Same seated-pilot admission as the room; no clan, cost, loadout or loot is accepted from a client. */
+/** Same admission as the room (any signed-in account); no clan, cost, loadout or loot is accepted from a client. */
 export function registerArenaTeams(app: FastifyInstance, enabled: boolean,
-  identify: (header: string | undefined) => Promise<{ accountId: string } | 'auth' | 'denied'>,
+  identify: (header: string | undefined) => Promise<{ accountId: string } | 'auth'>,
   ensureReady: () => Promise<unknown>): void {
   app.get('/arena/team', async (request, reply) => {
     if (!enabled) return reply.status(403).send({ error: 'denied' });
     const who = await identify(request.headers.authorization);
-    if (typeof who === 'string') return reply.status(who === 'auth' ? 401 : 403).send({ error: who });
+    if (typeof who === 'string') return reply.status(401).send({ error: who });
     await ensureReady(); return readTeam(app.db, app.clock, who.accountId);
   });
   app.post('/arena/team/:action', async (request, reply) => {
     if (!enabled) return reply.status(403).send({ error: 'denied' });
     const who = await identify(request.headers.authorization);
-    if (typeof who === 'string') return reply.status(who === 'auth' ? 401 : 403).send({ error: who });
+    if (typeof who === 'string') return reply.status(401).send({ error: who });
     const route = params.safeParse(request.params);
     const parsed = actionSchema.safeParse({ kind: route.success ? route.data.action : '', body: request.body });
     if (!parsed.success) return reply.status(400).send({ error: 'invalid' });

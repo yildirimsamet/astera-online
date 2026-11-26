@@ -367,6 +367,7 @@ export async function resolveNeutralBattle(
   const [replayReport] = await tx.insert(battleReports).values({
     seasonId: mission.seasonId,
     missionId: mission.id,
+    appliedCapsules: mission.appliedCapsules,
     attackerPlayerId: mission.ownerPlayerId,
     defenderPlayerId: null,
     targetPlanetId: neutral.id,

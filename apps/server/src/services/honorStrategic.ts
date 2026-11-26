@@ -32,6 +32,7 @@ export function strategicHonorEvidence(intent: HonorCommitment, id: string, at: 
   return { source: 'STRATEGIC_IMPACT', id, at: at.getTime(), eligible: intent.eligible,
     ...(intent.galaxyTopTier === undefined ? {} : { galaxyTopTier: intent.galaxyTopTier }),
     ...(intent.weakNavyBand === undefined ? {} : { weakNavyBand: intent.weakNavyBand }),
+    ...(intent.weakRepeatScale === undefined ? {} : { weakRepeatScale: intent.weakRepeatScale }),
     attack: intent.attack.map(member), defence: intent.defence.map(member),
     relations: intent.relations, selectedDefenders: intent.selectedDefenders };
 }

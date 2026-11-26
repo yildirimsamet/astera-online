@@ -1,11 +1,13 @@
-import { FIELD_GROUP_SIZE } from './farms.js';
+import { ASTERIUM_STORM, FIELD_GROUP_SIZE } from './farms.js';
 import type { Impact, SmokePuff } from './pilot.js';
 import { ARENA_TUNING as T } from './tuning.js';
 
-/** Fixed pool sizes; the snapshot protocol bounds its rows by them. */
+/** Fixed pool sizes; the snapshot protocol bounds its rows by them. Cargo: the field groups, the wrecks, the storm's pieces. */
 export const ARENA_POOLS = {
-  bullets: 512, ghosts: 64, smoke: 96, impacts: 48, missiles: 32, cargo: T.fieldGroups * FIELD_GROUP_SIZE + T.wreckDrops,
+  bullets: 512, ghosts: 64, smoke: 96, impacts: 48, missiles: 32, cargo: T.fieldGroups * FIELD_GROUP_SIZE + T.wreckDrops + ASTERIUM_STORM.maxPieces,
 } as const;
+/** The first of the storm's own cargo slots: after the field groups' and the wrecks'. */
+export const STORM_SLOTS = T.fieldGroups * FIELD_GROUP_SIZE + T.wreckDrops;
 
 /** One tick of smoke and impact ageing: the room's and the client's, so the two never drift. */
 export function ageEffects(world: { smoke: SmokePuff[]; impacts: Impact[] }): void {

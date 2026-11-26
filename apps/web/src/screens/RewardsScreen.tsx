@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { REWARD_CHAIN_IDS, type RewardChainId } from '@astera/rules';
-import { useClaimAllRewards, useClaimReward, usePlanet, useRewards, useWelcome } from '../api/queries.js';
+import { useClaimAllRewards, useClaimReward, useDailyQuests, useGoalRewardsWaiting, usePlanet, useRewards, useWelcome } from '../api/queries.js';
 import { useWorld } from '../api/world.js';
 import type { RewardChainView, RewardTierView } from '../api/schemas.js';
 import { compact, full } from '../lib/format.js';
@@ -10,10 +10,11 @@ import { useAccordion } from '../lib/accordion.js';
 import { haptic } from '../lib/haptics.js';
 import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
-import { Banner, CostLine, EmptyState, GameButton, Glyph, InfoPeek, ProgressBar, RewardPod, artIconSrc, type GlyphId } from '../game-ui/index.js';
+import { Banner, CostLine, EmptyState, GameButton, GameTabs, Glyph, InfoPeek, ProgressBar, RewardPod, artIconSrc, type GlyphId } from '../game-ui/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { nextRewardGoal, rewardGate, type RewardGate } from '../lib/rewardGates.js';
 import { WelcomeWeek } from './WelcomeWeek.js';
+import { DailyQuests } from './DailyQuests.js';
 
 const CHAIN_GLYPH: Record<RewardChainId, GlyphId> = {
   PROBE: 'eye', RAID: 'attack', CORE: 'home', SHIPYARD: 'rocket',
@@ -28,8 +29,39 @@ type KnownChain = RewardChainView & { id: RewardChainId };
 const known = (chain: RewardChainView): chain is KnownChain =>
   REWARD_CHAIN_IDS.some((id) => id === chain.id);
 
+export type RewardsTab = 'daily' | 'goals';
+
+/**
+ * THE REWARDS SHEET IN TWO TABS (owner, 2026-11-24): Daily holds the day's quests, Goals the standing milestone
+ * ladders and the commander's seven boxes. The daily list has its own key on the galaxy and opens there; every
+ * other way in lands on the goals, as the sheet always did. Each tab carries the count of what waits behind it.
+ * With no daily list from the server there are no tabs at all: the goals, exactly as before.
+ */
+export function RewardsScreen({ commander, onGo, initialTab }: { commander: string; onGo?: (gate: RewardGate) => void; initialTab?: RewardsTab }) {
+  const { t } = useTranslation();
+  const daily = useDailyQuests().data;
+  const goalsWaiting = useGoalRewardsWaiting();
+  const [tab, setTab] = useState<RewardsTab>(initialTab ?? 'goals');
+  if (!daily || daily.quests.length === 0) return <RewardGoals commander={commander} onGo={onGo} />;
+  return <div className="gk-rewards gk-rewards--tabs">
+    <GameTabs
+      label={t('rewards.tabs.label')}
+      tabs={[
+        { id: 'daily', label: t('rewards.tabs.daily'), badge: daily.claimable },
+        { id: 'goals', label: t('rewards.tabs.goals'), badge: goalsWaiting },
+      ]}
+      value={tab}
+      onChange={setTab}
+      ids={{ tab: (id) => `rewards-tab-${id}`, panel: (id) => `rewards-panel-${id}` }}
+    />
+    <div role="tabpanel" id={`rewards-panel-${tab}`} aria-labelledby={`rewards-tab-${tab}`}>
+      {tab === 'daily' ? <DailyQuests onGo={onGo} /> : <RewardGoals commander={commander} onGo={onGo} />}
+    </div>
+  </div>;
+}
+
 /** The server owns progress and credits. This surface makes the next act and payout legible. */
-export function RewardsScreen({ commander, onGo }: { commander: string; onGo?: (gate: RewardGate) => void }) {
+function RewardGoals({ commander, onGo }: { commander: string; onGo?: ((gate: RewardGate) => void) | undefined }) {
   const { t } = useTranslation();
   const { data, isPending, isError, refetch } = useRewards();
   const welcome = useWelcome().data?.welcome;

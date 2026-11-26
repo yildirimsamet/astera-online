@@ -283,7 +283,7 @@ export function ChatScreen({
         D6: the rooms and, for the galaxy's room, its language — one row: the rooms as the kit's
         tabs, the language a flag chip at the end that drops the six flags under the row (C2).
       */}
-      <div data-chat-controls className="gk shrink-0 border-b border-v2-line px-[var(--gk-gutter)] pb-2">
+      <div data-chat-controls className="gk shrink-0 border-b border-v2-line px-[var(--gk-gutter)] pb-1.5">
         <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
             {aboard ? (
@@ -507,7 +507,7 @@ function DmPanel({ isAdmin }: { isAdmin: boolean }) {
     <div className="flex min-h-0 flex-1 flex-col">
       {showBlocked ? <BlockedPlayersSheet onClose={() => { setShowBlocked(false); }} /> : null}
       {tabs.length > 0 ? (
-        <div data-chat-dm-tabs className="flex shrink-0 items-center gap-2 border-b border-v2-line px-[var(--gk-gutter)] py-1.5">
+        <div data-chat-dm-tabs className="flex shrink-0 items-center gap-2 border-b border-v2-line px-[var(--gk-gutter)] py-1">
           {/* THE OPEN LETTERS (C3): one plate each, its red count, and on the open one its own close key. */}
           <div role="tablist" aria-label={t('chat.dm.conversations')} className="gk-peers">
             {tabs.map((peer) => {
@@ -581,7 +581,7 @@ function DmPanel({ isAdmin }: { isAdmin: boolean }) {
             ) : activeConversation ? (
               /* A word, not the round key of the blocked list above it: what this does, and to whom for a reader. */
               <Press
-                className={`gk-btn gk-btn--sm${activeConversation.blockedByMe ? '' : ' gk-btn--danger'}`}
+                className={`gk-btn gk-btn--sm gk-btn--compact${activeConversation.blockedByMe ? '' : ' gk-btn--danger'}`}
                 aria-label={t(activeConversation.blockedByMe ? 'chat.dm.unblock' : 'chat.dm.block', { name: activePeer.username })}
                 onPress={() => {
                   if (!block.isPending) block.mutate({ targetPlayerId: activePeerId, blocked: !activeConversation.blockedByMe });
@@ -1086,8 +1086,7 @@ function ChannelPanel({
         </span>, document.body,
       )}
 
-      <CommunityPolicyGate policy={policy}><form onSubmit={submit} className="shrink-0 border-t border-v2-line px-3 py-2">
-        {isAdmin ? <ChatMediaComposer pasteTarget={composer} value={media} onChange={setMedia} onBusy={setUploading} disabled={posting || disabledReason !== null} /> : null}
+      <CommunityPolicyGate policy={policy}><form onSubmit={submit} className="relative shrink-0 border-t border-v2-line px-3 py-2">
         {disabledReason ? <p role="status" className="mb-2 flex items-start gap-1.5 text-caption leading-snug text-v2-warn"><Glyph id="lock" className="gk-glyph mt-0.5 shrink-0" />{disabledReason}</p> : null}
         {replyTarget ? (
           <div className="mb-2 flex min-w-0 items-start gap-2 rounded-control border-l-2 border-v2-self bg-v2-raise px-2 py-1" data-chat-composer-reply={replyTarget.id}>
@@ -1100,7 +1099,8 @@ function ChannelPanel({
               className="gk-round gk-round--small -my-2 -mr-2 shrink-0"><span className="gk-round__face"><Glyph id="close" /></span></button>
           </div>
         ) : null}
-        <div className="flex items-center gap-2">
+        <div data-chat-input-row className="flex items-center gap-2">
+          {isAdmin ? <ChatMediaComposer pasteTarget={composer} value={media} onChange={setMedia} onBusy={setUploading} disabled={posting || disabledReason !== null} /> : null}
           {/* Named on itself, not by a wrapping label, so the slot's own rim answers a press. */}
           <div className="min-w-0 flex-1">
             <textarea

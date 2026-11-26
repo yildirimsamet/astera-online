@@ -832,6 +832,8 @@ describe('the kinds of news the server can send', () => {
       'settlement_success',
       'strategic_incoming',
       'strategic_intercepted',
+      // Sentez: a laboratory batch is done (plan 2026-11-24 §4.4).
+      'synthesis_ready',
       'target_gone',
       'unknown_signal_result',
       'unlock',

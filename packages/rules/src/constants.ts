@@ -1679,6 +1679,8 @@ export const PROBE = {
    * IT NO LONGER RATIONS SCOUTING, AND IT WAS NEVER SUPPOSED TO. Repeated taps are
    * paced by the five-second interval below; probes do not consume ordinary fleet
    * bays and an airborne probe does not close the target to another paid look.
+   * What rations a look at a DEFENDED world is its probe battery (`PROBE_DEFENCE`,
+   * 2026-11-24): each charged shot costs the sender a probe and a report.
    */
   // October probe slowdown, then another 10% at the 60-day season boundary.
   speed: 2632.5 * 0.90,
@@ -1933,13 +1935,71 @@ export const ANTI_STRATEGIC = {
   charges: { base: 2, perLevel: 2, researched: 6 },
   /** Immediate launch, with enough screen time for every entitled client to join the scene. */
   flightSeconds: 8,
-  /** Half-price owner retune; still cheaper and faster than the weapon it stops. */
+  /**
+   * Half-price owner retune; still cheaper and faster than the weapon it stops. OWNER, 2026-11-24:
+   * a quarter off, rounded to tens — 24,910 in all, still about 38% of the 66,000 weapon.
+   */
   cost: {
-    alloy: 21_550,
-    crystal: 10_776,
-    deuterium: 894,
+    alloy: 16_160,
+    crystal: 8_080,
+    deuterium: 670,
   },
   buildMinutes: 30 * ECONOMY_ADJUSTMENT.buildTime,
+} as const;
+
+/**
+ * THE PROBE DEFENCE BATTERY. Owner decisions K1–K8, 2026-11-24
+ * (`docs/sonda-bataryasi-plani-2026-11-24.md`).
+ *
+ * "A battery with a ready charge catches probes more easily and shoots down what it
+ * catches; once its charges are gone the world is as if it had no battery."
+ *
+ * IT ADDS NO ROLL. The probe's own detection roll decides; a ready charge only lifts
+ * its base and turns "caught" into "shot down". So the scout's Shipyard stays the
+ * stealth it always was, and an empty battery leaves the Radar ladder selling what
+ * it sold before.
+ *
+ * THE CHARGES REFILL FOR FREE (K1). Draining a battery is paid by the attacker alone,
+ * in probes; a paid charge would let a stream of 105-resource probes bill the defender.
+ * The interval is per commander and target across all their worlds, so colonies do
+ * not raise the rate.
+ */
+export const PROBE_DEFENCE = {
+  /** The effective rung a battery needs to install and to fire (K4): a mid-game system. */
+  requiredRadar: ANTI_STRATEGIC.requiredRadar,
+  /**
+   * FOUR LEVELS (owner, 2026-11-24, after the first playtest). Charges 5/10/15/20; a full
+   * refill takes about thirty minutes at every level; each level after the first asks one
+   * Radar rung more. Cheap to open, slowly dearer. Built outside every queue, real minutes.
+   */
+  levels: [
+    { capacity: 5, refillMinutes: 6, requiredRadar: 3, cost: { alloy: 3_000, crystal: 1_800, deuterium: 150 }, buildMinutes: 20 },
+    { capacity: 10, refillMinutes: 3, requiredRadar: 4, cost: { alloy: 6_000, crystal: 3_600, deuterium: 300 }, buildMinutes: 40 },
+    { capacity: 15, refillMinutes: 2, requiredRadar: 5, cost: { alloy: 10_000, crystal: 6_000, deuterium: 500 }, buildMinutes: 60 },
+    { capacity: 20, refillMinutes: 1.5, requiredRadar: 6, cost: { alloy: 15_000, crystal: 9_000, deuterium: 800 }, buildMinutes: 90 },
+  ],
+  /** Replaces `INTEL.detectBase` at level 1 while a charge is ready; slope and floor are the roll's own. */
+  catchBase: 0.5,
+  /** Each level past the first adds a little (owner: "+%2-3 gibi"). */
+  catchPerLevel: 0.03,
+  /** Above `INTEL.detectMax`, below certainty at every level: a probe always has a way through (SB-09). */
+  catchMax: 0.9,
+  /** Shots on one world inside this window share one notification (K7). */
+  noticeWindowMinutes: 10,
+  /** How long a shot stays on the galaxy for a Telescope that identifies the world (plan §3.5). */
+  witnessMinutes: 10,
+  /**
+   * WHERE IT FIRES: this many target radii from the world's centre, out on the probe's own
+   * approach, like an interception (owner playtest: "biraz geriden vurmalı"). A probe holds
+   * at two radii, so the shot comes three radii before it would have stopped.
+   */
+  reachRadii: 5,
+  /**
+   * The battery opens fire this long before its last round reaches the craft (owner playtest,
+   * 2026-11-25: "ateş başlar başlamaz sonda yok oluyor"): every screen hears of the shot while
+   * the craft still flies and plays the rounds climbing to it. The round trip hides inside it.
+   */
+  fireLeadSeconds: 2.4,
 } as const;
 
 export const FUEL = {
@@ -2222,10 +2282,10 @@ export const DISRUPTION = {
  * was removed by owner decision (D14). Nothing is protected for merely being new.
  */
 export const ABUSE = {
-  bashLimit: 3,
+  bashLimit: 2,
   bashWindowMinutes: 720,
   /** Ordinary raids only; the clock starts when combat resolves, not at launch. */
-  personalRaidProtectedTier: 3,
+  personalRaidProtectedTier: 4,
   personalRaidCooldownMinutes: 720,
 
   /**
@@ -2347,7 +2407,7 @@ export const ABUSE = {
    *
    * NET, OVER `recoveryLookbackHours`. The loss is no longer one battle's: see there.
    */
-  recoveryLossHours: 4,
+  recoveryLossHours: 3,
 
   /**
    * HOW FAR BACK A DEFEAT KEEPS COUNTING TOWARD THE NEXT SHIELD. Owner instruction,
@@ -2928,6 +2988,17 @@ export const GALAXY_EVENTS = {
           rewardPoolVersion: 1 as const,
         },
       })),
+    },
+    /**
+     * ASTERYUM FIRTINASI (plan 2026-11-24 §3.2, K3). Every day 21:00–22:00 TRT the Yarık seeds
+     * Asteryum; outside it none spawns. A live season gains it from `season activate-synthesis`.
+     */
+    ASTERIUM_STORM: {
+      schedule: 'FIXED_DAILY',
+      version: 1,
+      windows: [
+        { startsAtLocalMinute: 21 * 60, endsAtLocalMinute: 22 * 60, effect: { fieldVersion: 1 as const } },
+      ],
     },
   },
   mutuallyExclusive: [] as readonly (readonly [string, string])[],
@@ -3876,9 +3947,10 @@ export const DEATH_STAR = {
   perWorld: { base: 1, researched: 2 },
   /**
    * OWNER FIGURES, 2026-10-01, kept as an explicit final price: 88,000 in all, so the
-   * 33,220 charge that stops it is about 38% of it rather than 30%.
+   * 33,220 charge that stops it was about 38% of it rather than 30%. OWNER, 2026-11-24:
+   * a quarter off ("%25 civarı") — 66,000 in all; the battery fell with it, so the share holds.
    */
-  cost: { alloy: 50_000, crystal: 35_000, deuterium: 3_000 },
+  cost: { alloy: 37_500, crystal: 26_250, deuterium: 2_250 },
   /**
    * ONE HOUR. Owner instruction, 2026-09-11: *"ölüm yıldızı üretim süresi 1 saat
    * olmalı"*. The economy table had taken it to four. Retains the current 73.125
@@ -3981,6 +4053,8 @@ export const FAULT = {
    * colony running — or break a colony over a raid the shield called a scratch.
    */
   attackFaults: 2,
+  /** Owner 2026-11-24 (K4): colony fault threshold stays at 4 hours even as Tier 4+ recovery shield drops to 3. */
+  heavyDefeatLossHours: 4,
   /**
    * WHAT A HEAVY DEFEAT MAY NOT BREAK, AND THE REASON IS ANOTHER RULE'S PROMISE.
    *

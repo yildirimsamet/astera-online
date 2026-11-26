@@ -8,7 +8,7 @@ import '../src/i18n/index.js';
 import AdminPanel from '../src/screens/AdminPanel.js';
 
 /**
- * Owner 2026-10-28: every commander may fly the Yarık (`ARENA_PILOTS=*`), so the
+ * Owner 2026-10-28: every commander may fly the Yarık, so the
  * pilot-seat tab is gone from the operator's desk; the desk never asks for seats.
  */
 describe('the admin desk tabs', () => {

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeEach, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { MONUMENT_SEASON_DEFAULTS, RADIATION_BOMB, RADIATION_BOMB_VISUAL, toWorld, worldRadius, travelExact, distance } from '@astera/rules';
+import { MONUMENT_SEASON_DEFAULTS, RADIATION_BOMB, RADIATION_BOMB_VISUAL, resourcesTotal, toWorld, worldRadius, travelExact, distance } from '@astera/rules';
 import { buildings, hpRadiationSources, maintenanceWindows, monuments, notifications, planets, players, radiationBombFlights,
   seasons, strategicAssets } from '../src/db/schema.js';
 import { buildRadiationBomb, launchRadiationBomb, resolveRadiationBomb } from '../src/services/radiationBomb.js';
@@ -43,7 +43,7 @@ it.each(['HIT', 'INEFFECTIVE'] as const)('refreshes spent bomb inventory value o
   f.clock.set(new Date(sent.arriveAt));
   await resolveRadiationBomb(f.db, sent.flightId, f.clock);
   await resolveRadiationBomb(f.db, sent.flightId, f.clock);
-  expect((await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!)))[0]!.wealth).toBe(value - 52000);
+  expect((await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!)))[0]!.wealth).toBe(value - resourcesTotal(RADIATION_BOMB.levels[1].cost));
 });
 
 it.each([1, 2, 3] as const)('freezes L%i flight endpoints outside both bodies so the warhead hits the surface at the unchanged arrival time', async level => {

@@ -17,7 +17,7 @@ export const rewards = {
   summaryReady: "受け取り可能",
   summaryClaimed: "受け取った段階",
   allMilestones: "すべての段階",
-  eyebrow: "常設の報酬",
+  eyebrow: "クエストと目標",
   title: "報酬",
   intro:
     "期限も連続条件もなし。報酬は貯蔵庫へ、保護外の分は略奪されます。",
@@ -40,6 +40,27 @@ export const rewards = {
     poured: '倉庫へ：{{purse}}',
     skinRingHelios: 'ヘリオス・リング',
     skinEngineTitan: 'タイタン・ドライブ',
+  },
+  /** GÜNLÜK GÖREVLER (owner, 2026-11-24): four acts, each paying a small purse once a UTC day. */
+  /** Rewards in two tabs (owner 2026-11-24): the day's quests, and the standing goals. */
+  tabs: {
+    label: '報酬のカテゴリ',
+    daily: 'デイリー',
+    goals: '目標',
+  },
+  daily: {
+    title: 'デイリークエスト',
+    granted: '+{{alloy}}合金・+{{crystal}}クリスタル・+{{honor}} Honor',
+    resets: '{{time}}後に更新',
+    about: 'デイリークエストの仕組み',
+    fact: '各クエストは1日1回報酬を支払います。',
+    rule: '今日の行動が数えられます。1日は全員同時に00:00 UTCで切り替わります。達成したクエストを受け取ると、報酬は首都の倉庫に入ります(略奪される可能性があります)。逃した日に失うものはありません。',
+    quests: {
+      PROBES: '探査機を3機派遣',
+      RIFT: 'Yarıkに入る',
+      PIRATE: '海賊を1体狩る',
+      ASTEROID: '小惑星を1つ採掘',
+    },
   },
   takeAll: 'すべて受け取る · {{count}}',
   go: '行く',

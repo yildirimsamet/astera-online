@@ -2,6 +2,7 @@ import { worldKindKey } from './worldKind.js';
 import { OutpostReading, sealedVictoryCrate } from '../starter/OutpostReading.js';
 import { FlightEscort } from '../ui/FlightEscort.js';
 import { GameActions } from '../session/seasonLock.js';
+import { HonorTargetCard } from '../ui/HonorTargetCard.js';
 import { RadiationBombControl } from '../screens/RadiationBombControls.js';
 import { TargetRadiationInstrument } from '../ui/TargetRadiationInstrument.js';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -31,6 +32,7 @@ import {
   fleetEntries,
   fleetTravelExact,
   STARTER,
+  honorFuelCost,
   missionFuel,
   nextColonyCore,
   telescopeSlots,
@@ -49,6 +51,7 @@ import type {
   Contact,
   PirateContact,
   GalaxyPlanet,
+  HonorTarget,
   IntelView,
   MiningRun,
   PendingThread,
@@ -57,7 +60,7 @@ import type {
   RivalSummary,
   PublicMonument,
 } from '../api/schemas.js';
-import { useGalaxy, useProbe, useSetRival, useWatch } from '../api/queries.js';
+import { useGalaxy, useHonorTarget, useProbe, useSetRival, useWatch } from '../api/queries.js';
 import { useMoonT } from '../i18n/moon.js';
 import { TargetBodyPicker } from '../screens/MoonControls.js';
 import { MissionRetarget } from '../screens/MissionRetarget.js';
@@ -609,6 +612,10 @@ export function PlanetFocus({
     hooks in the same order; only what it draws is a branch.
   */
   const dossierBands = useAccordion('dossier', ['probe']);
+  // Above the owned-world early return so hook order never shifts across focus subjects (React #310).
+  const deathStarHonor = useHonorTarget(
+    onDeathStar && !target.clanmate && target.kind !== 'NEUTRAL' && !target.isSelf ? target.id : null,
+  );
 
   /**
    * IS THE STRIKE BEING ASKED ABOUT. Owner report: *"yanlışlıkla"*.
@@ -744,10 +751,13 @@ export function PlanetFocus({
    * requirement list computing its own arithmetic is a requirement list that
    * eventually disagrees with the server it is predicting.
    */
-  const settlementFuel = missionFuel(
-    { COURIER: MULTI_WORLD.settlement.transports },
-    distance(planet.planet.position, target.position),
-    1,
+  const settlementFuel = honorFuelCost(
+    missionFuel(
+      { COURIER: MULTI_WORLD.settlement.transports },
+      distance(planet.planet.position, target.position),
+      1,
+    ),
+    planet.honorBenefits,
   );
   /*
     THE FOUNDING STOCK COMES OFF THE TOP, exactly as the server's guard counts it:
@@ -1013,6 +1023,7 @@ export function PlanetFocus({
             <span className="gk-label">{t('dossier.page.value')}</span>
             <span className="gk-num">{peekPower}</span>
           </p>
+          {probeControl && <ProbeBatteryHint targetId={target.id} intel={intel} now={now} />}
           <div className="gk-focus__pair">
             {probeControl}
             {attackControl}
@@ -1107,6 +1118,7 @@ export function PlanetFocus({
             </GameButton>
             {clanTargetRefusal && <p className="gk-sub">{clanTargetRefusal}</p>}
           </div>}
+          {probeControl && <ProbeBatteryHint targetId={target.id} intel={intel} now={now} />}
           {(probeControl || attackControl) && (
             <div className="gk-focus__pair gk-focus__wide">
               {probeControl}
@@ -1277,6 +1289,7 @@ export function PlanetFocus({
           now={now}
           disabledReason={deathStarBlock}
           onLaunch={onDeathStar}
+          honorTarget={deathStarHonor.data}
         />
       )}
       {planet.radiationBombsAvailable && !target.clanmate && <RadiationBombControl collapsible origin={planet}
@@ -1399,7 +1412,7 @@ function WeaponHonor({ credit, children }: { credit: boolean; children: ReactNod
  * HELD, NOT CONFIRMED (K4, B9: every launch and the Death Star). The hold is the only press
  * that spends it; a tap does nothing, and folding the section is the way back.
  */
-export function DeathStarSection({ target, origin, report, moon = null, now, disabledReason, onLaunch }: {
+export function DeathStarSection({ target, origin, report, moon = null, now, disabledReason, onLaunch, honorTarget }: {
   target: GalaxyPlanet;
   origin: PlanetView;
   report?: ProbeReading | undefined;
@@ -1408,6 +1421,7 @@ export function DeathStarSection({ target, origin, report, moon = null, now, dis
   /** Why it cannot fly right now; the hold shows it instead of arming. */
   disabledReason: string | null;
   onLaunch: (targetBody?: WorldBody) => void;
+  honorTarget?: HonorTarget | undefined;
 }) {
   const { t } = useTranslation();
   const tMoon = useMoonT();
@@ -1455,6 +1469,7 @@ export function DeathStarSection({ target, origin, report, moon = null, now, dis
           )}
         </div>
       )}
+      {honorTarget ? <HonorTargetCard value={honorTarget} /> : null}
       {effectiveBody === 'PLANET' && <StrikeDetails target={target} report={report} origin={origin} />}
       {/* A weapon fired is gone and cannot be called back: the kit's final weight, 1.5 s. */}
       <GameHold weight="final" tone="danger" glyph="target" commitSound="impact" marks={{ 'data-death-star': '' }}
@@ -1473,6 +1488,7 @@ export function StrikeSheet({
   onConfirm,
   onClose,
   origin,
+  honorTarget,
 }: {
   target: GalaxyPlanet;
   /** The world the weapon leaves from: the selected one, whose pad this launch spends. */
@@ -1481,6 +1497,7 @@ export function StrikeSheet({
   report?: ProbeReading | undefined;
   onConfirm: () => void;
   onClose: () => void;
+  honorTarget?: HonorTarget | undefined;
 }) {
   const { t } = useTranslation();
   const world = target.intel === 'UNKNOWN'
@@ -1502,6 +1519,7 @@ export function StrikeSheet({
       )}
     >
       <div data-strike-sheet className="gk gk-strike__body">
+        {honorTarget ? <HonorTargetCard value={honorTarget} /> : null}
         <StrikeDetails target={target} report={report} origin={origin} />
       </div>
     </V2Sheet>,
@@ -2424,6 +2442,26 @@ function ProbeControl({
       {t('focus.planet.probeShort')}
     </GameButton>
   );
+}
+
+/**
+ * WHAT THE LAST LOOK SAID ABOUT THEIR PROBE BATTERY, BESIDE THE LAUNCH (2026-11-24, plan §4).
+ * The charges are exact at the look; their Radar is not known, so no chance is printed — the
+ * rule lives on the dossier row. A probe shot down there since the report says so instead.
+ */
+function ProbeBatteryHint({ targetId, intel, now }: { targetId: string; intel: IntelView | undefined; now: number }) {
+  const { t } = useTranslation();
+  const report = intel?.probeReports
+    .filter((row) => row.targetPlanetId === targetId)
+    .reduce<IntelView['probeReports'][number] | null>((best, row) => (best === null || row.at > best.at ? row : best), null) ?? null;
+  const loss = intel?.probeLosses?.find((row) => row.targetPlanetId === targetId) ?? null;
+  const text = loss !== null && (report === null || loss.at > report.at)
+    ? t('focus.planet.probeLostHint', { age: staleness((now - loss.at.getTime()) / 60_000) })
+    : report?.probeBattery
+      ? t('focus.planet.probeBatteryHint', { ready: report.probeBattery.ready, capacity: report.probeBattery.capacity })
+      : null;
+  if (text === null) return null;
+  return <p data-probe-battery-hint="" className="gk-sub gk-focus__hint"><Glyph id="target" />{text}</p>;
 }
 
 /* ── a rock crossing the disc ────────────────────────────────── */

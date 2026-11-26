@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefCallback } from 'react';
-import { ARENA_TUNING as T, FARM_POINTS, SHIP_CLASSES, TACTICS, alive, createInput, createSandboxWorld, holdPoints, sameSide, type ArenaWorld, type Pilot, type ShipClass,
+import { ARENA_TUNING as T, SHIP_CLASSES, TACTICS, alive, createInput, createSandboxWorld, sameSide, type ArenaWorld, type Pilot, type ShipClass,
   type SteeringSettings, type Tactic, type TeamView } from '@astera/rules/arena';
 import { GameButton, Glyph, Slider, Toggle } from '../game-ui/index.js';
 import { ClassPicker, TacticPicker } from './ClassPicker.js';
-import { SortieSummary, launchText } from './Hangar.js';
+import { HaulChip, SortieSummary, launchText } from './Hangar.js';
 import { debriefText, pilotName, readDebrief, type Debrief } from './debrief.js';
 import { capLeft, fetchHangar, launchBlock, refusedAtHangar, stillFlying, type HangarAnswer, type LaunchBlock } from './hangarDesk.js';
-import { FARM_TONE } from './farmColors.js';
 import { arenaGraphics, setArenaGraphics, type ArenaGraphicsChoice } from './graphics.js';
 import { GraphicsPicker } from './GraphicsPicker.js';
 import { LoopLine } from './LoopLine.js';
@@ -20,7 +19,7 @@ import { createArenaAudio } from './audio.js';
 import { createArenaClient, type ArenaClient, type HudRefs } from './client.js';
 import { FlightControls, aimKey } from './Controls.js';
 import { ModelCredits } from './credits.js';
-import { ArenaHud, type HudBind } from './Hud.js';
+import { ArenaHud, StormChip, type HudBind } from './Hud.js';
 import { GAME_KEY, MOUSE_POINTER, ONE_PRESS_KEYS, createControls } from './input.js';
 import { createArenaNetwork, type Standing } from './network.js';
 import { createHudStore } from './store.js';
@@ -169,7 +168,9 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     // The load uses the page's one transcoder (the hangar's, already warm); the flight has no use
     // for its worker and WebAssembly heap, so they go once the load has ended, however it ended.
     const loading = references.then(on => live ? loadArenaAssets(on, 16, p => { if (live) setProgress(p); }) : null);
-    void loading.finally(releaseKtx2).catch(() => undefined);
+    // Only a load that ran lets the transcoder go. A mount taken back before it began (StrictMode) would pull
+    // the hangar's warm one from under the load that replaced it, and that load sat at 1% for good (2026-11-25).
+    void loading.then(result => { if (result) releaseKtx2(); }, () => { releaseKtx2(); });
     void loading.then(result => {
       if (!live || !result) return;
       diag.push(`assets ${String(Math.round(performance.now() - started))} ms · models ${String(result.colliders.size + result.rivals.length + result.classes.size + 1)} · fx ${String(result.fx.size)} · tex ${String(Math.round(assetTextureBytes(result) / 1048576))} MB`);
@@ -418,7 +419,8 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   const flown = result === 'extracted' ? status.hold : lastHold.current;
   // A recall is the server's word, after the fact; the moment of the end cannot know it.
   const what: Debrief | null = real && connection.sortie?.outcome === 'recalled' ? { kind: 'recalled' } : debrief;
-  const flownPoints = holdPoints(flown);
+  // Whole units the flight carried: what the result lists (no points, owner 2026-11-25).
+  const flownUnits = flown.reduce((sum, units) => sum + Math.floor(units), 0);
   return <main ref={root} className={`arena-root screen-${screen}`} onContextMenu={event => { event.preventDefault(); }} data-arena="sandbox" data-screen={screen}
     onPointerDown={event => {
       // A click in the sky takes the mouse for steering (desktop); a key, the menu or a finger never does.
@@ -439,12 +441,16 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
       <PingWheel c={c} aim={(x, y) => client.current?.aim(x, y) ?? null} locked={mouse} onHold={held => { pingHeld.current = held; }}
         onPing={(kind, target) => { if (target) { client.current?.ping(kind, target); audio.ui(true); } }} />
       <ArenaHud store={store} bind={bind} layout={world.layout} map={map} onMap={setMap} onMenu={() => { audio.ui(); controls.clear(); setMenu(true); }}
-        connection={mode === 'online' ? <div className={`ah-link is-${connection.phase}`}>
+        connection={mode === 'online' && connection.phase !== 'failed' ? <><div className={`ah-link is-${connection.phase}`}>
           {connection.phase === 'online' ? <><i role="img" aria-label={c.live} /><span>{standingLine(connection.board, c)}</span><small>{connection.rtt} ms</small></>
-            : connection.phase === 'failed' ? <><span>{c.kicks[connection.reason] ?? c.connectionFailed}</span>
-              {/* Reconnecting cannot help a refusal or an outdated page. */}
-              {connection.reason !== 'denied' && connection.reason !== 'version' && <button onClick={() => { network.connect(ship, tactic, false, tactic2); }}>{c.reconnect}</button>}</>
-              : <span>{connection.phase === 'reconnecting' ? c.reconnecting : c.connecting}</span>}
+            : <span>{connection.phase === 'reconnecting' ? c.reconnecting : c.connecting}</span>}
+        </div>
+        {/* G16: the Asteryum Fırtınası, while it blows, under the link line. */}
+        <StormChip active={connection.phase === 'online' && connection.storm} c={c} /></> : null}
+        alert={mode === 'online' && connection.phase === 'failed' ? <div className="ah-link is-failed">
+          <span>{c.kicks[connection.reason] ?? c.connectionFailed}</span>
+          {/* Reconnecting cannot help a refusal or an outdated page. */}
+          {connection.reason !== 'denied' && connection.reason !== 'version' && <button onClick={() => { network.connect(ship, tactic, false, tactic2); }}>{c.reconnect}</button>}
         </div> : null} />
       <FlightControls controls={controls} store={store} nameOf={id => pilotName(id, c, world, network)}
         onLand={() => { if (client.current?.land()) audio.ui(true); }} onCancel={() => { client.current?.cancelLanding(); audio.ui(); }} />
@@ -500,19 +506,13 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
         <p className="gk-label">{c.brand}</p>
         <h2 className="gk-display gk-arenacard__title">{c[result]}</h2>
         {what && <p className="gk-arenacard__what" data-debrief={what.kind}><span className="gk-label">{c.debrief.title}</span>{debriefText(what, c, id => pilotName(id, c, world, network))}</p>}
-        {real ? <SortieSummary c={c} report={connection.sortie} hold={flown} now={now} /> : flownPoints > 0 && <>
-          <p className="gk-arenacard__points" data-tone={result === 'extracted' ? 'self' : 'hostile'}>
-            <strong className="gk-num">{result === 'extracted' ? '+' : '−'}{flownPoints}</strong> {c.pointsShort}
-            {result !== 'extracted' && <small> {c.lostPoints}</small>}
-          </p>
-          <ul className="gk-arenahaul">{flown.map((units, kind) => Math.floor(units) > 0 && <li key={kind} className="gk-haulchip" style={{ '--tone': FARM_TONE[kind] } as React.CSSProperties}>
-            <i aria-hidden /><b className="gk-num">{Math.floor(units)}</b> {c.kinds[kind]} <small>×{FARM_POINTS[kind]}</small></li>)}</ul>
-        </>}
+        {real ? <SortieSummary c={c} report={connection.sortie} hold={flown} now={now} /> : flownUnits > 0
+          && <ul className="gk-arenahaul">{flown.map((units, kind) => Math.floor(units) > 0 && <HaulChip key={kind} kind={kind}>
+            <b className="gk-num">{Math.floor(units)}</b> {c.kinds[kind]}</HaulChip>)}</ul>}
         {/* What the ending meant for the hold: nothing is said scattered or left behind when nothing was carried. */}
-        {!(real && result === 'extracted') && what?.kind !== 'recalled' && <p className="gk-sub">{result === 'extracted' ? flownPoints > 0 ? c.extractedHint : c.emptyHint
-          : flownPoints > 0 ? result === 'dead' ? c.deadHint : c.towedHint : c.emptyLoss}</p>}
+        {!(real && result === 'extracted') && what?.kind !== 'recalled' && <p className="gk-sub">{result === 'extracted' ? flownUnits > 0 ? c.extractedHint : c.emptyHint
+          : flownUnits > 0 ? result === 'dead' ? c.deadHint : c.towedHint : c.emptyLoss}</p>}
         <dl className="gk-figures gk-arenacard__stats">
-          {!real && <div className="gk-figure"><dt className="gk-label">{c.delivered}</dt><dd className="gk-num gk-figure__value">{result === 'extracted' ? flownPoints : 0}</dd></div>}
           <div className="gk-figure"><dt className="gk-label">{c.hits}</dt><dd className="gk-num gk-figure__value">{status.hits}</dd></div>
           <div className="gk-figure"><dt className="gk-label">{c.kills}</dt><dd className="gk-num gk-figure__value">{status.kills}</dd></div>
         </dl>
@@ -532,8 +532,9 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
       <FlightSettings c={c} settings={settings} audio={audio} graphics={graphics} onGraphics={pickGraphics} />
       <p className="gk-note gk-arenadock__keys">{c.keyboard}</p>
       <GameButton tone="action" size="lg" wide glyph="rocket" onPress={() => { audio.ui(); setMenu(false); takeMouse(); }}>{c.resume}</GameButton>
-      <GameButton size="sm" tone="ghost" glyph="home" className="gk-arenadock__leave" onPress={leave}>{c.leave}</GameButton>
+      {/* Owner 2026-11-25: the credits above leaving, and smaller. */}
       <ModelCredits c={c} />
+      <GameButton size="sm" tone="ghost" glyph="home" className="gk-arenadock__leave" onPress={leave}>{c.leave}</GameButton>
     </section></div>}
     {import.meta.env.DEV && <button className="arena-dev" onClick={() => { setDiagOpen(open => !open); }}>
       fps {Math.round(client.current?.metrics.fps ?? 0)} · {T.tickRate} Hz · tanı</button>}
@@ -578,22 +579,22 @@ function signatureMode(world: ArenaWorld, ship: ShipClass = world.pilot.ship) {
     friends: () => world.drones.filter(drone => drone.decoyOf < 0 && alive(drone) && sameSide(world.pilot, drone)).length };
 }
 
-/** "Rank 1/3 · 120 pts" — where you stand, in the number the room is won on. */
-function standingLine(board: readonly Standing[], c: ArenaCopy): string {
+/** "Rank 1/3 · 2 kills": where you stand in the room's record (no points, owner 2026-11-25). */
+export function standingLine(board: readonly Standing[], c: ArenaCopy): string {
   const index = board.findIndex(row => row.self);
   const self = board[index];
   if (!self || board.length < 2) return c.alone;
-  return `${c.rank} ${String(index + 1)}/${String(board.length)} · ${String(self.points)} ${c.pointsShort}`;
+  return `${c.rank} ${String(index + 1)}/${String(board.length)} · ${String(self.kills)} ${c.killsShort}`;
 }
 
-function Standings({ board, c }: { board: readonly Standing[]; c: ArenaCopy }) {
+export function Standings({ board, c }: { board: readonly Standing[]; c: ArenaCopy }) {
   if (board.length === 0) return null;
   return <section className="gk-arenaboard" aria-label={c.standings}>
     <header><p className="gk-label">{c.standings}</p><small className="gk-sub">{c.standingsRule}</small></header>
     <table>
-      <thead><tr><th scope="col">#</th><th scope="col" /><th scope="col">{c.pointsCol}</th><th scope="col">{c.killsCol}</th><th scope="col">{c.deathsCol}</th></tr></thead>
+      <thead><tr><th scope="col">#</th><th scope="col" /><th scope="col">{c.killsCol}</th><th scope="col">{c.deathsCol}</th></tr></thead>
       <tbody>{board.map((row, i) => <tr key={row.id} {...(row.self ? { 'data-self': '' } : {})}>
-        <td className="gk-num">{i + 1}</td><td>{row.self ? `${row.name} · ${c.you}` : row.name}</td><td className="gk-num">{row.points}</td><td className="gk-num">{row.kills}</td><td className="gk-num">{row.deaths}</td>
+        <td className="gk-num">{i + 1}</td><td>{row.self ? `${row.name} · ${c.you}` : row.name}</td><td className="gk-num">{row.kills}</td><td className="gk-num">{row.deaths}</td>
       </tr>)}</tbody>
     </table>
   </section>;

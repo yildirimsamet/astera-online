@@ -25,8 +25,13 @@ import { ARENA_POOLS } from './pools.js';
  * 16: a second tactic, independent wait and rank in the owning row; hello and team launch freeze both.
  * 15: hulls 50 % stronger (owner 2026-10-27): the rows are as before, but a page on 14 would bound
  *    them by the old hulls and refuse a 900 Muhafız, so it is told to reload.
+ * 17: Asteryum (plan 2026-11-24 §3.2): the own row carries a fourth hold slot, right after deuterium.
+ * 18: the Asteryum Fırtınası in the room (G16): `welcome` says whether it blows, and a `storm` message
+ *    tells every pilot when it turns. A page on 17 would refuse the unknown message, so it is told to reload.
+ * 19: the storm grows its own pieces in cargo slots after the wrecks' (owner 2026-11-25): a page on 18 has
+ *    a shorter cargo pool and would drop them, so it is told to reload. The roster rows carry no points.
  */
-export const ARENA_PROTOCOL = 16;
+export const ARENA_PROTOCOL = 19;
 /** Other ships one snapshot carries, every tier together: the nearest first (owner: room seats / 2). */
 export const MAX_REMOTE_PILOTS = 50;
 /**
@@ -48,7 +53,7 @@ export const FAR_WIDTH = 10;
 export const ARENA_MAX_SEATS = 120;
 export const ARENA_ROSTER_MAX = ARENA_MAX_SEATS * 2 + 8;
 /** Numbers per packed pilot. The phase is always the last one, the class just before it. */
-export const PILOT_WIDTH = 75;
+export const PILOT_WIDTH = 76;
 
 /** Numeric tuples preserve full self precision and bound prototype traffic. The shared rows are an `ArenaFeed`. */
 export interface ArenaSnapshot extends ArenaFeed {
@@ -67,7 +72,7 @@ export function packPilot(p: Pilot): number[] {
     p.hull, p.shield, p.cloak, p.cloakCooldown, p.smokeCooldown, p.smokeEmit, p.turboCharge, p.turboDelay, p.turboBurst,
     Number(p.turboActive), p.nextShot, p.gun, p.cargo, p.hits, p.kills, p.level, p.mendPower, p.lastDamage, p.lastAttacker, p.extraction,
     p.rescue, p.respawn, p.shots, p.linkLost, Number(p.mining), p.tacticCooldown, p.decoy, p.scan, TACTICS.indexOf(p.tactic), p.signatureCooldown, p.lockTarget, p.lockTicks,
-    p.threat, p.threatX, p.threatY, p.threatZ, p.ward, p.mend, p.ammo, p.shieldHp, p.shieldMax, p.hold[0] ?? 0, p.hold[1] ?? 0, p.hold[2] ?? 0,
+    p.threat, p.threatX, p.threatY, p.threatZ, p.ward, p.mend, p.ammo, p.shieldHp, p.shieldMax, p.hold[0] ?? 0, p.hold[1] ?? 0, p.hold[2] ?? 0, p.hold[3] ?? 0,
     p.ranks.signature, p.ranks.tactic, p.ranks.turbo,
     p.tactic2 === null ? -1 : TACTICS.indexOf(p.tactic2), p.tactic2Cooldown, p.ranks.tactic2,
     SHIP_CLASSES.indexOf(p.ship), PHASES.indexOf(p.phase)];
@@ -91,7 +96,7 @@ export function unpackPilot(values: readonly number[], out: Pilot = createPilot(
   out.tactic = TACTICS[next()] ?? 'smoke'; out.signatureCooldown = next(); out.lockTarget = next(-1); out.lockTicks = next();
   out.threat = next(); out.threatX = next(); out.threatY = next(); out.threatZ = next(); out.ward = next(); out.mend = next();
   out.ammo = next(); out.shieldHp = next(); out.shieldMax = next();
-  out.hold = [next(), next(), next()];
+  out.hold = [next(), next(), next(), next()];
   out.ranks = { signature: next(1), tactic: next(1), turbo: next(1), tactic2: 1 };
   const tactic2 = next(-1); out.tactic2 = TACTICS[tactic2] ?? null; out.tactic2Cooldown = next(); out.ranks.tactic2 = next(1);
   out.ship = SHIP_CLASSES[next()] ?? 'kilavuz';
@@ -165,9 +170,9 @@ function validPilot(value: number[]): boolean {
   const level = value[LEVEL_AT] ?? -1;
   if (!Number.isInteger(level) || level < 1 || level > ARENA_PROGRESSION.maxLevel) return false;
   const most = shipStats(ship, level);
-  const ammo = value[PILOT_WIDTH - 14] ?? -1; const shieldHp = value[PILOT_WIDTH - 13] ?? -1; const shieldMax = value[PILOT_WIDTH - 12] ?? -1;
+  const ammo = value[PILOT_WIDTH - 15] ?? -1; const shieldHp = value[PILOT_WIDTH - 14] ?? -1; const shieldMax = value[PILOT_WIDTH - 13] ?? -1;
   const fuel = value[12] ?? -1; const hull = value[23] ?? -1;
-  const tactic = value[PILOT_WIDTH - 24] ?? -1; const threat = value[PILOT_WIDTH - 20] ?? -1; const decoy = value[PILOT_WIDTH - 26] ?? -2;
+  const tactic = value[PILOT_WIDTH - 25] ?? -1; const threat = value[PILOT_WIDTH - 21] ?? -1; const decoy = value[PILOT_WIDTH - 27] ?? -2;
   const tactic2 = value[PILOT_WIDTH - 5] ?? -2; const wait2 = value[PILOT_WIDTH - 4] ?? -1; const rank2 = value[PILOT_WIDTH - 3] ?? -1;
   return Number.isInteger(tactic2) && tactic2 >= -1 && tactic2 < TACTICS.length && tactic2 !== tactic
     && Number.isInteger(wait2) && wait2 >= 0 && Number.isInteger(rank2) && rank2 >= 1 && rank2 <= 5
@@ -177,7 +182,7 @@ function validPilot(value: number[]): boolean {
     && (value[LEVEL_AT + 1] ?? -1) >= 0 && (value[LEVEL_AT + 1] ?? -1) <= T.mendHp * 1.4
     && fuel >= 0 && fuel <= most.fuelTank && hull >= 0 && hull <= most.hull
     && ammo >= 0 && ammo <= most.ammoCapacity && shieldMax >= 0 && shieldHp >= 0 && shieldHp <= shieldMax
-    && value.slice(PILOT_WIDTH - 11, PILOT_WIDTH - 8).every(units => units >= 0 && units <= most.cargoCapacity + 1e-6)
+    && value.slice(PILOT_WIDTH - 12, PILOT_WIDTH - 8).every(units => units >= 0 && units <= most.cargoCapacity + 1e-6)
     && value.slice(PILOT_WIDTH - 8, PILOT_WIDTH - 5).every(rank => Number.isInteger(rank) && rank >= 1 && rank <= 5);
 }
 /** The sturdiest hull any class reaches: another ship's row says nothing of its class or level. */

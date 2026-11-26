@@ -228,8 +228,9 @@ it('reads a plain commander\'s four worlds for the price of one', async () => {
   const report = `view: one ${one.view}, four ${four.view}, detail ${detail.view}`;
 
   expect(four.view - one.view, report).toBe(0);
-  expect(four.view, report).toBeLessThanOrEqual(32);
-  expect(detail.view, report).toBeLessThanOrEqual(32);
+  // +1 on 2026-11-24: the probe battery's own table, read once for every world.
+  expect(four.view, report).toBeLessThanOrEqual(33);
+  expect(detail.view, report).toBeLessThanOrEqual(33);
 });
 
 it('keeps a rich commander\'s list far below its old per-world price', async () => {
@@ -241,8 +242,8 @@ it('keeps a rich commander\'s list far below its old per-world price', async () 
   // A stationed clan wave brings its own names, ships and radiation: once, not per world.
   // A world under a bomb's aura still projects its dose with reads of its own (repair,
   // research, hardware, path, tech, lots); only that world pays them, and it is rare.
-  expect(four.view, report).toBeLessThanOrEqual(50);
-  expect(detail.view, report).toBeLessThanOrEqual(50);
+  expect(four.view, report).toBeLessThanOrEqual(51);
+  expect(detail.view, report).toBeLessThanOrEqual(51);
 });
 
 it('reads every world inside one read-only snapshot and renders after it commits', async () => {

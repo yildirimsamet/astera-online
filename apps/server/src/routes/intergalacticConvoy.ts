@@ -31,7 +31,7 @@ const convoyLaunchBody = z.object({
   quotedFlightSeconds: z.number().finite().nonnegative(),
   quotedArriveAt: z.string().datetime({ offset: true }),
   acknowledgeRadiationLoss: z.boolean().optional(),
-  expectedHonorTier: z.union([z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional(),
+  expectedHonorTier: z.union([z.literal(-4), z.literal(-3), z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional(),
 }).strict();
 
 const idempotencyKey = (req: FastifyRequest): string => {

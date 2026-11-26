@@ -138,6 +138,28 @@ export const planet = {
     needOperational: "World operational",
     buildSecond: "Load another charge",
   },
+  probeBattery: {
+    eyebrow: "Probe defence battery",
+    none: "Not installed",
+    building: "Installing · {{duration}}",
+    ready: "Armed · probes are easier to catch here",
+    next: "Next charge {{duration}}",
+    recent: "Last {{minutes}} min: {{count}} shot down",
+    empty: "No charge · next {{duration}}. With no charge your world is as if it had no battery.",
+    offline: "Offline · {{reason}}",
+    offlineEmp: "an EMP is in effect",
+    offlineRecovery: "the world is recovering",
+    offlineRadar: "needs effective Radar {{level}}",
+    short: "Shoots down the probes it catches on their approach.",
+    hint: "While it holds a charge this world catches probes more easily: {{base}}% + 13% × (Radar − the sender's Shipyard), at most {{max}}%. A caught probe is shot down on its approach and brings no report. It catches a probe from a Shipyard like yours {{example}}% of the time. Level {{level}}: {{capacity}} charges, one refilled free every {{minutes}} minutes; each level adds {{step}}% to the catch. With no charge your world is as if it had no battery.",
+    build: "Install the battery",
+    started: "Battery installing",
+    level: "Lv {{level}}",
+    upgrade: "Upgrade · Lv {{level}}",
+    upgradeNote: "Lv {{level}}: {{capacity}} charges · catch +{{step}}%",
+    upgrading: "Lv {{level}} upgrade · {{duration}}",
+    upgradeStarted: "Battery upgrading",
+  },
 
   deathStar: {
     empDuration: "EMP duration",
@@ -172,6 +194,9 @@ export const planet = {
     growQuestion: "Grow your resources and building level limit here.",
     tacticalProblem: "Tactical",
     tacticalQuestion: "Build and manage tactical tools here.",
+    bays: "Tactical bays",
+    weaponsBay: "Weapons",
+    labBay: "Laboratory",
   },
 
 

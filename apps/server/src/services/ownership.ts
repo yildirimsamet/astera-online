@@ -20,7 +20,9 @@ import { releaseSupportForWorldChange } from './clanSupport.js';
 import { armFaults } from './faults.js';
 import { prepareMonumentOriginChange, reanchorMonumentOrigin } from './monumentOwnership.js';
 import { observeHonorOwner } from './honorReference.js';
+import { honorProductionShareFrom, readHonorBenefits } from './honorBenefits.js';
 import { stopUnknownSignalSchedule } from './unknownSignalSchedule.js';
+import { settleWorldMoonAsterium } from './synthesis.js';
 
 export interface CommanderWorld {
   playerId: string;
@@ -311,6 +313,8 @@ export async function transferPlanetControl(
   input: TransferControlInput,
 ): Promise<{ previousPlayerId: string | null; planetId: string }> {
   await prepareMonumentOriginChange(tx, input.targetPlanetId);
+  // The moon's Asteryum up to now is the old holder's; the captor's starts here (plan §3.3).
+  await settleWorldMoonAsterium(tx, input.targetPlanetId, input.now, { newHolder: true });
   const [pair] = await tx
     .select({
       planetSeason: planets.seasonId,
@@ -341,6 +345,7 @@ export async function transferPlanetControl(
     });
   }
 
+  const nextHonorShare = honorProductionShareFrom(await readHonorBenefits(tx, pair.planetSeason, input.newPlayerId));
   const expected = input.expectedControllerPlayerId === null
     ? isNull(planets.controllerPlayerId)
     : eq(planets.controllerPlayerId, input.expectedControllerPlayerId);
@@ -357,8 +362,9 @@ export async function transferPlanetControl(
       disruptedUntil: null,
       lastTickAt: input.now,
       statsOwnerPlayerId: input.newPlayerId,
-      // F2 Ortak Ocak: the old clan's share stays with the old clan; the new owner's next write sets theirs.
+      // F2 Ortak Ocak: reset to 0 on transfer; Honor Tier -4: immediately apply the new owner's share.
       clanBonus: 0,
+      honorProductionShare: nextHonorShare,
       /*
         A WORLD THAT CHANGES HANDS STARTS ITS LOYALTY AGAIN. Koloni arızaları.
 

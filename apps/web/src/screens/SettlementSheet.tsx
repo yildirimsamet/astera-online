@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MULTI_WORLD, distance, fleetTravelExact, missionFuel } from '@astera/rules';
-import type { GalaxyPlanet, PlanetView } from '../api/schemas.js';
+import { MULTI_WORLD, distance, fleetTravelExact, honorFuelCost, missionFuel } from '@astera/rules';
+import type { CapsuleIdView, GalaxyPlanet, PlanetView } from '../api/schemas.js';
+import { capsuleChoices } from '../lib/synthesis.js';
+import { CapsuleRow } from '../ui/CapsuleRow.js';
 import { full } from '../lib/format.js';
 import { flightModifiers } from '../lib/navigation.js';
 import { launchFault } from '../lib/faults.js';
@@ -26,17 +29,24 @@ export function SettlementSheet({
   pending,
   onClose,
   onConfirm,
+  capsuleStock = null,
 }: {
   target: GalaxyPlanet;
   planet: PlanetView;
   now: number;
   pending: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  /** The capsules the Couriers wear: Optik Örtü or nothing (plan 2026-11-24 §3.5). */
+  onConfirm: (capsules: CapsuleIdView[]) => void;
+  /** Sentez capsules held, or null where the galaxy has no laboratory. */
+  capsuleStock?: Record<CapsuleIdView, number> | null;
 }) {
   const { t } = useTranslation();
   const launchBlocked = launchFault(planet.faults, 'fleet') !== null;
   const fleet = { COURIER: MULTI_WORLD.settlement.transports } as const;
+  const [capsules, setCapsules] = useState<CapsuleIdView[]>([]);
+  const wearing = capsuleStock ? capsuleChoices('settlement', fleet, capsuleStock)
+    .filter((one) => one.enough && capsules.includes(one.id)).map((one) => one.id) : [];
   const span = distance(planet.planet.position, target.position);
   /*
     THE COMMANDER'S LADDER, AND DELIBERATELY NOT THEIR BEACON. D180.
@@ -51,7 +61,7 @@ export function SettlementSheet({
   const travelMinutes = fleetTravelExact(
     span, fleet, { boost: 1, tech: flightModifiers(planet).tech },
   );
-  const fuel = missionFuel(fleet, span, 1);
+  const fuel = honorFuelCost(missionFuel(fleet, span, 1), planet.honorBenefits);
   const closesIn = Math.max(0, (target.neutral?.claimUntil?.getTime() ?? now) - now);
   /*
     THE RAIDER'S OWN HOUR (owner, 2026-10-07). Inside it nobody else may land, so a raider
@@ -98,7 +108,7 @@ export function SettlementSheet({
             disabledReason={launchBlocked
               ? t('faults.launchBlock.SHIPYARD_REVOLT')
               : pending ? t('focus.planet.settlementConfirm.confirming') : null}
-            onCommit={onConfirm}
+            onCommit={() => { onConfirm(wearing); }}
           />
         </div>
       }
@@ -122,6 +132,9 @@ export function SettlementSheet({
         <p className="gk-sub gk-race__fixed"><Glyph id="lock" />{t('focus.planet.settlementConfirm.noRecall')}</p>
       </section>
 
+      {/* The veil takes the Couriers off every rival's map: the race does not see them coming. */}
+      {capsuleStock && <CapsuleRow kind="settlement" fleet={fleet} held={capsuleStock} chosen={capsules} onChange={setCapsules} />}
+
       {/* What leaves, in the store's own pictures; what the store cannot pay yet wears the warning. */}
       <dl className="gk-well gk-figures gk-figures--well">
         <div className="gk-figure">
@@ -144,7 +157,14 @@ export function SettlementSheet({
         </div>
         <div className="gk-figure">
           <dt className="gk-label">{t('focus.planet.settlementConfirm.fuel')}</dt>
-          <dd className="gk-figure__value"><CostLine cost={{ alloy: 0, crystal: 0, deuterium: fuel }} held={planet.planet} /></dd>
+          <dd className="gk-figure__value">
+            <CostLine cost={{ alloy: 0, crystal: 0, deuterium: fuel }} held={planet.planet} />
+            {(planet.honorBenefits?.fuelPct ?? 0) > 0 && (
+              <span className="gk-sub" data-tone="hostile" data-honor-fuel-penalty>
+                {` · ${t('honorBenefits.fuel')} +${String(planet.honorBenefits!.fuelPct)}%`}
+              </span>
+            )}
+          </dd>
         </div>
       </dl>
 

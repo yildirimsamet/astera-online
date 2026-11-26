@@ -66,7 +66,7 @@ describe('Honor is always active in competitive galaxies', () => {
     const before = await f.db.select().from(honorSeasons);
     f.clock.advance(60);
     await ensureMainHonorRankings(f.db, f.clock);
-    expect(await f.db.select().from(honorSeasons)).toEqual(before);
+    expect(await f.db.select().from(honorSeasons)).toEqual(before.map(row => ({ ...row, benefitsVersion: 2 })));
     expect((await f.db.select().from(honorTotals))[0]?.score).toBe(1_234_567);
   });
 

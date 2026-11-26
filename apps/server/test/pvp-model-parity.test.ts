@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LOW_TIER_PVP_BALANCE, STANDARD_PVP_BALANCE, vaultProtects } from '@astera/rules';
+import { LOW_TIER_PVP_BALANCE, MID_TIER_PVP_BALANCE, STANDARD_PVP_BALANCE, vaultProtects } from '@astera/rules';
 import { probeIntel, simCommanderPvpBalance } from '../../../packages/sim/src/season.js';
 import { raidableNow } from '../../../packages/sim/src/invariants.js';
 
@@ -32,6 +32,8 @@ describe('PvP model adapters use the shipped loot profile', () => {
     ] };
     expect(simCommanderPvpBalance(world, player)).toEqual(LOW_TIER_PVP_BALANCE);
     world.neutrals[1]!.buildings.CORE = 10;
+    expect(simCommanderPvpBalance(world, player)).toEqual(MID_TIER_PVP_BALANCE);
+    world.neutrals[1]!.buildings.CORE = 16;
     expect(simCommanderPvpBalance(world, player)).toEqual(STANDARD_PVP_BALANCE);
   });
 });
