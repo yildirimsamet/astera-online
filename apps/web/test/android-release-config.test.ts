@@ -9,11 +9,16 @@ let project: string;
 let keystore: string;
 let passwordFile: string;
 let env: Record<string, string | undefined>;
+const FIREBASE = 'apps/web/android/app/google-services.json';
+const firebase = (pkg: string) => JSON.stringify({ project_info: { project_id: 'fixture' },
+  client: [{ client_info: { mobilesdk_app_id: '1:1:android:1', android_client_info: { package_name: pkg } } }] });
 
 beforeEach(() => {
   directory = mkdtempSync(join(tmpdir(), 'astera-release-config-'));
   project = join(directory, 'project'); mkdirSync(project);
   keystore = join(directory, 'upload.p12'); passwordFile = join(directory, 'password.txt');
+  mkdirSync(join(project, 'apps/web/android/app'), { recursive: true });
+  writeFileSync(join(project, FIREBASE), firebase('space.asteraonline.app'));
   // Config tests cover private file boundaries. The actual AAB build must verify the real key.
   writeFileSync(keystore, 'fixture-keystore-not-for-signing', { mode: 0o600 });
   writeFileSync(passwordFile, 'fixture-secret-do-not-export\n', { mode: 0o600 });
@@ -89,4 +94,17 @@ it('does not rewrite password whitespace or mutate the caller environment', () =
   androidRelease(env, project);
   expect(readFileSync(passwordFile, 'utf8')).toBe('  fixture secret with spaces  \r\n');
   expect(env).toEqual(before);
+});
+
+// Play v16 (2026-11-26) was built in a checkout without the gitignored Firebase file: the build passed,
+// and the app closed on every start the moment it asked for push alerts.
+it.each([
+  ['missing', null],
+  ['empty', ''],
+  ['not JSON', '{'],
+  ['for another app', firebase('space.asteraonline.app.local')],
+])('refuses a store release whose Firebase file is %s', (_case, content) => {
+  if (content === null) rmSync(join(project, FIREBASE));
+  else writeFileSync(join(project, FIREBASE), content);
+  expect(() => androidRelease(env, project)).toThrow(/google-services\.json/);
 });

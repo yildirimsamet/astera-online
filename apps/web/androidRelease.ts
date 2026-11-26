@@ -1,6 +1,23 @@
 import { readFileSync, realpathSync, statSync } from 'node:fs';
-import { isAbsolute, relative, sep } from 'node:path';
+import { isAbsolute, join, relative, sep } from 'node:path';
+import { z } from 'zod';
 import { mobileBuild } from './mobileBuild.js';
+
+const STORE_APP_ID = 'space.asteraonline.app';
+const firebaseSchema = z.object({ client: z.array(z.object({
+  client_info: z.object({ android_client_info: z.object({ package_name: z.string() }) }),
+})) });
+
+/** The Firebase file is gitignored; without it the store app closes the moment it asks for push alerts (Play v16). */
+function requireFirebase(repository: string): void {
+  let parsed: unknown;
+  try { parsed = JSON.parse(readFileSync(join(repository, 'apps/web/android/app/google-services.json'), 'utf8')); }
+  catch { throw new Error('Missing or unreadable apps/web/android/app/google-services.json (copy it from ~/.local/share/astera/firebase/)'); }
+  const firebase = firebaseSchema.safeParse(parsed);
+  if (!firebase.success || !firebase.data.client.some(client => client.client_info.android_client_info.package_name === STORE_APP_ID)) {
+    throw new Error(`google-services.json has no Firebase client for ${STORE_APP_ID}`);
+  }
+}
 
 /** Node-only signing inputs. Passwords never become VITE variables or artifact metadata. */
 export function androidRelease(env: Record<string, string | undefined>, repositoryRoot: string) {
@@ -18,6 +35,7 @@ export function androidRelease(env: Record<string, string | undefined>, reposito
   const keyAlias = required('ASTERA_ANDROID_KEY_ALIAS');
   if (!/^[a-zA-Z0-9._-]{1,64}$/.test(keyAlias)) throw new Error('Invalid ASTERA_ANDROID_KEY_ALIAS');
   const repository = realpathSync(repositoryRoot);
+  requireFirebase(repository);
   const privateFile = (name: string): string => {
     const input = required(name);
     if (!isAbsolute(input)) throw new Error(`${name} must be an absolute private file path`);
