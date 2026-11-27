@@ -28,7 +28,7 @@ export { TEAM_CLAIM_DAYS, TEAM_CONNECT_SECONDS, splitTeamLoot, type SortieLoadou
 export { dustAt, hiddenByDust, hiddenBySmoke, pilotInSight } from './visibility.js';
 export {
   createSandboxWorld, stepSandboxWorld, stepArenaWorld, stepPredictedTracers, createPilot, recoverPilot, copyFlight,
-  nextEntry, pilotVisible, predictPilot, ROLE_SHIPS, stepAsteriumStorm, collapseRift, type WorldOptions,
+  nextEntry, pilotVisible, predictPilot, ROLE_SHIPS, stepAsteriumStorm, seedStormPieces, collapseRift, type WorldOptions,
 } from './world.js';
 export { ARENA_MAX_SEATS, ARENA_PROTOCOL, ARENA_ROSTER_MAX, FAR_EVERY, FAR_WIDTH, MAX_REMOTE_PILOTS, MID_EVERY, PILOT_WIDTH, REMOTE_BAND, REMOTE_FAR_RANGE,
   REMOTE_FULL_RANGE, REMOTE_NEAR_RANGE, REMOTE_WIDTH, packFar, packPilot, packRemote, unpackFar, unpackPilot, unpackRemote, decodeArenaSnapshot } from './protocol.js';

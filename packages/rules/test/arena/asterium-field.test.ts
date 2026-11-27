@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ARENA_POOLS, ARENA_PROTOCOL, ASTERIUM_STORM, PILOT_WIDTH, createPilot, packPilot, unpackPilot, ARENA_TUNING as T, FARM_KINDS, FIELD_GROUP_SIZE, createInput, createSandboxWorld,
-  emptyHold, extractAsterium, pickFieldSpawn, scatter, stepAsteriumStorm, stepSandboxWorld, type ArenaWorld, type CargoDrop, type Vec3,
+  emptyHold, extractAsterium, pickFieldSpawn, scatter, seedStormPieces, stepAsteriumStorm, stepSandboxWorld, type ArenaWorld, type CargoDrop, type Vec3,
 } from '../../src/arena/index.js';
 import { layoutWith } from './helpers.js';
 
@@ -149,6 +149,46 @@ describe('the Asteryum Fırtınası', () => {
     world.pilot.hold = [0, 0, 0, 4]; world.pilot.cargo = 4;
     scatter(world, world.pilot);
     expect(world.cargoDrops.filter((drop) => drop.active && !drop.field && drop.kind === ASTERIUM).reduce((sum, drop) => sum + drop.amount, 0)).toBeCloseTo(4, 9);
+  });
+});
+
+/** The storm opens with two pieces out (owner 2026-11-27): no pilot, no debt, no roll of the storm's own supply needed. */
+describe('the storm\'s opening pieces', () => {
+  it('puts two pieces of one or two units in the heart with nobody flying', () => {
+    const world = openWorld(true);
+    world.pilot.phase = 'towed';
+    seedStormPieces(world);
+    const out = stormPieces(world);
+    expect(out).toHaveLength(2);
+    for (const drop of out) {
+      expect([1, 2]).toContain(drop.amount);
+      expect(Math.hypot(drop.p.x, drop.p.z)).toBeLessThanOrEqual(ASTERIUM_STORM.heart);
+    }
+    expect(out[0]?.p).not.toEqual(out[1]?.p);
+  });
+
+  it('leaves the storm\'s own debt and supply untouched', () => {
+    const world = openWorld(true);
+    const before = { debt: world.stormDebt, open: world.stormOpen, next: world.stormNext };
+    seedStormPieces(world);
+    expect({ debt: world.stormDebt, open: world.stormOpen, next: world.stormNext }).toEqual(before);
+  });
+
+  it('tops up to two, never past: a storm that turns off and on again adds nothing, a taken piece is replaced', () => {
+    const world = openWorld(true);
+    seedStormPieces(world); seedStormPieces(world);
+    expect(stormPieces(world)).toHaveLength(2);
+    const taken = stormPieces(world)[0];
+    if (taken) { taken.active = false; taken.amount = 0; }
+    seedStormPieces(world);
+    expect(stormPieces(world)).toHaveLength(2);
+  });
+
+  it('is on a free heart spot: a pilot arriving later grows no piece beyond the two waiting', () => {
+    const world = openWorld(true);
+    seedStormPieces(world);
+    stepAsteriumStorm(world);
+    expect(stormPieces(world)).toHaveLength(2);
   });
 });
 

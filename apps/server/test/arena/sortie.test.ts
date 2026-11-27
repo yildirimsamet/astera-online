@@ -429,6 +429,23 @@ describe('the Asteryum Fırtınası in the room', () => {
     expect(await pieces()).toBe(1);
   });
 
+  it('puts two Asteryum out the moment the storm starts, with nobody flying, and not again when it flaps', async () => {
+    let blowing = false;
+    const { ships } = fakeShips({ rift: () => Promise.resolve(riftOf({ storm: blowing })) });
+    const { app, arena } = await room(ships);
+    const pieces = async (): Promise<number> => (await app.inject({ method: 'GET', url: '/arena/health' })).json<{ stormPieces: number }>().stormPieces;
+    await wait(100);
+    expect(await pieces()).toBe(0);
+    blowing = true;
+    for (let i = 0; i < 400 && !arena.world.asteriumStorm; i++) await wait(20);
+    expect(await pieces()).toBe(2);
+    blowing = false;
+    for (let i = 0; i < 400 && arena.world.asteriumStorm; i++) await wait(20);
+    blowing = true;
+    for (let i = 0; i < 400 && !arena.world.asteriumStorm; i++) await wait(20);
+    expect(await pieces()).toBe(2);
+  });
+
   it('does not count field pieces as storm pieces', async () => {
     const { ships } = fakeShips();
     const { app, arena } = await room(ships);

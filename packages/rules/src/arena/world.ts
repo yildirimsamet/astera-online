@@ -202,7 +202,7 @@ function heartSpots(layout: ArenaLayout): readonly number[] {
 }
 
 /** Grows the storm's piece in slot `k` on a free heart spot: one no field group or other piece holds. */
-function growStormPiece(world: ArenaWorld, k: number): boolean {
+function growStormPiece(world: ArenaWorld, k: number, amount: number = world.stormNext): boolean {
   const hearts = heartSpots(world.layout);
   const free = hearts.filter(index => !world.fieldSpots.includes(index) && !world.stormSpots.includes(index));
   const index = free[Math.floor(world.random() * free.length)];
@@ -210,9 +210,25 @@ function growStormPiece(world: ArenaWorld, k: number): boolean {
   const drop = world.cargoDrops[STORM_SLOTS + k];
   if (index === undefined || !spot || !drop) return false;
   drop.p.x = spot.x; drop.p.y = spot.y; drop.p.z = spot.z;
-  drop.active = true; drop.kind = 3; drop.amount = world.stormNext; drop.age = 0; drop.claim = -1;
+  drop.active = true; drop.kind = 3; drop.amount = amount; drop.age = 0; drop.claim = -1;
   world.stormSpots[k] = index;
   return true;
+}
+
+/**
+ * THE STORM OPENS WITH TWO PIECES OUT (owner 2026-11-27), pilot or no pilot. Apart from the storm's own supply
+ * (`stepAsteriumStorm`): it takes no debt, flips no switch and reads no pilot. Called when the storm turns on, it
+ * tops the storm's pieces up to `OPENING_PIECES` (a storm that flaps, or a failed calendar read, adds nothing).
+ */
+const OPENING_PIECES = 2;
+export function seedStormPieces(world: ArenaWorld): void {
+  let out = 0;
+  for (let k = 0; k < STORM.maxPieces; k++) if (world.cargoDrops[STORM_SLOTS + k]?.active) out++;
+  for (let k = 0; k < STORM.maxPieces && out < OPENING_PIECES; k++) {
+    if (world.cargoDrops[STORM_SLOTS + k]?.active) continue;
+    if (!growStormPiece(world, k, 1 + Math.floor(world.random() * 2))) break;
+    out++;
+  }
 }
 
 /**

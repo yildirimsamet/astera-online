@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { mulberry32 } from '@astera/rules';
 import { ABILITIES, ARENA_LAYOUT, ARENA_PROTOCOL, ARENA_TUNING as T, ASTERIUM_STORM, STORM_SLOTS, CLASS_STATS, abilityStats, flightRanks, clampAssist, copyFlight, createFeedState, createFlightState, createInput,
   createPilot, createSandboxWorld, deltaFeed, FAR_EVERY, keyFeed, MAX_REMOTE_PILOTS, MID_EVERY,  packFar, packPilot, packRemote, recoverPilot,
-  REMOTE_BAND, REMOTE_FAR_RANGE, REMOTE_FULL_RANGE, REMOTE_NEAR_RANGE, ROLE_SHIPS, SHIP_CLASSES, TACTICS, alive, collapseRift, sameSide, scanTargets, spawnFlight, stepArenaWorld, pilotVisible,
+  REMOTE_BAND, REMOTE_FAR_RANGE, REMOTE_FULL_RANGE, REMOTE_NEAR_RANGE, ROLE_SHIPS, SHIP_CLASSES, TACTICS, alive, collapseRift, sameSide, scanTargets, seedStormPieces, spawnFlight, stepArenaWorld, pilotVisible,
   type Ability, type ArenaFeed, type ArenaIntent, type ArenaWorld, type LoadoutPlan, type Pilot, type ShipClass, type SteeringSettings, type Tactic } from '@astera/rules/arena';
 import { InvalidSessionError } from '../auth/tokens.js';
 import { accounts } from '../db/schema.js';
@@ -615,6 +615,7 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
   const setStorm = (on: boolean): void => {
     if (world.asteriumStorm === on) return;
     world.asteriumStorm = on;
+    if (on) seedStormPieces(world);
     // Sent when it turns, never per snapshot (MP-06): the HUD's storm line follows it (G16).
     const text = JSON.stringify({ kind: 'storm', active: on });
     for (const entry of participants.values()) if (entry.socket) sendText(entry.socket, text);
