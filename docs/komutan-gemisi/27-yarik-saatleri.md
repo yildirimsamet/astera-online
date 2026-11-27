@@ -1,7 +1,8 @@
 # 27 — Yarık Saatleri, Asteryum oku ve kısa oturum kalibrasyonu
 
-> **Durum:** Plan + defter, 2026-11-27. Worktree `../blindspace-yarik-hours`, dal `feat/yarik-hours`
-> (origin f9ffe3f2 üstü). Sahip kararı: [KG-K35](02-kararlar.md#kg-k35).
+> **Durum:** CANLI, 2026-11-27 08:40 UTC, `6aa22a9b` (api1-3, worker, arena, web + OTA). Migration 0275;
+> EU-1/EU-2 takvimine 31'er Yarık Saati eklendi (`sync-events --kind RIFT_HOUR`, ilk 27 Kasım 14:00 UTC).
+> Sahip kararı: [KG-K35](02-kararlar.md#kg-k35).
 
 ## 1. Sahibin isteği ve cevapları (2026-11-27)
 
@@ -57,7 +58,7 @@
 | W4 | Kapı/hangar kapalı durumu (`launchBlock` `closed`) | tamam (kapı saat gelince kendiliğinden açılır) |
 | W5 | Etkinlik rehberi, kronik, rozet, `nowLine`, bildirim metni, Wiki, 6 dil | tamam |
 | D1 | Belgeler: 01-urun S26, 02-kararlar KG-K35, bu defter | tamam |
-| V | Tam test kapısı + görsel doğrulama (350 px) | |
+| V | Tam test kapısı + görsel doğrulama (350 px) + N-1 (606bdf0d: 640 yük, 0 bozuk) + prod provası | tamam |
 
 ## 4. Dosya haritası
 
