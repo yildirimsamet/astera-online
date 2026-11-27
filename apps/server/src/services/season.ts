@@ -10,8 +10,7 @@ import {
   SERVERS,
   alloyRate,
   crystalRate,
-  deuteriumRate,
-  deuteriumStorageCap,
+  neutralDeuteriumCap,
   generateGalaxy,
   neutralDemand,
   neutralOpeningOrder,
@@ -393,20 +392,13 @@ export async function createNeutralWorld(
   const alloyCap = storageCap(alloyRate(template.buildings.REFINERY), template.buildings.VAULT);
   const crystalCap = storageCap(crystalRate(template.buildings.EXTRACTOR), template.buildings.VAULT);
   /*
-    A SEEDED STOCKPILE, NOT A PRODUCTION CEILING. T5.
+    A SEEDED STOCKPILE. T5, and since 2026-11-27 a REFILLING one.
 
-    A caretaker world has no refinery and makes no deuterium, so a cap derived
-    from its own rate would be zero and the whole PvE deuterium source would
-    vanish with it. What it holds is a stockpile somebody left there, and the
-    Extractor's rate is the size the game has always given it — kept exactly,
-    but no longer dressed up as a production ceiling it is not. `advanceNeutralEconomy`
-    never touches deuterium, so nothing re-clamps this afterwards.
+    A caretaker world has no plant, so its stockpile is not sized from a production rate: it is
+    the Extractor's rate, as the game has always sized it. `neutralDeuteriumCap` is the one
+    figure for this seed and for the ceiling the trickle (`deuteriumPerHour`) refills towards.
   */
-  const deuteriumStock = deuteriumStorageCap(
-    deuteriumRate(template.buildings.DEUTERIUM_PLANT),
-    crystalRate(template.buildings.EXTRACTOR),
-    template.buildings.VAULT,
-  );
+  const deuteriumStock = neutralDeuteriumCap(tier);
   const nextReinforcementAt = template.reinforcementMinutes === null
     ? null
     : addMinutes(startsAt, template.reinforcementMinutes);
@@ -423,8 +415,8 @@ export async function createNeutralWorld(
       z: neutral.slot.z,
       alloy: alloyCap,
       crystal: crystalCap,
-      // Neutrals never mint Deuterium, but the season starts with every shared
-      // stockpile full. Once raided or spent this reserve can only decrease.
+      // The season starts with every shared stockpile full. T2 and T3 refill it slowly after a
+      // raid (`deuteriumPerHour`); T1 never does.
       deuterium: deuteriumStock,
       // The dome is the template's own (D209); a tier without one reads zero.
       shield: shieldHp(template.instruments.AEGIS),

@@ -25,6 +25,8 @@ import {
   hpRadiationApplies,
   seededFrom,
   scaleNeutralDeuteriumLoot,
+  neutralDeuteriumAt,
+  neutralDeuteriumCap,
   settleWreck,
   shieldHp,
   storageCap,
@@ -88,7 +90,8 @@ export function neutralEconomyAt(
   levels: Record<BuildingId, number>,
   orbitRows: readonly { type: string; level: number }[],
   now: Date,
-): { alloy: number; crystal: number; shield: number } {
+  tier: NeutralTier | null,
+): { alloy: number; crystal: number; deuterium: number; shield: number } {
   const orbit = orbitRows.map((row) => row.type)
     .filter((type): type is 'FOUNDRY' => type === 'FOUNDRY');
   const elapsedHours = Math.max(0, now.getTime() - world.lastTickAt.getTime()) / 3_600_000;
@@ -99,6 +102,16 @@ export function neutralEconomyAt(
     storageCap(crystalPerHour, levels.VAULT),
     world.crystal + elapsedHours * crystalPerHour,
   );
+  // A caretaker's deuterium refills slowly towards its seeded stockpile; T1 and a state-less
+  // world make none. Owner, 2026-11-27.
+  const deuterium = tier === null
+    ? world.deuterium
+    : neutralDeuteriumAt(
+      world.deuterium,
+      neutralDeuteriumCap(tier),
+      MULTI_WORLD.neutral[tier].deuteriumPerHour,
+      elapsedHours,
+    );
   const aegisLevel = orbitRows.find((row) => row.type === 'AEGIS')?.level ?? 0;
   const maxShield = shieldHp(aegisLevel);
   const shieldStart = new Date(Math.max(world.lastTickAt.getTime(), world.empUntil?.getTime() ?? 0, world.shieldRegenAt?.getTime() ?? 0));
@@ -106,8 +119,14 @@ export function neutralEconomyAt(
   const shield = maxShield > 0
     ? Math.min(maxShield, world.shield + maxShield * SHIELD.regenPerHour * shieldHours)
     : 0;
-  return { alloy, crystal, shield };
+  return { alloy, crystal, deuterium, shield };
 }
+
+const neutralTierOf = async (tx: Tx, planetId: string): Promise<NeutralTier | null> => {
+  const [state] = await tx.select({ tier: neutralPlanetState.tier }).from(neutralPlanetState)
+    .where(eq(neutralPlanetState.planetId, planetId));
+  return state?.tier === 1 || state?.tier === 2 || state?.tier === 3 ? state.tier : null;
+};
 
 const neutralOrbit = (tx: Tx, planetId: string) =>
   tx.select({ type: satellites.type, level: satellites.level }).from(satellites)
@@ -115,8 +134,10 @@ const neutralOrbit = (tx: Tx, planetId: string) =>
 
 /** The same, read without a lock or a write — a probe looks, it does not tick. */
 export async function neutralStanding(tx: Tx, world: typeof planets.$inferSelect, now: Date) {
-  const [levels, orbitRows] = await Promise.all([neutralLevels(tx, world.id), neutralOrbit(tx, world.id)]);
-  return neutralEconomyAt(world, levels, orbitRows, now);
+  const [levels, orbitRows, tier] = await Promise.all([
+    neutralLevels(tx, world.id), neutralOrbit(tx, world.id), neutralTierOf(tx, world.id),
+  ]);
+  return neutralEconomyAt(world, levels, orbitRows, now, tier);
 }
 
 export async function advanceNeutralEconomy(tx: Tx, planetId: string, now: Date) {
@@ -128,10 +149,12 @@ export async function advanceNeutralEconomy(tx: Tx, planetId: string, now: Date)
   const epoch = radiation?.season.radiationBombStartsAt;
   const levels = await neutralLevels(tx, planetId);
   const orbitRows = await neutralOrbit(tx, planetId);
-  const { alloy, crystal, shield } = neutralEconomyAt(world, levels, orbitRows, now);
-  await tx.update(planets).set({ alloy, crystal, shield, lastTickAt: now })
+  const { alloy, crystal, deuterium, shield } = neutralEconomyAt(
+    world, levels, orbitRows, now, await neutralTierOf(tx, planetId),
+  );
+  await tx.update(planets).set({ alloy, crystal, deuterium, shield, lastTickAt: now })
     .where(eq(planets.id, planetId));
-  return { ...world, alloy, crystal, shield, levels, radiationEnabled: epoch != null && epoch <= now };
+  return { ...world, alloy, crystal, deuterium, shield, levels, radiationEnabled: epoch != null && epoch <= now };
 }
 
 async function setNeutralFleet(tx: Tx, planetId: string, fleet: Fleet, damage: HpDamageLots = []): Promise<void> {
@@ -591,7 +614,7 @@ export async function reinforceNeutral(
   if (!advanced) return null;
   let alloy = advanced.alloy;
   let crystal = advanced.crystal;
-  let deuterium = world.deuterium;
+  let deuterium = advanced.deuterium;
   const order: BuildingId[] = ['CORE', 'REFINERY', 'EXTRACTOR', 'SHIPYARD'];
   let infrastructureShort = false;
   for (const type of order) {

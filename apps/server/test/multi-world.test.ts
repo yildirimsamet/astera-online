@@ -225,9 +225,10 @@ describe('current multi-world ruleset', () => {
     async (tier) => {
       const f = await setup();
       const target = f.neutrals.find((row) => row.state.tier === tier)!;
+      const stockedAt = f.clock.now();
       await f.db.delete(units).where(eq(units.planetId, target.world.id));
       await f.db.update(planets).set({
-        x: 150, y: 0, z: 0, alloy: 1000, crystal: 1000, deuterium: 1000, lastTickAt: f.clock.now(),
+        x: 150, y: 0, z: 0, alloy: 1000, crystal: 1000, deuterium: 1000, lastTickAt: stockedAt,
       }).where(eq(planets.id, target.world.id));
       await f.db.update(planets).set({ x: 0, y: 0, z: 0, deuterium: 100_000 })
         .where(eq(planets.id, f.joined.planetId));
@@ -250,7 +251,10 @@ describe('current multi-world ruleset', () => {
       expect(report?.loot.alloy).toBeGreaterThan(0);
       expect(report?.loot.crystal).toBeGreaterThan(0);
       expect(report?.loot.deuterium).toBe(expected);
-      expect(after?.deuterium).toBe(1000 - expected);
+      // The stockpile also refilled while the wing flew (T2/T3 only, owner 2026-11-27).
+      const refilled = MULTI_WORLD.neutral[tier].deuteriumPerHour
+        * (f.clock.now().getTime() - stockedAt.getTime()) / 3_600_000;
+      expect(after?.deuterium).toBeCloseTo(1000 + refilled - expected, 6);
     },
   );
 

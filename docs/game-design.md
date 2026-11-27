@@ -321,6 +321,17 @@ Deuterium is otherwise unchanged: fully raidable above the vault floor, the same
 any other material, and consumed by repeatable losable hulls rather than turned into permanent
 background power.
 
+**Caretaker worlds refill their deuterium (owner, 2026-11-27).** A caretaker world is seeded with a
+deuterium stockpile, and until now that stockpile only fell — while the flight to it is paid for in
+deuterium, so a second raid came home with a fuel loss. Tier 2 refills 24 per hour and tier 3 refills
+34 per hour (`MULTI_WORLD.neutral[tier].deuteriumPerHour`), never past the seeded stockpile; tier 1 is
+unchanged. Whoever raids takes it. The rates are calibrated against the round-trip fuel of a reference
+wing (30 Viper + 10 Tempest, capital at 0.8 of the radius): a raid every 12–18 hours returns about 1.2–1.8
+times its fuel in deuterium, and raiding every two hours returns under a fifth, so non-stop farming does
+not pay. The break-even is near ten hours (`neutral-deuterium-trickle.test.ts`). Alloy and crystal
+rewards and ship losses come on top and are not part of that figure. A probe reports the stock like any
+world's; it shows no rate.
+
 **And every launch burns it (T6).** The charge is `fuel mass x distance x lane share x pace share`, rounded up once per
 leg. Pace share defaults to 1; personal raids and owned-world transfers use
 `1 - 0.5 x (1 - pace)` (owner, 2026-10-11). Fuel mass starts from the hull's production-resource value and is tilted modestly by its

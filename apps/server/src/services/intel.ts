@@ -932,11 +932,11 @@ export const rememberVisitedWorld = async (
  */
 export async function standingAt(tx: Tx, target: typeof planets.$inferSelect, now: Date) {
   if (target.kind === 'NEUTRAL') {
-    const { alloy, crystal, shield } = await neutralStanding(tx, target, now);
+    const { alloy, crystal, deuterium, shield } = await neutralStanding(tx, target, now);
     return {
       alloy,
       crystal,
-      deuterium: target.deuterium,
+      deuterium,
       bufferAlloy: target.bufferAlloy,
       bufferCrystal: target.bufferCrystal,
       bufferDeuterium: target.bufferDeuterium,

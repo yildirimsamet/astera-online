@@ -1,4 +1,5 @@
 import { ABUSE, MULTI_WORLD } from './constants.js';
+import { crystalRate, deuteriumRate, deuteriumStorageCap } from './economy.js';
 import type { Grade, NeutralTier, Resources } from './types.js';
 import { RESOURCE_VALUE } from './valuation.js';
 import { CORE_TOP_LEVEL } from './view.js';
@@ -122,6 +123,31 @@ export function scaleNeutralDeuteriumLoot(loot: Loot, tier: NeutralTier): Loot {
     fromStock: { ...loot.fromStock, deuterium: fromStockDeuterium },
     fromBuffer: { ...loot.fromBuffer, deuterium: deuterium - fromStockDeuterium },
   };
+}
+
+/**
+ * THE STOCKPILE A CARETAKER WORLD IS SEEDED WITH, AND REFILLS TOWARDS. Owner, 2026-11-27.
+ * One figure for the seed and for the ceiling, so a raided world can only ever return to what
+ * it started with.
+ */
+export function neutralDeuteriumCap(tier: NeutralTier): number {
+  const template = MULTI_WORLD.neutral[tier];
+  return deuteriumStorageCap(
+    deuteriumRate(template.buildings.DEUTERIUM_PLANT),
+    crystalRate(template.buildings.EXTRACTOR),
+    template.buildings.VAULT,
+  );
+}
+
+/** A caretaker world's deuterium after `elapsedHours`; it refills to `cap` and never takes away. */
+export function neutralDeuteriumAt(
+  stock: number,
+  cap: number,
+  perHour: number,
+  elapsedHours: number,
+): number {
+  if (perHour <= 0 || elapsedHours <= 0) return stock;
+  return Math.max(stock, Math.min(cap, stock + perHour * elapsedHours));
 }
 
 /**

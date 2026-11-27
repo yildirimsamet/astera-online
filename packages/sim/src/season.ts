@@ -95,6 +95,8 @@ import {
   fleetEscapeMinimumApplies,
   strategicStockpile,
   scaleNeutralDeuteriumLoot,
+  neutralDeuteriumAt,
+  neutralDeuteriumCap,
   instrumentCost,
   interceptAsteroid,
   isSatellite,
@@ -1253,6 +1255,15 @@ function syncNeutral(n: SimNeutralWorld, t: number, world: World): void {
   }
   n.alloy = nextAlloy;
   n.crystal = nextCrystal;
+  // Mirrors the server's caretaker deuterium trickle (owner, 2026-11-27); T1 makes none.
+  if (n.controllerId === null) {
+    n.deuterium = neutralDeuteriumAt(
+      n.deuterium,
+      neutralDeuteriumCap(n.tier),
+      MULTI_WORLD.neutral[n.tier].deuteriumPerHour,
+      hours,
+    );
+  }
   const maxShield = shieldHp(n.aegis);
   const shieldHours = Math.max(0, t - Math.max(n.lastTick, n.empUntil)) / 60;
   n.shield = maxShield > 0

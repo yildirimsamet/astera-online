@@ -3900,6 +3900,8 @@ export const MULTI_WORLD = {
       ground: { THORN: 1 },
       /** Owner follow-up: a neutral raid takes 70% less of its normal D haul. */
       deuteriumLootMultiplier: 0.30,
+      /** Owner, 2026-11-27: T1 is left as it was; its stockpile only falls. */
+      deuteriumPerHour: 0,
       captureStock: { alloy: 1_000, crystal: 500, deuterium: 0 },
       reinforcementMinutes: null,
     },
@@ -3910,6 +3912,13 @@ export const MULTI_WORLD = {
       ground: { THORN: 2, BASTION: 2 },
       /** Owner follow-up: a neutral raid takes 50% less of its normal D haul. */
       deuteriumLootMultiplier: 0.50,
+      /**
+       * Owner, 2026-11-27: the seeded stockpile refills slowly so a raid every 12-18 h is worth
+       * its fuel and non-stop raiding is not. Steady haul = rate x hours between raids, against
+       * a reference round-trip fuel of about 250; break-even sits near 10 h
+       * (`neutral-deuterium-trickle.test.ts`).
+       */
+      deuteriumPerHour: 24,
       captureStock: { alloy: 5_000, crystal: 2_500, deuterium: 1_000 },
       reinforcementMinutes: 6 * 60,
     },
@@ -3922,6 +3931,8 @@ export const MULTI_WORLD = {
       ground: { THORN: 5, BASTION: 3 },
       /** Owner follow-up: a neutral raid takes 30% less of its normal D haul. */
       deuteriumLootMultiplier: 0.70,
+      /** Owner, 2026-11-27: see tier 2; reference round-trip fuel here is about 350. */
+      deuteriumPerHour: 34,
       captureStock: { alloy: 15_000, crystal: 5_000, deuterium: 3_000 },
       reinforcementMinutes: 4 * 60,
     },
