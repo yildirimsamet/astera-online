@@ -7,26 +7,29 @@ import { hashPassword } from '../../auth/password.js';
 import { accounts, botProfiles, players } from '../../db/schema.js';
 import { GameError } from '../planet.js';
 import { personaFor } from './personas.js';
-import { handleFor } from './roster.js';
+import { assertPersonName, handleFor } from './roster.js';
 
 type Identity = Readonly<{ name: string; country: CountryCode }>;
 
 const turkish = [
+  // The live galaxy's first eight, seated before this list existed (owner 2026-11-27: the list is the roster).
+  'Yaramaz', 'Demirhan', 'Poyraz', 'Gece_Kurdu', 'DeliFisek',
+  'UzayAdam', 'Osman', 'Alaz',
   'KaraKedi', 'Volkan99', 'Ruzgar_Efe', 'GeceKusu', 'Bozkurt_06',
   'BordoBereli', 'Simsek7', 'Kaptan', 'Gölge_Avcısı', 'Efsane34',
-  'SonSamurai', 'Kasırga', 'Kizil_Elma', 'Yakamoz', 'Poyraz_',
-  'DeliKurt', 'Celik_Bilek', 'Gizemli_', 'MaviGece', 'Aslan_53',
-  'Turkuaz', 'Devrim_', 'KanatsizKuş', 'Yildirim88', 'Samanyolu',
+  'SonSamurai', 'Kasırga', 'Kizil_Elma', 'Yakamoz', 'Poyraz07',
+  'DeliKurt', 'Celik_Bilek', 'Gizemli', 'MaviGece', 'Aslan_53',
+  'Turkuaz', 'Devrim', 'KanatsizKuş', 'Yildirim88', 'Samanyolu',
   'SiyahBeyaz', 'Kafadar', 'GeceAvcisi', 'SessizSair', 'Kuzey_Ruzgari',
-  'Reis_61', 'Atmaca', 'Sarmaşık', 'Dolunay_', 'Gokturk',
-  // Owner 2026-11-27: the eleven after CılgınTurk, renamed before they were seated.
+  'Reis_61', 'Atmaca', 'Sarmaşık', 'Dolunay', 'Gokturk',
+  // Owner 2026-11-27: the twelve after CılgınTurk, renamed before they were seated.
   'BuzAdam', 'Fırtına_10', 'CılgınTurk', 'Kiroka22', 'ogamer',
   'lirika_34', 'aniL', 'Alakürdo', 'Zifir12', 'zephyr0',
-  'VenomiC', 'stormie', 't4r1k', 'pesto_aga', 'Saka_16',
-  'YediTepe', 'Pusat_', 'OzgurRuh', 'Son_Barat', 'Sahin_01',
-  'Toprak', 'Alev_Alev', 'Gece_Mavisi', 'Son_Umut', 'Tipi_',
+  'VenomiC', 'stormie', 't4r1k', 'pesto_aga', 'emotion',
+  'YediTepe', 'Pusat', 'OzgurRuh', 'Son_Barat', 'Sahin_01',
+  'Toprak', 'Alev_Alev', 'Gece_Mavisi', 'Son_Umut', 'Tipi',
   'Vatan_55', 'Kasırga_77', 'DusKapanı', 'Kizil_Gunes', 'SakaKusu',
-  'MehmetciK', 'Akdeniz_', 'Yildiz_07', 'SiyahPanter', 'Bozkir_',
+  'MehmetciK', 'Akdeniz', 'Yildiz_07', 'SiyahPanter', 'Bozkir',
 ] as const;
 
 const french = [
@@ -68,9 +71,8 @@ export async function syncBotIdentities(
   const desired = new Map<string, Identity>();
   for (const identity of identities) {
     const folded = key(identity.name);
-    if (!identity.name.trim() || desired.has(folded)) {
-      throw new GameError('BAD_NAME', `Duplicate or empty bot name: ${identity.name}`, 400);
-    }
+    assertPersonName(identity.name);
+    if (desired.has(folded)) throw new GameError('BAD_NAME', `Duplicate bot name: ${identity.name}`, 400);
     desired.set(folded, identity);
   }
 

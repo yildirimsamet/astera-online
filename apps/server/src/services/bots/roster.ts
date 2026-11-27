@@ -4,7 +4,7 @@ import type { Db } from '../../db/client.js';
 import type { Clock } from '../../clock.js';
 import { accounts, botProfiles } from '../../db/schema.js';
 import { hashPassword } from '../../auth/password.js';
-import { normaliseUsername, USERNAME_PATTERN } from '../../auth/credentials.js';
+import { normaliseUsername, USERNAME_PATTERN, usernameSchema } from '../../auth/credentials.js';
 import { GameError } from '../planet.js';
 import { refreshLegacyAwards } from '../legacy.js';
 import { personaFor, strengthNamed, type BotPersonaId, type BotStrength } from './personas.js';
@@ -84,6 +84,17 @@ export const handleFor = (displayName: string): string => {
 };
 
 /**
+ * A COMMANDER GOES BY A NAME A PERSON COULD SIGN UP WITH. Sign-up refuses "Dolunay_", so a
+ * "Dolunay_" on the ladder is one nobody signed up as, and the name alone gives it away (owner
+ * 2026-11-27). Both ways a name enters the roster, `bots add` and the deploy's sync, ask this.
+ */
+export function assertPersonName(name: string): void {
+  if (!usernameSchema.safeParse(name).success) {
+    throw new GameError('BAD_NAME', `"${name}" is not a name a person could sign up with`, 400);
+  }
+}
+
+/**
  * Add one commander to the pool.
  *
  * `ordinal` is `max + 1` rather than `count`, so retiring one commander can never
@@ -91,7 +102,7 @@ export const handleFor = (displayName: string): string => {
  */
 export async function addBot(db: Db, displayName: string, clock: Clock, country: CountryCode = 'TR'): Promise<AddedBot> {
   const name = displayName.trim();
-  if (name.length === 0) throw new GameError('BAD_NAME', 'A commander needs a name', 400);
+  assertPersonName(name);
 
   const base = handleFor(name);
   if (!USERNAME_PATTERN.test(base)) {

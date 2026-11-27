@@ -58,7 +58,8 @@ describe('the ships the server plays', () => {
   beforeEach(async () => { world = await starterWorld(); });
   afterEach(async () => { await world.built.close(); });
 
-  const names = async (count: number) => { for (let i = 0; i < count; i++) await addBot(world.f.db, `Pilot ${String.fromCharCode(65 + i)}${String.fromCharCode(97 + i)}`, world.f.clock); };
+  // Names a person could sign up with: past the alphabet the old letters ran into `[` and `{`.
+  const names = async (count: number) => { for (let i = 0; i < count; i++) await addBot(world.f.db, `Pilot ${String(i + 1)}`, world.f.clock); };
   const crew = () => crewGalaxies(world.f.db, world.f.clock, log);
   const bots = () => world.f.db.select({ state: vesselBotState, ship: vessels }).from(vesselBotState).innerJoin(vessels, eq(vessels.id, vesselBotState.vesselId));
   const turn = async (accountId: string) => takeShipBotTurn(world.f.db, accountId, world.f.clock, log);

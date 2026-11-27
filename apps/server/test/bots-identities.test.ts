@@ -5,28 +5,49 @@ import { eq } from 'drizzle-orm';
 import { accounts, botProfiles, players } from '../src/db/schema.js';
 import { addBot, handleFor, listBots, retireBot } from '../src/services/bots/roster.js';
 import { BOT_IDENTITIES, syncBotIdentities } from '../src/services/bots/identities.js';
-import { USERNAME_PATTERN } from '../src/auth/credentials.js';
+import { USERNAME_PATTERN, usernameSchema } from '../src/auth/credentials.js';
 import { seedWorld, type Fixture } from './helpers.js';
 
 let f: Fixture;
 beforeEach(async () => { f = await seedWorld(2); });
 
 describe('owner supplied bot identities', () => {
-  it('contains 70 Turkish, 10 French, 10 German, and 10 Spanish unique names', () => {
-    expect(BOT_IDENTITIES).toHaveLength(100);
-    for (const [country, count] of [['TR', 70], ['FR', 10], ['DE', 10], ['ES', 10]] as const) {
+  it('contains 78 Turkish, 10 French, 10 German, and 10 Spanish unique names', () => {
+    expect(BOT_IDENTITIES).toHaveLength(108);
+    for (const [country, count] of [['TR', 78], ['FR', 10], ['DE', 10], ['ES', 10]] as const) {
       expect(BOT_IDENTITIES.filter((identity) => identity.country === country)).toHaveLength(count);
     }
-    expect(new Set(BOT_IDENTITIES.map(({ name }) => name.toLocaleLowerCase('tr'))).size).toBe(100);
+    expect(new Set(BOT_IDENTITIES.map(({ name }) => name.toLocaleLowerCase('tr'))).size).toBe(108);
     expect(BOT_IDENTITIES).toContainEqual({ name: 'Gölge_Avcısı', country: 'TR' });
     expect(BOT_IDENTITIES).toContainEqual({ name: 'SchwarzerBär', country: 'DE' });
     expect(BOT_IDENTITIES).toContainEqual({ name: 'Turo_Rojo', country: 'ES' });
     for (const { name } of BOT_IDENTITIES) expect(USERNAME_PATTERN.test(handleFor(name))).toBe(true);
   });
 
-  /** Owner 2026-11-27: the next eleven to arrive go by names that read like people's, each one a person could sign up with. */
+  /** No person can sign up as "Dolunay_", so a commander called that is one nobody signed up as. */
+  it('holds only names a person could sign up with', () => {
+    expect(BOT_IDENTITIES.filter(({ name }) => !usernameSchema.safeParse(name).success)).toEqual([]);
+  });
+
+  /**
+   * THE LIST IS THE LIVE ROSTER. The first eight seated before the list existed; left out, every
+   * deploy's sync would rename them or refuse to run with the roles already stopped.
+   */
+  it('names the eight commanders the live galaxy seated first', () => {
+    const names = BOT_IDENTITIES.map(({ name }) => name);
+    expect(names.slice(0, 8)).toEqual(['Yaramaz', 'Demirhan', 'Poyraz', 'Gece_Kurdu', 'DeliFisek', 'UzayAdam', 'Osman', 'Alaz']);
+  });
+
+  it('refuses a name no person could sign up with, and changes nothing', async () => {
+    await expect(addBot(f.db, 'Gizemli_', f.clock)).rejects.toThrow(/Gizemli_/);
+    await addBot(f.db, 'OldCommander', f.clock);
+    await expect(syncBotIdentities(f.db, f.clock, [{ name: '_emotion_', country: 'TR' }])).rejects.toThrow(/_emotion_/);
+    expect((await listBots(f.db)).map((row) => row.displayName)).toEqual(['OldCommander']);
+  });
+
+  /** Owner 2026-11-27: the next twelve to arrive go by names that read like people's, each one a person could sign up with. */
   it('seats the next arrivals under the names the owner chose, in their order', () => {
-    const chosen = ['Kiroka22', 'ogamer', 'lirika_34', 'aniL', 'Alakürdo', 'Zifir12', 'zephyr0', 'VenomiC', 'stormie', 't4r1k', 'pesto_aga'];
+    const chosen = ['Kiroka22', 'ogamer', 'lirika_34', 'aniL', 'Alakürdo', 'Zifir12', 'zephyr0', 'VenomiC', 'stormie', 't4r1k', 'pesto_aga', 'emotion'];
     const names = BOT_IDENTITIES.map(({ name }) => name);
     const first = names.indexOf('CılgınTurk') + 1;
     expect(names.slice(first, first + chosen.length)).toEqual(chosen);
@@ -41,7 +62,7 @@ describe('owner supplied bot identities', () => {
     const identities = [
       { name: 'KaraKedi', country: 'TR' },
       { name: 'L_Ombre', country: 'FR' },
-      { name: 'Gizemli_', country: 'TR' },
+      { name: 'Gizemli', country: 'TR' },
     ] as const;
 
     await syncBotIdentities(f.db, f.clock, identities);
