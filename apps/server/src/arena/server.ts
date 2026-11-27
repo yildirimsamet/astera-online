@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import { WebSocket, WebSocketServer } from 'ws';
 import { z } from 'zod';
 import { mulberry32 } from '@astera/rules';
-import { ABILITIES, ARENA_LAYOUT, ARENA_PROTOCOL, ARENA_TUNING as T, CLASS_STATS, abilityStats, flightRanks, clampAssist, copyFlight, createFeedState, createFlightState, createInput,
+import { ABILITIES, ARENA_LAYOUT, ARENA_PROTOCOL, ARENA_TUNING as T, ASTERIUM_STORM, STORM_SLOTS, CLASS_STATS, abilityStats, flightRanks, clampAssist, copyFlight, createFeedState, createFlightState, createInput,
   createPilot, createSandboxWorld, deltaFeed, FAR_EVERY, keyFeed, MAX_REMOTE_PILOTS, MID_EVERY,  packFar, packPilot, packRemote, recoverPilot,
   REMOTE_BAND, REMOTE_FAR_RANGE, REMOTE_FULL_RANGE, REMOTE_NEAR_RANGE, ROLE_SHIPS, SHIP_CLASSES, TACTICS, alive, collapseRift, sameSide, scanTargets, spawnFlight, stepArenaWorld, pilotVisible,
   type Ability, type ArenaFeed, type ArenaIntent, type ArenaWorld, type LoadoutPlan, type Pilot, type ShipClass, type SteeringSettings, type Tactic } from '@astera/rules/arena';
@@ -391,6 +391,7 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
     const ordered = [...timings].sort((a, b) => a - b);
     return { enabled: env.ARENA_ENABLED, prototype: true, tick: world.tick, rooms: 1,
       pilots: participants.size, connected: Array.from(participants.values()).filter(p => p.socket !== null).length,
+      stormPieces: world.cargoDrops.slice(STORM_SLOTS, STORM_SLOTS + ASTERIUM_STORM.maxPieces).filter(drop => drop.active).length,
       tickP95: ordered[Math.floor(ordered.length * 0.95)] ?? 0, droppedTicks };
   });
   const seatedBy = async (token: string): Promise<{ accountId: string } | 'auth'> => (await identify(token)) ?? 'auth';

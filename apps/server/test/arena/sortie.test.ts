@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
-import { ARENA_PROTOCOL, ARENA_TUNING as T, decodeArenaSnapshot, shipStats, type Pilot } from '@astera/rules/arena';
+import { ARENA_PROTOCOL, ARENA_TUNING as T, STORM_SLOTS, decodeArenaSnapshot, shipStats, type Pilot } from '@astera/rules/arena';
 import { registerArena, type ArenaIdentify, type ArenaShips } from '../../src/arena/server.js';
 import type { RiftWindow } from '../../src/services/arenaRift.js';
 import { systemClock } from '../../src/clock.js';
@@ -416,6 +416,24 @@ describe('the Asteryum Fırtınası in the room', () => {
     blowing = false;
     const calm = (m: unknown): boolean => kind('storm')(m) && typeof m === 'object' && m !== null && 'active' in m && m.active === false;
     expect(await alice.next(calm)).toMatchObject({ kind: 'storm', active: false });
+  });
+
+  it('counts the storm\'s Asteryum still out in /arena/health (stormPieces)', async () => {
+    const { ships } = fakeShips();
+    const { app, arena } = await room(ships);
+    const pieces = async (): Promise<number> => (await app.inject({ method: 'GET', url: '/arena/health' })).json<{ stormPieces: number }>().stormPieces;
+    expect(await pieces()).toBe(0);
+    for (const k of [0, 2]) { const drop = arena.world.cargoDrops[STORM_SLOTS + k]; if (drop) drop.active = true; }
+    expect(await pieces()).toBe(2);
+    const taken = arena.world.cargoDrops[STORM_SLOTS]; if (taken) taken.active = false;
+    expect(await pieces()).toBe(1);
+  });
+
+  it('does not count field pieces as storm pieces', async () => {
+    const { ships } = fakeShips();
+    const { app, arena } = await room(ships);
+    const field = arena.world.cargoDrops[0]; if (field) field.active = true;
+    expect((await app.inject({ method: 'GET', url: '/arena/health' })).json<{ stormPieces: number }>().stormPieces).toBe(0);
   });
 
   it('keeps the field calm when the calendar cannot be read', async () => {
