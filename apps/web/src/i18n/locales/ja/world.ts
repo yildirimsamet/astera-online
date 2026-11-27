@@ -59,6 +59,7 @@ export const galaxy = {
       TRADE_SHIP: "貿易船",
       INTERGALACTIC_CONVOY: "銀河間コンボイ",
       ASTERIUM_STORM: "Asteryumストーム",
+      RIFT_HOUR: "Yarıkアワー",
     },
     dailyNote: "平日は月曜日から金曜日、週末は土曜日から日曜日です。時間はトゥルキエ時間です。",
     days: {
@@ -81,10 +82,15 @@ export const galaxy = {
       summary: "艦隊を航海中に送り、世界の生産を最大 4 時間行い、火力に応じて船を回収する機会を与えます。",
       note: "輸送船団は反撃しないため、艦隊は損失を被りません。各ワールドは、交差点ごとに 1 回攻撃できます。",
     },
+    rift: {
+      title: "Yarıkアワー",
+      summary: "Yarıkは1日2回、YarıkアワーとAsteryumストームのときに開きます。YarıkアワーにはAsteryumは現れません。鉱石とライバルはいつもどおりです。",
+      note: "時間が終わると入場が締め切られます。中にいる艦は{{minutes}}分以内に脱出してください。その後も中に残った艦はすべて砕け散り、積荷を失います。",
+    },
     storm: {
       title: "Asteryumストーム",
       summary: "ストーム中、YarıkにAsteryum鉱石が現れます。出口から持ち出した鉱石はすべてAsteryum在庫に入り、1日の上限には左右されません。",
-      note: "撃墜されると積んだAsteryumも散らばります。シンセシス・ラボでAsteryumはカプセルになります。",
+      note: "鉱石まで500 mに近づくと矢印が方向を示します。撃墜されると積んだAsteryumも散らばります。シンセシス・ラボでAsteryumはカプセルになります。",
     },
   },
   /* Screen-reader names for the marks on the disc. Nothing is painted. */

@@ -252,6 +252,7 @@ const EVENT_TONE = {
   TRADE_SHIP: 'warn',
   INTERGALACTIC_CONVOY: 'hostile',
   ASTERIUM_STORM: 'info',
+  RIFT_HOUR: 'self',
 } as const satisfies Record<ActiveGalaxyEvent['kind'], StatusTone>;
 
 export function EventChips({

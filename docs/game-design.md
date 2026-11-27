@@ -998,7 +998,11 @@ Asteryum is a commander's own strategic stock: it cannot be looted, carried, tra
   straight into the commander's stock the moment it is made: nothing is shipped to the capital and nothing can
   be raided on the way. The moon panel shows the rate, what the moon has made and the next unit's countdown. The **Asteryum Fırtınası** (21:00–22:00 TRT, a fixed daily galaxy event)
   spawns Asteryum stones in the Yarık; an exit credits them past the day's cap, a death spills them, a
-  deploy recall keeps them aboard.
+  deploy recall keeps them aboard. Within 500 m of a stone an arrow points to it.
+- **Yarık hours (owner 2026-11-27):** the live Yarık is open only during the **Yarık Saati** (`RIFT_HOUR`,
+  17:00–18:00 TRT, no Asteryum) and the storm. Entry closes at a window's end; those inside have 5 minutes
+  to exit, then every ship still inside is destroyed (hold lost, 5-minute repair) and the storm's stones go
+  with it. Practice is always open. Rules: `docs/komutan-gemisi/02-kararlar.md` KG-K35.
 - **Synthesis Lab:** Command Core 10, the capital's Tactical tab. One batch at a time, 1–20 capsules,
   made one by one (Optik Örtü 30 min, Sessiz İtki 60 min each). A cancel returns half of the unmade share.
 - **Capsules on a launch:** one per 500 hangar bulk of the fleet that leaves.

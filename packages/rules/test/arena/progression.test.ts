@@ -77,7 +77,8 @@ describe('growth by level', () => {
     expect(top('akinci').damage / CLASS_STATS.akinci.damage).toBeCloseTo(1.475, 6);
     expect(top('muhafiz').hull).toBe(Math.round(900 * 1.57));
     expect(top('kilavuz').fuelTank).toBe(Math.round(250 * 1.475));
-    expect(top('muhafiz').cargoCapacity).toBe(Math.round(500 * 1.57));
+    // Owner 2026-11-27: the level-one hold is 750 (500 before); the growth rate is unchanged.
+    expect(top('muhafiz').cargoCapacity).toBe(Math.round(750 * (1 + 0.57)));
     expect(top('akinci').spreadBase / CLASS_STATS.akinci.spreadBase).toBeCloseTo(1 - 0.285, 6);
   });
 

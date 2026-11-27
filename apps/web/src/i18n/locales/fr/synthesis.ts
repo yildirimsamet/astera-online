@@ -3,11 +3,21 @@ export const synthesis = {
   storm: {
     chip: "Tempête d’Asteryum",
     started: "Une tempête d’Asteryum souffle dans le Yarık. Des pierres d’Asteryum apparaissent pendant une heure.",
-    ended: "La tempête d’Asteryum est finie. Fais sortir l’Asteryum de ta soute par une sortie.",
+    ended: "La tempête d’Asteryum est finie et l’entrée du Yarık est fermée. Fais sortir l’Asteryum de ta soute par une sortie dans les {{minutes}} minutes.",
     chronicleStarted: "Une tempête d’Asteryum a commencé",
     chronicleStartedDetail: "Des pierres d’Asteryum apparaissent dans le Yarık pendant une heure.",
     chronicleEnded: "La tempête d’Asteryum est terminée",
-    chronicleEndedDetail: "Plus aucune pierre n’apparaît. Celles déjà là restent jusqu’à ce que quelqu’un les prenne.",
+    chronicleEndedDetail: "L’entrée du Yarık est fermée. Au bout de {{minutes}} minutes, les pierres restantes et les vaisseaux encore dedans sont perdus.",
+  },
+  /** Yarık Saati (owner 2026-11-27): the Yarık's second daily hour, without Asteryum. */
+  rift: {
+    chip: "Heure du Yarık",
+    started: "L’Heure du Yarık a commencé. Le Yarık est ouvert pendant une heure ; fais décoller ton vaisseau de commandement depuis le hangar.",
+    ended: "L’Heure du Yarık est finie. L’entrée du Yarık est fermée ; si tu es dedans, sors par une sortie dans les {{minutes}} minutes.",
+    chronicleStarted: "L’Heure du Yarık a commencé",
+    chronicleStartedDetail: "Le Yarık est ouvert pendant une heure.",
+    chronicleEnded: "L’Heure du Yarık est terminée",
+    chronicleEndedDetail: "L’entrée du Yarık est fermée. Les vaisseaux encore dedans se brisent au bout de {{minutes}} minutes.",
   },
   capsule: {
     OPTIC_VEIL: { name: "Voile optique", effect: "Seuls toi et ton clan voyez ta flotte ; aucun Télescope, Radar ni Gözcü d’un autre commandant ne la détecte.", warns: "Lors d’une attaque, le Radar de la cible donne quand même l’alerte." },

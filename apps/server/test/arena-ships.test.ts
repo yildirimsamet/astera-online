@@ -5,7 +5,7 @@ import { ADMIRAL_WAIT, ARENA_ECONOMY as E, CLASS_STATS, dailyCap, shipStats } fr
 import { arenaShips, notifications, planets, seasons } from '../src/db/schema.js';
 import { chooseShip, endSortie, launchSortie, readHangar, recallOpenSorties, repairShip, setLoadout, spendAbility, upgradeShip } from '../src/services/arenaShips.js';
 import { GameError } from '../src/services/planet.js';
-import { seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { openRift, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 
 /**
  * Y6a (plan 14 §7, owner 2026-10-23): the Yarık ship is real. It is chosen at Komuta Merkezi 9,
@@ -165,6 +165,7 @@ describe('paid repair', () => {
 
 beforeEach(async () => {
   f = await seedWorld(2, 9310);
+  await openRift(f.db, f.seasonId, f.clock);
   account = f.accountIds[0]!; capital = f.planetIds[0]!;
   await setLevel(f.db, capital, 'CORE', 9);
   await setLevel(f.db, capital, 'REFINERY', 10); await setLevel(f.db, capital, 'EXTRACTOR', 10); await setLevel(f.db, capital, 'DEUTERIUM_PLANT', 3);

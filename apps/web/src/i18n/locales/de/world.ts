@@ -59,6 +59,7 @@ export const galaxy = {
       TRADE_SHIP: "Handelsschiff",
       INTERGALACTIC_CONVOY: "Intergalaktischer Konvoi",
       ASTERIUM_STORM: "Asteryum-Sturm",
+      RIFT_HOUR: "Yarık-Stunde",
     },
     dailyNote: "Werktage: Montag bis Freitag. Wochenende: Samstag und Sonntag. Alle Zeiten gelten für die Türkei.",
     days: {
@@ -81,10 +82,15 @@ export const galaxy = {
       summary: "Greif den Konvoi während seiner Durchreise an. Je nach Feuerkraft erhältst du bis zu vier Stunden Weltproduktion und vielleicht geborgene Schiffe.",
       note: "Der Konvoi schießt nicht zurück. Deine Flotte erleidet deshalb keine Verluste. Jede Welt kann ihn pro Durchreise einmal angreifen.",
     },
+    rift: {
+      title: "Yarık-Stunde",
+      summary: "Der Yarık öffnet zweimal am Tag: in der Yarık-Stunde und im Asteryum-Sturm. In der Yarık-Stunde erscheint kein Asteryum; Erz und Rivalen wie immer.",
+      note: "Endet die Stunde, schließt der Zugang. Wer drin ist, hat {{minutes}} Minuten, um hinauszufliegen; danach zerbricht jedes Schiff, das noch drin ist, und sein Laderaum ist verloren.",
+    },
     storm: {
       title: "Asteryum-Sturm",
       summary: "Während des Sturms erscheinen im Yarık Asteryum-Steine. Jeder Stein, den du durch einen Ausgang bringst, geht in deinen Asteryum-Vorrat; das Tageslimit hält ihn nicht auf.",
-      note: "Stirbst du, verstreut sich auch das Asteryum in deinem Laderaum. Das Syntheselabor macht aus Asteryum Kapseln.",
+      note: "Ab 500 m zeigt ein Pfeil zum nächsten Stein. Stirbst du, verstreut sich auch das Asteryum in deinem Laderaum. Das Syntheselabor macht aus Asteryum Kapseln.",
     },
   },
   /* Screen-reader names for the marks on the disc. Nothing is painted. */

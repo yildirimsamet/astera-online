@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 import { ARENA_PROTOCOL, ARENA_TUNING as T, decodeArenaSnapshot, shipStats, type Pilot } from '@astera/rules/arena';
 import { registerArena, type ArenaIdentify, type ArenaShips } from '../../src/arena/server.js';
+import type { RiftWindow } from '../../src/services/arenaRift.js';
 import { systemClock } from '../../src/clock.js';
 import { loadEnv } from '../../src/env.js';
 import { GameError } from '../../src/services/planet.js';
@@ -389,10 +390,14 @@ describe('the hangar desk', () => {
   });
 });
 
+/** A window as the calendar would give it, measured from now. */
+const riftOf = (over: Partial<RiftWindow> = {}): RiftWindow =>
+  ({ open: true, storm: false, closesAt: new Date(Date.now() + 30 * 60_000), deadline: null, opensAt: null, ...over });
+
 describe('the Asteryum Fırtınası in the room', () => {
   it('turns the field on while the calendar says the storm blows, and off again', async () => {
     let blowing = true;
-    const { ships } = fakeShips({ storm: () => Promise.resolve(blowing) });
+    const { ships } = fakeShips({ rift: () => Promise.resolve(riftOf({ storm: blowing })) });
     const { arena } = await room(ships);
     for (let i = 0; i < 50 && !arena.world.asteriumStorm; i++) await wait(20);
     expect(arena.world.asteriumStorm).toBe(true);
@@ -403,7 +408,7 @@ describe('the Asteryum Fırtınası in the room', () => {
 
   it('tells a pilot on arrival, and the whole room when it turns (G16)', async () => {
     let blowing = true;
-    const { ships } = fakeShips({ storm: () => Promise.resolve(blowing) });
+    const { ships } = fakeShips({ rift: () => Promise.resolve(riftOf({ storm: blowing })) });
     const r = await room(ships);
     for (let i = 0; i < 50 && !r.arena.world.asteriumStorm; i++) await wait(20);
     const alice = await connect(r.url, { token: 'token-alice' });
@@ -414,9 +419,55 @@ describe('the Asteryum Fırtınası in the room', () => {
   });
 
   it('keeps the field calm when the calendar cannot be read', async () => {
-    const { ships } = fakeShips({ storm: () => Promise.reject(new Error('db down')) });
+    const { ships } = fakeShips({ rift: () => Promise.reject(new Error('db down')) });
     const { arena } = await room(ships);
     await wait(100);
     expect(arena.world.asteriumStorm).toBe(false);
+  });
+});
+
+/** YARIK SAATLERİ (owner 2026-11-27): open twice a day; after a window, five minutes to fly out, then every ship inside is lost. */
+describe('the Yarık closing on the room', () => {
+  it('tells a pilot on arrival how long the Yarık stays open', async () => {
+    const { ships } = fakeShips({ rift: () => Promise.resolve(riftOf({ closesAt: new Date(Date.now() + 20 * 60_000) })) });
+    const r = await room(ships);
+    await wait(100);
+    const alice = await connect(r.url, { token: 'token-alice' });
+    const welcome = await alice.next(kind('welcome')) as { rift: { open: boolean; closesIn: number | null; deadlineIn: number | null } };
+    expect(welcome.rift).toMatchObject({ open: true, deadlineIn: null });
+    expect(welcome.rift.closesIn).toBeGreaterThan(19 * 60_000);
+    expect(welcome.rift.closesIn).toBeLessThanOrEqual(20 * 60_000);
+  });
+
+  it('tells the room when it closes, with the time left to fly out', async () => {
+    let state = riftOf();
+    const { ships } = fakeShips({ rift: () => Promise.resolve(state) });
+    const r = await room(ships);
+    await wait(100);
+    const alice = await flying(r.url, 'token-alice', r.arena);
+    state = riftOf({ open: false, closesAt: null, deadline: new Date(Date.now() + 4 * 60_000) });
+    const closing = await alice.next(m => kind('rift')(m) && typeof m === 'object' && m !== null && 'open' in m && m.open === false) as { deadlineIn: number };
+    expect(closing.deadlineIn).toBeGreaterThan(3 * 60_000);
+    expect(alice.ship().phase).toBe('flying');
+  });
+
+  it('loses every ship still inside at the deadline, and says it was the closing', async () => {
+    const { ships, calls } = fakeShips({ rift: () => Promise.resolve(riftOf({ open: false, closesAt: null, deadline: new Date(Date.now() + 400) })) });
+    const r = await room(ships);
+    const alice = await flying(r.url, 'token-alice', r.arena);
+    Object.assign(alice.ship(), { hold: [30, 0, 0, 2], cargo: 32 });
+    expect(await alice.next(kind('sortie'))).toMatchObject({ kind: 'sortie', outcome: 'dead', closed: true });
+    await wait(100);
+    expect(calls.end).toHaveLength(1);
+    expect(calls.end[0]).toMatchObject({ accountId: 'acc-alice', sortieId: 'sortie-1', end: { outcome: 'dead', hold: [30, 0, 0, 2], closed: true } });
+  });
+
+  it('loses nothing while the calendar cannot be read: a failed read never closes the room', async () => {
+    const { ships, calls } = fakeShips({ rift: () => Promise.reject(new Error('db down')) });
+    const r = await room(ships);
+    const alice = await flying(r.url, 'token-alice', r.arena);
+    await wait(300);
+    expect(alice.ship().phase).toBe('flying');
+    expect(calls.end).toHaveLength(0);
   });
 });

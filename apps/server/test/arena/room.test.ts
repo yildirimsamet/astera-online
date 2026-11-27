@@ -367,7 +367,7 @@ describe('ship classes in the room', () => {
     const guest = await connect(url, 'class-guest-dev', 'akinci');
     const welcome = await guest.next(kind('welcome')) as { pilotId: number };
     guest.socket.send(JSON.stringify({ kind: 'dev', action: 'fuel', value: 400 }));
-    guest.socket.send(JSON.stringify({ kind: 'dev', action: 'cargo', value: 400 }));
+    guest.socket.send(JSON.stringify({ kind: 'dev', action: 'cargo', value: 1000 }));
     const self = world.drones.find(p => p.id === welcome.pilotId); if (!self) throw new Error('no pilot');
     await guest.next(isSnap);
     const seen = guest.messages.length;

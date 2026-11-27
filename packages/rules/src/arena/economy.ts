@@ -20,11 +20,14 @@ export const ARENA_ECONOMY = Object.freeze({
     muhafiz: Object.freeze({ fuel: 50, ammo: 30 }),
   }) satisfies Readonly<Record<ShipClass, Readonly<{ fuel: number; ammo: number }>>>,
   capHours: 4,
-  repairMinutes: 15,
+  /** Owner 2026-11-27: 5 (15 before). The Yarık opens an hour at a time; a death costs a twelfth of it, and the hold. */
+  repairMinutes: 5,
   serviceMinutes: 5,
   freeChangeHours: 24,
   /** Entry closes this long before the season ends (KG-A16). */
   entryClosesMinutes: 10,
+  /** Owner 2026-11-27: after a Yarık window ends, this long to fly out; then every ship still inside is lost. */
+  riftGraceMinutes: 5,
 });
 
 export interface Resources { alloy: number; crystal: number; deuterium: number }

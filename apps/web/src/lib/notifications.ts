@@ -15,6 +15,7 @@ import { battleOutcome, monumentControlKey, monumentGradeKey, type BattleOutcome
 import { compact, decimal, full, signed } from './format.js';
 import { commanderLabel } from './identity.js';
 import { dayClock, duration } from './time.js';
+import { ARENA_ECONOMY } from '@astera/rules/arena/ui';
 
 /**
  * THE SEVEN KINDS OF NEWS, TURNED INTO THE SENTENCES A PLAYER READS. D45.
@@ -512,6 +513,11 @@ const galaxyLifecycle = z.discriminatedUnion('eventKind', [
     startsAt: z.coerce.date(),
     endsAt: z.coerce.date(),
   }),
+  z.object({
+    eventKind: z.literal('RIFT_HOUR'),
+    startsAt: z.coerce.date(),
+    endsAt: z.coerce.date(),
+  }),
 ]);
 
 const synthesisReady = z.object({ capsuleId: z.enum(['OPTIC_VEIL', 'SILENT_THRUST']), quantity: z.number().int().positive() });
@@ -876,10 +882,13 @@ export function describeNotification(notification: NotificationView, now: number
   }
   if (notification.kind === 'arena_sortie_end') {
     const amount = z.number().nonnegative();
-    const ended = z.object({ outcome: z.enum(['dead', 'towed']), lost: z.object({ alloy: amount, crystal: amount, deuterium: amount }) }).safeParse(notification.payload);
+    const ended = z.object({ outcome: z.enum(['dead', 'towed']), lost: z.object({ alloy: amount, crystal: amount, deuterium: amount }),
+      /** The Yarık closed on the ship (owner 2026-11-27): it stayed past the minutes to fly out. */
+      closed: z.literal(true).optional() }).safeParse(notification.payload);
     if (!ended.success) return i18n.t('notifications.arenaSortieTowed');
     const loot = spoils(ended.data.lost.alloy, ended.data.lost.crystal, ended.data.lost.deuterium);
-    const line = i18n.t(ended.data.outcome === 'dead' ? 'notifications.arenaSortieDead' : 'notifications.arenaSortieTowed');
+    const line = i18n.t(ended.data.closed ? 'notifications.arenaSortieClosed'
+      : ended.data.outcome === 'dead' ? 'notifications.arenaSortieDead' : 'notifications.arenaSortieTowed');
     return loot.length > 0 ? `${line} ${i18n.t('notifications.arenaSortieLoot', { loot: loot.join(JOIN()) })}` : line;
   }
   if (notification.kind === 'unknown_signal_result') {
@@ -1535,7 +1544,9 @@ export function describeNotification(notification: NotificationView, now: number
           ? i18n.t('notifications.intergalacticConvoyStarted')
           : parsed.data.eventKind === 'ASTERIUM_STORM'
             ? i18n.t('synthesis.storm.started')
-            : i18n.t('notifications.asteroidShowerStarted');
+            : parsed.data.eventKind === 'RIFT_HOUR'
+              ? i18n.t('synthesis.rift.started')
+              : i18n.t('notifications.asteroidShowerStarted');
     }
 
     case 'galaxy_event_ended': {
@@ -1546,8 +1557,10 @@ export function describeNotification(notification: NotificationView, now: number
         : parsed.data.eventKind === 'INTERGALACTIC_CONVOY'
           ? i18n.t('notifications.intergalacticConvoyEnded')
           : parsed.data.eventKind === 'ASTERIUM_STORM'
-            ? i18n.t('synthesis.storm.ended')
-            : i18n.t('notifications.asteroidShowerEnded');
+            ? i18n.t('synthesis.storm.ended', { minutes: ARENA_ECONOMY.riftGraceMinutes })
+            : parsed.data.eventKind === 'RIFT_HOUR'
+              ? i18n.t('synthesis.rift.ended', { minutes: ARENA_ECONOMY.riftGraceMinutes })
+              : i18n.t('notifications.asteroidShowerEnded');
     }
 
     /* SENTEZ LABORATUVARI: a batch is finished and its capsules are in stock. */

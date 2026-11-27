@@ -318,7 +318,7 @@ describe('a multi-kind calendar', () => {
       rngFor: streamsFrom(12),
     });
     expect(new Set(schedule.map((event) => event.kind)))
-      .toEqual(new Set(['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY', 'ASTERIUM_STORM']));
+      .toEqual(new Set(['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY', 'ASTERIUM_STORM', 'RIFT_HOUR']));
   });
 
   it('seeds a shower-only calendar for a season that predates the trade ship', () => {

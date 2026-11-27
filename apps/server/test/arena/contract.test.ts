@@ -8,7 +8,7 @@ import { arenaShips, arenaTeams, clanMemberships, clans, planets } from '../../s
 import { createTeam, readyTeam, startTeam } from '../../src/services/arenaTeams.js';
 import { chooseShip, endSortie, launchSortie } from '../../src/services/arenaShips.js';
 import { hangarSchema, teamSchema } from '../../../web/src/arena/deskSchemas.js';
-import { seedWorld, setLevel, testDb, testEnv } from '../helpers.js';
+import { openRift, seedWorld, setLevel, testDb, testEnv } from '../helpers.js';
 
 /** Real routes and DB answers must parse through the client's own boundary, including the new ranks. */
 let built: BuiltApp | undefined;
@@ -16,7 +16,7 @@ afterEach(async () => { await built?.close(); built = undefined; });
 afterAll(async () => { const { close } = await testDb(); await close(); });
 describe('Yarık hangar contract', () => {
   it('uses the application clock for startup recall and leaves no empty solo share to claim', async () => {
-    const f = await seedWorld(1, 7624); const account = f.accountIds[0]!;
+    const f = await seedWorld(1, 7624); await openRift(f.db, f.seasonId, f.clock); const account = f.accountIds[0]!;
     await setLevel(f.db, f.planetIds[0]!, 'CORE', 9); await chooseShip(f.db, f.clock, account, 'kilavuz');
     const [clan] = await f.db.insert(clans).values({ seasonId: f.seasonId, name: 'Solo Takım', nameKey: 'solo takim', tag: 'SLT', createdAt: f.clock.now() }).returning();
     if (!clan) throw new Error('no clan');
@@ -34,7 +34,7 @@ describe('Yarık hangar contract', () => {
     expect(match?.finishedAt).toEqual(f.clock.now());
   });
   it('authorises the team routes, rejects forged bodies and serves a shared match through the real client schema', async () => {
-    const f = await seedWorld(3, 7424);
+    const f = await seedWorld(3, 7424); await openRift(f.db, f.seasonId, f.clock);
     for (let i = 0; i < 3; i++) {
       await setLevel(f.db, f.planetIds[i]!, 'CORE', 9);
       await chooseShip(f.db, f.clock, f.accountIds[i]!, 'kilavuz');
@@ -69,7 +69,7 @@ describe('Yarık hangar contract', () => {
     expect(claim.statusCode).toBe(200); expect(teamSchema.parse(claim.json()).receipt?.deposit.alloy).toBe(100);
   });
   it('reads separate ranks, spends a point and buys a shorter repair through the real authenticated routes', async () => {
-    const f = await seedWorld(2, 7124);
+    const f = await seedWorld(2, 7124); await openRift(f.db, f.seasonId, f.clock);
     const account = f.accountIds[0]!; const capital = f.planetIds[0]!;
     await setLevel(f.db, capital, 'CORE', 9);
     await f.db.update(planets).set({ alloy: 1000, crystal: 1000, deuterium: 500 }).where(eq(planets.id, capital));

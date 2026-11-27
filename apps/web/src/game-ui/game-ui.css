@@ -8037,6 +8037,10 @@ button.gk-probe__head:active {
 .gk-event[data-tone='hostile'] {
   --tone: var(--gk-hostile);
 }
+/* The Yarık Saati (owner 2026-11-27): the commander's own ship flies it, so the own-side tone. */
+.gk-event[data-tone='self'] {
+  --tone: var(--gk-self);
+}
 .gk-event__head {
   display: flex;
   align-items: flex-start;

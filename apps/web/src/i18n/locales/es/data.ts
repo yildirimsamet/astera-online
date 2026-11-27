@@ -501,6 +501,7 @@ export const notifications = {
   arenaTeamShareReady: "Tu parte del equipo está lista. Recógela en el hangar.",
   arenaSortieTowed: "Se cortó tu conexión; tu nave de comandante fue remolcada fuera del Yarık.",
   arenaSortieDead: "Tu nave de comandante fue derribada en el Yarık y está en reparación.",
+  arenaSortieClosed: "El Yarık se cerró con tu nave de comandante dentro; se rompió y está en reparación.",
   arenaSortieLoot: "Perdido de la bodega: {{loot}}.",
 
   incomingFallback: 'Flota entrante.',

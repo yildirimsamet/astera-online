@@ -141,6 +141,7 @@ export const EVENT_NAME = {
   INTERGALACTIC_CONVOY: 'galaxy.intergalacticConvoy',
   ASTEROID_SHOWER: 'galaxy.asteroidShower',
   ASTERIUM_STORM: 'synthesis.storm.chip',
+  RIFT_HOUR: 'synthesis.rift.chip',
 } as const satisfies Record<ActiveGalaxyEvent['kind'], string>;
 
 /**
@@ -251,6 +252,8 @@ export const EVENT_GLYPH = {
   INTERGALACTIC_CONVOY: 'rocket',
   // A storm over the Yarık, not digging (owner 2026-11-25: "kazma saçma").
   ASTERIUM_STORM: 'storm',
+  // The Yarık's own hour: its door open on a clock, so the clock is its mark.
+  RIFT_HOUR: 'timed',
 } as const satisfies Record<ActiveGalaxyEvent['kind'], GlyphId>;
 
 /** THE MARK EACH TIMER WEARS (G1-c): a list of timers reads before a word of it does. */

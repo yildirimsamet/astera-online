@@ -14,8 +14,8 @@ import {
 const SEASON_START_MS = Date.UTC(2026, 10, 30, 21, 0, 0);
 
 describe('Asteryum Fırtınası on the galaxy calendar (plan §3.2, K3)', () => {
-  it('is appended last, so no older lane loses a draw (D156)', () => {
-    expect(GALAXY_EVENT_KINDS).toEqual(['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY', 'ASTERIUM_STORM']);
+  it('is appended after the older lanes, so none of them loses a draw (D156)', () => {
+    expect(GALAXY_EVENT_KINDS.slice(0, 4)).toEqual(['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY', 'ASTERIUM_STORM']);
   });
 
   it('belongs to seasons from the synthesis ruleset on, never to older ones', () => {

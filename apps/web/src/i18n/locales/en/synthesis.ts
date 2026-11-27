@@ -3,11 +3,21 @@ export const synthesis = {
   storm: {
     chip: "Asteryum Storm",
     started: "An Asteryum Storm is blowing in the Yarık. Asteryum stones appear for one hour.",
-    ended: "The Asteryum Storm is over. Bring the Asteryum in your hold out through an exit.",
+    ended: "The Asteryum Storm is over and entry to the Yarık has closed. Bring the Asteryum in your hold out through an exit within {{minutes}} minutes.",
     chronicleStarted: "Asteryum Storm began",
     chronicleStartedDetail: "Asteryum stones appear in the Yarık for one hour.",
     chronicleEnded: "Asteryum Storm ended",
-    chronicleEndedDetail: "No new stones appear. Stones already out stay until someone takes them.",
+    chronicleEndedDetail: "Entry to the Yarık has closed. After {{minutes}} minutes the stones left and the ships still inside are lost.",
+  },
+  /** Yarık Saati (owner 2026-11-27): the Yarık's second daily hour, without Asteryum. */
+  rift: {
+    chip: "Yarık Hour",
+    started: "The Yarık Hour has begun. The Yarık is open for one hour; fly your commander ship from the hangar.",
+    ended: "The Yarık Hour is over. Entry to the Yarık has closed; if you are inside, get out through an exit within {{minutes}} minutes.",
+    chronicleStarted: "Yarık Hour began",
+    chronicleStartedDetail: "The Yarık is open for one hour.",
+    chronicleEnded: "Yarık Hour ended",
+    chronicleEndedDetail: "Entry to the Yarık has closed. Ships still inside break apart after {{minutes}} minutes.",
   },
   capsule: {
     OPTIC_VEIL: { name: "Optic Veil", effect: "Only you and your clan see your fleet; no other commander's Telescope, Radar or Gözcü does.", warns: "In an attack, the target's Radar still gives the warning." },

@@ -1,4 +1,3 @@
-import i18n from '../i18n/index.js';
 import { Glyph } from '../game-ui/index.js';
 import type { ArenaCopy } from './copy.js';
 import { teamCopy } from './teamCopy.js';
@@ -6,6 +5,7 @@ import { FARM_ART, FARM_TONE } from './farmColors.js';
 import { ARENA_PROGRESSION, type ShipClass } from '@astera/rules/arena';
 import { classStatRows } from './ClassPicker.js';
 import { amount, clockText, launchBlock, type Hangar, type LaunchBlock, type SortieReport } from './hangarDesk.js';
+import i18n from '../i18n/index.js';
 
 const KINDS = ['alloy', 'crystal', 'deuterium'] as const;
 const tone = (kind: number): React.CSSProperties => ({ '--tone': FARM_TONE[kind] } as React.CSSProperties);
@@ -69,6 +69,9 @@ export function blockLine(block: LaunchBlock, now: number, c: ArenaCopy): string
     case 'ready': return `${block.reason === 'repair' ? c.repairing : c.servicing} · ${clockText(block.until - now)}`;
     case 'deuterium': return c.shortOf(block.have, block.need);
     case 'homeward': return c.homeward(clockText(block.until - now));
+    // The opening as a clock time on this phone: an appointment, not a countdown of hours.
+    case 'closed': return block.opensAt === null ? c.riftShut
+      : c.riftOpensAt(new Intl.DateTimeFormat(i18n.resolvedLanguage ?? 'tr', { hour: '2-digit', minute: '2-digit' }).format(new Date(block.opensAt)));
     default: return c.blocked[block.kind];
   }
 }

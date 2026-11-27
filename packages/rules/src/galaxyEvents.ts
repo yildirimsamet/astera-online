@@ -5,7 +5,7 @@ import type { Rng } from './types.js';
 
 const DAY_MINUTES = 24 * 60;
 
-export type GalaxyEventKind = 'ASTEROID_SHOWER' | 'TRADE_SHIP' | 'INTERGALACTIC_CONVOY' | 'ASTERIUM_STORM';
+export type GalaxyEventKind = 'ASTEROID_SHOWER' | 'TRADE_SHIP' | 'INTERGALACTIC_CONVOY' | 'ASTERIUM_STORM' | 'RIFT_HOUR';
 
 /**
  * THE PLANNING ORDER, AND IT IS A CONTRACT RATHER THAN A LIST. D156.
@@ -30,6 +30,8 @@ export const GALAXY_EVENT_KINDS: readonly GalaxyEventKind[] = [
   'INTERGALACTIC_CONVOY',
   /** Asteryum Fırtınası (plan 2026-11-24 §3.2): the Yarık seeds Asteryum only inside it. */
   'ASTERIUM_STORM',
+  /** Yarık Saati (owner 2026-11-27): the Yarık's other daily opening, without Asteryum. */
+  'RIFT_HOUR',
 ];
 
 export interface AsteroidShowerEffect {
@@ -57,12 +59,18 @@ export interface AsteriumStormEffect {
   fieldVersion: 1;
 }
 
+/** The Yarık Saati only says the room is open; it seeds nothing. */
+export interface RiftHourEffect {
+  roomVersion: 1;
+}
+
 /** What each kind's occurrence carries. One entry per member of the union. */
 export interface GalaxyEventEffects {
   ASTEROID_SHOWER: AsteroidShowerEffect;
   TRADE_SHIP: TradeShipEffect;
   INTERGALACTIC_CONVOY: IntergalacticConvoyEffect;
   ASTERIUM_STORM: AsteriumStormEffect;
+  RIFT_HOUR: RiftHourEffect;
 }
 
 interface PlannedGalaxyEventBase {
@@ -88,7 +96,8 @@ export type PlannedGalaxyEvent =
       kind: 'INTERGALACTIC_CONVOY';
       effect: IntergalacticConvoyEffect;
     })
-  | (PlannedGalaxyEventBase & { kind: 'ASTERIUM_STORM'; effect: AsteriumStormEffect });
+  | (PlannedGalaxyEventBase & { kind: 'ASTERIUM_STORM'; effect: AsteriumStormEffect })
+  | (PlannedGalaxyEventBase & { kind: 'RIFT_HOUR'; effect: RiftHourEffect });
 
 export interface RandomDailyDefinition<Effect> {
   readonly schedule: 'RANDOM_DAILY';
@@ -233,6 +242,7 @@ const legacyConfig = (tradeVersion: 1 | 2): GalaxyEventsConfig => ({
     // Not entitled before ruleset 8; present only to keep the config map total.
     INTERGALACTIC_CONVOY: GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY,
     ASTERIUM_STORM: GALAXY_EVENTS.definitions.ASTERIUM_STORM,
+    RIFT_HOUR: GALAXY_EVENTS.definitions.RIFT_HOUR,
   },
   mutuallyExclusive: [],
 });
@@ -284,7 +294,8 @@ export function galaxyEventKindsForRuleset(rulesetVersion: number): readonly Gal
   if (rulesetVersion >= MULTI_WORLD.intergalacticConvoyRulesetVersion) {
     kinds.push('INTERGALACTIC_CONVOY');
   }
-  if (rulesetVersion >= SYNTHESIS.rulesetVersion) kinds.push('ASTERIUM_STORM');
+  // The Yarık's two daily openings come together (owner 2026-11-27).
+  if (rulesetVersion >= SYNTHESIS.rulesetVersion) kinds.push('ASTERIUM_STORM', 'RIFT_HOUR');
   return kinds;
 }
 
@@ -368,10 +379,14 @@ function assertPolicyVersion(value: number, kind: string, name: string): void {
 
 function validateEffect(
   kind: string,
-  effect: AsteroidShowerEffect | TradeShipEffect | IntergalacticConvoyEffect | AsteriumStormEffect,
+  effect: AsteroidShowerEffect | TradeShipEffect | IntergalacticConvoyEffect | AsteriumStormEffect | RiftHourEffect,
 ): void {
   if ('fieldVersion' in effect) {
     assertPolicyVersion(effect.fieldVersion, kind, 'fieldVersion');
+    return;
+  }
+  if ('roomVersion' in effect) {
+    assertPolicyVersion(effect.roomVersion, kind, 'roomVersion');
     return;
   }
   if ('asteroidSpawnMultiplier' in effect) {
@@ -991,6 +1006,19 @@ function occurrencesFor(
         effect: { fieldVersion: plannedEffectFor('ASTERIUM_STORM', startsAt, config).fieldVersion },
       }));
     }
+    case 'RIFT_HOUR': {
+      const definition = config.definitions.RIFT_HOUR;
+      return starts.map((startsAt, sequence) => ({
+        sequence,
+        kind,
+        startsAtMinute: startsAt - seasonStartsAtUnixMinute,
+        endsAtMinute: (definition.schedule === 'RANDOM_DAILY'
+          ? startsAt + definition.durationMinutes
+          : fixedEndAt(startsAt, config, definition)) - seasonStartsAtUnixMinute,
+        definitionVersion: definition.version,
+        effect: { roomVersion: plannedEffectFor('RIFT_HOUR', startsAt, config).roomVersion },
+      }));
+    }
   }
 }
 
@@ -1019,6 +1047,12 @@ function startsForKind(
         : planFixedKind(input, config, definition);
     }    case 'ASTERIUM_STORM': {
       const definition = config.definitions.ASTERIUM_STORM;
+      return definition.schedule === 'RANDOM_DAILY'
+        ? planKind(input, config, definition, input.rngFor(kind))
+        : planFixedKind(input, config, definition);
+    }
+    case 'RIFT_HOUR': {
+      const definition = config.definitions.RIFT_HOUR;
       return definition.schedule === 'RANDOM_DAILY'
         ? planKind(input, config, definition, input.rngFor(kind))
         : planFixedKind(input, config, definition);

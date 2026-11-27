@@ -4,7 +4,7 @@ import { ARENA_TUNING as T, SHIP_CLASSES, TACTICS, alive, createInput, createSan
 import { GameButton, Glyph, Slider, Toggle } from '../game-ui/index.js';
 import { ClassPicker, TacticPicker } from './ClassPicker.js';
 import { HaulChip, SortieSummary, launchText } from './Hangar.js';
-import { debriefText, pilotName, readDebrief, type Debrief } from './debrief.js';
+import { closedDebrief, debriefText, pilotName, readDebrief, type Debrief } from './debrief.js';
 import { capLeft, fetchHangar, launchBlock, refusedAtHangar, stillFlying, type HangarAnswer, type LaunchBlock } from './hangarDesk.js';
 import { arenaGraphics, setArenaGraphics, type ArenaGraphicsChoice } from './graphics.js';
 import { GraphicsPicker } from './GraphicsPicker.js';
@@ -19,7 +19,7 @@ import { createArenaAudio } from './audio.js';
 import { createArenaClient, type ArenaClient, type HudRefs } from './client.js';
 import { FlightControls, aimKey } from './Controls.js';
 import { ModelCredits } from './credits.js';
-import { ArenaHud, StormChip, type HudBind } from './Hud.js';
+import { ArenaHud, RiftChip, StormChip, type HudBind } from './Hud.js';
 import { GAME_KEY, MOUSE_POINTER, ONE_PRESS_KEYS, createControls } from './input.js';
 import { createArenaNetwork, type Standing } from './network.js';
 import { createHudStore } from './store.js';
@@ -141,7 +141,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   const bind = useMemo<HudBind>(() => ({
     reticle: single('reticle'), lead: single('lead'), hit: single('hit'), kill: single('kill'), exit: single('exit'),
     landing: single('landing'), circle: single('circle'), incoming: single('incoming'),
-    crystal: single('crystal'), damage: single('damage'),
+    crystal: single('crystal'), damage: single('damage'), asterium: single('asterium'),
     radar: (node: HTMLCanvasElement | null) => { refs.current.radar = node; },
     mapSelf: (node: SVGGElement | null) => { mapRefs.current.self = node; },
     mapAltitude: (node: HTMLElement | null) => { mapRefs.current.altitude = node; },
@@ -218,7 +218,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   useEffect(() => {
     client.current?.setHud({
       reticle: refs.current.reticle ?? null, lead: refs.current.lead ?? null, hit: refs.current.hit ?? null, kill: refs.current.kill ?? null,
-      exit: refs.current.exit ?? null, crystal: refs.current.crystal ?? null, damage: refs.current.damage ?? null,
+      exit: refs.current.exit ?? null, crystal: refs.current.crystal ?? null, damage: refs.current.damage ?? null, asterium: refs.current.asterium ?? null,
       landing: refs.current.landing ?? null, circle: refs.current.circle ?? null, incoming: refs.current.incoming ?? null,
       radar: refs.current.radar instanceof HTMLCanvasElement ? refs.current.radar : null,
       enemies, threats, places, pings, map: mapRefs.current,
@@ -429,6 +429,8 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   const flown = result === 'extracted' ? status.hold : lastHold.current;
   // A recall is the server's word, after the fact; the moment of the end cannot know it.
   const what: Debrief | null = real && connection.sortie?.outcome === 'recalled' ? { kind: 'recalled' } : debrief;
+  /** Lost to the Yarık closing on it (owner 2026-11-27): the result says that, not who shot it. */
+  const closedOut = real ? closedDebrief(connection.sortie, c) : null;
   // Whole units the flight carried: what the result lists (no points, owner 2026-11-25).
   const flownUnits = flown.reduce((sum, units) => sum + Math.floor(units), 0);
   return <main ref={root} className={`arena-root screen-${screen}`} onContextMenu={event => { event.preventDefault(); }} data-arena="sandbox" data-screen={screen}
@@ -456,7 +458,9 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
             : <span>{connection.phase === 'reconnecting' ? c.reconnecting : c.connecting}</span>}
         </div>
         {/* G16: the Asteryum Fırtınası, while it blows, under the link line. */}
-        <StormChip active={connection.phase === 'online' && connection.storm} c={c} /></> : null}
+        <StormChip active={connection.phase === 'online' && connection.storm} c={c} />
+        {/* Yarık Saatleri (owner 2026-11-27): how long it stays open, then how long is left to fly out. */}
+        {connection.phase === 'online' && <RiftChip rift={connection.rift} c={c} />}</> : null}
         alert={mode === 'online' && connection.phase === 'failed' ? <div className="ah-link is-failed">
           <span>{c.kicks[connection.reason] ?? c.connectionFailed}</span>
           {/* Reconnecting cannot help a refusal or an outdated page. */}
@@ -514,8 +518,9 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     {screen === 'result' && <section className="arena-result gk">
       <div className="gk-arenacard" data-tone={result === 'extracted' ? 'self' : result === 'dead' ? 'hostile' : 'warn'}>
         <p className="gk-label">{c.brand}</p>
-        <h2 className="gk-display gk-arenacard__title">{c[result]}</h2>
-        {what && <p className="gk-arenacard__what" data-debrief={what.kind}><span className="gk-label">{c.debrief.title}</span>{debriefText(what, c, id => pilotName(id, c, world, network))}</p>}
+        <h2 className="gk-display gk-arenacard__title">{closedOut?.title ?? c[result]}</h2>
+        {closedOut ? <p className="gk-arenacard__what" data-debrief="closed"><span className="gk-label">{c.debrief.title}</span>{closedOut.what}</p>
+          : what && <p className="gk-arenacard__what" data-debrief={what.kind}><span className="gk-label">{c.debrief.title}</span>{debriefText(what, c, id => pilotName(id, c, world, network))}</p>}
         {real ? <SortieSummary c={c} report={connection.sortie} hold={flown} now={now} /> : flownUnits > 0
           && <ul className="gk-arenahaul">{flown.map((units, kind) => Math.floor(units) > 0 && <HaulChip key={kind} kind={kind}>
             <b className="gk-num">{Math.floor(units)}</b> {c.kinds[kind]}</HaulChip>)}</ul>}

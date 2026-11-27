@@ -12,6 +12,7 @@ import { OWN_SOUND, playSound } from '../lib/sound.js';
 import { useNow } from '../lib/time.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { useOwnPress } from '../ui/kit/useOwnPress.js';
+import { ARENA_ECONOMY } from '@astera/rules/arena/ui';
 
 /** How a moment reads at a glance (C10): a blow, a rise, an opening, or something that ran out. */
 type Tone = 'hostile' | 'gold' | 'good' | 'quiet';
@@ -181,6 +182,10 @@ export function ChronicleScreen({
                     title = t('synthesis.storm.chronicleStarted');
                     detail = t('synthesis.storm.chronicleStartedDetail');
                     break;
+                  case 'RIFT_HOUR':
+                    title = t('synthesis.rift.chronicleStarted');
+                    detail = t('synthesis.rift.chronicleStartedDetail');
+                    break;
                   case 'ASTEROID_SHOWER':
                     title = t('chronicle.asteroidShowerStarted');
                     detail = t('chronicle.asteroidShowerStartedDetail', { multiplier: event.payload.asteroidSpawnMultiplier });
@@ -213,7 +218,9 @@ export function ChronicleScreen({
                   case 'INTERGALACTIC_CONVOY':
                     title = t('chronicle.intergalacticConvoyEnded'); detail = t('chronicle.intergalacticConvoyEndedDetail'); break;
                   case 'ASTERIUM_STORM':
-                    title = t('synthesis.storm.chronicleEnded'); detail = t('synthesis.storm.chronicleEndedDetail'); break;
+                    title = t('synthesis.storm.chronicleEnded'); detail = t('synthesis.storm.chronicleEndedDetail', { minutes: ARENA_ECONOMY.riftGraceMinutes }); break;
+                  case 'RIFT_HOUR':
+                    title = t('synthesis.rift.chronicleEnded'); detail = t('synthesis.rift.chronicleEndedDetail', { minutes: ARENA_ECONOMY.riftGraceMinutes }); break;
                   case 'ASTEROID_SHOWER':
                     title = t('chronicle.asteroidShowerEnded'); detail = t('chronicle.asteroidShowerEndedDetail'); break;
                 }

@@ -60,6 +60,7 @@ export const galaxy = {
       TRADE_SHIP: "Trade Ship",
       INTERGALACTIC_CONVOY: "Intergalactic Convoy",
       ASTERIUM_STORM: "Asteryum Storm",
+      RIFT_HOUR: "Yarık Hour",
     },
     dailyNote: "Weekdays are Monday–Friday, the weekend Saturday–Sunday. Times are Türkiye time.",
     days: {
@@ -82,10 +83,15 @@ export const galaxy = {
       summary: "Send a fleet during its crossing for up to 4 hours of your world's production and a chance to recover ships, scaled by firepower.",
       note: "The convoy does not fire back, so your fleet takes no losses. Each world can strike once per crossing.",
     },
+    rift: {
+      title: "Yarık Hour",
+      summary: "The Yarık opens twice a day: in the Yarık Hour and in the Asteryum Storm. No Asteryum appears in the Yarık Hour; ore and rivals are as always.",
+      note: "When the hour ends, entry closes. Those inside have {{minutes}} minutes to get out; after that every ship still inside breaks apart and its hold is lost.",
+    },
     storm: {
       title: "Asteryum Storm",
       summary: "During the storm, Asteryum stones appear in the Yarık. Every stone you bring out through an exit goes into your Asteryum stock; the daily limit does not stop it.",
-      note: "If you die, the Asteryum in your hold spills too. The Synthesis Lab turns Asteryum into capsules.",
+      note: "Within 500 m of a stone an arrow points the way. If you die, the Asteryum in your hold spills too. The Synthesis Lab turns Asteryum into capsules.",
     },
   },
   /* Screen-reader names for the marks on the disc. Nothing is painted. */

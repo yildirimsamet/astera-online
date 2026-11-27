@@ -80,9 +80,11 @@
 - **S25** Yetenekler de **geliştirilebilir**. Süreleri, şarj miktarları, yenilenme süreleri ve
   geliştirme değerleri dengeleme aşamasında belirlenir.
 
-## 7. Sürekli açık savaş alanı
+## 7. Günde iki kez açılan savaş alanı
 
-- **S26** Savaş alanı galaksi haritasından **ayrı**, **sürekli açık**, **ortak** bir alandır.
+- **S26** Savaş alanı galaksiden **ayrı**, **ortak** bir alandır. **Günde iki kez birer saat açıktır**
+  (sahip, 2026-11-27; önceden "sürekli açık"): Yarık Saati 17:00–18:00 ve Asteryum Fırtınası 21:00–22:00
+  (Türkiye saati). Ayrıntı: [KG-K35](02-kararlar.md#kg-k35). Antrenman her zaman açık.
   Oyuncular gemilerini doğrudan sürer ve diğer oyuncularla **gerçek zamanlı** savaşır.
 - **S27** **Dört giriş ve dört çıkış** vardır: **merkezde** bir giriş + bir çıkış; **dış
   çemberde** üç giriş + üç çıkış.

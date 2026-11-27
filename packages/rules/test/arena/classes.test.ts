@@ -39,9 +39,10 @@ describe('three classes', () => {
     expect(table).toEqual([
       // Owner 2026-10-24: every cone starts 15 % wider (1.3°, 1.8°, 1.5° before); levels narrow it as before.
       // Owner 2026-10-27: "gemiler biraz çabuk ölüyor" — every hull 50 % stronger (340, 600, 400 before).
-      ['akinci', 80, 82, 510, 13, 9, 1.49, 220, 300, 540],
-      ['muhafiz', 60, 58, 900, 18, 5.5, 2.07, 280, 500, 330],
-      ['kilavuz', 72, 72, 600, 10, 8, 1.72, 250, 400, 480],
+      ['akinci', 80, 82, 510, 13, 9, 1.49, 220, 450, 540],
+      ['muhafiz', 60, 58, 900, 18, 5.5, 2.07, 280, 750, 330],
+      // Owner 2026-11-27: every hold half as much again (300, 500, 400 before): the Yarık opens two hours a day.
+      ['kilavuz', 72, 72, 600, 10, 8, 1.72, 250, 600, 480],
     ]);
   });
 

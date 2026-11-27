@@ -59,6 +59,7 @@ export const galaxy = {
       TRADE_SHIP: "Buque comercial",
       INTERGALACTIC_CONVOY: "Convoy intergaláctico",
       ASTERIUM_STORM: "Tormenta de Asteryum",
+      RIFT_HOUR: "Hora del Yarık",
     },
     dailyNote: "Días laborables: de lunes a viernes. Fin de semana: sábado y domingo. Todas las horas son de Turquía.",
     days: {
@@ -81,10 +82,15 @@ export const galaxy = {
       summary: "Ataca el convoy mientras atraviesa la galaxia. Según tu potencia de fuego, podrás ganar hasta cuatro horas de producción y quizá recuperar naves.",
       note: "El convoy no devuelve el fuego, así que tu flota no sufre pérdidas. Cada mundo puede atacarlo una vez por travesía.",
     },
+    rift: {
+      title: "Hora del Yarık",
+      summary: "El Yarık abre dos veces al día: en la Hora del Yarık y en la tormenta de Asteryum. En la Hora del Yarık no aparece Asteryum; el mineral y los rivales, como siempre.",
+      note: "Al terminar la hora se cierra la entrada. Quien esté dentro tiene {{minutes}} minutos para salir; después, toda nave que siga dentro se rompe y pierde su bodega.",
+    },
     storm: {
       title: "Tormenta de Asteryum",
       summary: "Durante la tormenta aparecen piedras de Asteryum en el Yarık. Cada piedra que saques por una salida va a tu reserva de Asteryum; el límite diario no la detiene.",
-      note: "Si mueres, el Asteryum de tu bodega también se dispersa. El Laboratorio de síntesis convierte el Asteryum en cápsulas.",
+      note: "A 500 m de una piedra, una flecha te indica el camino. Si mueres, el Asteryum de tu bodega también se dispersa. El Laboratorio de síntesis convierte el Asteryum en cápsulas.",
     },
   },
   /* Screen-reader names for the marks on the disc. Nothing is painted. */

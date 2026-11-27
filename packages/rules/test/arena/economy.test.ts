@@ -9,15 +9,16 @@ import {
  * carries at most four hours of the capital's own production of each resource.
  */
 describe('the hold is raw resources', () => {
+  // Owner 2026-11-27: the Yarık opens two hours a day, so a hold carries half as much again (300/400/500 before).
   it('holds the owner\'s level-one totals, any mix', () => {
-    expect([CLASS_STATS.akinci.cargoCapacity, CLASS_STATS.kilavuz.cargoCapacity, CLASS_STATS.muhafiz.cargoCapacity]).toEqual([300, 400, 500]);
+    expect([CLASS_STATS.akinci.cargoCapacity, CLASS_STATS.kilavuz.cargoCapacity, CLASS_STATS.muhafiz.cargoCapacity]).toEqual([450, 600, 750]);
   });
 
-  // Owner 2026-10-27: every farm holds half (24/12/12/16 and 160 before), a rock regrows in the
-  // same ~114 s (1.4/s before), and a rock gives at most 4 a second (16 before). Wrecks keep 40.
-  it('halves every farm and mines at most four a second', () => {
-    expect(FIELD_SPAWNS.map(spawn => spawn.amount)).toEqual([12, 6, 6, 8]);
-    expect([T.mineRate, T.crystalReserve, T.crystalRegen, T.dropChunk, T.testCargo]).toEqual([4, 80, 0.7, 40, 240]);
+  // Owner 2026-10-27 halved every farm (24/12/12/16 and 160 before); owner 2026-11-27 raised them by half for the
+  // shorter Yarık hours: a rock holds 120 and still regrows in the same ~114 s, and gives at most 6 a second. Wrecks keep 40.
+  it('grows every farm by half and mines at most six a second', () => {
+    expect(FIELD_SPAWNS.map(spawn => spawn.amount)).toEqual([18, 9, 9, 12]);
+    expect([T.mineRate, T.crystalReserve, T.crystalRegen, T.dropChunk, T.testCargo]).toEqual([6, 120, 1.05, 40, 240]);
     expect(T.crystalReserve / T.crystalRegen).toBeCloseTo(160 / 1.4, 6);
   });
 });
@@ -108,8 +109,8 @@ describe('class and entry windows', () => {
     expect(entryOpen(ends, new Date('2026-10-31T23:50:00Z'))).toBe(false);
     expect(E.minCore).toBe(9);
     // Owner 2026-10-28 cut both to 3 min ("biraz oynasınlar alışsınlar"); owner 2026-11-25 raised them back
-    // a little: a death costs 15 min, every flight 5 min of maintenance.
-    expect([E.repairMinutes, E.serviceMinutes]).toEqual([15, 5]);
+    // a little (15/5); owner 2026-11-27, the Yarık open an hour at a time: a death costs 5 min, a flight still 5.
+    expect([E.repairMinutes, E.serviceMinutes]).toEqual([5, 5]);
   });
 });
 

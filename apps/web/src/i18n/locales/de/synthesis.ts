@@ -3,11 +3,21 @@ export const synthesis = {
   storm: {
     chip: "Asteryum-Sturm",
     started: "Im Yarık tobt ein Asteryum-Sturm. Eine Stunde lang erscheinen Asteryum-Steine.",
-    ended: "Der Asteryum-Sturm ist vorbei. Bring das Asteryum in deinem Laderaum durch einen Ausgang hinaus.",
+    ended: "Der Asteryum-Sturm ist vorbei und der Zugang zum Yarık ist geschlossen. Bring das Asteryum in deinem Laderaum innerhalb von {{minutes}} Minuten durch einen Ausgang hinaus.",
     chronicleStarted: "Asteryum-Sturm begann",
     chronicleStartedDetail: "Eine Stunde lang erscheinen im Yarık Asteryum-Steine.",
     chronicleEnded: "Asteryum-Sturm endete",
-    chronicleEndedDetail: "Es erscheinen keine neuen Steine. Liegende Steine bleiben, bis jemand sie nimmt.",
+    chronicleEndedDetail: "Der Zugang zum Yarık ist geschlossen. Nach {{minutes}} Minuten sind die übrigen Steine und die Schiffe, die noch drin sind, verloren.",
+  },
+  /** Yarık Saati (owner 2026-11-27): the Yarık's second daily hour, without Asteryum. */
+  rift: {
+    chip: "Yarık-Stunde",
+    started: "Die Yarık-Stunde hat begonnen. Der Yarık ist eine Stunde lang offen; flieg dein Kommandoschiff aus dem Hangar.",
+    ended: "Die Yarık-Stunde ist vorbei. Der Zugang zum Yarık ist geschlossen; bist du drin, flieg innerhalb von {{minutes}} Minuten durch einen Ausgang hinaus.",
+    chronicleStarted: "Yarık-Stunde begann",
+    chronicleStartedDetail: "Der Yarık ist eine Stunde lang offen.",
+    chronicleEnded: "Yarık-Stunde endete",
+    chronicleEndedDetail: "Der Zugang zum Yarık ist geschlossen. Schiffe, die noch drin sind, zerbrechen nach {{minutes}} Minuten.",
   },
   capsule: {
     OPTIC_VEIL: { name: "Optischer Schleier", effect: "Nur du und dein Clan sehen deine Flotte; kein Teleskop, Radar oder Gözcü eines anderen Kommandanten erfasst sie.", warns: "Bei einem Angriff warnt das Radar des Ziels trotzdem." },

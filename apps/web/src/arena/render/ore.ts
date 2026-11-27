@@ -16,10 +16,37 @@ const VEINS_PER_ROCK = 6;
  * VFX brief — the storm's Asteryum (owner 2026-11-25: "birazcık daha büyüt ve birazcık daha parlak yap, ama ok ile
  * işaret etmeyelim"). In the world: a violet gem of one or two units floats free in the zone's middle, turning like
  * every loose piece. Asset: this same crystal in Asteryum's lavender (FARM_HEX[3]); no marker, no halo. Why: the storm
- * says only "the middle", so the stone must catch the eye there: drawn a little over a lone 12-unit field piece
- * (8.4 m) whatever it holds (by its units it would be a 3 m speck), and its core a little brighter.
+ * says only "the middle", so the stone must catch the eye there: drawn a little over the largest lone field piece
+ * (18 units, 11.4 m, since owner 2026-11-27 grew them by half) whatever it holds (by its units it would be a 3 m
+ * speck), and its core a little brighter.
  */
-const ASTERIUM = 3; const ASTERIUM_SIZE = 9.5; const ASTERIUM_GLOW = 1.35;
+const ASTERIUM = 3; const ASTERIUM_SIZE = 12.5; const ASTERIUM_GLOW = 1.35;
+
+/**
+ * VFX brief — the storm spark (owner 2026-11-27: "biraz göze çarpsın … ne aşırı belli olsun, ne de çok zor bulunsun").
+ * In the world: the storm's charge still crackles on each stone it left, a short jagged violet arc that strikes across
+ * the gem every 1.5 s and is gone. Asset: `assets/vfx/library/electric-line-4x4.webp` (Gabriel Aguiar, Unique AoE
+ * Magic, electricline01; the galaxy's welds use it), tinted Asteryum's lavender. Why: the stone is a piece of the
+ * storm; a flicker of its lightning catches the eye where the gem is a few pixels, a motion and not a halo.
+ */
+export const ASTERIUM_ARC_URL = '/assets/vfx/library/electric-line-4x4.webp';
+export const ARC_EVERY = 1.5;
+const ARC_FPS = 30; const ARC_FRAMES = 16; const ARC_GRID = 4; const ARC_SIZE = ASTERIUM_SIZE * 2.2;
+/** The cluster stands on its root (`crystalCluster`): its middle is this far up, where the arc crosses it. */
+const ARC_LIFT = ASTERIUM_SIZE * 0.38;
+/** As many arcs as the storm can leave stones, and a few over for a field's own. */
+const ARC_SLOTS = 12;
+
+/** Where the arc of the stone in drop slot `index` is at `time`: its frame and its angle, or nothing between strikes. */
+export function asteriumArc(time: number, index: number): { frame: number; rotation: number } | null {
+  // Each slot keeps its own beat, so two stones side by side never strike as one.
+  const t = time + index * 0.61;
+  const strike = Math.floor(t / ARC_EVERY);
+  const frame = Math.floor((t - strike * ARC_EVERY) * ARC_FPS);
+  if (frame >= ARC_FRAMES) return null;
+  const hash = Math.sin(strike * 12.9898 + index * 78.233) * 43758.5453;
+  return { frame, rotation: (hash - Math.floor(hash)) * Math.PI * 2 };
+}
 const up = new THREE.Vector3(0, 1, 0);
 
 interface Vein { slot: number; position: THREE.Vector3; quaternion: THREE.Quaternion; scale: number }
@@ -51,7 +78,7 @@ function crystalCluster(): THREE.BufferGeometry {
   return mergeVertices(...pieces).translate(0, -0.45, 0);
 }
 
-export function createOre(scene: THREE.Scene, layout: ArenaLayout, drops: number) {
+export function createOre(scene: THREE.Scene, layout: ArenaLayout, drops: number, arcSheet: THREE.Texture | null = null) {
   const geometry = crystalCluster();
   // Veined rock only: the crystal formations are crystals already.
   const veins: Vein[][] = FARM_HEX.map(() => []);
@@ -100,6 +127,16 @@ export function createOre(scene: THREE.Scene, layout: ArenaLayout, drops: number
     return mesh;
   });
 
+  // One sprite per arc, each with its own view of the one sheet (a clone shares the image: one upload).
+  const arcs = arcSheet ? Array.from({ length: ARC_SLOTS }, () => {
+    const map = arcSheet.clone(); map.repeat.set(1 / ARC_GRID, 1 / ARC_GRID);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map, color: FARM_HEX[ASTERIUM], transparent: true,
+      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+    sprite.scale.setScalar(ARC_SIZE); sprite.visible = false; sprite.frustumCulled = false; sprite.raycast = () => undefined;
+    scene.add(sprite);
+    return sprite;
+  }) : [];
+
   const pose = new THREE.Object3D();
   const spin = new THREE.Quaternion(); const tilt = new THREE.Quaternion(); const axis = new THREE.Vector3();
   const counts = FARM_HEX.map(() => 0);
@@ -131,6 +168,19 @@ export function createOre(scene: THREE.Scene, layout: ArenaLayout, drops: number
         pose.scale.setScalar(size); pose.updateMatrix();
         mesh.setMatrixAt(counts[drop.kind] ?? 0, pose.matrix); counts[drop.kind] = (counts[drop.kind] ?? 0) + 1;
       });
+      let arc = 0;
+      if (arcs.length > 0) world.cargoDrops.forEach((drop, i) => {
+        if (!drop.active || drop.amount <= 0 || drop.kind !== ASTERIUM || arc >= arcs.length) return;
+        const strike = asteriumArc(time, i); if (!strike) return;
+        const sprite = arcs[arc++]; if (!sprite) return;
+        const map = sprite.material.map; if (!map) return;
+        const column = strike.frame % ARC_GRID; const row = Math.floor(strike.frame / ARC_GRID);
+        map.offset.set(column / ARC_GRID, 1 - (row + 1) / ARC_GRID);
+        sprite.material.rotation = strike.rotation;
+        sprite.position.set(drop.p.x, drop.p.y + ARC_LIFT + Math.sin(time * 1.6 + i * 1.7) * 1.2, drop.p.z);
+        sprite.visible = true;
+      });
+      for (let k = arc; k < arcs.length; k++) { const sprite = arcs[k]; if (sprite) sprite.visible = false; }
       meshes.forEach((mesh, kind) => {
         mesh.count = counts[kind] ?? 0;
         mesh.instanceMatrix.needsUpdate = true;
@@ -140,6 +190,7 @@ export function createOre(scene: THREE.Scene, layout: ArenaLayout, drops: number
     },
     dispose(): void {
       for (const mesh of meshes) { scene.remove(mesh); if (mesh.material instanceof THREE.Material) mesh.material.dispose(); mesh.dispose(); }
+      for (const sprite of arcs) { scene.remove(sprite); sprite.material.map?.dispose(); sprite.material.dispose(); }
       geometry.dispose();
     },
   };

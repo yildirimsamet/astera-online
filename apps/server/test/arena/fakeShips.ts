@@ -9,7 +9,8 @@ export function fakeShips(over: Partial<ArenaShips> = {}) {
   let flights = 0;
   const zero = { alloy: 0, crystal: 0, deuterium: 0 };
   const view: HangarView = { core: 9, minCore: 9, ship: null, refill: { fuel: 0, ammo: 0, total: 0 }, deuterium: 100, alloy: 0, crystal: 0, cap: zero, sent: zero,
-    resetsAt: '2026-10-24T00:00:00.000Z', entryClosesAt: '2026-11-01T00:00:00.000Z' };
+    resetsAt: '2026-10-24T00:00:00.000Z', entryClosesAt: '2026-11-01T00:00:00.000Z',
+    rift: { open: true, storm: false, closesAt: '2026-11-01T00:00:00.000Z', deadline: null, opensAt: null } };
   const ships: ArenaShips = {
     spectate: () => Promise.reject(new GameError('TEAM_NOT_SPECTATING', 'No team flight', 409)),
     hangar: () => Promise.resolve(view),
@@ -29,7 +30,7 @@ export function fakeShips(over: Partial<ArenaShips> = {}) {
         readyAt: null, readyReason: end.outcome === 'dead' ? 'repair' : 'service', xp: { earned: 10, kept: 10, banked: 10 }, asterium: 0 });
     },
     recallOpen: () => { calls.recall++; return Promise.resolve(0); },
-    storm: () => Promise.resolve(false),
+    rift: () => Promise.resolve({ open: true, storm: false, closesAt: new Date(Date.now() + 30 * 60_000), deadline: null, opensAt: null }),
     playing: accountId => { calls.playing.push(accountId); return Promise.resolve(); },
     ...over,
   };

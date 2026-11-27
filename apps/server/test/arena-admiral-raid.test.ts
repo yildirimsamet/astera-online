@@ -11,7 +11,7 @@ import { recallFlight } from '../src/services/movement.js';
 import { readBattleReports } from '../src/services/reports.js';
 import { pendingThreads } from '../src/services/session.js';
 import { EventWorker } from '../src/worker/loop.js';
-import { fuelUp, giveInstrument, giveSatellite, giveUnits, grant, placeAt, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { openRift, fuelUp, giveInstrument, giveSatellite, giveUnits, grant, placeAt, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
 afterAll(async () => { const { close } = await testDb(); await close(); });
@@ -32,6 +32,7 @@ describe('the admiral on a raid', () => {
 
   beforeEach(async () => {
     f = await seedWorld(3, 9994);
+    await openRift(f.db, f.seasonId, f.clock);
     [mine, theirs] = f.planetIds as [string, string]; me = f.playerIds[0]!;
     for (const id of [mine, theirs]) { await setLevel(f.db, id, 'CORE', 9); await setLevel(f.db, id, 'SHIPYARD', 2); await grant(f.db, id, 300_000, 60_000); }
     await placeAt(f.db, mine, { x: 0 }); await placeAt(f.db, theirs, { x: 4_000 });

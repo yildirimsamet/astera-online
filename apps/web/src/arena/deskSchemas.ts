@@ -23,6 +23,8 @@ export const hangarSchema = z.object({
   live: z.object({ pilots: z.number().int().nonnegative(),
     /** The asker's own ship is in the room and alive: a closed page can fly it on (F22). */
     yours: z.boolean().default(false) }).optional(),
+  /** The Yarık's window (owner 2026-11-27): open twice a day. Optional for a rolling deploy: a room from before has none. */
+  rift: z.object({ open: z.boolean(), storm: z.boolean(), closesAt: z.string().nullable(), deadline: z.string().nullable(), opensAt: z.string().nullable() }).optional(),
 });
 
 const shares = z.object({ alloy: z.number().int().nonnegative(), crystal: z.number().int().nonnegative(), deuterium: z.number().int().nonnegative() });

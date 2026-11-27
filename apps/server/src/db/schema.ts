@@ -48,6 +48,7 @@ import type {
   PlannedGalaxyEvent,
   IntergalacticConvoyEffect,
   AsteriumStormEffect,
+  RiftHourEffect,
   TradeShipEffect,
   TradeRate,
   ResearchProjectId,
@@ -215,6 +216,8 @@ export const galaxyEventOccurrenceKind = pgEnum('galaxy_event_occurrence_kind', 
   'INTERGALACTIC_CONVOY',
   /** Asteryum Fırtınası (plan 2026-11-24 §3.2). */
   'ASTERIUM_STORM',
+  /** Yarık Saati (owner 2026-11-27): the Yarık's other daily opening. */
+  'RIFT_HOUR',
 ]);
 /**
  * WHAT THE GAME TELLS YOU, AND NOTHING ELSE. D45.
@@ -1368,6 +1371,12 @@ export type GalaxyEventLifecyclePayload =
       eventKind: 'ASTERIUM_STORM';
       startsAt: string;
       endsAt: string;
+    }
+  /** The Yarık Saati carries its window and nothing else: the open room is the whole effect. */
+  | {
+      eventKind: 'RIFT_HOUR';
+      startsAt: string;
+      endsAt: string;
     };
 
 export type GalaxyEventPayload =
@@ -1434,7 +1443,7 @@ export const galaxyEventOccurrences = pgTable('galaxy_event_occurrences', {
    * rather than each of the four readers guessing at the shape.
    */
   effect: jsonb('effect').$type<
-    AsteroidShowerEffect | TradeShipEffect | IntergalacticConvoyEffect | AsteriumStormEffect
+    AsteroidShowerEffect | TradeShipEffect | IntergalacticConvoyEffect | AsteriumStormEffect | RiftHourEffect
   >().notNull(),
   startProcessedAt: timestamp('start_processed_at', { withTimezone: true }),
   endProcessedAt: timestamp('end_processed_at', { withTimezone: true }),

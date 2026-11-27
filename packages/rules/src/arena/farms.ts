@@ -9,12 +9,12 @@ export type FarmKind = (typeof FARM_KINDS)[number];
 
 /** One way a field group can grow back: a lone piece or a small cluster of one kind. */
 export interface FieldSpawn { kind: number; pieces: number; amount: number; weight: number }
-// Owner 2026-10-27: half of what they held (24/12/12/16).
+// Owner 2026-10-27: half of what they held (24/12/12/16). Owner 2026-11-27: half as much again for the shorter Yarık hours.
 export const FIELD_SPAWNS: readonly FieldSpawn[] = [
-  { kind: 0, pieces: 1, amount: 12, weight: 4 },
-  { kind: 0, pieces: 4, amount: 6, weight: 3 },
-  { kind: 1, pieces: 3, amount: 6, weight: 2 },
-  { kind: 2, pieces: 1, amount: 8, weight: 1 },
+  { kind: 0, pieces: 1, amount: 18, weight: 4 },
+  { kind: 0, pieces: 4, amount: 9, weight: 3 },
+  { kind: 1, pieces: 3, amount: 9, weight: 2 },
+  { kind: 2, pieces: 1, amount: 12, weight: 1 },
 ];
 /**
  * THE ASTERYUM FIRTINASI, PILOT BY PILOT (owner 2026-11-25: "pilot başı dynamic … bazen 1 bazen 2 çıksın …

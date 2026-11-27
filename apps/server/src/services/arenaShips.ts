@@ -8,6 +8,7 @@ import { systemClock, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import { arenaAdmirals, arenaShips, arenaTeams, arenaTeamMembers, clanMemberships, players } from '../db/schema.js';
 import { ZERO, commander, holdOf, nextMidnight, perHour, sentToday, shipFor, landArenaCargo, type ShipRow } from './arenaShipState.js';
+import { riftWindow } from './arenaRift.js';
 import { activeTeamFor, recallLateMember, recordTeamEnd, recallTeamFlights, releaseStaleLobby } from './arenaTeamLedger.js';
 import { assertWorldOperational, GameError, loadLocked, lockSeason, readPlanetSnapshot, recomputePlayerWealth, saveResources,
   type LockedPlanet } from './planet.js';
@@ -22,7 +23,11 @@ import { creditAsterium, seasonHasSynthesis } from './synthesis.js';
 export type { SortieOutcome };
 /** `pilotKills`, `assists`: pilots this flight brought down and helped down (bots never count). */
 /** `unseen`: the pilot's page was gone when it ended, so the room's result never reached them. */
-export interface SortieEnd { outcome: SortieOutcome; fuel: number; ammo: number; hold: readonly number[]; pilotKills: number; assists: number; unseen?: boolean }
+export interface SortieEnd {
+  outcome: SortieOutcome; fuel: number; ammo: number; hold: readonly number[]; pilotKills: number; assists: number; unseen?: boolean;
+  /** Lost because the Yarık closed on it (owner 2026-11-27), not to a rival or a rock. */
+  closed?: boolean;
+}
 export interface SortieResult {
   outcome: SortieOutcome; deposit: ArenaResources; overflow: ArenaResources; readyAt: string | null; readyReason: 'repair' | 'service' | null;
   /** What the flight made, what the ship kept of it, and what its bar took. */
@@ -47,12 +52,14 @@ export interface HangarView {
   /** The capital's stock, whole: what pays a refill and a level. */
   deuterium: number; alloy: number; crystal: number;
   cap: ArenaResources; sent: ArenaResources; resetsAt: string; entryClosesAt: string;
+  /** The Yarık's window (owner 2026-11-27): the door says when it opens, and the flight when it closes. */
+  rift: { open: boolean; storm: boolean; closesAt: string | null; deadline: string | null; opensAt: string | null };
 }
 
 
 const planOf = (row: ShipRow): LoadoutPlan => ({ fuel: row.fuelPlan, ammo: row.ammoPlan });
 
-function hangarOf(planet: LockedPlanet, row: ShipRow | undefined, now: Date, landsAt: Date | null): HangarView {
+function hangarOf(planet: LockedPlanet, row: ShipRow | undefined, now: Date, landsAt: Date | null): Omit<HangarView, 'rift'> {
   const ready = row?.readyAt && row.readyAt > now ? row.readyAt : null;
   return {
     core: planet.buildings.CORE, minCore: E.minCore,
@@ -71,7 +78,10 @@ function hangarOf(planet: LockedPlanet, row: ShipRow | undefined, now: Date, lan
 
 /** The desk for the caller's ship as it stands now, with its road home if it is on one. */
 async function viewOf(tx: Tx, planet: LockedPlanet, playerId: string, now: Date): Promise<HangarView> {
-  return hangarOf(planet, (await shipFor(tx, playerId))[0], now, await homeLanding(tx, playerId, now));
+  const rift = await riftWindow(tx, { now: () => now });
+  return { ...hangarOf(planet, (await shipFor(tx, playerId))[0], now, await homeLanding(tx, playerId, now)), rift: {
+    open: rift.open, storm: rift.storm, closesAt: rift.closesAt?.toISOString() ?? null, deadline: rift.deadline?.toISOString() ?? null,
+    opensAt: rift.opensAt?.toISOString() ?? null } };
 }
 
 export async function readHangar(db: Db, clock: Clock, accountId: string): Promise<HangarView> {
@@ -179,6 +189,9 @@ export async function launchSortieIn(tx: Tx, clock: Clock, accountId: string, re
     if (!entryOpen(planet.seasonEndsAt, now)) {
       throw new GameError('SEASON_CLOSING', 'The Yarık closes before the season ends', 409, { endsAt: planet.seasonEndsAt.toISOString() });
     }
+    // Owner 2026-11-27: the Yarık opens only inside a Yarık Saati or an Asteryum Fırtınası; the minutes after are for flying out.
+    const rift = await riftWindow(tx, clock);
+    if (!rift.open) throw new GameError('RIFT_CLOSED', 'The Yarık is closed', 409, rift.opensAt ? { opensAt: rift.opensAt.toISOString() } : {});
     assertWorldOperational(planet);
     const cost = refillCost(row.ship, row.fuel, row.ammo, row.level, planOf(row));
     if (planet.deuterium + 1e-9 < cost.total) {
@@ -234,7 +247,7 @@ export async function endSortie(db: Db, clock: Clock, accountId: string, sortieI
     if (end.unseen === true && (end.outcome === 'dead' || end.outcome === 'towed') && readyAt) {
       const lost = settleHold(end.hold, ZERO).overflow;
       await notify(tx, { playerId: who.playerId, kind: 'arena_sortie_end', refId: sortieId, at: now,
-        payload: { outcome: end.outcome, lost, reason: readyReason, readyAt: readyAt.toISOString(), xp: made.kept } });
+        payload: { outcome: end.outcome, lost, reason: readyReason, readyAt: readyAt.toISOString(), xp: made.kept, ...(end.closed === true ? { closed: true } : {}) } });
     }
     if (member) {
       await recordTeamEnd(tx, member.teamId, who.playerId, season.status === 'live' ? end.outcome : 'recalled', pooled ? end.hold : [], now);

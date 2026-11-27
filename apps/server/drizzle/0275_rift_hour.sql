@@ -1,0 +1,1 @@
+ALTER TYPE "public"."galaxy_event_occurrence_kind" ADD VALUE 'RIFT_HOUR';

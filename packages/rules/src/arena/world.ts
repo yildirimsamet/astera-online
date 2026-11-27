@@ -241,6 +241,29 @@ export function stepAsteriumStorm(world: ArenaWorld): void {
   }
 }
 
+/**
+ * THE YARIK CLOSES (owner 2026-11-27): `riftGraceMinutes` after a window ends, every ship still inside is lost as
+ * if destroyed. Its hold stays aboard so the flight's report can say what went with it; no wreck is strewn into a
+ * room nobody may enter, and the storm's Asteryum goes too, so the next opening starts clean. Returns the ships lost.
+ */
+export function collapseRift(world: ArenaWorld): number[] {
+  const lost: number[] = [];
+  for (const ship of [world.pilot, ...world.drones]) {
+    if (!alive(ship) || ship.decoyOf >= 0) continue;
+    ship.hull = 0; ship.shieldHp = 0; ship.shieldMax = 0; ship.shield = 0;
+    ship.phase = 'dead'; ship.landed = 0; ship.mining = false; ship.respawn = T.tickRate * T.botRespawn;
+    impact(world, ship.p.x, ship.p.y, ship.p.z, 'explosion');
+    lost.push(ship.id);
+  }
+  for (let k = 0; k < STORM.maxPieces; k++) {
+    const drop = world.cargoDrops[STORM_SLOTS + k];
+    if (drop) { drop.active = false; drop.amount = 0; drop.claim = -1; }
+    world.stormSpots[k] = -1;
+  }
+  world.stormOpen = false; world.stormDebt = 0;
+  return lost;
+}
+
 /** `bot`: aims with the bot gimbal instead of the player's aim circle. */
 function stepPilot(world: ArenaWorld, pilot: Pilot, input: ArenaIntent, settings: SteeringSettings | undefined, predictOnly: boolean,
   bot = false): void {

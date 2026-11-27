@@ -3,11 +3,21 @@ export const synthesis = {
   storm: {
     chip: "Asteryumストーム",
     started: "YarıkでAsteryumストームが吹いています。1時間、Asteryum鉱石が現れます。",
-    ended: "Asteryumストームが収まりました。積んだAsteryumは出口から持ち出してください。",
+    ended: "Asteryumストームが収まり、Yarıkへの入場は締め切られました。積んだAsteryumは{{minutes}}分以内に出口から持ち出してください。",
     chronicleStarted: "Asteryumストームが始まりました",
     chronicleStartedDetail: "1時間、YarıkにAsteryum鉱石が現れます。",
     chronicleEnded: "Asteryumストームが終わりました",
-    chronicleEndedDetail: "新しい鉱石は現れません。残った鉱石は誰かが取るまで残ります。",
+    chronicleEndedDetail: "Yarıkへの入場は締め切られました。{{minutes}}分後、残った鉱石と中に残った艦は失われます。",
+  },
+  /** Yarık Saati (owner 2026-11-27): the Yarık's second daily hour, without Asteryum. */
+  rift: {
+    chip: "Yarıkアワー",
+    started: "Yarıkアワーが始まりました。1時間Yarıkが開いています。格納庫から司令官の艦を出撃させましょう。",
+    ended: "Yarıkアワーが終わりました。Yarıkへの入場は締め切られました。中にいる場合は{{minutes}}分以内に出口から脱出してください。",
+    chronicleStarted: "Yarıkアワーが始まりました",
+    chronicleStartedDetail: "1時間、Yarıkが開いています。",
+    chronicleEnded: "Yarıkアワーが終わりました",
+    chronicleEndedDetail: "Yarıkへの入場は締め切られました。中に残った艦は{{minutes}}分後に砕け散ります。",
   },
   capsule: {
     OPTIC_VEIL: { name: "光学ヴェール", effect: "艦隊が見えるのはあなたとクランだけです。他の指揮官の望遠鏡・レーダー・Gözcüには映りません。", warns: "攻撃では、目標のレーダーは警告を出します。" },

@@ -63,6 +63,7 @@ export const galaxy = {
       TRADE_SHIP: "Ticaret Gemisi",
       INTERGALACTIC_CONVOY: "Galaksilerarası Konvoy",
       ASTERIUM_STORM: "Asteryum Fırtınası",
+      RIFT_HOUR: "Yarık Saati",
     },
     dailyNote: "Hafta içi Pazartesi–Cuma, hafta sonu Cumartesi–Pazar. Saatler Türkiye saatidir.",
     days: {
@@ -85,10 +86,15 @@ export const galaxy = {
       summary: "Geçiş sırasında konvoya filo gönder; ateş gücüne göre dünyanın 4 saatlik üretimine kadar kaynak ve gemi kazanma şansı elde et.",
       note: "Konvoy karşılık vermez; filon kayıp vermez. Her dünya aynı geçişe bir kez akın edebilir.",
     },
+    rift: {
+      title: "Yarık Saati",
+      summary: "Yarık günde iki kez açılır: Yarık Saati'nde ve Asteryum Fırtınası'nda. Yarık Saati'nde Asteryum çıkmaz; madenler ve rakipler her zamanki gibi.",
+      note: "Saat bitince giriş kapanır. İçeridekilerin çıkmak için {{minutes}} dakikası var; sonra içeride kalan her gemi parçalanır ve ambarı kaybolur.",
+    },
     storm: {
       title: "Asteryum Fırtınası",
       summary: "Fırtına boyunca Yarık'ta Asteryum taşları belirir. Bir çıkış kapısından getirdiğin her taş Asteryum stokuna yazılır; günlük sınır onu durdurmaz.",
-      note: "Ölürsen ambarındaki Asteryum da saçılır. Asteryum Sentez Laboratuvarı'nda kapsüle dönüşür.",
+      note: "Bir taşa 500 m yaklaşınca bir ok yönünü gösterir. Ölürsen ambarındaki Asteryum da saçılır. Asteryum Sentez Laboratuvarı'nda kapsüle dönüşür.",
     },
   },
   openResearch: "Araştırma",

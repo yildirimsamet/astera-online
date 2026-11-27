@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { mulberry32 } from '@astera/rules';
 import { ABILITIES, ARENA_LAYOUT, ARENA_PROTOCOL, ARENA_TUNING as T, CLASS_STATS, abilityStats, flightRanks, clampAssist, copyFlight, createFeedState, createFlightState, createInput,
   createPilot, createSandboxWorld, deltaFeed, FAR_EVERY, keyFeed, MAX_REMOTE_PILOTS, MID_EVERY,  packFar, packPilot, packRemote, recoverPilot,
-  REMOTE_BAND, REMOTE_FAR_RANGE, REMOTE_FULL_RANGE, REMOTE_NEAR_RANGE, ROLE_SHIPS, SHIP_CLASSES, TACTICS, alive, sameSide, scanTargets, spawnFlight, stepArenaWorld, pilotVisible,
+  REMOTE_BAND, REMOTE_FAR_RANGE, REMOTE_FULL_RANGE, REMOTE_NEAR_RANGE, ROLE_SHIPS, SHIP_CLASSES, TACTICS, alive, collapseRift, sameSide, scanTargets, spawnFlight, stepArenaWorld, pilotVisible,
   type Ability, type ArenaFeed, type ArenaIntent, type ArenaWorld, type LoadoutPlan, type Pilot, type ShipClass, type SteeringSettings, type Tactic } from '@astera/rules/arena';
 import { InvalidSessionError } from '../auth/tokens.js';
 import { accounts } from '../db/schema.js';
@@ -20,7 +20,7 @@ import { spectateTeam } from '../services/arenaTeams.js';
 import { registerArenaReferences } from './references.js';
 import { registerArenaTeams } from './teams.js';
 import { createPlayout, playInput, queueInput, resetPlayout, type Playout } from './playout.js';
-import { asteriumStormActive } from '../services/arenaStorm.js';
+import { riftWindow, type RiftWindow } from '../services/arenaRift.js';
 
 const inputSchema = z.object({ kind: z.literal('in'), values: z.tuple([
   z.number().int().nonnegative().max(100000000), z.number().int().min(-1000).max(1000),
@@ -40,12 +40,15 @@ const messageSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('leave') }),
   z.object({ kind: z.literal('watch'), pilotId: z.number().int().nonnegative() }),
   z.object({ kind: z.literal('dev'), action: z.enum(['restart', 'exit', 'fuel', 'cargo', 'position']),
-    p: pointSchema.optional(), value: z.number().finite().min(0).max(400).optional() }),
+    // 2000: past the largest hold at level 20 (owner 2026-11-27 grew holds by half), so a debug fill can still top one up.
+    p: pointSchema.optional(), value: z.number().finite().min(0).max(2000).optional() }),
 ]).refine(message => message.kind !== 'hello' || message.tactic !== message.tactic2, 'Choose different tactics');
 interface Participant {
   key: string; pilot: Pilot; socket: WebSocket | null; playout: Playout<ArenaIntent>; input: ArenaIntent;
   settings: SteeringSettings; ack: number; lastSeq: number; lastInput: number; endedAt: number;
   name: string; seenKills: number; deathCounted: boolean;
+  /** This flight was lost to the Yarık closing on it (owner 2026-11-27), not to a rival or a rock. */
+  closedOut: boolean;
   /** A commander's account (null for a guest), the sortie in the air, and whether a debug action touched it (Y6a). */
   accountId: string | null; sortie: string | null; test: boolean; launching: boolean;
   teamId: string | null; watchId: number | null;
@@ -82,8 +85,8 @@ export interface ArenaShips {
   spectate(accountId: string): Promise<Launch>;
   end(accountId: string, sortieId: string, end: SortieEnd): Promise<SortieResult | null>;
   recallOpen(): Promise<number>;
-  /** The Asteryum Fırtınası is open in the galaxy calendar now (plan 2026-11-24 §3.2). */
-  storm(): Promise<boolean>;
+  /** The Yarık's window in the galaxy calendar now (owner 2026-11-27), and whether it is the Asteryum Fırtınası (plan 2026-11-24 §3.2). */
+  rift(): Promise<RiftWindow>;
   /** The game tab is closed while the Yarık flies: the room's heartbeat is what keeps a commander online. */
   playing(accountId: string): Promise<unknown>;
 }
@@ -98,11 +101,11 @@ const dbShips = (app: FastifyInstance): ArenaShips => ({
   spectate: accountId => spectateTeam(app.db, app.clock, accountId),
   end: (accountId, sortieId, end) => endSortie(app.db, app.clock, accountId, sortieId, end),
   recallOpen: () => recallOpenSorties(app.db, app.clock),
-  storm: () => asteriumStormActive(app.db, app.clock),
+  rift: () => riftWindow(app.db, app.clock),
   playing: accountId => app.presence.touch(accountId),
 });
-/** How often the room asks the calendar whether the Asteryum Fırtınası blows: a window is an hour long. */
-const STORM_POLL_MS = 5_000;
+/** How often the room reads the Yarık's window and whether the Asteryum Fırtınası blows: a window is an hour long. */
+const RIFT_POLL_MS = 5_000;
 /** A failed report is tried this often, this far apart, before it is left to the next start's recall. */
 const REPORT_TRIES = 3; const REPORT_RETRY_MS = 1000;
 const shipSchema = z.object({ ship: z.enum(SHIP_CLASSES) }).strict();
@@ -143,6 +146,14 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
   // Pilot zero is the offline sandbox slot; shared guests live in the remote pool.
   world.pilot.phase = 'towed';
   const participants = new Map<string, Participant>();
+  /** The Yarık's window as last read from the calendar; null before the first read (`setRift`). */
+  let rift: RiftWindow | null = null;
+  /** What a pilot is told of it: milliseconds from the moment it is sent, so a phone's own clock cannot skew it. */
+  const riftBody = (): { open: boolean; closesIn: number | null; deadlineIn: number | null } => {
+    const now = app.clock.now().getTime();
+    const left = (d: Date | null | undefined): number | null => d ? Math.max(0, d.getTime() - now) : null;
+    return { open: rift?.open ?? true, closesIn: left(rift?.closesAt), deadlineIn: left(rift?.deadline) };
+  };
   const entrance = groupEntrances(world);
   /** Room standings by participant key; they outlive a ship that leaves and returns. */
   const scores = new Map<string, Score>();
@@ -202,7 +213,7 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
     fresh.shield = T.spawnShield * T.tickRate;
     if (launch) { fresh.fuel = launch.fuel; fresh.ammo = launch.ammo; fresh.hold = [...launch.hold]; fresh.cargo = launch.hold.reduce((a, b) => a + b, 0); }
     if (launch?.spectating) { fresh.phase = launch.spectating === 'dead' ? 'dead' : launch.spectating === 'extracted' ? 'extracted' : 'towed'; fresh.hull = launch.spectating === 'dead' ? 0 : fresh.hull; }
-    Object.assign(entry.pilot, fresh); resetPlayout(entry.playout); entry.endedAt = 0; entry.seenKills = 0; entry.deathCounted = false;
+    Object.assign(entry.pilot, fresh); resetPlayout(entry.playout); entry.endedAt = 0; entry.seenKills = 0; entry.deathCounted = false; entry.closedOut = false;
     Object.assign(entry.input, NEUTRAL); entry.lastInput = world.tick;
     const index = world.drones.indexOf(entry.pilot); const prior = world.dronePrevious[index]; if (prior) copyFlight(prior, entry.pilot);
     broadcastRoster();
@@ -238,12 +249,13 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
     const sortie = entry.sortie; const accountId = entry.accountId;
     if (sortie === null || accountId === null) return;
     entry.sortie = null;
+    const closed = entry.closedOut ? { closed: true } : {};
     const end: SortieEnd = { outcome: entry.test ? 'test' : outcome, fuel: entry.pilot.fuel, ammo: entry.pilot.ammo, hold: [...entry.pilot.hold],
-      pilotKills: entry.pilot.pilotKills, assists: entry.pilot.assists, unseen: entry.socket === null };
+      pilotKills: entry.pilot.pilotKills, assists: entry.pilot.assists, unseen: entry.socket === null, ...closed };
     for (let attempt = 1; attempt <= REPORT_TRIES; attempt++) {
       try {
         const result = await ships.end(accountId, sortie, end);
-        if (result && entry.socket) send(entry.socket, { kind: 'sortie', ...result });
+        if (result && entry.socket) send(entry.socket, { kind: 'sortie', ...result, ...closed });
         return;
       } catch (error) {
         app.log.error({ err: error, attempt }, 'arena sortie report failed');
@@ -330,6 +342,12 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
       }
       if (world.tick - entry.lastInput >= T.linkLostAfter * T.tickRate && entry.pilot.linkLost === 0
         && (entry.pilot.phase === 'flying' || entry.pilot.phase === 'fuelOut')) entry.pilot.linkLost = T.linkLostGrace * T.tickRate;
+    }
+    // The Yarık closed and its minutes to fly out are over: every ship still inside is lost (owner 2026-11-27).
+    if (rift?.deadline && app.clock.now().getTime() >= rift.deadline.getTime()) {
+      const lost = collapseRift(world);
+      for (const entry of participants.values()) if (lost.includes(entry.pilot.id)) entry.closedOut = true;
+      rift = { ...rift, deadline: null };
     }
     stepArenaWorld(world, inputs, settings);
     let scored = false;
@@ -478,7 +496,7 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
             }
             const pilot = createPilot(world.nextId++, msg.ship, msg.tactic, 1, msg.tactic2);
             entry = { key, pilot, socket: null, playout: createPlayout(), input: createInput(), settings: { sensitivity: 1, invertPitch: false },
-              ack: 0, lastSeq: 0, lastInput: world.tick, endedAt: 0, name, seenKills: 0, deathCounted: false, keyAt: 0, tiers: new Map(),
+              ack: 0, lastSeq: 0, lastInput: world.tick, endedAt: 0, name, seenKills: 0, deathCounted: false, closedOut: false, keyAt: 0, tiers: new Map(),
               accountId, sortie: null, test: false, launching: false, ship: msg.ship, tactic: msg.tactic, tactic2: msg.tactic2, level: 1, teamId: null, watchId: null };
             world.drones.push(pilot); const prior = createFlightState(); world.dronePrevious.push(prior);
             participants.set(entry.key, entry); inputs.set(pilot.id, entry.input); settings.set(pilot.id, entry.settings); restart(entry, flight);
@@ -494,7 +512,7 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
           send(socket, { kind: 'welcome', v: ARENA_PROTOCOL, pilotId: entry.pilot.id, tick: world.tick, seq: entry.lastSeq,
             ...(entry.teamId ? { teamId: entry.teamId } : {}),
             tickRate: T.tickRate, snapshotRate: T.snapshotRate, layoutVersion: ARENA_LAYOUT.version, pilots: roster(),
-            storm: world.asteriumStorm });
+            storm: world.asteriumStorm, rift: riftBody() });
           broadcastRoster();
         };
         // A dev room seats a guest only where no session signs the hello: a signed-in commander flies as themselves.
@@ -590,7 +608,8 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
   if (env.ARENA_ENABLED) timer = setTimeout(loop, 1000 / T.tickRate);
   /*
     THE STORM FOLLOWS THE CALENDAR, AND FAILS CALM. Only the storm's own growth reads the switch
-    (`stepAsteriumStorm`); pieces already out and holds already full stay when it turns off (plan §3.2).
+    (`stepAsteriumStorm`); pieces already out and holds already full stay when it turns off (plan §3.2), until the
+    Yarık closes on them (`collapseRift`).
   */
   const setStorm = (on: boolean): void => {
     if (world.asteriumStorm === on) return;
@@ -599,13 +618,26 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
     const text = JSON.stringify({ kind: 'storm', active: on });
     for (const entry of participants.values()) if (entry.socket) sendText(entry.socket, text);
   };
-  const readStorm = (): void => {
-    ships.storm().then(setStorm, (error: unknown) => {
-      setStorm(false); app.log.error({ err: error }, 'arena storm check failed');
+  /*
+    THE ROOM FOLLOWS THE YARIK'S WINDOW (owner 2026-11-27), AND A FAILED READ CHANGES NOTHING: the storm calms, the
+    window and its deadline stay as last read. Pilots hear when it turns, never per snapshot (MP-06).
+  */
+  const setRift = (next: RiftWindow): void => {
+    setStorm(next.storm);
+    const signature = (w: RiftWindow | null): string => (w ? `${String(w.open)}:${String(w.closesAt?.getTime())}:${String(w.deadline?.getTime())}` : '');
+    const turned = signature(rift) !== signature(next);
+    rift = next;
+    if (!turned) return;
+    const text = JSON.stringify({ kind: 'rift', ...riftBody() });
+    for (const entry of participants.values()) if (entry.socket) sendText(entry.socket, text);
+  };
+  const readRift = (): void => {
+    ships.rift().then(setRift, (error: unknown) => {
+      setStorm(false); app.log.error({ err: error }, 'arena window check failed');
     });
   };
-  const stormTimer = env.ARENA_ENABLED ? setInterval(readStorm, STORM_POLL_MS) : null;
-  if (env.ARENA_ENABLED) readStorm();
+  const stormTimer = env.ARENA_ENABLED ? setInterval(readRift, RIFT_POLL_MS) : null;
+  if (env.ARENA_ENABLED) readRift();
   // Before the HTTP server closes: it waits on open sockets, and a deploy's stop would kill the process first.
   app.addHook('preClose', async () => {
     if (timer) clearTimeout(timer);

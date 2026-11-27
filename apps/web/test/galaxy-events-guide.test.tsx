@@ -250,3 +250,18 @@ describe('the Asteryum Fırtınası on the guide (plan 2026-11-24)', () => {
     expect(screen.queryByRole('heading', { name: 'Asteryum Fırtınası' })).not.toBeInTheDocument();
   });
 });
+
+describe('the Yarık Saati on the guide (owner 2026-11-27)', () => {
+  it('shows its daily hour beside the storm, and says the Yarık opens only in the two', () => {
+    schedule.setSynthesis(true);
+    render(<GalaxyEventsGuide onClose={vi.fn()} timeZone={TURKIYE} />);
+    expect(rowsIn('Yarık Saati')).toEqual([['Her gün', ['17:00–18:00']]]);
+    const card = screen.getByRole('heading', { name: 'Yarık Saati' }).closest('article');
+    expect(card).toHaveTextContent(/5 dakika/);
+  });
+
+  it('is not on the calendar of a galaxy without the Yarık hours', () => {
+    render(<GalaxyEventsGuide onClose={vi.fn()} timeZone={TURKIYE} />);
+    expect(screen.queryByRole('heading', { name: 'Yarık Saati' })).not.toBeInTheDocument();
+  });
+});

@@ -2,9 +2,9 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { MOON } from '@astera/rules';
 import { arenaShips, galaxyEventOccurrences, planets, playerAsterium, seasons } from '../src/db/schema.js';
-import { asteriumStormActive } from '../src/services/arenaStorm.js';
+import { riftWindow } from '../src/services/arenaRift.js';
 import { chooseShip, endSortie, launchSortie } from '../src/services/arenaShips.js';
-import { seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { openRift, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 
 /**
  * ASTERYUM IN THE YARIK (plan 2026-11-24 §3.2, A2/A4/A5): an exit carries the fourth hold slot into the
@@ -24,6 +24,7 @@ beforeEach(async () => {
   await setLevel(f.db, f.planetIds[0]!, 'CORE', 9);
   await f.db.update(planets).set({ alloy: 1000, crystal: 1000, deuterium: 500 }).where(eq(planets.id, f.planetIds[0]!));
   await chooseShip(f.db, f.clock, account, 'kilavuz');
+  await openRift(f.db, f.seasonId, f.clock);
 });
 afterAll(async () => { await (await testDb()).close(); });
 
@@ -63,14 +64,14 @@ describe('an exit with Asteryum aboard', () => {
 
 describe('the room’s storm switch', () => {
   it('is on only inside a dealt Asteryum Fırtınası window of a live season', async () => {
-    expect(await asteriumStormActive(f.db, f.clock)).toBe(false);
+    expect((await riftWindow(f.db, f.clock)).storm).toBe(false);
     const now = f.clock.now().getTime();
     await f.db.insert(galaxyEventOccurrences).values({
       seasonId: f.seasonId, sequence: 0, kind: 'ASTERIUM_STORM', definitionVersion: 1,
       startsAt: new Date(now - 60_000), endsAt: new Date(now + 60_000), effect: { fieldVersion: 1 }, createdAt: new Date(now - 120_000),
     });
-    expect(await asteriumStormActive(f.db, f.clock)).toBe(true);
+    expect((await riftWindow(f.db, f.clock)).storm).toBe(true);
     f.clock.advance(1);
-    expect(await asteriumStormActive(f.db, f.clock)).toBe(false);
+    expect((await riftWindow(f.db, f.clock)).storm).toBe(false);
   });
 });

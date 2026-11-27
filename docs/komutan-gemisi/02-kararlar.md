@@ -11,7 +11,32 @@
 
 ## Sahip kararları (KG-K)
 
+#### KG-K35
+**Yarık Saatleri, Asteryum oku ve kısa oturum kalibrasyonu** (2026-11-27). Plan + defter: [27](27-yarik-saatleri.md).
+- **Yarık günde iki kez açık.** Yeni galaksi etkinliği **Yarık Saati** (`RIFT_HOUR`) her gün 17:00–18:00
+  Türkiye saati, Asteryum yok; Asteryum Fırtınası 21:00–22:00 aynen. Yarık penceresi = canlı bir sezonda
+  açık `RIFT_HOUR` ya da `ASTERIUM_STORM`. Pencere bitince **giriş kapanır** (`RIFT_CLOSED`, kapı bir
+  sonraki açılışı söyler); içeridekilere **5 dk** (`riftGraceMinutes`); sonra oda içerideki her canlı
+  gemiyi patlatır (`collapseRift`: ambar kaybolur, gemi tamire girer, enkaz saçılmaz) ve fırtına
+  taşlarını siler. Sonuç ve görülmemiş-uçuş bildirimi "Yarık kapandı" der (`closed`). Antrenman her zaman
+  açık. Protokol 20 (`welcome.rift`, `rift` mesajı; süreler gönderim anına göre ms). DB `0275_rift_hour`.
+- **Asteryum oku** (KG-K34'teki "ok/işaret yok"u kaldırır): en yakın Asteryum taşı **500 m** içindeyse
+  HUD'da mor elmas + mesafe, ekran dışında kenar oku; ambar doluysa "Ambar dolu". **Fırtına kıvılcımı:**
+  taşın üstünde ~1,5 sn'de bir kısa mor elektrik arkı (`electric-line-4x4.webp`); halka/hale yok.
+  Taş 12,5 m çizilir (en büyük tek saha parçası artık 11,4 m).
+- **Çıkış işareti yalnız 2 km içinde** (sahip, 2026-11-27: "bir çıkışa 2km kala gözükür"); uzakta harita ve
+  radar yol gösterir. Yarık kapanırken (5 dk çıkış süresi) mesafeden bağımsız görünür (sahip: "Ekle"). Kenar okları ince-uzun (çıkış 16×10, Asteryum 14×9): neredeyse eşkenar üçgen ~120°
+  dönünce dönmemiş gibi okunuyordu (ölçüldü). Asteryum'u sonradan açan sezona (`activateSynthesis`) Yarık
+  Saati de eklenir; "sıradaki etkinlik" sayacı böyle sezonda fırtınayı ve Yarık Saati'ni de sayar.
+  Kapanışta patlayan gemi oda sıralamasına ölüm olarak yazılır (sahip: "farketmez").
+- **Kalibrasyon:** tamir 15 → **5 dk**; ücretli tamir aynı (yalnız Amiral'in 60 dk'lık eşlik kaybı
+  tamirini kısaltır); bakım **5 dk** kalır; ambar **+%50** (Akıncı 450, Kılavuz 600, Muhafız 750; 1. sv);
+  verim **×1,5** (kazma 6/sn, kaya 120, dolma 1,05/sn ≈ 114 sn aynı; saha parçaları 18/9/9/12).
+  Günlük tavan (4 saat üretim) ve XP oranı değişmez.
+
 #### KG-K34
+> **Kısmen değişti:** "ok/işaret yok" ve 9,5 m taş boyutu [KG-K35](#kg-k35) ile değişti (2026-11-27).
+
 **Yarık'ta puan yok; fırtına pilot başına; kontrol ve HUD düzeltmeleri** (2026-11-25).
 - **Puan kaldırıldı.** "Yarık'ta puan diye bir şey yok": `FARM_POINTS`/`holdPoints`, odanın puan
   satırı, çıkış işaretindeki "· N puan", antrenman sonucundaki puan ve ipuçları gitti. Ambar yalnız

@@ -1,5 +1,7 @@
 # Yarık + Komutan Gemisi — Özelliğin beyni
 
+> **2026-11-27:** [27](27-yarik-saatleri.md) — Yarık günde iki kez (Yarık Saati 17–18, Fırtına 21–22),
+> 5 dk çıkış süresi, 500 m Asteryum oku, kısa oturum kalibrasyonu ([KG-K35](02-kararlar.md#kg-k35)).
 > **2026-11-10:** [26](26-isaret-boyutlari-ve-son-inceleme.md) — üçgenler/kapalı gözler
 > 2 px küçük; bütün çalışmanın incelemesinde doğrulanan ve düzeltilen bulgular.
 

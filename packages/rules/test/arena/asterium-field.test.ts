@@ -173,7 +173,7 @@ describe('the own row carries the Asteryum slot (protocol 17)', () => {
 
 describe('the storm\'s slots are new to the room (protocol 19)', () => {
   it('tells a page on 18 to reload: its pool is shorter', () => {
-    expect(ARENA_PROTOCOL).toBe(19);
+    expect(ARENA_PROTOCOL).toBeGreaterThanOrEqual(19);
   });
 });
 

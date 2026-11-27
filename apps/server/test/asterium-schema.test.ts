@@ -84,6 +84,7 @@ describe('enum values, appended last', () => {
   it('names the new lifecycle moments', () => {
     expect(eventKind.enumValues.at(-1)).toBe('synthesis_complete');
     expect(notificationKind.enumValues.at(-1)).toBe('synthesis_ready');
-    expect(galaxyEventOccurrenceKind.enumValues.at(-1)).toBe('ASTERIUM_STORM');
+    // The Yarık Saati (owner 2026-11-27) was appended after it.
+    expect(galaxyEventOccurrenceKind.enumValues.slice(-2)).toEqual(['ASTERIUM_STORM', 'RIFT_HOUR']);
   });
 });

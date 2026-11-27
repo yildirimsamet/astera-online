@@ -417,7 +417,7 @@ async function main(): Promise<void> {
         const live = await liveSeason(db, values.shard);
         if (!live) throw new Error(`no live season on ${values.shard}`);
         const result = await activateSynthesis(db, { seasonId: live.season.id, clock: systemClock, apply: values.yes === true });
-        console.log(`${values.shard}: ${result.status}; start=${result.startsAt.toISOString()}; moons=${String(result.moons)}; storms=${String(result.storms)}`);
+        console.log(`${values.shard}: ${result.status}; start=${result.startsAt.toISOString()}; moons=${String(result.moons)}; storms=${String(result.storms)}; riftHours=${String(result.riftHours)}`);
         console.log(result.applied ? 'Opened Asteryum and the Sentez Laboratuvarı. Moons make Asteryum from now; nothing was minted for the past.'
           : result.status === 'READY' ? 'Nothing was written; pass --yes to apply.' : 'Nothing was written.');
         break;

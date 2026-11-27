@@ -98,3 +98,28 @@ describe('the Asteryum Fırtınası on the galaxy calendar', () => {
     expect((await activeGalaxyEvents(db, account.id, clock)).map((event) => event.id)).not.toContain(storm!.id);
   });
 });
+
+/*
+  THE YARIK SAATİ COMES WITH ASTERYUM (owner 2026-11-27): the Yarık opens only in its two daily windows, so a
+  season that opens Asteryum gets both of them, and the next-event countdown names them there too, though the
+  season's ruleset (20) predates both.
+*/
+describe('activating Asteryum also deals the Yarık Saati', () => {
+  it('adds the daily Yarık Saati from its next window, and the countdown names it', async () => {
+    const { db } = await testDb();
+    await truncateAll(db);
+    const clock = new FixedClock(new Date('2026-11-25T19:30:00.000Z'));
+    const { season } = await createSeason(db, { shardCode: 'EU-RFT', seed: 9_121, startsAt: new Date('2026-11-20T00:00:00.000Z'), days: 14, rulesetVersion: MOON.rulesetVersion });
+    const account = await makeAccount(db, 'Riftwatch');
+    await joinSettled(db, account.id, season.id, clock);
+    const result = await activateSynthesis(db, { seasonId: season.id, clock, apply: true });
+    expect(result.riftHours).toBeGreaterThan(0);
+    const hours = await db.select().from(galaxyEventOccurrences)
+      .where(and(eq(galaxyEventOccurrences.seasonId, season.id), eq(galaxyEventOccurrences.kind, 'RIFT_HOUR')));
+    expect(hours).toHaveLength(result.riftHours);
+    expect(hours.map((hour) => hour.startsAt.toISOString())).toContain('2026-11-26T14:00:00.000Z');
+
+    clock.set(new Date('2026-11-26T13:59:00.000Z'));
+    expect(await nextPublicGalaxyEvent(db, account.id, clock)).toEqual({ kind: 'RIFT_HOUR', startsAt: new Date('2026-11-26T14:00:00.000Z') });
+  });
+});

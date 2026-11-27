@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { ARENA_TUNING as T, closestSurface, createSandboxWorld, obstacleSize, type SurfacePoint } from '@astera/rules/arena';
-import { createOre } from '../../src/arena/render/ore.js';
+import { ARENA_TUNING as T, FIELD_SPAWNS, closestSurface, createSandboxWorld, obstacleSize, type SurfacePoint } from '@astera/rules/arena';
+import { ARC_EVERY, ASTERIUM_ARC_URL, asteriumArc, createOre } from '../../src/arena/render/ore.js';
 
 /**
  * Owner 2026-10-20: farm must read at a glance. Loose ore is a crystal in its kind's
@@ -16,6 +16,11 @@ const setup = () => {
   const veined = world.layout.deposits.map((index, slot) => ({ slot, o: world.layout.obstacles[index] }))
     .filter(({ o }) => o?.kind === 'rock');
   return { world, ore, meshes, veined };
+};
+/** A moment the arc of the stone in drop slot `index` is striking. */
+const samplesFor = (index: number): number => {
+  for (let k = 0; k < 300; k++) if (asteriumArc(k * 0.01, index)) return k * 0.01;
+  throw new Error('no strike');
 };
 const scaleOf = (mesh: THREE.InstancedMesh, i: number) => {
   const m = new THREE.Matrix4(); mesh.getMatrixAt(i, m);
@@ -94,7 +99,8 @@ describe('arena ore', () => {
     const { world, ore, meshes } = setup();
     const [alloy, asterium] = world.cargoDrops;
     if (!alloy || !asterium) throw new Error('no drops');
-    Object.assign(alloy, { active: true, amount: 12, kind: 0 });
+    // The largest lone field piece (owner 2026-11-27 grew them by half: 18 units).
+    Object.assign(alloy, { active: true, amount: Math.max(...FIELD_SPAWNS.map(spawn => spawn.amount)), kind: 0 });
     Object.assign(asterium, { active: true, amount: 1, kind: 3 });
     ore.update(world, 0);
     const alloyMesh = meshes[0]; const asteriumMesh = meshes[3];
@@ -107,6 +113,48 @@ describe('arena ore', () => {
       ore.update(world, time);
       expect(glow(asteriumMesh)).toBeGreaterThan(glow(alloyMesh));
     }
+  });
+
+  /*
+    VFX brief — the storm spark (owner 2026-11-27: "biraz göze çarpsın … ne aşırı belli olsun, ne de çok zor bulunsun").
+    In the world: the storm's charge still crackles on each stone it left, a short jagged violet arc that strikes
+    across the gem every 1.5 s and is gone. Asset: `assets/vfx/library/electric-line-4x4.webp` (the electric line
+    flipbook the galaxy's welds use), tinted Asteryum's lavender. Why: the stone is a piece of the storm; a flicker of
+    its lightning catches the eye at a distance where the gem is a few pixels, and a motion, not a halo, draws it.
+  */
+  it('strikes a short arc across each Asteryum stone every 1.5 s, the stones out of step', () => {
+    expect(ARC_EVERY).toBe(1.5);
+    expect(ASTERIUM_ARC_URL).toBe('/assets/vfx/library/electric-line-4x4.webp');
+    const samples = Array.from({ length: 300 }, (_, k) => k * 0.01);
+    const lit = (index: number) => samples.filter(time => asteriumArc(time, index) !== null).length / samples.length;
+    // One 16-frame strike at 30 fps: about a third of the time, never most of it.
+    expect(lit(0)).toBeGreaterThan(0.25); expect(lit(0)).toBeLessThan(0.45);
+    expect(samples.some(time => (asteriumArc(time, 0) === null) !== (asteriumArc(time, 1) === null))).toBe(true);
+    for (const time of samples) {
+      const arc = asteriumArc(time, 2);
+      if (arc) { expect(arc.frame).toBeGreaterThanOrEqual(0); expect(arc.frame).toBeLessThan(16); }
+    }
+  });
+
+  it('draws the arc on live Asteryum stones only', () => {
+    const world = createSandboxWorld();
+    for (const drop of world.cargoDrops) drop.active = false;
+    const scene = new THREE.Scene();
+    const ore = createOre(scene, world.layout, world.cargoDrops.length, new THREE.Texture());
+    const arcs = () => scene.children.filter((c): c is THREE.Sprite => c instanceof THREE.Sprite && c.visible);
+    const [alloy, stone] = world.cargoDrops;
+    if (!alloy || !stone) throw new Error('no drops');
+    Object.assign(alloy, { active: true, amount: 9, kind: 0 });
+    Object.assign(stone, { active: true, amount: 2, kind: 3, p: { x: 40, y: 5, z: -30 } });
+    const time = samplesFor(1);
+    ore.update(world, time);
+    expect(arcs()).toHaveLength(1);
+    expect(arcs()[0]?.position.x).toBe(40); expect(arcs()[0]?.position.z).toBe(-30);
+    stone.active = false;
+    ore.update(world, time);
+    expect(arcs()).toHaveLength(0);
+    ore.dispose();
+    expect(scene.children.some(c => c instanceof THREE.Sprite)).toBe(false);
   });
 
   it('leaves the scene clean on dispose', () => {

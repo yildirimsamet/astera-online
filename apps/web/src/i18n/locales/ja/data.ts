@@ -501,6 +501,7 @@ export const notifications = {
   arenaTeamShareReady: "チームの取り分が用意できました。格納庫で受け取ってください。",
   arenaSortieTowed: "接続が切れたため、司令官の艦はYarıkから曳航されました。",
   arenaSortieDead: "司令官の艦はYarıkで撃墜され、修理中です。",
+  arenaSortieClosed: "司令官の艦が中にいるままYarıkが閉じました。艦は砕け散り、修理中です。",
   arenaSortieLoot: "積荷から失われたもの：{{loot}}。",
 
   incomingFallback: "艦隊が到着します。",

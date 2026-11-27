@@ -3,11 +3,21 @@ export const synthesis = {
   storm: {
     chip: "Asteryum Fırtınası",
     started: "Yarık'ta Asteryum Fırtınası esiyor. Bir saat boyunca Asteryum taşları beliriyor.",
-    ended: "Asteryum Fırtınası dindi. Ambarındaki Asteryum'u bir çıkış kapısından çıkar.",
+    ended: "Asteryum Fırtınası dindi, Yarık'a giriş kapandı. Ambarındaki Asteryum'u {{minutes}} dakika içinde bir çıkış kapısından çıkar.",
     chronicleStarted: "Asteryum Fırtınası başladı",
     chronicleStartedDetail: "Bir saat boyunca Yarık'ta Asteryum taşları belirir.",
     chronicleEnded: "Asteryum Fırtınası bitti",
-    chronicleEndedDetail: "Yeni taş belirmez. Dışarıda kalan taşlar biri alana kadar durur.",
+    chronicleEndedDetail: "Yarık'a giriş kapandı. {{minutes}} dakika sonra kalan taşlar ve içerideki gemiler kaybolur.",
+  },
+  /** Yarık Saati (owner 2026-11-27): the Yarık's second daily hour, without Asteryum. */
+  rift: {
+    chip: "Yarık Saati",
+    started: "Yarık Saati başladı. Bir saat boyunca Yarık açık; komutan gemini hangardan uçur.",
+    ended: "Yarık Saati bitti. Yarık'a giriş kapandı; içerideysen {{minutes}} dakika içinde bir çıkış kapısından çık.",
+    chronicleStarted: "Yarık Saati başladı",
+    chronicleStartedDetail: "Bir saat boyunca Yarık açık.",
+    chronicleEnded: "Yarık Saati bitti",
+    chronicleEndedDetail: "Yarık'a giriş kapandı. İçeride kalan gemiler {{minutes}} dakika sonra parçalanır.",
   },
   capsule: {
     OPTIC_VEIL: { name: "Optik Örtü", effect: "Filon yalnız sana ve klanına görünür; başka hiçbir komutanın Teleskop'u, Radar'ı ya da Gözcü'sü onu görmez.", warns: "Saldırıda hedefin Radar'ı uyarıyı yine verir." },

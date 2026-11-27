@@ -7,10 +7,10 @@ import type { ArenaAssets, PreparedModel } from './assets/load.js';
 import { releaseRenderer } from './assets/memory.js';
 import type { ArenaAudio } from './audio.js';
 import { shipModelFor } from './classes.js';
-import { nearestDeposit } from './compass.js';
+import { exitReach, nearestAsterium, nearestDeposit, nearestExit } from './compass.js';
 import { createFrameDriver } from './driver.js';
 import type { ArenaControls } from './input.js';
-import type { ArenaNetwork } from './network.js';
+import { riftDeadline, type ArenaNetwork } from './network.js';
 import { altitudeShare, selfTransform } from './map.js';
 import { MARK_RANGE, edgePoint, enemyMarked, friendTarget, sighting, threatPointed, type EdgeMark, type Sighting } from './marks.js';
 import { ChaseCamera } from './render/camera.js';
@@ -23,7 +23,7 @@ import { ShipVisual, type FlameSet, type ShipPose } from './render/ships.js';
 import { ENGINE_FLAME_NOISE_URL } from '../vfx/engineFlames.js';
 import { buildStage } from './render/stage.js';
 import { createColliderView } from './render/colliders.js';
-import { createOre } from './render/ore.js';
+import { ASTERIUM_ARC_URL, createOre } from './render/ore.js';
 import { applyCorrection, decayCorrection } from './smoothing.js';
 import { createResolution, stepResolution } from './resolution.js';
 import { graphicsFor, type ArenaGraphicsChoice } from './graphics.js';
@@ -41,6 +41,8 @@ export const SHIP_LENGTH = 15;
 export interface HudRefs {
   reticle: HTMLElement | null; lead: HTMLElement | null; hit: HTMLElement | null; kill: HTMLElement | null;
   enemies: HTMLElement[]; threats: HTMLElement[]; exit: HTMLElement | null; crystal: HTMLElement | null;
+  /** The arrow to the nearest Asteryum stone within reach (owner 2026-11-27); absent where a page has no such marker. */
+  asterium?: HTMLElement | null;
   /** One per named place, in `placesOf(layout)` order. */
   places: HTMLElement[];
   /** Slots for the live pings, newest first. */
@@ -121,7 +123,9 @@ export function createArenaClient(options: ClientOptions) {
   const flameNoise = new THREE.TextureLoader().load(ENGINE_FLAME_NOISE_URL);
   flameNoise.wrapS = THREE.RepeatWrapping; flameNoise.wrapT = THREE.RepeatWrapping; flameNoise.colorSpace = THREE.NoColorSpace;
   const flames: FlameSet = { noise: flameNoise, quality: graphics.light || navigator.maxTouchPoints > 0 ? 'mobile' : 'standard' };
-  const ore = createOre(scene, world.layout, world.cargoDrops.length);
+  // The storm spark's electric line (owner 2026-11-27): a public 117 KB sheet, loaded with the flame noise.
+  const arcSheet = new THREE.TextureLoader().load(ASTERIUM_ARC_URL); arcSheet.colorSpace = THREE.SRGBColorSpace;
+  const ore = createOre(scene, world.layout, world.cargoDrops.length, arcSheet);
   const colliderView = createColliderView(scene, world.layout);
   const drawnHulls: { pose: THREE.Object3D; ship: ShipClass }[] = [];
   const dust = createDust();
@@ -162,7 +166,7 @@ export function createArenaClient(options: ClientOptions) {
     omegaYaw: 0, omegaPitch: 0, landed: false, mining: false, shield: 0, cloak: 0, hull: T.hull, hullMax: T.hull, visible: true, hitAt: 0, normal: new THREE.Vector3(),
     ward: 0, mend: false, hologram: false };
   const otherPose: ShipPose = { ...ownPose, position: new THREE.Vector3(), quaternion: new THREE.Quaternion(), normal: new THREE.Vector3() };
-  const seen = { compassKind: -1, shots: 0, hits: 0, kills: 0, damage: -100000, landed: 0, phase: 'flying' as Pilot['phase'], hitAt: -10, killAt: -10,
+  const seen = { compassKind: -1, asteriumFull: false, shots: 0, hits: 0, kills: 0, damage: -100000, landed: 0, phase: 'flying' as Pilot['phase'], hitAt: -10, killAt: -10,
     damageAt: -10, damageAngle: 0, extractedAt: -1, deadAt: -1, warpIn: true, drawn: 0, lastHud: 0, time: 0, lastDraw: 0, bump: 0, turbo: false, circle: 0, ring: 0, reticleAt: 0,
     landTarget: null as ReturnType<typeof findLandingTarget> };
   const droneShots = new Map<number, number>();
@@ -393,14 +397,13 @@ export function createArenaClient(options: ClientOptions) {
       hud.lead.style.display = leadMark && !leadMark.behind ? 'block' : 'none';
       if (leadMark) hud.lead.style.transform = `translate3d(${leadMark.x.toFixed(1)}px,${leadMark.y.toFixed(1)}px,0)`;
     }
-    // Nearest exit: always findable.
+    // Nearest exit, once it is within 2 km (owner 2026-11-27); farther out the map and the radar show the way,
+    // except while the Yarık is closing: then from anywhere.
     if (hud.exit) {
-      let best = world.layout.exits[0]; let bestDistance = Infinity;
-      for (const exit of world.layout.exits) {
-        const d = Math.hypot(exit.x - pilot.p.x, exit.y - pilot.p.y, exit.z - pilot.p.z);
-        if (d < bestDistance) { bestDistance = d; best = exit; }
-      }
-      if (best && flying) {
+      const closing = riftDeadline(options.network()?.getSnapshot().rift ?? null, Date.now()) !== null;
+      const near = flying ? nearestExit(world.layout.exits, pilot.p, exitReach(closing)) : null;
+      const best = near?.exit; const bestDistance = near?.distance ?? 0;
+      if (best) {
         const p = project(best.x, best.y + 40, best.z);
         const inside = !p.behind && p.x > 30 && p.x < width - 60 && p.y > 205 && p.y < bandBottom;
         const e = inside ? { x: p.x, y: p.y, angle: 0, side: 'right' } : edge(p.x, p.y, p.behind, 30, true);
@@ -469,6 +472,28 @@ export function createArenaClient(options: ClientOptions) {
         hud.crystal.style.transform = `translate3d(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px,0)`;
         if (seen.drawn % 6 === 0) { const label = hud.crystal.querySelector('[data-distance]'); if (label) label.textContent = `${String(Math.round(deposit?.distance ?? 0))} m`; }
       } else hud.crystal.style.display = 'none';
+    }
+    // The Asteryum arrow (owner 2026-11-27): the nearest storm stone once it is within reach. On screen a bracket on
+    // the stone, off it an arrow on the band's edge. A full hold still sees the way, and is told it cannot take it.
+    if (hud.asterium) {
+      const stone = flying ? nearestAsterium(world.cargoDrops, pilot.p) : null;
+      const drop = stone ? world.cargoDrops[stone.index] : undefined;
+      if (stone && drop) {
+        const p = project(drop.p.x, drop.p.y, drop.p.z);
+        const inside = !p.behind && p.x > 30 && p.x < width - 30 && p.y > 205 && p.y < bandBottom;
+        const e = inside ? { x: p.x, y: p.y, angle: 0, side: 'right' } : edge(p.x, p.y, p.behind, 30, true);
+        hud.asterium.style.display = 'block';
+        hud.asterium.toggleAttribute('data-edge', !inside);
+        hud.asterium.dataset.side = e.side;
+        hud.asterium.style.transform = `translate3d(${e.x.toFixed(1)}px,${e.y.toFixed(1)}px,0)`;
+        hud.asterium.style.setProperty('--angle', `${e.angle.toFixed(3)}rad`);
+        const full = pilot.cargo + drop.amount > statsOf(pilot).cargoCapacity + 1e-9;
+        if (full !== seen.asteriumFull || seen.drawn % 6 === 0) {
+          seen.asteriumFull = full; hud.asterium.toggleAttribute('data-full', full);
+          const label = hud.asterium.querySelector('[data-label]'); if (label) label.textContent = full ? arenaCopy().holdFull : arenaCopy().asterium;
+          const metres = hud.asterium.querySelector('[data-distance]'); if (metres) metres.textContent = `${String(Math.round(stone.distance))} m`;
+        }
+      } else hud.asterium.style.display = 'none';
     }
     if (hud.damage) {
       const fade = Math.max(0, 1 - (time - seen.damageAt) / 1.3);
@@ -825,7 +850,7 @@ export function createArenaClient(options: ClientOptions) {
     dispose(): void {
       cancelAnimationFrame(handle); handle = 0;
       observer.disconnect(); canvas.removeEventListener('webglcontextlost', onLost);
-      own.dispose(scene); for (const visual of others.values()) visual.dispose(scene); crowd.dispose(); flameNoise.dispose();
+      own.dispose(scene); for (const visual of others.values()) visual.dispose(scene); crowd.dispose(); flameNoise.dispose(); arcSheet.dispose();
       // The context goes too: the galaxy mounts next and needs the phone's GPU memory back (B1).
       ore.dispose(); colliderView.dispose(); stage.dispose(); post.dispose(); releaseRenderer(renderer);
     },

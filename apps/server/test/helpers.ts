@@ -13,6 +13,7 @@ import {
   communityPolicyAcceptances,
   buildOrders,
   debrisFields,
+  galaxyEventOccurrences,
   planets,
   players,
   researchOrders,
@@ -499,6 +500,18 @@ export async function grant(
  * generous and deliberately separate from `grant`: a test that IS about fuel wants
  * to set the figure itself.
  */
+/**
+ * OPENS THE YARIK FOR A TEST (owner 2026-11-27: it is open only inside a Yarık Saati or an Asteryum Fırtınası).
+ * One long Yarık Saati from a minute ago, so a test about something else can launch, die and fly again.
+ */
+export async function openRift(db: Db, seasonId: string, clock: { now(): Date }, days = 30): Promise<void> {
+  const now = clock.now().getTime();
+  await db.insert(galaxyEventOccurrences).values({
+    seasonId, sequence: 9_000, kind: 'RIFT_HOUR', definitionVersion: 1, effect: { roomVersion: 1 },
+    startsAt: new Date(now - 60_000), endsAt: new Date(now + days * 86_400_000), createdAt: new Date(now - 120_000),
+  });
+}
+
 export async function fuelUp(db: Db, planetId: string, deuterium = 100_000): Promise<void> {
   const { planets } = await import('../src/db/schema.js');
   const { eq } = await import('drizzle-orm');

@@ -301,14 +301,36 @@
 .ah-exit span, .ah-crystal span { position: absolute; transform: translate(-50%, 13px); white-space: nowrap; font: 700 var(--gk-t-floor) var(--font-v2-mono); letter-spacing: .06em;
   text-transform: uppercase; color: var(--self); text-shadow: var(--ah-outline); }
 .ah-exit span b, .ah-crystal span b { font-weight: 400; color: color-mix(in srgb, currentColor 75%, #fff); }
-.ah-exit[data-edge] i { rotate: 0deg; border: 0; width: 0; height: 0; margin: -6px 0 0 -5px; border-left: 12px solid var(--self);
-  border-top: 7px solid transparent; border-bottom: 7px solid transparent; transform: rotate(var(--angle)); box-shadow: none; filter: drop-shadow(0 0 6px var(--self)); }
+/* Long and narrow (16 × 10, owner 2026-11-27): the 12 × 14 one was near-equilateral, and turned ~120° it read unturned. */
+.ah-exit[data-edge] i { rotate: 0deg; border: 0; width: 0; height: 0; margin: -5px 0 0 -8px; border-left: 16px solid var(--self);
+  border-top: 5px solid transparent; border-bottom: 5px solid transparent; transform: rotate(var(--angle)); box-shadow: none; filter: drop-shadow(0 0 6px var(--self)); }
 /* On an edge the exit's name leans inwards beside its arrow: on the right it ran under the throttle (F10). */
-.ah-exit[data-edge] span { top: 0; transform: translate(11px, -50%); }
-.ah-exit[data-edge][data-side="right"] span { transform: translate(calc(-100% - 11px), -50%); }
+.ah-exit[data-edge] span { top: 0; transform: translate(13px, -50%); }
+.ah-exit[data-edge][data-side="right"] span { transform: translate(calc(-100% - 13px), -50%); }
 .ah-crystal i { position: absolute; width: 9px; height: 11px; margin: -5px -5px; background: var(--crystal);
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); box-shadow: 0 0 10px var(--crystal); opacity: .85; }
 .ah-crystal span { color: var(--crystal); }
+/* The Asteryum arrow (owner 2026-11-27): Asteryum's lavender, a hollow cut gem on the stone, an arrow on the edge.
+   Outlined, not glowing (VFX ban 2026-11-18); a full hold dims it and says so. */
+.ah-asterium { display: none; position: absolute; left: 0; top: 0; width: 0; height: 0; --tone: var(--color-v2-asterium); }
+.ah-asterium i { position: absolute; width: 11px; height: 11px; margin: -6px; border: 2px solid var(--tone); rotate: 45deg; }
+.ah-asterium span { position: absolute; transform: translate(-50%, 12px); white-space: nowrap; font: 700 var(--gk-t-floor) var(--font-v2-mono); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--tone); text-shadow: var(--ah-outline); }
+.ah-asterium span em { font-style: normal; } .ah-asterium span b { font-weight: 400; color: color-mix(in srgb, var(--tone) 70%, #fff); }
+/* A long, narrow arrow (14 × 9): a near-equilateral one turned by ~120° reads as unturned (measured 2026-11-27). */
+.ah-asterium[data-edge] i { rotate: 0deg; border: 0; width: 0; height: 0; margin: -4.5px 0 0 -7px; border-left: 14px solid var(--tone);
+  border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent; transform: rotate(var(--angle)); }
+.ah-asterium[data-edge] span { top: 0; transform: translate(12px, -50%); }
+.ah-asterium[data-edge][data-side="right"] span { transform: translate(calc(-100% - 12px), -50%); }
+.ah-asterium[data-full] { opacity: .6; }
+/* Yarık Saatleri: the window's line under the link; amber in its last minutes, red once it has closed. */
+.ah-rift { position: relative; z-index: 2; display: flex; gap: 6px; align-items: center; white-space: nowrap;
+  font: var(--gk-t-floor) var(--font-v2-mono); letter-spacing: .04em; color: var(--color-v2-ink-2); text-shadow: var(--ah-outline); }
+.ah-rift i { flex: none; width: 2px; height: 9px; background: currentColor; }
+.ah-rift[data-tone='warn'] { color: var(--warn); }
+.ah-rift[data-tone='alarm'] { color: var(--hostile); font-weight: 700; }
+.ah-rift[data-tone='alarm'] i { animation: ah-rift-tick 1s steps(2, jump-none) infinite; }
+@keyframes ah-rift-tick { 50% { opacity: .2; } }
 .ah-damage { left: 50% !important; top: 50% !important; width: 216px; height: 216px; opacity: 0; }
 .ah-damage svg { width: 100%; height: 100%; fill: none; stroke: var(--hostile); stroke-width: 4; stroke-linecap: round; filter: drop-shadow(0 0 8px var(--hostile)); }
 .ah-vignette { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .25s;

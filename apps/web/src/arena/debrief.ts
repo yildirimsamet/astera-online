@@ -1,5 +1,6 @@
 import type { ArenaWorld, ShipClass } from '@astera/rules/arena';
 import type { ArenaCopy } from './copy.js';
+import type { SortieReport } from './hangarDesk.js';
 
 /**
  * "NE OLDU?" — why a flight ended, read from the world the moment it ended (doc 14 §Sonuç, KG-A14).
@@ -25,6 +26,14 @@ export function debriefText(debrief: Debrief, c: ArenaCopy, name: (id: number) =
   return debrief.kind === 'shot'
     ? c.debrief.shot(name(debrief.by), debrief.ship ? c.classes[debrief.ship].name : null, debrief.metres)
     : c.debrief[debrief.kind];
+}
+
+/**
+ * THE YARIK CLOSED ON THE SHIP (owner 2026-11-27). Nobody shot it: the result says what happened instead of naming
+ * a shooter, so a pilot who stayed past the minutes to fly out learns the rule from the loss itself.
+ */
+export function closedDebrief(report: SortieReport | null, c: ArenaCopy): { title: string; what: string } | null {
+  return report?.closed === true ? { title: c.riftClosedOut, what: c.riftClosedWhat } : null;
 }
 
 /** A pilot as the HUD names it: a bot by its role, a player by the roster's name. */

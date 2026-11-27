@@ -20,7 +20,9 @@ export const sortieSchema = z.object({ kind: z.literal('sortie'), outcome: z.enu
   /** Y6b: what the flight made, what the ship kept of it, and what its bar took. */
   xp: z.object({ earned: z.number().int().nonnegative(), kept: z.number().int().nonnegative(), banked: z.number().int().nonnegative() }),
   /** Asteryum this exit put into the commander's own stock (plan 2026-11-24); an older room sends none. */
-  asterium: z.number().int().nonnegative().optional() });
+  asterium: z.number().int().nonnegative().optional(),
+  /** The Yarık closed on the ship (owner 2026-11-27): it was lost to the closing, not to a rival or a rock. */
+  closed: z.literal(true).optional() });
 export type SortieReport = Omit<z.infer<typeof sortieSchema>, 'kind'>;
 
 const refusal = z.object({ error: z.string(), params: z.record(z.union([z.string(), z.number()])).optional() });
@@ -61,14 +63,23 @@ export function repairOffer(h: Hangar, now: number): ReturnType<typeof repairQuo
 /** A ship the room still holds in the air: the way in is the way back to it. */
 export const stillFlying = (h: Hangar | null): boolean => h?.ship?.flying === true && h.live?.yours === true;
 
-export type LaunchBlock = { kind: 'core'; core: number; need: number } | { kind: 'ship' } | { kind: 'flying' } | { kind: 'escort' } | { kind: 'homeward'; until: number }
+export type LaunchBlock = { kind: 'core'; core: number; need: number } | { kind: 'ship' } | { kind: 'flying' } | { kind: 'closed'; opensAt: number | null }
+  | { kind: 'escort' } | { kind: 'homeward'; until: number }
   | { kind: 'ready'; until: number; reason: 'repair' | 'service' } | { kind: 'season' } | { kind: 'deuterium'; need: number; have: number };
 
 /** The first thing that keeps the ship on the ground at `now`, in the order the player can act on it; null when it may fly. */
+/** The window as read, run on to `now`: a door read shut opens at its hour, and one read open shuts at its close. */
+function riftShut(rift: NonNullable<Hangar['rift']>, now: number): boolean {
+  if (rift.open) return rift.closesAt !== null && now >= Date.parse(rift.closesAt);
+  return rift.opensAt === null || now < Date.parse(rift.opensAt);
+}
+
 export function launchBlock(h: Hangar, now: number): LaunchBlock | null {
   if (h.core < h.minCore) return { kind: 'core', core: h.core, need: h.minCore };
   if (!h.ship) return { kind: 'ship' };
   if (h.ship.flying) return { kind: 'flying' };
+  // Owner 2026-11-27: the Yarık opens twice a day. A room from before the window says nothing, and the room decides.
+  if (h.rift && riftShut(h.rift, now)) return { kind: 'closed', opensAt: h.rift.open || h.rift.opensAt === null ? null : Date.parse(h.rift.opensAt) };
   if (h.ship.away === 'escort') return { kind: 'escort' };
   if (h.ship.away === 'homeward' && h.ship.homeAt !== null && Date.parse(h.ship.homeAt) > now) return { kind: 'homeward', until: Date.parse(h.ship.homeAt) };
   const until = h.ship.readyAt === null ? 0 : Date.parse(h.ship.readyAt);
@@ -82,7 +93,7 @@ export function launchBlock(h: Hangar, now: number): LaunchBlock | null {
  * The room's refusals of a launch that the hangar explains: a commander who meets one goes back
  * to it. A dropped link is not among them; reconnecting puts that right.
  */
-const HANGAR_REFUSALS: readonly string[] = ['NO_SHIP', 'SHIP_NOT_READY', 'SHIP_FLYING', 'ADMIRAL_AWAY', 'NOT_ENOUGH_DEUTERIUM', 'SEASON_CLOSING', 'SEASON_FROZEN',
+const HANGAR_REFUSALS: readonly string[] = ['NO_SHIP', 'SHIP_NOT_READY', 'SHIP_FLYING', 'ADMIRAL_AWAY', 'NOT_ENOUGH_DEUTERIUM', 'SEASON_CLOSING', 'SEASON_FROZEN', 'RIFT_CLOSED',
   'VACATION_ACTIVE', 'WORLD_RECOVERING', 'NO_PLANET', 'TEAM_LOBBY', 'TEAM_IN_FLIGHT', 'TEAM_NOT_SPECTATING', 'TEAM_CONNECT_EXPIRED', 'full', 'hangar'];
 export const refusedAtHangar = (reason: string): boolean => HANGAR_REFUSALS.includes(reason);
 

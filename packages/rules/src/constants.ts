@@ -3000,6 +3000,17 @@ export const GALAXY_EVENTS = {
         { startsAtLocalMinute: 21 * 60, endsAtLocalMinute: 22 * 60, effect: { fieldVersion: 1 as const } },
       ],
     },
+    /**
+     * YARIK SAATİ (owner 2026-11-27). The Yarık is open only twice a day: in this window and in the storm.
+     * It seeds no Asteryum; it only opens the room. A live season gains it from `season sync-events --kind RIFT_HOUR`.
+     */
+    RIFT_HOUR: {
+      schedule: 'FIXED_DAILY',
+      version: 1,
+      windows: [
+        { startsAtLocalMinute: 17 * 60, endsAtLocalMinute: 18 * 60, effect: { roomVersion: 1 as const } },
+      ],
+    },
   },
   mutuallyExclusive: [] as readonly (readonly [string, string])[],
 } as const;

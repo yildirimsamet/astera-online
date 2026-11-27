@@ -68,6 +68,7 @@ export const galaxy = {
       TRADE_SHIP: "Vaisseau marchand",
       INTERGALACTIC_CONVOY: "Convoi Intergalactique",
       ASTERIUM_STORM: "Tempête d’Asteryum",
+      RIFT_HOUR: "Heure du Yarık",
     },
     dailyNote:
       "Semaine : lundi à vendredi. Week-end : samedi et dimanche. Les horaires sont indiqués à l’heure de Turquie.",
@@ -94,10 +95,15 @@ export const galaxy = {
         "Envoie une flotte contre le convoi pendant son passage ; selon ta puissance de feu, tu peux gagner jusqu’à l’équivalent de 4 heures de production de ton monde ainsi qu’une chance d’obtenir des vaisseaux.",
       note: "Le convoi ne riposte pas ; ta flotte ne subit aucune perte. Chaque monde ne peut attaquer qu’une seule fois pendant le même passage.",
     },
+    rift: {
+      title: "Heure du Yarık",
+      summary: "Le Yarık ouvre deux fois par jour : pendant l’Heure du Yarık et pendant la tempête d’Asteryum. Pendant l’Heure du Yarık, aucun Asteryum n’apparaît ; le minerai et les rivaux, comme toujours.",
+      note: "À la fin de l’heure, l’entrée se ferme. Ceux qui sont dedans ont {{minutes}} minutes pour sortir ; ensuite, chaque vaisseau encore dedans se brise et perd sa soute.",
+    },
     storm: {
       title: "Tempête d’Asteryum",
       summary: "Pendant la tempête, des pierres d’Asteryum apparaissent dans le Yarık. Chaque pierre sortie par une sortie rejoint ton stock d’Asteryum ; la limite quotidienne ne l’arrête pas.",
-      note: "Si tu meurs, l’Asteryum de ta soute se disperse aussi. Le laboratoire de synthèse transforme l’Asteryum en capsules.",
+      note: "À 500 m d’une pierre, une flèche t’indique la direction. Si tu meurs, l’Asteryum de ta soute se disperse aussi. Le laboratoire de synthèse transforme l’Asteryum en capsules.",
     },
   },
   openResearch: "Recherche",

@@ -575,6 +575,7 @@ export const notifications = {
   arenaTeamShareReady: "Takım payın hazır. Hangarda al.",
   arenaSortieTowed: "Bağlantın koptu; komutan gemin Yarık'ta beklerken çekildi.",
   arenaSortieDead: "Komutan gemin Yarık'ta düşürüldü; tamirde.",
+  arenaSortieClosed: "Yarık kapandı ve komutan gemin içeride kaldı; parçalandı, tamirde.",
   arenaSortieLoot: "Ambardan kaybedilen: {{loot}}.",
 
   incomingFallback: 'Filo geliyor.',

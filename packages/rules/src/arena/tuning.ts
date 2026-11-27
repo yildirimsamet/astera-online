@@ -73,9 +73,10 @@ const NUMBERS = Object.freeze({
   knockDecay: 1.6,
   // Y6a (owner 2026-10-23): farms are raw resources, landed one for one. Owner 2026-10-27: a rock
   // holds half (160 before) and regrows in the same ~114 s; mining gives at most 4 a second (16).
-  mineRate: 4,
-  crystalReserve: 80,
-  crystalRegen: 0.7,
+  // Owner 2026-11-27, the Yarık open two hours a day: half as much again (6/s, 120, same ~114 s).
+  mineRate: 6,
+  crystalReserve: 120,
+  crystalRegen: 1.05,
   damage: 10,
   fireRate: 8,
   // Owner 2026-10-21: twice as fast (600 m/s before) so the lead mark sits near the hull;
@@ -148,7 +149,8 @@ const NUMBERS = Object.freeze({
   radarCooldown: 30,
   fuelOutRescueDelay: 10,
   testCargo: 240,
-  cargoCapacity: 400,
+  // Owner 2026-11-27: half as much again (400 before), with the Yarık open two hours a day.
+  cargoCapacity: 600,
   // Owner 2026-10-22: loose pieces are pulled in like a magnet by the first ship this close
   // that can hold them whole, homing at the puller's own speed plus magnetPull (m/s).
   magnetRadius: 50,

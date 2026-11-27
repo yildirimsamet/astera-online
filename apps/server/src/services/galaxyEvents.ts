@@ -49,6 +49,7 @@ const tradeEffectSchema = z.object({ rate: tradeRateSchema }).strict();
 
 /** Asteryum Fırtınası (plan 2026-11-24 §3.2): the Yarık field is the whole effect. */
 const stormEffectSchema = z.object({ fieldVersion: z.literal(1) }).strict();
+const riftHourEffectSchema = z.object({ roomVersion: z.literal(1) }).strict();
 
 const convoyEffectSchema = z.object({
   routeVersion: z.literal(1),
@@ -93,6 +94,7 @@ const effectSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('TRADE_SHIP'), effect: tradeEffectSchema }).strict(),
   z.object({ kind: z.literal('INTERGALACTIC_CONVOY'), effect: convoyEffectSchema }).strict(),
   z.object({ kind: z.literal('ASTERIUM_STORM'), effect: stormEffectSchema }).strict(),
+  z.object({ kind: z.literal('RIFT_HOUR'), effect: riftHourEffectSchema }).strict(),
 ]);
 
 type OccurrenceEffect = z.infer<typeof effectSchema>;
@@ -116,6 +118,7 @@ const CALENDAR_LABEL: Record<GalaxyEventKind, string> = {
   TRADE_SHIP: 'galaxy-events:trade-ship:v1',
   INTERGALACTIC_CONVOY: 'galaxy-events:intergalactic-convoy:v1',
   ASTERIUM_STORM: 'galaxy-events:asterium-storm:v1',
+  RIFT_HOUR: 'galaxy-events:rift-hour:v1',
 };
 
 function calendarRng(asteroidKey: string, kind: GalaxyEventKind): () => number {
@@ -688,6 +691,8 @@ export async function loadGalaxyEventSchedule(
         return { ...base, kind: parsed.kind, effect: parsed.effect };
       case 'ASTERIUM_STORM':
         return { ...base, kind: parsed.kind, effect: parsed.effect };
+      case 'RIFT_HOUR':
+        return { ...base, kind: parsed.kind, effect: parsed.effect };
     }
   });
 }
@@ -752,7 +757,9 @@ export type ActiveGalaxyEventView =
       };
     })
   /** Asteryum Fırtınası: a window, and the Yarık field that blows inside it. */
-  | (ActiveGalaxyEventBase & { kind: 'ASTERIUM_STORM' });
+  | (ActiveGalaxyEventBase & { kind: 'ASTERIUM_STORM' })
+  /** Yarık Saati: a window in which the Yarık is open, without Asteryum. */
+  | (ActiveGalaxyEventBase & { kind: 'RIFT_HOUR' });
 
 /**
  * Serialize changes to the season's notification audience with lifecycle fanout.
@@ -824,7 +831,7 @@ export async function activeGalaxyEvents(
         asteroidSpawnMultiplier: parsed.effect.asteroidSpawnMultiplier,
       };
     }
-    if (parsed.kind === 'ASTERIUM_STORM') return { ...base, kind: parsed.kind };
+    if (parsed.kind === 'ASTERIUM_STORM' || parsed.kind === 'RIFT_HOUR') return { ...base, kind: parsed.kind };
     if (parsed.kind === 'INTERGALACTIC_CONVOY') {
       const startsAtMinute = minutesSince(me.seasonStartsAt, row.startsAt);
       const endsAtMinute = minutesSince(me.seasonStartsAt, row.endsAt);
@@ -890,6 +897,7 @@ export async function nextPublicGalaxyEvent(db: Db, accountId: string, clock: Cl
       seasonId: players.seasonId,
       rulesetVersion: seasons.rulesetVersion,
       seasonStatus: seasons.status,
+      synthesisStartsAt: seasons.synthesisStartsAt,
     })
     .from(players)
     .innerJoin(seasons, eq(players.seasonId, seasons.id))
@@ -898,7 +906,11 @@ export async function nextPublicGalaxyEvent(db: Db, accountId: string, clock: Cl
   if (!me) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
   if (me.seasonStatus !== 'live') return null;
 
-  const kinds = galaxyEventKindsForRuleset(me.rulesetVersion);
+  // A season that opened Asteryum after its start (`activateSynthesis`) holds the storm and the Yarık Saati
+  // though its ruleset predates them: the countdown names them there too (owner 2026-11-27).
+  const dealt = galaxyEventKindsForRuleset(me.rulesetVersion);
+  const kinds = me.synthesisStartsAt === null ? dealt
+    : [...dealt, ...(['ASTERIUM_STORM', 'RIFT_HOUR'] as const).filter((kind) => !dealt.includes(kind))];
   if (kinds.length === 0) return null;
   const definitions = galaxyEventConfigForRuleset(me.rulesetVersion).definitions;
   const fixedKinds = kinds.filter(
@@ -1035,7 +1047,7 @@ function lifecyclePayload(
   if (parsed.kind === 'TRADE_SHIP') {
     return { eventKind: parsed.kind, ...window, rate: parsed.effect.rate };
   }
-  if (parsed.kind === 'ASTERIUM_STORM') return { eventKind: parsed.kind, ...window };
+  if (parsed.kind === 'ASTERIUM_STORM' || parsed.kind === 'RIFT_HOUR') return { eventKind: parsed.kind, ...window };
   return {
     eventKind: parsed.kind,
     ...window,

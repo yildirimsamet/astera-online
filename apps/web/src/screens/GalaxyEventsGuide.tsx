@@ -5,6 +5,7 @@ import {
   type GalaxyEventDays,
   type GalaxyEventKind,
 } from '@astera/rules';
+import { ARENA_ECONOMY } from '@astera/rules/arena/ui';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGalaxyEvents, useSeason } from '../api/queries.js';
@@ -185,7 +186,10 @@ export function GalaxyEventsGuide({ onClose, timeZone = deviceTimeZone() }: { on
   const season = useSeason();
   const storms = season.data?.features?.synthesis
     ? place('ASTERIUM_STORM', GALAXY_EVENTS.definitions.ASTERIUM_STORM.windows, now, timeZone) : [];
-  const shifted = [...asteroids, ...trades, ...convoys, ...storms].some((item) => item.shift !== 0);
+  // The Yarık Saati is dealt beside the storm, from the same ruleset (owner 2026-11-27).
+  const riftHours = season.data?.features?.synthesis
+    ? place('RIFT_HOUR', GALAXY_EVENTS.definitions.RIFT_HOUR.windows, now, timeZone) : [];
+  const shifted = [...asteroids, ...trades, ...convoys, ...storms, ...riftHours].some((item) => item.shift !== 0);
   const dayLabel = (days: DayGroup): string => t(`galaxy.eventsGuide.days.${days}`);
 
   return (
@@ -259,6 +263,24 @@ export function GalaxyEventsGuide({ onClose, timeZone = deviceTimeZone() }: { on
             </DayRow>
           ))}
         </EventCard>
+
+        {riftHours.length > 0 && (
+          <EventCard
+            tone="self"
+            glyph="timed"
+            title={t('galaxy.eventsGuide.rift.title')}
+            summary={t('galaxy.eventsGuide.rift.summary')}
+            note={t('galaxy.eventsGuide.rift.note', { minutes: ARENA_ECONOMY.riftGraceMinutes })}
+          >
+            {byDays(riftHours).map((group) => (
+              <DayRow key={group.days} label={dayLabel(group.days)}>
+                {group.windows.map((item) => (
+                  <TimePill key={item.window.startsAtLocalMinute} time={item.time} shift={item.shift} />
+                ))}
+              </DayRow>
+            ))}
+          </EventCard>
+        )}
 
         {storms.length > 0 && (
           /* Tone is provisional: Asteryum has no colour meaning yet (plan G15). */
@@ -335,7 +357,7 @@ function EventCard({
   note,
   children,
 }: {
-  tone: 'crystal' | 'alloy' | 'hostile';
+  tone: 'crystal' | 'alloy' | 'hostile' | 'self';
   glyph: GlyphId;
   title: string;
   summary: string;

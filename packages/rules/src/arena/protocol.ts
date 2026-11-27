@@ -30,8 +30,10 @@ import { ARENA_POOLS } from './pools.js';
  *    tells every pilot when it turns. A page on 17 would refuse the unknown message, so it is told to reload.
  * 19: the storm grows its own pieces in cargo slots after the wrecks' (owner 2026-11-25): a page on 18 has
  *    a shorter cargo pool and would drop them, so it is told to reload. The roster rows carry no points.
+ * 20: the Yarık opens twice a day (owner 2026-11-27): `welcome` carries the window and a `rift` message tells every
+ *    pilot when it closes; holds grew by half, past the bounds a page on 19 decodes. It is told to reload.
  */
-export const ARENA_PROTOCOL = 19;
+export const ARENA_PROTOCOL = 20;
 /** Other ships one snapshot carries, every tier together: the nearest first (owner: room seats / 2). */
 export const MAX_REMOTE_PILOTS = 50;
 /**

@@ -7,9 +7,9 @@ import { chooseShip, launchSortie } from '../src/services/arenaShips.js';
 import { readCommanderShip } from '../src/services/arenaShipState.js';
 import { activateAdmiral } from '../src/services/admiralActivation.js';
 import { prepareAdmiral, attachAdmiral, admiralForFlight, replaceAdmiralLeg, recordAdmiralBattle, finishAdmiralLeg } from '../src/services/admiral.js';
-import { seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { openRift, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 let f: Fixture;
-beforeEach(async () => { f = await seedWorld(1, 9995); await setLevel(f.db, f.planetIds[0]!, 'CORE', 9); await chooseShip(f.db, f.clock, f.accountIds[0]!, 'kilavuz'); });
+beforeEach(async () => { f = await seedWorld(1, 9995); await openRift(f.db, f.seasonId, f.clock); await setLevel(f.db, f.planetIds[0]!, 'CORE', 9); await chooseShip(f.db, f.clock, f.accountIds[0]!, 'kilavuz'); });
 afterAll(async () => { const { close } = await testDb(); await close(); });
 const state = async () => (await f.db.select().from(arenaShips))[0];
 async function start(kind: 'mission' | 'pirate' = 'mission') {

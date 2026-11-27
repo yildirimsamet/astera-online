@@ -3,6 +3,7 @@ import { localized as l, type WikiArticle } from './model.js';
 import { topic } from './concepts.js';
 import { MOON, MOON_RARITIES, crackLimit, gateCapacity, scanRange, type MoonRarity } from '@astera/rules';
 import { CAPSULE_CATALOG, GALAXY_EVENTS, SYNTHESIS } from '@astera/rules';
+import { ARENA_ECONOMY } from '@astera/rules/arena/ui';
 import { unknownSignal as signalEn } from '../i18n/locales/en/unknownSignal.js';
 import { unknownSignal as signalTr } from '../i18n/locales/tr/unknownSignal.js';
 const RARITY_EN: Record<MoonRarity, string> = { COMMON: 'Common', RARE: 'Rare', EPIC: 'Epic', LEGENDARY: 'Legendary' };
@@ -11,6 +12,10 @@ const clock = (minute: number): string => `${String(Math.floor(minute / 60)).pad
 const [STORM_WINDOW] = GALAXY_EVENTS.definitions.ASTERIUM_STORM.windows;
 /** The Asteryum Fırtınası's daily hour, from the calendar itself (Turkish time). */
 const STORM_TIME = `${clock(STORM_WINDOW.startsAtLocalMinute)}–${clock(STORM_WINDOW.endsAtLocalMinute)}`;
+const [RIFT_WINDOW] = GALAXY_EVENTS.definitions.RIFT_HOUR.windows;
+/** The Yarık Saati's daily hour (owner 2026-11-27), from the calendar itself. */
+const RIFT_TIME = `${clock(RIFT_WINDOW.startsAtLocalMinute)}–${clock(RIFT_WINDOW.endsAtLocalMinute)}`;
+const GRACE = String(ARENA_ECONOMY.riftGraceMinutes);
 /** The Wiki is written in two languages with their own grouping (1,550 / 1.550). */
 const n = (value: number, language: 'en' | 'tr'): string => value.toLocaleString(language === 'en' ? 'en-US' : 'tr-TR');
 
@@ -169,9 +174,11 @@ export const galaxyArticles: readonly WikiArticle[] = [
     l([
       "The weekly schedule has different weekday and weekend times. All times below use Türkiye time, UTC+3. If your device uses another time zone, also check the in-game countdown.",
       "Asteroid showers increase new asteroid spawns during the event. Existing asteroids keep their resources and lifetimes. Merchant visits open resource exchanges. Convoy crossings offer one successful strike per planet. Each event has its own mission rules.",
+      `The Yarık opens twice a day: in the Yarık Hour (${RIFT_TIME}, no Asteryum) and in the Asteryum Storm (${STORM_TIME}). When a window ends, entry closes; those inside have ${GRACE} minutes to get out through an exit, then every ship still inside breaks apart and its hold is lost. Practice flights are always open.`,
     ], [
       "Haftalık takvimde hafta içi ve hafta sonu saatleri farklı olabilir. Aşağıdaki saatler Türkiye saatidir, UTC+3 kullanır. Cihazın başka saat dilimindeyse oyun içindeki geri sayımı da kontrol et.",
       "Asteroit yağmuru sırasında daha fazla yeni asteroit ortaya çıkar. Mevcut asteroitlerin kaynakları ve ömürleri değişmez. Tüccar geldiğinde kaynak değiştirirsin. Konvoy geçişinde her gezegenden bir başarılı saldırı yapılabilir. Her etkinliğin görev kuralları ayrıdır.",
+      `Yarık günde iki kez açılır: Yarık Saati'nde (${RIFT_TIME}, Asteryum yok) ve Asteryum Fırtınası'nda (${STORM_TIME}). Pencere bitince giriş kapanır; içeridekilerin bir çıkış kapısından çıkmak için ${GRACE} dakikası var, sonra içeride kalan her gemi parçalanır ve ambarı kaybolur. Antrenman uçuşu her zaman açık.`,
     ]),
     l([
       "Open View → Galaxy events for the next event and weekly guide. Keep suitable ships and flight bays available for a short event. A calendar entry does not guarantee your fleet will arrive before the target leaves.",
@@ -216,13 +223,13 @@ export const galaxyArticles: readonly WikiArticle[] = [
     ),
     l([
       `Every moon you hold makes Asteryum: ${MOON_RARITIES.map((r) => `${RARITY_EN[r]} ${n(SYNTHESIS.moonPerDay[r], 'en')}`).join(', ')} a day. A moon shut by a Death Star makes none. Asteryum is yours alone: it cannot be raided, carried or traded.`,
-      `During the Asteryum Storm (every day ${STORM_TIME}, Turkish time) violet Asteryum stones appear in the Yarık. Each stone you bring out through an exit goes into your stock, past the day's limit. If your ship is destroyed, the Asteryum in its hold spills.`,
+      `During the Asteryum Storm (every day ${STORM_TIME}, Turkish time) violet Asteryum stones appear in the Yarık. Within 500 m of a stone an arrow points the way. Each stone you bring out through an exit goes into your stock, past the day's limit. If your ship is destroyed, the Asteryum in its hold spills; stones still out when the Yarık closes are lost with it.`,
       `The Synthesis Lab opens at Command Core ${String(SYNTHESIS.requiredCore)} on your capital's Tactical tab. One batch at a time, 1 to ${String(SYNTHESIS.maxBatch)} capsules, made one by one: Optic Veil ${String(CAPSULE_CATALOG.OPTIC_VEIL.craftMinutes)} min each, Silent Thrust ${String(CAPSULE_CATALOG.SILENT_THRUST.craftMinutes)} min each. Cancelling returns half the price of the capsules not yet made.`,
       `A launch wears 1 capsule of each kind per ${String(SYNTHESIS.bulkPerCapsule)} hangar bulk of the fleet that leaves. Optic Veil (raid, clan war, transfer, settlement): only you and your clan see the flight; no other commander's Telescope, Radar or Gözcü does, though the target's Radar still raises the attack warning. Silent Thrust (raid, clan war): the target gets no attack warning and no alarm and learns of the raid from the battle report; the flight itself stays visible to anyone whose Telescope or Radar sees it. Both can ride one raid. In a clan war the leader pays for the whole strike.`,
       'The battle lifts the veil: both sides\' reports name the capsules. A recalled flight keeps its capsules on the way home; the survivors of a battle fly home without them.',
     ], [
       `Elindeki her ay Asteryum üretir: günde ${MOON_RARITIES.map((r) => `${RARITY_TR[r]} ${n(SYNTHESIS.moonPerDay[r], 'tr')}`).join(', ')}. Ölüm Yıldızı'nın kapattığı ay üretmez. Asteryum yalnız senindir: yağmalanamaz, taşınamaz, takas edilemez.`,
-      `Asteryum Fırtınası sırasında (her gün ${STORM_TIME}, Türkiye saati) Yarık'ta mor Asteryum taşları belirir. Bir çıkıştan getirdiğin her taş stoğuna yazılır, günlük sınır onu durdurmaz. Gemin düşerse ambarındaki Asteryum saçılır.`,
+      `Asteryum Fırtınası sırasında (her gün ${STORM_TIME}, Türkiye saati) Yarık'ta mor Asteryum taşları belirir. Bir taşa 500 m yaklaşınca bir ok yönünü gösterir. Bir çıkıştan getirdiğin her taş stoğuna yazılır, günlük sınır onu durdurmaz. Gemin düşerse ambarındaki Asteryum saçılır; Yarık kapanırken dışarıda kalan taşlar onunla kaybolur.`,
       `Sentez Laboratuvarı, başkentinin Taktik sekmesinde Komuta Çekirdeği ${String(SYNTHESIS.requiredCore)} seviyesinde açılır. Aynı anda tek parti, 1 ile ${String(SYNTHESIS.maxBatch)} arası kapsül, tek tek yapılır: Optik Örtü tanesi ${String(CAPSULE_CATALOG.OPTIC_VEIL.craftMinutes)} dk, Sessiz İtki tanesi ${String(CAPSULE_CATALOG.SILENT_THRUST.craftMinutes)} dk. İptal, yapılmamış kapsüllerin bedelinin yarısını geri verir.`,
       `Bir kalkış, giden filonun her ${String(SYNTHESIS.bulkPerCapsule)} hangar hacmi için her türden 1 kapsül takar. Optik Örtü (akın, klan savaşı, transfer, yerleşme): uçuşu yalnız sen ve klanın görürsün; başka hiçbir komutanın Teleskop'u, Radar'ı ya da Gözcü'sü onu görmez, ama hedefin Radar'ı saldırı uyarısını yine verir. Sessiz İtki (akın, klan savaşı): hedefe saldırı uyarısı ve alarm gitmez, saldırıyı savaş raporundan öğrenir; uçuşun kendisi görünür kalır, Teleskop ya da Radar'la onu gören herkes izler. İkisi aynı akında birlikte kullanılabilir. Klan savaşında bütün saldırının kapsülünü lider öder.`,
       'Savaş örtüyü kaldırır: iki tarafın raporu da kapsülleri yazar. Geri çağrılan uçuş eve dönerken kapsüllerini korur; savaştan sağ dönen gemiler kapsülsüz döner.',

@@ -44,7 +44,7 @@ describe('the class picker', () => {
     const view = render(<ClassPicker c={arenaCopy()} value="akinci" onPick={() => undefined} />);
     const rows = [...view.container.querySelectorAll<HTMLElement>('.gk-shipclass__stats li')];
     // Owner 2026-10-24: shot damage and accuracy are on the card too, accuracy as the share of shots on a ship.
-    expect(rows.map(row => row.querySelector('strong')?.textContent)).toEqual(['80 m/s', '82°/sn', '510', '13', '117/sn', '%56', '300', '220']);
+    expect(rows.map(row => row.querySelector('strong')?.textContent)).toEqual(['80 m/s', '82°/sn', '510', '13', '117/sn', '%56', '450', '220']);
     // The Akıncı is the fastest: a full speed bar; its hull is 510 of the Muhafız's 900.
     expect(rows[0]?.style.getPropertyValue('--fill')).toBe('1');
     expect(Number(rows[2]?.style.getPropertyValue('--fill'))).toBeCloseTo(510 / 900, 3);

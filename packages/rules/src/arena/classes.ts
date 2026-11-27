@@ -18,9 +18,9 @@ const WIDER = 1.15;
  */
 export const CLASS_STATS: Readonly<Record<ShipClass, Readonly<ClassStats>>> = Object.freeze({
   akinci: Object.freeze({ speedMax: 80, turnRateMax: 82 * DEG, hull: 510, damage: 13, fireRate: 9, spreadBase: 1.3 * DEG * WIDER, fuelTank: 220,
-    cargoCapacity: 300, ammoCapacity: 540 }),
+    cargoCapacity: 450, ammoCapacity: 540 }),
   muhafiz: Object.freeze({ speedMax: 60, turnRateMax: 58 * DEG, hull: 900, damage: 18, fireRate: 5.5, spreadBase: 1.8 * DEG * WIDER, fuelTank: 280,
-    cargoCapacity: 500, ammoCapacity: 330 }),
+    cargoCapacity: 750, ammoCapacity: 330 }),
   kilavuz: Object.freeze({ speedMax: 72, turnRateMax: ARENA_TUNING.turnRateMax, hull: ARENA_TUNING.hull, damage: ARENA_TUNING.damage,
     fireRate: ARENA_TUNING.fireRate, spreadBase: ARENA_TUNING.spreadBase * WIDER, fuelTank: ARENA_TUNING.fuelTank,
     cargoCapacity: ARENA_TUNING.cargoCapacity, ammoCapacity: ARENA_TUNING.ammoCapacity }),

@@ -6,7 +6,7 @@ import { chooseShip, endSortie, launchSortie, readHangar, recallOpenSorties } fr
 import { createTeam, joinTeam, leaveTeam, readTeam, readyTeam, startTeam, claimTeamLoot, housekeepArenaTeams, spectateTeam } from '../src/services/arenaTeams.js';
 import { GameError, lockSeason } from '../src/services/planet.js';
 import { forceSeasonEnd } from '../src/worker/handlers.js';
-import { seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { openRift, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 
 let f: Fixture;
 let clanId: string;
@@ -36,6 +36,7 @@ async function stock(n: number) {
 
 beforeEach(async () => {
   f = await seedWorld(4, 7324);
+  await openRift(f.db, f.seasonId, f.clock);
   for (let n = 0; n < 4; n++) {
     await setLevel(f.db, f.planetIds[n]!, 'CORE', 9);
     await f.db.update(planets).set({ alloy: 1000, crystal: 1000, deuterium: 500 }).where(eq(planets.id, f.planetIds[n]!));

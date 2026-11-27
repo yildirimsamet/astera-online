@@ -23,15 +23,15 @@ export async function activateSynthesis(db: Db, input: { seasonId: string; clock
     const [shard] = await tx.select({ role: shards.role }).from(shards).where(eq(shards.id, season.shardId));
     if (shard?.role !== 'MAIN') throw new GameError('SYNTHESIS_DISABLED', 'Asteryum opens only in a main galaxy', 409);
     if (synthesisEnabled({ rulesetVersion: season.rulesetVersion }, shard)) {
-      return { status: 'DEALT' as const, applied: false, startsAt: season.startsAt, moons: 0, storms: 0 };
+      return { status: 'DEALT' as const, applied: false, startsAt: season.startsAt, moons: 0, storms: 0, riftHours: 0 };
     }
     if (season.synthesisStartsAt) {
-      return { status: 'ALREADY_ACTIVE' as const, applied: false, startsAt: season.synthesisStartsAt, moons: 0, storms: 0 };
+      return { status: 'ALREADY_ACTIVE' as const, applied: false, startsAt: season.synthesisStartsAt, moons: 0, storms: 0, riftHours: 0 };
     }
     const worlds = await tx.select({ id: planets.id }).from(planets).where(eq(planets.seasonId, season.id));
     const standing = worlds.length === 0 ? [] : await tx.select({ planetId: moons.planetId }).from(moons)
       .where(inArray(moons.planetId, worlds.map((world) => world.id)));
-    if (!input.apply) return { status: 'READY' as const, applied: false, startsAt: now, moons: standing.length, storms: 0 };
+    if (!input.apply) return { status: 'READY' as const, applied: false, startsAt: now, moons: standing.length, storms: 0, riftHours: 0 };
 
     await tx.update(seasons).set({ synthesisStartsAt: now }).where(eq(seasons.id, season.id));
     if (standing.length > 0) {
@@ -39,7 +39,9 @@ export async function activateSynthesis(db: Db, input: { seasonId: string; clock
         .where(inArray(moons.planetId, standing.map((row) => row.planetId)));
     }
     const storms = await syncMissingFixedOccurrences(tx, { now, seasonId: season.id, kinds: ['ASTERIUM_STORM'] });
+    // The Yarık opens only in its two daily windows (owner 2026-11-27): the Yarık Saati comes with the storm.
+    const riftHours = await syncMissingFixedOccurrences(tx, { now, seasonId: season.id, kinds: ['RIFT_HOUR'] });
     await publishShard(tx, season.id, 'world');
-    return { status: 'ACTIVATED' as const, applied: true, startsAt: now, moons: standing.length, storms };
+    return { status: 'ACTIVATED' as const, applied: true, startsAt: now, moons: standing.length, storms, riftHours };
   });
 }

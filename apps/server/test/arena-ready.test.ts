@@ -4,9 +4,9 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { arenaShips, notifications, scheduledEvents, seasons } from '../src/db/schema.js';
 import { chooseShip, endSortie, launchSortie, repairShip } from '../src/services/arenaShips.js';
 import { shipReadyNotice } from '../src/services/arenaReady.js';
-import { seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { openRift, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 let f: Fixture;
-beforeEach(async () => { f = await seedWorld(1, 4245); await setLevel(f.db, f.planetIds[0]!, 'CORE', 9); await chooseShip(f.db, f.clock, f.accountIds[0]!, 'kilavuz'); });
+beforeEach(async () => { f = await seedWorld(1, 4245); await openRift(f.db, f.seasonId, f.clock); await setLevel(f.db, f.planetIds[0]!, 'CORE', 9); await chooseShip(f.db, f.clock, f.accountIds[0]!, 'kilavuz'); });
 afterAll(async () => { const { close } = await testDb(); await close(); });
 const notes = () => f.db.select().from(notifications).where(eq(notifications.kind, 'arena_ship_ready'));
 async function ended(outcome: 'dead' | 'extracted' | 'recalled') {

@@ -1,4 +1,4 @@
-import { memo, useState, useSyncExternalStore, type ReactNode, type Ref } from 'react';
+import { memo, useEffect, useState, useSyncExternalStore, type ReactNode, type Ref } from 'react';
 import { ARENA_TUNING as T, lowFuel, shipStats, shipTuning, type ArenaLayout } from '@astera/rules/arena';
 import { FARM_TONE } from './farmColors.js';
 import { ENEMY_MARKS } from './marks.js';
@@ -8,6 +8,8 @@ import { MapSheet } from './MapSheet.js';
 import { placesOf } from './landmarks.js';
 import { PING_KINDS } from './pings.js';
 import { PING_ICONS } from './PingWheel.js';
+import { clockText } from './hangarDesk.js';
+import { riftDeadline, type RiftState } from './network.js';
 
 export interface HudBind {
   reticle: Ref<HTMLDivElement>; lead: Ref<HTMLDivElement>; hit: Ref<HTMLDivElement>; kill: Ref<HTMLDivElement>;
@@ -15,6 +17,8 @@ export interface HudBind {
   places: (index: number) => Ref<HTMLDivElement>;
   pings: (index: number) => Ref<HTMLDivElement>;
   exit: Ref<HTMLDivElement>; crystal: Ref<HTMLDivElement>; damage: Ref<HTMLDivElement>;
+  /** The Asteryum arrow (owner 2026-11-27). Optional: a HUD drawn without a live room has no storm to point into. */
+  asterium?: Ref<HTMLDivElement>;
   landing: Ref<HTMLDivElement>; circle: Ref<HTMLDivElement>;
   /** Where whatever aims at the pilot sits: a lock or a missile (Y4c). */
   incoming: Ref<HTMLDivElement>;
@@ -89,6 +93,31 @@ function HoldKinds({ s, c }: { s: HudSnapshot; c: ArenaCopy }) {
 export function StormChip({ active, c }: { active: boolean; c: ArenaCopy }) {
   if (!active) return null;
   return <span className="ah-storm" role="status"><i aria-hidden />{c.storm}</span>;
+}
+
+/** The last minutes of a window are a warning: the hold has to reach an exit before the Yarık closes. */
+const RIFT_WARN_MS = 5 * 60_000;
+
+/**
+ * YARIK SAATLERİ IN THE FLIGHT (owner 2026-11-27). While it is open, how long it stays open; once it has closed,
+ * how long is left to fly out before every ship inside is lost. Nothing before the room has said.
+ */
+export function riftLine(rift: RiftState | null, now: number, c: ArenaCopy): { text: string; tone: 'calm' | 'warn' | 'alarm' } | null {
+  if (!rift) return null;
+  const deadline = riftDeadline(rift, now);
+  if (deadline !== null) return { text: c.riftClosing(clockText(deadline - now)), tone: 'alarm' };
+  if (!rift.open || rift.closesAt === null || now >= rift.closesAt) return null;
+  const left = rift.closesAt - now;
+  return { text: c.riftCloses(`${String(Math.max(1, Math.ceil(left / 60_000)))} ${c.minutes}`), tone: left <= RIFT_WARN_MS ? 'warn' : 'calm' };
+}
+
+/** The Yarık's line under the link, ticking once a second on its own (the band does not re-render for a clock). */
+export function RiftChip({ rift, c }: { rift: RiftState | null; c: ArenaCopy }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const timer = setInterval(() => { setNow(Date.now()); }, 1000); return () => { clearInterval(timer); }; }, []);
+  const line = riftLine(rift, now, c);
+  if (!line) return null;
+  return <span className="ah-rift" role="status" data-tone={line.tone}><i aria-hidden />{line.text}</span>;
 }
 
 const ICON = {
@@ -213,6 +242,7 @@ const HudMarks = memo(function HudMarks({ bind, layout, c }: { bind: HudBind; la
     <div ref={bind.exit} className="ah-exit"><i /><span>{c.exit} <b data-distance /></span></div>
     <div ref={bind.landing} className="ah-landing"><i /></div>
     <div ref={bind.crystal} className="ah-crystal"><i /><span><em data-kind>{c.crystal}</em> <b data-distance /></span></div>
+    {bind.asterium && <div ref={bind.asterium} className="ah-asterium"><i /><span><em data-label>{c.asterium}</em> <b data-distance /></span></div>}
     <div ref={bind.incoming} className="ah-incoming"><i /></div>
     <div ref={bind.damage} className="ah-damage"><svg viewBox="0 0 120 120"><path d="M30 18a52 52 0 0 1 60 0" /></svg></div>
   </div>;

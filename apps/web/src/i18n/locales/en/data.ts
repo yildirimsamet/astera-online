@@ -501,6 +501,7 @@ export const notifications = {
   arenaTeamShareReady: "Your team share is ready. Claim it in the hangar.",
   arenaSortieTowed: "Your link dropped; your commander ship was towed out of the Yarık.",
   arenaSortieDead: "Your commander ship was shot down in the Yarık and is in repair.",
+  arenaSortieClosed: "The Yarık closed with your commander ship still inside; it broke apart and is in repair.",
   arenaSortieLoot: "Lost from the hold: {{loot}}.",
 
   incomingFallback: 'Incoming fleet.',

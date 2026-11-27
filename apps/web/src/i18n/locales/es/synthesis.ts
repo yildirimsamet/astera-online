@@ -3,11 +3,21 @@ export const synthesis = {
   storm: {
     chip: "Tormenta de Asteryum",
     started: "Sopla una tormenta de Asteryum en el Yarık. Aparecen piedras de Asteryum durante una hora.",
-    ended: "La tormenta de Asteryum terminó. Saca el Asteryum de tu bodega por una salida.",
+    ended: "La tormenta de Asteryum terminó y la entrada al Yarık se cerró. Saca el Asteryum de tu bodega por una salida en {{minutes}} minutos.",
     chronicleStarted: "Empezó una tormenta de Asteryum",
     chronicleStartedDetail: "Aparecen piedras de Asteryum en el Yarık durante una hora.",
     chronicleEnded: "Terminó la tormenta de Asteryum",
-    chronicleEndedDetail: "No aparecen piedras nuevas. Las que ya están siguen ahí hasta que alguien las tome.",
+    chronicleEndedDetail: "La entrada al Yarık se cerró. A los {{minutes}} minutos se pierden las piedras que quedan y las naves que siguen dentro.",
+  },
+  /** Yarık Saati (owner 2026-11-27): the Yarık's second daily hour, without Asteryum. */
+  rift: {
+    chip: "Hora del Yarık",
+    started: "Empezó la Hora del Yarık. El Yarık está abierto durante una hora; despega tu nave de comandante desde el hangar.",
+    ended: "Terminó la Hora del Yarık. La entrada al Yarık se cerró; si estás dentro, sal por una salida en {{minutes}} minutos.",
+    chronicleStarted: "Empezó la Hora del Yarık",
+    chronicleStartedDetail: "El Yarık está abierto durante una hora.",
+    chronicleEnded: "Terminó la Hora del Yarık",
+    chronicleEndedDetail: "La entrada al Yarık se cerró. Las naves que siguen dentro se rompen a los {{minutes}} minutos.",
   },
   capsule: {
     OPTIC_VEIL: { name: "Velo óptico", effect: "Solo tú y tu clan veis tu flota; ningún Telescopio, Radar ni Gözcü de otro comandante la detecta.", warns: "En un ataque, el Radar del objetivo sigue dando el aviso." },

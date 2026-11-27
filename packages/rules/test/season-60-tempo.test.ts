@@ -130,8 +130,9 @@ describe('60-day season transition', () => {
   });
 
   it('preserves the latest Arena and escort cooldowns and paid cooldown shortening', () => {
-    // Owner 2026-11-25: raised back from 3/3 ("geri biraz yükseltmek istiyorum").
-    expect(ARENA_ECONOMY.repairMinutes).toBe(15);
+    // Owner 2026-11-25: raised back from 3/3 ("geri biraz yükseltmek istiyorum"); owner 2026-11-27: the Yarık opens
+    // an hour at a time, so a death's repair is 5 min again. The paid quote still only shortens an escort's 60 min.
+    expect(ARENA_ECONOMY.repairMinutes).toBe(5);
     expect(ARENA_ECONOMY.serviceMinutes).toBe(5);
     expect(ADMIRAL_WAIT).toEqual({ repairMinutes: 60, serviceMinutes: 10 });
     expect(repairQuote(1)).toEqual({ minutes: 15, cost: { alloy: 175, crystal: 60, deuterium: 0 } });

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ARENA_LAYOUT, ARENA_PROTOCOL, ARENA_ROSTER_MAX, ARENA_TUNING as T, FAR_EVERY, MID_EVERY, SHIP_CLASSES, applyFeed, copyFlight, createFlightState, createPilot,
+import { ARENA_ECONOMY as E, ARENA_LAYOUT, ARENA_PROTOCOL, ARENA_ROSTER_MAX, ARENA_TUNING as T, FAR_EVERY, MID_EVERY, SHIP_CLASSES, applyFeed, copyFlight, createFlightState, createPilot,
   decodeArenaSnapshot, predictPilot, sameSide, stepFeedEffects, stepPredictedTracers, unpackFar, unpackPilot, unpackRemote, type ArenaIntent, type ArenaSnapshot,
   type ArenaWorld, type Pilot, type ShipClass, type SteeringSettings, type Tactic } from '@astera/rules/arena';
 import { createIdempotencyKey } from '../api/client.js';
@@ -27,18 +27,39 @@ export function rankStandings(pilots: readonly z.infer<typeof rosterRow>[], self
     .map(p => ({ id: p.id, name: p.name, kills: p.kills ?? 0, deaths: p.deaths ?? 0, self: p.id === selfId }))
     .sort((a, b) => b.kills - a.kills || a.deaths - b.deaths || a.name.localeCompare(b.name));
 }
+/** The Yarık's window as the room tells it (protocol 20): milliseconds from the moment it was sent. */
+const riftBody = { open: z.boolean(), closesIn: z.number().nonnegative().nullable(), deadlineIn: z.number().nonnegative().nullable() };
 const lowMessage = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('welcome'), v: z.literal(ARENA_PROTOCOL), pilotId: z.number().int().positive(),
     tick: z.number().int().nonnegative(), seq: z.number().int().nonnegative(), tickRate: z.literal(30),
     snapshotRate: z.literal(15), layoutVersion: z.literal(ARENA_LAYOUT.version), pilots: rosterSchema, teamId: z.string().uuid().optional(),
     /** Protocol 18 (G16): whether the Asteryum Fırtınası blows in the room. */
-    storm: z.boolean() }),
+    storm: z.boolean(),
+    /** Protocol 20 (owner 2026-11-27): the Yarık's window. */
+    rift: z.object(riftBody).optional() }),
   z.object({ kind: z.literal('storm'), active: z.boolean() }),
+  z.object({ kind: z.literal('rift'), ...riftBody }),
   z.object({ kind: z.literal('roster'), pilots: rosterSchema }),
   z.object({ kind: z.literal('pong'), t: z.number().finite(), serverTimeMs: z.number().finite() }),
   z.object({ kind: z.literal('kick'), reason: z.string().max(32) }),
   sortieSchema,
 ]);
+/** The Yarık's window on this page's own clock (`Date.now()`), set from the room's milliseconds as they arrive. */
+export interface RiftState { open: boolean; closesAt: number | null; deadline: number | null }
+const riftOn = (body: { open: boolean; closesIn: number | null; deadlineIn: number | null }): RiftState => {
+  const now = Date.now();
+  return { open: body.open, closesAt: body.closesIn === null ? null : now + body.closesIn, deadline: body.deadlineIn === null ? null : now + body.deadlineIn };
+};
+
+/**
+ * While the Yarık is closing, when every ship still inside is lost; otherwise null. Past the close the grace is the
+ * rule's, not the room's word: the room reads the calendar only every 5 s.
+ */
+export function riftDeadline(rift: RiftState | null, now: number): number | null {
+  if (!rift) return null;
+  const deadline = rift.open ? rift.closesAt !== null && now >= rift.closesAt ? rift.closesAt + E.riftGraceMinutes * 60_000 : null : rift.deadline;
+  return deadline !== null && now < deadline ? deadline : null;
+}
 export interface NetworkStatus {
   phase: 'idle' | 'connecting' | 'online' | 'reconnecting' | 'failed'; rtt: number; pilots: number; reason: string;
   board: readonly Standing[];
@@ -47,6 +68,8 @@ export interface NetworkStatus {
   teamId: string | null; watching: number | null; received: boolean;
   /** The Asteryum Fırtınası blows in the room (G16): from the welcome, then from each `storm` turn. */
   storm: boolean;
+  /** The Yarık's window (owner 2026-11-27): from the welcome, then from each `rift` turn; null until told. */
+  rift: RiftState | null;
 }
 interface Pending { seq: number; input: ArenaIntent }
 const AIM_HORIZON_MAX = 0.6;
@@ -99,7 +122,7 @@ function poseAt(samples: readonly Sample[], tick: number, cap: number, out: Pilo
 export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings, onLost: () => void,
   credential?: () => Promise<string | null>) {
   const listeners = new Set<() => void>();
-  let status: Readonly<NetworkStatus> = { phase: 'idle', rtt: 0, pilots: 0, reason: '', board: [], sortie: null, teamId: null, watching: null, received: false, storm: false };
+  let status: Readonly<NetworkStatus> = { phase: 'idle', rtt: 0, pilots: 0, reason: '', board: [], sortie: null, teamId: null, watching: null, received: false, storm: false, rift: null };
   let socket: WebSocket | null = null; let retry: ReturnType<typeof setTimeout> | null = null;
   let stopped = true; let welcomed = false; let connected = false; let attempts = 0; let seq = 0; let lastPing = 0;
   let settingSignature = ''; let lastSnapshot = -1; let lastSnapshotAt = 0;
@@ -232,9 +255,10 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
       if (msg.kind === 'welcome') {
         clearTimeout(timeout); welcomed = true; connected = true; attempts = 0; seq = Math.max(seq, msg.seq);
         settingSignature = ''; history.length = 0; remote.clear(); lastSnapshot = -1; viewTick = -1;
-        world.pilot.id = msg.pilotId; notify({ phase: 'online', reason: '', teamId: msg.teamId ?? null, storm: msg.storm }); roster(msg.pilots);
+        world.pilot.id = msg.pilotId; notify({ phase: 'online', reason: '', teamId: msg.teamId ?? null, storm: msg.storm, rift: msg.rift ? riftOn(msg.rift) : null }); roster(msg.pilots);
       } else if (msg.kind === 'roster') roster(msg.pilots);
       else if (msg.kind === 'storm') notify({ storm: msg.active });
+      else if (msg.kind === 'rift') notify({ rift: riftOn(msg) });
       else if (msg.kind === 'pong') notify({ rtt: Math.round(performance.now() - msg.t) });
       else if (msg.kind === 'sortie') notify({ sortie: { outcome: msg.outcome, deposit: msg.deposit, overflow: msg.overflow, readyAt: msg.readyAt,
         readyReason: msg.readyReason, xp: msg.xp, ...(msg.asterium ? { asterium: msg.asterium } : {}), ...(msg.teamId ? { teamId: msg.teamId } : {}) } });

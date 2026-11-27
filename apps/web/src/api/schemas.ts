@@ -815,6 +815,13 @@ const activeGalaxyEventSchema = z.discriminatedUnion('kind', [
     startsAt: z.coerce.date(),
     endsAt: z.coerce.date(),
   }),
+  /** Yarık Saati (owner 2026-11-27): an hour the Yarık is open, without Asteryum; the window is the whole effect. */
+  z.object({
+    id: z.string().uuid(),
+    kind: z.literal('RIFT_HOUR'),
+    startsAt: z.coerce.date(),
+    endsAt: z.coerce.date(),
+  }),
 ]);
 
 const knownGalaxyEventKinds: ReadonlySet<string> = new Set(
@@ -834,7 +841,7 @@ const knownGalaxyEventKinds: ReadonlySet<string> = new Set(
  */
 export const activeGalaxyEventsSchema = z.object({
   next: z.object({
-    kind: z.enum(['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY', 'ASTERIUM_STORM']),
+    kind: z.enum(['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY', 'ASTERIUM_STORM', 'RIFT_HOUR']),
     startsAt: z.coerce.date(),
   }).nullable().default(null),
   events: z.array(z.unknown()).transform((rows, context) => rows.flatMap((row, index) => {
@@ -2643,6 +2650,11 @@ const galaxyLifecyclePayloadSchema = z.discriminatedUnion('eventKind', [
   }),
   z.object({
     eventKind: z.literal('ASTERIUM_STORM'),
+    startsAt: z.string(),
+    endsAt: z.string(),
+  }),
+  z.object({
+    eventKind: z.literal('RIFT_HOUR'),
     startsAt: z.string(),
     endsAt: z.string(),
   }),
