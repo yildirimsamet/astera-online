@@ -4,9 +4,7 @@ Bu dosyayı küçük tut: yalnızca yanlış uygulamayı önleyen, proje genelin
 
 ## 1. Ürün ve temel döngü
 
-Astera Online, galaksi başına 1000 gerçek oyuncuya kadar ölçeklenen, **mobile-first ve android uygulaması olan, kalıcı, çok oyunculu bir uzay oyunudur**. Her komutanın korunan bir başkenti vardır ve en fazla üç koloni ele geçirebilir. Sahip olunan gezegenler keşfedilene kadar gizlidir.
-
-> The fleet is the bet. The information is the game. The planet is the stake.
+Astera Online, galaksi başına 1000 gerçek oyuncuya kadar ölçeklenen, **mobile-first ve android uygulaması olan, kalıcı, çok oyunculu bir uzay oyunudur**.
 
 - **Tasarım:** Oynaması basit; derinliği daha fazla sistemden değil, sistemler arasındaki etkileşimden gelir.
 - **Hissiyat:** Eğlenceli, ütopik, epik; içinde uçulabilen canlı bir NASA fotoğrafı.
@@ -14,22 +12,7 @@ Astera Online, galaksi başına 1000 gerçek oyuncuya kadar ölçeklenen, **mobi
 - **Anlık:** Sunucu zamanına bağlı olaylar zamanında görünür. Kaçınılabilir ağ gidiş-dönüşlerini beklemek yerine tahmin ve sunucuyla uzlaştırma kullanılır.
 - **Güzel:** Oynanış maliyeti sıfır olduğunda ölçek, derinlik, ışık ve görsel ihtişam tercih edilir.
 
-Her özellik şu değerlerden en az birini güçlendirmelidir:
-
-`OWNERSHIP · CURIOSITY · COMPETITION · AMBITION · RISK · OPPORTUNITY · RE-ENGAGEMENT · MEMORABILITY · FUN`
-
-```text
-DEVELOP → ACCUMULATE → GATHER INTEL → SPOT OPPORTUNITY → CHOOSE TARGET
-→ TAKE RISK → DISPATCH → WAIT OFFLINE → OUTCOME → GAIN / LOSS → NEW DECISION
-```
-
-Savaş raporları yeni istihbarat üretir. Ekonomi ve binalar bu döngüyü destekler; döngünün kendisi değildir.
-
 **Kilitli karar — owner, 2026-10-28:** Oyuncular bir botun bot olduğunu hiçbir zaman anlayamamalıdır. Oyuncuya görünen metinlerde, Wiki'de veya yardım içeriklerinde hiçbir dilde bot ifadesi bulunamaz; client'a bot işareti/flag'i sunulamaz. Gerçek oyuncunun yer aldığı her yerde bot da oyuncu gibi yer alır. Ayrıntı: `docs/ux-writing.md` ("Botlar asla anılmaz").
-
-Yeni bir sistem anlamlı bir karar oluşturmalı; gereksiz mikro yönetim yaratmadan etkileşimi, riski, fırsatı, merakı veya geri dönme nedenini güçlendirmelidir. Emin değilsen: **PROTOTYPE → PLAY → OBSERVE → DECIDE**.
-
-Gerileme işaretleri: döngünün `BUILD → WAIT → COLLECT → UPGRADE` hâline gelmesi; eğlencede oyuncuların yerini kaynakların alması; istihbarat → karar → eylem bağının zayıflaması; mikro yönetimin artması; teknik olarak etkileyici ama duygusal açıdan boş sonuçlar.
 
 ## 2. Yetki, yaklaşım ve çalışma düzeni
 
@@ -82,7 +65,7 @@ Başarı ölçütlerini tanımla ve doğrulanana kadar devam et. Çok adımlı i
 - “Hatayı düzelt” → Hatayı yeniden üreten test yaz, ardından geçir.
 - “X'i refactor et” → Testlerin değişiklikten önce ve sonra geçtiğini doğrula.
 
-Güçlü başarı ölçütleri bağımsız ilerlemeyi sağlar; “çalışır hâle getir” gibi zayıf ölçütler sürekli açıklama gerektirir. Doğru uygulamanın işaretleri: diff'lerde daha az gereksiz değişiklik, aşırı karmaşıklık nedeniyle daha az yeniden yazım ve hatadan sonra değil, uygulamadan önce sorulan açıklayıcı sorular.
+Uygulamadan önce sorulan açıklayıcı sorular.
 
 ## 3. Geliştirme disiplini: zorunlu TDD
 
@@ -102,13 +85,11 @@ Güçlü başarı ölçütleri bağımsız ilerlemeyi sağlar; “çalışır h�
 
 Oyuncuya dokunan her frontend işinde (UI, 3D, VFX, ses, etkileşim) **`apps/web/CLAUDE.md` zorunludur**: beş ilke (Clarity, Predictability, Decision support, Interaction cost, Premium design) ve Game feel standardı (owner, 2026-11-06) oradadır. `apps/web` altında çalışırken otomatik yüklenir; plan aşamasında web'e dokunacaksan önce onu oku. Her yerde geçerli kurallar:
 
-- Görsel dilin kaynağı `docs/ui-v2/gozlemevi.md` ve `docs/ui-v2/design-mocks/` mock'larıdır.
 - **VFX briefi (owner, 2026-11-18):** Efekt yazmadan önce 3 satırlık VFX briefi yazılır ve teslimde gösterilir: o anda dünyada fiziksel olarak ne oluyor, kütüphaneden hangi asset (yol), neden bu olayı anlatıyor. Yumuşak yuvarlak parlama, büyüyen hale ve "her yere uyan" efekt yasaktır.
 - Oyun hareketleri işletim sisteminin hareket tercihinden bağımsızdır. **Yalnız public landing CSS'i**, owner'ın 2026-10-18 tarihli açık erişilebilirlik talebiyle istisnadır.
 - Hedef 350 px genişliğinde telefondur; his Unity/Godot/Unreal ile yapılmış bir oyundur, web formu değil.
-- Konuya uyan `gamedev:` skill'lerini kullan (tam adlar `gamedev:` önekiyle başlar).
 
-### 4.7 Oyun Geliştirme El Kitabı — owner, 2026-11-24
+### 4.1 Oyun Geliştirme El Kitabı — owner, 2026-11-24
 
 `~/Desktop/Coding/MyProjects/game-dev-handbook/` (repo dışı) oyun tasarımı ve oyun mühendisliği ilkelerinin başvuru kaynağıdır. Her ilkenin kalıcı bir ID'si vardır (`GF-03`, `SB-04`, `EN-03`). Kullanılması zorunludur:
 
@@ -162,6 +143,7 @@ Ekonomi/sezon simülasyonları, snowball audit'leri ve benzeri uzun ekonomi ince
 ### Yerel PC: genel bellek sınırı — owner, 2026-11-03
 
 - Node heap **3 GiB'ı aşamaz**: en fazla `--max-old-space-size=3072`. Bir kontrolü geçirmek için sınırı yükseltme veya 6 GiB kullanma. Test worker'larında yukarıdaki daha düşük sınır geçerlidir.
+- **Tek istisna lint'tir (owner, 2026-11-26):** ESLint süreci en fazla **5 GiB** heap kullanabilir (`--max-old-space-size=5120`). Bunun üstüne çıkma; typecheck ve testler 3 GiB sınırında kalır.
 - Heap toplam süreç belleği değildir; RSS'i izle ve PC'nin kullanılabilir kalmasını sağla.
 - `pnpm lint` bütün dosyaları 400'lük parçalarla sırayla kontrol eder (tek süreç 3 GiB'a sığmaz). Bkz. `tools/lint.mjs`.
 
@@ -174,6 +156,8 @@ Ekonomi/sezon simülasyonları, snowball audit'leri ve benzeri uzun ekonomi ince
 
 | Dosya | Ne zaman okunur? |
 | --- | --- |
+| `~/Desktop/Coding/MyProjects/game-assets/AGENTS.md` | Hazır GUI, ikon, VFX, model veya ses ararken (repo dışı ortak kütüphane; çizmeden önce bak, uygun olanı seç) |
+| `~/Desktop/Coding/MyProjects/game-dev-handbook/README.md` | Oyuncuya dokunan veya oyun sistemine giren her geliştirmede (repo dışı el kitabı; bkz. §4.1) |
 | `docs/product-vision.md` | Ürünün amacını değerlendirirken |
 | `docs/game-design.md` | Sistem davranışını değiştirirken |
 | `docs/architecture.md` | Sunucu mimarisinde |
@@ -187,8 +171,6 @@ Ekonomi/sezon simülasyonları, snowball audit'leri ve benzeri uzun ekonomi ince
 | `docs/review-sight.md` | Telescope/Radar/probe görüşüne dokunurken |
 | `docs/glossary.md` | Terimler için |
 | `docs/komutan-gemisi/README.md` | Komutan Gemisi / Savaş Alanı'na (gerçek zamanlı pilot arenası) dokunurken |
-| `~/Desktop/Coding/MyProjects/game-assets/AGENTS.md` | Hazır GUI, ikon, VFX, model veya ses ararken (repo dışı ortak kütüphane; çizmeden önce bak) |
-| `~/Desktop/Coding/MyProjects/game-dev-handbook/README.md` | Oyuncuya dokunan veya oyun sistemine giren her geliştirmede (repo dışı el kitabı; bkz. §4.7) |
 
 Diğer konular için `docs/` klasörüne bak.
 
@@ -196,10 +178,4 @@ Diğer konular için `docs/` klasörüne bak.
 
 ## 7. Token optimizasyonu
 
-Kullanıcıya yazdıklarını kısa, net ve sade tut: ne yaptığını, neyi doğruladığını ve kullanıcıdan ne beklediğini söyle; araç çıktısını tekrar etme. Uzun bir işte bir aşamayı bitirdiğinde veya bir sonucu beklerken tek cümleyle durumu yaz.
-
-Claude API her istekten sonra 60dk TTL ile caching yapıyor. Bu yüzden dolayı hiç bir işi 55dk'dan fazla bekleme (5dk buffer). Test sonucu, tool call vs. hiç bir şeyi 55dk üzerinde beklemeyeceksin. İşine devam edeceksin. Sonuç gelince bakarsın, boşuna bekleyip cache süresini yakma. Cachelenmiş geçmiş için token ücreti çok daha ucuz.
-
-## 8. Son hedef
-
-> Oyuncuların oyunu kapattıktan sonra “Ne oldu acaba?” diye merak ettiği, AAA+ premium görsel kalitede, optimize edilmiş bir çok oyunculu tarayıcı ve uygulama oyunu geliştir.
+**Her zaman** owner'a yazdıklarını kısa, net ve sade tut: ne yaptığını, neyi doğruladığını ve owner'dan ne beklediğini söyle; araç çıktısını tekrar etme. Uzun bir işte bir aşamayı bitirdiğinde veya bir sonucu beklerken tek cümleyle durumu yaz.
