@@ -120,7 +120,11 @@ public final class SessionHttp implements SessionEngine.Network {
                 if (!secret.matches("[A-Za-z0-9_-]{43}")) throw new IOException("Invalid native credential");
                 issued = new SessionEngine.Credential(id, secret, null);
             }
-            if (operation.equals("claim")) for (String key : new String[]{"placement", "planet", "applied"}) result.put(key, source.get(key));
+            if (operation.equals("claim")) {
+                for (String key : new String[]{"placement", "planet", "applied"}) result.put(key, source.get(key));
+                // A new commander gets a ship and no planet; an existing one brings its guide choice.
+                for (String key : new String[]{"vessel", "starterGuideOff"}) if (source.has(key)) result.put(key, source.get(key));
+            }
             return new SessionEngine.Reply(status, result.toString(), serverTime, issued);
         } catch (JSONException | IllegalArgumentException failure) { throw new IOException("Invalid session response"); }
     }
