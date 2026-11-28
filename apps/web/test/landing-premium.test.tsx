@@ -6,7 +6,6 @@ import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { LandingScreen } from '../src/screens/LandingScreen.js';
 
-vi.mock('../src/landing/LandingScene.jsx', () => ({ LandingScene: () => <div data-testid="landing-scene" /> }));
 afterEach(() => { vi.unstubAllEnvs(); });
 function show() {
   vi.stubEnv('VITE_ASTERA_PLATFORM', 'web');
@@ -35,7 +34,7 @@ it('explains the actual game through visible semantic chapters before asking for
 });
 it('lets the web front door work without loading the WebGL scene or its game assets', () => {
   const { loadAsset } = show();
-  expect(screen.queryByTestId('landing-scene')).not.toBeInTheDocument();
+  expect(document.querySelector('.gk-frontdoor__art')).toBeNull();
   expect(loadAsset).not.toHaveBeenCalled();
   expect(screen.getByTestId('landing-primary')).toBeEnabled();
 });

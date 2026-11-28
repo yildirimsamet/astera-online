@@ -14,7 +14,6 @@ const file = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8'
 
 const CANVASES = [
   'src/galaxy/GalaxyCanvas.tsx',
-  'src/landing/LandingScene.tsx',
 ] as const;
 
 it('holds the Academy opening until the compiled scene has painted, without spending the loading delta', () => {

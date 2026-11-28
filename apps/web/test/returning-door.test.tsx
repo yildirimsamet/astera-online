@@ -33,9 +33,6 @@ import { commanderKnownHere, forgetCommander, rememberCommander } from '../src/l
  * make, WebGL does not exist in jsdom, and `react-use-measure` throws outright on
  * a document with no ResizeObserver. The door is what this file is about.
  */
-vi.mock('../src/landing/LandingScene.jsx', () => ({
-  LandingScene: () => <div data-testid="landing-scene" />,
-}));
 
 const harness = () => {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });

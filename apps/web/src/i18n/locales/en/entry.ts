@@ -31,7 +31,7 @@ export const landing = {
    */
   welcomeBack: "Continue with your commander",
   signInPrimary: 'Sign in',
-  returningHint: 'Same commander, same galaxy, on any browser.',
+  returningHint: 'Same commander, same galaxy, on any device.',
   newCommander: 'Start a new commander',
   opening: 'Opening the galaxy',
   ready: 'Your planet is ready',

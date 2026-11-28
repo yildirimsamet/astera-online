@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ASTEROID_MODELS,
   FLEET_V2_ASSET_MANIFEST,
-  FLEET_V2_LANDING_MODELS,
+  FRONT_DOOR_ART,
+  LOGO,
   MODEL,
   PLANET_ART,
   SATELLITE_MODEL,
@@ -12,16 +13,11 @@ import { SATELLITE_IDS } from '@astera/rules';
 /**
  * WAITING, DONE HONESTLY.
  *
- * The front door renders a 3D sky: a nebula, six hulls, three rock bodies, four
- * satellites and three planet renders. On a phone on mobile data that is a couple
- * of seconds during which the page is a dark rectangle with a form on it, and the
- * craft pop in one at a time behind the password field afterwards. First
- * impressions of a game are made in exactly that window.
- *
- * So the door waits, and the wait is measured rather than mimed. This fetches the
- * assets the landing scene will ask for and counts them as they land, so the bar
- * on screen is the real fraction of a real list — not a timed animation pretending
- * to be one. A progress bar that lies is worse than a spinner.
+ * On a phone on mobile data a screen's art takes a couple of seconds, during which
+ * it would pop in piece by piece. So the door waits, and the wait is measured rather
+ * than mimed: this fetches the assets the next screen will ask for and counts them as
+ * they land, so the bar is the real fraction of a real list. A progress bar that lies
+ * is worse than a spinner.
  *
  * TWO RULES IT OBEYS, and both exist because the alternative is a player stuck at
  * the door:
@@ -36,24 +32,8 @@ import { SATELLITE_IDS } from '@astera/rules';
 /** Milliseconds after which the door opens whatever is still loading. */
 export const PRELOAD_DEADLINE_MS = 5_000;
 
-/**
- * Exactly what `LandingScene` draws, and nothing it does not.
- *
- * Kept as a literal list rather than derived from the scene, because the scene
- * reaches for these through `useGLTF` and `useLoader` inside a canvas and there is
- * no honest way to ask it in advance. If a body is added there and not here, the
- * only cost is that one object arrives late — which is why this is a list and not
- * a lock.
- */
-export const LANDING_ASSETS: readonly string[] = [
-  '/assets/images/planets/planet_4.png',
-  '/assets/images/planets/planet_12.png',
-  '/assets/images/planets/planet_9.png',
-  ...Object.values(FLEET_V2_LANDING_MODELS),
-  MODEL.probe,
-  ...ASTEROID_MODELS,
-  ...SATELLITE_IDS.map((id) => SATELLITE_MODEL[id]),
-];
+/** What the front door draws: its picture's layers and the mark over them. */
+export const LANDING_ASSETS: readonly string[] = [...Object.values(FRONT_DOOR_ART), LOGO.mark];
 
 /**
  * What the DISC is built from, as opposed to the front door.

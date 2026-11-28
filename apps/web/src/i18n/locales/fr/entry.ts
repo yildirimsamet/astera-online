@@ -10,7 +10,7 @@ export const landing = {
   /** Accueil d’un commandant qui revient sur cet appareil. */
   welcomeBack: "Continue avec ton commandant",
   signInPrimary: 'Se connecter',
-  returningHint: 'Retrouve ton commandant et ta galaxie depuis n’importe quel navigateur.',
+  returningHint: 'Retrouve ton commandant et ta galaxie depuis n’importe quel appareil.',
   newCommander: 'Créer plutôt un nouveau commandant',
   opening: 'La galaxie s’ouvre',
   ready: 'Ta planète est prête',

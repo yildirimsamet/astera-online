@@ -15,9 +15,6 @@ import { wikiSitemap } from '../src/wiki/publication.js';
 import { getWikiArticle, wikiPages } from '../src/wiki/catalog.js';
 import { PUBLISHER_ORIGIN, publisherPaths, publisherUrl } from '../src/lib/publisherPages.js';
 
-vi.mock('../src/landing/LandingScene.jsx', () => ({
-  LandingScene: () => <div data-testid="landing-scene" />,
-}));
 
 /**
  * THE PUBLISHER SITE, WHICH IS WHAT AN ADSENSE REVIEW ACTUALLY READS.

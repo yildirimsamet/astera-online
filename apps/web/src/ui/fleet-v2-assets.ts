@@ -127,11 +127,3 @@ export const FLEET_V2_ASSET_MANIFEST = {
   PALADIN: asset('paladin', defensive('-x', 2.6, '#AD78ED', 1.1), calibrated(0, 0, 0, 0.13)),
   ARGOSY: asset('argosy', cargo('-x', 2.4, 1.14), calibrated(0, 0, 0, 0.12)),
 } as const satisfies Record<MobileHullId, FleetV2Asset>;
-
-/** The small representative Fleet V2 cast used by the public landing scene. */
-export const FLEET_V2_LANDING_MODELS = {
-  dart: FLEET_V2_ASSET_MANIFEST.DART.model,
-  pike: FLEET_V2_ASSET_MANIFEST.PIKE.model,
-  rampart: FLEET_V2_ASSET_MANIFEST.RAMPART.model,
-  courier: FLEET_V2_ASSET_MANIFEST.COURIER.model,
-} as const;

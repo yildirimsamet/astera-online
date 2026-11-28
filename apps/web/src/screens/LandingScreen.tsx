@@ -1,17 +1,15 @@
-import { lazy, Suspense, useState } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
-import { useServers } from '../api/queries.js';
-const LandingScene = lazy(() => import('../landing/LandingScene.jsx').then(module => ({ default: module.LandingScene })));
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PublicLandingScreen } from '../landing/public/PublicLandingScreen.js';
 import { AuthDialog } from './LandingAuthDialog.js';
 import { runtime } from '../platform/runtime.js';
-import { full } from '../lib/format.js';
 import { LANDING_ASSETS, usePreload, type Loader } from '../lib/preload.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { useOpeningCover } from '../lib/openingCover.js';
 import { Banner, GameButton } from '../game-ui/index.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.jsx';
-import { Wordmark } from '../ui/Wordmark.jsx';
+import { AsteraSigil, AsteraWordmark } from '../brand/Identity.js';
+import { FrontDoorArt } from '../landing/FrontDoorArt.js';
 import { commanderKnownHere } from '../lib/returning.js';
 import { publisherUrl, publisherWikiUrl } from '../lib/publisherPages.js';
 import { capabilities } from '../platform/runtime.js';
@@ -20,16 +18,14 @@ import { useLandingTelemetry } from '../lib/playerAnalytics/useLandingTelemetry.
 /**
  * THE FRONT DOOR. D21.
  *
- * One screen with three jobs, in this order:
+ * One screen with two jobs, in this order:
  *
  *   1. STATE THE PREMISE. You command a protected capital, can win colonies, and
  *      cannot see what rivals hold. Somebody who reads nothing else must still know
  *      what kind of game this is.
- *   2. SHOW THAT SOMEBODY IS IN THERE. `KNOWN RISKS` puts the empty shard second on
- *      the project's list, and the front page is where a visitor decides whether
- *      this world is inhabited. The live count is read from the public server list
- *      and shown before anyone has an account.
- *   3. GET OUT OF THE WAY. Two controls, one form, no marketing.
+ *   2. GET OUT OF THE WAY. Two controls, one form, no marketing.
+ *
+ * No live player count, and no request for one (owner, 2026-11-28).
  *
  * The guest door is gone. A commander is a name and a password now, because a
  * fourteen-day season kept in one browser's cookie jar is a season you lose by
@@ -99,89 +95,38 @@ export function CompactLandingScreen({
     setOpening(true);
     void telemetry.play(onBegin).catch(() => { setOpening(false); });
   };
-  const servers = useServers();
   /**
    * THE SCREEN IS A COVER, NOT A GATE. Owner decision.
    *
-   * This page is a 3D scene with a form on top of it, and the visitor used to meet
-   * a black rectangle that then had hulls and rocks pop into it one at a time
-   * while they were typing a password. The first thirty seconds of a game are not
+   * This page is a picture with a form on top of it, and a visitor must never meet
+   * a black rectangle the picture then pops into. The first thirty seconds of a game are not
    * the place for that.
    *
-   * The first fix held the page back until the assets were in, and that was the
-   * wrong shape: the scene could not start decoding until the wait was over, so
-   * the wait made the very stutter it was hiding arrive later. The loading screen
-   * is now an OVERLAY. Everything below it mounts and loads at once — canvas,
-   * models, form — and the cover comes off when the scene is ready to be smooth.
-   * What the player waits through is the jank, not the loading.
-   *
-   * The bar is a real fraction of a real list of files, and `usePreload` lifts the
-   * cover on a deadline regardless, so a slow network delays the sky and never the
-   * game.
+   * The loading screen is an OVERLAY: the picture and the form mount at once and the
+   * cover comes off when the picture is in. `usePreload` lifts it on a deadline
+   * regardless, so a slow network delays the sky and never the game.
    */
   const assets = usePreload(LANDING_ASSETS, loadAsset ? { load: loadAsset } : {});
   const [drawn, setDrawn] = useState(false);
   const covered = useOpeningCover(assets.ready && drawn);
 
-  const commanders = servers.data?.servers.reduce((sum, s) => sum + s.planets, 0) ?? null;
-  const online = servers.data?.servers.reduce((sum, s) => sum + s.online, 0) ?? null;
-
-
   return (
     <main className="gk gk-frontdoor relative min-h-dvh overflow-hidden">
-      <Suspense fallback={null}><LandingScene onReady={() => { setDrawn(true); }} /></Suspense>
+      <FrontDoorArt onReady={() => { setDrawn(true); }} />
 
-      {/**
-       * The copy sits in its own stacking context above the canvas, over a scrim
-       * that is dark at the two ends and clear through the middle.
-       *
-       * NOT A FLAT TINT AND NOT A SIMPLE TOP-TO-BOTTOM FADE. The scene moves and
-       * the text does not, so legibility cannot depend on what happens to be behind
-       * a line at a given second — a craft crossing under "you cannot see what they
-       * hold" must not take the sentence with it. The two stops that matter are
-       * where the words are; the clear band between them is the whole reason there
-       * is a 3D scene at all.
-       */}
-      {/**
-       * THE COPY OWNS THE TOP AND THE BOTTOM, AND THE MIDDLE IS THE GAME.
-       *
-       * The scrim is dark at the two ends and clear through the middle. NOT a flat
-       * tint and not a simple top-to-bottom fade: the scene moves and the text does
-       * not, so legibility cannot depend on what happens to be behind a line at a
-       * given second. The clear band between the two stops is the whole reason
-       * there is a 3D scene at all, and it is wider now than it was — the premise
-       * paragraphs that used to fill it have gone, because a stranger reads the
-       * picture first and the sentence second, and the sentence was crowding the
-       * picture out.
-       */}
-      <div className="relative z-10 flex min-h-dvh flex-col justify-between bg-[linear-gradient(180deg,rgb(4_6_11/0.92)_0%,rgb(4_6_11/0.72)_16%,rgb(4_6_11/0.10)_34%,rgb(4_6_11/0.06)_58%,rgb(4_6_11/0.78)_82%,rgb(4_6_11/0.97)_100%)] px-4 pb-[calc(18px+env(safe-area-inset-bottom))] pt-[calc(20px+env(safe-area-inset-top))] sm:px-6">
-        {/*
-          THE SWITCHER IS ON THE FRONT DOOR, not only in the commander sheet: a
-          visitor who has landed in the wrong language has no account yet, so the
-          sheet that holds that control does not exist for them.
-
-          Top right, and small enough to be furniture. It sat under the wordmark
-          competing with the one decision this page asks for; up here it is
-          findable by anyone looking for it and invisible to everyone else.
-        */}
-        {/*
-          THE TOP GROUP. The switcher and the lockup travel together so that the
-          column between them and the footer is EMPTY — that gap is the picture,
-          and it is the argument this page is making. Grouped rather than left as
-          two flex children, which would have shared the space equally and parked
-          the wordmark in the dead centre.
-        */}
+      {/* The picture's calm top holds the name and its quiet bottom holds the doors; the middle stays clear. */}
+      <div className="gk-frontdoor__page">
+        {/* The language is on the front door: a visitor in the wrong one has no account yet. */}
         <div>
           <div className="flex justify-end">
             <LanguageSwitch compact kit />
           </div>
 
-          <header className="w-full">
-            {/* The painted lockup rather than type. It is the first thing anyone
-                sees of this game, and with the middle cleared it sits high and
-                lets the sky underneath do the talking. */}
-            <h1>
-              <Wordmark width={144} className="mx-auto mt-2" />
+          <header>
+            <h1 className="gk-frontdoor__lockup" aria-label="Astera Online">
+              <AsteraSigil className="gk-frontdoor__mark" />
+              <AsteraWordmark className="gk-frontdoor__word" />
+              <span className="gk-frontdoor__online" aria-hidden="true">ONLINE</span>
             </h1>
           </header>
         </div>
@@ -204,8 +149,6 @@ export function CompactLandingScreen({
          * time visitor as a wall.
          */}
         <footer className="gk-frontdoor__foot">
-          <Population commanders={commanders} online={online} />
-
           {error !== undefined && mode === null && <Banner tone="hostile" role="alert" title={error} />}
 
           {/**
@@ -321,45 +264,6 @@ export function CompactLandingScreen({
 }
 
 export type Mode = 'login';
-
-/**
- * How busy the world is, stated before anyone signs up.
- *
- * Silent until it knows. A hard zero while the request is in flight would say the
- * one thing that stops a visitor dead, and say it wrongly.
- */
-function Population({ commanders, online }: { commanders: number | null; online: number | null }) {
-  if (commanders === null || commanders === 0) return null;
-  return (
-    <p className="gk-note gk-frontdoor__people">
-      {/*
-        `Trans` rather than two fragments of a sentence: which side of the figure
-        the noun sits on is a property of the language, and splitting the string
-        here would decide that in JSX for every language at once. The tinted span
-        is the `<0>` in the resource.
-      */}
-      <Trans
-        i18nKey="landing.populationHeld"
-        values={{ amount: full(commanders) }}
-        components={[<span key="n" className="gk-num" />]}
-      />
-      {online !== null && online > 0 && (
-        <>
-          {' · '}
-          <Trans
-            i18nKey="landing.populationOnline"
-            values={{ amount: full(online) }}
-            components={[<span key="n" className="gk-num" data-tone="self" />]}
-          />
-        </>
-      )}
-    </p>
-  );
-}
-
-/* ── the form ───────────────────────────────────────────────── */
-
-
 
 export type LandingProps = Parameters<typeof CompactLandingScreen>[0];
 

@@ -28,7 +28,7 @@ export const landing = {
    */
   welcomeBack: "Komutanınla oyuna devam et",
   signInPrimary: 'Giriş yap',
-  returningHint: 'Aynı komutan, aynı galaksi; hangi tarayıcıdan girersen gir.',
+  returningHint: 'Aynı komutan, aynı galaksi; hangi cihazdan girersen gir.',
   newCommander: 'Yeni komutan başlat',
   opening: 'Galaksi açılıyor',
   ready: 'Gezegenin hazır',

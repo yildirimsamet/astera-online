@@ -16637,31 +16637,65 @@ a.gk-donate__card:active { transform: scale(0.96); filter: brightness(1.15); }
 @media (min-width: 640px) { .gk-authsheet { border-bottom: 1px solid var(--gk-metal-edge); border-radius: var(--gk-r-lg); padding-bottom: var(--gk-s5); } }
 .gk-authsheet__grab { justify-self: center; width: 32px; height: 4px; border-radius: 2px; background: var(--gk-metal-edge); }
 @media (min-width: 640px) { .gk-authsheet__grab { display: none; } }
-.gk-authsheet__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--gk-s3); }
+.gk-authsheet__head { display: flex; align-items: center; gap: var(--gk-s3); }
+.gk-authsheet__mark { flex: none; width: 32px; height: 33px; }
+.gk-authsheet__heading { flex: 1; min-width: 0; }
 .gk-authsheet__head .gk-label { margin: 0; }
 .gk-authsheet__title { margin: 2px 0 0; font-size: var(--gk-t-title); line-height: 1.1; }
 .gk-authsheet__hint { margin: 0; font-size: var(--gk-t-small); color: var(--gk-ink-2); }
-.gk-authsheet__forgot { justify-self: start; margin-top: calc(-1 * var(--gk-s2)); padding-inline: 0; }
+.gk-authsheet__forgot { justify-self: end; align-self: flex-end; padding-inline: 0; }
 .gk-authsheet .gk-field__input[data-invalid] { border-color: var(--gk-hostile-hi); }
 
 /* ── G13-c (2026-11-16): the app's front door ─────────────────────────────── */
 .gk-frontdoor { background: var(--gk-void); color: var(--gk-ink); font-family: var(--gk-font-text); }
+/* The picture (2026-11-28): a 768 × 1376 painting that always covers the screen, its fleet held at the middle. */
+.gk-frontdoor__art { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.gk-frontdoor__frame { position: absolute; left: 50%; top: 50%; width: max(100%, calc(55.8 * var(--app-vh))); aspect-ratio: 768 / 1376; transform: translate(-50%, -65%); }
+/* The painting fades into the page below the fleet, wherever its own edge falls. */
+.gk-frontdoor__frame::after { content: ''; position: absolute; inset: auto -6% -6%; height: 30%; background: linear-gradient(180deg, transparent, var(--gk-void) 76%); }
+.gk-frontdoor__camera { position: absolute; inset: 0; transform-origin: 50% 56%; animation: gk-door-close 26s ease-in-out infinite alternate; }
+.gk-frontdoor__world { display: block; width: 100%; height: 100%; }
+/* Each hull sits where it was cut from: x, y, width and height of its box in the painting. */
+.gk-frontdoor__ship { position: absolute; animation: gk-door-ride 7s ease-in-out infinite alternate; }
+.gk-frontdoor__ship > img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gk-frontdoor__ship[data-ship='flagship'] { left: 22.92%; top: 48.33%; width: 55.73%; height: 31.25%; }
+.gk-frontdoor__ship[data-ship='escortLeft'] { left: 7.4%; top: 59.59%; width: 20.18%; height: 13.08%; animation-duration: 5.4s; animation-delay: -2.1s; }
+.gk-frontdoor__ship[data-ship='escortRight'] { left: 72.4%; top: 59.96%; width: 20.83%; height: 13.45%; animation-duration: 6.2s; animation-delay: -4.3s; }
+.gk-frontdoor__fire { transform-origin: 50% 70%; animation: gk-door-burn 0.9s linear infinite; }
+@keyframes gk-door-close { from { transform: scale(1); } to { transform: scale(1.08); } }
+@keyframes gk-door-ride { from { transform: translate3d(-0.5%, -1.2%, 0); } to { transform: translate3d(0.5%, 1.2%, 0); } }
+@keyframes gk-door-burn { 0%, 100% { opacity: .8; transform: scaleY(1); } 22% { opacity: 1; transform: scaleY(1.09); } 41% { opacity: .65; transform: scaleY(.97); } 63% { opacity: .95; transform: scaleY(1.05); } 82% { opacity: .72; transform: scaleY(1.01); } }
+/* The name over the painting's calm top, the doors over its quiet bottom, the fleet clear between them. */
+.gk-frontdoor__page { position: relative; z-index: 10; display: flex; flex-direction: column; justify-content: space-between; min-height: var(--app-h, 100dvh);
+  padding: calc(var(--gk-s3) + env(safe-area-inset-top)) var(--gk-gutter) calc(var(--gk-s2) + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent 62%, color-mix(in srgb, var(--gk-void) 72%, transparent) 76%, var(--gk-void) 97%); }
+.gk-frontdoor__lockup { display: grid; justify-items: center; margin: 0 auto; }
+.gk-frontdoor__mark { width: 74px; height: 77px; }
+.gk-frontdoor__word { display: block; width: min(62vw, 252px); margin-top: var(--gk-s4); color: var(--gk-ink); }
+.gk-frontdoor__word svg { display: block; width: 100%; height: auto; }
+.gk-frontdoor__online { display: flex; align-items: center; gap: var(--gk-s3); margin-top: var(--gk-s3); color: var(--gk-self); font-size: var(--gk-t-small); font-weight: 600; letter-spacing: .52em; }
+.gk-frontdoor__online::before, .gk-frontdoor__online::after { content: ''; width: 40px; height: 1px; background: currentColor; opacity: .55; }
+/* The last letter's tracking would push the word off centre. */
+.gk-frontdoor__online::after { margin-left: -.52em; }
+/* A short phone: the name gives the fleet its room. */
+@media (max-height: 700px) {
+  .gk-frontdoor__mark { width: 50px; height: 52px; }
+  .gk-frontdoor__word { width: 180px; margin-top: var(--gk-s2); }
+  .gk-frontdoor__online { margin-top: var(--gk-s2); }
+}
 /* Words over a moving scene: dark round their letters, so a planet passing behind never takes them. */
-.gk-frontdoor__people, .gk-frontdoor__greet, .gk-frontdoor__hint { text-shadow: 0 0 2px var(--gk-outline), 0 1px 3px var(--gk-outline), 0 0 10px color-mix(in srgb, var(--gk-outline) 75%, transparent); }
+.gk-frontdoor__greet, .gk-frontdoor__hint { text-shadow: 0 0 2px var(--gk-outline), 0 1px 3px var(--gk-outline), 0 0 10px color-mix(in srgb, var(--gk-outline) 75%, transparent); }
 .gk-frontdoor__foot { display: grid; gap: var(--gk-s2); width: 100%; max-width: 28rem; margin-inline: auto; }
-.gk-frontdoor__people { margin: 0; text-align: center; color: var(--gk-ink); }
-.gk-frontdoor__people .gk-num { font-weight: 700; color: var(--gk-ink); }
-.gk-frontdoor__people .gk-num[data-tone='self'] { color: var(--gk-self); }
 .gk-frontdoor__greet { margin: var(--gk-s1) 0 0; text-align: center; color: var(--gk-ink); }
 .gk-frontdoor__hint { margin: 0 0 var(--gk-s1); text-align: center; color: var(--gk-ink); }
 .gk-frontdoor__signin { justify-self: center; }
-.gk-frontdoor__links { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0 var(--gk-s1);
-  margin-top: var(--gk-s1); padding-top: var(--gk-s1); border-top: 1px solid var(--gk-glass-edge); }
+.gk-frontdoor__links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); justify-items: center; text-align: center;
+  margin-top: var(--gk-s1); border-top: 1px solid var(--gk-glass-edge); }
 .gk-frontdoor__link { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 5px; font-size: var(--gk-t-floor);
   color: var(--gk-ink-2); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 4px; transition: color var(--gk-quick) var(--gk-ease); }
 .gk-frontdoor__link:hover, .gk-frontdoor__link:focus-visible { color: var(--gk-ink); text-decoration-color: currentColor; }
 /* The language, top right on the front door: furniture, in the kit's glass. */
-.gk-langselect { min-height: 44px; padding: 0 var(--gk-s3); border-radius: var(--gk-r-sm); border: 1px solid var(--gk-glass-edge);
+.gk-langselect { min-height: 44px; field-sizing: content; padding: 0 var(--gk-s2); border-radius: var(--gk-r-sm); border: 1px solid var(--gk-glass-edge);
   background: linear-gradient(180deg, var(--gk-glass-2), var(--gk-glass)); color: var(--gk-ink); font: 600 var(--gk-t-small) var(--gk-font-text); }
 .gk-langselect:focus-visible { outline: none; border-color: var(--gk-self); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gk-self) 30%, transparent); }
 .gk-frontdoor__link:active { color: var(--gk-self); }

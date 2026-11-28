@@ -31,7 +31,7 @@ export const landing = {
    */
   welcomeBack: "Continúa con tu comandante",
   signInPrimary: 'Iniciar sesión',
-  returningHint: 'El mismo comandante, la misma galaxia, en cualquier navegador.',
+  returningHint: 'El mismo comandante, la misma galaxia, en cualquier dispositivo.',
   newCommander: 'Crear un comandante nuevo',
   opening: 'Abriendo la galaxia',
   ready: 'Tu planeta está listo',

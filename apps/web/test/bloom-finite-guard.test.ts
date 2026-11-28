@@ -50,7 +50,7 @@ describe('the bloom input guard', () => {
   });
 
   it('guards every bloom the game mounts', () => {
-    for (const file of ['src/galaxy/GalaxyPostprocessing.tsx', 'src/landing/LandingScene.tsx', 'src/galaxy/PremiumShipInspector.tsx']) {
+    for (const file of ['src/galaxy/GalaxyPostprocessing.tsx', 'src/galaxy/PremiumShipInspector.tsx']) {
       const source = readFileSync(file, 'utf8');
       expect(source, file).toMatch(/<Bloom\s+ref=\{guardBloomRef\}/);
       expect(source, file).toMatch(/<FiniteSceneGuard\b/);
