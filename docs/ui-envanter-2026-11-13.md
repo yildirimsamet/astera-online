@@ -2269,7 +2269,7 @@ Halka açık sayfalar, hızlı başlangıç ve Wiki en sona kaldı; G13-e'nin ya
 | # | Yüzey | Dosya (satır) | Dil | Not |
 |---|---|---|---|---|
 | 1 | Web giriş sayfası | `landing/public/PublicLanding.tsx`, `PublicLandingScreen.tsx`, `WebLandingGate.tsx` (30), `ConsentPlacement.tsx`, `public-landing.css` | kendi CSS'i | Owner kararı (2026-10-18): yalnız bu CSS'te hareket tercihi (reduced motion) dikkate alınır. `docs/landing-premium-redesign-2026-10-18.md`. |
-| 2 | Uygulama giriş ekranı | `screens/LandingScreen` (423) + `landing/LandingScene.tsx` (466, 3D) | v2 + `landing-*` | güvenlik uyarısı, e-posta, hata, açık dialog |
+| 2 | Uygulama giriş ekranı | `screens/LandingScreen` + `landing/FrontDoorArt.tsx` (katmanlı key art) | kit | güvenlik uyarısı, e-posta, hata, açık dialog. 2026-11-28 (owner): 3D sahne ve canlı oyuncu sayısı kaldırıldı. `images/frontdoor/*-v1.webp`, Antigravity `agy` (`generate_image`) ile web açılış görselleri referans alınarak üretildi; gemi ve egzoz katmanları aynı resimden kesildi. Logo: owner'ın düz turkuaz A'sı, SVG (`images/logos/a4607a0fdbc3/`). |
 | 3 | Giriş / kayıt dialogu | `screens/LandingAuthDialog` (214) | v2 + 1 v1 | |
 | 4 | Yükleniyor | `shell/LoadingScreen` (51) | `landing-*` | bağlantı; galakside tarama / harita / yükseltme örtüsü |
 | 5 | Bakım | `shell/MaintenanceScreen` (67) | v1 + v2 | |

@@ -11,7 +11,7 @@ import {
 } from '@astera/rules';
 import { noseVector, type CraftPose, type Facing } from '../galaxy/craftMetadata.js';
 import { FLEET_V2_ASSET_MANIFEST } from './fleet-v2-assets.js';
-export { FLEET_V2_ASSET_MANIFEST, FLEET_V2_LANDING_MODELS } from './fleet-v2-assets.js';
+export { FLEET_V2_ASSET_MANIFEST } from './fleet-v2-assets.js';
 
 /**
  * The art, mapped to the game.
@@ -69,8 +69,21 @@ export const REPAIR_STATION_ART = `${BASE}/general/repair_station_1.png`;
 
 /** The shared square artwork; derived from assets/branding/app-icon-master.png. */
 export const LOGO = {
+  /** The square app artwork the web front page shows. */
   lockup: `${BASE}/logos/99a78ad6f43f/logo-lockup.png`,
-  mark: `${BASE}/logos/99a78ad6f43f/logo-mark.png`,
+  /** The flat turquoise mark every in-app surface draws; the app icon keeps the square artwork. */
+  mark: `${BASE}/logos/a4607a0fdbc3/logo-mark.svg`,
+} as const;
+
+/** The painted key art behind the app's front door, in layers: the world, three hulls and their exhaust. */
+export const FRONT_DOOR_ART = {
+  world: `${BASE}/frontdoor/world-v1.webp`,
+  flagship: `${BASE}/frontdoor/flagship-v1.webp`,
+  flagshipFire: `${BASE}/frontdoor/flagship-fire-v1.webp`,
+  escortLeft: `${BASE}/frontdoor/escort-left-v1.webp`,
+  escortLeftFire: `${BASE}/frontdoor/escort-left-fire-v1.webp`,
+  escortRight: `${BASE}/frontdoor/escort-right-v1.webp`,
+  escortRightFire: `${BASE}/frontdoor/escort-right-fire-v1.webp`,
 } as const;
 
 /* ── planets ────────────────────────────────────────────────── */

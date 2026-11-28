@@ -31,7 +31,7 @@ export const landing = {
    */
   welcomeBack: "司令官としてゲームを続ける",
   signInPrimary: "ログイン",
-  returningHint: "どのブラウザでも、同じ司令官で同じ銀河へ。",
+  returningHint: "どの端末でも、同じ司令官で同じ銀河へ。",
   newCommander: "新しい司令官で始める",
   opening: "銀河に接続中",
   ready: "惑星の準備ができました",

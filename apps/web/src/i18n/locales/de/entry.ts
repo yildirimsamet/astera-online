@@ -31,7 +31,7 @@ export const landing = {
    */
   welcomeBack: "Spiele mit deinem Kommandanten weiter",
   signInPrimary: 'Anmelden',
-  returningHint: 'Dein Kommandant und deine Galaxie sind in jedem Browser dieselben.',
+  returningHint: 'Dein Kommandant und deine Galaxie sind auf jedem Gerät dieselben.',
   newCommander: 'Stattdessen einen neuen Kommandanten erstellen',
   opening: 'Die Galaxie öffnen',
   ready: 'Dein Planet ist bereit',

@@ -4,14 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   FLEET_V2_OPENING_ASSETS,
   GALAXY_ASSETS,
-  LANDING_ASSETS,
   PRELOAD_DEADLINE_MS,
   fetchAsset,
   preloadAll,
   usePreload,
   type Loader,
 } from '../src/lib/preload.js';
-import { FLEET_V2_ASSET_MANIFEST, PLANET_ART } from '../src/ui/assets.js';
+import { PLANET_ART } from '../src/ui/assets.js';
 
 /**
  * THE WAIT AT THE FRONT DOOR. D23.
@@ -150,21 +149,6 @@ describe('counting what has loaded', () => {
     const load = vi.fn(settled());
     await preloadAll([], load);
     expect(load).not.toHaveBeenCalled();
-  });
-
-  /** The list is what the scene actually asks for; an empty one would be a no-op. */
-  it('has a list to load in the first place', () => {
-    expect(LANDING_ASSETS.length).toBeGreaterThan(5);
-    expect(new Set(LANDING_ASSETS).size).toBe(LANDING_ASSETS.length);
-  });
-
-  it('loads only canonical Fleet V2 traffic on the landing scene', () => {
-    const canonical = new Set(Object.values(FLEET_V2_ASSET_MANIFEST).map(({ model }) => model));
-    const landingFleet = LANDING_ASSETS.filter((url) => url.includes('/models/ships/'))
-      .filter((url) => !url.endsWith('/explorer_ship.glb'));
-    expect(landingFleet.length).toBeGreaterThan(0);
-    expect(landingFleet.every((url) => canonical.has(url))).toBe(true);
-    expect(LANDING_ASSETS.join(' ')).not.toMatch(/ship_[1-4]\.glb|runner\.glb|breacher\.glb/);
   });
 
   /**

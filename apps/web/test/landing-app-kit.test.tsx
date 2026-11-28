@@ -1,18 +1,16 @@
 import type { ReactNode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
-import { keys } from '../src/api/keys.js';
 import i18n from '../src/i18n/index.js';
 import { LandingScreen } from '../src/screens/LandingScreen.js';
 
-vi.mock('../src/landing/LandingScene.jsx', () => ({ LandingScene: () => <div data-testid="landing-scene" /> }));
 
 /**
- * G13-c (2026-11-16): THE APP'S FRONT DOOR ON THE GAME KIT. The scene keeps the middle; the foot
- * says who is out there in the kit's figures, the one lit press (training, or signing back in on
+ * G13-c (2026-11-16): THE APP'S FRONT DOOR ON THE GAME KIT. The picture keeps the middle; the foot
+ * holds the one lit press (training, or signing back in on
  * a device that has held a commander), the other door as steel or a quiet press, a refusal on a
  * kit banner, and the publisher's pages as quiet kit links.
  */
@@ -23,11 +21,10 @@ const oldPaint = (root: Element): string[] =>
 
 afterEach(() => { vi.unstubAllEnvs(); });
 
-const show = (props: { known?: boolean; error?: string } = {}) => {
+const show = (props: { known?: boolean; error?: string; fetch?: typeof globalThis.fetch } = {}) => {
   vi.stubEnv('VITE_ASTERA_PLATFORM', 'native-production');
   const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  queries.setQueryData(keys.servers, { servers: [{ code: 'A', planets: 640, online: 87 }] });
-  const api = new Api({ fetch: vi.fn<typeof globalThis.fetch>(() => new Promise<Response>(() => undefined)) });
+  const api = new Api({ fetch: props.fetch ?? vi.fn<typeof globalThis.fetch>(() => new Promise<Response>(() => undefined)) });
   const wrapper = ({ children }: { children: ReactNode }) =>
     <QueryClientProvider client={queries}><ApiProvider api={api}>{children}</ApiProvider></QueryClientProvider>;
   render(<LandingScreen onAuthenticate={vi.fn(() => Promise.resolve())} onBegin={vi.fn(() => Promise.resolve())} loadAsset={() => Promise.resolve()}
@@ -52,10 +49,13 @@ describe('the app’s front door on the kit', () => {
     expect(screen.getByRole('button', { name: /start a new commander/i })).not.toHaveClass('gk-btn--action');
   });
 
-  it('says who is out there in the kit’s figures', () => {
-    show();
-    const figures = document.querySelectorAll('.gk-frontdoor__people .gk-num');
-    expect([...figures].map((figure) => figure.textContent)).toEqual(['640', '87']);
+  // Owner, 2026-11-28: no live count on the app's door, and no request for one.
+  it('shows no live count and asks the API for none', async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(() => new Promise<Response>(() => undefined));
+    const main = show({ fetch });
+    await act(async () => { await Promise.resolve(); });
+    expect(main.querySelector('.gk-frontdoor__people')).toBeNull();
+    expect(fetch.mock.calls.map(([url]) => (typeof url === 'string' ? url : url instanceof URL ? url.href : url.url)).filter((url) => url.includes('/api/servers'))).toEqual([]);
   });
 
   it('says a refusal on a kit banner', () => {

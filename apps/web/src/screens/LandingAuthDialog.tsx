@@ -5,6 +5,7 @@ import { useOwnPress } from '../ui/kit/index.js';
 import { useNativeBack } from '../platform/nativeBack.js';
 import { Banner, GameButton, RoundButton } from '../game-ui/index.js';
 import { describeError } from '../i18n/errors.js';
+import { AsteraSigil } from '../brand/Identity.js';
 import type { Mode } from './LandingScreen.js';
 
 /**
@@ -124,7 +125,8 @@ export function AuthDialog({
       >
         <span aria-hidden="true" className="gk-authsheet__grab" />
         <div className="gk-authsheet__head">
-          <div>
+          <AsteraSigil className="gk-authsheet__mark" />
+          <div className="gk-authsheet__heading">
             <p className="gk-label">{t('landing.form.eyebrowLogin')}</p>
             <h2 className="gk-display gk-authsheet__title">{t('landing.form.headingLogin')}</h2>
           </div>
@@ -132,8 +134,6 @@ export function AuthDialog({
         </div>
 
         {securityNotice ? <div role="status"><Banner tone="good" glyph="shield" title={t(securityNotice === 'email' ? 'accountSecurity.emailNotice' : securityNotice === 'password' ? 'accountSecurity.passwordNotice' : 'accountSecurity.expiredNotice')} /></div> : null}
-        <p className="gk-sub gk-authsheet__hint">{t('accountSecurity.loginHint')}</p>
-        <GameButton tone="ghost" size="sm" className="gk-authsheet__forgot" onPress={() => { setResetOpen(true); }}>{t('accountSecurity.forgot')}</GameButton>
         {resetOpen ? <PasswordResetSheet onClose={() => { setResetOpen(false); }} /> : null}
         <div className="gk-field">
           <label className="gk-label" htmlFor={nameId}>{t('accountSecurity.loginLabel')}</label>
@@ -154,8 +154,8 @@ export function AuthDialog({
             autoCorrect="off"
             spellCheck={false}
             maxLength={254}
-            placeholder={t('accountSecurity.loginLabel')}
           />
+          <p className="gk-sub gk-authsheet__hint">{t('accountSecurity.loginHint')}</p>
         </div>
 
         <div className="gk-field">
@@ -176,6 +176,7 @@ export function AuthDialog({
             autoComplete="current-password"
             maxLength={200}
           />
+          <GameButton tone="ghost" size="sm" className="gk-authsheet__forgot" onPress={() => { setResetOpen(true); }}>{t('accountSecurity.forgot')}</GameButton>
         </div>
 
         {problem !== null && <Banner tone="hostile" role="alert" title={problem} />}

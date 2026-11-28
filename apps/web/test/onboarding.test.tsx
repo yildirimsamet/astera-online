@@ -19,13 +19,7 @@ import type { Loader } from '../src/lib/preload.js';
  * this point has been played; nothing here has, and a form that refuses a valid
  * name or a list that offers a galaxy it cannot deliver is a player who never
  * arrives at any of it.
- *
- * The 3D scene is stubbed. It is a canvas of moving hulls with no assertions to
- * make, and WebGL does not exist in jsdom.
  */
-vi.mock('../src/landing/LandingScene.jsx', () => ({
-  LandingScene: () => <div data-testid="landing-scene" />,
-}));
 
 const server = (over: Partial<ServerRow> = {}): ServerRow => ({
   code: 'EU-1',
@@ -87,7 +81,7 @@ describe('the compact native landing screen', () => {
    *
    * It carried the premise and the stake — two paragraphs a stranger reads after
    * they have already decided from the picture. They are gone, the wordmark sits
-   * high, and what is left is a sky, one line about who is in there, and one door.
+   * high, and what is left is a sky and one door.
   */
   it('shows a sky and a door, and asks for nothing', async () => {
     const { wrapper: Wrapper } = harness();
@@ -102,38 +96,6 @@ describe('the compact native landing screen', () => {
     // No form until it is asked for, and no wall of copy in front of the scene.
     expect(screen.queryByLabelText(/username or email/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/one planet in a galaxy of/i)).not.toBeInTheDocument();
-  });
-
-  /**
-   * The empty shard is the project's second-highest risk, and this line is where a
-   * visitor decides whether anyone is in here. It must never say "0 commanders"
-   * because the request has not landed yet.
-   */
-  it('shows how busy the world is, once it knows', async () => {
-    const { wrapper: Wrapper } = harness([
-      server({ planets: 50, online: 9 }),
-      server({ code: 'EU-2', name: 'Kestrel', ordinal: 2, planets: 12, online: 4 }),
-    ]);
-    render(
-      <Wrapper>
-        <LandingScreen onAuthenticate={vi.fn()} onBegin={vi.fn(() => Promise.resolve())} loadAsset={instantly} />
-      </Wrapper>,
-    );
-    await openDoor();
-
-    expect(await screen.findByText('62')).toBeInTheDocument();
-    expect(screen.getByText('13')).toBeInTheDocument();
-  });
-
-  it('says nothing about population while the answer is unknown', async () => {
-    const { wrapper: Wrapper } = harness([]);
-    render(
-      <Wrapper>
-        <LandingScreen onAuthenticate={vi.fn()} onBegin={vi.fn(() => Promise.resolve())} loadAsset={instantly} />
-      </Wrapper>,
-    );
-    await openDoor();
-    expect(screen.queryByText(/commanders hold a world/i)).not.toBeInTheDocument();
   });
 
   /**
