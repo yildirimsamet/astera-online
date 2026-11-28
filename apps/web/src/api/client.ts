@@ -57,6 +57,7 @@ import {
   announcementPublishedSchema,
   announcementsPageSchema,
   claimSchema,
+  nativeClaimSchema,
   colonyAbandonmentSchema,
   colonyAbandonedSchema,
   type ClaimIntent,
@@ -828,7 +829,7 @@ export class Api {
     const generation = ++this.sessionGeneration;
     this.clearMedia();
     this.emailForLogin = undefined;
-    const claimed = await this.send('/api/onboarding/claim', claimSchema, {
+    const claimed = await this.send('/api/onboarding/claim', this.auth ? nativeClaimSchema : claimSchema, {
       method: 'POST',
       // D172: the server authors the checkpoint; no local resources/fleet travel.
       // Arrays remain readable for the previous rehearsal during migration.
@@ -845,7 +846,11 @@ export class Api {
       retryOnExpiry: false,
     });
     this.adoptSession(claimed, generation);
-    return claimed;
+    if (claimed.placement !== null || claimed.vessel) return claimed;
+    // An older app shell dropped the ship (see `nativeClaimSchema`). A failure here is retried by
+    // claiming again, which the server answers with the same account.
+    const { vessel } = await this.send('/api/starter/vessel', vesselAnswerSchema);
+    return { ...claimed, vessel };
   }
 
   /** Drops the token without telling the server. For a 401 we already know about. */

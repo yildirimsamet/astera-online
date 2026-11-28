@@ -4257,6 +4257,12 @@ const shipClaimSchema = claimSessionSchema.extend({
 });
 
 export const claimSchema = z.union([planetClaimSchema, shipClaimSchema]);
+/**
+ * What an app claim may also be. Android shells up to versionCode 18 pass on only `placement`,
+ * `planet` and `applied`, so a new commander's ship never crosses the bridge (2026-11-28).
+ * The client asks for it with the session it was just given.
+ */
+export const nativeClaimSchema = z.union([claimSchema, shipClaimSchema.extend({ vessel: z.undefined().optional() })]);
 
 /* ── operator announcements and player feedback ───────────── */
 

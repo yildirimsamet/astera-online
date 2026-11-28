@@ -101,6 +101,18 @@ public class SessionHttpTest {
         assertEquals(2, error.length());
     }
 
+    /** 2026-11-28: a new commander gets a ship and no planet; dropping the ship broke every sign-up in the app. */
+    @Test public void passesOnTheShipOfANewCommandersClaim() throws Exception {
+        JSONObject claim = new JSONObject(session()).put("placement", JSONObject.NULL).put("planet", JSONObject.NULL)
+            .put("applied", new org.json.JSONArray()).put("vessel", new JSONObject().put("id", "ship")).put("starterGuideOff", true);
+        JSONObject result = new JSONObject(SessionHttp.decode("claim", 200, claim.toString(), null, null).body());
+        assertEquals("ship", result.getJSONObject("vessel").getString("id"));
+        assertTrue(result.getBoolean("starterGuideOff"));
+        assertTrue(result.isNull("planet"));
+        assertTrue(result.isNull("placement"));
+        assertFalse(result.has("refreshToken")); assertFalse(result.has("debugSecret"));
+    }
+
     @Test public void rejectsMalformedSessionsAndRefreshForAnotherSession() throws Exception {
         assertThrows(IOException.class, () -> SessionHttp.decode("login", 200, "{}", null, null));
         assertThrows(IOException.class, () -> SessionHttp.decode("login", 200, new JSONObject(session()).put("refreshToken", "short").toString(), null, null));

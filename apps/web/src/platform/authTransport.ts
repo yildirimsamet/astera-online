@@ -1,6 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { z } from 'zod';
-import { claimSchema, okSchema, sessionSchema } from '../api/schemas.js';
+import { nativeClaimSchema, okSchema, sessionSchema } from '../api/schemas.js';
 
 const OPERATIONS = {
   '/api/auth/login': 'login',
@@ -50,7 +50,7 @@ export function createNativeAuthTransport(native: NativeSessionPlugin = plugin):
         const response = envelope.parse(await bounded(() => native.request({ operation: OPERATIONS[path], ...(body ? { body } : {}), ...(visit ? { analyticsVisitor: visit } : {}) })));
         // The native implementation must remove secrets before crossing the bridge.
         if (typeof response.body === 'object' && response.body !== null && ('refreshToken' in response.body || 'nextRefreshToken' in response.body)) return unavailable();
-        const schema = response.status >= 400 ? errorBody : path === '/api/onboarding/claim' ? claimSchema
+        const schema = response.status >= 400 ? errorBody : path === '/api/onboarding/claim' ? nativeClaimSchema
           : path === '/api/auth/logout' ? okSchema : sessionSchema;
         return new Response(JSON.stringify(schema.parse(response.body)), { status: response.status,
           headers: { 'content-type': 'application/json', ...(response.serverTime ? { 'x-server-time': response.serverTime } : {}) } });

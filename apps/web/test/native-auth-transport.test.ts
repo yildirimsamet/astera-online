@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { createNativeAuthTransport, type AuthTransport, type NativeSessionPlugin } from '../src/platform/authTransport.js';
+import { wireVessel } from './starterVesselFixture.js';
 
 const session = { accountId: 'native-account', username: 'pilot', displayName: 'Pilot', country: 'TR', accessToken: 'short-native-access' };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -147,3 +148,48 @@ describe('native plugin selection', () => {
 });
 
 const policyProof: CommunityPolicyConsent = { version: COMMUNITY_POLICY_VERSION, locale: 'en' };
+
+/**
+ * 2026-11-28: every new commander in the app was told the server could not be reached. The server had
+ * made the account; shells up to 18 pass on only `placement`, `planet` and `applied` of a claim, so
+ * the ship never crossed the bridge. These are the wire shapes, not client-shaped ones.
+ */
+describe('a new commander claiming a ship in the app', () => {
+  const stripped = { ...session, placement: null, applied: [], planet: null };
+  const bridge = (body: unknown) => {
+    vi.stubEnv('VITE_ASTERA_PLATFORM', 'native-staging');
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('ios');
+    vi.spyOn(Capacitor, 'isPluginAvailable').mockReturnValue(true);
+    const native: NativeSessionPlugin = { request: vi.fn().mockResolvedValue({ status: 200, body }), clear: vi.fn() };
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(() => Promise.resolve(json({ vessel: wireVessel() })));
+    const api = new Api({ fetch: fetcher, baseUrl: 'https://asteraonline.space', authTransport: createNativeAuthTransport(native) });
+    return { api, fetcher };
+  };
+
+  it('asks for the ship itself, signed in, when the shell dropped it', async () => {
+    const { api, fetcher } = bridge(stripped);
+    const claimed = await api.claim('pilot', 'password-for-native', 0, 'TR', policyProof);
+    expect(claimed.placement).toBeNull();
+    expect(claimed.vessel?.id).toBe(wireVessel().id);
+    expect(fetcher).toHaveBeenCalledOnce();
+    const [url, init] = fetcher.mock.calls[0] ?? [];
+    expect(url).toBe('https://asteraonline.space/api/starter/vessel');
+    expect(new Headers(init?.headers).get('authorization')).toBe('Bearer short-native-access');
+  });
+
+  it('takes the ship from the reply of a shell that passes it on', async () => {
+    const { api, fetcher } = bridge({ ...stripped, vessel: wireVessel(), starterGuideOff: true });
+    const claimed = await api.claim('pilot', 'password-for-native', 0, 'TR', policyProof);
+    expect(claimed.vessel?.id).toBe(wireVessel().id);
+    expect(claimed.starterGuideOff).toBe(true);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('still refuses a web reply that names neither a planet nor a ship', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(json(stripped));
+    const api = new Api({ fetch: fetcher, authTransport: null });
+    await expect(api.claim('pilot', 'password-for-native', 0, 'TR', policyProof)).rejects.toThrow();
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+});

@@ -601,6 +601,8 @@ Rollback in one step: `sudo bash deploy/publish-ota.sh --restore-previous /var/w
 
 ### Store AAB (Play)
 
+**Upload a new AAB only when it is truly needed (owner, 2026-11-28).** Web code, art, copy and styles reach installed apps through the live update: ship them with `--client-only` and leave Play alone. Build a store release only for what the live update cannot carry: native code (Java/Kotlin, a Capacitor plugin), the Android manifest, permissions, SDK or target level, the app icon or splash, a `minShell` raise, or a Play requirement. First check whether a web-side change can solve it for installed shells too (2026-11-28: a bridge bug was fixed for v17/v18 from the web). A native change that can wait goes with the next necessary release; say so at delivery.
+
 Build with `pnpm run android:release`. It needs these inputs:
 
 - **Signing:** `ASTERA_ANDROID_KEYSTORE_PATH`, `ASTERA_ANDROID_PASSWORD_FILE` and `ASTERA_ANDROID_KEY_ALIAS`.
